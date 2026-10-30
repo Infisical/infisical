@@ -149,7 +149,6 @@ export const runNestedImport = async (
     path === "/" || ["created", "found"].includes(outcomes.get(path)?.status ?? "");
 
   // One at a time so parents always exist before their children
-  // eslint-disable-next-line no-restricted-syntax
   for (const path of folderPaths) {
     if (!isFolderReady(getParentPath(path))) {
       outcomes.set(path, { status: "skipped" });

@@ -383,7 +383,6 @@ const DestinationPathField = ({
 
       // Create each segment in order so a typed path such as /apps/api creates both levels.
       // The get-or-create mutation keeps retries idempotent after a partial failure.
-      // eslint-disable-next-line no-restricted-syntax
       for await (const segment of getPathSegments(path)) {
         const currentParentPath = parentPath;
         const environmentsMissingSegment = missingCreationTargets
@@ -1014,7 +1013,6 @@ const SingleEnvContent = ({
     const rotationFailures: { name: string; message: string }[] = [];
     let rotationSuccessCount = 0;
 
-    // eslint-disable-next-line no-restricted-syntax
     for await (const rotation of rotationsToMove) {
       try {
         await moveSecretRotation.mutateAsync({
@@ -1041,7 +1039,6 @@ const SingleEnvContent = ({
     let folderSuccessCount = 0;
     let folderApprovalCount = 0;
 
-    // eslint-disable-next-line no-restricted-syntax
     for await (const folder of foldersToMove) {
       try {
         const result = await moveFolder.mutateAsync({
@@ -1461,7 +1458,6 @@ const MultiEnvContent = ({
       })
     );
 
-    // eslint-disable-next-line no-restricted-syntax
     for await (const environment of environments) {
       const envSlug = environment.slug;
 
@@ -1529,7 +1525,7 @@ const MultiEnvContent = ({
         } catch (error) {
           let errorMessage = (error as Error)?.message ?? "Failed to move secrets";
           if (axios.isAxiosError(error)) {
-            const { message } = error?.response?.data as { message: string };
+            const { message } = (error.response?.data ?? {}) as { message: string };
             if (message) errorMessage = message;
           }
 
@@ -1542,7 +1538,6 @@ const MultiEnvContent = ({
         }
       }
 
-      // eslint-disable-next-line no-restricted-syntax
       for await (const rotation of rotationsToMove) {
         try {
           await moveSecretRotation.mutateAsync({
@@ -1577,7 +1572,6 @@ const MultiEnvContent = ({
         }
       }
 
-      // eslint-disable-next-line no-restricted-syntax
       for await (const folder of foldersToMove) {
         try {
           const { hasApprovalRequests } = await moveFolder.mutateAsync({

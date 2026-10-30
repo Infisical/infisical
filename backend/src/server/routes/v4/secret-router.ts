@@ -201,7 +201,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
+      // References expanded with the reader's own overrides are credited to the secrets they resolved to.
+      const referencedSecretIds: string[] = [];
       const result = await server.services.secret.getSecretsRaw({
+        onSecretReferenced: (secretId) => referencedSecretIds.push(secretId),
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -225,6 +228,28 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       });
 
       const { secrets, imports, etag, notModified } = result;
+
+      // Recorded before the 304 return: a client polling with an ETag is still using the secrets it holds.
+      if (req.query.viewSecretValue) {
+        void server.services.secretReadActivity.recordBulkRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId,
+          environment,
+          secretPath,
+          recursive: req.query.recursive,
+          isFiltered: Boolean(req.query.tagSlugs?.length || req.query.metadataFilter?.length),
+          includeImports: req.query.includeImports,
+          expandSecretReferences: req.query.expandSecretReferences,
+          includesPersonalOverrides: req.query.includePersonalOverrides,
+          notModified,
+          etag,
+          secrets,
+          imports,
+          referencedSecretIds:
+            req.query.includePersonalOverrides && req.query.expandSecretReferences ? referencedSecretIds : undefined
+        });
+      }
 
       if (etag) {
         void reply.header("ETag", etag);
@@ -303,6 +328,14 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretId
       });
 
+      void server.services.secretReadActivity.recordRead({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        projectId: secret.workspace,
+        secretIds: [secret.id],
+        referencesExpanded: false
+      });
+
       return { secret };
     }
   });
@@ -365,7 +398,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         throw new BadRequestError({ message: "You must provide  workspaceId" });
       }
 
+      const referencedSecretIds: string[] = [];
       const secret = await server.services.secret.getSecretByNameRaw({
+        onSecretReferenced: (secretId) => referencedSecretIds.push(secretId),
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -381,6 +416,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         includeImports: req.query.includeImports,
         version: req.query.version
       });
+
+      if (req.query.viewSecretValue) {
+        // A personal secret expands through the reader's own overrides, so the secrets its references resolved to are
+        // credited in place of matching references by key.
+        const usesOverrides = req.query.type === SecretType.Personal && req.query.expandSecretReferences;
+        void server.services.secretReadActivity.recordRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId,
+          secretIds: usesOverrides ? [secret.id, ...referencedSecretIds] : [secret.id],
+          referencesExpanded: usesOverrides ? false : req.query.expandSecretReferences
+        });
+      }
 
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -1576,6 +1624,16 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretPath,
         environment
       });
+
+      if (value !== undefined) {
+        void server.services.secretReadActivity.recordRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId,
+          secretIds: [secret.id],
+          referencesExpanded: true
+        });
+      }
 
       await server.services.auditLog.createAuditLog({
         projectId,

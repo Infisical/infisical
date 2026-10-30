@@ -606,3 +606,74 @@ export type TSetAgentVaultPersonalValuesDTO = {
 };
 
 export type TDeleteAgentVaultPersonalValuesDTO = { accessBundleId: string; serviceId: string };
+
+export type TAgentVaultSkillFileMode = "0644" | "0755";
+
+export type TAgentVaultSkillFile = {
+  path: string;
+  mode: TAgentVaultSkillFileMode;
+  contentBase64: string;
+};
+
+/** A skill as create and delete return it, without its access bundles. */
+export type TAgentVaultSkillSummary = {
+  id: string;
+  name: string;
+  description: string;
+  latestVersion: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TAgentVaultSkill = TAgentVaultSkillSummary & {
+  /** Sorted by name. */
+  accessBundles: { id: string; name: string }[];
+};
+
+export type TAgentVaultSkillDetail = TAgentVaultSkill & {
+  /** The files of the latest version. */
+  files: TAgentVaultSkillFile[];
+};
+
+export type TListAgentVaultSkillsDTO = {
+  search?: string;
+  /** Exact name. */
+  name?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type TAgentVaultSkillPage = {
+  skills: TAgentVaultSkill[];
+  totalCount: number;
+};
+
+export type TAgentVaultSkillVersion = {
+  id: string;
+  version: number;
+  sha256: string;
+  sizeBytes: number;
+  fileCount: number;
+  createdAt: string;
+};
+
+export type TAgentVaultSkillVersionWithFiles = TAgentVaultSkillVersion & {
+  files: TAgentVaultSkillFile[];
+};
+
+export type TAgentVaultBundleSkill = {
+  id: string;
+  name: string;
+  description: string;
+  latestVersion: number;
+};
+
+export type TCreateAgentVaultSkillDTO = {
+  files: TAgentVaultSkillFile[];
+};
+
+export type TUpdateAgentVaultSkillDTO = TCreateAgentVaultSkillDTO & {
+  skillId: string;
+  /** The version the files were edited from. The server refuses the save when a newer one was published since. */
+  baseVersion?: number;
+};

@@ -265,6 +265,7 @@ export const pamSessionServiceFactory = ({
         serviceAccountEmail: connectionDetails.serviceAccountEmail as string,
         authMethod: credentials.authMethod as string,
         serviceAccountKeyJson: credentials.serviceAccountKeyJson as string | undefined,
+        orgId,
         ttlSeconds: Math.min(remainingSeconds, 3600)
       });
       delete credentials.serviceAccountKeyJson;

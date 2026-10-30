@@ -47,6 +47,10 @@ import { agentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { agentVaultSkillBundleDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-bundle-dal";
+import { agentVaultSkillDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-dal";
+import { agentVaultSkillServiceFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-service";
+import { agentVaultSkillVersionDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-version-dal";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
 import { agentVaultVariableServiceFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
@@ -212,6 +216,9 @@ import { secretChangeGlobalPolicyBridgeDALFactory } from "@app/ee/services/secre
 import { secretChangeGlobalPolicyBridgeServiceFactory } from "@app/ee/services/secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
 import { secretChangeGlobalRequestBridgeDALFactory } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-dal";
 import { secretChangeGlobalRequestBridgeServiceFactory } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-service";
+import { secretReadActivityDALFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-dal";
+import { secretReadActivityQueueServiceFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-queue";
+import { secretReadActivityServiceFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-service";
 import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { secretRotationV2QueueServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-queue";
@@ -741,6 +748,7 @@ export const registerRoutes = async (
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
   const orgProductStatsDAL = orgProductStatsDALFactory(db);
   const insightsDAL = insightsDALFactory(db);
+  const secretReadActivityDAL = secretReadActivityDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -2070,6 +2078,9 @@ export const registerRoutes = async (
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
   const agentVaultSessionLogConfigDAL = agentVaultSessionLogConfigDALFactory(db);
+  const agentVaultSkillDAL = agentVaultSkillDALFactory(db);
+  const agentVaultSkillVersionDAL = agentVaultSkillVersionDALFactory(db);
+  const agentVaultSkillBundleDAL = agentVaultSkillBundleDALFactory(db);
 
   const agentVaultOauthService = agentVaultOauthServiceFactory({
     keyStore,
@@ -2093,6 +2104,16 @@ export const registerRoutes = async (
     agentVaultPersonalValueReferenceDAL,
     agentVaultVariableDAL,
     agentVaultServiceDAL,
+    permissionService,
+    membershipDAL,
+    kmsService
+  });
+
+  const agentVaultSkillService = agentVaultSkillServiceFactory({
+    agentVaultSkillDAL,
+    agentVaultSkillVersionDAL,
+    agentVaultSkillBundleDAL,
+    agentVaultAccessBundleDAL,
     permissionService,
     membershipDAL,
     kmsService
@@ -2244,6 +2265,8 @@ export const registerRoutes = async (
     agentVaultSessionLogConfigDAL,
     membershipDAL,
     orgDAL,
+    projectDAL,
+    userDAL,
     permissionService,
     kmsService,
     licenseService,
@@ -3703,6 +3726,35 @@ export const registerRoutes = async (
     secretValidationRuleService
   });
 
+  const secretReadActivityQueue = secretReadActivityQueueServiceFactory({
+    secretReadActivityDAL,
+    folderDAL,
+    projectEnvDAL,
+    secretImportDAL,
+    secretV2BridgeDAL,
+    keyStore,
+    cronJob
+  });
+
+  const secretReadActivityService = secretReadActivityServiceFactory({
+    permissionService,
+    licenseService,
+    secretReadActivityDAL,
+    secretReadActivityQueue,
+    folderDAL,
+    projectDAL,
+    projectEnvDAL,
+    secretImportDAL,
+    secretV2BridgeDAL,
+    userDAL,
+    identityDAL,
+    identityMetadataDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
+    kmsService,
+    keyStore
+  });
+
   const insightsService = insightsServiceFactory({
     permissionService,
     licenseService,
@@ -4795,6 +4847,7 @@ export const registerRoutes = async (
   projectCleanupQueue.init();
   usageEventQueue.init();
   healthAlert.init();
+  secretReadActivityQueue.init();
   alertQueue.init();
   eventOutboxQueue.init();
   orgAccessSweepQueue.init();
@@ -4917,6 +4970,7 @@ export const registerRoutes = async (
     agentVaultOauth: agentVaultOauthService,
     agentVaultVariable: agentVaultVariableService,
     agentVaultPersonalValue: agentVaultPersonalValueService,
+    agentVaultSkill: agentVaultSkillService,
     agentVaultProxy: agentVaultProxyService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,
@@ -4986,6 +5040,7 @@ export const registerRoutes = async (
     microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,
     insights: insightsService,
+    secretReadActivity: secretReadActivityService,
     auditReport: auditReportService,
     githubOrgSync: githubOrgSyncConfigService,
     gitHubApp: gitHubAppService,

@@ -30,24 +30,54 @@ Infisical signs in to ServiceNow as a dedicated integration user. Use a new user
 
 <Steps>
   <Step>
-    In ServiceNow, go to **All** > **User Administration** > **Users** and select **New**.
+    In ServiceNow, go to **All** > **User Administration** > **Users**.
+
+    ![Users in the ServiceNow Navigator](/images/app-connections/servicenow/servicenow-users-menu.png)
+
+  </Step>
+  <Step>
+    Select **New**.
+
+    ![New User](/images/app-connections/servicenow/servicenow-users-new.png)
+
   </Step>
   <Step>
     Fill out the user's fields:
 
-    - **User ID**: an identifier such as `infisical.integration`
-    - **First name** and **Last name**: a recognizable name such as `Infisical Integration`
-    - **Password**: a strong password, which you'll enter in Infisical in [Step 2](#step-2-create-the-app-connection)
-    - **Web service access only**: checked, so nobody can use the account to sign in to the ServiceNow UI
+    - **User ID**: an identifier such as `infisical-machine`
+    - **First name** and **Last name**: a recognizable name, such as `infisical` and `machine`
     - **Active**: checked
+    - **Identity type**: **Machine**
 
-    Then, select **Submit** and open the user record again.
+    Then, select **Submit**.
+
+    ![New User Form](/images/app-connections/servicenow/servicenow-new-user-form.png)
 
   </Step>
   <Step>
-    In the **Roles** related list on the user record, select **Edit** and add the `x_infis_approvals.secret-manager-integration` role.
+    Open the new user from the **Users** list, then select **Edit...** on the **Roles** tab.
+
+    ![User Roles Tab](/images/app-connections/servicenow/servicenow-user-roles-tab.png)
+
+  </Step>
+  <Step>
+    In **Collection**, search for `x_infis_approvals`, move `x_infis_approvals.secret-manager-integration` to **Roles List**, and select **Save**.
 
     This role lets Infisical create access requests in the Infisical application and read their decisions. It doesn't grant approval rights or access to anything else on the instance.
+
+    ![Add the Integration Role](/images/app-connections/servicenow/servicenow-user-add-role.png)
+
+  </Step>
+  <Step>
+    Select **Set Password**.
+
+    ![Set Password](/images/app-connections/servicenow/servicenow-user-set-password.png)
+
+  </Step>
+  <Step>
+    Select **Generate**, copy the password, and select **Save Password**. You'll enter the password in Infisical in [Step 2](#step-2-create-the-app-connection).
+
+    ![Generate a Password](/images/app-connections/servicenow/servicenow-user-generate-password.png)
 
   </Step>
   <Step>
