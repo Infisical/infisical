@@ -833,6 +833,34 @@ SSL: Available on ports 465, 8465, and 443
 </Note>
 </Accordion>
 
+<Accordion title="Groundmail">
+<Steps>
+  <Step>
+    Create an account on [Groundmail](https://groundmail.dev) and add your sending domain. Until you verify the domain and add a payment method, Groundmail only sends from `noreply@mail.groundmail.dev` to your own account email; other recipients are rejected. Finish both before you invite users.
+  </Step>
+  <Step>
+    Go to **SMTP** in the Groundmail dashboard and create an SMTP credential. Copy the password; it's shown once.
+  </Step>
+  <Step>
+    Set your SMTP environment variables:
+
+    ```
+    SMTP_HOST=smtp.groundmail.dev
+    SMTP_PORT=587 # or 2525 if your host blocks outbound 587
+    SMTP_USERNAME=groundmail
+    SMTP_PASSWORD=gmsmtp_... # your Groundmail SMTP credential
+    SMTP_FROM_ADDRESS=hey@example.com # an address on your verified domain
+    SMTP_FROM_NAME=Infisical
+    ```
+
+    Both ports use STARTTLS, so the default TLS settings (`SMTP_REQUIRE_TLS=true`, `SMTP_TLS_REJECT_UNAUTHORIZED=true`) work as they are.
+  </Step>
+  <Step>
+    Restart Infisical so it picks up the new settings.
+  </Step>
+</Steps>
+</Accordion>
+
 ## Authentication
 
 By default, users can only log in via the email/password-based login method.
