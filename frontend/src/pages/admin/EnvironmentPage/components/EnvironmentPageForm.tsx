@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Control, Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Search, TriangleAlert } from "lucide-react";
+import { SaveIcon, Search, TriangleAlert } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -24,6 +24,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   SecretInput,
+  SelectedActionBar,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -31,6 +32,8 @@ import {
 import { useGetEnvOverrides, useUpdateServerConfig } from "@app/hooks/api";
 
 type TForm = Record<string, string>;
+
+const FORM_ID = "env-overrides-form";
 
 export const GroupContainer = ({
   group,
@@ -125,7 +128,7 @@ export const EnvironmentPageForm = () => {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting, isDirty }
+    formState: { isSubmitting, isDirty, dirtyFields }
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues
@@ -180,6 +183,8 @@ export const EnvironmentPageForm = () => {
     [reset, updateServerConfig]
   );
 
+  const dirtyCount = isDirty ? Object.keys(dirtyFields).length : 0;
+
   return (
     <Card>
       <CardHeader>
@@ -193,12 +198,27 @@ export const EnvironmentPageForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
-          <div className="flex justify-end">
-            <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
+        <form id={FORM_ID} className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
+          <SelectedActionBar
+            selectedCount={dirtyCount}
+            onClearSelection={() => reset(defaultValues)}
+            selectionLabel={`${dirtyCount} unsaved change${dirtyCount !== 1 ? "s" : ""}`}
+            clearLabel="Discard"
+            iconOnlyClear={false}
+            aria-label="Unsaved change actions"
+          >
+            <Button
+              variant="neutral"
+              size="xs"
+              type="submit"
+              form={FORM_ID}
+              isPending={isSubmitting}
+              isDisabled={isSubmitting}
+            >
+              <SaveIcon />
               Save
             </Button>
-          </div>
+          </SelectedActionBar>
           <InputGroup>
             <InputGroupAddon>
               <Search />
