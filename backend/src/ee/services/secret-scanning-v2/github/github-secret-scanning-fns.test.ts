@@ -33,7 +33,8 @@ vi.mock("@app/lib/config/env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/config/env")>()),
   getConfig: () => ({
     INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: "1",
-    INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY: "key"
+    INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY: "key",
+    SECRET_SCANNING_SCAN_TIMEOUT: 60_000
   })
 }));
 
@@ -240,6 +241,126 @@ describe("scanGitHubCommitsAndGetFindings", () => {
 
     expect(getCommit).toHaveBeenCalledTimes(30);
     expect(scanContentAndGetFindings).not.toHaveBeenCalled();
+  });
+
+  describe("a file whose patch GitHub left out", () => {
+    const parentSha = "p".repeat(40);
+    const toContent = (text: string) => ({
+      data: {
+        type: "file",
+        size: text.length,
+        sha: "s",
+        encoding: "base64",
+        content: Buffer.from(text).toString("base64")
+      }
+    });
+    const asOctokitWithContents = (
+      files: unknown[],
+      getContent: unknown,
+      getBlob: unknown = vi.fn()
+    ): Parameters<typeof scanGitHubCommitsAndGetFindings>[0]["octokit"] =>
+      ({
+        repos: { getCommit: vi.fn().mockResolvedValue({ data: { files, parents: [{ sha: parentSha }] } }), getContent },
+        git: { getBlob }
+      }) as unknown as Parameters<typeof scanGitHubCommitsAndGetFindings>[0]["octokit"];
+    const scannedLines = () =>
+      scanContentAndGetFindings.mock.calls.map(([content]) => content.split("\n").filter(Boolean));
+
+    test("scans every line of an added file", async () => {
+      const getContent = vi.fn().mockResolvedValue(toContent("one\ntwo\n"));
+
+      await scanGitHubCommitsAndGetFindings({
+        octokit: asOctokitWithContents([{ status: "added", filename: "big.txt", additions: 2 }], getContent),
+        repositoryFullName: "acme/api",
+        resourceName: "acme/api",
+        commits: [commit]
+      });
+
+      expect(getContent).toHaveBeenCalledTimes(1);
+      expect(getContent).toHaveBeenCalledWith(expect.objectContaining({ path: "big.txt", ref: commit.sha }));
+      expect(scannedLines()).toEqual([["one", "two"]]);
+    });
+
+    test("scans only the lines a modified or renamed file adds", async () => {
+      const getContent = vi
+        .fn()
+        .mockImplementation(({ ref }: { ref: string }) =>
+          Promise.resolve(toContent(ref === parentSha ? "kept\nold\n" : "kept\nnew\n"))
+        );
+
+      await scanGitHubCommitsAndGetFindings({
+        octokit: asOctokitWithContents(
+          [{ status: "renamed", filename: "new.txt", previous_filename: "old.txt", additions: 1 }],
+          getContent
+        ),
+        repositoryFullName: "acme/api",
+        resourceName: "acme/api",
+        commits: [commit]
+      });
+
+      expect(getContent).toHaveBeenCalledWith(expect.objectContaining({ path: "old.txt", ref: parentSha }));
+      expect(scannedLines()).toEqual([["new"]]);
+    });
+
+    test("reads a file over 1 MB from the blob API", async () => {
+      const getContent = vi
+        .fn()
+        .mockResolvedValue({ data: { type: "file", size: 2_000_000, sha: "blob", content: "" } });
+      const getBlob = vi.fn().mockResolvedValue({ data: { content: Buffer.from("large\n").toString("base64") } });
+
+      await scanGitHubCommitsAndGetFindings({
+        octokit: asOctokitWithContents([{ status: "added", filename: "big.txt", additions: 1 }], getContent, getBlob),
+        repositoryFullName: "acme/api",
+        resourceName: "acme/api",
+        commits: [commit]
+      });
+
+      expect(getBlob).toHaveBeenCalledWith(expect.objectContaining({ file_sha: "blob" }));
+      expect(scannedLines()).toEqual([["large"]]);
+    });
+
+    test("skips a binary file, which adds no lines", async () => {
+      const getContent = vi.fn();
+
+      await scanGitHubCommitsAndGetFindings({
+        octokit: asOctokitWithContents([{ status: "added", filename: "image.png", additions: 0 }], getContent),
+        repositoryFullName: "acme/api",
+        resourceName: "acme/api",
+        commits: [commit],
+        requireCompleteCommits: true
+      });
+
+      expect(getContent).not.toHaveBeenCalled();
+      expect(scanContentAndGetFindings).not.toHaveBeenCalled();
+    });
+
+    test("fails a scan that requires every file when the file is too large to fetch, and skips it otherwise", async () => {
+      const getContent = vi
+        .fn()
+        .mockResolvedValue({ data: { type: "file", size: 50_000_000, sha: "blob", content: "" } });
+      const files = [{ status: "added", filename: "huge.txt", additions: 1 }];
+
+      await expect(
+        scanGitHubCommitsAndGetFindings({
+          octokit: asOctokitWithContents(files, getContent),
+          repositoryFullName: "acme/api",
+          resourceName: "acme/api",
+          commits: [commit],
+          requireCompleteCommits: true
+        })
+      ).rejects.toThrow("huge.txt is too large for GitHub to include, and the file couldn't be scanned in full");
+
+      await expect(
+        scanGitHubCommitsAndGetFindings({
+          octokit: asOctokitWithContents(files, getContent),
+          repositoryFullName: "acme/api",
+          resourceName: "acme/api",
+          commits: [commit]
+        })
+      ).resolves.toEqual([]);
+
+      expect(scanContentAndGetFindings).not.toHaveBeenCalled();
+    });
   });
 });
 

@@ -1,4 +1,7 @@
 import { Repository } from "@octokit/webhooks-types";
+import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
 import { ProbotOctokit } from "probot";
 import { z } from "zod";
 
@@ -22,6 +25,11 @@ import {
   TSecretScanningFactoryProcessEvent,
   TSecretScanningScanReport
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import {
+  execFileBounded,
+  GIT_PROCESS_ENV,
+  SecretScanningExecPhase
+} from "@app/ee/services/secret-scanning/secret-scanning-exec";
 import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
@@ -45,6 +53,8 @@ const COMPARE_COMMITS_MAX_PAGES = 20;
 const COMMIT_FILES_PER_PAGE = 100;
 // GitHub lists at most 3,000 of a commit's files, across pages.
 const COMMIT_MAX_LISTED_FILES = 3000;
+// A file whose patch GitHub leaves out is fetched whole to rebuild it, so its size is capped.
+const MISSING_PATCH_MAX_FILE_BYTES = 10 * 1024 * 1024;
 // GitHub rejects a check run update carrying more than 50 annotations; more are sent as further updates.
 const CHECK_RUN_ANNOTATIONS_PER_REQUEST = 50;
 const CHECK_RUN_MAX_ANNOTATIONS = 500;
@@ -121,23 +131,125 @@ const listCommitFiles = async (
   { owner, repo, sha }: { owner: string; repo: string; sha: string }
 ) => {
   const files: NonNullable<Awaited<ReturnType<TGitHubOctokit["repos"]["getCommit"]>>["data"]["files"]> = [];
+  let parentSha: string | null = null;
 
   for (let page = 1; files.length < COMMIT_MAX_LISTED_FILES; page += 1) {
     // eslint-disable-next-line no-await-in-loop
     const { data } = await octokit.repos.getCommit({ owner, repo, ref: sha, per_page: COMMIT_FILES_PER_PAGE, page });
     const pageFiles = data.files ?? [];
 
+    // GitHub diffs a merge commit's files against its first parent.
+    if (page === 1) parentSha = data.parents?.length ? data.parents[0].sha : null;
+
     files.push(...pageFiles);
 
     if (pageFiles.length < COMMIT_FILES_PER_PAGE) break;
   }
 
-  return { files, isComplete: files.length < COMMIT_MAX_LISTED_FILES };
+  return { files, parentSha, isComplete: files.length < COMMIT_MAX_LISTED_FILES };
+};
+
+class MissingPatchFileTooLargeError extends Error {}
+
+const getGitHubFileContent = async (
+  octokit: TGitHubOctokit,
+  { owner, repo, path, ref }: { owner: string; repo: string; path: string; ref: string }
+) => {
+  const { data } = await octokit.repos.getContent({ owner, repo, path, ref });
+
+  if (Array.isArray(data) || data.type !== "file") {
+    throw new Error(`Expected a file at ${path} [ref=${ref}], got ${Array.isArray(data) ? "a directory" : data.type}`);
+  }
+
+  if (data.size > MISSING_PATCH_MAX_FILE_BYTES) throw new MissingPatchFileTooLargeError();
+
+  // The contents API leaves out the content of a file over 1 MB; the blob API returns it.
+  if ("content" in data && data.content && data.encoding === "base64") return Buffer.from(data.content, "base64");
+
+  const { data: blob } = await octokit.git.getBlob({ owner, repo, file_sha: data.sha });
+
+  return Buffer.from(blob.content, "base64");
+};
+
+// Builds the patch GitHub would have sent: a unified diff starting at its first hunk. Context lines are left out, as
+// only added lines are scanned.
+const buildPatchFromContents = async (before: Buffer, after: Buffer) => {
+  const tempFolder = await mkdtemp(join(tmpdir(), "infisical-patch-"));
+
+  try {
+    const beforePath = join(tempFolder, "before");
+    const afterPath = join(tempFolder, "after");
+    const patchPath = join(tempFolder, "patch.diff");
+
+    await Promise.all([writeFile(beforePath, before), writeFile(afterPath, after)]);
+
+    // Exits 1 when the files differ. The diff goes to a file because the process output that is kept is size capped.
+    await execFileBounded(
+      "git",
+      [
+        "diff",
+        "--no-index",
+        "--no-color",
+        "--no-ext-diff",
+        "--text",
+        "--unified=0",
+        `--output=${patchPath}`,
+        beforePath,
+        afterPath
+      ],
+      {
+        phase: SecretScanningExecPhase.Scan,
+        timeoutMs: getConfig().SECRET_SCANNING_SCAN_TIMEOUT,
+        env: GIT_PROCESS_ENV,
+        successExitCodes: [0, 1]
+      }
+    );
+
+    const diff = await readFile(patchPath, "utf8");
+    const firstHunkIndex = diff.indexOf("\n@@");
+
+    return firstHunkIndex === -1 ? "" : diff.slice(firstHunkIndex + 1);
+  } finally {
+    await rm(tempFolder, { recursive: true, force: true });
+  }
+};
+
+// GitHub leaves out the patch of a diff too large to show, so its added lines are diffed here from the file's contents.
+const buildMissingGitHubPatch = async (
+  octokit: TGitHubOctokit,
+  {
+    owner,
+    repo,
+    commitSha,
+    parentSha,
+    file
+  }: {
+    owner: string;
+    repo: string;
+    commitSha: string;
+    parentSha: string | null;
+    file: { status: string; filename: string; previous_filename?: string };
+  }
+) => {
+  const after = await getGitHubFileContent(octokit, { owner, repo, path: file.filename, ref: commitSha });
+
+  const before =
+    file.status === "added" || !parentSha
+      ? Buffer.alloc(0)
+      : await getGitHubFileContent(octokit, {
+          owner,
+          repo,
+          path: file.previous_filename ?? file.filename,
+          ref: parentSha
+        });
+
+  return buildPatchFromContents(before, after);
 };
 
 /**
  * A commit that changes more files than GitHub lists can't be fully scanned from the API. A pull request check passes
- * `requireCompleteCommits` so it fails rather than passing on part of the commit; a push scan scans what it can.
+ * `requireCompleteCommits` so it fails rather than passing on part of the commit; a push scan scans what it can. The
+ * same goes for a file whose patch GitHub left out and that can't be rebuilt from its contents.
  */
 export const scanGitHubCommitsAndGetFindings = async ({
   octokit,
@@ -160,7 +272,7 @@ export const scanGitHubCommitsAndGetFindings = async ({
 
   for (const commit of commits) {
     // eslint-disable-next-line no-await-in-loop
-    const { files, isComplete } = await listCommitFiles(octokit, { owner, repo, sha: commit.sha });
+    const { files, parentSha, isComplete } = await listCommitFiles(octokit, { owner, repo, sha: commit.sha });
 
     if (!isComplete) {
       if (requireCompleteCommits) {
@@ -176,16 +288,52 @@ export const scanGitHubCommitsAndGetFindings = async ({
 
     for (const file of files) {
       // A renamed, copied or changed file's patch can add lines too; a removed file's adds none.
-      if (file.status !== "removed" && file.patch) {
+      // eslint-disable-next-line no-continue
+      if (file.status === "removed") continue;
+
+      let { patch } = file;
+
+      // A binary file has no patch either, but adds no lines.
+      if (!patch && file.additions > 0) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          patch = await buildMissingGitHubPatch(octokit, {
+            owner,
+            repo,
+            commitSha: commit.sha,
+            parentSha,
+            file
+          });
+        } catch (error) {
+          const reason =
+            error instanceof MissingPatchFileTooLargeError
+              ? `it is larger than ${MISSING_PATCH_MAX_FILE_BYTES / 1024 / 1024} MB`
+              : "its contents couldn't be read from GitHub";
+
+          logger.warn(
+            error,
+            `secretScanningV2DiffScan: GitHub - file patch missing and couldn't be rebuilt [repository=${repositoryFullName}] [commit=${commit.sha}] [file=${file.filename}]`
+          );
+
+          if (requireCompleteCommits) {
+            throw new Error(
+              `Commit ${commit.sha.slice(0, 7)}'s change to ${file.filename} is too large for GitHub to include, and the file couldn't be scanned in full because ${reason}.`
+            );
+          }
+        }
+      }
+
+      if (patch) {
+        const filePatch = patch;
         // eslint-disable-next-line
-        const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${file.patch}`), configPath);
+        const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${filePatch}`), configPath);
 
         const adjustedFindings = findings.map((finding) => {
-          const startLine = convertPatchLineToFileLineNumber(file.patch!, finding.StartLine);
+          const startLine = convertPatchLineToFileLineNumber(filePatch, finding.StartLine);
           const endLine =
             finding.StartLine === finding.EndLine
               ? startLine
-              : convertPatchLineToFileLineNumber(file.patch!, finding.EndLine);
+              : convertPatchLineToFileLineNumber(filePatch, finding.EndLine);
           const startColumn = finding.StartColumn - 1; // subtract 1 for +
           const endColumn = finding.EndColumn - 1; // subtract 1 for +
 
