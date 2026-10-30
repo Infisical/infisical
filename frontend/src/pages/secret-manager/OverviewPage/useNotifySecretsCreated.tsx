@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { createNotification, dismissNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v3";
@@ -39,6 +39,12 @@ export const useNotifySecretsCreated = (
 ): TNotifySecretsCreated => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const shareNotificationIds = useRef(new Set<string | number>());
+
+  useEffect(() => {
+    const ids = shareNotificationIds.current;
+    return () => ids.forEach((id) => dismissNotification(id));
+  }, []);
 
   return useCallback(
     (text, secrets) => {
@@ -89,6 +95,7 @@ export const useNotifySecretsCreated = (
         },
         { duration: 8000 }
       );
+      shareNotificationIds.current.add(notificationId);
     },
     [currentProject.secretSharing, permission, secretPath, onShare]
   );

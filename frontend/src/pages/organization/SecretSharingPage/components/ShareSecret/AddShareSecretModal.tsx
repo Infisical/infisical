@@ -24,6 +24,13 @@ type Props = {
 export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   const [isDirty, setIsDirty] = useState(false);
+  const shareData = popUp.createSharedSecret.data;
+  const [formData, setFormData] = useState(shareData);
+  const [formKey, setFormKey] = useState(0);
+  if (shareData !== formData) {
+    setFormData(shareData);
+    setFormKey((key) => key + 1);
+  }
 
   const closeSheet = useCallback(() => {
     setIsDirty(false);
@@ -53,6 +60,7 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
             </SheetDescription>
           </SheetHeader>
           <ShareSecretForm
+            key={formKey}
             isPublic={false}
             value={(popUp.createSharedSecret.data as { value?: string })?.value}
             secretKey={(popUp.createSharedSecret.data as { name?: string })?.name}
