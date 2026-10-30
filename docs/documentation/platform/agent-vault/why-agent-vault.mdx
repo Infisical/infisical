@@ -60,7 +60,7 @@ Agent Vault reduces each risk in the following ways:
 
 - **Credentials stay out of your agent's environment:** a prompt injection can't cause your agent to send a credential that it doesn't have, and your model provider never receives any credentials
 - **Access is limited to the task:** a [session](/documentation/platform/agent-vault/sessions) gives your agent access only to the services in one [access bundle](/documentation/platform/agent-vault/access-bundles), and you can limit each HTTP API to the [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths) that the task needs
-- **Access expires:** when a session expires or you revoke it, the proxy stops attaching credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default)
+- **Access expires:** when a session expires or you revoke it, the proxy stops attaching the session's credentials the next time it [checks the session with Infisical](/documentation/platform/agent-vault/proxies#poll-interval), every 60 seconds by default
 - **Every request is logged:** [session logs](/documentation/platform/agent-vault/session-logs) record each request that your agent made
 - **Your agent doesn't need code changes:** Claude Code, `curl`, Python's `requests`, and any other HTTP client that reads the `HTTPS_PROXY` environment variable send their requests through the proxy, no matter where your agent runs
 

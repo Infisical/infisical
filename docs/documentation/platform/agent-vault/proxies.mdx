@@ -12,7 +12,7 @@ You create a proxy in Infisical, start it with the proxy token that Infisical sh
 You can run the proxy in one of two ways:
 
 - **[One proxy for several agents](/documentation/platform/agent-vault/how-it-works#common-proxy):** one proxy runs on its own machine or in its own [Kubernetes namespace](/documentation/platform/agent-vault/guides/kubernetes), and every agent sends its requests to it. This is suitable for agents on a network you control
-- **[One proxy per agent](/documentation/platform/agent-vault/how-it-works#one-proxy-per-agent):** the orchestrator starts a proxy in a separate container with each agent, such as a [Modal sidecar](/documentation/platform/agent-vault/guides/modal) or a [linked Daytona sandbox](/documentation/platform/agent-vault/guides/daytona), and stops the proxy when the agent finishes. This is necessary when using a managed sandbox platform
+- **[One proxy per agent](/documentation/platform/agent-vault/how-it-works#one-proxy-per-agent):** the orchestrator starts a proxy in a separate container with each agent, such as a [Modal sidecar](/documentation/platform/agent-vault/guides/modal) or a [linked Daytona sandbox](/documentation/platform/agent-vault/guides/daytona), and stops the proxy when the agent finishes. This is suitable for a managed sandbox platform, where a shared proxy would have to accept connections from the internet
 
 Either way, we recommend running the proxy separately from the agent, either in its own container or on its own machine. If the agent and the proxy run in the same environment, the agent can read the proxy token and the private key of the proxy's certificate authority.
 

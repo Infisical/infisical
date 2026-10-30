@@ -87,7 +87,7 @@ In this setup, one proxy runs on its own machine (or in its own [Kubernetes name
 When the orchestrator creates a sandbox or container for a task, it also starts a proxy in a separate container, on a private network that only the agent and its proxy share. When the task ends, the orchestrator deletes both. Only the agent can reach its proxy, so nothing outside the task can send requests through it.
 
 <Note>
-On a managed sandbox platform like Modal or Daytona, each sandboxed agent needs its own proxy. This is because the platform might provision the sandboxes on a different cloud provider than the proxy, which would prevent the agents from reaching the proxy altogether.
+On a managed sandbox platform like Modal or Daytona, each sandboxed agent needs its own proxy. This is because the platform might provision the sandboxes on a different cloud provider than the proxy, where the sandboxes can't reach the proxy over a private network. To share one proxy, you'd have to expose the proxy to the internet, and anyone with a session token could then use the proxy from anywhere.
 </Note>
 
 Each platform has its own way to run the proxy:
