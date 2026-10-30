@@ -123,7 +123,6 @@ export const SkillVersionHistoryDialog = ({
                     <TableRow
                       key={version.id}
                       data-state={version.version === viewedVersion ? "selected" : undefined}
-                      role="button"
                       tabIndex={0}
                       onClick={view}
                       onKeyDown={(event) => {

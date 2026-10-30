@@ -162,6 +162,8 @@ type Props = {
   defaultView?: "preview" | "code";
   /** Changing it gives every file a fresh undo history, so undo can't bring back text that was discarded or replaced. */
   historyKey?: string | number;
+  /** Like historyKey for one file, so discarding a file's changes resets only that file's undo history. */
+  fileHistoryKeys?: Readonly<Record<string, number>>;
   /** Puts back the saved copy of a changed file, offered in that file's menu. */
   onDiscardFile?: (path: string) => void;
   className?: string;
@@ -178,6 +180,7 @@ export const SkillFilesEditor = ({
   requiredPaths = [],
   defaultView = "preview",
   historyKey = 0,
+  fileHistoryKeys,
   onDiscardFile,
   className
 }: Props) => {
@@ -549,7 +552,7 @@ export const SkillFilesEditor = ({
               language={isMarkdown ? "markdown" : "plain"}
               isReadOnly={!isEditing}
               hasLineWrapping={isMarkdown}
-              stateKey={`${isEditing ? "edit" : "view"}:${historyKey}:${selected.path}`}
+              stateKey={`${isEditing ? "edit" : "view"}:${historyKey}:${fileHistoryKeys?.[selected.path] ?? 0}:${selected.path}`}
               aria-label={selected.path}
               isBorderless
               className={twMerge("h-full", (selected.text === null || showRendered) && "hidden")}

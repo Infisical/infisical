@@ -118,6 +118,7 @@ const SkillSheetBody = ({
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [dialog, setDialog] = useState<TSkillDialog | null>(null);
   const [discardCount, setDiscardCount] = useState(0);
+  const [fileDiscardCounts, setFileDiscardCounts] = useState<Record<string, number>>({});
   const [rollBackVersion, setRollBackVersion] = useState<number | null>(null);
   // The latest version a refused save reported, shown before the refetched skill arrives.
   const [conflictVersion, setConflictVersion] = useState<number | null>(null);
@@ -269,7 +270,7 @@ const SkillSheetBody = ({
       if (!saved) return prev;
       return { ...prev, draft: prev.draft.map((file) => (file.path === path ? saved : file)) };
     });
-    setDiscardCount((count) => count + 1);
+    setFileDiscardCounts((counts) => ({ ...counts, [path]: (counts[path] ?? 0) + 1 }));
   };
 
   const renderFiles = () => {
@@ -287,6 +288,7 @@ const SkillSheetBody = ({
           discardablePaths={discardablePaths}
           requiredPaths={[SKILL_ENTRY_FILE]}
           historyKey={`${discardCount}:${edit?.baseVersion}`}
+          fileHistoryKeys={fileDiscardCounts}
           onDiscardFile={isEditing ? handleDiscardFile : undefined}
           className="min-h-96 flex-1"
         />
@@ -373,8 +375,8 @@ const SkillSheetBody = ({
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" isDisabled={hasChanges}>
+                <DropdownMenuTrigger asChild disabled={hasChanges}>
+                  <Button variant="outline">
                     Options
                     <EllipsisIcon />
                   </Button>
