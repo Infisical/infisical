@@ -1657,9 +1657,20 @@ const OverviewPageContent = () => {
     if (flow) overviewTelemetry.flow({ ...flow, phase: opening ? "opened" : "canceled" });
     togglePopUp(name, isOpen);
   };
+  const isShareSheetOpenRef = useRef(false);
+  useEffect(() => {
+    isShareSheetOpenRef.current = popUp.createSharedSecret.isOpen;
+  }, [popUp.createSharedSecret.isOpen]);
   const notifySecretsCreated = useNotifySecretsCreated(
     secretPath,
-    useCallback((share) => handlePopUpOpen("createSharedSecret", share), [handlePopUpOpen])
+    useCallback(
+      (share) => {
+        if (isShareSheetOpenRef.current) return false;
+        handlePopUpOpen("createSharedSecret", share);
+        return true;
+      },
+      [handlePopUpOpen]
+    )
   );
   const { openUpgradeGate: openSharedUpgradeGate, upgradeGate } = useUpgradeGate();
   const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(

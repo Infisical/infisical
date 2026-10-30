@@ -35,7 +35,7 @@ export const notifySecretsCreatedWithoutShare: TNotifySecretsCreated = (text) =>
 // Several secrets share as one KEY=value per line, so the recipient gets a pasteable .env block.
 export const useNotifySecretsCreated = (
   secretPath: string,
-  onShare: (share: TCreatedSecretsShare) => void
+  onShare: (share: TCreatedSecretsShare) => boolean
 ): TNotifySecretsCreated => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
@@ -85,8 +85,14 @@ export const useNotifySecretsCreated = (
               size="xs"
               variant="outline"
               onClick={() => {
+                if (!onShare(share)) {
+                  createNotification({
+                    type: "info",
+                    text: "Close the open share before sharing another secret."
+                  });
+                  return;
+                }
                 dismissNotification(notificationId);
-                onShare(share);
               }}
             >
               {entries.length === 1 ? "Share Secret" : `Share ${entries.length} Secrets`}
