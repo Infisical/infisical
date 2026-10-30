@@ -152,8 +152,17 @@ const GrantCheckbox = ({
   const values = actions.map((action) => action.value);
   const on = values.filter((value) => granted.includes(value)).length;
   const label = actions.map((action) => action.label).join(", ");
+  const list = (items: readonly PermissionAction[]) =>
+    items.map((action) => action.label).join(", ");
+  const partial = on > 0 && on < values.length;
   return (
-    <Tooltip content={`${label}, everywhere`}>
+    <Tooltip
+      content={
+        partial
+          ? `Allowed everywhere: ${list(actions.filter((action) => granted.includes(action.value)))}. Not allowed: ${list(actions.filter((action) => !granted.includes(action.value)))}.`
+          : `${label}, everywhere`
+      }
+    >
       <span className={styles.matrixCheck}>
         <Checkbox
           aria-label={`Allow ${label} for ${config.title} everywhere`}
@@ -363,6 +372,12 @@ export const PermissionMatrix = (props: MatrixProps) => {
             <Checkbox checked disabled tabIndex={-1} />
           </span>
           Allowed everywhere
+        </li>
+        <li>
+          <span className={styles.matrixCheck} aria-hidden>
+            <Checkbox checked="indeterminate" disabled tabIndex={-1} />
+          </span>
+          Some actions in the column allowed everywhere
         </li>
         <li>
           <span className={styles.mark} data-tone="conditional" aria-hidden>
