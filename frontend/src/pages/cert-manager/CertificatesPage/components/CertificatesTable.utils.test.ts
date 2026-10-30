@@ -148,4 +148,10 @@ describe("getCertificateDeletedBySummary", () => {
     ).toBe("A machine identity");
     expect(getCertificateDeletedBySummary({ deletedByActorType: ActorType.USER })).toBe("A user");
   });
+
+  it("labels certificates deleted by the cleanup job", () => {
+    expect(getCertificateDeletedBySummary({ deletedByActorType: ActorType.PLATFORM })).toBe(
+      "Certificate cleanup"
+    );
+  });
 });

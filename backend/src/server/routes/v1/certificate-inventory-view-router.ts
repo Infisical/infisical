@@ -30,7 +30,8 @@ const InventoryViewFiltersSchema = z
         })
       )
       .max(20)
-      .optional()
+      .optional(),
+    includeDeleted: z.boolean().optional()
   })
   .strict();
 

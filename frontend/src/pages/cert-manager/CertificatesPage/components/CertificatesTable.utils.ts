@@ -66,6 +66,8 @@ type TCertificateDeletedBySource = {
 export const getCertificateDeletedBySummary = (certificate: TCertificateDeletedBySource) => {
   if (certificate.deletedByActorName) return certificate.deletedByActorName;
 
+  if (certificate.deletedByActorType === ActorType.PLATFORM) return "Certificate cleanup";
+
   return certificate.deletedByActorType === ActorType.IDENTITY ? "A machine identity" : "A user";
 };
 

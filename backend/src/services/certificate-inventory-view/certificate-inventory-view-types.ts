@@ -13,6 +13,7 @@ export type TInventoryViewFilters = {
   profileIds?: string[];
   applicationIds?: string[];
   source?: string | string[];
+  includeDeleted?: boolean;
 };
 
 export type TListInventoryViewsDTO = {

@@ -261,6 +261,7 @@ export const CertificatesTable = ({
       return "system-default";
     }
   });
+  const [includeDeleted, setIncludeDeleted] = useState(activeViewId === "system-all");
   const [isSaveViewOpen, setIsSaveViewOpen] = useState(false);
   const [hasRestoredView, setHasRestoredView] = useState(
     hasDashboardFilters || hasSynchronousDashboardView
@@ -388,7 +389,7 @@ export const CertificatesTable = ({
     limit: perPage,
     search: appliedSearch.trim() || undefined,
     status: filterSearchParams.status as string | undefined,
-    includeDeleted: activeViewId === "system-all",
+    includeDeleted,
     profileIds: filterSearchParams.profileIds as string[] | undefined,
     keyAlgorithm: filterSearchParams.keyAlgorithm,
     keySizes: filterSearchParams.keySizes,
@@ -485,6 +486,7 @@ export const CertificatesTable = ({
   const handleClearAllFilters = () => {
     setAppliedFilters([]);
     setPendingFilters([]);
+    setIncludeDeleted(false);
     setActiveViewId("system-default");
     persistViewId("system-default");
     setPage(1);
@@ -494,6 +496,7 @@ export const CertificatesTable = ({
     (viewId: string, filters: TInventoryViewFilters | TSystemViewFilters) => {
       setActiveViewId(viewId);
       persistViewId(viewId);
+      setIncludeDeleted(Boolean(filters.includeDeleted));
       setAppliedFilters([]);
       setPendingFilters([]);
       setPage(1);
@@ -817,7 +820,7 @@ export const CertificatesTable = ({
 
         {canReadViews && (
           <ViewsDropdown
-            activeViewId={activeViewId}
+            activeViewId={activeViewId ?? (includeDeleted ? "system-all" : null)}
             systemViews={viewsData?.systemViews || []}
             sharedViews={viewsData?.sharedViews || []}
             customViews={viewsData?.customViews || []}
@@ -1422,6 +1425,7 @@ export const CertificatesTable = ({
         isOpen={isSaveViewOpen}
         onOpenChange={setIsSaveViewOpen}
         filters={pendingFilters.length > 0 ? pendingFilters : appliedFilters}
+        includeDeleted={includeDeleted}
         onViewCreated={(viewId, viewFilters) => {
           handleSelectView(viewId, viewFilters);
         }}
