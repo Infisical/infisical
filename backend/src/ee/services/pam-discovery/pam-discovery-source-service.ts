@@ -38,6 +38,7 @@ import {
   PamDiscoveryType
 } from "./pam-discovery-enums";
 import { PAM_DISCOVERY_FACTORY_MAP } from "./pam-discovery-factory";
+import { getCredentialAccountIds } from "./pam-discovery-fns";
 import {
   getCredentialAccountType,
   getDiscoveryTypeConfig,
@@ -65,7 +66,10 @@ type TPamDiscoverySourceServiceFactoryDep = {
   pamAccountDependencyDAL: TPamAccountDependencyDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "findByIdWithDetails">;
   pamAccountService: Pick<TPamAccountServiceFactory, "create">;
-  pamAccountRotationService: Pick<TPamAccountRotationServiceFactory, "setRotationAccount" | "rotateNow">;
+  pamAccountRotationService: Pick<
+    TPamAccountRotationServiceFactory,
+    "setRotationAccount" | "rotateNow" | "getSharedIdentity"
+  >;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
@@ -208,14 +212,6 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     if (!hasRole(PamProductRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Discovery requires the PAM product Admin role" });
     }
-  };
-
-  // unix sources scan with several ssh accounts, stored in the per-type configuration; other types use the single column
-  const getCredentialAccountIds = (credentialAccountId: string, configuration: Record<string, unknown>) => {
-    const configIds = Array.isArray(configuration.credentialAccountIds)
-      ? (configuration.credentialAccountIds as string[])
-      : [];
-    return Array.from(new Set([credentialAccountId, ...configIds]));
   };
 
   const resolveCredentialAccount = async (
@@ -772,6 +768,14 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     const rotateImported = async (accountId: string, accountType: string, rotationAccountId: string) => {
       let names: { accountName: string; rotationAccountName: string | null };
       try {
+        // the Rotation tab warns before rotating a password another account stores; an import can't ask, so it skips
+        const shared = await pamAccountRotationService.getSharedIdentity({ accountId, projectId, ...ctx });
+        if (shared.length) {
+          return {
+            rotationStatus: ROTATION_STATUS.Failed,
+            rotationMessage: `Not rotated, because its password is also stored in ${shared.map((ref) => `'${ref.name}'`).join(", ")}`
+          };
+        }
         names = await pamAccountRotationService.setRotationAccount({ accountId, rotationAccountId, projectId, ...ctx });
       } catch (err) {
         return {
