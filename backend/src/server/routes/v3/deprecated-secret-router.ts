@@ -346,6 +346,25 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
 
       const { secrets, imports, etag, notModified } = result;
 
+      // Recorded before the 304 return: a client polling with an ETag is still using the secrets it holds.
+      if (req.query.viewSecretValue) {
+        void server.services.secretReadActivity.recordBulkRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId: workspaceId,
+          environment,
+          secretPath,
+          recursive: req.query.recursive,
+          isFiltered: Boolean(req.query.tagSlugs?.length || req.query.metadataFilter?.length),
+          includeImports: req.query.include_imports,
+          expandSecretReferences: req.query.expandSecretReferences,
+          notModified,
+          etag,
+          secrets,
+          imports
+        });
+      }
+
       if (etag) {
         void reply.header("ETag", etag);
       }
@@ -422,6 +441,14 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         secretId
+      });
+
+      void server.services.secretReadActivity.recordRead({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        projectId: secret.workspace,
+        secretIds: [secret.id],
+        referencesExpanded: false
       });
 
       return { secret };
@@ -520,6 +547,16 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         includeImports: req.query.include_imports,
         version: req.query.version
       });
+
+      if (req.query.viewSecretValue) {
+        void server.services.secretReadActivity.recordRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId: workspaceId,
+          secretIds: [secret.id],
+          referencesExpanded: req.query.expandSecretReferences
+        });
+      }
 
       await server.services.auditLog.createAuditLog({
         projectId: secret.workspace,

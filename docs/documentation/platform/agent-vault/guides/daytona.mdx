@@ -1,7 +1,8 @@
 ---
 title: "Run agents in Daytona sandboxes with Agent Vault"
-sidebarTitle: "Daytona sandboxes"
-description: "Run an Agent Vault proxy beside each Daytona sandbox so the agent never holds a credential."
+sidebarTitle: "Daytona"
+icon: "/images/agent-vault-agents/daytona.svg"
+description: "Run an Agent Vault proxy beside each Daytona sandbox so the agent never has access to a credential."
 ---
 
 import SandboxAgentVaultSetup from "/snippets/agent-vault/SandboxAgentVaultSetup.mdx";
@@ -47,10 +48,10 @@ Every proxy starts from the same proxy token, so you set up the proxy once, no m
 ## Prerequisites
 
 - The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A [Daytona](https://www.daytona.io) organization on [Tier 3 or 4](https://www.daytona.io/docs/en/network-limits/#tier-based-network-restrictions), because on Tiers 1 and 2 you can't limit a sandbox to reaching the proxy, and the proxy can't reach Infisical
 - A [Daytona API key](https://www.daytona.io/docs/en/api-keys/) in the `DAYTONA_API_KEY` environment variable on the machine that runs your code
 - The Daytona SDK for your language: [Python](https://pypi.org/project/daytona/) (with [`requests`](https://pypi.org/project/requests/)), [TypeScript](https://www.npmjs.com/package/@daytona/sdk), [Go](https://pkg.go.dev/github.com/daytona/clients/sdk-go) (with [`api-client-go`](https://pkg.go.dev/github.com/daytona/clients/api-client-go)), [Ruby](https://rubygems.org/gems/daytona), or [Java](https://central.sonatype.com/artifact/io.daytona/sdk) (with [Jackson](https://github.com/FasterXML/jackson-databind))
-- The API keys your agent uses, such as your Anthropic API key
 
 ## Step 1: Set up Agent Vault
 

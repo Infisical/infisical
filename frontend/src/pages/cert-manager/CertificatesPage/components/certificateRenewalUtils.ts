@@ -206,6 +206,10 @@ const buildBasicConstraints = (
   return { isCA, ...(isCA && pathLength !== null && pathLength !== undefined && { pathLength }) };
 };
 
+// Required usages render as checked but are never written to the form, so they must be added here.
+const withRequiredUsages = (usages: Record<string, boolean>, required: string[] = []) =>
+  Array.from(new Set([...filterUsages(usages), ...required]));
+
 export const buildRenewalRequestAttributes = ({
   formData,
   constraints,
@@ -236,8 +240,14 @@ export const buildRenewalRequestAttributes = ({
       }
     : {
         ttl: formData.ttl,
-        keyUsages: filterUsages(formData.keyUsages as Record<string, boolean>),
-        extendedKeyUsages: filterUsages(formData.extendedKeyUsages as Record<string, boolean>),
+        keyUsages: withRequiredUsages(
+          formData.keyUsages as Record<string, boolean>,
+          constraints.requiredKeyUsages
+        ),
+        extendedKeyUsages: withRequiredUsages(
+          formData.extendedKeyUsages as Record<string, boolean>,
+          constraints.requiredExtendedKeyUsages
+        ),
         ...(formData.signatureAlgorithm && { signatureAlgorithm: formData.signatureAlgorithm }),
         ...(formData.keySource !== CertificateRenewalKeySource.Reuse &&
           formData.keyAlgorithm && { keyAlgorithm: formData.keyAlgorithm }),

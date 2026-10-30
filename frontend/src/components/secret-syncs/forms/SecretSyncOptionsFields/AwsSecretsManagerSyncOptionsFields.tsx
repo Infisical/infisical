@@ -118,8 +118,8 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
   const syncOptionsErrors = errors.syncOptions as Record<string, unknown> | undefined;
   const hasAccordionError = Boolean(
     syncOptionsErrors?.keyId ||
-      syncOptionsErrors?.tags ||
-      syncOptionsErrors?.syncSecretMetadataAsTags
+    syncOptionsErrors?.tags ||
+    syncOptionsErrors?.syncSecretMetadataAsTags
   );
 
   const [openItem, setOpenItem] = useState<string>(

@@ -31,6 +31,7 @@ import { useOrganization } from "@app/context";
 import { PamFieldWidget, TPamFieldDescriptor } from "@app/hooks/api/pam";
 
 import {
+  isDescriptionVisible,
   isFieldVisible,
   resolveForcedRule,
   TAccountFormValues,
@@ -55,12 +56,23 @@ type Props = {
 
 const RequiredMark = () => <span className="text-product-pam">*</span>;
 
-// Tooltips may reference the org's ID via a {{organizationId}} placeholder (e.g. the AWS IAM role's
-// External ID); resolve it here so the user sees their actual ID inline.
+// Field text may use {{organizationId}} (e.g. the AWS IAM role's External ID) or its first two
+// sections via {{organizationIdPrefix}} (e.g. the GCP service account ID suffix).
+const resolveOrgPlaceholders = (text: string, orgId: string) =>
+  text
+    .replace(/\{\{organizationId\}\}/g, orgId)
+    .replace(/\{\{organizationIdPrefix\}\}/g, orgId.split("-").slice(0, 2).join("-"));
+
+const FieldHelpText = ({ text }: { text?: string }) => {
+  const { currentOrg } = useOrganization();
+  if (!text) return null;
+  return <FieldDescription>{resolveOrgPlaceholders(text, currentOrg.id)}</FieldDescription>;
+};
+
 const FieldTooltip = ({ text }: { text?: string }) => {
   const { currentOrg } = useOrganization();
   if (!text) return null;
-  const resolved = text.replace(/\{\{organizationId\}\}/g, currentOrg.id);
+  const resolved = resolveOrgPlaceholders(text, currentOrg.id);
   return (
     <Tooltip>
       <TooltipTrigger>
@@ -238,6 +250,9 @@ export const PamSchemaFields = ({ control, setValue, namePrefix, fields, smartPa
                       isDisabled={Boolean(forcedRule)}
                       smartPaste={smartPaste?.fieldKey === descriptor.key ? smartPaste : undefined}
                     />
+                    {isDescriptionVisible(descriptor, namePrefix, values) && (
+                      <FieldHelpText text={descriptor.description} />
+                    )}
                     {selectedDocsUrl && (
                       <FieldDescription>
                         <a

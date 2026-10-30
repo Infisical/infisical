@@ -161,6 +161,7 @@ export enum TableName {
   DynamicSecretLease = "dynamic_secret_leases",
   SecretV2 = "secrets_v2",
   SecretReferenceV2 = "secret_references_v2",
+  SecretReadActivity = "secret_read_activity",
   SecretVersionV2 = "secret_versions_v2",
   SecretApprovalRequestSecretV2 = "secret_approval_requests_secrets_v2",
   SecretApprovalRequestSecretTagV2 = "secret_approval_request_secret_tags_v2",
@@ -286,6 +287,9 @@ export enum TableName {
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultProxy = "agent_vault_proxies",
   AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
+  AgentVaultSkill = "agent_vault_skills",
+  AgentVaultSkillVersion = "agent_vault_skill_versions",
+  AgentVaultAccessBundleSkill = "agent_vault_access_bundle_skills",
   // Dropped; kept only for the migrations that create and drop it.
   AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 

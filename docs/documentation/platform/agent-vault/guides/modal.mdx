@@ -1,7 +1,8 @@
 ---
 title: "Run agents in Modal sandboxes with Agent Vault"
-sidebarTitle: "Modal sandboxes"
-description: "Run an Agent Vault proxy in each Modal sandbox so the agent never sees a credential."
+sidebarTitle: "Modal"
+icon: "/images/agent-vault-agents/modal.svg"
+description: "Run an Agent Vault proxy in each Modal sandbox so the agent never has access to a credential."
 ---
 
 import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx";
@@ -47,43 +48,11 @@ Every sidecar starts its proxy from the same proxy token, so you create the prox
 ## Prerequisites
 
 - The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A [Modal](https://modal.com) account, with a [Modal token](https://modal.com/docs/reference/cli/token) on the machine that runs your code (run `modal setup`, or set `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`)
 - The Modal SDK for your language: the [`modal`](https://pypi.org/project/modal/) and [`requests`](https://pypi.org/project/requests/) packages for Python, the [`modal`](https://www.npmjs.com/package/modal) package for TypeScript, or the [Modal Go SDK](https://pkg.go.dev/github.com/modal-labs/modal-client/go)
-- The API keys your agent uses, such as your Anthropic API key
 
 ## Step 1: Set up Agent Vault
-
-### Create an access bundle
-
-Create an [access bundle](/documentation/platform/agent-vault/access-bundles) that contains a [service](/documentation/platform/agent-vault/services) for each API the agent calls.
-
-<Steps>
-  <Step>
-    In Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**.
-  </Step>
-  <Step>
-    Select **Create Access Bundle**. Give the access bundle a **Name**, such as `modal-agent`, then select **Create Access Bundle**.
-  </Step>
-  <Step>
-    Select the access bundle you just created, then select **Add Service**.
-  </Step>
-  <Step>
-    On the **Choose a template** panel, pick the template for the API, such as **Anthropic**, or select **Custom**.
-  </Step>
-  <Step>
-    On the **Details** step, check the hosts the service covers, or enter the API's host if you selected **Custom**, then select **Continue**.
-  </Step>
-  <Step>
-    On the **Credential** step, paste the real API key.
-
-    <Note>
-      If the API expects the key somewhere other than a header, such as in the URL, [add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) instead, and have the agent send the placeholder you enter in **Replace**.
-    </Note>
-  </Step>
-  <Step>
-    Select **Add Service**. Repeat from the third step for each remaining API.
-  </Step>
-</Steps>
 
 ### Create a proxy
 
@@ -103,7 +72,7 @@ Create an [access bundle](/documentation/platform/agent-vault/access-bundles) th
 
 ### Create a machine identity for your code
 
-Your code creates a session for each run as a [machine identity](/documentation/platform/identities/machine-identities). Give the machine identity the **Member** role and access to only this access bundle, because an Agent Vault admin can create sessions for every access bundle.
+Your code creates a session for each run as a [machine identity](/documentation/platform/identities/machine-identities). Give the machine identity the **Member** role and access to only your access bundle, because an Agent Vault admin can create sessions for every access bundle.
 
 <MachineIdentitySetup />
 
@@ -236,7 +205,7 @@ WAIT_FOR_PROXY = (
 START_AGENT = r"""
 IFS= read -r INFISICAL_AGENT_VAULT_SESSION_TOKEN
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN
-exec infisical agent-vault run --telemetry=false --proxy agent-proxy:17323 \
+exec infisical agent-vault run --telemetry=false --no-skills --proxy agent-proxy:17323 \
   -- claude -p --permission-mode bypassPermissions
 """
 
@@ -350,7 +319,7 @@ const WAIT_FOR_PROXY =
 const START_AGENT = String.raw`
 IFS= read -r INFISICAL_AGENT_VAULT_SESSION_TOKEN
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN
-exec infisical agent-vault run --telemetry=false --proxy agent-proxy:17323 \
+exec infisical agent-vault run --telemetry=false --no-skills --proxy agent-proxy:17323 \
   -- claude -p --permission-mode bypassPermissions
 `;
 
@@ -474,7 +443,7 @@ const waitForProxy = "for i in $(seq 60); do " +
 const startAgent = `
 IFS= read -r INFISICAL_AGENT_VAULT_SESSION_TOKEN
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN
-exec infisical agent-vault run --telemetry=false --proxy agent-proxy:17323 \
+exec infisical agent-vault run --telemetry=false --no-skills --proxy agent-proxy:17323 \
   -- claude -p --permission-mode bypassPermissions
 `
 
@@ -637,7 +606,7 @@ func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *moda
 
 </CodeGroup>
 
-For more about creating sessions from code, see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api). For the flags the agent starts with, see the [`agent-vault run` CLI reference](/cli/reference#agent-vault-run).
+For more about creating sessions from code, see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api). For the flags the agent starts with, see the [`agent-vault run` CLI reference](/cli/reference#agent-vault-run). The script that starts the agent passes `--no-skills`, because the agent's container can't reach Infisical to download [skills](/documentation/platform/agent-vault/skills).
 
 To run a different agent, install it in [the image](#step-3-build-the-sandbox-image), replace the `claude` command in the script that starts the agent with the agent's non-interactive command, such as `codex exec`, and replace the Claude Code settings in the agent's environment variables. For an agent you built yourself, run it the same way, or set the proxy in its HTTP client as [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent#step-4-send-requests-through-the-proxy) describes.
 

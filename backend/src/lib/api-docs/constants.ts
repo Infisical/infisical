@@ -69,6 +69,7 @@ export enum ApiDocsTags {
   Integrations = "Integrations",
   ServiceTokens = "Service Tokens",
   AuditLogs = "Audit Logs",
+  Alerting = "Alerting",
   PkiCertificateAuthorities = "PKI Certificate Authorities",
   PkiCertificates = "PKI Certificates",
   PkiCertificatePolicies = "PKI Certificate Policies",
@@ -105,6 +106,7 @@ export enum ApiDocsTags {
   AgentVault = "Agent Vault",
   AgentVaultAccessBundles = "Agent Vault Access Bundles",
   AgentVaultVariables = "Agent Vault Variables",
+  AgentVaultSkills = "Agent Vault Skills",
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
@@ -956,6 +958,79 @@ export const INSIGHTS = {
       "A relative score used to rank projects by the severity of their outstanding issues. The scoring heuristic may change over time.",
     totalProjects: "The total number of secret management projects in the organization.",
     projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
+  },
+  GET_UNUSED_ACCESS: {
+    projectId: "The ID of the project to list unused access for.",
+    offset: "The number of actors to skip before returning results.",
+    limit: "The maximum number of actors to return per page.",
+    search: "Only actors whose name contains this text, ignoring case.",
+    actors:
+      "The users and machine identities that can read secrets they have not read in the last 30 days, those with the most such secrets first. Project admins are left out: they can read everything by design. Empty until unusedAccessFrom.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    name: "The username of the user, or the name of the machine identity.",
+    accessibleSecretCount: "How many secrets the actor can read the value of today.",
+    unusedSecretCount:
+      "How many of those it has not read, or an import or reference of, in the last 30 days. A secret only counts once it and the actor's access are both older than that.",
+    environments: "The slugs of the environments holding the unread secrets.",
+    accessPaths: "How the actor has its access to the project's secrets.",
+    roles: "The project roles the actor holds directly, not through a group.",
+    roleId: "The ID of the custom role. Null for a built-in role.",
+    roleSlug: "The slug of the built-in role, or 'custom' for a custom role.",
+    roleName: "The name of the role.",
+    groups: "The groups the actor belongs to that are members of the project.",
+    groupId: "The ID of the group.",
+    groupName: "The name of the group.",
+    groupRoles: "The project roles the group gives its members.",
+    additionalPrivileges:
+      "The project-wide additional privileges the actor holds. Access granted on a folder is listed under folderAccess instead.",
+    additionalPrivilegeId: "The ID of the additional privilege.",
+    additionalPrivilegeName: "The name of the additional privilege.",
+    folderAccess:
+      "The folder access the actor has been granted directly on folders, active grants only. It applies whether the actor is a direct member or reaches the project through a group.",
+    folderAccessId: "The ID of the folder access grant.",
+    folderId: "The ID of the folder.",
+    folderEnvironment: "The slug of the environment the folder is in.",
+    folderSecretPath: "The path of the folder.",
+    folderRole: "The access level granted on the folder: list, read, edit, manage or full-access.",
+    totalCount: "The number of actors the caller can page through.",
+    unusedAccessFrom:
+      "When unused access starts being judged for the project: 30 days after reads started being tracked for it. Nothing is listed before then, since reads from before tracking began are unknown. Results are recomputed once a day."
+  },
+  GET_UNUSED_ACCESS_ACTOR: {
+    projectId: "The ID of the project.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    secrets:
+      "The secrets the actor can read but has not read in the last 30 days, ordered by environment and path. The list can be shorter than the actor's unusedSecretCount: it holds at most 200, only those the caller can see, and none deleted since the results were computed.",
+    secretKey: "The key of the secret.",
+    environment: "The slug of the environment the secret is in.",
+    secretPath: "The path of the folder the secret is in."
+  },
+  GET_SECRET_READ_ACTIVITY: {
+    projectId: "The ID of the project where the secret is located.",
+    secretName: "The name of the secret.",
+    environment: "The slug of the environment where the secret is located.",
+    secretPath: "The folder path where the secret is located.",
+    readsTrackedSince:
+      "Reads are reported from this date: the latest of 30 days ago, when reads started being tracked for the project, and when the secret and its folder were created.",
+    unusedAccessFrom:
+      "When unused access starts being judged for the project: 30 days after reads started being tracked for it. Before then no actor counts as unused access.",
+    actors:
+      "One entry for each user or machine identity that can read the secret's value today, directly or through a group, ordered by name. Project admins are included so their reads show.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    name: "The username of the user, or the name of the machine identity.",
+    isProjectAdmin:
+      "Whether the actor is a project admin, directly or through a group. Admins can read everything by design, so they never count as unused access.",
+    lastReadAt:
+      "When the actor last read the secret, or an import or reference of it, since readsTrackedSince, as the first read of that day. Null when they have not.",
+    accessSince:
+      "When the actor got access to this secret: the oldest of their roles, groups, privileges and folder grants that gives it on its own, from when it was last created or changed. An edit to a custom role's rules counts for every secret the role gives, since which secrets an edit opened is not recorded.",
+    readStatus:
+      "read: the actor read the secret since readsTrackedSince. unused: no read, and the secret and their access are both older than 30 days, so it counts as unused access. not-judged: no read, but it does not count yet; notJudgedReason says why.",
+    notJudgedReason:
+      "Why an actor without a read is not counted as unused access. project-admin: admins are never counted. tracking-too-new: reads have been tracked for less than 30 days, until unusedAccessFrom. access-too-new: they got access to the secret in the last 30 days. secret-too-new: the secret is newer than 30 days. Null unless readStatus is not-judged."
   },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
@@ -2333,6 +2408,8 @@ export const CERTIFICATES = {
     id: "The ID of the certificate to preview a renewal for.",
     hasOriginatingRequest:
       "Whether the certificate has a recorded originating request. When false the preview falls back to the issued certificate, which is the case for imported and discovered certificates.",
+    hasOriginatingCsr:
+      "Whether the request that produced this certificate carried a CSR. When Infisical holds neither the private key nor this CSR, renewing with the existing key pair is refused.",
     request:
       "The values a renewal will request, taken from the request that produced this certificate including any profile defaults it recorded.",
     issuerModifiedFields:
@@ -3385,7 +3462,9 @@ export const SecretSyncs = {
       org: "The name of the GitHub organization.",
       owner: "The name of the GitHub account owner of the repository.",
       repo: "The name of the GitHub repository.",
-      env: "The name of the GitHub environment."
+      env: "The name of the GitHub environment.",
+      secretType:
+        "The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server."
     },
     AZURE_ENTRA_ID_SCIM: {
       servicePrincipalId:
@@ -4681,6 +4760,45 @@ export const AGENT_VAULT = {
     usedByServiceAccessBundleName: "The name of the access bundle the service belongs to.",
     createdAt: "When the variable was added.",
     updatedAt: "When the variable was last changed."
+  },
+  SKILL: {
+    skillId: "The ID of the skill.",
+    name: "The name of the skill, taken from the `name` in the SKILL.md of its latest version. Lowercase letters, numbers and hyphens.",
+    description: "What the skill is for, taken from the `description` in the SKILL.md of its latest version.",
+    latestVersion: "The number of the skill's newest version.",
+    accessBundles:
+      "The access bundles the skill is in, ordered by name. A member sees only the bundles they have been granted.",
+    accessBundleId: "The ID of an access bundle the skill is in.",
+    accessBundleName: "The name of the access bundle.",
+    createdAt: "When the skill was added.",
+    updatedAt: "When the skill was last changed.",
+    files:
+      "Every file in the skill folder. One must be `SKILL.md` at the root, starting with a YAML header that sets `name` and `description`. At most 50 files, 256 KB per file and 1 MB in total.",
+    filePath:
+      "The file's path inside the skill folder, using `/` between folders. No leading `/`, and no `.` or `..` parts. At most 255 characters, and each file or folder name at most 255 bytes.",
+    fileMode: "The file's permissions: `0644` for a regular file, `0755` for one that can be run.",
+    fileContent: "The file's content, encoded as base64.",
+    latestFiles: "The files of the latest version.",
+    versionId: "The ID of the version.",
+    version: "The version number. Versions count up from 1, and the newest 20 are kept.",
+    sha256: "The SHA-256 digest of the version's files, as hex.",
+    sizeBytes: "The total size of the version's files in bytes.",
+    fileCount: "How many files the version has.",
+    versionCreatedAt: "When the version was saved.",
+    unchanged:
+      "True if the files match the latest version, in which case no new version was made and that version is returned.",
+    baseVersion:
+      "The version these files were edited from. If a newer version has been saved since, nothing is saved and the request fails with 409. Omit it to update regardless.",
+    restoreUnchanged:
+      "True if the version being restored has the same files as the latest version, in which case no new version was made and the latest version is returned.",
+    addSkillId: "The ID of the skill to add to the access bundle.",
+    search: "Match skills whose name or description contains this text.",
+    nameFilter: "Return only the skill with exactly this name.",
+    limit: "The maximum number of skills to return. Defaults to 20.",
+    offset: "How many skills to skip.",
+    totalCount: "How many skills match the filters, across every page.",
+    sessionSkills:
+      "The latest version of each skill on the session's access bundles that the session's owner can still reach, ordered by name."
   },
   MEMBER: {
     grantedAt: "When the access bundle was granted.",
