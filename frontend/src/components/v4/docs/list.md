@@ -72,6 +72,7 @@ Exports: List, ListRow, ListSection, DataList. Source TypeScript defines the API
 - Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.
 - Selection skips disabled and locked rows. Current details and bulk selection remain independent.
 - Loading appends placeholders below retained rows; sections, empty and footer compose.
+- DataList terms wrap only between words and never break inside one; a term keeps at least its longest word even past its 45% share, and values wrap instead.
 
 ## Accessibility
 

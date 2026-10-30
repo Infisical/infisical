@@ -54,6 +54,7 @@ Exports: Textarea. Source TypeScript defines the API.
 ## Behavior
 
 - Textarea forwards native value/defaultValue, onChange events and the textarea ref. Field association and invalid state reach the leaf; content sizing keeps a minimum editing area.
+- mono sets the mono type style (14/20) and a 2-space tab size, for machine text such as policies, HCL or JSON.
 
 ## Accessibility
 

@@ -43,6 +43,7 @@ type Shared = {
   side?: "top" | "right" | "bottom" | "left";
   menuWidth?: React.CSSProperties["width"];
   quickActions?: boolean;
+  closeOnFocusOutside?: boolean;
   className?: string;
 };
 export type MultiSelectProps = Shared &
@@ -80,6 +81,7 @@ export function MultiSelect({
     side = "bottom",
     menuWidth,
     quickActions = true,
+    closeOnFocusOutside = true,
     className
   } = props;
   const optionValues = new Set<string>();
@@ -336,6 +338,9 @@ export function MultiSelect({
         side={side}
         surface="menu"
         style={{ width: menuWidth }}
+        onFocusOutside={(event) => {
+          if (!closeOnFocusOutside) event.preventDefault();
+        }}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           (searchable ? search.current : list.current)?.focus();

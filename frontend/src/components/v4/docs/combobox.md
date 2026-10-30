@@ -77,6 +77,7 @@ Exports: Combobox, ComboboxOption, ComboboxProps. Source TypeScript defines the 
 - ArrowDown or ArrowUp on the focused closed trigger opens the list with focus in the search field and the active option highlighted, like Enter and Space.
 - Multiple mode lists options with checkbox marks and no Select all bar. Removing a chip with Enter, Space, Backspace or Delete on its remove button moves focus to the next removable chip, else the previous one, else the trigger; focus never falls to the page.
 - Controlled or local value; case-insensitive label and metadata filtering; optional awaited creation.
+- defaultOpen opens the list on mount, for a picker that is the first step of a flow. Multiple mode with clearable adds a Clear all button after the chips; it removes every removable chip, keeps locked ones and returns focus to the trigger.
 - Creation receives a host AbortSignal; changing the query, closing or unmounting aborts and invalidates the prior request.
 - A host DOMException named AbortError is cancellation. It preserves the query without failure feedback; other failures remain retryable.
 
@@ -164,8 +165,8 @@ import { Field } from "../../../../components/v4/ui/field";
 export default function Example() {
     const [values, setValues] = useState(["dev", "staging", "audit", "prod"]);
     return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
-      <Field label="Visible environments" description="Audit is required by policy. Creation is unavailable.">
-        <Combobox label="Visible environments" multiple options={[
+      <Field label="Visible environments" description="Audit is required by policy, so Clear all keeps it. Creation is unavailable.">
+        <Combobox label="Visible environments" multiple clearable options={[
             { value: "dev", label: "Dev", meta: "3 projects" },
             { value: "staging", label: "Staging", meta: "2 projects" },
             { value: "prod", label: "Prod", meta: "12 projects" },

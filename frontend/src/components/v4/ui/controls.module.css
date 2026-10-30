@@ -147,6 +147,14 @@
   field-sizing: content;
   resize: vertical;
 }
+.textarea[data-mono] {
+  font-family: var(--v4-type-mono-font-family);
+  font-size: var(--v4-type-mono-font-size);
+  line-height: var(--v4-type-mono-line-height);
+  font-weight: var(--v4-type-mono-font-weight);
+  letter-spacing: var(--v4-type-mono-letter-spacing);
+  tab-size: 2;
+}
 .searchRow {
   display: flex;
   min-height: var(--v4-size-control-lg);

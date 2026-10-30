@@ -67,3 +67,48 @@ it("removes chips and keeps the search input focused for an empty-query Backspac
   });
   expect(document.querySelector('[aria-label="Remove Production"]')).toBeNull();
 });
+
+it("opens on mount with defaultOpen", async () => {
+  await React.act(async () =>
+    root.render(
+      <V4Scope>
+        <Combobox
+          label="Environment"
+          defaultOpen
+          options={[{ value: "dev", label: "Development" }]}
+        />
+      </V4Scope>
+    )
+  );
+  expect(element('button[aria-label="Environment"]').getAttribute("aria-expanded")).toBe("true");
+  expect(document.querySelector('[role="option"]')?.textContent).toContain("Development");
+});
+
+it("clears every removable chip and keeps locked ones with clearable", async () => {
+  const onChange = vi.fn();
+  await React.act(async () =>
+    root.render(
+      <V4Scope>
+        <Combobox
+          label="Roles"
+          multiple
+          clearable
+          onChange={onChange}
+          defaultValue={["admin", "member", "viewer"]}
+          options={[
+            { value: "admin", label: "Admin", disabled: true },
+            { value: "member", label: "Member" },
+            { value: "viewer", label: "Viewer" }
+          ]}
+        />
+      </V4Scope>
+    )
+  );
+  const clear = element('[data-slot="combobox-clear"]');
+  expect(clear.textContent).toBe("Clear all");
+  await React.act(async () => clear.click());
+  expect(onChange).toHaveBeenLastCalledWith(["admin"]);
+  expect(document.querySelector('[aria-label="Remove Member"]')).toBeNull();
+  expect(document.querySelector('[aria-label="Remove Admin"]')).not.toBeNull();
+  expect(document.querySelector('[data-slot="combobox-clear"]')).toBeNull();
+});

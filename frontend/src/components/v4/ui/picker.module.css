@@ -129,6 +129,10 @@
     )
     0;
 }
+.multiCombobox > [data-slot="combobox-clear"] {
+  --v4-action-height: var(--v4-field-nested);
+  margin-inline-end: var(--v4-space-control-slot-inset);
+}
 .multiCombobox > .chip > [data-v4-button] {
   --v4-action-height: calc(var(--v4-field-nested) - 2 * var(--v4-size-control-border));
 }
