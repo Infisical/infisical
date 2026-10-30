@@ -24,6 +24,10 @@ const toEnvLine = (key: string, value: string) =>
     ? `${key}="${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`
     : `${key}=${value}`;
 
+// Mirrors the API, which trims created values but keeps one trailing newline.
+const toSavedValue = (value: string) =>
+  value.at(-1) === "\n" ? `${value.trim()}\n` : value.trim();
+
 export const notifySecretsCreatedWithoutShare: TNotifySecretsCreated = (text) => {
   createNotification({ type: "success", text });
 };
@@ -41,13 +45,14 @@ export const useNotifySecretsCreated = (
       const shareable = new Map<string, string>();
       if (currentProject.secretSharing) {
         secrets.forEach(({ environment, key, value, tags }) => {
-          if (!value || shareable.has(key)) return;
+          const savedValue = toSavedValue(value ?? "");
+          if (!savedValue || shareable.has(key)) return;
           const canReadValue = hasSecretReadValueOrDescribePermission(
             permission,
             ProjectPermissionSecretActions.ReadValue,
             { environment, secretPath, secretName: key, secretTags: tags ?? [] }
           );
-          if (canReadValue) shareable.set(key, value);
+          if (canReadValue) shareable.set(key, savedValue);
         });
       }
 
@@ -78,7 +83,7 @@ export const useNotifySecretsCreated = (
                 onShare(share);
               }}
             >
-              {entries.length === 1 ? "Share secret" : `Share ${entries.length} secrets`}
+              {entries.length === 1 ? "Share Secret" : `Share ${entries.length} Secrets`}
             </Button>
           )
         },

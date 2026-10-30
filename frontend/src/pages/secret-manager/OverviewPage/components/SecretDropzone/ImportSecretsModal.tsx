@@ -543,7 +543,7 @@ const ImportSecretsContent = ({
                               environment,
                               key: finalKey,
                               value: secretData.value,
-                              tags: secretData.tagSlugs
+                              tags: secretData.tagSlugs?.filter((slug) => slugToTagId.has(slug))
                             }))
                         );
                       return result;

@@ -415,7 +415,7 @@ export const ShareSecretForm = ({
                     <div className="flex items-center justify-between gap-4">
                       <FieldDescription>
                         {secretKey
-                          ? "Locked to the stored value. Turn off Include key to share the value alone."
+                          ? "Locked to the stored value. Turn off Include Key to share the value alone."
                           : "Locked so the link shares the saved contents without edits."}
                       </FieldDescription>
                       {secretKey && (
@@ -430,12 +430,7 @@ export const ShareSecretForm = ({
                               setValue("secret", formatSharedValue(isChecked));
                             }}
                           />
-                          <FieldLabel
-                            htmlFor="share-secret-include-key"
-                            className="text-xs font-normal text-muted"
-                          >
-                            Include key
-                          </FieldLabel>
+                          <FieldLabel htmlFor="share-secret-include-key">Include Key</FieldLabel>
                         </div>
                       )}
                     </div>
