@@ -219,13 +219,8 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
       expect(blockedRes.statusCode).toBe(400);
       expect(JSON.parse(blockedRes.payload).message).toContain(importer.name);
 
-      const removeRes = await testServer.inject({
-        method: "DELETE",
-        url: `/api/v2/secret-imports/${importRes.json().secretImport.id}`,
-        headers,
-        body: { projectId: importer.id, environment: "dev", path: "/" }
-      });
-      expect(removeRes.statusCode).toBe(200);
+      // with sharing off the import is inactive (and hidden), so it no longer blocks the delete
+      await testDb(TableName.Organization).where({ id: orgId }).update({ allowCrossProjectSecretSharing: false });
       expect((await deleteProject(source.id, true)).statusCode).toBe(200);
 
       await deleteProject(importer.id, true);

@@ -882,7 +882,11 @@ export const projectServiceFactory = ({
 
     // Deleting a project that others import from would silently drop those secrets from their reads and
     // syncs, and the deleter may not be a member of those projects, so the imports must be removed first.
-    const importingProjects = await projectDAL.findProjectsImportingFrom(project.id);
+    // With cross-project sharing off, those imports are already ignored by reads and hidden from the list.
+    const { allowCrossProjectSecretSharing } = (await orgDAL.findOne({ id: project.orgId })) ?? {};
+    const importingProjects = allowCrossProjectSecretSharing
+      ? await projectDAL.findProjectsImportingFrom(project.id)
+      : [];
     if (importingProjects.length) {
       throw new BadRequestError({
         message: `Project '${project.name}' can't be deleted while other projects import secrets from it: ${importingProjects.map(({ name }) => `'${name}'`).join(", ")}. Remove those secret imports first, then retry.`
