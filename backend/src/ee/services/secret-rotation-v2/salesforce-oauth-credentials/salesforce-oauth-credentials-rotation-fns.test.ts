@@ -15,7 +15,7 @@ vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), erro
 vi.mock("@app/lib/config/request", () => ({
   request: {
     request: async ({ method, url }: { method: string; url: string }) => {
-      salesforce.requested.push(url);
+      salesforce.requested.push(`${method} ${url}`);
       if (url.endsWith("/services/oauth2/token")) return { data: { token_type: "Bearer", access_token: "token" } };
       if (method === "GET") {
         return { data: { consumers: [{ key: "app-key", stagedCredentialsUrl: salesforce.links.consumer }] } };
@@ -34,6 +34,7 @@ const INSTANCE_URL = "https://acme.my.salesforce.com";
 const CONSUMER_LINK = "/services/data/v65.0/apps/oauth/credentials/app-id/consumer-id/staged";
 const STAGED_LINK = `${CONSUMER_LINK}/staged-id`;
 const OUTSIDE_INSTANCE_MESSAGE = "Salesforce returned a link outside the connection's instance URL.";
+const TOKEN_REQUEST = `POST ${INSTANCE_URL}/services/oauth2/token`;
 
 const COMMITTED = "committed" as unknown as TSecretRotationV2Raw;
 
@@ -56,7 +57,7 @@ const makeFactory = () =>
     ])
   );
 
-const requestedHosts = () => [...new Set(salesforce.requested.map((url) => new URL(url).host))];
+const requestedHosts = () => [...new Set(salesforce.requested.map((entry) => new URL(entry.split(" ")[1]).host))];
 
 describe("Salesforce OAuth credentials rotation links", () => {
   beforeEach(() => {
@@ -74,6 +75,12 @@ describe("Salesforce OAuth credentials rotation links", () => {
       consumerSecret: "new-secret",
       stagedCredentialUrl: STAGED_LINK
     });
+    expect(salesforce.requested).toEqual([
+      TOKEN_REQUEST,
+      `GET ${INSTANCE_URL}/services/data/v65.0/apps/oauth/credentials/app-id`,
+      `POST ${INSTANCE_URL}${CONSUMER_LINK}`,
+      `PATCH ${INSTANCE_URL}${STAGED_LINK}`
+    ]);
   });
 
   it.each([
@@ -88,7 +95,7 @@ describe("Salesforce OAuth credentials rotation links", () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
-  it("refuses to delete a previous staged credential whose stored link is outside the instance", async () => {
+  it("refuses a rotation whose stored link is outside the instance before issuing a new secret", async () => {
     const callback = vi.fn();
     const previous = {
       consumerKey: "old-key",
@@ -99,7 +106,7 @@ describe("Salesforce OAuth credentials rotation links", () => {
     await expect(makeFactory().rotateCredentials(previous, callback, previous)).rejects.toThrow(
       OUTSIDE_INSTANCE_MESSAGE
     );
-    expect(requestedHosts()).toEqual(["acme.my.salesforce.com"]);
+    expect(salesforce.requested).toEqual([TOKEN_REQUEST]);
     expect(callback).not.toHaveBeenCalled();
   });
 });
