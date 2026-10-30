@@ -493,6 +493,16 @@
   outline: var(--v4-size-focus-ring) solid var(--v4-focus-ring);
   outline-offset: calc(var(--v4-size-focus-ring) * -1);
 }
+.legendAbsent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-icon-lg);
+  color: var(--v4-faint);
+}
+.mark[data-tone="partial"] {
+  color: var(--v4-muted);
+}
 .mark[data-tone="conditional"] {
   color: var(--v4-warn);
 }

@@ -1,8 +1,9 @@
 import { type ReactNode, useMemo, useState } from "react";
-import { BanIcon, FilterIcon } from "lucide-react";
+import { BanIcon, FilterIcon, InfoIcon } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
@@ -12,7 +13,6 @@ import { Tabs } from "@app/components/v4/ui/tabs";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import type { Scope } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Muted } from "../ui";
 import type { PermissionAction, PermissionSubject } from "./catalog";
 import {
@@ -136,42 +136,52 @@ const Marks = ({
   );
 };
 
-const GrantCheckbox = ({
-  config,
+const PartialHint = ({
   actions,
-  granted,
-  disabled,
-  onToggle
+  granted
 }: {
-  config: PermissionSubject;
   actions: readonly PermissionAction[];
   granted: readonly string[];
-  disabled: boolean;
-  onToggle: (next: boolean) => void;
 }) => {
-  const values = actions.map((action) => action.value);
-  const on = values.filter((value) => granted.includes(value)).length;
-  const label = actions.map((action) => action.label).join(", ");
+  const allowed = actions.filter((action) => granted.includes(action.value));
+  if (!allowed.length || allowed.length === actions.length) return null;
   const list = (items: readonly PermissionAction[]) =>
     items.map((action) => action.label).join(", ");
-  const partial = on > 0 && on < values.length;
+  const text = `Allowed everywhere: ${list(allowed)}. Not allowed: ${list(actions.filter((action) => !granted.includes(action.value)))}.`;
   return (
-    <Tooltip
-      content={
-        partial
-          ? `Allowed everywhere: ${list(actions.filter((action) => granted.includes(action.value)))}. Not allowed: ${list(actions.filter((action) => !granted.includes(action.value)))}.`
-          : `${label}, everywhere`
-      }
-    >
-      <span className={styles.matrixCheck}>
-        <Checkbox
-          aria-label={`Allow ${label} for ${config.title} everywhere`}
-          disabled={disabled}
-          checked={on === values.length || (on > 0 && "indeterminate")}
-          onCheckedChange={() => onToggle(on !== values.length)}
-        />
-      </span>
+    <Tooltip content={text}>
+      <button type="button" className={styles.mark} data-tone="partial" aria-label={text}>
+        <Icon icon={InfoIcon} size={14} />
+      </button>
     </Tooltip>
+  );
+};
+
+const verbActions = (config: PermissionSubject, verb: Verb) =>
+  matrixActions(config).filter((action) => verbOf(action.value) === verb);
+
+const cellAdornment = (draft: RolePermissions, verb: Verb) => (config: PermissionSubject) => {
+  const actions = verbActions(config, verb);
+  const rules = draft[config.subject] ?? [];
+  return (
+    <>
+      <PartialHint actions={actions} granted={baseActions(rules)} />
+      <Marks config={config} rules={rules} actions={actions} />
+    </>
+  );
+};
+
+const grant = (
+  current: RolePermissions,
+  subject: string,
+  values: readonly string[],
+  on: boolean
+) => {
+  const base = baseActions(current[subject] ?? []);
+  return setBase(
+    current,
+    subject,
+    on ? [...new Set([...base, ...values])] : base.filter((value) => !values.includes(value))
   );
 };
 
@@ -188,96 +198,72 @@ export const PermissionMatrix = (props: MatrixProps) => {
     );
   }, [query, show, granted, subjects]);
 
-  const toggle = (config: PermissionSubject, values: readonly string[], on: boolean) => {
-    const base = baseActions(draft[config.subject] ?? []);
-    onChange(
-      setBase(
-        draft,
-        config.subject,
-        on ? [...new Set([...base, ...values])] : base.filter((value) => !values.includes(value))
-      )
-    );
-  };
+  const toggle = (config: PermissionSubject, values: readonly string[], on: boolean) =>
+    onChange(grant(draft, config.subject, values, on));
 
-  const cell = (config: PermissionSubject, verb: Verb): ReactNode => {
-    const actions = matrixActions(config).filter((action) => verbOf(action.value) === verb);
-    if (!actions.length) return <Muted>-</Muted>;
-    const rules = draft[config.subject] ?? [];
-    const base = baseActions(rules);
-    if (verb === "other") {
-      const on = actions.filter((action) => base.includes(action.value)).length;
+  const otherCell = (config: PermissionSubject): ReactNode => {
+    const actions = verbActions(config, "other");
+    if (!actions.length)
       return (
-        <span className={styles.matrixCell}>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="xs"
-                iconRight="chev-down"
-                aria-label={`${on} of ${actions.length} other actions for ${config.title}`}
-              >
-                {`${on} of ${actions.length}`}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" style={{ width: 320 }}>
-              <Stack gap={8}>
-                <strong className={styles.popoverTitle}>{`${config.title}: other actions`}</strong>
-                <ul className={styles.otherList}>
-                  {actions.map((action) => (
-                    <li key={action.value} className={styles.otherRow}>
-                      <div className={styles.otherLabel}>
-                        <Checkbox
-                          id={`other-${config.subject}-${action.value}`}
-                          disabled={!editable}
-                          checked={base.includes(action.value)}
-                          onCheckedChange={(value) =>
-                            toggle(config, [action.value], value === true)
-                          }
-                        />
-                        <label htmlFor={`other-${config.subject}-${action.value}`}>
-                          <span>{action.label}</span>
-                          {action.description && (
-                            <span className={styles.otherHint}>{action.description}</span>
-                          )}
-                        </label>
-                      </div>
-                      <Marks config={config} rules={rules} actions={[action]} />
-                    </li>
-                  ))}
-                </ul>
-                <Muted>{editable ? "Checked actions are allowed everywhere." : reason}</Muted>
-              </Stack>
-            </PopoverContent>
-          </Popover>
-          <Marks config={config} rules={rules} actions={actions} />
+        <span className={styles.legendAbsent} aria-label="Other: not applicable">
+          −
         </span>
       );
-    }
+    const rules = draft[config.subject] ?? [];
+    const base = baseActions(rules);
+    const on = actions.filter((action) => base.includes(action.value)).length;
     return (
       <span className={styles.matrixCell}>
-        <GrantCheckbox
-          config={config}
-          actions={actions}
-          granted={base}
-          disabled={!editable}
-          onToggle={(on) =>
-            toggle(
-              config,
-              actions.map((action) => action.value),
-              on
-            )
-          }
-        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="xs"
+              iconRight="chev-down"
+              aria-label={`${on} of ${actions.length} other actions for ${config.title}`}
+            >
+              {`${on} of ${actions.length}`}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" style={{ width: 320 }}>
+            <Stack gap={8}>
+              <strong className={styles.popoverTitle}>{`${config.title}: other actions`}</strong>
+              <ul className={styles.otherList}>
+                {actions.map((action) => (
+                  <li key={action.value} className={styles.otherRow}>
+                    <div className={styles.otherLabel}>
+                      <Checkbox
+                        id={`other-${config.subject}-${action.value}`}
+                        disabled={!editable}
+                        checked={base.includes(action.value)}
+                        onCheckedChange={(value) => toggle(config, [action.value], value === true)}
+                      />
+                      <label htmlFor={`other-${config.subject}-${action.value}`}>
+                        <span>{action.label}</span>
+                        {action.description && (
+                          <span className={styles.otherHint}>{action.description}</span>
+                        )}
+                      </label>
+                    </div>
+                    <Marks config={config} rules={rules} actions={[action]} />
+                  </li>
+                ))}
+              </ul>
+              <Muted>{editable ? "Checked actions are allowed everywhere." : reason}</Muted>
+            </Stack>
+          </PopoverContent>
+        </Popover>
         <Marks config={config} rules={rules} actions={actions} />
       </span>
     );
   };
 
-  const columns: AccessColumn<PermissionSubject>[] = [
+  const columns: DataTableColumn<PermissionSubject>[] = [
     {
       id: "subject",
       header: "Policy",
-      width: "30%",
+      grow: true,
+      text: (config) => config.title,
       render: (config) => (
         <>
           <span className={styles.matrixTitle}>{config.title}</span>
@@ -291,12 +277,45 @@ export const PermissionMatrix = (props: MatrixProps) => {
         </>
       )
     },
-    ...VERBS.map((verb): AccessColumn<PermissionSubject> => ({
-      id: verb.id,
-      header: verb.label,
-      width: verb.id === "other" ? 144 : 104,
-      render: (config) => cell(config, verb.id)
-    })),
+    ...VERBS.filter((verb) => verb.id !== "other").map(
+      (verb): DataTableColumn<PermissionSubject> => ({
+        id: verb.id,
+        header: verb.label,
+        width: 112,
+        toggle: {
+          label: `Allow ${verb.label.toLowerCase()} everywhere on every policy shown`,
+          absent: (config) => !verbActions(config, verb.id).length,
+          disabledReason: () => (editable ? undefined : reason),
+          checked: (config) => {
+            const values = verbActions(config, verb.id).map((action) => action.value);
+            const base = baseActions(draft[config.subject] ?? []);
+            const on = values.filter((value) => base.includes(value)).length;
+            if (on === values.length) return true;
+            return on > 0 ? "indeterminate" : false;
+          },
+          onChange: (ids, on) =>
+            onChange(
+              ids.reduce((current, id) => {
+                const config = subjects.find((subject) => subject.subject === id);
+                if (!config) return current;
+                return grant(
+                  current,
+                  id,
+                  verbActions(config, verb.id).map((action) => action.value),
+                  on
+                );
+              }, draft)
+            ),
+          adornment: cellAdornment(draft, verb.id)
+        }
+      })
+    ),
+    {
+      id: "other",
+      header: "Other",
+      width: 152,
+      render: (config) => otherCell(config)
+    },
     {
       id: "actions",
       header: "Actions",
@@ -340,7 +359,7 @@ export const PermissionMatrix = (props: MatrixProps) => {
           />
         </div>
       </div>
-      <AccessTable
+      <DataTable
         label="Permission matrix"
         rows={rows}
         columns={columns}
@@ -378,6 +397,12 @@ export const PermissionMatrix = (props: MatrixProps) => {
             <Checkbox checked="indeterminate" disabled tabIndex={-1} />
           </span>
           Some actions in the column allowed everywhere
+        </li>
+        <li>
+          <span className={styles.legendAbsent} aria-hidden>
+            −
+          </span>
+          Policy has no action of this kind
         </li>
         <li>
           <span className={styles.mark} data-tone="conditional" aria-hidden>
