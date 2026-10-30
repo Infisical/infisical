@@ -12,6 +12,7 @@ import {
   DISCOVERY_TYPE_CONFIGS,
   PamDiscoveryTypeMetadataSchema
 } from "@app/ee/services/pam-discovery/pam-discovery-schemas";
+import { MAX_ROTATIONS_PER_IMPORT } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -460,7 +461,14 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
           .object({
             discoveredAccountId: z.string().uuid(),
             templateId: z.string().uuid(),
-            name: slugSchema({ field: "Name" }).optional()
+            name: slugSchema({ field: "Name" }).optional(),
+            rotationAccountId: z
+              .string()
+              .uuid()
+              .optional()
+              .describe(
+                `Account that rotates this account's password. When set, it becomes the account's rotation account and the password is rotated right after import. At most ${MAX_ROTATIONS_PER_IMPORT} accounts per request can set it`
+              )
           })
           .array()
           .min(1)
@@ -474,7 +482,16 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
               status: z.nativeEnum(PamDiscoveryImportStatus),
               accountId: z.string().optional(),
               name: z.string().optional(),
-              message: z.string().optional()
+              message: z.string().optional(),
+              rotationAccountId: z
+                .string()
+                .optional()
+                .describe("Rotation account set on the imported account. Omitted when it could not be set"),
+              rotationStatus: z
+                .string()
+                .optional()
+                .describe("Outcome of the rotation requested on import: success or failed"),
+              rotationMessage: z.string().optional().describe("Why the rotation requested on import failed")
             })
             .array()
         })
@@ -487,6 +504,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         sourceId: req.params.sourceId,
         folderId: req.body.folderId,
         accounts: req.body.accounts,
+        auditLogInfo: req.auditLogInfo,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
         actor: req.permission.type,

@@ -54,10 +54,12 @@ export const pamAccountRotationQueueServiceFactory = async ({
             type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
             metadata: {
               accountId: job.data.accountId,
+              accountName: result.accountName,
               accountType: result.accountType,
               rotationStatus: result.rotationStatus,
               manual: false,
               rotationAccountId: result.rotationAccountId,
+              rotationAccountName: result.rotationAccountName,
               ...(result.message ? { message: result.message } : {})
             }
           }

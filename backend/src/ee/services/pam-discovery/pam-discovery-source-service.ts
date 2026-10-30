@@ -1,3 +1,4 @@
+import { ForbiddenError } from "@casl/ability";
 import pLimit from "p-limit";
 
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -18,6 +19,10 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
+import {
+  ROTATION_STATUS,
+  TPamAccountRotationServiceFactory
+} from "../pam-account-rotation/pam-account-rotation-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamAccountServiceFactory } from "../pam-account/pam-account-service";
 import { PamAccountType, PamPostgresAuthMethod, PamProductRole, PamSshAuthMethod } from "../pam/pam-enums";
@@ -33,6 +38,7 @@ import {
   PamDiscoveryType
 } from "./pam-discovery-enums";
 import { PAM_DISCOVERY_FACTORY_MAP } from "./pam-discovery-factory";
+import { getCredentialAccountIds } from "./pam-discovery-fns";
 import {
   getCredentialAccountType,
   getDiscoveryTypeConfig,
@@ -60,6 +66,10 @@ type TPamDiscoverySourceServiceFactoryDep = {
   pamAccountDependencyDAL: TPamAccountDependencyDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "findByIdWithDetails">;
   pamAccountService: Pick<TPamAccountServiceFactory, "create">;
+  pamAccountRotationService: Pick<
+    TPamAccountRotationServiceFactory,
+    "setRotationAccount" | "rotateNow" | "getSharedIdentity"
+  >;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
@@ -82,6 +92,23 @@ const MAX_SCAN_DURATION_MS = 45 * 60 * 1000;
 
 // bound concurrent discovered-account upserts so a large result set can't exhaust the DB connection pool
 const DISCOVERED_UPSERT_CONCURRENCY = 8;
+
+const IMPORT_ROTATION_CONCURRENCY = 5;
+
+export const MAX_ROTATIONS_PER_IMPORT = 50;
+
+const toResultMessage = (err: unknown, fallback: string, logMessage: string) => {
+  if (
+    err instanceof BadRequestError ||
+    err instanceof NotFoundError ||
+    err instanceof ForbiddenRequestError ||
+    err instanceof ForbiddenError
+  ) {
+    return err.message;
+  }
+  logger.error(err, logMessage);
+  return fallback;
+};
 
 const withScanTimeout = async <T>(scan: Promise<T>, controller: AbortController, timeoutMs: number): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -114,6 +141,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     pamAccountDependencyDAL,
     pamAccountDAL,
     pamAccountService,
+    pamAccountRotationService,
     permissionService,
     kmsService,
     gatewayV2Service,
@@ -191,14 +219,6 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     if (!hasRole(PamProductRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Discovery requires the PAM product Admin role" });
     }
-  };
-
-  // unix sources scan with several ssh accounts, stored in the per-type configuration; other types use the single column
-  const getCredentialAccountIds = (credentialAccountId: string, configuration: Record<string, unknown>) => {
-    const configIds = Array.isArray(configuration.credentialAccountIds)
-      ? (configuration.credentialAccountIds as string[])
-      : [];
-    return Array.from(new Set([credentialAccountId, ...configIds]));
   };
 
   const resolveCredentialAccount = async (
@@ -735,14 +755,91 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     }));
   };
 
-  const importAccounts = async ({ projectId, sourceId, folderId, accounts, ...ctx }: TImportDiscoveredDTO) => {
+  const importAccounts = async ({
+    projectId,
+    sourceId,
+    folderId,
+    accounts,
+    auditLogInfo,
+    ...ctx
+  }: TImportDiscoveredDTO) => {
     await verifyAdmin(projectId, ctx);
+    if (accounts.filter((a) => a.rotationAccountId).length > MAX_ROTATIONS_PER_IMPORT) {
+      throw new BadRequestError({
+        message: `An import can rotate at most ${MAX_ROTATIONS_PER_IMPORT} accounts. Split the accounts into smaller imports.`
+      });
+    }
     const source = await pamDiscoverySourceDAL.findById(sourceId);
     if (!source || source.projectId !== projectId) {
       throw new NotFoundError({ message: `Discovery source with ID '${sourceId}' not found` });
     }
 
     const { decryptor } = await getProjectCipher(projectId);
+    const rotationLimit = pLimit(IMPORT_ROTATION_CONCURRENCY);
+
+    const rotateImported = async (accountId: string, accountType: string, rotationAccountId: string) => {
+      let names: { accountName: string; rotationAccountName: string | null };
+      try {
+        // the Rotation tab warns before rotating a password another account stores; an import can't ask, so it skips
+        const shared = await pamAccountRotationService.getSharedIdentity({ accountId, projectId, ...ctx });
+        if (shared.length) {
+          return {
+            rotationStatus: ROTATION_STATUS.Failed,
+            rotationMessage: `Not rotated, because its password is also stored in ${shared.map((ref) => `'${ref.name}'`).join(", ")}`
+          };
+        }
+        names = await pamAccountRotationService.setRotationAccount({ accountId, rotationAccountId, projectId, ...ctx });
+      } catch (err) {
+        return {
+          rotationStatus: ROTATION_STATUS.Failed,
+          rotationMessage: toResultMessage(
+            err,
+            "Failed to set the rotation account",
+            `PAM discovery import could not set the rotation account [accountId=${accountId}] [rotationAccountId=${rotationAccountId}]`
+          )
+        };
+      }
+      const { accountName, rotationAccountName } = names;
+      await auditLogService.createAuditLog({
+        ...auditLogInfo,
+        orgId: ctx.actorOrgId,
+        projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT,
+          metadata: { accountId, accountName, rotationAccountId, rotationAccountName }
+        }
+      });
+
+      const { rotationStatus, message } = await pamAccountRotationService
+        .rotateNow({ accountId, projectId, ...ctx })
+        .catch((err: unknown) => ({
+          rotationStatus: ROTATION_STATUS.Failed,
+          message: toResultMessage(
+            err,
+            "Rotation failed",
+            `PAM discovery import rotation failed [accountId=${accountId}]`
+          )
+        }));
+      await auditLogService.createAuditLog({
+        ...auditLogInfo,
+        orgId: ctx.actorOrgId,
+        projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
+          metadata: {
+            accountId,
+            accountName,
+            accountType,
+            rotationStatus,
+            manual: true,
+            rotationAccountId,
+            rotationAccountName,
+            ...(message ? { message } : {})
+          }
+        }
+      });
+      return { rotationAccountId, rotationStatus, rotationMessage: message };
+    };
 
     const results = await Promise.all(
       accounts.map(async (item) => {
@@ -785,17 +882,28 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           // Flip this account's staged dependencies onto the managed account so they're rotation-eligible
           // immediately, without waiting for the next scan.
           await pamAccountDependencyDAL.backfillImported(discovered.id, account.id);
+
+          // runs after the backfill so the rotation's dependency sync pushes the new password to them
+          const { rotationAccountId } = item;
+          const rotation = rotationAccountId
+            ? await rotationLimit(() => rotateImported(account.id, discovered.accountType, rotationAccountId))
+            : {};
           return {
             discoveredAccountId: item.discoveredAccountId,
             status: PamDiscoveryImportStatus.Imported,
             accountId: account.id,
-            name: item.name ?? discovered.name
+            name: item.name ?? discovered.name,
+            ...rotation
           };
         } catch (err) {
           return {
             discoveredAccountId: item.discoveredAccountId,
             status: PamDiscoveryImportStatus.Error,
-            message: err instanceof Error ? err.message : "Import failed"
+            message: toResultMessage(
+              err,
+              "Import failed",
+              `PAM discovery import failed [sourceId=${sourceId}] [discoveredAccountId=${item.discoveredAccountId}]`
+            )
           };
         }
       })

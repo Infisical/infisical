@@ -1,3 +1,4 @@
+import { Knex } from "knex";
 import pLimit from "p-limit";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -21,7 +22,7 @@ import { ORACLE_MAX_PASSWORD_LENGTH } from "../pam-account/pam-account-connectio
 import { TPamAccountDALFactory, TPamAccountDetail } from "../pam-account/pam-account-dal";
 import { validateConnectionDetails, validateCredentials } from "../pam-account/pam-account-schemas";
 import { TPamAccountDependencyDALFactory } from "../pam-discovery/pam-account-dependency-dal";
-import { resolveHostsViaDcDns, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
+import { getCredentialAccountIds, resolveHostsViaDcDns, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
 import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
 import { generateRdsAuthToken } from "../pam-session/aws-iam/aws-iam-federation";
 import { PamAccountType, PamHeartbeatStatus, PamPostgresAuthMethod, PamProductRole } from "../pam/pam-enums";
@@ -81,6 +82,7 @@ type TPamAccountRotationServiceFactoryDep = {
     | "findRotationCandidates"
     | "reconcileRotationScheduleForAccount"
     | "transaction"
+    | "primaryNode"
   >;
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -403,8 +405,15 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     // same-identity account breaks. Only a same-type credential can share this identity (identityKey is
     // type-prefixed), so filter by type in the query and decrypt each distinct credential account at most once.
     const sources = await pamDiscoverySourceDAL.find({ projectId });
-    const externalSources = sources.filter((source) => source.credentialAccountId !== account.id);
-    const credentialAccountIds = [...new Set(externalSources.map((source) => source.credentialAccountId))];
+    const externalCredentials = sources.flatMap((source) =>
+      getCredentialAccountIds(
+        source.credentialAccountId,
+        (source.discoveryConfiguration as Record<string, unknown>) ?? {}
+      )
+        .filter((credentialAccountId) => credentialAccountId !== account.id)
+        .map((credentialAccountId) => ({ credentialAccountId, sourceName: source.name }))
+    );
+    const credentialAccountIds = [...new Set(externalCredentials.map((c) => c.credentialAccountId))];
     const credentialAccounts = await pamAccountDAL.findByIdsWithDetails(credentialAccountIds, account.accountType);
 
     const matches = (
@@ -428,11 +437,9 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     ).filter((c): c is { id: string; name: string; folderId: string | null } => c !== null);
     const matchingById = new Map(matches.map((c) => [c.id, c]));
 
-    const sourceMatches = externalSources.flatMap((source) => {
-      const match = matchingById.get(source.credentialAccountId);
-      return match
-        ? [{ accountId: match.id, accountName: match.name, folderId: match.folderId, sourceName: source.name }]
-        : [];
+    const sourceMatches = externalCredentials.flatMap(({ credentialAccountId, sourceName }) => {
+      const match = matchingById.get(credentialAccountId);
+      return match ? [{ accountId: match.id, accountName: match.name, folderId: match.folderId, sourceName }] : [];
     });
 
     // Merge into one list keyed by account, collecting the discovery sources each is a credential for.
@@ -819,12 +826,22 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     }
   };
 
-  const loadAccount = async (accountId: string, projectId: string): Promise<TPamAccountDetail> => {
-    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+  const loadAccount = async (accountId: string, projectId: string, tx?: Knex): Promise<TPamAccountDetail> => {
+    const account = await pamAccountDAL.findByIdWithDetails(accountId, tx);
     if (!account || account.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
     return account;
+  };
+
+  // discovery import binds and rotates an account right after creating it, before a read replica may have it
+  const loadAccountFromPrimary = (accountId: string, projectId: string) =>
+    loadAccount(accountId, projectId, pamAccountDAL.primaryNode());
+
+  const getRotationAccountName = async (account: TPamAccountDetail) => {
+    if (!account.rotationAccountId) return null;
+    if (account.rotationAccountId === account.id) return account.name;
+    return (await pamAccountDAL.findById(account.rotationAccountId))?.name ?? null;
   };
 
   const getRotation = async ({
@@ -890,13 +907,19 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     };
   };
 
+  const getSharedIdentity = async ({ accountId, projectId, ...ctx }: TGetPamAccountRotationDTO & TActorContext) => {
+    const account = await loadAccountFromPrimary(accountId, projectId);
+    await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.ReadAccounts, ctx);
+    return getSharedIdentityReferences(account, projectId, ctx);
+  };
+
   const setRotationAccount = async ({
     accountId,
     rotationAccountId,
     projectId,
     ...ctx
   }: TSetPamRotationAccountDTO & TActorContext) => {
-    const account = await loadAccount(accountId, projectId);
+    const account = await loadAccountFromPrimary(accountId, projectId);
     await checkAccount(
       accountId,
       account.folderId,
@@ -909,6 +932,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       throw new BadRequestError({ message: "Credential rotation is not supported for this account type" });
     }
 
+    let rotationAccountName = rotationAccountId === accountId ? account.name : null;
     if (rotationAccountId) {
       const targetCredentials = await decryptSqlCredentials(
         projectId,
@@ -967,6 +991,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
           ResourcePermissionPamResourceActions.ViewCredentials,
           ctx
         );
+        rotationAccountName = rotator.name;
       }
     }
 
@@ -978,6 +1003,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     });
     return {
       rotationAccountId,
+      rotationAccountName,
+      accountName: account.name,
       accountType: account.accountType,
       scheduledRotationEnabled: getRotationConfig(account.templateSettings)?.enabled ?? false
     };
@@ -999,12 +1026,14 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     projectId,
     ...ctx
   }: TRotatePamAccountDTO & TActorContext): Promise<{
+    accountName: string;
     accountType: string;
     rotationAccountId: string | null;
+    rotationAccountName: string | null;
     rotationStatus: string;
     message?: string;
   }> => {
-    const account = await loadAccount(accountId, projectId);
+    const account = await loadAccountFromPrimary(accountId, projectId);
     await checkAccount(
       accountId,
       account.folderId,
@@ -1022,8 +1051,10 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       throw new BadRequestError({ message: ROTATION_NOT_READY_MESSAGE[readiness.issue] });
     }
     return {
+      accountName: account.name,
       accountType: account.accountType,
       rotationAccountId: account.rotationAccountId ?? null,
+      rotationAccountName: await getRotationAccountName(account),
       ...(await runRotation(account))
     };
   };
@@ -1088,9 +1119,11 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   const rotateScheduledAccount = async (
     accountId: string
   ): Promise<{
+    accountName: string;
     accountType: string;
     projectId: string;
     rotationAccountId: string | null;
+    rotationAccountName: string | null;
     rotationStatus: string;
     message?: string;
   } | null> => {
@@ -1105,12 +1138,21 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       return null;
     }
     return {
+      accountName: account.name,
       accountType: account.accountType,
       projectId: account.projectId as string,
       rotationAccountId: account.rotationAccountId ?? null,
+      rotationAccountName: await getRotationAccountName(account),
       ...result
     };
   };
 
-  return { getRotation, setRotationAccount, rotateNow, listRotationCandidates, rotateScheduledAccount };
+  return {
+    getRotation,
+    getSharedIdentity,
+    setRotationAccount,
+    rotateNow,
+    listRotationCandidates,
+    rotateScheduledAccount
+  };
 };

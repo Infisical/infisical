@@ -30,7 +30,7 @@ To set up a discovery source, follow the guide for the system you want to scan:
 3. You select the staged accounts to import, and pick a [folder](/documentation/platform/pam/folders/overview) and an [account template](/documentation/platform/pam/templates/overview) for them
 4. Infisical creates a PAM account for each staged account you imported
 
-Discovery finds each account's username but not its password. An imported account can't be used until you enter its credential on the account.
+Discovery finds each account's username but not its password, so you can't use an imported account until it has a credential. You can enter the credential on each account after the import. If the account type supports [credential rotation](/documentation/platform/pam/credential-rotation/overview), you can instead have Infisical set a new password on the account during the import.
 
 ## Staged accounts
 
