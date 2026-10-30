@@ -51,7 +51,8 @@ Every proxy starts from the same proxy token, so you set up the proxy once, no m
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A [Daytona](https://www.daytona.io) organization on [Tier 3 or 4](https://www.daytona.io/docs/en/network-limits/#tier-based-network-restrictions), because on Tiers 1 and 2 you can't limit a sandbox to reaching the proxy, and the proxy can't reach Infisical
 - A [Daytona API key](https://www.daytona.io/docs/en/api-keys/) in the `DAYTONA_API_KEY` environment variable on the machine that runs your code
-- The Daytona SDK for your language: [Python](https://pypi.org/project/daytona/) (with [`requests`](https://pypi.org/project/requests/)), [TypeScript](https://www.npmjs.com/package/@daytona/sdk), [Go](https://pkg.go.dev/github.com/daytona/clients/sdk-go) (with [`api-client-go`](https://pkg.go.dev/github.com/daytona/clients/api-client-go)), [Ruby](https://rubygems.org/gems/daytona), or [Java](https://central.sonatype.com/artifact/io.daytona/sdk) (with [Jackson](https://github.com/FasterXML/jackson-databind))
+- The Daytona SDK for your language: [Python](https://pypi.org/project/daytona/), [TypeScript](https://www.npmjs.com/package/@daytona/sdk), [Go](https://pkg.go.dev/github.com/daytona/clients/sdk-go) (with [`api-client-go`](https://pkg.go.dev/github.com/daytona/clients/api-client-go)), [Ruby](https://rubygems.org/gems/daytona), or [Java](https://central.sonatype.com/artifact/io.daytona/sdk) (with [Jackson](https://github.com/FasterXML/jackson-databind))
+- For Python, the [Infisical Python SDK](/sdks/languages/python)
 
 ## Step 1: Set up Agent Vault
 
@@ -80,7 +81,7 @@ SNAPSHOT = "agent-vault-agent"
 
 IMAGE = Image.base("node:24-bookworm-slim").run_commands(
     "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl iproute2 && rm -rf /var/lib/apt/lists/*",
-    "npm install -g @infisical/cli@<cli-version> @anthropic-ai/claude-code",
+    "npm install -g @infisical/cli @anthropic-ai/claude-code",
 )
 
 
@@ -99,7 +100,7 @@ export const SNAPSHOT = "agent-vault-agent";
 
 const IMAGE = Image.base("node:24-bookworm-slim").runCommands(
   "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl iproute2 && rm -rf /var/lib/apt/lists/*",
-  "npm install -g @infisical/cli@<cli-version> @anthropic-ai/claude-code",
+  "npm install -g @infisical/cli @anthropic-ai/claude-code",
 );
 
 export async function ensureSnapshot(daytona: Daytona): Promise<void> {
@@ -135,7 +136,7 @@ func ensureSnapshot(ctx context.Context, client *daytona.Client) error {
 	}
 	image := daytona.Base("node:24-bookworm-slim").
 		Run("apt-get update && apt-get install -y --no-install-recommends ca-certificates curl iproute2 && rm -rf /var/lib/apt/lists/*").
-		Run("npm install -g @infisical/cli@<cli-version> @anthropic-ai/claude-code")
+		Run("npm install -g @infisical/cli @anthropic-ai/claude-code")
 	_, logs, err := client.Snapshot.Create(ctx, &types.CreateSnapshotParams{Name: snapshot, Image: image})
 	if err != nil {
 		return err
@@ -155,7 +156,7 @@ SNAPSHOT = "agent-vault-agent"
 
 IMAGE = Daytona::Image.base("node:24-bookworm-slim").run_commands(
   "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl iproute2 && rm -rf /var/lib/apt/lists/*",
-  "npm install -g @infisical/cli@<cli-version> @anthropic-ai/claude-code"
+  "npm install -g @infisical/cli @anthropic-ai/claude-code"
 )
 
 def ensure_snapshot(daytona)
@@ -181,7 +182,7 @@ public class SandboxImage {
 
     static final Image IMAGE = Image.base("node:24-bookworm-slim").runCommands(
         "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl iproute2 && rm -rf /var/lib/apt/lists/*",
-        "npm install -g @infisical/cli@<cli-version> @anthropic-ai/claude-code");
+        "npm install -g @infisical/cli @anthropic-ai/claude-code");
 
     static void ensureSnapshot(Daytona daytona) {
         try {
@@ -195,7 +196,6 @@ public class SandboxImage {
 
 </CodeGroup>
 
-- **Infisical CLI:** replace `<cli-version>` with `0.44.7` or later, because earlier versions can't start a proxy from a proxy token
 - **Changing the image:** the function reuses the snapshot if one with the same name exists, so after you change the image, change `SNAPSHOT` to a new name
 
 ## Step 4: Run an agent in a sandbox
@@ -208,8 +208,8 @@ This function runs one prompt in a new sandbox. Replace `<access-bundle-name>` a
 # run_agent.py
 import os
 
-import requests
 from daytona import CreateSandboxFromSnapshotParams, Daytona
+from infisical_sdk import InfisicalSDKClient
 
 from sandbox_image import SNAPSHOT
 
@@ -242,27 +242,15 @@ AGENT_ENV = {
 
 def run_agent(daytona: Daytona, prompt: str) -> str:
     # The machine identity's credentials stay here and never enter a sandbox.
-    login = requests.post(
-        f"{INFISICAL_URL}/api/v1/auth/universal-auth/login",
-        json={
-            "clientId": os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"],
-            "clientSecret": os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"],
-        },
-        timeout=30,
+    infisical = InfisicalSDKClient(host=INFISICAL_URL)
+    infisical.auth.universal_auth.login(
+        client_id=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"],
+        client_secret=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"],
     )
-    login.raise_for_status()
-    headers = {"Authorization": f"Bearer {login.json()['accessToken']}"}
 
     # One session per run. The ttl outlasts the sandboxes' 15-minute ttl, so the
     # agent can't lose access mid-run.
-    created = requests.post(
-        f"{INFISICAL_URL}/api/v1/agent-vault/sessions",
-        headers=headers,
-        json={"accessBundles": [ACCESS_BUNDLE], "ttl": "20m"},
-        timeout=30,
-    )
-    created.raise_for_status()
-    session = created.json()["session"]
+    session = infisical.agent_vault.sessions.create(access_bundle=ACCESS_BUNDLE, ttl="20m")
 
     proxy_sandbox = None
     try:
@@ -314,7 +302,7 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
             f"infisical agent-vault run --telemetry=false --proxy {proxy_address} "
             "-- claude -p --permission-mode bypassPermissions < /tmp/prompt.txt'",
             cwd="/home/node",
-            env={**AGENT_ENV, "INFISICAL_AGENT_VAULT_SESSION_TOKEN": session["token"]},
+            env={**AGENT_ENV, "INFISICAL_AGENT_VAULT_SESSION_TOKEN": session.token},
             timeout=14 * 60,
         )
         if agent.exit_code != 0:
@@ -328,11 +316,7 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
             pass
         # Revoke first, so the session ends even if deleting fails.
         try:
-            requests.post(
-                f"{INFISICAL_URL}/api/v1/agent-vault/sessions/{session['id']}/revoke",
-                headers=headers,
-                timeout=30,
-            ).raise_for_status()
+            infisical.agent_vault.sessions.revoke(session_id=session.id)
         finally:
             if proxy_sandbox:
                 proxy_sandbox.delete()
@@ -1106,7 +1090,7 @@ Each proxy's sandbox holds a copy of the proxy token. If you think someone took 
 
     - `INFISICAL_AGENT_VAULT_PROXY_TOKEN` has the current proxy token (a token stops working when you rotate it)
     - If you use EU Cloud or self-host Infisical, `INFISICAL_URL` in your code is the URL of your instance
-    - The snapshot has an Infisical CLI version that can start a proxy from a proxy token
+    - The snapshot has a recent Infisical CLI (change `SNAPSHOT` to a new name to build one with the latest CLI)
   </Accordion>
   <Accordion title="Requests fail with a 403 partway through a run">
     The session expired or was revoked. Set the session's `ttl` a few minutes longer than the proxy sandbox's time to live, so the session lasts as long as the sandboxes can run.
