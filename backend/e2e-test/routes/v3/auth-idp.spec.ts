@@ -1,12 +1,15 @@
 import crypto from "node:crypto";
 
+import { decode } from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { AccessScope, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";
+import { addUserMembership } from "../../testUtils/users";
 
 const TEST_ORG_ID = seedData1.organization.id;
 const TEST_DOMAIN = "testdomain.local";
@@ -35,6 +38,84 @@ describe("Auth IdP Service-Level Tests", () => {
     }
 
     await cleanupEmailDomains(TEST_ORG_ID, db);
+  });
+
+  // Covers the callback deriving the verdict; org selection acting on it is in auth-mfa.spec.ts.
+  describe("Identity provider MFA signal", () => {
+    const makeAcceptedSsoUser = async (aliasType: UserAliasType.SAML | UserAliasType.OIDC) => {
+      const externalId = `${aliasType}-signal-${crypto.randomUUID()}`;
+      const email = `${aliasType}signal-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+      const db = getDb();
+
+      const [user] = await db(TableName.Users)
+        .insert({
+          username: email,
+          email,
+          firstName: "Signal",
+          lastName: "User",
+          isAccepted: true,
+          isGhost: false,
+          authMethods: [aliasType === UserAliasType.SAML ? AuthMethod.OKTA_SAML : AuthMethod.OIDC]
+        })
+        .returning("*");
+      createdUserIds.push(user.id);
+
+      await db(TableName.UserAliases).insert({
+        userId: user.id,
+        username: email,
+        aliasType,
+        externalId,
+        emails: [email],
+        orgId: TEST_ORG_ID,
+        isEmailVerified: true
+      });
+      await addUserMembership({ userId: user.id, orgId: TEST_ORG_ID, role: OrgMembershipRole.Member });
+
+      return { externalId, email };
+    };
+
+    const sessionClaims = (result: { result: string; tokens?: { access: string } }) => {
+      expect(result.result).toBe(ProviderAuthResult.SESSION);
+      return decode(result.tokens?.access as string) as Record<string, unknown>;
+    };
+
+    test("a SAML login carries the verdict on its session, and only when the IdP signalled MFA", async () => {
+      const { externalId, email } = await makeAcceptedSsoUser(UserAliasType.SAML);
+      const login = (idpMfa?: { verified: boolean; evidence: string[] }) =>
+        getServices().saml.samlLogin({
+          externalId,
+          email,
+          firstName: "Signal",
+          lastName: "User",
+          authProvider: AuthMethod.OKTA_SAML,
+          orgId: TEST_ORG_ID,
+          ip: "127.0.0.1",
+          userAgent: "test-agent",
+          idpMfa
+        });
+
+      expect(sessionClaims(await login({ verified: true, evidence: ["amr=mfa"] })).idpMfaVerified).toBe(true);
+      expect(sessionClaims(await login({ verified: false, evidence: [] })).idpMfaVerified).toBeUndefined();
+      expect(sessionClaims(await login()).idpMfaVerified).toBeUndefined();
+    });
+
+    test("an OIDC login carries the verdict on its session, and only when the IdP signalled MFA", async () => {
+      const { externalId, email } = await makeAcceptedSsoUser(UserAliasType.OIDC);
+      const login = (idpMfa?: { verified: boolean; evidence: string[] }) =>
+        getServices().oidc.oidcLogin({
+          externalId,
+          email,
+          firstName: "Signal",
+          lastName: "User",
+          orgId: TEST_ORG_ID,
+          ip: "127.0.0.1",
+          userAgent: "test-agent",
+          idpMfa
+        });
+
+      expect(sessionClaims(await login({ verified: true, evidence: ["mfa"] })).idpMfaVerified).toBe(true);
+      expect(sessionClaims(await login()).idpMfaVerified).toBeUndefined();
+    });
   });
 
   describe("SAML Login", () => {

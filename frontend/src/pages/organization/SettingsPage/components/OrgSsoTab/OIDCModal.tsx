@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Trash2 } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -15,14 +15,18 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  Badge,
   Button,
   DocumentationLinkBadge,
   Field,
   FieldDescription,
   FieldError,
-  FieldGroup,
   FieldLabel,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
   Select,
   SelectContent,
   SelectItem,
@@ -32,14 +36,21 @@ import {
   SheetContent,
   SheetFooter,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TagsInput
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetOIDCConfig } from "@app/hooks/api";
 import { useCreateOIDCConfig, useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
 import { OIDCJWTSignatureAlgorithm } from "@app/hooks/api/oidcConfig/types";
+import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+
+import { FieldHint, FormSection } from "./SsoFormSection";
 
 enum ConfigurationType {
   CUSTOM = "custom",
@@ -63,9 +74,19 @@ const schema = z
     tokenEndpoint: z.string().optional(),
     userinfoEndpoint: z.string().optional(),
     clientId: z.string().min(1, "Client ID is required"),
-    clientSecret: z.string().min(1, "Client Secret is required"),
+    clientSecret: z.string().optional(),
     allowedEmailDomains: z.string().optional(),
-    jwtSignatureAlgorithm: z.nativeEnum(OIDCJWTSignatureAlgorithm).optional()
+    jwtSignatureAlgorithm: z.nativeEnum(OIDCJWTSignatureAlgorithm).optional(),
+    mfaClaimName: z
+      .string()
+      .trim()
+      .min(1, "Claim name is required")
+      .max(128, "Claim name is too long")
+      .default("amr"),
+    mfaAmrValues: z
+      .array(z.string().trim().min(1).max(64, "Value is too long"))
+      .max(20, "At most 20 values")
+      .optional()
   })
   .superRefine((data, ctx) => {
     if (data.configurationType === ConfigurationType.CUSTOM) {
@@ -121,18 +142,18 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateOIDCConfig();
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateOIDCConfig();
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle(false);
+  const [isClientSecretRevealed, setIsClientSecretRevealed] = useState(false);
 
   const { data } = useGetOIDCConfig(currentOrg?.id ?? "");
 
-  const { control, handleSubmit, reset, setValue, watch } = useForm<OIDCFormData>({
+  const { control, handleSubmit, reset, setValue, setError, watch } = useForm<OIDCFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      configurationType: ConfigurationType.DISCOVERY_URL
+      configurationType: ConfigurationType.DISCOVERY_URL,
+      mfaClaimName: "amr",
+      mfaAmrValues: []
     }
   });
-
-  const [isClientIdFocused, setIsClientIdFocused] = useToggle();
-  const [isClientSecretFocused, setIsClientSecretFocused] = useToggle();
 
   const configurationTypeValue = watch("configurationType");
 
@@ -158,6 +179,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     });
   };
 
+  // The stored secret never returns to the form; a blank field on update keeps it.
   useEffect(() => {
     if (data) {
       setValue("issuer", data.issuer);
@@ -167,12 +189,17 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       setValue("userinfoEndpoint", data.userinfoEndpoint);
       setValue("discoveryURL", data.discoveryURL);
       setValue("clientId", data.clientId);
-      setValue("clientSecret", data.clientSecret);
-      setValue("allowedEmailDomains", data.allowedEmailDomains);
+      setValue("clientSecret", "");
+      setValue("allowedEmailDomains", data.allowedEmailDomains ?? "");
       setValue("configurationType", data.configurationType);
       setValue("jwtSignatureAlgorithm", data.jwtSignatureAlgorithm);
+      setValue("mfaClaimName", data.mfaClaimName || "amr");
+      setValue("mfaAmrValues", data.mfaAmrValues ?? []);
     }
   }, [data]);
+
+  const isExistingConfig = Boolean(data?.isActive);
+  const hasStoredSecret = Boolean(data?.clientSecret);
 
   const onOIDCModalSubmit = async ({
     issuer,
@@ -185,7 +212,9 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     discoveryURL,
     clientId,
     clientSecret,
-    jwtSignatureAlgorithm
+    jwtSignatureAlgorithm,
+    mfaClaimName,
+    mfaAmrValues
   }: OIDCFormData) => {
     if (!currentOrg) return;
 
@@ -199,16 +228,21 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       tokenEndpoint,
       userinfoEndpoint,
       clientId,
-      clientSecret,
       isActive: true,
       organizationId: currentOrg.id,
-      jwtSignatureAlgorithm
+      jwtSignatureAlgorithm,
+      mfaClaimName,
+      mfaAmrValues: mfaAmrValues && mfaAmrValues.length > 0 ? mfaAmrValues : null
     };
 
     if (!data) {
-      await createMutateAsync(payload);
+      if (!clientSecret) {
+        setError("clientSecret", { message: "Client Secret is required" });
+        return;
+      }
+      await createMutateAsync({ ...payload, clientSecret });
     } else {
-      await updateMutateAsync(payload);
+      await updateMutateAsync({ ...payload, ...(clientSecret ? { clientSecret } : {}) });
     }
 
     handlePopUpClose("addOIDC");
@@ -220,7 +254,31 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   };
 
   const isPending = createIsLoading || updateIsLoading;
-  const isExistingConfig = Boolean(data?.isActive);
+  const isMfaSignalInUse = currentOrg?.ssoMfaTrust === SsoMfaTrust.Signal;
+
+  const urlField = (
+    name: "issuer" | "authorizationEndpoint" | "tokenEndpoint" | "jwksUri" | "userinfoEndpoint",
+    label: string,
+    placeholder: string
+  ) => (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field, fieldState: { error } }) => (
+        <Field>
+          <FieldLabel htmlFor={`oidc-${name}`}>{label}</FieldLabel>
+          <Input
+            id={`oidc-${name}`}
+            placeholder={placeholder}
+            autoComplete="off"
+            isError={Boolean(error)}
+            {...field}
+          />
+          <FieldError>{error?.message}</FieldError>
+        </Field>
+      )}
+    />
+  );
 
   return (
     <>
@@ -229,6 +287,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         onOpenChange={(isOpen) => {
           handlePopUpToggle("addOIDC", isOpen);
           reset();
+          setIsClientSecretRevealed(false);
         }}
       >
         <SheetContent className="sm:max-w-xl">
@@ -239,30 +298,27 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
               </SheetTitle>
             </SheetHeader>
-            <div className="thin-scrollbar flex-1 overflow-y-auto p-4">
-              <FieldGroup>
+            <div className="thin-scrollbar flex-1 overflow-y-auto">
+              <FormSection
+                title="Identity Provider"
+                description="How Infisical locates your IdP's OIDC endpoints."
+              >
                 <Controller
                   control={control}
                   name="configurationType"
-                  render={({ field: { onChange, value }, fieldState: { error } }) => (
+                  render={({ field: { onChange, value } }) => (
                     <Field>
-                      <FieldLabel htmlFor="oidc-configuration-type">Configuration Type</FieldLabel>
-                      <Select value={value} onValueChange={onChange}>
-                        <SelectTrigger
-                          id="oidc-configuration-type"
-                          className="w-full"
-                          isError={Boolean(error)}
-                        >
-                          <SelectValue placeholder="Select configuration type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={ConfigurationType.DISCOVERY_URL}>
+                      <FieldLabel>Configuration Type</FieldLabel>
+                      <Tabs value={value} onValueChange={onChange}>
+                        <TabsList variant="filled" className="grid w-full grid-cols-2">
+                          <TabsTrigger value={ConfigurationType.DISCOVERY_URL}>
                             Discovery URL
-                          </SelectItem>
-                          <SelectItem value={ConfigurationType.CUSTOM}>Custom</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FieldError>{error?.message}</FieldError>
+                          </TabsTrigger>
+                          <TabsTrigger value={ConfigurationType.CUSTOM}>
+                            Custom Endpoints
+                          </TabsTrigger>
+                        </TabsList>
+                      </Tabs>
                     </Field>
                   )}
                 />
@@ -275,7 +331,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                         <FieldLabel htmlFor="oidc-discovery-url">Discovery Document URL</FieldLabel>
                         <Input
                           id="oidc-discovery-url"
-                          placeholder="https://accounts.google.com/.well-known/openid-configuration"
+                          placeholder="https://idp.example.com/.well-known/openid-configuration"
                           autoComplete="off"
                           isError={Boolean(error)}
                           {...field}
@@ -287,95 +343,19 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 )}
                 {configurationTypeValue === ConfigurationType.CUSTOM && (
                   <>
-                    <Controller
-                      control={control}
-                      name="issuer"
-                      render={({ field, fieldState: { error } }) => (
-                        <Field>
-                          <FieldLabel htmlFor="oidc-issuer">Issuer</FieldLabel>
-                          <Input
-                            id="oidc-issuer"
-                            placeholder="https://accounts.google.com"
-                            autoComplete="off"
-                            isError={Boolean(error)}
-                            {...field}
-                          />
-                          <FieldError>{error?.message}</FieldError>
-                        </Field>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name="authorizationEndpoint"
-                      render={({ field, fieldState: { error } }) => (
-                        <Field>
-                          <FieldLabel htmlFor="oidc-authorization-endpoint">
-                            Authorization Endpoint
-                          </FieldLabel>
-                          <Input
-                            id="oidc-authorization-endpoint"
-                            placeholder="https://accounts.google.com/o/oauth2/v2/auth"
-                            autoComplete="off"
-                            isError={Boolean(error)}
-                            {...field}
-                          />
-                          <FieldError>{error?.message}</FieldError>
-                        </Field>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name="tokenEndpoint"
-                      render={({ field, fieldState: { error } }) => (
-                        <Field>
-                          <FieldLabel htmlFor="oidc-token-endpoint">Token Endpoint</FieldLabel>
-                          <Input
-                            id="oidc-token-endpoint"
-                            placeholder="https://oauth2.googleapis.com/token"
-                            autoComplete="off"
-                            isError={Boolean(error)}
-                            {...field}
-                          />
-                          <FieldError>{error?.message}</FieldError>
-                        </Field>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name="userinfoEndpoint"
-                      render={({ field, fieldState: { error } }) => (
-                        <Field>
-                          <FieldLabel htmlFor="oidc-userinfo-endpoint">
-                            Userinfo Endpoint
-                          </FieldLabel>
-                          <Input
-                            id="oidc-userinfo-endpoint"
-                            placeholder="https://openidconnect.googleapis.com/v1/userinfo"
-                            autoComplete="off"
-                            isError={Boolean(error)}
-                            {...field}
-                          />
-                          <FieldError>{error?.message}</FieldError>
-                        </Field>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name="jwksUri"
-                      render={({ field, fieldState: { error } }) => (
-                        <Field>
-                          <FieldLabel htmlFor="oidc-jwks-uri">JWKS URI</FieldLabel>
-                          <Input
-                            id="oidc-jwks-uri"
-                            placeholder="https://www.googleapis.com/oauth2/v3/certs"
-                            autoComplete="off"
-                            isError={Boolean(error)}
-                            {...field}
-                          />
-                          <FieldError>{error?.message}</FieldError>
-                        </Field>
-                      )}
-                    />
+                    {urlField("issuer", "Issuer", "https://idp.example.com")}
+                    {urlField(
+                      "authorizationEndpoint",
+                      "Authorization Endpoint",
+                      "https://idp.example.com/authorize"
+                    )}
+                    {urlField("tokenEndpoint", "Token Endpoint", "https://idp.example.com/token")}
+                    {urlField("jwksUri", "JWKS URI", "https://idp.example.com/jwks")}
+                    {urlField(
+                      "userinfoEndpoint",
+                      "Userinfo Endpoint",
+                      "https://idp.example.com/userinfo"
+                    )}
                   </>
                 )}
                 <Controller
@@ -384,12 +364,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                   name="jwtSignatureAlgorithm"
                   render={({ field: { onChange, value }, fieldState: { error } }) => (
                     <Field>
-                      <FieldLabel
-                        htmlFor="oidc-jwt-algorithm"
-                        className="inline-flex flex-wrap items-baseline gap-1.5"
-                      >
-                        JWT Signature Algorithm
-                      </FieldLabel>
+                      <FieldLabel htmlFor="oidc-jwt-algorithm">JWT Signature Algorithm</FieldLabel>
                       <Select value={value} onValueChange={onChange}>
                         <SelectTrigger
                           id="oidc-jwt-algorithm"
@@ -409,31 +384,12 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                     </Field>
                   )}
                 />
-                <Controller
-                  control={control}
-                  name="allowedEmailDomains"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field>
-                      <FieldLabel
-                        htmlFor="oidc-allowed-domains"
-                        className="inline-flex flex-wrap items-baseline gap-1.5"
-                      >
-                        Allowed Email Domains (optional)
-                      </FieldLabel>
-                      <Input
-                        id="oidc-allowed-domains"
-                        placeholder="infisical.com, *.google.com"
-                        autoComplete="off"
-                        isError={Boolean(error)}
-                        {...field}
-                      />
-                      <FieldDescription>
-                        Defaults to any. Supports wildcards (e.g. *.example.com).
-                      </FieldDescription>
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
+              </FormSection>
+
+              <FormSection
+                title="Client Credentials"
+                description="From the OIDC client you registered for Infisical in your IdP."
+              >
                 <Controller
                   control={control}
                   name="clientId"
@@ -442,16 +398,11 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                       <FieldLabel htmlFor="oidc-client-id">Client ID</FieldLabel>
                       <Input
                         id="oidc-client-id"
-                        placeholder="Client ID"
-                        type={isClientIdFocused ? "text" : "password"}
+                        className="font-mono"
+                        placeholder="infisical-web"
                         autoComplete="off"
                         isError={Boolean(error)}
-                        onFocus={() => setIsClientIdFocused.on()}
                         {...field}
-                        onBlur={() => {
-                          field.onBlur();
-                          setIsClientIdFocused.off();
-                        }}
                       />
                       <FieldError>{error?.message}</FieldError>
                     </Field>
@@ -463,24 +414,118 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                   render={({ field, fieldState: { error } }) => (
                     <Field>
                       <FieldLabel htmlFor="oidc-client-secret">Client Secret</FieldLabel>
-                      <Input
-                        id="oidc-client-secret"
-                        placeholder="Client Secret"
-                        type={isClientSecretFocused ? "text" : "password"}
-                        autoComplete="off"
-                        isError={Boolean(error)}
-                        onFocus={() => setIsClientSecretFocused.on()}
-                        {...field}
-                        onBlur={() => {
-                          field.onBlur();
-                          setIsClientSecretFocused.off();
-                        }}
-                      />
+                      <InputGroup>
+                        <InputGroupInput
+                          id="oidc-client-secret"
+                          type={isClientSecretRevealed ? "text" : "password"}
+                          placeholder={
+                            hasStoredSecret
+                              ? "Stored. Enter a new value to replace it."
+                              : "Client Secret"
+                          }
+                          autoComplete="new-password"
+                          isError={Boolean(error)}
+                          {...field}
+                        />
+                        <InputGroupAddon align="inline-end">
+                          <InputGroupButton
+                            aria-label={
+                              isClientSecretRevealed ? "Hide client secret" : "Show client secret"
+                            }
+                            onClick={() => setIsClientSecretRevealed((previous) => !previous)}
+                          >
+                            {isClientSecretRevealed ? <EyeOffIcon /> : <EyeIcon />}
+                          </InputGroupButton>
+                        </InputGroupAddon>
+                      </InputGroup>
+                      {hasStoredSecret && (
+                        <FieldDescription>Leave blank to keep the current secret.</FieldDescription>
+                      )}
                       <FieldError>{error?.message}</FieldError>
                     </Field>
                   )}
                 />
-              </FieldGroup>
+              </FormSection>
+
+              <FormSection
+                title="Access"
+                description="Limit which users can sign in through this IdP."
+              >
+                <Controller
+                  control={control}
+                  name="allowedEmailDomains"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="oidc-allowed-domains">
+                        Allowed Email Domains
+                        <FieldHint>Optional</FieldHint>
+                      </FieldLabel>
+                      <Input
+                        id="oidc-allowed-domains"
+                        placeholder="infisical.com, *.google.com"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldDescription>
+                        Any domain is allowed if empty. Supports wildcards, e.g. *.example.com.
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </FormSection>
+
+              <FormSection
+                title="MFA Signal"
+                description="Read when Trust IdP MFA is on, to decide whether to skip the Infisical MFA prompt."
+                badge={isMfaSignalInUse ? <Badge variant="success">In use</Badge> : undefined}
+              >
+                <Controller
+                  control={control}
+                  name="mfaClaimName"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="oidc-mfa-claim-name">MFA Claim Name</FieldLabel>
+                      <Input
+                        id="oidc-mfa-claim-name"
+                        className="font-mono"
+                        placeholder="amr"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldDescription>
+                        ID token claim listing the authentication methods the user completed.
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="mfaAmrValues"
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="oidc-mfa-amr-values">
+                        Additional MFA Claim Values
+                        <FieldHint>Optional</FieldHint>
+                      </FieldLabel>
+                      <TagsInput
+                        id="oidc-mfa-amr-values"
+                        placeholder="Type a value, press Enter"
+                        value={value ?? []}
+                        onValueChange={onChange}
+                        isError={Boolean(error)}
+                      />
+                      <FieldDescription>
+                        Counted as MFA in addition to the standard <code>mfa</code> value.
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </FormSection>
             </div>
             <SheetFooter className="justify-between border-t">
               <div className="flex gap-2">

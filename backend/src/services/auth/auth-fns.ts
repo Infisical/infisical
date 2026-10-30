@@ -1,3 +1,4 @@
+import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -8,7 +9,8 @@ import {
   AuthModeAccountRecoveryTokenPayload,
   AuthModeSignUpTokenPayload,
   AuthTokenType,
-  MfaMethod
+  MfaMethod,
+  SsoMfaTrust
 } from "./auth-type";
 
 const oauthLoginMethods = {
@@ -69,6 +71,21 @@ export const getRequiredMfaMethod = (
     : ((user.selectedMfaMethod as MfaMethod) ?? MfaMethod.EMAIL);
 
   return { isMfaRequired, requiredMfaMethod };
+};
+
+// Only SAML and OIDC carry a signed IdP signal. Password, Google and LDAP never qualify, so break-glass
+// accounts always get the Infisical challenge.
+export const isIdpMfaTrusted = ({
+  ssoMfaTrust,
+  authMethod,
+  idpMfaVerified
+}: {
+  ssoMfaTrust?: string | null;
+  authMethod: AuthMethod;
+  idpMfaVerified?: boolean;
+}): boolean => {
+  if (!isAuthMethodSaml(authMethod) && authMethod !== AuthMethod.OIDC) return false;
+  return ssoMfaTrust === SsoMfaTrust.Signal && Boolean(idpMfaVerified);
 };
 
 export const RECOVERY_CODE_MFA_ASSURANCE = "recovery-code";

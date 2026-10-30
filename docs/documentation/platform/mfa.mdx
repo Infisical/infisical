@@ -17,6 +17,33 @@ If 2-factor authentication is enabled in the Personal settings page, email will 
 You can use any mobile authenticator app (Authy, Google Authenticator, Duo, etc.) to secure your account. After registration with an authenticator, select **Mobile Authenticator** as your 2FA method.
 ![Authenticator-based MFA](/images/mfa-authenticator.png)
 
+## MFA for SSO logins
+
+If your organization enforces MFA and your users sign in through [SAML or OIDC SSO](/documentation/platform/sso/overview), you can let the MFA they completed at your identity provider count, so Infisical doesn't prompt them again. Password and LDAP logins are always prompted, so a break-glass account keeps Infisical MFA. The setting only covers the MFA your organization enforces. A user who turned on MFA for their own account is still prompted.
+
+Infisical trusts a login only if the identity provider's signed response says MFA was completed:
+
+- For OIDC, the ID token's `amr` claim includes `mfa`
+- For SAML, the assertion's authentication context is a two-factor class, such as `MobileTwoFactorContract` or `TimeSyncToken`, or the `amr` attribute statement includes `mfa`
+
+Without a signal, Infisical prompts as usual. The login event in the audit log shows the values the identity provider sent, so you can see why a login was or wasn't prompted.
+
+<Steps>
+  <Step>
+    Configure your identity provider to send the signal. Okta OIDC and Entra ID send it without extra configuration. For Okta SAML, add an attribute statement named `amr` with the value `session.amr`, as described in [Okta SAML](/documentation/platform/sso/okta).
+  </Step>
+  <Step>
+    In your organization, go to **Settings** > **Security** and turn on **Enforce MFA**.
+  </Step>
+  <Step>
+    Go to **Settings** > **Single Sign-On (SSO)** and, in the **Enforcement** card, turn on **Trust IdP MFA**.
+  </Step>
+</Steps>
+
+<Note>
+  If your identity provider lists the methods under another name, change **MFA claim name** in your OIDC configuration or **MFA attribute name** in your SAML configuration. If it uses other values or authentication contexts for MFA, add them under **Additional MFA claim values** or **Additional MFA authentication contexts**.
+</Note>
+
 ## Entra ID MFA
 
 <Note>

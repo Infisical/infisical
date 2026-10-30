@@ -297,6 +297,29 @@ If you encounter `API_KEY` or `SERVICE_TOKEN` in existing code, do not replicate
 
 Token detection logic in `inject-identity.ts` checks `x-api-key` header first, then parses `Authorization: Bearer` and inspects JWT `authTokenType` field to determine mode.
 
+#### MFA for SSO logins
+
+`organizations.ssoMfaTrust` (`SsoMfaTrust` enum, `none` or `signal`) lets a SAML or OIDC login satisfy the
+org's MFA enforcement with the MFA the IdP already performed. The SAML and OIDC callbacks derive one verdict
+per login with `matchIdpMfaSignal` (`services/auth/idp-mfa-signal.ts`): the OIDC claim named by
+`oidc_configs.mfaClaimName` contains `mfa`, the SAML `AuthnContextClassRef` is a two-factor class, or the
+attribute named by `saml_configs.mfaSignalAttribute` contains `mfa`. Both names default to `amr`, and the
+per-config allowlists extend the built-in values rather than replace them. The verdict travels on the org-less
+session token as `idpMfaVerified`, and `selectOrganization` (`auth-login-service.ts`) applies it through
+`isIdpMfaTrusted` (`auth-fns.ts`), the only reader of the setting. Rules that must hold:
+
+- Enforcement is decided once per selection against the root org (`actorRootOrgId`), so moving between a root
+  org and its sub-orgs never re-prompts.
+- `isIdpMfaTrusted` refuses every non-SSO auth method, so password, Google and LDAP logins (break-glass
+  accounts) always get the Infisical challenge.
+- The trust only applies while `enforceMfa` is on. A user's own account-level MFA is still prompted. The
+  setting can be stored before enforcement is turned on; `updateOrg` refuses any value but `none` only while
+  the org has no active SAML or OIDC config.
+- `isMfaVerified` is never set from the IdP. It still means "proved a factor to Infisical", so step-up
+  (`mfa-step-up-fns.ts`) and PAM MFA are unaffected.
+- The callback writes a `USER_LOGIN` audit event with the raw `idpMfa` evidence, and `SELECT_ORGANIZATION`
+  records `mfaSatisfiedBy`, so an admin can see why a login was or wasn't prompted.
+
 #### Delegated OAuth tokens
 
 Two grants issue them: the authorization code flow (consented `scopes`) and the RFC 8693 token exchange

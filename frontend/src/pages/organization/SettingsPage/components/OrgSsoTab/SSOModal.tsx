@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ClipboardCheckIcon, Copy, Trash2 } from "lucide-react";
+import { ExternalLinkIcon, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -15,13 +15,14 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  Badge,
   Button,
+  CopyButton,
   DocumentationLinkBadge,
   Field,
+  FieldDescription,
   FieldError,
-  FieldGroup,
   FieldLabel,
-  IconButton,
   Input,
   Select,
   SelectContent,
@@ -33,17 +34,16 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  TextArea,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TagsInput,
+  TextArea
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { useTimedReset, useToggle } from "@app/hooks";
+import { useToggle } from "@app/hooks";
 import { useCreateSSOConfig, useGetSSOConfig, useUpdateSSOConfig } from "@app/hooks/api";
+import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { SSOModalHeader } from "./SSOModalHeader";
+import { FieldHint, FormSection } from "./SsoFormSection";
 
 enum AuthProvider {
   OKTA_SAML = "okta-saml",
@@ -54,41 +54,124 @@ enum AuthProvider {
   AUTH0_SAML = "auth0-saml"
 }
 
+const docsBaseUrl = "https://infisical.com/docs/documentation/platform/sso";
+
 const ssoAuthProviders = [
-  { label: "Okta SAML", value: AuthProvider.OKTA_SAML, image: "Okta.png", docsUrl: "okta" },
-  {
-    label: "Azure / Entra SAML",
-    value: AuthProvider.AZURE_SAML,
-    image: "Microsoft Azure.png",
-    docsUrl: "azure"
-  },
-  {
-    label: "JumpCloud SAML",
-    value: AuthProvider.JUMPCLOUD_SAML,
-    image: "JumpCloud.png",
-    docsUrl: "jumpcloud"
-  },
-  {
-    label: "Keycloak SAML",
-    value: AuthProvider.KEYCLOAK_SAML,
-    image: "Keycloak.png",
-    docsUrl: "keycloak-saml"
-  },
-  {
-    label: "Google SAML",
-    value: AuthProvider.GOOGLE_SAML,
-    image: "Google.png",
-    docsUrl: "google-saml"
-  },
-  { label: "Auth0 SAML", value: AuthProvider.AUTH0_SAML, image: "Auth0.png", docsUrl: "auth0-saml" }
+  { name: "Okta", value: AuthProvider.OKTA_SAML, docsUrl: "okta" },
+  { name: "Azure / Entra", value: AuthProvider.AZURE_SAML, docsUrl: "azure" },
+  { name: "JumpCloud", value: AuthProvider.JUMPCLOUD_SAML, docsUrl: "jumpcloud" },
+  { name: "Keycloak", value: AuthProvider.KEYCLOAK_SAML, docsUrl: "keycloak-saml" },
+  { name: "Google", value: AuthProvider.GOOGLE_SAML, docsUrl: "google-saml" },
+  { name: "Auth0", value: AuthProvider.AUTH0_SAML, docsUrl: "auth0-saml" }
 ];
+
+// Labels as each provider's console names them. A hint gives the generic SAML term when the label hides it.
+type TProviderLabels = {
+  acsUrl: string;
+  acsHint?: string;
+  entityId: string;
+  entityHint?: string;
+  entryPoint: string;
+  entryPointPlaceholder: string;
+  issuer: string;
+  issuerHint?: string;
+  issuerPlaceholder: string;
+};
+
+const providerLabels = (authProvider: string): TProviderLabels => {
+  switch (authProvider) {
+    case AuthProvider.OKTA_SAML:
+      return {
+        acsUrl: "Single Sign-On URL",
+        acsHint: "ACS URL",
+        entityId: "Audience URI (SP Entity ID)",
+        entryPoint: "Identity Provider Single Sign-On URL",
+        entryPointPlaceholder: "https://your-domain.okta.com/app/app-name/xxx/sso/saml",
+        issuer: "Identity Provider Issuer",
+        issuerHint: "IdP Entity ID",
+        issuerPlaceholder: "http://www.okta.com/xxx"
+      };
+    case AuthProvider.AZURE_SAML:
+      return {
+        acsUrl: "Reply URL",
+        acsHint: "ACS URL",
+        entityId: "Identifier (Entity ID)",
+        entityHint: "SP Entity ID",
+        entryPoint: "Login URL",
+        entryPointPlaceholder: "https://login.microsoftonline.com/xxx/saml2",
+        issuer: "Azure / Entra Application ID",
+        issuerPlaceholder: "abc-def-ghi-jkl-mno"
+      };
+    case AuthProvider.JUMPCLOUD_SAML:
+      return {
+        acsUrl: "ACS URL",
+        entityId: "SP Entity ID",
+        entryPoint: "IdP URL",
+        entryPointPlaceholder: "https://sso.jumpcloud.com/saml2/xxx",
+        issuer: "IdP Entity ID",
+        issuerPlaceholder: "JumpCloud"
+      };
+    case AuthProvider.KEYCLOAK_SAML:
+      return {
+        acsUrl: "Valid Redirect URI",
+        acsHint: "ACS URL",
+        entityId: "Client ID",
+        entityHint: "SP Entity ID",
+        entryPoint: "IdP URL",
+        entryPointPlaceholder: "https://keycloak.mysite.com/realms/myrealm/protocol/saml",
+        issuer: "Client ID",
+        issuerPlaceholder: window.origin
+      };
+    case AuthProvider.GOOGLE_SAML:
+      return {
+        acsUrl: "ACS URL",
+        entityId: "Entity ID",
+        entityHint: "SP Entity ID",
+        entryPoint: "SSO URL",
+        entryPointPlaceholder: "https://accounts.google.com/o/saml2/idp?idpid=xxx",
+        issuer: "Entity ID",
+        issuerPlaceholder: window.origin
+      };
+    case AuthProvider.AUTH0_SAML:
+      return {
+        acsUrl: "Application Callback URL",
+        acsHint: "ACS URL",
+        entityId: "Audience",
+        entityHint: "SP Entity ID",
+        entryPoint: "Identity Provider Login URL",
+        entryPointPlaceholder: "https://xxx.auth0.com/samlp/xxx",
+        issuer: "Issuer",
+        issuerHint: "IdP Entity ID",
+        issuerPlaceholder: "urn:xxx.auth0.com"
+      };
+    default:
+      return {
+        acsUrl: "ACS URL",
+        entityId: "SP Entity ID",
+        entryPoint: "IdP SSO URL",
+        entryPointPlaceholder: "https://idp.example.com/sso/saml",
+        issuer: "IdP Entity ID",
+        issuerPlaceholder: "https://idp.example.com"
+      };
+  }
+};
 
 const schema = z
   .object({
     authProvider: z.string().min(1, "SSO Type is required"),
     entryPoint: z.string().trim().min(1, "URL required"),
     issuer: z.string().trim().min(1, "Issuer required"),
-    cert: z.string().default("")
+    cert: z.string().default(""),
+    mfaSignalAttribute: z
+      .string()
+      .trim()
+      .min(1, "Attribute name is required")
+      .max(512, "Attribute name is too long")
+      .default("amr"),
+    mfaAuthnContexts: z
+      .array(z.string().trim().min(1).max(512, "Context value is too long"))
+      .max(20, "At most 20 contexts")
+      .default([])
   })
   .required();
 
@@ -101,6 +184,21 @@ type Props = {
   hideDelete?: boolean;
 };
 
+const CopyableValue = ({ label, hint, value }: { label: string; hint?: string; value: string }) => (
+  <Field>
+    <FieldLabel>
+      {label}
+      {hint && <FieldHint>{hint}</FieldHint>}
+    </FieldLabel>
+    <div className="flex items-start gap-2">
+      <div className="min-w-0 flex-1 rounded-md border border-border bg-foreground/5 px-3 py-2 font-mono text-sm break-all">
+        {value}
+      </div>
+      <CopyButton value={value} ariaLabel={`Copy ${label}`} variant="outline" size="md" />
+    </div>
+  </Field>
+);
+
 export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelete }: Props) => {
   const { currentOrg } = useOrganization();
 
@@ -111,7 +209,9 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
 
   const { control, handleSubmit, reset, watch, setValue, getValues } = useForm<AddSSOFormData>({
     defaultValues: {
-      authProvider: AuthProvider.OKTA_SAML
+      authProvider: AuthProvider.OKTA_SAML,
+      mfaSignalAttribute: "amr",
+      mfaAuthnContexts: []
     },
     resolver: zodResolver(schema)
   });
@@ -122,7 +222,9 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
         authProvider: data?.authProvider ?? "",
         entryPoint: data?.entryPoint ?? "",
         issuer: data?.issuer ?? "",
-        cert: data?.cert ?? ""
+        cert: data?.cert ?? "",
+        mfaSignalAttribute: data?.mfaSignalAttribute || "amr",
+        mfaAuthnContexts: data?.mfaAuthnContexts ?? []
       });
     }
   }, [data]);
@@ -145,27 +247,31 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
     });
   };
 
-  const onSSOModalSubmit = async ({ authProvider, entryPoint, issuer, cert }: AddSSOFormData) => {
+  const onSSOModalSubmit = async ({
+    authProvider,
+    entryPoint,
+    issuer,
+    cert,
+    mfaSignalAttribute,
+    mfaAuthnContexts
+  }: AddSSOFormData) => {
     if (!currentOrg) return;
 
+    const payload = {
+      organizationId: currentOrg.id,
+      authProvider,
+      isActive: false,
+      entryPoint,
+      issuer,
+      cert,
+      mfaSignalAttribute,
+      mfaAuthnContexts: mfaAuthnContexts.length > 0 ? mfaAuthnContexts : null
+    };
+
     if (!data) {
-      await createMutateAsync({
-        organizationId: currentOrg.id,
-        authProvider,
-        isActive: false,
-        entryPoint,
-        issuer,
-        cert
-      });
+      await createMutateAsync(payload);
     } else {
-      await updateMutateAsync({
-        organizationId: currentOrg.id,
-        authProvider,
-        isActive: false,
-        entryPoint,
-        issuer,
-        cert
-      });
+      await updateMutateAsync(payload);
     }
 
     handlePopUpClose("addSSO");
@@ -176,77 +282,6 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
     });
   };
 
-  const [, isAcsCopied, setAcsCopied] = useTimedReset<string>({ initialState: "" });
-  const [, isAudienceCopied, setAudienceCopied] = useTimedReset<string>({ initialState: "" });
-
-  const renderLabels = (authProvider: string) => {
-    switch (authProvider) {
-      case AuthProvider.OKTA_SAML:
-        return {
-          acsUrl: "Single sign-on URL",
-          entityId: "Audience URI (SP Entity ID)",
-          entryPoint: "Identity Provider Single Sign-On URL",
-          entryPointPlaceholder: "https://your-domain.okta.com/app/app-name/xxx/sso/saml",
-          issuer: "Identity Provider Issuer",
-          issuerPlaceholder: "http://www.okta.com/xxx"
-        };
-      case AuthProvider.AZURE_SAML:
-        return {
-          acsUrl: "Reply URL (Assertion Consumer Service URL)",
-          entityId: "Identifier (Entity ID)",
-          entryPoint: "Login URL",
-          entryPointPlaceholder: "https://login.microsoftonline.com/xxx/saml2",
-          issuer: "Azure / Entra Application ID",
-          issuerPlaceholder: "abc-def-ghi-jkl-mno"
-        };
-      case AuthProvider.JUMPCLOUD_SAML:
-        return {
-          acsUrl: "ACS URL",
-          entityId: "SP Entity ID",
-          entryPoint: "IDP URL",
-          entryPointPlaceholder: "https://sso.jumpcloud.com/saml2/xxx",
-          issuer: "IdP Entity ID",
-          issuerPlaceholder: "xxx"
-        };
-      case AuthProvider.KEYCLOAK_SAML:
-        return {
-          acsUrl: "Valid redirect URI",
-          entityId: "SP Entity ID",
-          entryPoint: "IDP URL",
-          entryPointPlaceholder: "https://keycloak.mysite.com/realms/myrealm/protocol/saml",
-          issuer: "Client ID",
-          issuerPlaceholder: window.origin
-        };
-      case AuthProvider.GOOGLE_SAML:
-        return {
-          acsUrl: "ACS URL",
-          entityId: "SP Entity ID",
-          entryPoint: "SSO URL",
-          entryPointPlaceholder: "https://accounts.google.com/o/saml2/idp?idpid=xxx",
-          issuer: "Issuer",
-          issuerPlaceholder: window.origin
-        };
-      case AuthProvider.AUTH0_SAML:
-        return {
-          acsUrl: "Application Callback URL",
-          entityId: "Audience",
-          entryPoint: "Identity Provider Login URL",
-          entryPointPlaceholder: "https://xxx.auth0.com/samlp/xxx",
-          issuer: "Issuer",
-          issuerPlaceholder: "urn:xxx-xxx.us.auth0.com"
-        };
-      default:
-        return {
-          acsUrl: "ACS URL",
-          entityId: "Entity ID",
-          entryPoint: "Entrypoint",
-          entryPointPlaceholder: "Enter entrypoint...",
-          issuer: "Issuer",
-          issuerPlaceholder: "Enter placeholder..."
-        };
-    }
-  };
-
   const authProvider = watch("authProvider");
   useEffect(() => {
     if (authProvider === AuthProvider.GOOGLE_SAML && getValues("issuer") === "") {
@@ -255,7 +290,10 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
   }, [authProvider]);
 
   const isPending = createIsLoading || updateIsLoading;
-  const labels = renderLabels(authProvider);
+  const labels = providerLabels(authProvider);
+  const provider = ssoAuthProviders.find((item) => item.value === authProvider);
+  const providerName = provider?.name ?? "your IdP";
+  const isMfaSignalInUse = currentOrg?.ssoMfaTrust === SsoMfaTrust.Signal;
 
   return (
     <>
@@ -274,33 +312,47 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                 <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
               </SheetTitle>
             </SheetHeader>
-            <div className="thin-scrollbar flex-1 overflow-y-auto p-4">
-              <SSOModalHeader
-                providerDetails={
-                  ssoAuthProviders.find((provider) => provider.value === authProvider)!
-                }
-                isConnected={Boolean(data)}
-              />
-              <FieldGroup>
+            <div className="thin-scrollbar flex-1 overflow-y-auto">
+              <FormSection
+                title="Identity Provider"
+                description="Field names below match what your provider calls them."
+              >
                 <Controller
                   control={control}
                   name="authProvider"
                   defaultValue="okta-saml"
                   render={({ field: { onChange, value }, fieldState: { error } }) => (
                     <Field>
-                      <FieldLabel htmlFor="sso-auth-provider">Type</FieldLabel>
+                      <FieldLabel
+                        htmlFor="sso-auth-provider"
+                        className="flex items-center justify-between"
+                      >
+                        Provider
+                        {provider && (
+                          <Badge variant="info" iconPosition="right" asChild>
+                            <a
+                              href={`${docsBaseUrl}/${provider.docsUrl}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {provider.name} Documentation
+                              <ExternalLinkIcon />
+                            </a>
+                          </Badge>
+                        )}
+                      </FieldLabel>
                       <Select value={value} onValueChange={onChange}>
                         <SelectTrigger
                           id="sso-auth-provider"
                           className="w-full"
                           isError={Boolean(error)}
                         >
-                          <SelectValue placeholder="Select SSO type" />
+                          <SelectValue placeholder="Select a provider" />
                         </SelectTrigger>
                         <SelectContent position="popper">
-                          {ssoAuthProviders.map(({ label, value: providerValue }) => (
-                            <SelectItem value={providerValue} key={label}>
-                              {label}
+                          {ssoAuthProviders.map(({ name, value: providerValue }) => (
+                            <SelectItem value={providerValue} key={providerValue}>
+                              {name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -309,119 +361,147 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                     </Field>
                   )}
                 />
-                {authProvider && data && (
-                  <>
+              </FormSection>
+
+              {data && (
+                <FormSection
+                  title={`Add Infisical to ${providerName}`}
+                  description={`Copy these values into the SAML app you create in ${providerName}.`}
+                >
+                  <CopyableValue
+                    label={labels.acsUrl}
+                    hint={labels.acsHint}
+                    value={`${window.origin}/api/v1/sso/saml2/${data.id}`}
+                  />
+                  <CopyableValue
+                    label={labels.entityId}
+                    hint={labels.entityHint}
+                    value={window.origin}
+                  />
+                </FormSection>
+              )}
+
+              <FormSection
+                title={`Connect ${providerName} to Infisical`}
+                description={`Paste the values ${providerName} shows for the SAML app.`}
+              >
+                <Controller
+                  control={control}
+                  name="entryPoint"
+                  render={({ field, fieldState: { error } }) => (
                     <Field>
-                      <FieldLabel className="flex items-center justify-between">
-                        {labels.acsUrl}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <IconButton
-                              aria-label="copy application callback url"
-                              variant="ghost-muted"
-                              size="xs"
-                              onClick={() => {
-                                navigator.clipboard.writeText(
-                                  `${window.origin}/api/v1/sso/saml2/${data.id}`
-                                );
-                                setAcsCopied("copied");
-                              }}
-                            >
-                              {isAcsCopied ? <ClipboardCheckIcon /> : <Copy />}
-                            </IconButton>
-                          </TooltipTrigger>
-                          <TooltipContent>{isAcsCopied ? "Copied" : "Copy"}</TooltipContent>
-                        </Tooltip>
+                      <FieldLabel htmlFor="sso-entry-point">
+                        {labels.entryPoint}
+                        <FieldHint>IdP SSO URL</FieldHint>
                       </FieldLabel>
-                      <p className="text-muted-foreground text-sm break-all">
-                        {`${window.origin}/api/v1/sso/saml2/${data.id}`}
-                      </p>
+                      <Input
+                        id="sso-entry-point"
+                        placeholder={labels.entryPointPlaceholder}
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
                     </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="issuer"
+                  render={({ field, fieldState: { error } }) => (
                     <Field>
-                      <FieldLabel className="flex items-center justify-between">
-                        {labels.entityId}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <IconButton
-                              aria-label="copy audience"
-                              variant="ghost-muted"
-                              size="xs"
-                              onClick={() => {
-                                navigator.clipboard.writeText(window.origin);
-                                setAudienceCopied("copied");
-                              }}
-                            >
-                              {isAudienceCopied ? <ClipboardCheckIcon /> : <Copy />}
-                            </IconButton>
-                          </TooltipTrigger>
-                          <TooltipContent>{isAudienceCopied ? "Copied" : "Copy"}</TooltipContent>
-                        </Tooltip>
+                      <FieldLabel htmlFor="sso-issuer">
+                        {labels.issuer}
+                        {labels.issuerHint && <FieldHint>{labels.issuerHint}</FieldHint>}
                       </FieldLabel>
-                      <p className="text-muted-foreground text-sm">{window.origin}</p>
+                      <Input
+                        id="sso-issuer"
+                        placeholder={labels.issuerPlaceholder}
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldError>{error?.message}</FieldError>
                     </Field>
-                    <Controller
-                      control={control}
-                      name="entryPoint"
-                      render={({ field, fieldState: { error } }) => (
-                        <Field>
-                          <FieldLabel htmlFor="sso-entry-point">{labels.entryPoint}</FieldLabel>
-                          <Input
-                            id="sso-entry-point"
-                            placeholder={labels.entryPointPlaceholder}
-                            autoComplete="off"
-                            isError={Boolean(error)}
-                            {...field}
-                          />
-                          <FieldError>{error?.message}</FieldError>
-                        </Field>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name="issuer"
-                      render={({ field, fieldState: { error } }) => (
-                        <Field>
-                          <FieldLabel
-                            htmlFor="sso-issuer"
-                            className="inline-flex flex-wrap items-baseline gap-1.5"
-                          >
-                            {labels.issuer}
-                          </FieldLabel>
-                          <Input
-                            id="sso-issuer"
-                            placeholder={labels.issuerPlaceholder}
-                            autoComplete="off"
-                            isError={Boolean(error)}
-                            {...field}
-                          />
-                          <FieldError>{error?.message}</FieldError>
-                        </Field>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name="cert"
-                      render={({ field, fieldState: { error } }) => (
-                        <Field>
-                          <FieldLabel
-                            htmlFor="sso-cert"
-                            className="inline-flex flex-wrap items-baseline gap-1.5"
-                          >
-                            Certificate (optional)
-                          </FieldLabel>
-                          <TextArea
-                            id="sso-cert"
-                            placeholder="-----BEGIN CERTIFICATE----- ..."
-                            isError={Boolean(error)}
-                            {...field}
-                          />
-                          <FieldError>{error?.message}</FieldError>
-                        </Field>
-                      )}
-                    />
-                  </>
-                )}
-              </FieldGroup>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="cert"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="sso-cert">
+                        X.509 Certificate
+                        <FieldHint>Optional</FieldHint>
+                      </FieldLabel>
+                      <TextArea
+                        id="sso-cert"
+                        className="font-mono"
+                        placeholder="-----BEGIN CERTIFICATE----- ..."
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldDescription>
+                        Used to verify the signature on SAML responses from {providerName}.
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </FormSection>
+
+              <FormSection
+                title="MFA Signal"
+                description="Read when Trust IdP MFA is on, to decide whether to skip the Infisical MFA prompt."
+                badge={isMfaSignalInUse ? <Badge variant="success">In use</Badge> : undefined}
+              >
+                <Controller
+                  control={control}
+                  name="mfaSignalAttribute"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="sso-mfa-signal-attribute">MFA Attribute Name</FieldLabel>
+                      <Input
+                        id="sso-mfa-signal-attribute"
+                        className="font-mono"
+                        placeholder="amr"
+                        autoComplete="off"
+                        isError={Boolean(error)}
+                        {...field}
+                      />
+                      <FieldDescription>
+                        Attribute in the {providerName} SAML assertion that lists the authentication
+                        methods the user completed.
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="mfaAuthnContexts"
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="sso-mfa-authn-contexts">
+                        Additional MFA Authentication Contexts
+                        <FieldHint>Optional</FieldHint>
+                      </FieldLabel>
+                      <TagsInput
+                        id="sso-mfa-authn-contexts"
+                        placeholder="urn:oasis:names:tc:SAML:2.0:ac:classes:..."
+                        value={value}
+                        onValueChange={onChange}
+                        isError={Boolean(error)}
+                      />
+                      <FieldDescription>
+                        AuthnContextClassRef values counted as MFA, in addition to the standard
+                        two-factor classes. Press Enter to add.
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </FormSection>
             </div>
             <SheetFooter className="justify-between border-t">
               <div className="flex gap-2">

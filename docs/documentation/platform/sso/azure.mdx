@@ -63,6 +63,8 @@ description: "Learn how to configure Microsoft Entra ID for Infisical SSO."
 
       ![Azure SAML edit attributes and claims 2](../../../images/sso/azure/edit-attributes-claims-2.png)
 
+      Entra ID reports the sign-in method in the assertion's authentication context, so you can let Infisical trust the MFA your users complete in Entra ID without adding a claim. See [MFA for SSO logins](/documentation/platform/mfa#mfa-for-sso-logins).
+
       Back in the **Set up Single Sign-On with SAML** screen, select **Edit** in the **SAML Certificates** section and set the **Signing Option** field to **Sign SAML response and assertion**.
 
       ![Azure SAML edit certificate](../../../images/sso/azure/edit-saml-certificate.png)

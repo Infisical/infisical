@@ -32,7 +32,11 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedSamlConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
 import { AuthMode, ProviderAuthResult, TProviderAuthCallback } from "@app/services/auth/auth-type";
+import { extractSamlAuthnContextClassRefs, matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+const SamlMfaSignalAttributeSchema = z.string().trim().min(1).max(512).optional();
+const SamlMfaAuthnContextsSchema = z.array(z.string().trim().min(1).max(512)).max(20).nullable().optional();
 
 type TSAMLConfig = {
   callbackUrl: string;
@@ -188,17 +192,26 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             logger.error(err, "Relay state parsing failed");
           }
 
+          const { ssoConfig } = req as unknown as FastifyRequest;
+          const idpMfa = matchIdpMfaSignal({
+            kind: "saml",
+            authnContextClassRefs: extractSamlAuthnContextClassRefs(profile.getAssertion?.()),
+            attributes: profile.attributes as Record<string, unknown> | undefined,
+            config: ssoConfig
+          });
+
           const loginResult = await server.services.saml.samlLogin({
             externalId: profile.nameID,
             email: email.toLowerCase(),
             firstName,
             lastName: lastName as string,
             callbackPort: callbackPort || undefined,
-            authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider,
-            orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId,
+            authProvider: ssoConfig?.authProvider,
+            orgId: ssoConfig?.orgId,
             ip: requestContext.get("ip") || "",
             userAgent: requestContext.get("userAgent") || "",
-            metadata: userMetadata
+            metadata: userMetadata,
+            idpMfa
           });
 
           cb(null, loginResult);
@@ -433,7 +446,9 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           issuer: z.string(),
           cert: z.string(),
           lastUsed: z.date().nullable().optional(),
-          enableGroupSync: z.boolean().optional()
+          enableGroupSync: z.boolean().optional(),
+          mfaSignalAttribute: z.string(),
+          mfaAuthnContexts: z.string().array().nullable().optional()
         })
       }
     },
@@ -474,14 +489,25 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         entryPoint: z.string().trim().describe(SamlSso.CREATE_CONFIG.entryPoint),
         issuer: z.string().trim().describe(SamlSso.CREATE_CONFIG.issuer),
         cert: z.string().trim().describe(SamlSso.CREATE_CONFIG.cert),
-        enableGroupSync: z.boolean().optional().describe(SamlSso.CREATE_CONFIG.enableGroupSync)
+        enableGroupSync: z.boolean().optional().describe(SamlSso.CREATE_CONFIG.enableGroupSync),
+        mfaSignalAttribute: SamlMfaSignalAttributeSchema.describe(SamlSso.CREATE_CONFIG.mfaSignalAttribute),
+        mfaAuthnContexts: SamlMfaAuthnContextsSchema.describe(SamlSso.CREATE_CONFIG.mfaAuthnContexts)
       }),
       response: {
         200: SanitizedSamlConfigSchema
       }
     },
     handler: async (req) => {
-      const { isActive, authProvider, issuer, entryPoint, cert, enableGroupSync } = req.body;
+      const {
+        isActive,
+        authProvider,
+        issuer,
+        entryPoint,
+        cert,
+        enableGroupSync,
+        mfaSignalAttribute,
+        mfaAuthnContexts
+      } = req.body;
       const { permission } = req;
 
       const samlCfg = await server.services.saml.createSamlCfg({
@@ -491,6 +517,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         entryPoint,
         idpCert: cert,
         enableGroupSync,
+        mfaSignalAttribute,
+        mfaAuthnContexts,
         actor: permission.type,
         actorId: permission.id,
         actorAuthMethod: permission.authMethod,
@@ -539,7 +567,9 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           entryPoint: z.string().trim().describe(SamlSso.UPDATE_CONFIG.entryPoint),
           issuer: z.string().trim().describe(SamlSso.UPDATE_CONFIG.issuer),
           cert: z.string().trim().describe(SamlSso.UPDATE_CONFIG.cert),
-          enableGroupSync: z.boolean().optional().describe(SamlSso.UPDATE_CONFIG.enableGroupSync)
+          enableGroupSync: z.boolean().optional().describe(SamlSso.UPDATE_CONFIG.enableGroupSync),
+          mfaSignalAttribute: SamlMfaSignalAttributeSchema.describe(SamlSso.UPDATE_CONFIG.mfaSignalAttribute),
+          mfaAuthnContexts: SamlMfaAuthnContextsSchema.describe(SamlSso.UPDATE_CONFIG.mfaAuthnContexts)
         })
         .partial()
         .merge(z.object({ organizationId: z.string().trim().describe(SamlSso.UPDATE_CONFIG.organizationId) })),
@@ -548,7 +578,16 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { isActive, authProvider, issuer, entryPoint, cert, enableGroupSync } = req.body;
+      const {
+        isActive,
+        authProvider,
+        issuer,
+        entryPoint,
+        cert,
+        enableGroupSync,
+        mfaSignalAttribute,
+        mfaAuthnContexts
+      } = req.body;
       const { permission } = req;
 
       const samlCfg = await server.services.saml.updateSamlCfg({
@@ -558,6 +597,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         entryPoint,
         idpCert: cert,
         enableGroupSync,
+        mfaSignalAttribute,
+        mfaAuthnContexts,
         actor: permission.type,
         actorId: permission.id,
         actorAuthMethod: permission.authMethod,

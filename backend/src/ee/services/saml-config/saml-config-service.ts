@@ -298,7 +298,9 @@ export const samlConfigServiceFactory = ({
     isActive,
     entryPoint,
     authProvider,
-    enableGroupSync
+    enableGroupSync,
+    mfaSignalAttribute,
+    mfaAuthnContexts
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -354,7 +356,9 @@ export const samlConfigServiceFactory = ({
       encryptedSamlCertificate: encryptor({ plainText: Buffer.from(idpCert) }).cipherTextBlob,
       encryptedSamlEntryPoint: encryptor({ plainText: Buffer.from(entryPoint) }).cipherTextBlob,
       encryptedSamlIssuer: encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob,
-      enableGroupSync: enableGroupSync || false
+      enableGroupSync: enableGroupSync || false,
+      mfaSignalAttribute,
+      mfaAuthnContexts
     });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Create, orgId });
@@ -373,7 +377,9 @@ export const samlConfigServiceFactory = ({
     isActive,
     entryPoint,
     authProvider,
-    enableGroupSync
+    enableGroupSync,
+    mfaSignalAttribute,
+    mfaAuthnContexts
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -424,6 +430,12 @@ export const samlConfigServiceFactory = ({
 
     if (enableGroupSync !== undefined) {
       updateQuery.enableGroupSync = enableGroupSync;
+    }
+    if (mfaSignalAttribute !== undefined) {
+      updateQuery.mfaSignalAttribute = mfaSignalAttribute;
+    }
+    if (mfaAuthnContexts !== undefined) {
+      updateQuery.mfaAuthnContexts = mfaAuthnContexts;
     }
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -535,7 +547,9 @@ export const samlConfigServiceFactory = ({
       issuer,
       cert,
       lastUsed: samlConfig.lastUsed,
-      enableGroupSync: samlConfig.enableGroupSync
+      enableGroupSync: samlConfig.enableGroupSync,
+      mfaSignalAttribute: samlConfig.mfaSignalAttribute,
+      mfaAuthnContexts: samlConfig.mfaAuthnContexts
     };
   };
 
@@ -549,7 +563,8 @@ export const samlConfigServiceFactory = ({
     ip,
     userAgent,
     callbackPort,
-    metadata
+    metadata,
+    idpMfa
   }) => {
     const serverCfg = await getServerCfg();
 
@@ -843,7 +858,8 @@ export const samlConfigServiceFactory = ({
       ip,
       userAgent,
       organizationId: organization.id,
-      callbackPort
+      callbackPort,
+      idpMfa
     });
 
     return { ...callbackResult, userId: user.id, orgId: organization.id, orgName: organization.name };

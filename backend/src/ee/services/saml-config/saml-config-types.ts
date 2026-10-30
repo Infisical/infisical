@@ -2,6 +2,7 @@ import { TSamlConfigs } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
 import { TProviderAuthResult } from "@app/services/auth/auth-login-type";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 
 export enum SamlProviders {
   OKTA_SAML = "okta-saml",
@@ -19,6 +20,8 @@ export type TCreateSamlCfgDTO = {
   issuer: string;
   idpCert: string;
   enableGroupSync?: boolean;
+  mfaSignalAttribute?: string;
+  mfaAuthnContexts?: string[] | null;
 } & TOrgPermission;
 
 export type TUpdateSamlCfgDTO = Partial<{
@@ -28,6 +31,8 @@ export type TUpdateSamlCfgDTO = Partial<{
   issuer: string;
   idpCert: string;
   enableGroupSync?: boolean;
+  mfaSignalAttribute?: string;
+  mfaAuthnContexts?: string[] | null;
 }> &
   TOrgPermission;
 
@@ -65,6 +70,7 @@ export type TSamlLoginDTO = {
   // saml thingy
   callbackPort?: number;
   metadata?: { key: string; value: string }[];
+  idpMfa?: TIdpMfaSignal;
 };
 
 export type TSamlConfigServiceFactory = {
@@ -81,6 +87,8 @@ export type TSamlConfigServiceFactory = {
     cert: string;
     lastUsed: Date | null | undefined;
     enableGroupSync?: boolean;
+    mfaSignalAttribute: string;
+    mfaAuthnContexts?: string[] | null;
   }>;
   samlLogin: (arg: TSamlLoginDTO) => Promise<TProviderAuthResult & { userId: string; orgId: string; orgName: string }>;
 };

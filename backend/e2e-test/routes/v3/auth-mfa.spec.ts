@@ -1,11 +1,12 @@
-import { decode } from "jsonwebtoken";
+import jwt, { decode } from "jsonwebtoken";
 
 import { TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { MfaMethod } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType, MfaMethod, SsoMfaTrust } from "@app/services/auth/auth-type";
 
 import { TTestSmtpService } from "../../mocks/smtp";
 import { loginUser, selectOrg } from "../../testUtils/auth";
+import { overrideLicenseFeatures } from "../../testUtils/license";
 
 describe("Auth MFA V3", () => {
   const smtp = () => (globalThis as unknown as { testSmtp: TTestSmtpService }).testSmtp;
@@ -96,5 +97,135 @@ describe("Auth MFA V3", () => {
     });
 
     expect(res.statusCode).toBeGreaterThanOrEqual(400);
+  });
+
+  // Signs the org-less session directly; the callback deriving the verdict is in auth-idp.spec.ts.
+  describe("identity provider MFA signal", () => {
+    const rootOrgId = seedData1.organization.id;
+    let restoreLicense: () => void;
+
+    const signSsoSession = async (authMethod: AuthMethod, idpMfaVerified?: boolean) => {
+      const [session] = await db()(TableName.AuthTokenSession)
+        .insert({
+          userId: seedData1.id,
+          ip: "127.0.0.1",
+          userAgent: "e2e-idp-mfa-signal",
+          accessVersion: 1,
+          refreshVersion: 1,
+          lastUsed: new Date()
+        } as never)
+        .returning("*");
+
+      return jwt.sign(
+        {
+          authTokenType: AuthTokenType.ACCESS_TOKEN,
+          authMethod,
+          userId: seedData1.id,
+          tokenVersionId: session.id,
+          accessVersion: 1,
+          ...(idpMfaVerified && { idpMfaVerified })
+        },
+        process.env.AUTH_SECRET as string,
+        { expiresIn: "1h" }
+      );
+    };
+
+    const setSsoMfaTrust = (ssoMfaTrust: SsoMfaTrust) =>
+      db()(TableName.Organization).where({ id: rootOrgId }).update({ ssoMfaTrust });
+
+    const updateOrg = (body: Record<string, unknown>) =>
+      testServer.inject({
+        method: "PATCH",
+        url: `/api/v1/organization/${rootOrgId}`,
+        headers: { authorization: `Bearer ${jwtAuthToken}` },
+        body
+      });
+
+    beforeAll(() => {
+      restoreLicense = overrideLicenseFeatures({ enforceMfa: true });
+    });
+
+    afterAll(async () => {
+      restoreLicense();
+      await setSsoMfaTrust(SsoMfaTrust.None);
+    });
+
+    test.each([AuthMethod.OKTA_SAML, AuthMethod.OIDC])(
+      "a signalled %s session skips the prompt when the org trusts the signal",
+      async (authMethod) => {
+        await setSsoMfaTrust(SsoMfaTrust.Signal);
+
+        const { payload } = await selectOrg(await signSsoSession(authMethod, true), rootOrgId);
+
+        expect(payload.isMfaEnabled).toBe(false);
+        expect(decode(payload.token)).toMatchObject({ organizationId: rootOrgId, idpMfaVerified: true });
+      }
+    );
+
+    test("an SSO session that carried no signal still gets the prompt", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+
+      const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML), rootOrgId);
+
+      expect(payload.isMfaEnabled).toBe(true);
+      expect(payload.mfaMethod).toBe(MfaMethod.EMAIL);
+    });
+
+    test("a password session on the same org still gets the prompt", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+      const { accessToken } = await loginUser(seedData1.email, seedData1.password);
+
+      const { payload } = await selectOrg(accessToken, rootOrgId);
+
+      expect(payload.isMfaEnabled).toBe(true);
+    });
+
+    test("the signal is ignored while the org requires Infisical MFA", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.None);
+
+      const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, true), rootOrgId);
+
+      expect(payload.isMfaEnabled).toBe(true);
+    });
+
+    test("the setting cannot be turned on without an active SSO configuration", async () => {
+      const res = await updateOrg({ ssoMfaTrust: SsoMfaTrust.Signal });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toMatch(/SAML or OIDC/);
+    });
+
+    test("a user's own MFA is still prompted when only the user, not the org, requires it", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+      await db()(TableName.Organization).where({ id: rootOrgId }).update({ enforceMfa: false });
+      await db()(TableName.Users).where({ id: seedData1.id }).update({ isMfaEnabled: true });
+      try {
+        const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, true), rootOrgId);
+
+        expect(payload.isMfaEnabled).toBe(true);
+      } finally {
+        await db()(TableName.Users).where({ id: seedData1.id }).update({ isMfaEnabled: false });
+        await db()(TableName.Organization).where({ id: rootOrgId }).update({ enforceMfa: true });
+      }
+    });
+
+    test("an unknown mode is rejected", async () => {
+      const res = await updateOrg({ ssoMfaTrust: "delegate" });
+
+      expect(res.statusCode).toBe(422);
+    });
+
+    test("the setting can be turned off even on a plan without MFA enforcement", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+      restoreLicense();
+      try {
+        const res = await updateOrg({ ssoMfaTrust: SsoMfaTrust.None });
+
+        expect(res.statusCode).toBe(200);
+        expect(res.json().organization.ssoMfaTrust).toBe(SsoMfaTrust.None);
+      } finally {
+        restoreLicense = overrideLicenseFeatures({ enforceMfa: true });
+      }
+    });
   });
 });

@@ -1,0 +1,124 @@
+// "amr" is the OIDC Core claim name. SAML has no standard attribute name, so the Okta convention is the default.
+export const DEFAULT_MFA_CLAIM_NAME = "amr";
+
+// RFC 8176 value for a completed multi-factor login; Okta, Entra ID, Auth0, Google and Duo all emit it.
+export const DEFAULT_OIDC_MFA_CLAIM_VALUES = ["mfa"];
+
+// Two-factor SAML classes, the REFEDS MFA profile and Entra ID's satisfied-MFA class. Single-factor classes
+// such as PasswordProtectedTransport and MobileTwoFactorUnregistered are deliberately absent.
+export const DEFAULT_SAML_MFA_AUTHN_CONTEXTS = [
+  "urn:oasis:names:tc:SAML:2.0:ac:classes:MobileTwoFactorContract",
+  "urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken",
+  "urn:oasis:names:tc:SAML:2.0:ac:classes:Smartcard",
+  "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI",
+  "urn:oasis:names:tc:SAML:2.0:ac:classes:SoftwarePKI",
+  "https://refeds.org/profile/mfa",
+  "http://schemas.microsoft.com/claims/multipleauthn"
+];
+
+// The RFC 8176 value, plus the URI Entra ID uses in its authnmethodsreferences claim.
+const SAML_MFA_ATTRIBUTE_VALUES = ["mfa", "http://schemas.microsoft.com/claims/multipleauthn"];
+
+// The assertion is signed, but a misbehaving IdP could still send an absurd number of values.
+const MAX_SIGNAL_VALUES = 50;
+const MAX_SIGNAL_VALUE_LENGTH = 512;
+
+export type TIdpMfaSignal = {
+  verified: boolean;
+  evidence: string[];
+};
+
+export type TSamlMfaSignalConfig = {
+  mfaSignalAttribute?: string | null;
+  mfaAuthnContexts?: string[] | null;
+};
+
+export type TOidcMfaSignalConfig = {
+  mfaClaimName?: string | null;
+  mfaAmrValues?: string[] | null;
+};
+
+export type TIdpMfaSignalInput =
+  | {
+      kind: "saml";
+      authnContextClassRefs: string[];
+      attributes?: Record<string, unknown> | null;
+      config?: TSamlMfaSignalConfig | null;
+    }
+  | {
+      kind: "oidc";
+      claims: Record<string, unknown>;
+      config?: TOidcMfaSignalConfig | null;
+    };
+
+const toStringList = (value: unknown): string[] => {
+  const raw = Array.isArray(value) ? value : [value];
+  return raw
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0 && item.length <= MAX_SIGNAL_VALUE_LENGTH)
+    .slice(0, MAX_SIGNAL_VALUES);
+};
+
+const matchingValues = (values: string[], accepted: string[]) => {
+  const acceptedSet = new Set(accepted.map((item) => item.trim().toLowerCase()));
+  return values.filter((value) => acceptedSet.has(value.toLowerCase()));
+};
+
+const findKey = (record: Record<string, unknown>, name: string) => {
+  const wanted = name.trim().toLowerCase();
+  return Object.keys(record).find((key) => key.toLowerCase() === wanted);
+};
+
+export const matchIdpMfaSignal = (input: TIdpMfaSignalInput): TIdpMfaSignal => {
+  if (input.kind === "oidc") {
+    const claimName = input.config?.mfaClaimName?.trim() || DEFAULT_MFA_CLAIM_NAME;
+    const claimKey = findKey(input.claims, claimName);
+    const accepted = [...DEFAULT_OIDC_MFA_CLAIM_VALUES, ...(input.config?.mfaAmrValues ?? [])];
+    const evidence = claimKey ? matchingValues(toStringList(input.claims[claimKey]), accepted) : [];
+    return { verified: evidence.length > 0, evidence };
+  }
+
+  const acceptedContexts = [...DEFAULT_SAML_MFA_AUTHN_CONTEXTS, ...(input.config?.mfaAuthnContexts ?? [])];
+  const evidence = matchingValues(toStringList(input.authnContextClassRefs), acceptedContexts);
+
+  const attributes = input.attributes ?? {};
+  const attributeName = input.config?.mfaSignalAttribute?.trim() || DEFAULT_MFA_CLAIM_NAME;
+  const attributeKey = findKey(attributes, attributeName);
+  if (attributeKey) {
+    matchingValues(toStringList(attributes[attributeKey]), SAML_MFA_ATTRIBUTE_VALUES).forEach((value) => {
+      evidence.push(`${attributeKey}=${value}`);
+    });
+  }
+
+  return { verified: evidence.length > 0, evidence };
+};
+
+// node-saml parses with xml2js explicitArray and explicitCharkey: every child is an array, a text node is
+// { _: "value" }, and the root is either the Assertion or a Response wrapping one.
+const textOf = (node: unknown): string | undefined => {
+  if (typeof node === "string") return node;
+  if (node && typeof node === "object" && "_" in node && typeof (node as { _: unknown })._ === "string") {
+    return (node as { _: string })._;
+  }
+  return undefined;
+};
+
+const children = (node: unknown, name: string): unknown[] => {
+  if (!node || typeof node !== "object") return [];
+  const value = (node as Record<string, unknown>)[name];
+  if (value === undefined || value === null) return [];
+  return Array.isArray(value) ? value : [value];
+};
+
+export const extractSamlAuthnContextClassRefs = (parsedAssertion: unknown): string[] => {
+  const root =
+    children(parsedAssertion, "Assertion")[0] ??
+    children(children(parsedAssertion, "Response")[0], "Assertion")[0] ??
+    parsedAssertion;
+  return children(root, "AuthnStatement")
+    .flatMap((statement) => children(statement, "AuthnContext"))
+    .flatMap((context) => children(context, "AuthnContextClassRef"))
+    .map(textOf)
+    .filter((value): value is string => Boolean(value));
+};

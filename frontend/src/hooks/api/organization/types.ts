@@ -3,6 +3,11 @@ import { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
 
 import { MfaMethod } from "../auth/types";
 
+export enum SsoMfaTrust {
+  None = "none",
+  Signal = "signal"
+}
+
 export type TSecretShareBrandConfig = {
   primaryColor?: string;
   secondaryColor?: string;
@@ -22,6 +27,7 @@ export type Organization = {
   defaultMembershipRole: string;
   enforceMfa: boolean;
   selectedMfaMethod?: MfaMethod;
+  ssoMfaTrust: SsoMfaTrust;
   shouldUseNewPrivilegeSystem: boolean;
   allowSecretSharingOutsideOrganization?: boolean;
   userTokenExpiration?: string;
@@ -54,6 +60,7 @@ export type UpdateOrgDTO = {
   defaultMembershipRoleSlug?: string;
   enforceMfa?: boolean;
   selectedMfaMethod?: MfaMethod;
+  ssoMfaTrust?: SsoMfaTrust;
   allowSecretSharingOutsideOrganization?: boolean;
   bypassOrgAuthEnabled?: boolean;
   userTokenExpiration?: string;

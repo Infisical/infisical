@@ -24,7 +24,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode, MfaMethod, SsoMfaTrust } from "@app/services/auth/auth-type";
 import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -531,6 +531,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         defaultMembershipRoleSlug: slugSchema({ max: 64, field: "Default Membership Role" }).optional(),
         enforceMfa: z.boolean().optional(),
         selectedMfaMethod: z.nativeEnum(MfaMethod).optional(),
+        ssoMfaTrust: z.nativeEnum(SsoMfaTrust).optional(),
         allowSecretSharingOutsideOrganization: z.boolean().optional(),
         bypassOrgAuthEnabled: z.boolean().optional(),
         userTokenExpiration: z

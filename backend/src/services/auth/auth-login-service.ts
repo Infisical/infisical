@@ -57,6 +57,7 @@ import {
   assertOAuthLoginMethodEnabled,
   enforceUserLockStatus,
   getRequiredMfaMethod,
+  isIdpMfaTrusted,
   isOAuthLoginMethodDisabled,
   OAuthAuthMethod,
   RECOVERY_CODE_MFA_ASSURANCE
@@ -188,13 +189,15 @@ export const authLoginServiceFactory = ({
     email,
     authMethod,
     organizationId,
-    requiredMfaMethod
+    requiredMfaMethod,
+    idpMfaVerified
   }: {
     userId: string;
     email?: string | null;
     authMethod: AuthMethod;
     organizationId?: string;
     requiredMfaMethod: MfaMethod;
+    idpMfaVerified?: boolean;
   }) => {
     const appCfg = getConfig();
 
@@ -205,7 +208,8 @@ export const authLoginServiceFactory = ({
         userId,
         organizationId,
         email,
-        requiredMfaMethod
+        requiredMfaMethod,
+        idpMfaVerified
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_MFA_LIFETIME }
@@ -233,7 +237,8 @@ export const authLoginServiceFactory = ({
       subOrganizationId,
       authMethod,
       isMfaVerified,
-      mfaMethod
+      mfaMethod,
+      idpMfaVerified
     }: {
       userId: string;
       ip: string;
@@ -243,6 +248,7 @@ export const authLoginServiceFactory = ({
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
       mfaMethod?: MfaMethod;
+      idpMfaVerified?: boolean;
     },
     tx?: Knex
   ) => {
@@ -290,7 +296,8 @@ export const authLoginServiceFactory = ({
         organizationId,
         subOrganizationId,
         isMfaVerified,
-        mfaMethod
+        mfaMethod,
+        idpMfaVerified
       },
       cfg.AUTH_SECRET,
       { expiresIn: tokenSessionExpiresIn }
@@ -306,7 +313,8 @@ export const authLoginServiceFactory = ({
         organizationId,
         subOrganizationId,
         isMfaVerified,
-        mfaMethod
+        mfaMethod,
+        idpMfaVerified
       },
       cfg.AUTH_SECRET,
       { expiresIn: refreshTokenExpiresIn }
@@ -323,7 +331,8 @@ export const authLoginServiceFactory = ({
     ip,
     userAgent,
     organizationId,
-    callbackPort
+    callbackPort,
+    idpMfa
   }: TProcessProviderCallbackDTO): Promise<TProviderAuthCallback> => {
     const appCfg = getConfig();
 
@@ -353,7 +362,8 @@ export const authLoginServiceFactory = ({
       userId: user.id,
       ip,
       userAgent,
-      authMethod
+      authMethod,
+      idpMfaVerified: idpMfa?.verified || undefined
     });
 
     if (organizationId) {
@@ -366,6 +376,31 @@ export const authLoginServiceFactory = ({
         },
         { status: OrgMembershipStatus.Accepted }
       );
+
+      // The session token only carries the verdict, so the raw IdP values are recorded here for admins.
+      await auditLogService.createAuditLog({
+        orgId: organizationId,
+        ipAddress: ip,
+        userAgent,
+        userAgentType: getUserAgentType(userAgent),
+        actor: {
+          type: ActorType.USER,
+          metadata: {
+            email: user.email,
+            userId: user.id,
+            username: user.username ?? user.email ?? "",
+            authMethod
+          }
+        },
+        event: {
+          type: EventType.USER_LOGIN,
+          metadata: {
+            organizationId,
+            authProvider: authMethod,
+            ...(idpMfa && { idpMfa })
+          }
+        }
+      });
     }
 
     return { result: ProviderAuthResult.SESSION, tokens, callbackPort } as const;
@@ -739,7 +774,8 @@ export const authLoginServiceFactory = ({
       organizationId: orgId,
       authMethod: decodedToken.authMethod,
       isMfaVerified: true,
-      mfaMethod
+      mfaMethod,
+      idpMfaVerified: decodedToken.idpMfaVerified
     });
 
     // Open the grace window for THIS session only (the one that just proved MFA), so
@@ -1153,18 +1189,20 @@ export const authLoginServiceFactory = ({
     organizationId,
     userId,
     userAuthMethod,
-    actorOrgId,
+    actorRootOrgId,
     isMfaVerified,
-    mfaMethod
+    mfaMethod,
+    idpMfaVerified
   }: {
     userAgent: string | undefined;
     ipAddress: string;
     organizationId: string;
     userId: string;
     userAuthMethod: AuthMethod;
-    actorOrgId?: string;
+    actorRootOrgId?: string;
     isMfaVerified?: boolean;
     mfaMethod?: MfaMethod;
+    idpMfaVerified?: boolean;
   }) => {
     const cfg = getConfig();
     if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
@@ -1288,12 +1326,20 @@ export const authLoginServiceFactory = ({
     }
 
     const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
-    // Check if organization has changed
-    const hasOrganizationChanged = actorOrgId ? actorOrgId !== rootOrg.id : false;
-    // Check if MFA method has changed
+    // The MFA policy belongs to the root org, so switching between it and its sub-orgs is not a change.
+    const hasOrganizationChanged = actorRootOrgId ? actorRootOrgId !== rootOrg.id : false;
     const hasMfaMethodChanged = mfaMethod !== requiredMfaMethod;
-    // Trigger MFA if required and either not verified or something changed
-    const shouldTriggerMfa = isMfaRequired && (!isMfaVerified || hasMfaMethodChanged || hasOrganizationChanged);
+    // Checked on every selection so turning the trust off applies at the next switch. It only waives the
+    // org's enforcement, never MFA a user turned on for their own account.
+    const isMfaSatisfiedByIdp =
+      Boolean(rootOrg.enforceMfa) &&
+      isIdpMfaTrusted({
+        ssoMfaTrust: rootOrg.ssoMfaTrust,
+        authMethod: userAuthMethod,
+        idpMfaVerified
+      });
+    const shouldTriggerMfa =
+      isMfaRequired && !isMfaSatisfiedByIdp && (!isMfaVerified || hasMfaMethodChanged || hasOrganizationChanged);
 
     if (shouldTriggerMfa) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
@@ -1303,7 +1349,8 @@ export const authLoginServiceFactory = ({
         email: user.email,
         authMethod: userAuthMethod,
         requiredMfaMethod,
-        organizationId: rootOrg.id
+        organizationId: rootOrg.id,
+        idpMfaVerified
       });
 
       return { isMfaEnabled: true, mfa: mfaToken, mfaMethod: requiredMfaMethod } as const;
@@ -1319,8 +1366,13 @@ export const authLoginServiceFactory = ({
       organizationId: isSubOrganization ? rootOrg.id : organizationId,
       subOrganizationId: isSubOrganization ? organizationId : undefined,
       isMfaVerified,
-      mfaMethod
+      mfaMethod,
+      idpMfaVerified
     });
+
+    let mfaSatisfiedBy: "not-required" | "infisical" | "idp" = "infisical";
+    if (!isMfaRequired) mfaSatisfiedBy = "not-required";
+    else if (isMfaSatisfiedByIdp) mfaSatisfiedBy = "idp";
 
     // In the event of this being a break-glass request (non-saml / non-oidc / non-google, when any is enforced)
     const isAuthEnforcedBypass =
@@ -1412,14 +1464,16 @@ export const authLoginServiceFactory = ({
             metadata: {
               organizationId,
               organizationName: selectedOrg.name,
-              rootOrganizationId: selectedOrg.rootOrgId || ""
+              rootOrganizationId: selectedOrg.rootOrgId || "",
+              mfaSatisfiedBy
             }
           }
         : {
             type: EventType.SELECT_ORGANIZATION,
             metadata: {
               organizationId,
-              organizationName: selectedOrg.name
+              organizationName: selectedOrg.name,
+              mfaSatisfiedBy
             }
           }
     });
