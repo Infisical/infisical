@@ -17,7 +17,7 @@ import {
 } from "@app/components/v4/ui/sheet";
 
 import { useAccess } from "../context";
-import { DEFAULT_ORG_ROLE, type OrgMember } from "../model";
+import type { OrgMember } from "../model";
 
 const MAX_INVITE_EMAILS = 100;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -64,7 +64,7 @@ export const InviteUsersSheet = ({
   const [emails, setEmails] = useState<string[]>(() =>
     open ? ["nina@acme.dev", "raj@acme.dev"] : []
   );
-  const [role, setRole] = useState(DEFAULT_ORG_ROLE);
+  const [role, setRole] = useState(data.defaultOrgRole);
   const [product, setProduct] = useState("none");
   const [projects, setProjects] = useState<string[]>([]);
   const [projectRole, setProjectRole] = useState("member");
@@ -73,7 +73,7 @@ export const InviteUsersSheet = ({
 
   const reset = () => {
     setEmails([]);
-    setRole(DEFAULT_ORG_ROLE);
+    setRole(data.defaultOrgRole);
     setProduct("none");
     setProjects([]);
     setProjectRole("member");
