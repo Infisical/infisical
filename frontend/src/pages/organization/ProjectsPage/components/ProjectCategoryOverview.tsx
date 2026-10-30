@@ -12,6 +12,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  RowLink,
   Skeleton,
   Tooltip,
   TooltipContent,
@@ -28,6 +29,7 @@ import {
   setCertManagerActiveProjectCookie
 } from "@app/helpers/certManagerActiveProject";
 import {
+  getInstancePinningLink,
   getProjectDescription,
   getProjectLucideIcon,
   getProjectTitle,
@@ -466,6 +468,37 @@ export const ProjectCategoryOverview = () => {
     }
   };
 
+  // Only a member with a resolved project gets a link; joining, requesting access, setup, the
+  // instance picker and lazy bootstrap stay actions on the tile.
+  const getMemberTileLink = (type: ProjectType) => {
+    const orgId = currentOrg?.id ?? "";
+    if (
+      type === ProjectType.CertificateManager &&
+      cmInstances.length === 1 &&
+      isCertManagerMember
+    ) {
+      return getInstancePinningLink(orgId, { id: cmInstances[0].id, type }, "overview");
+    }
+    if (
+      type === ProjectType.SecretScanning &&
+      activeSecretScanningProjectId &&
+      isSecretScanningMember
+    ) {
+      return getInstancePinningLink(
+        orgId,
+        { id: activeSecretScanningProjectId, type },
+        "data-sources"
+      );
+    }
+    if (type === ProjectType.PAM && isPamMember) {
+      return { to: "/organizations/$orgId/pam/accounts", params: { orgId } } as const;
+    }
+    if (type === ProjectType.AgentVault && isAgentVaultMember) {
+      return { to: "/organizations/$orgId/agent-vault", params: { orgId } } as const;
+    }
+    return null;
+  };
+
   const handleTileClick = async (type: ProjectType) => {
     const orgId = currentOrg?.id || "";
 
@@ -567,6 +600,8 @@ export const ProjectCategoryOverview = () => {
           const { iconClassName, containerClassName, cardClassName, titleUnderlineClassName } =
             PRODUCT_STYLES[type];
           const Icon = getProjectLucideIcon(type);
+          const memberTileLink = getMemberTileLink(type);
+          const titleClassName = `underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`;
 
           const tileBody = (
             <>
@@ -579,11 +614,16 @@ export const ProjectCategoryOverview = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <CardTitle className="flex items-center gap-1.5 text-base text-foreground">
-                      <span
-                        className={`underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`}
-                      >
-                        {getProjectTitle(type)}
-                      </span>
+                      {memberTileLink ? (
+                        <RowLink
+                          {...memberTileLink}
+                          className={`${titleClassName} after:rounded-md`}
+                        >
+                          {getProjectTitle(type)}
+                        </RowLink>
+                      ) : (
+                        <span className={titleClassName}>{getProjectTitle(type)}</span>
+                      )}
                       <PreviewBadge type={type} />
                     </CardTitle>
                     <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
@@ -636,8 +676,16 @@ export const ProjectCategoryOverview = () => {
 
           const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
 
-          // These resolve their destination asynchronously (instance picker, lazy project
-          // bootstrap, join-on-behalf), so they stay handler-driven.
+          if (memberTileLink) {
+            return (
+              <Card key={type} linked className={tileClassName}>
+                {tileBody}
+              </Card>
+            );
+          }
+
+          // Until the member's project is resolved, these resolve their destination asynchronously
+          // (instance picker, lazy project bootstrap, join-on-behalf), so they stay handler-driven.
           if (
             type === ProjectType.CertificateManager ||
             type === ProjectType.PAM ||
