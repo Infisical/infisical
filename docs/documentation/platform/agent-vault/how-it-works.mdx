@@ -1,28 +1,98 @@
 ---
 title: "How Agent Vault works"
 sidebarTitle: "How it works"
-description: "The concepts Agent Vault uses to broker access to APIs, and how they combine at request time."
+description: "The pieces of an Agent Vault setup and how a session gives an agent access to APIs."
 ---
 
 Agent Vault lets an AI agent make authenticated API calls without ever holding the real credentials. Instead, the agent routes its API calls through an Agent Vault proxy, which attaches the credentials on the way out.
 
+## Architecture
+
+Every Agent Vault setup has an orchestrator that creates a session and starts the agent. Then, the agent sends every request through the proxy:
+
 ```mermaid
 flowchart LR
-  subgraph private["Your private network"]
+  orchestrator["Orchestrator"]
+  subgraph env["Agent's environment"]
     agent["AI agent"]
-    proxy["Agent Vault proxy"]
   end
-  subgraph internet["Public internet"]
-    apis["api.slack.com<br/>api.github.com<br/>..."]
-  end
+  proxy["Agent Vault proxy"]
   infisical["Infisical"]
-  agent -->|"request with a session token"| proxy
+  apis["api.github.com<br/>mcp.linear.app<br/>..."]
+  orchestrator -->|"creates a session"| infisical
+  orchestrator -->|"starts the agent with the session token"| agent
+  agent -->|"every request"| proxy
   proxy -->|"request with the credential"| apis
-  proxy -->|"fetches the credentials this session may use"| infisical
+  proxy -->|"fetches the credentials"| infisical
 ```
 
-## Mental model
- 
+| Piece | What it is | Credentials it holds |
+|---|---|---|
+| Orchestrator | Whatever creates a session and starts an agent with the session token | Your Infisical login, or a [machine identity](/documentation/platform/identities/machine-identities) that can create sessions |
+| Agent | The AI agent, running in an environment such as a container, a virtual machine (VM), a Kubernetes pod, or a managed sandbox | Only the session token |
+| Proxy | The Agent Vault proxy, running separately from the agent in its own container or on its own machine | The proxy token |
+| Infisical | Where you define services and access bundles | The real credentials |
+
+### Orchestrators
+
+An orchestrator is the program (or person) that creates a session and starts an agent with the session token. Agent Vault works with any orchestrator, such as:
+
+- **Your own service:** a backend service [uses the Infisical API to create a session](/documentation/platform/agent-vault/sessions-api) and start an agent for each task. For example: an internal coding agent that picks up tickets, or a product feature that starts an agent when a customer asks for something
+- **A scheduled job:** a cron job or CI pipeline [uses the Infisical CLI to create a session](/documentation/platform/agent-vault/sessions-cli) and start the agent. For example: an agent that labels new issues every hour
+- **You:** a person who [creates a session in the Infisical dashboard](/documentation/platform/agent-vault/sessions#create-a-session) and starts an agent with the session token. For example: a coding agent on a dev box, or an assistant on a home server
+
+The orchestrator chooses the access bundle for each session in its own code, so the agent can't change what it has access to. For example, a service can create sessions with a read-only access bundle for most requests, and with a bundle that includes your deployment API only when the request comes from an on-call engineer.
+
+<Warning>
+Keep the credentials that the orchestrator uses out of the agent's environment. A machine identity can create a session for any access bundle it has access to, so if an agent read the machine identity's credentials, it could give itself more access.
+</Warning>
+
+### Short-lived vs. long-running agents
+
+An agent can run for one task or keep running:
+
+- **For one task:** the orchestrator creates a new environment with [its own proxy](#proxy-placement) and a new session for each task, then revokes the session and deletes the environment when the task ends
+- **Long-running:** the agent keeps running and handles requests as they come in, such as a chat assistant, with a session that never expires
+
+If your own code starts agents, we recommend starting a new agent for each task. This prevents a session token from working after its task ends. It also keeps the files and data from one task out of the next task's environment.
+
+<Note>
+If you run a long-running agent, it keeps its access until you [revoke its session](/documentation/platform/agent-vault/sessions#revoke-a-session). Revoke the session when you shut the agent down, or if you think its session token leaked.
+</Note>
+
+### Agent environment
+
+The agent can run anywhere: a [Kubernetes pod](/documentation/platform/agent-vault/guides/kubernetes), a [Docker container](/documentation/platform/agent-vault/guides/docker), a managed sandbox such as [Modal](/documentation/platform/agent-vault/guides/modal) or [Daytona](/documentation/platform/agent-vault/guides/daytona), or a VM, such as an Amazon EC2 instance. Wherever it runs, we recommend that:
+
+- The proxy runs separately from the agent, such as in its own container, so the agent can't read the proxy token
+- The agent's network only reaches the proxy, so the agent can't skip the proxy and connect to an API directly
+
+<Warning>
+We don't recommend running the agent on your own computer. The proxy would have to run on a second machine, and the agent would still run as your user account, with access to your files and your Infisical CLI login. A container, a VM, or a sandbox keeps the agent away from both.
+</Warning>
+
+### Proxy placement
+
+We recommend giving each agent its own proxy. When the orchestrator creates a sandbox or container for a task, it also starts a proxy in a separate container, on a private network that only the agent and its proxy share. When the task ends, the orchestrator deletes both. The guides set this up with each platform's own feature for it:
+
+- **[Modal](/documentation/platform/agent-vault/guides/modal):** a sidecar container in the agent's sandbox
+- **[Daytona](/documentation/platform/agent-vault/guides/daytona):** a second sandbox, linked to the agent's sandbox
+- **[Docker](/documentation/platform/agent-vault/guides/docker):** a second container in each run's Docker Compose project
+
+Giving each agent its own proxy has these advantages:
+
+- The agent can always reach its proxy, even on a platform like Modal that can place sandboxes on different cloud providers, where a shared proxy on one provider can't reach agents on another
+- Only the agent can reach its proxy, so nothing outside the task can send requests through it
+- You don't have a proxy service to keep running between tasks
+
+You can also run one shared proxy that every agent connects to, such as on a server or in its own Kubernetes namespace, as the [Kubernetes guide](/documentation/platform/agent-vault/guides/kubernetes) does. A shared proxy works well if your agents run on a private network you control.
+
+Either way, you [create the proxy in Infisical](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) once and start every copy with the same proxy token. Infisical shows one proxy, however many copies are running.
+
+To find the setup that fits what you're building, see [Plan your setup](/documentation/platform/agent-vault/plan-your-setup).
+
+## Access model
+
 Agent Vault uses four primitives to create secure sessions for AI agents:
 
 - [**Services**](#services): The APIs, MCP servers, and anything else the agent talks to, with any credentials to add
@@ -30,7 +100,7 @@ Agent Vault uses four primitives to create secure sessions for AI agents:
 - [**Sessions**](#sessions): Time-bound access grants that an agent uses to authenticate to the proxy for the services in an access bundle
 - [**Proxies**](#proxies): The forward proxy that intercepts an agent's outbound traffic and attaches real credentials to authorized requests
 
-Here's how the four concepts connect:
+Here's how the four primitives connect:
 
 <Steps>
   <Step>
@@ -46,7 +116,7 @@ Here's how the four concepts connect:
     ```
   </Step>
   <Step>
-    You create a session for the bundle. Infisical returns a session token scoped to that bundle for a limited time.
+    The orchestrator creates a session for the bundle. Infisical returns a session token scoped to that bundle until the session expires or is revoked.
 
     ```mermaid
     flowchart LR
@@ -59,7 +129,7 @@ Here's how the four concepts connect:
     ```
   </Step>
   <Step>
-    The agent runs with the session token and uses it to authenticate to the Agent Vault proxy on every outbound request.
+    The orchestrator starts the agent with the session token, and the agent uses the token to authenticate to the Agent Vault proxy on every outbound request.
 
     ```mermaid
     flowchart LR
@@ -88,7 +158,7 @@ Here's how the four concepts connect:
     ```
   </Step>
   <Step>
-    The proxy reaches into the access bundle for the matching service's credential, attaches it, and forwards the request to the upstream host.
+    The proxy reads the matching service's credential from the access bundle, attaches the credential, and forwards the request to the upstream host.
 
     ```mermaid
     flowchart LR
@@ -106,11 +176,7 @@ Here's how the four concepts connect:
   </Step>
 </Steps>
 
-This process allows the agent to authenticate to external APIs, all without having access to any of their real credentials.
-
 ## Concepts
-
-Here's a breakdown of each primitive that Agent Vault relies on.
 
 ### Services
 
@@ -124,7 +190,7 @@ A service represents one external system that an agent can reach, such as GitHub
 
 Agent Vault supports two types of service: [HTTP APIs](/documentation/platform/agent-vault/http-apis) and [MCP servers](/documentation/platform/agent-vault/mcp-servers).
 
-You don't hand services to an agent directly—they're defined within access bundles.
+You don't hand services to an agent directly. An agent reaches a service only through an access bundle.
 
 <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
   Anything an AI agent talks to during a session, such as an API or an MCP server.
@@ -144,7 +210,7 @@ You grant a bundle to a user, group, or machine identity. Anyone holding that gr
 
 A session is a time-bound access grant that's scoped to one access bundle. Infisical returns a session token that identifies the session; the agent uses that token to authenticate to the Agent Vault proxy on every outbound request.
 
-When you create a session, you pick one access bundle and set an expiry. The agent never sees the real credentials inside the bundle. All it has is the session token, which only works when the proxy can authorize it against a live session.
+When the orchestrator creates a session, it picks one access bundle and sets when the session expires. The agent never sees the real credentials inside the bundle. All it has is the session token, which the proxy only accepts while the session is live.
 
 Even if an attacker stole the session token, they could only reach the hosts, methods, and paths that the access bundle's services allow, and only until the session expires or you revoke it.
 
@@ -154,13 +220,15 @@ Even if an attacker stole the session token, they could only reach the hosts, me
 
 ### Proxies
 
-A proxy runs where your agent's traffic leaves your network. It intercepts every outbound request, authorizes the request against the session's access bundle, attaches the matching service's credential as a header, and forwards the request to the upstream host. If the request breaks the matching service's [method or path rules](/documentation/platform/agent-vault/http-apis#methods-and-paths), the proxy refuses it instead.
+A proxy runs outside the agent's environment. It intercepts every outbound request, authorizes the request against the session's access bundle, attaches the matching service's credential as a header, and forwards the request to the upstream host. If the request breaks the matching service's [method or path rules](/documentation/platform/agent-vault/http-apis#methods-and-paths), the proxy refuses it instead.
 
 <Card title="Proxies" icon="server" href="/documentation/platform/agent-vault/proxies">
   Forward proxies that intercept an AI agent's requests and attach real credentials on the way out.
 </Card>
 
-## Example flow: GitHub API
+## Example flows
+
+### GitHub API
 
 Here's what happens when an agent calls `api.github.com` through an Agent Vault session:
 
@@ -174,7 +242,7 @@ Here's what happens when an agent calls `api.github.com` through an Agent Vault 
 If the agent asks for a host that isn't covered by any service in the access bundle (like `api.internal.example.com`), the proxy either forwards the request without credentials or refuses it outright, depending on its [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
 </Note>
 
-## Example flow: Linear MCP server
+### Linear MCP server
 
 Here's what happens when an agent calls a tool on Linear's MCP server through an Agent Vault session. The agent has the server's real URL, `https://mcp.linear.app/mcp`, and no credential for it:
 
@@ -187,10 +255,10 @@ Infisical refreshes the access token before it expires. If Linear rejects the to
 
 ## Why no code changes are needed
 
-Agent Vault plugs into a mechanism the entire HTTP ecosystem already uses: the `HTTPS_PROXY` environment variable. Any HTTP client that reads `HTTPS_PROXY` routes through the proxy without any code changes. That includes `curl`, `git`, `gh`, Python's `requests`, and most SDKs.
+Agent Vault uses the `HTTPS_PROXY` environment variable, which `curl`, `git`, `gh`, Python's `requests`, and most SDKs already read. Any HTTP client that reads it sends its requests through the proxy without code changes.
 
-`infisical agent-vault run` sets `HTTPS_PROXY` for the agent, trusts the proxy's certificate authority, and passes the session token as the proxy credential. Everything the agent does after that works without needing to update any code.
+`infisical agent-vault run` sets `HTTPS_PROXY` for the agent, trusts the proxy's certificate authority, and passes the session token as the proxy credential.
 
 <Note>
-  Node.js's built-in `fetch` (undici-backed) doesn't read `HTTPS_PROXY` by default. If your agent uses it directly, run Node with `--use-env-proxy` or set `NODE_USE_ENV_PROXY=1` (Node 24 or later). Third-party clients like `axios`, `node-fetch`, and `got` honor the env vars without extra flags.
+  Node.js's built-in `fetch` (undici-backed) doesn't read `HTTPS_PROXY` by default. If your agent uses it directly, run Node with `--use-env-proxy` or set `NODE_USE_ENV_PROXY=1` (Node 24 or later). Third-party clients like `axios`, `node-fetch`, and `got` read the environment variable without extra flags.
 </Note>

@@ -247,6 +247,14 @@ Start each agent in its own sandbox, with its own proxy.
   </Card>
 </CardGroup>
 
+### Kubernetes
+
+Start each agent in its own pod, with one proxy in its own namespace.
+
+<Card title="Kubernetes" icon="/images/stack/kubernetes.png" href="/documentation/platform/agent-vault/guides/kubernetes">
+  Learn how to run AI agents in Kubernetes pods that contain no credentials and can only connect to the Agent Vault proxy.
+</Card>
+
 ### Messaging gateways
 
 Keep an assistant running on a server so people can message it from Slack, Telegram, or another platform.
@@ -264,7 +272,7 @@ Keep an assistant running on a server so people can message it from Slack, Teleg
 
 ### Local development
 
-Launch an agent from your terminal with the Infisical CLI.
+Launch an agent from your terminal with the Infisical CLI, and run the proxy on a different machine. We don't recommend running the agent on your own computer, where the agent can read your files and use your Infisical CLI login.
 
 <CardGroup cols={3}>
   <Card title="Claude Code" icon="/images/agent-vault-agents/claude-code.svg" href="/documentation/platform/agent-vault/guides/claude-code" />

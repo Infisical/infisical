@@ -15,10 +15,10 @@ Infisical Agent Vault brokers credentials for the AI agents you run in your own 
 
 <CardGroup cols={3}>
   <Card title="Why use Agent Vault?" icon="shield" href="/documentation/platform/agent-vault/why-agent-vault">
-    Learn more about the problem Agent Vault addresses.
+    Why AI agents shouldn't hold credentials and what Agent Vault does instead.
   </Card>
   <Card title="How it works" icon="settings-2" href="/documentation/platform/agent-vault/how-it-works">
-    Understand the Agent Vault mental model.
+    The pieces of an Agent Vault setup and how a session gives an agent access to APIs.
   </Card>
   <Card title="Plan your setup" icon="route" href="/documentation/platform/agent-vault/plan-your-setup">
     Get a recommended setup for what you're building.
@@ -42,6 +42,12 @@ Set up Agent Vault for where your agents run.
     Run an Agent Vault proxy beside each agent container so the agent never has access to a credential.
   </Card>
 </CardGroup>
+
+### Kubernetes
+
+<Card title="Kubernetes" icon="/images/stack/kubernetes.png" href="/documentation/platform/agent-vault/guides/kubernetes">
+  Learn how to run AI agents in Kubernetes pods that contain no credentials and can only connect to the Agent Vault proxy.
+</Card>
 
 ### Messaging gateways
 

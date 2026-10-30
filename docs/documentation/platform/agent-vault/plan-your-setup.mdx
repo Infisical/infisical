@@ -42,12 +42,24 @@ Configure the following options to get custom guidance and best practices tailor
 
   <ul>
     <li>An [access bundle](/documentation/platform/agent-vault/access-bundles) in Infisical: a list of the [services](/documentation/platform/agent-vault/services) (the external APIs or MCP servers) that the agent can use, each with its real credential</li>
-    <li>A running [proxy](/documentation/platform/agent-vault/proxies): a program on its own machine that every request from the agent goes through</li>
+    <li>A running [proxy](/documentation/platform/agent-vault/proxies): a program outside the agent's environment that every request from the agent goes through</li>
   </ul>
 
-  <AgentVaultSetupBranch building="scheduled,platform">
+  <AgentVaultSetupBranch building="scheduled">
     <Note>
     One proxy stays running and handles the requests from every agent and every job, so you don't need a separate proxy for each job or each host.
+    </Note>
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform" runs="none,server,kubernetes,ci">
+    <Note>
+    One proxy stays running and handles the requests from every agent, so you don't need a separate proxy for each task.
+    </Note>
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform" runs="container,sandbox">
+    <Note>
+    Each agent run starts its own proxy beside the agent. Every proxy starts from the same proxy token, so you create the proxy in Infisical once.
     </Note>
   </AgentVaultSetupBranch>
 </AgentVaultSetupStep>
@@ -103,8 +115,24 @@ Configure the following options to get custom guidance and best practices tailor
     The CLI starts the agent right after it creates the session. The agent can read the machine identity's credentials [from its environment](/documentation/platform/agent-vault/sessions-cli#step-2-start-the-agent), and could use them to create a session for any access bundle the machine identity has. That's why the machine identity only has the access bundle that this agent uses.
   </AgentVaultSetupBranch>
 
+  <AgentVaultSetupBranch building="platform" runs="none,server,ci">
+    The orchestrator starts the agent on a different host and passes it only the session token.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform" runs="container">
+    The orchestrator creates a new container for the task, starts the agent in it, and passes it only the session token.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform" runs="kubernetes">
+    The orchestrator creates a new pod for the task, starts the agent in it, and passes it only the session token.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform" runs="sandbox">
+    The orchestrator creates a new sandbox for the task, starts the agent in it, and passes it only the session token.
+  </AgentVaultSetupBranch>
+
   <AgentVaultSetupBranch building="platform">
-    The orchestrator starts the agent on a different host and passes it only the session token. The orchestrator stays off the agents' hosts because the machine identity it uses can create sessions for every access bundle it's granted. An agent that read those credentials could reach every service in those access bundles.
+    The orchestrator stays out of the agent's environment because the machine identity it uses can create sessions for every access bundle it's granted. If an agent read those credentials, it could reach every service in those access bundles.
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="scheduled,platform" agent="claude-code">
@@ -128,22 +156,13 @@ Configure the following options to get custom guidance and best practices tailor
   <AgentVaultSetupBranch building="scheduled,platform" agent="openclaw">
     Nobody is at the terminal while the agent runs, so OpenClaw runs in its [non-interactive mode](https://docs.openclaw.ai/cli/agent): `openclaw agent --agent <agent-id> --message "<prompt>" --local`. OpenClaw holds a [placeholder](/documentation/platform/agent-vault/guides/openclaw#step-2-launch-your-agent) instead of your model provider's key, and the proxy attaches the real key.
   </AgentVaultSetupBranch>
-
-  <AgentVaultSetupBranch runs="computer">
-    <Warning>
-      The agent runs as your user account. If you're logged in to the [Infisical CLI](/cli/overview) on the same computer, the agent can run Infisical CLI commands with your login.
-    </Warning>
-  </AgentVaultSetupBranch>
 </AgentVaultSetupStep>
 
 <AgentVaultSetupStep step="request">
   The agent calls an API the same way it always does, but the request is intercepted by the proxy.
 
   <ul>
-    <AgentVaultSetupBranch runs="computer">
-      <li>If you don't have a second machine, a small VM on your network can run the proxy</li>
-    </AgentVaultSetupBranch>
-    <AgentVaultSetupBranch runs="container">
+    <AgentVaultSetupBranch building="personal,assistant,scheduled" runs="container">
       <li>The agents' containers can't read the proxy token</li>
     </AgentVaultSetupBranch>
     <AgentVaultSetupBranch runs="ci">
@@ -151,9 +170,23 @@ Configure the following options to get custom guidance and best practices tailor
     </AgentVaultSetupBranch>
   </ul>
 
-  <Note>
-    The proxy [runs on a different machine](/documentation/platform/agent-vault/proxies#choose-where-to-run-the-proxy) from the agent, on the same private network. If the proxy ran on the agent's machine, the agent could read the proxy token.
-  </Note>
+  <AgentVaultSetupBranch building="personal,assistant,scheduled">
+    <Note>
+      The proxy [runs on a different machine](/documentation/platform/agent-vault/proxies#choose-where-to-run-the-proxy) from the agent, on the same private network. If the proxy ran on the agent's machine, the agent could read the proxy token.
+    </Note>
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform" runs="none,server,ci">
+    <Note>
+      The proxy [runs on a different machine](/documentation/platform/agent-vault/proxies#choose-where-to-run-the-proxy) from the agent, on the same private network. If the proxy ran on the agent's machine, the agent could read the proxy token.
+    </Note>
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform" runs="container,kubernetes,sandbox">
+    <Note>
+      The proxy runs outside the agent's environment, and the agent's network only reaches the proxy. The agent can't read the proxy token or connect to an API without going through the proxy.
+    </Note>
+  </AgentVaultSetupBranch>
 </AgentVaultSetupStep>
 
 <AgentVaultSetupStep step="fetch">
@@ -173,6 +206,10 @@ Configure the following options to get custom guidance and best practices tailor
 
   <AgentVaultSetupBranch building="platform">
     The orchestrator revokes the session through the [Infisical API](/api-reference/endpoints/agent-vault-sessions/revoke).
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform" runs="container,kubernetes,sandbox">
+    The orchestrator also deletes the agent's environment, so nothing from one task carries over to the next.
   </AgentVaultSetupBranch>
 </AgentVaultSetupStep>
 
@@ -218,9 +255,24 @@ Follow these pages in order:
 
   <AgentVaultSetupBranch building="scheduled,platform">
     <li>[Quickstart](/documentation/platform/agent-vault/quickstart): create an access bundle with a service for each external system the agent uses</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="scheduled">
     <li>[Create a proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it), and run it with Docker, Kubernetes, or systemd so that it keeps running between jobs</li>
   </AgentVaultSetupBranch>
-  <AgentVaultSetupBranch building="scheduled" runs="none,computer,server">
+  <AgentVaultSetupBranch building="platform" runs="none,server,ci">
+    <li>[Create a proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it), and run it with Docker, Kubernetes, or systemd so that it keeps running between tasks</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="platform" runs="container">
+    <li>[Run agents in Docker containers with Agent Vault](/documentation/platform/agent-vault/guides/docker): create a session for each task, then start the agent in its own container with a proxy beside it</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="platform" runs="kubernetes">
+    <li>[Run agents on Kubernetes with Agent Vault](/documentation/platform/agent-vault/guides/kubernetes): choose an isolation level for agent pods</li>
+    <li>[Set up Agent Vault on Kubernetes](/documentation/platform/agent-vault/guides/kubernetes-setup): deploy the proxy in its own namespace, limit agent pods to it, and start each agent with its own session</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="platform" runs="sandbox">
+    <li>The guide for your sandbox provider, [Modal](/documentation/platform/agent-vault/guides/modal) or [Daytona](/documentation/platform/agent-vault/guides/daytona): create a session for each task, then start the agent in its own sandbox with a proxy beside it</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="scheduled" runs="none,server">
     <li>[Create sessions with the CLI](/documentation/platform/agent-vault/sessions-cli): set up a machine identity, then run the agent from cron or systemd</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="scheduled" runs="container">
@@ -229,10 +281,10 @@ Follow these pages in order:
   <AgentVaultSetupBranch building="scheduled" runs="ci">
     <li>[Create sessions with the CLI](/documentation/platform/agent-vault/sessions-cli): set up a machine identity, then start the agent in a GitHub Actions step</li>
   </AgentVaultSetupBranch>
-  <AgentVaultSetupBranch building="platform">
+  <AgentVaultSetupBranch building="platform" runs="none,server,ci">
     <li>[Create sessions with the API](/documentation/platform/agent-vault/sessions-api): set up a machine identity for the orchestrator, then create a session for each task and revoke it when the task ends</li>
   </AgentVaultSetupBranch>
-  <AgentVaultSetupBranch building="platform" agent="none,claude-code,codex,opencode,hermes,openclaw">
+  <AgentVaultSetupBranch building="platform" runs="none,server,ci" agent="none,claude-code,codex,opencode,hermes,openclaw">
     <li>[Start each agent with its session token](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token): install the Infisical CLI on each agent's host, and start the agent with `infisical agent-vault run --session-token`</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="scheduled,platform" agent="custom">

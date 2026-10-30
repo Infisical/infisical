@@ -60,33 +60,34 @@ export const AgentVaultSetupQuestions = () => {
     {
       id: "personal",
       label: "A coding agent for yourself",
-      example: "An agent that you work alongside, on your computer or a dev box.",
-      runs: ["computer", "server", "container"],
+      example: "An agent that you work alongside, on a dev box or in a container.",
+      runs: ["server", "container"],
     },
     {
       id: "assistant",
       label: "An always-on assistant",
       example: "An agent that keeps running and answers messages, such as a chat bot.",
-      runs: ["computer", "server", "container"],
+      runs: ["server", "container"],
     },
     {
       id: "scheduled",
       label: "A scheduled or unattended job",
       example: "An agent that runs on a schedule or in CI, such as one that triages new issues.",
-      runs: ["computer", "server", "container", "ci"],
+      runs: ["server", "container", "ci"],
     },
     {
       id: "platform",
       label: "A service that starts agents for tasks",
-      example: "Your own service that starts a separate agent for each task it receives.",
-      runs: ["server", "container", "ci"],
+      example: "Your own code, such as a backend service, that starts a new agent for each task.",
+      runs: ["server", "container", "kubernetes", "sandbox", "ci"],
     },
   ];
 
   const RUNS = [
-    { id: "computer", label: "Your computer", example: "Your laptop or desktop." },
     { id: "server", label: "A server or VM", example: "Such as a dev box, a cloud VM, or a home server." },
     { id: "container", label: "A container", example: "Such as a Docker container or a dev container." },
+    { id: "kubernetes", label: "Kubernetes", example: "A pod in your own cluster." },
+    { id: "sandbox", label: "A managed sandbox", example: "Such as Modal or Daytona." },
     { id: "ci", label: "A CI runner", example: "Such as a GitHub Actions job." },
   ];
 
@@ -264,16 +265,23 @@ export const AgentVaultSetupQuestions = () => {
 
 export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const RULES = {
-    personal: { model: "user", runs: ["computer", "server", "container"] },
-    assistant: { model: "user", runs: ["computer", "server", "container"] },
-    scheduled: { model: "job", runs: ["computer", "server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["server", "container", "ci"] },
+    personal: { model: "user", runs: ["server", "container"] },
+    assistant: { model: "user", runs: ["server", "container"] },
+    scheduled: { model: "job", runs: ["server", "container", "ci"] },
+    platform: { model: "orchestrator", runs: ["server", "container", "kubernetes", "sandbox", "ci"] },
   };
   const HOSTS = {
-    computer: "Your computer",
     server: "Server or VM",
     container: "Container",
+    kubernetes: "Kubernetes pod",
+    sandbox: "Managed sandbox",
     ci: "CI runner",
+  };
+  // In these environments the guides start a proxy for each agent run, or run one in its own namespace.
+  const PROXY_HOSTS = {
+    container: "One per agent run",
+    kubernetes: "Its own namespace",
+    sandbox: "One per agent run",
   };
 
   const FOCUS = {
@@ -389,7 +397,12 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
     { id: "infisical", label: "Infisical", sub: "Cloud or self-hosted" },
     { id: "creator", label: creator.label, sub: creator.sub },
     { id: "agent", label: "Agent", sub: selection.runs ? HOSTS[selection.runs] : "Agent's host" },
-    { id: "proxy", label: "Proxy", sub: "Its own host" },
+    {
+      id: "proxy",
+      label: "Proxy",
+      sub:
+        (selection.model === "orchestrator" && PROXY_HOSTS[selection.runs]) || "Its own host",
+    },
     { id: "api", label: "API", sub: "Such as GitHub" },
   ];
   const laneIndex = (id) => lanes.findIndex((lane) => lane.id === id);
@@ -705,15 +718,16 @@ export const AgentVaultSetupSummary = () => {
     platform: "a service that starts agents for tasks",
   };
   const RUNS = {
-    personal: ["computer", "server", "container"],
-    assistant: ["computer", "server", "container"],
-    scheduled: ["computer", "server", "container", "ci"],
-    platform: ["server", "container", "ci"],
+    personal: ["server", "container"],
+    assistant: ["server", "container"],
+    scheduled: ["server", "container", "ci"],
+    platform: ["server", "container", "kubernetes", "sandbox", "ci"],
   };
   const PLACES = {
-    computer: "on your computer",
     server: "on a server or VM",
     container: "in a container",
+    kubernetes: "on Kubernetes",
+    sandbox: "in a managed sandbox",
     ci: "in a CI runner",
   };
   const AGENTS = {
@@ -780,10 +794,10 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
   const SELECTION_EVENT = "av-setup-selection-change";
 
   const RULES = {
-    personal: { model: "user", runs: ["computer", "server", "container"] },
-    assistant: { model: "user", runs: ["computer", "server", "container"] },
-    scheduled: { model: "job", runs: ["computer", "server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["server", "container", "ci"] },
+    personal: { model: "user", runs: ["server", "container"] },
+    assistant: { model: "user", runs: ["server", "container"] },
+    scheduled: { model: "job", runs: ["server", "container", "ci"] },
+    platform: { model: "orchestrator", runs: ["server", "container", "kubernetes", "sandbox", "ci"] },
   };
   const ALL_AGENTS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "custom"];
 

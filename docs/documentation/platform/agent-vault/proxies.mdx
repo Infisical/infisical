@@ -3,16 +3,23 @@ title: "Proxies"
 description: "Run the proxy that attaches credentials, set its traffic policy, and understand how agents trust it."
 ---
 
-A proxy intercepts your agents' requests to the APIs they call, then attaches the necessary API credential to each request that matches a [service](/documentation/platform/agent-vault/services). Run the proxy where agent traffic leaves your network, either on its own host that several agents share, or next to each agent, such as in a sidecar container.
+A proxy intercepts your agents' requests to the APIs they call, then attaches the necessary API credential to each request that matches a [service](/documentation/platform/agent-vault/services). You can run a separate proxy for each agent, such as in a sidecar container, or one proxy on its own host that several agents share.
 
 You create a proxy in Infisical, start it with the proxy token that Infisical shows you, and change its settings in Infisical afterwards. You can run the same proxy on as many machines as you need with one token, such as several machines behind a [load balancer](#high-availability).
 
 ## Choose where to run the proxy
 
-While you can technically run the agent and the proxy on a single machine, we recommend running the proxy on a different machine from the agent. If the agent and the proxy run on the same machine, the agent could read the proxy token and the private key of the proxy's certificate authority.
+You can run the proxy in one of two ways:
+
+- **One proxy per agent (recommended):** the orchestrator starts a proxy in a separate container with each agent, on a private network that only the two share, and stops the proxy when the agent finishes, such as a [Modal sidecar](/documentation/platform/agent-vault/guides/modal), a [linked Daytona sandbox](/documentation/platform/agent-vault/guides/daytona), or a second container in the agent's [Docker Compose project](/documentation/platform/agent-vault/guides/docker)
+- **Shared:** one proxy runs on its own machine or in its own [Kubernetes namespace](/documentation/platform/agent-vault/guides/kubernetes), and every agent connects to it
+
+For when to use each, see [Proxy placement](/documentation/platform/agent-vault/how-it-works#proxy-placement).
+
+Either way, run the proxy separately from the agent, in its own container or on its own machine. If the agent and the proxy run in the same container or on the same machine, the agent can read the proxy token and the private key of the proxy's certificate authority. We also don't recommend running the agent on your own computer, where the agent can read your files and use your Infisical CLI login.
 
 <Tip>
-We also recommend keeping both machines on the same private network. This is because every request the agent makes goes through the proxy, and a round trip between networks adds latency to every request.
+If you run a shared proxy, keep it on the same private network as your agents. Every request the agent makes goes through the proxy, and a round trip between networks adds latency to every request.
 </Tip>
 
 ## Supported connections
