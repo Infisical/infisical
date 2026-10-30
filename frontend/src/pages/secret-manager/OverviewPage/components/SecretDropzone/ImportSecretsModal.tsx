@@ -589,6 +589,7 @@ const ImportSecretsContent = ({
 
         const existingSecrets = mergePersonalSecrets(rawExisting);
         const existingKeys = new Set(existingSecrets.map((s) => s.key));
+        const existingSecretsByKey = new Map(existingSecrets.map((s) => [s.key, s]));
 
         // Resolve edited keys (file-based secrets can be renamed in the review table)
         const resolvedEntries = Object.entries(secrets).map(([origKey, secretData]) => ({
@@ -672,9 +673,7 @@ const ImportSecretsContent = ({
                       if (!("approval" in result))
                         shareableSecrets.push(
                           ...resolvedEntries.flatMap(({ finalKey, secretData }) => {
-                            const existing = existingSecrets.find(
-                              (secret) => secret.key === finalKey
-                            );
+                            const existing = existingSecretsByKey.get(finalKey);
                             // The API keeps the stored value of rotated secrets and honey tokens
                             if (
                               !existing ||
