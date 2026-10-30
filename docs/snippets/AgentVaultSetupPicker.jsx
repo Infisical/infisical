@@ -60,8 +60,8 @@ export const AgentVaultSetupQuestions = () => {
     {
       id: "platform",
       label: "A service that starts agents for tasks",
-      example: "Your own code, such as a backend service, that starts a new agent for each task.",
-      runs: ["server", "container", "kubernetes", "sandbox", "ci"],
+      example: "Your own code, such as a Slack bot or a backend service, that starts a new agent for each task.",
+      runs: ["sandbox", "kubernetes", "container", "server"],
     },
     {
       id: "scheduled",
@@ -70,15 +70,9 @@ export const AgentVaultSetupQuestions = () => {
       runs: ["server", "container", "ci"],
     },
     {
-      id: "assistant",
-      label: "An always-on assistant",
-      example: "An agent that keeps running and answers messages, such as a chat bot.",
-      runs: ["server", "container"],
-    },
-    {
       id: "personal",
-      label: "A coding agent for yourself",
-      example: "An agent that you work alongside, on a dev box or in a container.",
+      label: "An agent you run manually",
+      example: "You create a session in the Infisical dashboard and run the agent with its token, such as a coding agent on a dev box.",
       runs: ["server", "container"],
     },
   ];
@@ -90,6 +84,17 @@ export const AgentVaultSetupQuestions = () => {
     { id: "sandbox", label: "A managed sandbox", example: "Such as Modal or Daytona." },
     { id: "ci", label: "A CI runner", example: "Such as a GitHub Actions job." },
   ];
+
+  // Daytona's logo is black on a transparent background, so it's inverted in dark mode.
+  const RUN_LOGOS = {
+    sandbox: [
+      { light: "agent-vault-agents/modal.svg" },
+      { light: "agent-vault-agents/daytona.svg", invertDark: true },
+    ],
+    kubernetes: [{ light: "stack/kubernetes.png" }],
+    container: [{ light: "agent-vault-agents/docker.svg" }],
+    ci: [{ light: "agent-vault-templates/GitHub.on-light.png", dark: "agent-vault-templates/GitHub.png" }],
+  };
 
   const AGENTS = [
     { id: "claude-code", label: "Claude Code" },
@@ -154,7 +159,7 @@ export const AgentVaultSetupQuestions = () => {
   };
 
   const activeBuild = BUILDS.find((option) => option.id === selection.building);
-  const visibleRuns = RUNS.filter((option) => activeBuild.runs.includes(option.id));
+  const visibleRuns = activeBuild.runs.map((id) => RUNS.find((option) => option.id === id));
 
   const renderAgentIcon = (id) => {
     if (id === "custom") {
@@ -234,10 +239,31 @@ export const AgentVaultSetupQuestions = () => {
         <div className="ifx-avsp__cards">
           {visibleRuns.map((option) =>
             renderOption("runs", option, (
-              <>
-                <span className="ifx-avsp__card-label">{option.label}</span>
-                <span className="ifx-avsp__card-desc">{option.example}</span>
-              </>
+              <span className="ifx-avsp__card-row">
+                <span className="ifx-avsp__card-text">
+                  <span className="ifx-avsp__card-label">{option.label}</span>
+                  <span className="ifx-avsp__card-desc">{option.example}</span>
+                </span>
+                {RUN_LOGOS[option.id] && (
+                  <span className="ifx-avsp__card-logos">
+                    {RUN_LOGOS[option.id].map((logo) => {
+                      const src = (file) => `${docsBase}/images/${file}`;
+                      const invert = logo.invertDark ? " ifx-avsp__card-logo--invert-dark" : "";
+                      if (!logo.dark) {
+                        return (
+                          <img key={logo.light} src={src(logo.light)} alt="" className={`ifx-avsp__card-logo${invert}`} />
+                        );
+                      }
+                      return (
+                        <span key={logo.light} className="ifx-avsp__card-logo-pair">
+                          <img src={src(logo.light)} alt="" className="ifx-avsp__card-logo ifx-avqs__img--light-only" />
+                          <img src={src(logo.dark)} alt="" className="ifx-avsp__card-logo ifx-avqs__img--dark-only" />
+                        </span>
+                      );
+                    })}
+                  </span>
+                )}
+              </span>
             )),
           )}
         </div>
@@ -266,9 +292,8 @@ export const AgentVaultSetupQuestions = () => {
 export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const RULES = {
     personal: { model: "user", runs: ["server", "container"] },
-    assistant: { model: "user", runs: ["server", "container"] },
     scheduled: { model: "job", runs: ["server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["server", "container", "kubernetes", "sandbox", "ci"] },
+    platform: { model: "orchestrator", runs: ["sandbox", "kubernetes", "container", "server"] },
   };
   const HOSTS = {
     server: "Server or VM",
@@ -277,12 +302,8 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
     sandbox: "Managed sandbox",
     ci: "CI runner",
   };
-  // In these environments the guides start a proxy for each agent run, or run one in its own namespace.
-  const PROXY_HOSTS = {
-    container: "One per agent run",
-    kubernetes: "Its own namespace",
-    sandbox: "One per agent run",
-  };
+  // The Docker, Modal, and Daytona guides start a proxy with each agent. Every other setup shares one proxy.
+  const PER_AGENT_PROXY_RUNS = ["container", "sandbox"];
 
   const FOCUS = {
     building: { lanes: ["infisical", "creator"], messages: ["create", "token", "start", "revoke"] },
@@ -327,8 +348,8 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
       "claude-code": "guides/claude-code",
       codex: "guides/codex",
       opencode: "guides/opencode",
-      hermes: selection.building === "assistant" ? "guides/hermes-gateway" : "guides/hermes",
-      openclaw: selection.building === "assistant" ? "guides/openclaw-gateway" : "guides/openclaw",
+      hermes: "guides/hermes",
+      openclaw: "guides/openclaw",
       custom: "guides/custom-agent",
     }[selection.agent];
     buildHref = `${GUIDES}/${guide ?? "quickstart"}`;
@@ -393,16 +414,27 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
     orchestrator: { label: "Orchestrator", sub: "Your service" },
   }[selection.model];
 
+  let proxyLayout = "single";
+  if (selection.model === "orchestrator" && PER_AGENT_PROXY_RUNS.includes(selection.runs)) {
+    proxyLayout = "per-agent";
+  } else if (selection.model !== "user") {
+    proxyLayout = "shared";
+  }
+  const proxySub = {
+    single: "Its own host",
+    shared: selection.runs === "kubernetes" ? "Shared, own namespace" : "Shared by every agent",
+    "per-agent": "One per agent",
+  }[proxyLayout];
+
   const lanes = [
     { id: "infisical", label: "Infisical", sub: "Cloud or self-hosted" },
     { id: "creator", label: creator.label, sub: creator.sub },
-    { id: "agent", label: "Agent", sub: selection.runs ? HOSTS[selection.runs] : "Agent's host" },
     {
-      id: "proxy",
-      label: "Proxy",
-      sub:
-        (selection.model === "orchestrator" && PROXY_HOSTS[selection.runs]) || "Its own host",
+      id: "agent",
+      label: proxyLayout === "shared" ? "Agents" : "Agent",
+      sub: selection.runs ? HOSTS[selection.runs] : "Agent's host",
     },
+    { id: "proxy", label: "Proxy", sub: proxySub },
     { id: "api", label: "API", sub: "Such as GitHub" },
   ];
   const laneIndex = (id) => lanes.findIndex((lane) => lane.id === id);
@@ -552,8 +584,20 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
                 <span className="ifx-avsp__boundary-label">Same host</span>
               </div>
             )}
+            {proxyLayout === "per-agent" && (!revealed || revealed.shownLanes.has("agent")) && (
+              <div className="ifx-avsp__boundary ifx-avsp__boundary--per-agent">
+                <span className="ifx-avsp__boundary-label">Created for each task</span>
+              </div>
+            )}
             {lanes.map((lane) => (
-              <div key={lane.id} className={laneClass(lane.id)}>
+              <div
+                key={lane.id}
+                className={
+                  proxyLayout === "shared" && lane.id === "agent"
+                    ? `${laneClass(lane.id)} ifx-avsp__lane--stacked`
+                    : laneClass(lane.id)
+                }
+              >
                 <span className="ifx-avsp__lane-label">{lane.label}</span>
                 <span className="ifx-avsp__lane-sub">{lane.sub}</span>
               </div>
@@ -628,7 +672,6 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
 export const AgentVaultSetupStep = ({ step, children }) => {
   const MODELS = {
     personal: "user",
-    assistant: "user",
     scheduled: "job",
     platform: "orchestrator",
   };
@@ -712,16 +755,14 @@ export const AgentVaultSetupStep = ({ step, children }) => {
 
 export const AgentVaultSetupSummary = () => {
   const BUILDS = {
-    personal: "coding agent for yourself",
-    assistant: "an always-on assistant",
+    personal: "an agent you run manually",
     scheduled: "a scheduled or unattended job",
     platform: "a service that starts agents for tasks",
   };
   const RUNS = {
     personal: ["server", "container"],
-    assistant: ["server", "container"],
     scheduled: ["server", "container", "ci"],
-    platform: ["server", "container", "kubernetes", "sandbox", "ci"],
+    platform: ["sandbox", "kubernetes", "container", "server"],
   };
   const PLACES = {
     server: "on a server or VM",
@@ -772,7 +813,9 @@ export const AgentVaultSetupSummary = () => {
     buildText =
       selection.building === "platform"
         ? `a service that starts agents ${PLACES[selection.runs]} for each task`
-        : `${buildText} that runs ${PLACES[selection.runs]}`;
+        : selection.building === "personal"
+          ? `${buildText} ${PLACES[selection.runs]}`
+          : `${buildText} that runs ${PLACES[selection.runs]}`;
   }
   const agentText = selection.agent ? `, using ${AGENTS[selection.agent]}` : "";
   const missing = [];
@@ -795,9 +838,8 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
 
   const RULES = {
     personal: { model: "user", runs: ["server", "container"] },
-    assistant: { model: "user", runs: ["server", "container"] },
     scheduled: { model: "job", runs: ["server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["server", "container", "kubernetes", "sandbox", "ci"] },
+    platform: { model: "orchestrator", runs: ["sandbox", "kubernetes", "container", "server"] },
   };
   const ALL_AGENTS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "custom"];
 
