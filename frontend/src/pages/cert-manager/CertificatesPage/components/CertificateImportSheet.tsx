@@ -649,6 +649,7 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
   const renderEntriesTable = () => (
     <Table
       containerClassName="max-h-80 thin-scrollbar overflow-auto"
+      className="w-full"
       style={{
         minWidth:
           ENTRY_BASE_WIDTH +
@@ -832,6 +833,7 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
     return (
       <Table
         containerClassName="max-h-96 thin-scrollbar overflow-auto"
+        className="w-full"
         style={{
           minWidth:
             REVIEW_BASE_WIDTH +
