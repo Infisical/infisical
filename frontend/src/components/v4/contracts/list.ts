@@ -14,7 +14,8 @@ export const listDefinition = {
     "Link and button rows tint with ink on hover (6% light, 12% dark) and a step further while pressed; current and selected rows keep their select ground.",
     "Section heads are 32px uppercase eyebrow labels with an optional tabular meta count.",
     "Selection skips disabled and locked rows. Current details and bulk selection remain independent.",
-    "Loading appends placeholders below retained rows; sections, empty and footer compose."
+    "Loading appends placeholders below retained rows; sections, empty and footer compose.",
+    "DataList terms wrap only between words and never break inside one; a term keeps at least its longest word even past its 45% share, and values wrap instead."
   ],
   accessibility: [
     "Semantic lists with named selection controls; no nested interactive row targets.",

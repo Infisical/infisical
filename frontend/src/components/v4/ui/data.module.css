@@ -757,8 +757,7 @@ button.rowTitle::after {
 }
 .dataPair dt {
   color: var(--v4-muted);
-  min-width: 0;
-  overflow-wrap: anywhere;
+  min-width: min-content;
   max-width: 45%;
 }
 .dataPair dd {

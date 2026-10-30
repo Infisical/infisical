@@ -19,6 +19,7 @@ export const multiSelectDefinition = {
     'In multiple mode the open list starts with a bar: the visible count ("2 of 5 selected") and Select all and Deselect all. Select all is disabled when every enabled option is on, Deselect all when no enabled option is on; both skip disabled options, which keep whatever they had, and return focus to the list. quickActions={false} hides the bar.',
     "Each option is one 32px row with the description muted and right-aligned beside the label. Multiple mode leads every row with an 18px checkbox mark (checked, unchecked, and dimmed when disabled); single mode ends the chosen row with a check.",
     "ArrowDown or ArrowUp on the focused closed trigger opens the list, like Enter and Space.",
+    "Focus moving outside the panel closes it. closeOnFocusOutside={false} keeps it open when focus moves to another part of the same task, such as a dialog field beside the list; outside pointer presses and Escape still close it.",
     "Creation receives a host AbortSignal; changing the query, closing or unmounting aborts and invalidates the prior request.",
     "A host DOMException named AbortError is cancellation. It preserves the query without failure feedback; other failures remain retryable."
   ],

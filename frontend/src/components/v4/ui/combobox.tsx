@@ -32,6 +32,7 @@ type SharedComboboxProps = {
   disabled?: boolean;
   invalid?: boolean;
   mono?: boolean;
+  defaultOpen?: boolean;
   onCreate?: OptionCreateHandler;
   className?: string;
 };
@@ -50,6 +51,7 @@ export type ComboboxProps = SharedComboboxProps &
         defaultValue?: string[];
         onChange?: (value: string[]) => void;
         onValueChange?: (value: string[]) => void;
+        clearable?: boolean;
       }
   );
 export function Combobox({
@@ -85,7 +87,7 @@ export function Combobox({
       props.onValueChange?.(value);
     }
   };
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = React.useState(props.defaultOpen ?? false);
   const fieldRef = React.useRef<HTMLDivElement>(null);
   const refocus = React.useRef<string | null | undefined>(undefined);
   React.useLayoutEffect(() => {
@@ -173,6 +175,7 @@ export function Combobox({
           searchable
           quickActions={false}
           anchorRef={fieldRef}
+          defaultOpen={props.defaultOpen}
           renderValue={selected.length ? () => null : undefined}
           onCreate={onCreate}
           className={className}
@@ -182,6 +185,20 @@ export function Combobox({
               apply(selected.slice(0, -1));
           }}
         />
+        {props.clearable && selected.some((value) => !isLocked(value)) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            data-slot="combobox-clear"
+            onClick={() => {
+              refocus.current = null;
+              apply(selected.filter(isLocked));
+            }}
+          >
+            Clear all
+          </Button>
+        )}
       </div>
     );
   const trigger = (

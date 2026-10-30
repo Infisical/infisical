@@ -11,11 +11,12 @@ export default function Example() {
     <ExampleStack>
       <Field
         label="Visible environments"
-        description="Audit is required by policy. Creation is unavailable."
+        description="Audit is required by policy, so Clear all keeps it. Creation is unavailable."
       >
         <Combobox
           label="Visible environments"
           multiple
+          clearable
           options={[
             { value: "dev", label: "Dev", meta: "3 projects" },
             { value: "staging", label: "Staging", meta: "2 projects" },
