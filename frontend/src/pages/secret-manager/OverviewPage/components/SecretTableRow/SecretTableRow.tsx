@@ -338,6 +338,7 @@ export const SecretTableRow = ({
       onSecretUpdate,
       onAddOverride: () => {
         setCreatingOverrideEnvs((prev) => new Set([...prev, slug]));
+        if (!isExpanded) onToggleExpand(secretKey);
       },
       environment: slug,
       environmentName: name,
