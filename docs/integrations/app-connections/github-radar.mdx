@@ -45,13 +45,18 @@ Infisical supports GitHub App installation for creating a GitHub Radar Connectio
             ![github radar app webhook](/images/app-connections/github-radar/self-hosted-github-radar-step-3.png)
 
             Set the following repository permissions:
+            - **Checks**: `Read and write`
             - **Contents**: `Read-only`
             - **Metadata**: `Read-only`
+            - **Pull requests**: `Read-only`
 
             ![github radar app permissions 1](/images/app-connections/github-radar/self-hosted-github-radar-step-4.png)
             ![github radar app permissions 2](/images/app-connections/github-radar/self-hosted-github-radar-step-5.png)
 
             Subscribe to the following events:
+            - **Check run**
+            - **Check suite**
+            - **Pull request**
             - **Push**
 
             ![github radar app events](/images/app-connections/github-radar/self-hosted-github-radar-step-6.png)

@@ -31,6 +31,22 @@ export const registerSecretScanningV2Webhooks = async (server: FastifyZodProvide
         const { payload } = context;
         await server.services.secretScanningV2.github.handlePushEvent(payload as PushEvent);
       });
+
+      app.on(["pull_request.opened", "pull_request.synchronize", "pull_request.reopened"], async (context) => {
+        await server.services.secretScanningV2.github.handlePullRequestEvent(context.payload, context.id);
+      });
+
+      app.on("check_run.rerequested", async (context) => {
+        await server.services.secretScanningV2.github.handleCheckRunRerequestedEvent(context.payload, context.id);
+      });
+
+      app.on("check_suite.rerequested", async (context) => {
+        await server.services.secretScanningV2.github.handleCheckSuiteRerequestedEvent(context.payload, context.id);
+      });
+
+      app.on("check_run.requested_action", async (context) => {
+        await server.services.secretScanningV2.github.handleCheckRunRequestedActionEvent(context.payload, context.id);
+      });
     };
 
     const probot = new Probot({

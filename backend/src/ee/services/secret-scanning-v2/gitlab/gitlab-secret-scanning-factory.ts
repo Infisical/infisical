@@ -399,10 +399,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
         if (commitDiff.deletedFile) continue;
 
         // eslint-disable-next-line no-await-in-loop
-        const findings = await scanContentAndGetFindings(
-          replaceNonChangesWithNewlines(`\n${commitDiff.diff}`),
-          configPath
-        );
+        const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(commitDiff.diff), configPath);
 
         const adjustedFindings = findings.map((finding) => {
           const startLine = convertPatchLineToFileLineNumber(commitDiff.diff, finding.StartLine);
@@ -439,12 +436,14 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
       }
     }
 
-    return allFindings.map((finding) => ({
-      details: toFindingDetails(finding),
-      fingerprint: finding.Fingerprint,
-      severity: SecretScanningFindingSeverity.High,
-      rule: finding.RuleID
-    }));
+    return {
+      findings: allFindings.map((finding) => ({
+        details: toFindingDetails(finding),
+        fingerprint: finding.Fingerprint,
+        severity: SecretScanningFindingSeverity.High,
+        rule: finding.RuleID
+      }))
+    };
   };
 
   const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<

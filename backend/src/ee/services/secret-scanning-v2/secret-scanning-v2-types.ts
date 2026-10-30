@@ -1,9 +1,12 @@
 import {
   TSecretScanningDataSources,
+  TSecretScanningFindings,
   TSecretScanningFindingsInsert,
   TSecretScanningResources,
+  TSecretScanningResourcesInsert,
   TSecretScanningScans
 } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TBitbucketDataSource,
   TBitbucketDataSourceCredentials,
@@ -18,7 +21,9 @@ import {
   TGitHubDataSourceInput,
   TGitHubDataSourceListItem,
   TGitHubDataSourceWithConnection,
+  TGitHubRealtimeScanDetails,
   TGitHubFinding,
+  TQueueGitHubDataSourceEvent,
   TQueueGitHubResourceDiffScan
 } from "@app/ee/services/secret-scanning-v2/github";
 import {
@@ -34,7 +39,8 @@ import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2
 import {
   SecretScanningDataSource,
   SecretScanningFindingStatus,
-  SecretScanningScanStatus
+  SecretScanningScanStatus,
+  SecretScanningScanTrigger
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -167,6 +173,9 @@ export type TQueueSecretScanningResourceDiffScanPayload = {
   scanId: string;
 };
 
+// Webhook events a provider processes in the background, beyond the pushes every provider scans.
+export type TQueueSecretScanningDataSourceEvent = TQueueGitHubDataSourceEvent;
+
 export type TQueueSecretScanningSendNotification = {
   dataSource: TSecretScanningDataSources;
   resourceName: string;
@@ -201,10 +210,54 @@ export type TSecretScanningFactoryGetFullScanPath<T extends TSecretScanningDataS
   tempFolder: string;
 }) => Promise<string>;
 
+// What a provider learned about the scanned changes beyond the findings, for the scan's report.
+export type TSecretScanningRealtimeScanDetails = TGitHubRealtimeScanDetails;
+
+export type TSecretScanningRealtimeScanFindings = {
+  findings: TFindingsPayload;
+  details?: TSecretScanningRealtimeScanDetails;
+};
+
 export type TSecretScanningFactoryGetDiffScanFindingsPayload<
   T extends TSecretScanningDataSourceWithConnection,
   P extends TQueueSecretScanningResourceDiffScan["payload"]
-> = (parameters: { dataSource: T; resourceName: string; payload: P; configPath?: string }) => Promise<TFindingsPayload>;
+> = (parameters: {
+  dataSource: T;
+  resourceName: string;
+  payload: P;
+  configPath?: string;
+}) => Promise<TSecretScanningRealtimeScanFindings>;
+
+/**
+ * Reports a scan back to where it was requested, such as a check run on a GitHub pull request. Every method is called
+ * after the scan's own state is saved and must not throw, since a provider outage can't change the scan's outcome.
+ */
+export type TSecretScanningScanReport = {
+  start: () => Promise<void>;
+  // Saved on the completed scan, in the transaction that saves its findings.
+  getCompletedScanMetadata: (params: TSecretScanningScanReportCompletion) => unknown;
+  // `findings` are every finding the scan matched, with the status each was triaged to.
+  complete: (params: TSecretScanningScanReportCompletion) => Promise<void>;
+  fail: (params: { reason: string; isTimedOut?: boolean }) => Promise<void>;
+  cancel: () => Promise<void>;
+};
+
+export type TSecretScanningScanReportCompletion = {
+  findings: TSecretScanningFindings[];
+  details?: TSecretScanningRealtimeScanDetails;
+};
+
+// Built from the job payload, so a scan whose data source was deleted can still close its report.
+export type TSecretScanningFactoryGetRealtimeScanReport<P extends TQueueSecretScanningResourceDiffScan["payload"]> = (
+  payload: P
+) => TSecretScanningScanReport | undefined;
+
+// Built from the saved scan, for a scan whose worker died before it could close its report.
+export type TSecretScanningFactoryGetScanReport = (params: {
+  scan: Pick<TSecretScanningScans, "trigger" | "metadata">;
+  dataSource: Pick<TSecretScanningDataSources, "externalId">;
+  resourceName: string;
+}) => TSecretScanningScanReport | undefined;
 
 export type TSecretScanningDataSourceRaw = NonNullable<
   Awaited<ReturnType<TSecretScanningV2DALFactory["dataSources"]["findById"]>>
@@ -269,7 +322,8 @@ export type TSecretScanningFactory<
   T extends TSecretScanningDataSourceWithConnection,
   P extends TQueueSecretScanningResourceDiffScan["payload"],
   I extends TSecretScanningDataSourceInput,
-  C extends TSecretScanningDataSourceCredentials | undefined = undefined
+  C extends TSecretScanningDataSourceCredentials | undefined = undefined,
+  E extends TQueueSecretScanningDataSourceEvent["event"] = TQueueSecretScanningDataSourceEvent["event"]
 > = (params: TSecretScanningFactoryParams) => {
   listRawResources: TSecretScanningFactoryListRawResources<T>;
   getFullScanPath: TSecretScanningFactoryGetFullScanPath<T>;
@@ -281,7 +335,35 @@ export type TSecretScanningFactory<
   validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<I["config"], T>;
   getDiffScanResourcePayload: TSecretScanningFactoryGetDiffScanResourcePayload<P>;
   getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<T, P>;
+  getRealtimeScanReport?: TSecretScanningFactoryGetRealtimeScanReport<P>;
+  getScanReport?: TSecretScanningFactoryGetScanReport;
+  // Processes webhook events beyond pushes, in the worker; only providers that receive them implement it.
+  processEvent?: TSecretScanningFactoryProcessEvent<E>;
 };
+
+export type TSecretScanningDiscoverResource = (params: {
+  dataSource: Pick<TSecretScanningDataSources, "id" | "isHistoricalScanEnabled">;
+  resourcePayload: Pick<TSecretScanningResourcesInsert, "externalId" | "name">;
+  trigger: SecretScanningScanTrigger.Push | SecretScanningScanTrigger.PullRequest;
+}) => Promise<TSecretScanningResources | undefined>;
+
+export type TSecretScanningQueueReportedRealtimeScan = (
+  params: Pick<TQueueSecretScanningResourceDiffScan, "dataSourceType" | "payload"> & {
+    scanId: string;
+    dataSourceId: string;
+    resourceId: string;
+    trigger: SecretScanningScanTrigger;
+    metadata: unknown;
+  }
+) => Promise<void>;
+
+export type TSecretScanningFactoryProcessEvent<E extends TQueueSecretScanningDataSourceEvent["event"]> = (params: {
+  event: E;
+  secretScanningV2DAL: TSecretScanningV2DALFactory;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  discoverResource: TSecretScanningDiscoverResource;
+  queueReportedRealtimeScan: TSecretScanningQueueReportedRealtimeScan;
+}) => Promise<void>;
 
 export type TFindingsPayload = Pick<TSecretScanningFindingsInsert, "details" | "fingerprint" | "severity" | "rule">[];
 export type TGetFindingsPayload = Promise<TFindingsPayload>;

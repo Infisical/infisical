@@ -40,16 +40,24 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes, TSecretScanningScanCompletedEvent } from "@app/services/telemetry/telemetry-types";
 
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
-import { SecretScanningDataSource, SecretScanningScanStatus, SecretScanningScanType } from "./secret-scanning-v2-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningScanStatus,
+  SecretScanningScanTrigger,
+  SecretScanningScanType
+} from "./secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
 import {
   TFindingsPayload,
+  TQueueSecretScanningDataSourceEvent,
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
   TQueueSecretScanningResourceDiffScanPayload,
   TQueueSecretScanningSendNotification,
   TSecretScanningDataSourceWithConnection,
-  TSecretScanningFinding
+  TSecretScanningDiscoverResource,
+  TSecretScanningFinding,
+  TSecretScanningQueueReportedRealtimeScan
 } from "./secret-scanning-v2-types";
 
 type TSecretRotationV2QueueServiceFactoryDep = {
@@ -74,6 +82,7 @@ const STUCK_SCAN_REAP_BATCH_SIZE = 100;
 const QUEUED_SCAN_REDELIVERY_GRACE = ms("5m");
 const STUCK_SCAN_STATUS_MESSAGE =
   "The scan did not complete and was cancelled. This usually means the resource is too large to scan.";
+const NEVER_STARTED_SCAN_STATUS_MESSAGE = "The scan was queued but never started.";
 
 // A full scan usually dies because the worker was OOM-killed on a large repository, which retrying
 // does resolve — the pod that picks it up next is not the one that ran out of memory. The two
@@ -83,6 +92,9 @@ const STUCK_SCAN_STATUS_MESSAGE =
 const FULL_SCAN_ATTEMPTS = 3;
 const FULL_SCAN_MAX_STALLED_COUNT = 2;
 const FULL_SCAN_RETRY_DELAY = ms("1m");
+
+const DATA_SOURCE_EVENT_ATTEMPTS = 3;
+const DATA_SOURCE_EVENT_RETRY_DELAY = ms("30s");
 
 const DUPLICATE_FULL_SCAN_STATUS_MESSAGE =
   "Another scan of this resource was already in progress, so this scan was not started.";
@@ -207,14 +219,16 @@ export const secretScanningV2QueueServiceFactory = ({
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
     {
+      trigger,
       resourceExternalId,
       triggeredByUserId,
       shouldScanResource
     }: {
+      trigger: SecretScanningScanTrigger.Manual | SecretScanningScanTrigger.ResourcesAdded;
       resourceExternalId?: string;
       triggeredByUserId?: string;
       shouldScanResource?: (resource: Pick<TSecretScanningResourcesInsert, "externalId" | "name">) => boolean;
-    } = {}
+    }
   ) => {
     try {
       const { type } = dataSource;
@@ -288,6 +302,7 @@ export const secretScanningV2QueueServiceFactory = ({
           resourcesToScan.map((resource) => ({
             resourceId: resource.id,
             type: SecretScanningScanType.Historical,
+            trigger,
             triggeredByUserId: triggeredByUserId ?? null
           })),
           tx
@@ -696,7 +711,8 @@ export const secretScanningV2QueueServiceFactory = ({
         const scan = await secretScanningV2DAL.scans.create(
           {
             resourceId: resource.id,
-            type: SecretScanningScanType.Realtime
+            type: SecretScanningScanType.Realtime,
+            trigger: SecretScanningScanTrigger.Push
           },
           tx
         );
@@ -745,29 +761,60 @@ export const secretScanningV2QueueServiceFactory = ({
     attemptsMade: number;
     opts: { attempts?: number };
   }) => {
-    const { payload, dataSourceId, resourceId, scanId } = job.data;
+    const { payload, dataSourceId, dataSourceType, resourceId, scanId } = job.data;
     const retryCount = job.attemptsMade + 1;
     const retryLimit = job.opts.attempts || 1;
     const startedAt = Date.now();
 
     const logDetails = `[dataSourceId=${dataSourceId}] [scanId=${scanId}] [resourceId=${resourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
-    // Primary for the same reason as the full scan: a lagging replica would drop a just-queued scan.
-    const primary = secretScanningV2DAL.primaryNode();
-    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, primary);
-    const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId, primary) : undefined;
-
-    if (!dataSource || !resource) {
-      logger.info(`secretScanningV2Queue: Diff Scan aborted, scan no longer exists ${logDetails}`);
-      return;
-    }
-
-    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({
       kmsService,
       appConnectionDAL
     });
 
-    const tempFolder = await createTempFolder();
+    const report = factory.getRealtimeScanReport?.(payload);
+
+    const prepareScan = async () => {
+      // Primary for the same reason as the full scan: a lagging replica would drop a just-queued scan.
+      const primary = secretScanningV2DAL.primaryNode();
+      const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, primary);
+      const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId, primary) : undefined;
+
+      if (!dataSource || !resource) return null;
+
+      return { dataSource, resource, tempFolder: await createTempFolder() };
+    };
+
+    let prepared: Awaited<ReturnType<typeof prepareScan>>;
+
+    try {
+      prepared = await prepareScan();
+    } catch (error) {
+      logger.error(error, `secretScanningV2Queue: Diff Scan could not be prepared ${logDetails}`);
+
+      // Nothing redelivers a diff scan, so its last attempt closes it out here rather than leaving it queued. If even
+      // that fails, the stuck-scan reaper fails it later.
+      if (retryCount === retryLimit) {
+        const statusMessage = parseScanErrorMessage(error);
+
+        try {
+          if (await markScanAsFailed({ scanId, statusMessage })) await report?.fail({ reason: statusMessage });
+        } catch (markError) {
+          logger.error(markError, `secretScanningV2Queue: Failed to mark unprepared diff scan as failed ${logDetails}`);
+        }
+      }
+
+      throw error;
+    }
+
+    if (!prepared) {
+      logger.info(`secretScanningV2Queue: Diff Scan aborted, scan no longer exists ${logDetails}`);
+      await report?.cancel();
+      return;
+    }
+
+    const { dataSource, resource, tempFolder } = prepared;
 
     logger.info(
       `secretScanningV2Queue: Diff Scan Started ${logDetails} [scanType=${SecretScanningScanType.Realtime}] [tempFolder=${tempFolder}]`
@@ -783,6 +830,8 @@ export const secretScanningV2QueueServiceFactory = ({
         return;
       }
 
+      await report?.start();
+
       let connection: TAppConnection | null = null;
       if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
 
@@ -797,7 +846,7 @@ export const secretScanningV2QueueServiceFactory = ({
         await writeTextToFile(configPath, config.content);
       }
 
-      const findingsPayload = await factory.getDiffScanFindingsPayload({
+      const { findings: findingsPayload, details } = await factory.getDiffScanFindingsPayload({
         dataSource: {
           ...dataSource,
           connection
@@ -828,7 +877,8 @@ export const secretScanningV2QueueServiceFactory = ({
           { id: scanId, status: SecretScanningScanStatus.Scanning },
           {
             status: SecretScanningScanStatus.Completed,
-            completedAt: new Date()
+            completedAt: new Date(),
+            ...(report ? { metadata: report.getCompletedScanMetadata({ findings, details }) } : {})
           },
           tx
         );
@@ -842,6 +892,9 @@ export const secretScanningV2QueueServiceFactory = ({
         );
         return;
       }
+
+      // The upsert returns findings an earlier scan saved first too, with the status each was triaged to.
+      await report?.complete({ findings: allFindings, details });
 
       const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
 
@@ -901,6 +954,7 @@ export const secretScanningV2QueueServiceFactory = ({
     } catch (error) {
       if (!(await secretScanningV2DAL.scans.findById(scanId, secretScanningV2DAL.primaryNode()))) {
         logger.info(`secretScanningV2Queue: Diff Scan aborted, scan was deleted while running ${logDetails}`);
+        await report?.cancel();
         return;
       }
 
@@ -910,6 +964,8 @@ export const secretScanningV2QueueServiceFactory = ({
         const failed = await markScanAsFailed({ scanId, statusMessage: errorMessage });
 
         if (failed) {
+          await report?.fail({ reason: errorMessage });
+
           await queueService.queue(
             QueueName.SecretScanningV2,
             QueueJobs.SecretScanningV2SendNotification,
@@ -1061,14 +1117,19 @@ export const secretScanningV2QueueServiceFactory = ({
   const failStuckScan = async (scan: Awaited<ReturnType<typeof secretScanningV2DAL.scans.findStuck>>[number]) => {
     const logDetails = `[scanId=${scan.id}] [resourceId=${scan.resourceId}] [dataSourceId=${scan.dataSourceId}] [startedAt=${scan.startedAt?.toISOString()}]`;
 
+    // A queued scan here is a realtime scan whose job was lost before it started; its payload isn't stored, so it can't
+    // be redelivered the way a queued historical scan is.
+    const statusMessage =
+      scan.status === SecretScanningScanStatus.Queued ? NEVER_STARTED_SCAN_STATUS_MESSAGE : STUCK_SCAN_STATUS_MESSAGE;
+
     try {
       // Guarded on the status we read: if the worker did finish between the read and this write, the
       // update matches nothing and the scan keeps its real outcome.
       const updatedScans = await secretScanningV2DAL.scans.update(
-        { id: scan.id, status: SecretScanningScanStatus.Scanning },
+        { id: scan.id, status: scan.status },
         {
           status: SecretScanningScanStatus.Failed,
-          statusMessage: STUCK_SCAN_STATUS_MESSAGE,
+          statusMessage,
           completedAt: new Date()
         }
       );
@@ -1081,6 +1142,10 @@ export const secretScanningV2QueueServiceFactory = ({
 
       if (!dataSource) return;
 
+      await SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({ kmsService, appConnectionDAL })
+        .getScanReport?.({ scan, dataSource, resourceName: scan.resourceName })
+        ?.fail({ reason: statusMessage, isTimedOut: true });
+
       await queueService.queue(
         QueueName.SecretScanningV2,
         QueueJobs.SecretScanningV2SendNotification,
@@ -1088,7 +1153,7 @@ export const secretScanningV2QueueServiceFactory = ({
           status: SecretScanningScanStatus.Failed,
           resourceName: scan.resourceName,
           dataSource,
-          errorMessage: STUCK_SCAN_STATUS_MESSAGE
+          errorMessage: statusMessage
         },
         { jobId: `secret-scanning-notification-${scan.id}`, removeOnFail: true }
       );
@@ -1176,6 +1241,138 @@ export const secretScanningV2QueueServiceFactory = ({
     { concurrency: 2 }
   );
 
+  const queueResourceFullScan = async ({
+    dataSourceId,
+    resourcePayload,
+    trigger
+  }: {
+    dataSourceId: string;
+    resourcePayload: Pick<TSecretScanningResourcesInsert, "externalId" | "name">;
+    trigger: SecretScanningScanTrigger.Push | SecretScanningScanTrigger.PullRequest;
+  }) => {
+    try {
+      const { resource, scan } = await secretScanningV2DAL.resources.transaction(async (tx) => {
+        const [upsertedResource] = await secretScanningV2DAL.resources.upsert(
+          [{ ...resourcePayload, dataSourceId }],
+          ["externalId", "dataSourceId"],
+          tx
+        );
+
+        const createdScan = await secretScanningV2DAL.scans.create(
+          { resourceId: upsertedResource.id, type: SecretScanningScanType.Historical, trigger },
+          tx
+        );
+
+        return { resource: upsertedResource, scan: createdScan };
+      });
+
+      try {
+        await enqueueFullScanJob(scan, dataSourceId);
+      } catch (error) {
+        logger.error(
+          error,
+          `secretScanningV2Queue: Failed to submit full scan for discovered resource, leaving it for redelivery [scanId=${scan.id}] [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
+        );
+      }
+
+      return resource;
+    } catch (error) {
+      logger.error(
+        error,
+        `secretScanningV2Queue: Failed to queue full scan for discovered resource [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
+      );
+    }
+  };
+
+  // Adds a resource discovered from a webhook, and scans its history when the data source scans new resources' history.
+  const discoverResource: TSecretScanningDiscoverResource = async ({ dataSource, resourcePayload, trigger }) => {
+    if (dataSource.isHistoricalScanEnabled) {
+      return queueResourceFullScan({ dataSourceId: dataSource.id, resourcePayload, trigger });
+    }
+
+    const [resource] = await secretScanningV2DAL.resources.upsert(
+      [{ ...resourcePayload, dataSourceId: dataSource.id }],
+      ["externalId", "dataSourceId"]
+    );
+
+    return resource;
+  };
+
+  /**
+   * For a scan reported back to where it was requested: the report is created first, so the scan is inserted with the
+   * ID the report already carries. Nothing redelivers a realtime scan whose job was never submitted, so if either step
+   * fails the scan is failed and its report closed here, rather than left queued.
+   */
+  const queueReportedRealtimeScan: TSecretScanningQueueReportedRealtimeScan = async ({
+    scanId,
+    dataSourceId,
+    dataSourceType,
+    resourceId,
+    trigger,
+    metadata,
+    payload
+  }) => {
+    const logDetails = `[dataSourceId=${dataSourceId}] [scanId=${scanId}] [resourceId=${resourceId}] [trigger=${trigger}]`;
+
+    try {
+      await secretScanningV2DAL.scans.create({
+        // @ts-expect-error id is generated before the insert because the report was created with it
+        id: scanId,
+        resourceId,
+        type: SecretScanningScanType.Realtime,
+        trigger,
+        metadata
+      });
+
+      await queueService.queue(
+        QueueName.SecretScanningV2RealtimeScan,
+        QueueJobs.SecretScanningV2DiffScan,
+        {
+          payload,
+          dataSourceId,
+          dataSourceType,
+          scanId,
+          resourceId
+        } as TQueueSecretScanningResourceDiffScan,
+        {
+          jobId: scanId,
+          removeOnFail: true
+        }
+      );
+    } catch (error) {
+      logger.error(error, `secretScanningV2Queue: Failed to queue reported realtime scan ${logDetails}`);
+
+      const statusMessage = "The scan could not be started.";
+
+      try {
+        await markScanAsFailed({ scanId, statusMessage });
+      } catch (markError) {
+        logger.error(markError, `secretScanningV2Queue: Failed to mark reported realtime scan as failed ${logDetails}`);
+      }
+
+      await SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsService, appConnectionDAL })
+        .getRealtimeScanReport?.(payload)
+        ?.fail({ reason: statusMessage });
+    }
+  };
+
+  const processDataSourceEvent = async ({ dataSourceType, event }: TQueueSecretScanningDataSourceEvent) => {
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsService, appConnectionDAL });
+
+    if (!factory.processEvent) {
+      logger.error(`secretScanningV2Queue: Data source has no event processing [dataSourceType=${dataSourceType}]`);
+      return;
+    }
+
+    await factory.processEvent({
+      event,
+      secretScanningV2DAL,
+      auditLogService,
+      discoverResource,
+      queueReportedRealtimeScan
+    });
+  };
+
   queueService.start(QueueName.SecretScanningV2, async (job) => {
     // We are keeping this for now because once deployed, the queue might still have
     // full scan and diff scan messages in it and need to be processed.
@@ -1185,37 +1382,19 @@ export const secretScanningV2QueueServiceFactory = ({
       await handleDiffScan(job as Parameters<typeof handleDiffScan>[0]);
     } else if (job.name === QueueJobs.SecretScanningV2SendNotification) {
       await handleSendNotification(job as Parameters<typeof handleSendNotification>[0]);
+    } else if (job.name === QueueJobs.SecretScanningV2DataSourceEvent) {
+      await processDataSourceEvent(job.data as TQueueSecretScanningDataSourceEvent);
     }
   });
 
-  const queueResourceFullScan = async ({
-    dataSourceId,
-    resourcePayload
-  }: {
-    dataSourceId: string;
-    resourcePayload: Pick<TSecretScanningResourcesInsert, "externalId" | "name">;
-  }) => {
-    try {
-      const scan = await secretScanningV2DAL.resources.transaction(async (tx) => {
-        const [resource] = await secretScanningV2DAL.resources.upsert(
-          [{ ...resourcePayload, dataSourceId }],
-          ["externalId", "dataSourceId"],
-          tx
-        );
-
-        return secretScanningV2DAL.scans.create(
-          { resourceId: resource.id, type: SecretScanningScanType.Historical },
-          tx
-        );
-      });
-
-      await enqueueFullScanJob(scan, dataSourceId);
-    } catch (error) {
-      logger.error(
-        error,
-        `secretScanningV2Queue: Failed to queue full scan for discovered resource [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
-      );
-    }
+  // Keyed by the provider's delivery ID, so a redelivered webhook isn't processed twice while the first is pending.
+  // Processors must be safe to retry up to the point they create something at the provider.
+  const queueDataSourceEvent = async (payload: TQueueSecretScanningDataSourceEvent, deliveryId: string) => {
+    await queueService.queue(QueueName.SecretScanningV2, QueueJobs.SecretScanningV2DataSourceEvent, payload, {
+      jobId: `secret-scanning-data-source-event-${payload.dataSourceType}-${deliveryId}`,
+      attempts: DATA_SOURCE_EVENT_ATTEMPTS,
+      backoff: { type: "fixed", delay: DATA_SOURCE_EVENT_RETRY_DELAY }
+    });
   };
 
   // A push from a repository with no resource row means it was added after setup, so discovery decides
@@ -1264,7 +1443,11 @@ export const secretScanningV2QueueServiceFactory = ({
 
     // The historical scan covers the pushed commits too, so it replaces the diff scan.
     if (dataSource.isHistoricalScanEnabled) {
-      await queueResourceFullScan({ dataSourceId: dataSource.id, resourcePayload });
+      await queueResourceFullScan({
+        dataSourceId: dataSource.id,
+        resourcePayload,
+        trigger: SecretScanningScanTrigger.Push
+      });
       return;
     }
 
@@ -1282,6 +1465,7 @@ export const secretScanningV2QueueServiceFactory = ({
   return {
     queueDataSourceFullScan,
     queueResourceDiffScan,
+    queueDataSourceEvent,
     handleResourcePushEvent
   };
 };
