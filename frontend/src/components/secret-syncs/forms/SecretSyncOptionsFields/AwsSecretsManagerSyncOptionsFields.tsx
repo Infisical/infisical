@@ -28,6 +28,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/hooks/api/secretSyncs/types/aws-secrets-manager-sync";
 
 import { TSecretSyncForm } from "../schemas";
+import { isAwsKmsKeyIdentifier } from "./aws-kms-key";
 
 const AwsTagsEditor = () => {
   const { control } = useFormContext<
@@ -175,8 +176,8 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                       <CircleHelp className="size-3 cursor-help text-muted" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-sm">
-                      The AWS KMS key to encrypt secrets with. Custom keys require{" "}
-                      <Code>kms:ListAliases</Code>, <Code>kms:DescribeKey</Code>,{" "}
+                      The AWS KMS key to encrypt secrets with: an alias, key ID, or ARN. Custom keys
+                      require <Code>kms:ListAliases</Code>, <Code>kms:DescribeKey</Code>,{" "}
                       <Code>kms:Encrypt</Code>, and <Code>kms:Decrypt</Code> on the selected IAM
                       role.
                     </TooltipContent>
@@ -186,7 +187,14 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                   <Combobox
                     isLoading={isKmsKeysPending && Boolean(connectionId && region)}
                     isDisabled={!connectionId}
-                    value={kmsKeys.find((org) => org.alias === value) ?? null}
+                    value={
+                      value
+                        ? (kmsKeys.find((kmsKey) => kmsKey.alias === value) ?? {
+                            alias: value,
+                            id: value
+                          })
+                        : null
+                    }
                     onValueChange={(option) => onChange(option.alias ?? null)}
                     onClear={() => onChange(undefined)}
                     clearAriaLabel="Clear KMS key"
@@ -195,6 +203,12 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                       inputValue ? "No KMS keys match your search." : "No KMS keys found."
                     }
                     options={kmsKeys}
+                    creation={{
+                      onCreate: (inputValue) => onChange(inputValue.trim()),
+                      formatLabel: (inputValue) => `Use "${inputValue}"`,
+                      isDuplicate: (inputValue, option) => option.alias === inputValue,
+                      isValid: isAwsKmsKeyIdentifier
+                    }}
                     placeholder="Leave blank to use default KMS key"
                     searchPlaceholder="Search KMS keys..."
                     searchAriaLabel="Search KMS keys"
