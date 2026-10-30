@@ -24,13 +24,17 @@ export const PageTitle = ({ title }: { title: string }) => {
   });
 
   if (project?.name) {
-    const fallback = `${title} · ${project.name} | Infisical`;
-    // Locale files are served immutable for 30 days, so a cached copy can predate this key.
+    // Locale files are served immutable for 30 days, so a cached copy can predate this key. The
+    // default stays a template so the project name is interpolated, never parsed as one.
     return (
       <title>
         {ready
-          ? t("common.head-title-project", { title, project: project.name, defaultValue: fallback })
-          : fallback}
+          ? t("common.head-title-project", {
+              title,
+              project: project.name,
+              defaultValue: "{{title}} · {{project}} | Infisical"
+            })
+          : `${title} · ${project.name} | Infisical`}
       </title>
     );
   }
