@@ -104,7 +104,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   surfaces as `ProjectMembershipNotFound`, which resolve turns into a 401 so the proxy drops the session on
   the next poll instead of riding its grace window.
 - Removing an actor from Agent Vault does not revoke their sessions. The sessions resolve to nothing while
-  the actor is out and work again if the actor is added back. Settled with the product owner.
+  the actor is out and work again if the actor is added back.
 - Session actor columns are `SET NULL` so history survives the actor. Resolve refuses a session with neither
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
   `actorType` is stored at mint because `SET NULL` erases which kind of owner it was. It stays nullable (a pod
@@ -119,30 +119,33 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   actor id reads as revoked in the list and the status filter, so they agree with resolve refusing it. Expiry
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
 - **Sessions are never deleted**, so the Sessions page is a full history and a session's row keeps the key its
-  logs need. Settled with the product owner.
+  logs need.
 
 ## Sessions on behalf of users
 
 A machine identity with a **delegation** can mint a session on behalf of a user (`onBehalfOf` on mint). The session
-belongs to the user: `userId` is the user, so resolve uses the user's role and personal values without a branch of its
-own. The identity is kept as `actingIdentityId` and `actingIdentityName`, and its reach narrows the user's. A delegation
+belongs to the identity: `identityId` is the identity, so only it and Agent Vault admins can list, read, label or revoke
+the session or read its session logs, and the user never sees it. The user is kept as
+`onBehalfOfUserId`, with `onBehalfOfUserName` and `onBehalfOfUserEmail` snapshotted like `actorName` and `actorEmail`;
+resolve uses the user's personal values, and the user's reach narrows the identity's. A delegation
 is one `agent_vault_delegations` row per identity, with a scope of `all-members` or `selected`, plus
 `agent_vault_delegation_subjects` rows naming users and groups. Both reference an Agent Vault membership (`membershipId`,
 `ON DELETE CASCADE`): the delegation its identity's, and each subject the user's or group's.
 
-- **Never put the acting identity in `identityId`.** Resolve reads `userId` first and falls back to `identityId`, so
-  deleting the user would quietly turn the session into the identity's own, with the identity's grants. The DB check
-  `agent_vault_sessions_acting_identity_check` keeps an on-behalf-of session a user's.
-- **`actingIdentityName` is what marks the session on-behalf-of** once deleting the identity sets the id to NULL, the
+- **Never put the user in `userId`.** Ownership is `userId` or `identityId` alone (`isSessionOwnedBy`, the list's actor
+  filter), so a user in `userId` would see the session and its logs. The DB check
+  `agent_vault_sessions_on_behalf_of_check` keeps an on-behalf-of session an identity's.
+- **`onBehalfOfUserName` is what marks the session on-behalf-of** once deleting the user sets the id to NULL, the
   same lesson as `actorType`. A session with the name and no id is orphaned: it reads as revoked
-  (`isOrphanedSession`) and resolve refuses it.
-- **Resolve re-checks the acting identity every time**: active in the org, a live Agent Vault role, and a delegation
-  that still covers the user (`$getActingIdentityReach`). Any miss is a 401, like an actor removed from
-  Agent Vault. Removing a delegation revokes nothing, so its sessions work again if it comes back; revoking is what
-  ends one. Settled the same way as removal from Agent Vault.
-- **Reach is the intersection of the user's and the identity's** (`intersectAccessBundleIds`): a bundle needs both,
-  through the admin role or a grant, at mint and on every resolve. Settled with the product owner. The identity losing
-  a grant drops the bundle's services like a user's lost grant, with no 401.
+  (`isOrphanedSession`) and resolve refuses it, rather than resolving as the identity's own session with the
+  identity's personal values.
+- **Resolve re-checks the user every time**: active in the org, a live Agent Vault role, and a delegation of the owning
+  identity that still covers them (`$getOnBehalfOfUserReach`). The identity gets the checks every owner gets. Any miss
+  is a 401, like an actor removed from Agent Vault. Removing a delegation revokes nothing, so its sessions work again
+  if it comes back; revoking is what ends one. Settled the same way as removal from Agent Vault.
+- **Reach is the intersection of the identity's and the user's** (`intersectAccessBundleIds`): a bundle needs both,
+  through the admin role or a grant, at mint and on every resolve. The user losing
+  a grant drops the bundle's services like an owner's lost grant, with no 401.
 - **Listing access bundles with `onBehalfOfUserId` or `onBehalfOfUserEmail` runs mint's delegation and user checks**
   (`agent-vault-on-behalf-of-fns.ts`, shared by both), then returns the bundles the user and the identity both reach,
   with setup state from the user's personal values, so an orchestrator can choose a bundle before it mints.
@@ -164,8 +167,9 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
 - **TTL defaults to 1h, with no maximum for now**: the user didn't start the session and may not know it exists, so a
   cap probably belongs here too, but any TTL is allowed for now, `never` included. The route's `ttl` is optional rather
   than defaulted because the default depends on `onBehalfOf`.
-- **The acting identity holds the session alongside the user**: the identity's list, get, revoke and session log
-  reads match `actingIdentityId` as well as `identityId` (`isSessionOwnedBy`, the session DAL's actor filter).
+- **The user can't see a session started on their behalf**: their list leaves it out, and get, label, revoke and
+  session log reads answer 404, as for any session someone else owns. An admin finds it by either name, since search
+  matches the on-behalf-of user too.
 - **Coverage reads group membership without `isPending`**, the way the permission engine grants access through a
   group. Filtering it would refuse accepted users, since the flag is no longer cleared.
 - **A subject is named by its own Agent Vault membership**, the rule bundle grants use: a user who reaches Agent
@@ -348,14 +352,15 @@ reference.
   unique index plus an advisory lock per project or per owner.
 - **Everything personal is scoped to the caller, never to an id the caller sends.** No route that reads or writes
   personal values or variables names another actor, so an admin can't list, read or set anyone else's variables or
-  values. Two on-behalf-of routes name a user: minting, to own the session, and the access bundle list, to report
+  values. Two on-behalf-of routes name a user: minting, to use their values, and the access bundle list, to report
   which of the user's services still need setup (see [Sessions on behalf of users](#sessions-on-behalf-of-users)). The
   owner is a user or a machine identity (`ownerOf`); the UI only covers users for now, but resolve and the API already
   work for an identity's own sessions.
 - **Resolve fills member fields last**: the admin's fields are expanded against global variables first, then each
-  personal value against the session actor's personal variables only, so neither is ever expanded twice and a
-  personal `{{KEY}}` can't reach a global variable. A service whose actor hasn't set every member-provided field goes
-  out with `personalValuesMissing: true` and a passthrough credential. The proxy refuses it with a 403 from current
+  personal value against the personal variables of the member it belongs to (the session's owner, or the user an
+  on-behalf-of session acts for) only, so neither is ever expanded twice and a personal `{{KEY}}` can't reach a global
+  variable. A service whose member hasn't set every member-provided field goes out with `personalValuesMissing: true`
+  and a passthrough credential. The proxy refuses it with a 403 from current
   CLIs; an older proxy that ignores the flag forwards it with the service's custom headers and substitutions but no
   credential, never the admin's.
 - **A save is a PATCH**: a field sent replaces that field's saved value, a field left out keeps it, and every
@@ -570,7 +575,7 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   pin checked before anything is written. Re-enrolling a proxy replaces its CA, so pins, mounted copies,
   keychain entries and any agent already running through it break until updated or restarted.
 - No sandbox, nothing stripped. The agent gets the parent's whole environment plus the proxy URL (session
-  token inside) and the CA trust variables. Settled with the product owner.
+  token inside) and the CA trust variables.
 - The session flag is `--session-token`, not `--token`, so the root command's Infisical-token handling never
   reads it. The minting identity comes from `--client-id`/`--client-secret`, the access-token env vars, or the
   keyring login.

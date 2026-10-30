@@ -47,8 +47,8 @@ export const SessionDetailSheet = ({
   const { currentOrg } = useOrganization();
 
   const isOwnerDeleted = session?.actor.id === null;
-  // The API refuses label edits once the owner, or the identity that started it on their behalf, is deleted.
-  const canEditLabel = !isOwnerDeleted && session?.actingIdentity?.id !== null;
+  // The API refuses label edits once the owner, or the user it acts on behalf of, is deleted.
+  const canEditLabel = !isOwnerDeleted && session?.onBehalfOf?.id !== null;
   const isMachineIdentity = session?.actor.type === AgentVaultMemberType.MachineIdentity;
   const hasExpired = Boolean(
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
@@ -114,20 +114,25 @@ export const SessionDetailSheet = ({
                         )}
                       </DetailValue>
                     </Detail>
-                    {session.actingIdentity && (
+                    {session.onBehalfOf && (
                       <Detail className="min-w-0">
-                        <DetailLabel>Started By</DetailLabel>
+                        <DetailLabel>On Behalf Of</DetailLabel>
                         <DetailValue
                           className={twMerge(
                             "flex items-center gap-2",
-                            !session.actingIdentity.id && "text-muted"
+                            !session.onBehalfOf.id && "text-muted"
                           )}
                         >
-                          <BotIcon className="size-4 shrink-0 text-muted" />
+                          <UserIcon className="size-4 shrink-0 text-muted" />
                           <span className="truncate">
-                            {session.actingIdentity.name}
-                            {!session.actingIdentity.id && " (deleted)"}
+                            {memberDisplayName(session.onBehalfOf)}
+                            {!session.onBehalfOf.id && " (deleted)"}
                           </span>
+                          {session.onBehalfOf.id && (
+                            <span className="truncate text-muted">
+                              {memberSubtitle(session.onBehalfOf)}
+                            </span>
+                          )}
                         </DetailValue>
                       </Detail>
                     )}

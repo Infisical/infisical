@@ -1,6 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, OrgMembershipStatus, ProjectMembershipRole, TAgentVaultProxies } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  TAgentVaultProxies,
+  TAgentVaultSessions
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultProxyActions,
@@ -111,6 +117,16 @@ type TAgentVaultProxyServiceFactoryDep = {
 };
 
 export type TAgentVaultProxyServiceFactory = ReturnType<typeof agentVaultProxyServiceFactory>;
+
+// A session on a user's behalf uses that user's personal values, never those of the identity that owns it. Called only
+// after the session is authorized, which refuses one whose owner or user is gone.
+const personalValuesOwner = (
+  session: Pick<TAgentVaultSessions, "userId" | "identityId" | "onBehalfOfUserId">
+): TAgentVaultOwner => {
+  if (session.onBehalfOfUserId) return { userId: session.onBehalfOfUserId };
+  if (session.userId) return { userId: session.userId };
+  return { identityId: session.identityId! };
+};
 
 // Opens each variable at most once per resolve. An id with no row stays as text, and the service that used it is
 // recorded so one log line can name every service affected.
@@ -558,10 +574,10 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   /**
-   * A member-provided field comes from what the session's actor saved for the service, expanded against their own
-   * personal variables only, after the admin's fields were expanded against the global ones: a value is never
-   * expanded twice. A service whose actor hasn't set every field the admin leaves to them goes out flagged and
-   * without a credential, so the proxy refuses it instead of sending a half-built one.
+   * A member-provided field comes from what the session's owner saved for the service, or, on a user's behalf, what
+   * that user saved, expanded against their own personal variables only, after the admin's fields were expanded
+   * against the global ones: a value is never expanded twice. If they haven't set every field the admin leaves to them,
+   * the service goes out flagged and without a credential, so the proxy refuses it instead of sending a half-built one.
    */
   const $applyPersonalValues = async ({
     sessionId,
@@ -657,30 +673,30 @@ export const agentVaultProxyServiceFactory = ({
     return resolved;
   };
 
-  // The identity that started a session on a user's behalf has to still be in the org and in Agent Vault, and its
-  // delegation has to still cover the user. Read on every resolve, so taking any of them away ends the session on
-  // the proxy's next poll. Returns the bundles the identity reaches (null for every bundle), since the session reaches
-  // only what both the identity and the user reach.
-  const $getActingIdentityReach = async ({
+  // The user a session was started on behalf of has to still be in the org and in Agent Vault, and the delegation of the
+  // identity that owns the session has to still cover them. Read on every resolve, so taking any of them away ends the
+  // session on the proxy's next poll. Returns the bundles the user reaches (null for every bundle), since the session
+  // reaches only what both the identity and the user reach.
+  const $getOnBehalfOfUserReach = async ({
     projectId,
     orgId,
-    userId,
-    actingIdentityId
+    identityId,
+    userId
   }: {
     projectId: string;
     orgId: string;
+    identityId: string | null;
     userId: string | null;
-    actingIdentityId: string | null;
   }): Promise<string[] | null> => {
     const refused = () =>
       new UnauthorizedError({
-        message: "The machine identity that started this session is no longer allowed to act on behalf of its user"
+        message: "The machine identity that owns this session is no longer allowed to act on behalf of its user"
       });
-    if (!actingIdentityId || !userId) throw refused();
+    if (!identityId || !userId) throw refused();
 
     const orgMembership = await orgDAL.findEffectiveOrgMembership({
-      actorType: ActorType.IDENTITY,
-      actorId: actingIdentityId,
+      actorType: ActorType.USER,
+      actorId: userId,
       orgId,
       status: OrgMembershipStatus.Accepted
     });
@@ -690,8 +706,8 @@ export const agentVaultProxyServiceFactory = ({
     let liveGroupIds: string[];
     try {
       const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
-        actor: ActorType.IDENTITY,
-        actorId: actingIdentityId,
+        actor: ActorType.USER,
+        actorId: userId,
         projectId,
         actorAuthMethod: null,
         actorOrgId: orgId,
@@ -707,14 +723,14 @@ export const agentVaultProxyServiceFactory = ({
       throw error;
     }
 
-    if (!(await agentVaultDelegationDAL.identityCoversUser({ projectId, identityId: actingIdentityId, userId }))) {
+    if (!(await agentVaultDelegationDAL.identityCoversUser({ projectId, identityId, userId }))) {
       throw refused();
     }
 
     if (isAdmin) return null;
     return findReachableAccessBundleIds(membershipDAL, {
       projectId,
-      actor: { type: ActorType.IDENTITY, id: actingIdentityId },
+      actor: { type: ActorType.USER, id: userId },
       groupIds: liveGroupIds
     });
   };
@@ -744,15 +760,15 @@ export const agentVaultProxyServiceFactory = ({
     if (!session.userId && !session.identityId) {
       throw new UnauthorizedError({ message: "The identity this session belonged to has been deleted" });
     }
-    // The name marks an on-behalf-of session, even an empty one, and even after deleting the identity nulls its id.
-    const actingIdentity =
-      session.actingIdentityName != null
+    // The name marks an on-behalf-of session, even after deleting the user nulls its id.
+    const onBehalfOf =
+      session.onBehalfOfUserName != null
         ? {
-            reach: await $getActingIdentityReach({
+            reach: await $getOnBehalfOfUserReach({
               projectId: session.projectId,
               orgId,
-              userId: session.userId ?? null,
-              actingIdentityId: session.actingIdentityId ?? null
+              identityId: session.identityId ?? null,
+              userId: session.onBehalfOfUserId ?? null
             })
           }
         : null;
@@ -809,7 +825,7 @@ export const agentVaultProxyServiceFactory = ({
           actor,
           groupIds: liveGroupIds
         });
-    const accessBundleIds = actingIdentity ? intersectAccessBundleIds(actorReach, actingIdentity.reach) : actorReach;
+    const accessBundleIds = onBehalfOf ? intersectAccessBundleIds(actorReach, onBehalfOf.reach) : actorReach;
 
     return { session, proxy, accessBundleIds };
   };
@@ -954,7 +970,7 @@ export const agentVaultProxyServiceFactory = ({
     const services = await $applyPersonalValues({
       sessionId: session.id,
       projectId: session.projectId,
-      owner: session.userId ? { userId: session.userId } : { identityId: session.identityId! },
+      owner: personalValuesOwner(session),
       rows,
       services: await $expandVariableReferences({
         sessionId: session.id,

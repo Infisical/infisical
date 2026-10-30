@@ -260,14 +260,17 @@ export type TAgentVaultSessionActor =
       id: string | null;
     });
 
-/** The machine identity that started a session on its actor's behalf. `id` is null once it is deleted. */
-export type TAgentVaultSessionActingIdentity = { id: string | null; name: string };
+/** The user a machine identity started a session on behalf of. `id` is null once the user is deleted. */
+export type TAgentVaultSessionOnBehalfOf = Extract<
+  TAgentVaultSessionActor,
+  { type: AgentVaultMemberType.User }
+>;
 
 export type TAgentVaultSession = {
   id: string;
   label: string | null;
   actor: TAgentVaultSessionActor;
-  actingIdentity: TAgentVaultSessionActingIdentity | null;
+  onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
   status: AgentVaultSessionStatus;
   expiresAt: string | null;
   revokedAt: string | null;

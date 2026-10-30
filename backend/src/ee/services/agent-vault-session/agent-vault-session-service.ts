@@ -77,12 +77,12 @@ export const agentVaultSessionServiceFactory = ({
   const toSessionView = ({
     userId,
     identityId,
-    actingIdentityId,
-    actingIdentityName,
+    onBehalfOfUserId,
+    onBehalfOfUserName,
     ...session
   }: TAgentVaultSessionListRow) => ({
     ...session,
-    status: deriveSessionStatus({ ...session, userId, identityId, actingIdentityId, actingIdentityName })
+    status: deriveSessionStatus({ ...session, userId, identityId, onBehalfOfUserId, onBehalfOfUserName })
   });
 
   const resolveSessionTtl = (ttl: string | undefined, isOnBehalfOf: boolean) =>
@@ -180,28 +180,22 @@ export const agentVaultSessionServiceFactory = ({
       kmsService
     );
 
-    // An on-behalf-of session belongs to the user, so resolve uses their personal values, and the caller is kept as
-    // the acting identity, whose reach resolve intersects with the user's.
-    const owner = onBehalfOfUser
-      ? {
-          userId: onBehalfOfUser.user.id,
-          identityId: null,
-          actorType: AgentVaultMemberType.User,
-          actorName:
-            `${onBehalfOfUser.user.firstName ?? ""} ${onBehalfOfUser.user.lastName ?? ""}`.trim() ||
-            (onBehalfOfUser.user.email ?? onBehalfOfUser.user.username),
-          actorEmail: onBehalfOfUser.user.email ?? null,
-          actingIdentityId: caller.id,
-          actingIdentityName: actorName
-        }
-      : {
-          userId: caller.type === ActorType.USER ? caller.id : null,
-          identityId: caller.type === ActorType.IDENTITY ? caller.id : null,
-          actorType:
-            caller.type === ActorType.IDENTITY ? AgentVaultMemberType.MachineIdentity : AgentVaultMemberType.User,
-          actorName,
-          actorEmail
-        };
+    // A session on a user's behalf belongs to the identity, so only it and admins see the session and its logs. The
+    // user is kept alongside: resolve uses their personal values and intersects their reach with the identity's.
+    const owner = {
+      userId: caller.type === ActorType.USER ? caller.id : null,
+      identityId: caller.type === ActorType.IDENTITY ? caller.id : null,
+      actorType: caller.type === ActorType.IDENTITY ? AgentVaultMemberType.MachineIdentity : AgentVaultMemberType.User,
+      actorName,
+      actorEmail,
+      ...(onBehalfOfUser && {
+        onBehalfOfUserId: onBehalfOfUser.user.id,
+        onBehalfOfUserName:
+          `${onBehalfOfUser.user.firstName ?? ""} ${onBehalfOfUser.user.lastName ?? ""}`.trim() ||
+          (onBehalfOfUser.user.email ?? onBehalfOfUser.user.username),
+        onBehalfOfUserEmail: onBehalfOfUser.user.email ?? null
+      })
+    };
 
     const session = await agentVaultSessionDAL.transaction(async (tx) => {
       const created = await agentVaultSessionDAL.createWithId(
@@ -324,8 +318,8 @@ export const agentVaultSessionServiceFactory = ({
       return { session: toSessionView({ ...session, revokedAt: revoked.revokedAt ?? null }), revokedNow: true };
     }
 
-    // Nothing was written: a concurrent revoke won, or the owner was deleted, which already reads as revoked and is
-    // left untouched. Report the row as it is now, which the read above may not have seen.
+    // Nothing was written: a concurrent revoke won, or the owner or the user it acts for was deleted, which already
+    // reads as revoked and is left untouched. Report the row as it is now, which the read above may not have seen.
     const current = await agentVaultSessionDAL.findByIdOnPrimary(session.id, projectId);
     return {
       session: toSessionView(
@@ -335,11 +329,8 @@ export const agentVaultSessionServiceFactory = ({
               revokedAt: current.revokedAt ?? null,
               userId: current.userId ?? null,
               identityId: current.identityId ?? null,
-              actingIdentityId: current.actingIdentityId ?? null,
-              actingIdentity: session.actingIdentity && {
-                ...session.actingIdentity,
-                id: current.actingIdentityId ?? null
-              }
+              onBehalfOfUserId: current.onBehalfOfUserId ?? null,
+              onBehalfOf: session.onBehalfOf && { ...session.onBehalfOf, id: current.onBehalfOfUserId ?? null }
             }
           : session
       ),
@@ -362,7 +353,7 @@ export const agentVaultSessionServiceFactory = ({
     if (!updated.isUpdated) {
       throw new BadRequestError({
         message:
-          "The user or machine identity that owned or started this session was deleted, so its label can't be changed."
+          "The user or machine identity that owned this session, or the user it was started on behalf of, was deleted, so its label can't be changed."
       });
     }
 

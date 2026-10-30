@@ -3,7 +3,7 @@ title: "Sessions on behalf of users"
 description: "Let a machine identity, such as a chat bot or a task runner, create sessions on behalf of users, so each session uses the personal values of the user it's for."
 ---
 
-A delegation lets a [machine identity](/documentation/platform/identities/machine-identities) create [sessions](/documentation/platform/agent-vault/sessions) on behalf of users in Agent Vault. The machine identity can still create sessions as itself. It creates a session on behalf of a user only if it sends the user's email or ID in `onBehalfOf`. A session created on behalf of a user belongs to that user, so the [proxy](/documentation/platform/agent-vault/proxies) uses the user's own [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values), not the machine identity's. The session can use an [access bundle](/documentation/platform/agent-vault/access-bundles) only if both the user and the machine identity can use the bundle.
+A delegation lets a [machine identity](/documentation/platform/identities/machine-identities) create [sessions](/documentation/platform/agent-vault/sessions) on behalf of users in Agent Vault. The machine identity can still create sessions as itself. It creates a session on behalf of a user only if it sends the user's email or ID in `onBehalfOf`. For a session created on behalf of a user, the [proxy](/documentation/platform/agent-vault/proxies) uses the user's own [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values), not the machine identity's. The session can use an [access bundle](/documentation/platform/agent-vault/access-bundles) only if both the user and the machine identity can use the bundle.
 
 Use a delegation when one service starts agents for many people, such as a chat bot that runs an agent for each message, or a task runner that runs an agent for each ticket. Each agent then gets no more access than the person who asked for it.
 
@@ -130,7 +130,7 @@ Infisical checks the delegation again each time the proxy polls, once every [pol
 - The delegation covered the user only through a group, and either the user leaves that group or the group is removed from Agent Vault
 - The user is removed from Agent Vault or from your organization, which also takes the user out of the delegation
 - An admin removes the machine identity from Agent Vault, which also deletes its delegation
-- Someone deletes the machine identity (the session then shows as **Revoked**)
+- Someone deletes the machine identity or the user (the session then shows as **Revoked**)
 
 If an admin sets up the delegation again, or adds the user back to it, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/sessions#revoke-a-session).
 
@@ -138,15 +138,14 @@ If the user or the machine identity can no longer use the access bundle, the ses
 
 ## Track sessions created on behalf of users
 
-These people and identities can see the session and revoke it:
+A session created on behalf of a user belongs to the machine identity, so the user can't see it. Only the machine identity and Agent Vault admins can see the session, read its [session logs](/documentation/platform/agent-vault/session-logs), and revoke it:
 
-- The user, under **My Sessions**
-- The machine identity, through the endpoints that [read a session](/api-reference/endpoints/agent-vault-sessions/get) and [revoke a session](/api-reference/endpoints/agent-vault-sessions/revoke)
-- Admins, under **All Sessions**
+- The machine identity, through the endpoints that [read a session](/api-reference/endpoints/agent-vault-sessions/get), [list its session logs](/api-reference/endpoints/agent-vault-session-logs/list), and [revoke a session](/api-reference/endpoints/agent-vault-sessions/revoke)
+- Admins, under **All Sessions** on the **Sessions** page
 
-On the **Sessions** page, the **Identity** column shows the user, followed by "via" and the machine identity's name. The session's details list the machine identity under **Started By**.
+On the **Sessions** page, the **Identity** column shows the machine identity's name, followed by "on behalf of" and the user's name. The session's details list the user under **On Behalf Of**.
 
-When the machine identity creates the session, Infisical writes an audit event with the machine identity as the actor and the user in `onBehalfOfUserId`, `onBehalfOfUserName`, and `onBehalfOfUserEmail`. Infisical also writes an audit event when an admin sets up, changes, or removes a delegation.
+When the machine identity creates the session, Infisical writes an audit event with the machine identity as the actor and the user in `onBehalfOfUserId`, `onBehalfOfUserName`, and `onBehalfOfUserEmail`. The audit events for changing the session's label and revoking the session include the same three fields. Infisical also writes an audit event when an admin sets up, changes, or removes a delegation.
 
 ## Troubleshooting
 

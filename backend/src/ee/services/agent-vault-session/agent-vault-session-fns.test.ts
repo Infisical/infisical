@@ -18,39 +18,39 @@ describe("agent vault session status", () => {
     expect(deriveSessionStatus({ ...live, userId: null, identityId: null })).toBe(AgentVaultSessionStatus.Revoked);
   });
 
-  // The name outlives the identity, which is how the row still says it was started on someone's behalf.
-  test("an on-behalf-of session whose acting identity was deleted reads as revoked", () => {
-    const session = { ...live, userId: "user-1", actingIdentityId: null, actingIdentityName: "slack-bot" };
+  // The name outlives the user, which is how the row still says it was started on someone's behalf.
+  test("an on-behalf-of session whose user was deleted reads as revoked", () => {
+    const session = { ...live, identityId: "identity-1", onBehalfOfUserId: null, onBehalfOfUserName: "Alice Nguyen" };
     expect(isOrphanedSession(session)).toBe(true);
     expect(deriveSessionStatus(session)).toBe(AgentVaultSessionStatus.Revoked);
   });
 
-  // An identity can be named "", so a session is on someone's behalf when the name is set, not when it's truthy.
-  test("an empty acting identity name still marks an on-behalf-of session", () => {
-    const session = { ...live, userId: "user-1", actingIdentityId: null, actingIdentityName: "" };
-    expect(isOrphanedSession(session)).toBe(true);
-    expect(deriveSessionStatus(session)).toBe(AgentVaultSessionStatus.Revoked);
-  });
-
-  test("an on-behalf-of session with both its user and its acting identity is active", () => {
-    const session = { ...live, userId: "user-1", actingIdentityId: "identity-1", actingIdentityName: "slack-bot" };
+  test("an on-behalf-of session with both its identity and its user is active", () => {
+    const session = {
+      ...live,
+      identityId: "identity-1",
+      onBehalfOfUserId: "user-1",
+      onBehalfOfUserName: "Alice Nguyen"
+    };
     expect(isOrphanedSession(session)).toBe(false);
     expect(deriveSessionStatus(session)).toBe(AgentVaultSessionStatus.Active);
   });
 });
 
 describe("agent vault session ownership", () => {
-  const onBehalfOf = { userId: "user-1", identityId: null, actingIdentityId: "identity-1" };
+  const onBehalfOf = { userId: null, identityId: "identity-1", onBehalfOfUserId: "user-1" };
 
-  test("the user and the identity that started it on their behalf both hold the session", () => {
-    expect(isSessionOwnedBy({ actor: ActorType.USER, actorId: "user-1" }, onBehalfOf)).toBe(true);
+  test("only the identity holds a session it started on a user's behalf, not the user", () => {
     expect(isSessionOwnedBy({ actor: ActorType.IDENTITY, actorId: "identity-1" }, onBehalfOf)).toBe(true);
+    expect(isSessionOwnedBy({ actor: ActorType.USER, actorId: "user-1" }, onBehalfOf)).toBe(false);
   });
 
   // Ids of users and identities are both UUIDs, so the actor type has to be matched as well as the id.
   test("an id is matched only against the column for its actor type", () => {
+    const own = { userId: "user-1", identityId: null };
+    expect(isSessionOwnedBy({ actor: ActorType.USER, actorId: "user-1" }, own)).toBe(true);
+    expect(isSessionOwnedBy({ actor: ActorType.IDENTITY, actorId: "user-1" }, own)).toBe(false);
     expect(isSessionOwnedBy({ actor: ActorType.USER, actorId: "identity-1" }, onBehalfOf)).toBe(false);
-    expect(isSessionOwnedBy({ actor: ActorType.IDENTITY, actorId: "user-1" }, onBehalfOf)).toBe(false);
   });
 });
 
@@ -66,6 +66,7 @@ describe("describeSessionForAudit", () => {
           firstName: "Alice",
           lastName: null
         },
+        onBehalfOf: null,
         accessBundles: [{ name: "release" }]
       })
     ).toEqual({ sessionOwner: "alice@example.com", accessBundleName: "release" });
@@ -82,6 +83,7 @@ describe("describeSessionForAudit", () => {
           firstName: null,
           lastName: null
         },
+        onBehalfOf: null,
         accessBundles: [{ name: "release" }]
       }).sessionOwner
     ).toBe("alice");
@@ -91,8 +93,40 @@ describe("describeSessionForAudit", () => {
     expect(
       describeSessionForAudit({
         actor: { type: AgentVaultMemberType.MachineIdentity, id: "i1", name: "github-actions" },
+        onBehalfOf: null,
         accessBundles: []
       })
     ).toEqual({ sessionOwner: "github-actions", accessBundleName: null });
+  });
+
+  test("names the identity as the owner of a session on a user's behalf, and the user it acts for", () => {
+    const user = {
+      type: AgentVaultMemberType.User as const,
+      username: "alice",
+      firstName: "Alice",
+      lastName: null
+    };
+    expect(
+      describeSessionForAudit({
+        actor: { type: AgentVaultMemberType.MachineIdentity, id: "i1", name: "slack-assistant" },
+        onBehalfOf: { ...user, id: "u1", email: "alice@example.com" },
+        accessBundles: [{ name: "release" }]
+      })
+    ).toEqual({
+      sessionOwner: "slack-assistant",
+      accessBundleName: "release",
+      onBehalfOfUserId: "u1",
+      onBehalfOfUserName: "alice",
+      onBehalfOfUserEmail: "alice@example.com"
+    });
+
+    // Once the user is deleted only the snapshot is left, with no id to record.
+    expect(
+      describeSessionForAudit({
+        actor: { type: AgentVaultMemberType.MachineIdentity, id: "i1", name: "slack-assistant" },
+        onBehalfOf: { ...user, id: null, email: null },
+        accessBundles: []
+      })
+    ).toEqual({ sessionOwner: "slack-assistant", accessBundleName: null, onBehalfOfUserName: "alice" });
   });
 });

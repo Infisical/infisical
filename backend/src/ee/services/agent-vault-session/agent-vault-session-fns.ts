@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
-import { TAgentVaultSessionActor } from "./agent-vault-session-types";
+import { TAgentVaultSessionActor, TAgentVaultSessionOnBehalfOf } from "./agent-vault-session-types";
 
 export const AGENT_VAULT_SESSION_TOKEN_PREFIX = "agv_";
 
@@ -54,21 +54,20 @@ export const generateSessionToken = () => {
 type TSessionOwnerColumns = {
   userId?: string | null;
   identityId?: string | null;
-  actingIdentityId?: string | null;
-  actingIdentityName?: string | null;
+  onBehalfOfUserId?: string | null;
+  onBehalfOfUserName?: string | null;
 };
 
 // The actor columns are SET NULL when the owner is deleted, so the row outlives them, and an on-behalf-of session
-// keeps its acting identity's name once that identity is deleted. Resolve refuses either; the status says the same,
-// or the list would show it Active when nothing can use it.
+// keeps its user's name once that user is deleted. Resolve refuses either; the status says the same, or the list would
+// show it Active when nothing can use it.
 export const isOrphanedSession = (session: TSessionOwnerColumns) =>
-  (!session.userId && !session.identityId) || (session.actingIdentityName != null && !session.actingIdentityId);
+  (!session.userId && !session.identityId) || (session.onBehalfOfUserName != null && !session.onBehalfOfUserId);
 
-// The machine identity that started a session on a user's behalf holds it alongside the user.
+// A session started on a user's behalf belongs to the machine identity alone, so the user can't see it or its logs.
 export const isSessionOwnedBy = (ctx: { actor: ActorType; actorId: string }, session: TSessionOwnerColumns) =>
   (ctx.actor === ActorType.USER && session.userId === ctx.actorId) ||
-  (ctx.actor === ActorType.IDENTITY &&
-    (session.identityId === ctx.actorId || session.actingIdentityId === ctx.actorId));
+  (ctx.actor === ActorType.IDENTITY && session.identityId === ctx.actorId);
 
 export const deriveSessionStatus = (
   session: { expiresAt: Date | null; revokedAt: Date | null } & TSessionOwnerColumns,
@@ -82,11 +81,17 @@ export const deriveSessionStatus = (
 // Most sessions have no label, so a session's audit event also names whose session it is and what it carried.
 export const describeSessionForAudit = (session: {
   actor: TAgentVaultSessionActor;
+  onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
   accessBundles: { name: string }[];
 }) => ({
   sessionOwner:
     session.actor.type === AgentVaultMemberType.MachineIdentity
       ? session.actor.name
       : (session.actor.email ?? session.actor.username),
-  accessBundleName: session.accessBundles[0]?.name ?? null
+  accessBundleName: session.accessBundles[0]?.name ?? null,
+  ...(session.onBehalfOf && {
+    ...(session.onBehalfOf.id && { onBehalfOfUserId: session.onBehalfOf.id }),
+    onBehalfOfUserName: session.onBehalfOf.username,
+    ...(session.onBehalfOf.email && { onBehalfOfUserEmail: session.onBehalfOf.email })
+  })
 });

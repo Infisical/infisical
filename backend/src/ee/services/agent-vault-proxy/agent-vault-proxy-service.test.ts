@@ -303,11 +303,13 @@ describe("resolve for a session on a user's behalf", () => {
   const setupOnBehalfOf = ({
     user = {},
     identity = {},
-    delegationCoversUser = true
+    delegationCoversUser = true,
+    isUserDeleted = false
   }: {
     user?: TActorSetup;
     identity?: TActorSetup;
     delegationCoversUser?: boolean;
+    isUserDeleted?: boolean;
   }) => {
     const actor = (actorId: string) => (actorId === IDENTITY_ID ? identity : user);
     const findResolvableServices = vi.fn(async () => [] as TResolveServiceRow[]);
@@ -325,10 +327,10 @@ describe("resolve for a session on a user's behalf", () => {
           ({
             id: "session-1",
             projectId: PROJECT_ID,
-            userId: USER_ID,
-            identityId: null,
-            actingIdentityId: IDENTITY_ID,
-            actingIdentityName: "slack-bot",
+            userId: null,
+            identityId: IDENTITY_ID,
+            onBehalfOfUserId: isUserDeleted ? null : USER_ID,
+            onBehalfOfUserName: "Alice Nguyen",
             revokedAt: null,
             expiresAt: null
           }) as never
@@ -407,6 +409,17 @@ describe("resolve for a session on a user's behalf", () => {
 
   test("an identity deactivated in the org is a 401", async () => {
     const { resolve } = setupOnBehalfOf({ user: { grants: ["bundle-a"] }, identity: { isActive: false } });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  test("a user deactivated in the org is a 401", async () => {
+    const { resolve } = setupOnBehalfOf({ user: { grants: ["bundle-a"], isActive: false } });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  // The name is left behind, so the session must not fall back to resolving as the identity's own.
+  test("a session whose user was deleted is a 401, not the identity's own session", async () => {
+    const { resolve } = setupOnBehalfOf({ identity: { isAdmin: true }, isUserDeleted: true });
     await expect(resolve()).rejects.toThrow(UnauthorizedError);
   });
 });

@@ -4903,9 +4903,9 @@ export const AGENT_VAULT = {
     label:
       "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",
     updateLabel:
-      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. You can't change the label once the session's owner, or the machine identity that started it on the owner's behalf, is deleted.",
+      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. You can't change the label once the session's owner, or the user it was started on behalf of, is deleted.",
     onBehalfOf:
-      "Start the session on behalf of a user instead of yourself. Only a machine identity whose delegation covers the user can do this. The session can use only an access bundle that both the user and the machine identity can use, and it uses the user's personal values. Name the user by userId or by userEmail, not both.",
+      "Start the session on behalf of a user instead of yourself. Only a machine identity whose delegation covers the user can do this. The session can use only an access bundle that both the user and the machine identity can use, and it uses the user's personal values. The session still belongs to the machine identity, so only the machine identity and Agent Vault admins can see it and its session logs, not the user. Name the user by userId or by userEmail, not both.",
     onBehalfOfUserId: "The ID of the user to start the session on behalf of.",
     onBehalfOfUserEmail: "The email address of the user to start the session on behalf of.",
     token: "The session token. Returned once, at mint, and never again.",
@@ -4913,7 +4913,8 @@ export const AGENT_VAULT = {
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
     status:
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
-    search: "Match sessions by label, actor name, actor email, acting machine identity name or access bundle name.",
+    search:
+      "Match sessions by label, actor name, actor email, the name or email of the user a session was started on behalf of, or access bundle name.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip.",
     actorType: "Whether the session belongs to a user or a machine identity.",
@@ -4925,11 +4926,10 @@ export const AGENT_VAULT = {
     lastName: "The last name of the user, or null once the user is deleted.",
     identityName:
       "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created.",
-    actingIdentity:
-      "The machine identity that started the session on the actor's behalf, or null when the actor started it.",
-    actingIdentityId: "The ID of the acting machine identity, or null once it is deleted.",
-    actingIdentityName:
-      "The name of the acting machine identity. Once it is deleted, the name recorded when the session was created."
+    onBehalfOfSession:
+      "The user the machine identity in actor started this session on behalf of, or null when the session is the actor's own.",
+    onBehalfOfType: "Always user: a machine identity starts sessions only on behalf of users.",
+    onBehalfOfUserIdRead: "The ID of the user, or null once the user is deleted."
   },
   DELEGATION: {
     machineIdentityId: "The ID of the machine identity the delegation belongs to.",

@@ -139,7 +139,7 @@ tables:
       - userId
       - identityId
       - actorType
-      - actingIdentityId
+      - onBehalfOfUserId
       - expiresAt
       - revokedAt
       - createdAt

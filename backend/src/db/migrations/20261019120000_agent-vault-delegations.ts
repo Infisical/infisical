@@ -3,27 +3,28 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
-const SESSION_ACTING_IDENTITY_CHECK = "agent_vault_sessions_acting_identity_check";
+const SESSION_ON_BEHALF_OF_CHECK = "agent_vault_sessions_on_behalf_of_check";
 
 export async function up(knex: Knex): Promise<void> {
-  // A session a machine identity starts on a user's behalf belongs to the user and names the identity here. The
-  // name is snapshotted like actorName, and it is what still marks the session as on-behalf-of once deleting the
-  // identity sets the id to NULL.
-  if (!(await knex.schema.hasColumn(TableName.AgentVaultSession, "actingIdentityId"))) {
+  // A session a machine identity starts on a user's behalf belongs to the identity and names the user here. The name
+  // and email are snapshotted like actorName and actorEmail, and the name is what still marks the session as
+  // on-behalf-of once deleting the user sets the id to NULL.
+  if (!(await knex.schema.hasColumn(TableName.AgentVaultSession, "onBehalfOfUserId"))) {
     await knex.schema.alterTable(TableName.AgentVaultSession, (t) => {
-      t.uuid("actingIdentityId");
-      t.foreign("actingIdentityId").references("id").inTable(TableName.Identity).onDelete("SET NULL");
-      t.string("actingIdentityName", 255);
+      t.uuid("onBehalfOfUserId");
+      t.foreign("onBehalfOfUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
+      t.string("onBehalfOfUserName", 255);
+      t.string("onBehalfOfUserEmail", 255);
     });
     await knex.raw(
-      `CREATE INDEX agent_vault_session_by_acting_identity ON ?? ("actingIdentityId") WHERE "actingIdentityId" IS NOT NULL`,
+      `CREATE INDEX agent_vault_session_by_on_behalf_of_user ON ?? ("onBehalfOfUserId") WHERE "onBehalfOfUserId" IS NOT NULL`,
       [TableName.AgentVaultSession]
     );
-    // An on-behalf-of session is always a user's, and an id is never stored without the name. actorType can be NULL on
-    // rows the previous release writes during a rolling deploy.
+    // An on-behalf-of session is always a machine identity's, and an id is never stored without the name. actorType can
+    // be NULL on rows the previous release writes during a rolling deploy.
     await knex.raw(
-      `ALTER TABLE ?? ADD CONSTRAINT ?? CHECK (("actingIdentityName" IS NULL OR ("identityId" IS NULL AND ("actorType" IS NULL OR "actorType" = 'user'))) AND ("actingIdentityId" IS NULL OR "actingIdentityName" IS NOT NULL))`,
-      [TableName.AgentVaultSession, SESSION_ACTING_IDENTITY_CHECK]
+      `ALTER TABLE ?? ADD CONSTRAINT ?? CHECK (("onBehalfOfUserName" IS NULL OR ("userId" IS NULL AND ("actorType" IS NULL OR "actorType" = 'machineIdentity'))) AND ("onBehalfOfUserId" IS NULL OR "onBehalfOfUserName" IS NOT NULL))`,
+      [TableName.AgentVaultSession, SESSION_ON_BEHALF_OF_CHECK]
     );
   }
 
@@ -90,11 +91,11 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.AgentVaultDelegation);
   await dropOnUpdateTrigger(knex, TableName.AgentVaultDelegation);
 
-  if (await knex.schema.hasColumn(TableName.AgentVaultSession, "actingIdentityId")) {
-    // Without the columns an on-behalf-of session reads as the user's own and would resolve with no delegation
-    // behind it, so every one still live is revoked first.
+  if (await knex.schema.hasColumn(TableName.AgentVaultSession, "onBehalfOfUserId")) {
+    // Without the columns an on-behalf-of session reads as the identity's own and would resolve with no delegation or
+    // user behind it, so every one still live is revoked first.
     await knex(TableName.AgentVaultSession)
-      .whereNotNull("actingIdentityName")
+      .whereNotNull("onBehalfOfUserName")
       .whereNull("revokedAt")
       .update({ revokedAt: new Date() });
 
@@ -102,13 +103,14 @@ export async function down(knex: Knex): Promise<void> {
     await knex.raw(`DROP VIEW IF EXISTS analytics.??`, [TableName.AgentVaultSession]);
     await knex.raw(`ALTER TABLE ?? DROP CONSTRAINT IF EXISTS ??`, [
       TableName.AgentVaultSession,
-      SESSION_ACTING_IDENTITY_CHECK
+      SESSION_ON_BEHALF_OF_CHECK
     ]);
-    await knex.raw(`DROP INDEX IF EXISTS agent_vault_session_by_acting_identity`);
+    await knex.raw(`DROP INDEX IF EXISTS agent_vault_session_by_on_behalf_of_user`);
     await knex.schema.alterTable(TableName.AgentVaultSession, (t) => {
-      t.dropForeign(["actingIdentityId"]);
-      t.dropColumn("actingIdentityId");
-      t.dropColumn("actingIdentityName");
+      t.dropForeign(["onBehalfOfUserId"]);
+      t.dropColumn("onBehalfOfUserId");
+      t.dropColumn("onBehalfOfUserName");
+      t.dropColumn("onBehalfOfUserEmail");
     });
   }
 }

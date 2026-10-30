@@ -4591,8 +4591,8 @@ describe("Agent Vault V1 Router", async () => {
         expect(read.statusCode).toBe(200);
         expect(read.json().session).toMatchObject({
           status: "active",
-          actor: expect.objectContaining({ type: "user", id: alice.userId, username: alice.username }),
-          actingIdentity: { id: bot.id, name: expect.stringContaining("obo-cover-bot-") }
+          actor: { type: "machineIdentity", id: bot.id, name: expect.stringContaining("obo-cover-bot-") },
+          onBehalfOf: expect.objectContaining({ type: "user", id: alice.userId, username: alice.username })
         });
 
         // Bob is in Agent Vault but not in the delegation, and a user who doesn't exist reads the same.
@@ -4634,7 +4634,7 @@ describe("Agent Vault V1 Router", async () => {
         const minted = await mintFor(bot, { userId: carol.userId }, bundle.name);
         expect(minted.statusCode).toBe(200);
         const read = await bot.as("GET", `${sessionsUrl}/${minted.json().session.id as string}`);
-        expect(read.json().session.actor).toMatchObject({ type: "user", id: carol.userId });
+        expect(read.json().session.onBehalfOf).toMatchObject({ type: "user", id: carol.userId });
 
         await testDb("user_group_membership").where({ groupId: group.id, userId: carol.userId }).delete();
         expect((await mintFor(bot, { userId: carol.userId }, bundle.name)).statusCode).toBe(403);
@@ -4944,7 +4944,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("the acting identity can see and revoke what it started, and deleting it ends those sessions", async () => {
+    test("the identity can see and revoke what it started on a user's behalf, and deleting it ends those sessions", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle(`obo-owner-${Date.now()}`);
       const botName = `obo-owner-bot-${Date.now()}`;
@@ -4967,18 +4967,21 @@ describe("Agent Vault V1 Router", async () => {
         expect(revoked.statusCode).toBe(200);
         expect(revoked.json().session.status).toBe("revoked");
 
-        const found = await inject("GET", `${sessionsUrl}?scope=all&limit=100&search=${botName}`);
-        expect((found.json().sessions as { id: string }[]).map((row) => row.id)).toEqual(
-          expect.arrayContaining([first, second])
-        );
+        // An admin finds them by either side: the identity that owns them or the user they act for.
+        for await (const term of [botName, alice.username]) {
+          const found = await inject("GET", `${sessionsUrl}?scope=all&limit=100&search=${encodeURIComponent(term)}`);
+          expect((found.json().sessions as { id: string }[]).map((row) => row.id)).toEqual(
+            expect.arrayContaining([first, second])
+          );
+        }
 
         await bot.cleanup();
         const orphaned = await inject("GET", `${sessionsUrl}/${second}`);
         expect(orphaned.statusCode).toBe(200);
         expect(orphaned.json().session).toMatchObject({
           status: "revoked",
-          actor: expect.objectContaining({ id: alice.userId }),
-          actingIdentity: { id: null, name: botName }
+          actor: { type: "machineIdentity", id: null, name: botName },
+          onBehalfOf: expect.objectContaining({ id: alice.userId })
         });
       } finally {
         await bot.cleanup();
@@ -4986,10 +4989,12 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    // Nothing stops an identity being named "", and the name is what marks a session as started on someone's behalf.
-    test("a session started by an identity named '' is checked like any other on a user's behalf", async () => {
-      const bundle = await createAccessBundle(`obo-unnamed-${Date.now()}`);
-      const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: `obo-unnamed-${Date.now()}` });
+    // Deleting the user nulls the id and leaves the name, which is what keeps the session from reading as the
+    // identity's own.
+    test("deleting the user ends a session on their behalf instead of leaving it to the identity", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`obo-user-gone-${Date.now()}`);
+      const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: `obo-user-gone-${Date.now()}` });
       expect(proxy.statusCode).toBe(200);
       const proxyToken = proxy.json().proxyToken as string;
       const resolve = (sessionToken: string) =>
@@ -4999,35 +5004,37 @@ describe("Agent Vault V1 Router", async () => {
           headers: { authorization: `Bearer ${proxyToken}`, "x-infisical-agent-session": sessionToken }
         });
 
-      const bot = await createMemberIdentity("");
+      const bot = await createMemberIdentity(`obo-user-gone-bot-${Date.now()}`);
+      const alice = await createAgentVaultUser("obo-user-gone-alice", projectId);
       try {
-        await grantBundle(bundle.id, { machineIdentityIds: [bot.id] });
-        await delegate(bot, { scope: "selected", userIds: [seedData1.id] });
-        const minted = await mintFor(bot, { userId: seedData1.id }, bundle.name);
+        await grantBundle(bundle.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId] });
+        const minted = await mintFor(bot, { userId: alice.userId }, bundle.name);
         expect(minted.statusCode).toBe(200);
         const { id, token } = minted.json().session as { id: string; token: string };
-
-        expect((await inject("GET", `${sessionsUrl}/${id}`)).json().session.actingIdentity).toEqual({
-          id: bot.id,
-          name: ""
-        });
         expect((await resolve(token)).statusCode).toBe(200);
 
-        // The seeded admin still reaches the bundle, so only the delegation check can stop the session.
-        expect((await inject("DELETE", delegationUrl(bot.id))).statusCode).toBe(200);
+        await deleteUsers([alice.userId]);
         expect((await resolve(token)).statusCode).toBe(401);
 
-        await bot.cleanup();
-        expect((await inject("GET", `${sessionsUrl}/${id}`)).json().session).toMatchObject({
+        const read = await bot.as("GET", `${sessionsUrl}/${id}`);
+        expect(read.statusCode).toBe(200);
+        expect(read.json().session).toMatchObject({
           status: "revoked",
-          actingIdentity: { id: null, name: "" }
+          actor: { type: "machineIdentity", id: bot.id },
+          onBehalfOf: expect.objectContaining({ id: null, username: alice.username })
         });
+
+        const relabel = await bot.as("PATCH", `${sessionsUrl}/${id}`, { label: "after" });
+        expect(relabel.statusCode).toBe(400);
+        expect(relabel.json().message).toContain("the user it was started on behalf of, was deleted");
       } finally {
         await bot.cleanup();
+        await deleteUsers([alice.userId]);
       }
     });
 
-    test("a revoke that finds the acting identity just deleted reports the session as it is now", async () => {
+    test("a revoke that finds the session's user just deleted reports the session as it is now", async () => {
       const bundle = await createAccessBundle(`obo-revoke-race-${Date.now()}`);
       const bot = await createMemberIdentity(`obo-revoke-race-bot-${Date.now()}`);
       try {
@@ -5037,8 +5044,8 @@ describe("Agent Vault V1 Router", async () => {
         expect(minted.statusCode).toBe(200);
         const sessionId = minted.json().session.id as string;
 
-        // The revoke reads the session first, then queues its write behind this lock. Deleting the identity sets
-        // actingIdentityId to NULL, so the write skips the row and the answer comes from a read of the primary.
+        // The revoke reads the session first, then queues its write behind this lock. Deleting the user sets
+        // onBehalfOfUserId to NULL, so the write skips the row and the answer comes from a read of the primary.
         const trx = await testDb.transaction();
         try {
           const { rows } = await trx.raw("select pg_backend_pid() as pid");
@@ -5046,7 +5053,7 @@ describe("Agent Vault V1 Router", async () => {
 
           const pending = inject("POST", `${sessionsUrl}/${sessionId}/revoke`);
           await waitUntilBlockedBy(rows[0].pid);
-          await trx("agent_vault_sessions").where({ id: sessionId }).update({ actingIdentityId: null });
+          await trx("agent_vault_sessions").where({ id: sessionId }).update({ onBehalfOfUserId: null });
           await trx.commit();
 
           const revoked = await pending;
@@ -5054,7 +5061,7 @@ describe("Agent Vault V1 Router", async () => {
           expect(revoked.json().session).toMatchObject({
             status: "revoked",
             revokedAt: null,
-            actingIdentity: { id: null, name: expect.stringContaining("obo-revoke-race-bot-") }
+            onBehalfOf: expect.objectContaining({ id: null })
           });
         } catch (err) {
           if (!trx.isCompleted()) await trx.rollback();
@@ -5106,7 +5113,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("the identity's session list and reads leave out sessions the user started themselves", async () => {
+    test("the identity and the user each see only their own sessions, not what the identity started for the user", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle(`obo-own-${Date.now()}`);
       const bot = await createMemberIdentity(`obo-own-bot-${Date.now()}`);
@@ -5131,6 +5138,23 @@ describe("Agent Vault V1 Router", async () => {
         expect(listedIds).toContain(startedForAlice);
         expect(listedIds).not.toContain(alicesOwn);
         expect((await bot.as("GET", `${sessionsUrl}/${alicesOwn}`)).statusCode).toBe(404);
+
+        // The session is the identity's, so to the user it reads exactly like one that doesn't exist.
+        const asAlice = (method: "GET" | "POST" | "PATCH", url: string, body?: Record<string, unknown>) =>
+          testServer.inject({ method, url, headers: { authorization: `Bearer ${aliceToken}` }, ...(body ? { body } : {}) });
+        const alicesList = await asAlice("GET", `${sessionsUrl}?limit=100`);
+        const alicesListIds = (alicesList.json().sessions as { id: string }[]).map((row) => row.id);
+        expect(alicesListIds).toContain(alicesOwn);
+        expect(alicesListIds).not.toContain(startedForAlice);
+        const refused = await Promise.all([
+          asAlice("GET", `${sessionsUrl}/${startedForAlice}`),
+          asAlice("POST", `${sessionsUrl}/${startedForAlice}/revoke`),
+          asAlice("PATCH", `${sessionsUrl}/${startedForAlice}`, { label: "mine now" }),
+          asAlice("GET", `${sessionsUrl}/${startedForAlice}/logs`),
+          asAlice("GET", `${sessionsUrl}/${startedForAlice}/logs/tail`)
+        ]);
+        refused.forEach((res) => expect(res.statusCode, res.payload).toBe(404));
+        expect((await inject("GET", `${sessionsUrl}/${startedForAlice}`)).json().session.status).toBe("active");
       } finally {
         await bot.cleanup();
         await deleteUsers([alice.userId]);

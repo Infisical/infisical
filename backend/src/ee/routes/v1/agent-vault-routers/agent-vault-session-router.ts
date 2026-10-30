@@ -28,7 +28,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { actorContext } from "./agent-vault-router-fns";
-import { AgentVaultSessionActorSchema } from "./agent-vault-schemas";
+import { AgentVaultSessionActorSchema, AgentVaultSessionOnBehalfOfSchema } from "./agent-vault-schemas";
 
 const SessionAccessBundleSchema = z.object({
   id: z.string().uuid().nullable(),
@@ -40,13 +40,7 @@ const SessionSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
   label: z.string().nullable().describe(AGENT_VAULT.SESSION.label),
   actor: AgentVaultSessionActorSchema,
-  actingIdentity: z
-    .object({
-      id: z.string().uuid().nullable().describe(AGENT_VAULT.SESSION.actingIdentityId),
-      name: z.string().describe(AGENT_VAULT.SESSION.actingIdentityName)
-    })
-    .nullable()
-    .describe(AGENT_VAULT.SESSION.actingIdentity),
+  onBehalfOf: AgentVaultSessionOnBehalfOfSchema.nullable().describe(AGENT_VAULT.SESSION.onBehalfOfSession),
   status: z.nativeEnum(AgentVaultSessionStatus),
   expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
   revokedAt: z.date().nullable(),
