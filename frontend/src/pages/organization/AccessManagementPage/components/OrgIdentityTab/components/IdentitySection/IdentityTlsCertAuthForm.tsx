@@ -364,8 +364,8 @@ export const IdentityTlsCertAuthForm = ({
                           Access tokens only work on requests that present the same client
                           certificate used to log in. Your TLS-terminating proxy must forward the
                           certificate on every API request. On Infisical Cloud, send requests to
-                          port 8443. Turning this on revokes the identity&apos;s existing TLS Certificate
-                          Auth access tokens.
+                          port 8443. Turning this on revokes the identity&apos;s existing TLS
+                          Certificate Auth access tokens.
                         </TooltipContent>
                       </Tooltip>
                     </FieldLabel>

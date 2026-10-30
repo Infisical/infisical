@@ -247,7 +247,7 @@ Throughout this guide, replace `<namespace>` with the namespace where your workl
                 key: tls.key
         ```
 
-        On Infisical Cloud, set `url` to port `8443`, for example `https://app.infisical.com:8443`. On a self-hosted instance, the proxy in front of Infisical must forward the client certificate on every API request. See [Security requirements for self-hosted deployments](/documentation/platform/identities/tls-cert-auth#security-requirements-for-self-hosted-deployments).
+        `url` must use `https://`, since the client certificate is presented over TLS. On Infisical Cloud, set `url` to port `8443`, for example `https://app.infisical.com:8443`. On a self-hosted instance, the proxy in front of Infisical must forward the client certificate on every API request. See [Security requirements for self-hosted deployments](/documentation/platform/identities/tls-cert-auth#security-requirements-for-self-hosted-deployments).
       </Tab>
     </Tabs>
 
