@@ -73,6 +73,11 @@ import {
   overviewResponsePhase,
   useOverviewTelemetry
 } from "../../OverviewTelemetry";
+import {
+  notifySecretsCreatedWithoutShare,
+  TCreatedSecret,
+  TNotifySecretsCreated
+} from "../../useNotifySecretsCreated";
 import { CsvColumnMapContent } from "./CsvColumnMapDialog";
 import {
   buildFolderTree,
@@ -102,6 +107,7 @@ type Props = {
   initialFile?: File | null;
   initialStep?: "upload" | "paste";
   initialSelectedEnvironments?: { name: string; slug: string }[];
+  notifySecretsCreated?: TNotifySecretsCreated;
   onComplete?: (envSlugs: string[]) => void;
 };
 
@@ -126,6 +132,7 @@ type ContentProps = {
   initialFile?: File | null;
   initialStep?: "upload" | "paste";
   initialSelectedEnvironments?: { name: string; slug: string }[];
+  notifySecretsCreated?: TNotifySecretsCreated;
   onComplete?: (envSlugs: string[]) => void;
   onClose: () => boolean;
   onLockChange?: (isLocked: boolean) => void;
@@ -140,6 +147,7 @@ const ImportSecretsContent = ({
   initialFile,
   initialStep = "upload",
   initialSelectedEnvironments = [],
+  notifySecretsCreated = notifySecretsCreatedWithoutShare,
   onComplete,
   onClose,
   onLockChange,
@@ -382,6 +390,7 @@ const ImportSecretsContent = ({
     let failureCount = 0;
     let folderResponseCount = 0;
     let folderFailureCount = 0;
+    const createdSecrets: TCreatedSecret[] = [];
 
     try {
       const requestedSlugs = new Set<string>();
@@ -525,6 +534,19 @@ const ImportSecretsContent = ({
                       environment,
                       secretPath: path,
                       secrets: secretsToCreate
+                    }).then((result) => {
+                      if (!("approval" in result))
+                        createdSecrets.push(
+                          ...resolvedEntries
+                            .filter(({ finalKey }) => !existingKeys.has(finalKey))
+                            .map(({ finalKey, secretData }) => ({
+                              environment,
+                              key: finalKey,
+                              value: secretData.value,
+                              tags: secretData.tagSlugs
+                            }))
+                        );
+                      return result;
                     })
                   ]
                 : []),
@@ -723,10 +745,10 @@ const ImportSecretsContent = ({
       });
 
       if (successEnvs.length) {
-        createNotification({
-          type: "success",
-          text: `Successfully uploaded ${secretCount} secret${secretCount > 1 ? "s" : ""}${folderSummary} into ${successEnvs.join(", ")}`
-        });
+        notifySecretsCreated(
+          `Successfully uploaded ${secretCount} secret${secretCount > 1 ? "s" : ""}${folderSummary} into ${successEnvs.join(", ")}`,
+          createdSecrets
+        );
       }
 
       if (approvalEnvs.length) {
@@ -1274,6 +1296,7 @@ export const ImportSecretsSheet = ({
   initialFile,
   initialStep,
   initialSelectedEnvironments,
+  notifySecretsCreated,
   onComplete
 }: Props) => {
   const telemetry = useOverviewTelemetry();
@@ -1340,6 +1363,7 @@ export const ImportSecretsSheet = ({
           initialFile={initialFile}
           initialStep={initialStep}
           initialSelectedEnvironments={initialSelectedEnvironments}
+          notifySecretsCreated={notifySecretsCreated}
           onComplete={onComplete}
           onClose={() => closeSheet(false)}
           onLockChange={handleLockChange}

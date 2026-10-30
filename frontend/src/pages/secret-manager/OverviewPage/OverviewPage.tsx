@@ -241,6 +241,7 @@ import {
 } from "@app/hooks/utils";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { OverviewFlowProperties, OverviewScopeProperties } from "@app/lib/analytics/events";
+import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
@@ -312,6 +313,7 @@ import {
   overviewResponsePhase,
   withOverviewTelemetry
 } from "./OverviewTelemetry";
+import { useNotifySecretsCreated } from "./useNotifySecretsCreated";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -1597,7 +1599,8 @@ const OverviewPageContent = () => {
     "importFromDoppler",
     "editHoneyToken",
     "revokeHoneyToken",
-    "createEnvironment"
+    "createEnvironment",
+    "createSharedSecret"
   ] as const);
   const popupFlows = useMemo<
     Partial<Record<keyof typeof popUp, Omit<OverviewFlowProperties, "phase">>>
@@ -1654,6 +1657,10 @@ const OverviewPageContent = () => {
     if (flow) overviewTelemetry.flow({ ...flow, phase: opening ? "opened" : "canceled" });
     togglePopUp(name, isOpen);
   };
+  const notifySecretsCreated = useNotifySecretsCreated(
+    secretPath,
+    useCallback((share) => handlePopUpOpen("createSharedSecret", share), [handlePopUpOpen])
+  );
   const { openUpgradeGate: openSharedUpgradeGate, upgradeGate } = useUpgradeGate();
   const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
     null
@@ -2315,10 +2322,10 @@ const OverviewPageContent = () => {
         text: "Requested change has been sent for review"
       });
     } else {
-      createNotification({
-        type: "success",
-        text: "Successfully created secret"
-      });
+      notifySecretsCreated(
+        "Successfully created secret",
+        type === SecretType.Shared ? [{ environment: env, key, value }] : []
+      );
 
       // The user just created a secret: check whether to surface the activation nudge.
       checkSecretsActivation();
@@ -2962,6 +2969,18 @@ const OverviewPageContent = () => {
           return [];
         }
 
+        const createdSecrets = changes.secrets.flatMap((change) =>
+          change.type === PendingAction.Create
+            ? [
+                {
+                  environment,
+                  key: change.secretKey,
+                  value: change.secretValue,
+                  tags: change.tags?.map((tag) => tag.slug)
+                }
+              ]
+            : []
+        );
         if (isSingleChange) {
           const change = secretChange ?? folderChange;
           const pastTense = {
@@ -2972,9 +2991,9 @@ const OverviewPageContent = () => {
           const label = secretChange
             ? `Secret "${secretChange.type === PendingAction.Update && secretChange.newSecretName ? secretChange.newSecretName : secretChange.secretKey}"`
             : `Folder "${folderChange.folderName}"`;
-          createNotification({ type: "success", text: `${label} ${pastTense}` });
+          notifySecretsCreated(`${label} ${pastTense}`, createdSecrets);
         } else {
-          createNotification({ type: "success", text: `${changeCount} changes committed` });
+          notifySecretsCreated(`${changeCount} changes committed`, createdSecrets);
         }
 
         if (changes.secrets.some((secret) => secret.type === PendingAction.Create)) {
@@ -2999,7 +3018,8 @@ const OverviewPageContent = () => {
       createFolder,
       updateFolder,
       deleteFolder,
-      checkSecretsActivation
+      checkSecretsActivation,
+      notifySecretsCreated
     ]
   );
 
@@ -4932,6 +4952,7 @@ const OverviewPageContent = () => {
             defaultSelectedEnvs={filteredEnvs}
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
             onSecretCreated={checkSecretsActivation}
+            notifySecretsCreated={notifySecretsCreated}
             onUploadSecrets={(env) => {
               setImportParsedSecrets(env ?? null);
               handlePopUpClose("addSecretsInAllEnvs");
@@ -5296,6 +5317,7 @@ const OverviewPageContent = () => {
         initialFile={importSecretsInitialFile}
         initialStep={importSecretsInitialStep}
         initialSelectedEnvironments={visibleEnvs}
+        notifySecretsCreated={notifySecretsCreated}
         onComplete={(envSlugs) => {
           const visibleSlugs = new Set(visibleEnvs.map((e) => e.slug));
           const allTargetEnvsVisible = envSlugs.every((slug) => visibleSlugs.has(slug));
@@ -5406,6 +5428,7 @@ const OverviewPageContent = () => {
         isPending={isDeleteEnvironmentPending}
         onConfirm={handleDeleteEnvironment}
       />
+      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       {!!pathPolicies && pathPolicies.length > 0 && (
         <RequestAccessModal
           policies={pathPolicies}
