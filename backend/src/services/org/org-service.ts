@@ -965,7 +965,8 @@ export const orgServiceFactory = ({
           ip: ipAddress,
           userAgent: userAgentHeader,
           isMfaVerified: decodedToken.isMfaVerified,
-          mfaMethod: decodedToken.mfaMethod
+          mfaMethod: decodedToken.mfaMethod,
+          idpMfaOrgId: decodedToken.idpMfaOrgId
         },
         tx
       );

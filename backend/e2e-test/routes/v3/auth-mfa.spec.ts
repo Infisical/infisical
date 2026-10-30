@@ -107,7 +107,7 @@ describe("Auth MFA V3", () => {
     const rootOrgId = seedData1.organization.id;
     let restoreLicense: () => void;
 
-    const signSsoSession = async (authMethod: AuthMethod, idpMfaOrgId?: string) => {
+    const signSsoSession = async (authMethod: AuthMethod, idpMfaOrgId?: string, organizationId?: string) => {
       const [session] = await db()(TableName.AuthTokenSession)
         .insert({
           userId: seedData1.id,
@@ -126,7 +126,8 @@ describe("Auth MFA V3", () => {
           userId: seedData1.id,
           tokenVersionId: session.id,
           accessVersion: 1,
-          ...(idpMfaOrgId && { idpMfaOrgId })
+          ...(idpMfaOrgId && { idpMfaOrgId }),
+          ...(organizationId && { organizationId })
         },
         process.env.AUTH_SECRET as string,
         { expiresIn: "1h" }
@@ -224,6 +225,56 @@ describe("Auth MFA V3", () => {
       const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId), rootOrgId);
 
       expect(payload.isMfaEnabled).toBe(true);
+    });
+
+    describe("OAuth consent", () => {
+      const redirectUri = "https://app.example.com/callback";
+      let client: { id: string; clientId: string };
+
+      const consent = (token: string) =>
+        testServer.inject({
+          method: "POST",
+          url: "/api/v1/oauth/authorize/consent",
+          headers: { authorization: `Bearer ${token}` },
+          body: { client_id: client.clientId, redirect_uri: redirectUri }
+        });
+
+      beforeAll(async () => {
+        const res = await testServer.inject({
+          method: "POST",
+          url: "/api/v1/oauth/clients",
+          headers: { authorization: `Bearer ${jwtAuthToken}` },
+          body: { name: `idp-mfa-${crypto.randomUUID()}`, redirectUris: [redirectUri] }
+        });
+        expect(res.statusCode).toBe(200);
+        client = res.json().client;
+      });
+
+      afterAll(async () => {
+        await testServer.inject({
+          method: "DELETE",
+          url: `/api/v1/oauth/clients/${client.id}`,
+          headers: { authorization: `Bearer ${jwtAuthToken}` }
+        });
+      });
+
+      test("a session the IdP signal let in is not refused when authorizing an application", async () => {
+        await setSsoMfaTrust(SsoMfaTrust.Signal);
+
+        const res = await consent(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId, rootOrgId));
+
+        expect(res.statusCode).toBe(200);
+        expect(new URL(res.json().callbackUrl).searchParams.get("code")).toBeTruthy();
+      });
+
+      test("the same session is refused once the org stops trusting the signal", async () => {
+        await setSsoMfaTrust(SsoMfaTrust.None);
+
+        const res = await consent(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId, rootOrgId));
+
+        expect(res.statusCode).toBe(401);
+        expect(res.json().message).toMatch(/Multi-factor authentication is required/);
+      });
     });
 
     test("the setting cannot be turned on without an active SSO configuration", async () => {

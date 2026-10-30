@@ -1333,14 +1333,7 @@ export const authLoginServiceFactory = ({
     // MFA it waives the whole challenge, personal flag included: passing an enforced challenge turns personal
     // MFA on (the login MFA page activates it), so the two cannot be told apart. Personal MFA in an org that
     // does not enforce it still prompts.
-    const isMfaSatisfiedByIdp =
-      Boolean(rootOrg.enforceMfa) &&
-      isIdpMfaTrusted({
-        ssoMfaTrust: rootOrg.ssoMfaTrust,
-        authMethod: userAuthMethod,
-        rootOrgId: rootOrg.id,
-        idpMfaOrgId
-      });
+    const isMfaSatisfiedByIdp = isIdpMfaTrusted({ org: rootOrg, authMethod: userAuthMethod, idpMfaOrgId });
     const shouldTriggerMfa =
       isMfaRequired && !isMfaSatisfiedByIdp && (!isMfaVerified || hasMfaMethodChanged || hasOrganizationChanged);
 

@@ -323,7 +323,9 @@ the only reader of the setting. Rules that must hold:
   setting can be stored before enforcement is turned on; `updateOrg` refuses any value but `none` only while
   the org has no active SAML or OIDC config.
 - `isMfaVerified` is never set from the IdP. It still means "proved a factor to Infisical", so step-up
-  (`mfa-step-up-fns.ts`) and PAM MFA are unaffected.
+  (`mfa-step-up-fns.ts`) and PAM MFA are unaffected. OAuth consent (`authorizeConsent`) re-derives the MFA
+  requirement for the client's org and applies the same `isIdpMfaTrusted` waiver, so a session that skipped
+  the login prompt is not refused when authorizing an application.
 - The callback writes a `USER_LOGIN` audit event with the raw `idpMfa` evidence, and `SELECT_ORGANIZATION`
   records `mfaSatisfiedBy`, so an admin can see why a login was or wasn't prompted.
 

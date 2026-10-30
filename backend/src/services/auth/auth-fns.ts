@@ -73,22 +73,23 @@ export const getRequiredMfaMethod = (
   return { isMfaRequired, requiredMfaMethod };
 };
 
-// Only SAML and OIDC carry a signed IdP signal. Password, Google and LDAP never qualify, so break-glass
-// accounts always get the Infisical challenge. The proof names the org whose IdP produced it: a user in two
-// orgs could otherwise tune one org's allowlist to accept a single factor and carry that verdict into the other.
+// Whether the MFA the IdP performed satisfies this root org's enforcement. Shared by org selection and OAuth
+// consent so a session that skipped the login prompt is not refused later. Only SAML and OIDC carry a signed
+// IdP signal: password, Google and LDAP never qualify, so break-glass accounts always get the Infisical
+// challenge. The proof names the org whose IdP produced it: a user in two orgs could otherwise tune one org's
+// allowlist to accept a single factor and carry that verdict into the other.
 export const isIdpMfaTrusted = ({
-  ssoMfaTrust,
+  org,
   authMethod,
-  rootOrgId,
   idpMfaOrgId
 }: {
-  ssoMfaTrust?: string | null;
+  org: { id: string; enforceMfa?: boolean | null; ssoMfaTrust?: string | null };
   authMethod: AuthMethod;
-  rootOrgId: string;
   idpMfaOrgId?: string;
 }): boolean => {
+  if (!org.enforceMfa) return false;
   if (!isAuthMethodSaml(authMethod) && authMethod !== AuthMethod.OIDC) return false;
-  return ssoMfaTrust === SsoMfaTrust.Signal && idpMfaOrgId === rootOrgId;
+  return org.ssoMfaTrust === SsoMfaTrust.Signal && idpMfaOrgId === org.id;
 };
 
 export const RECOVERY_CODE_MFA_ASSURANCE = "recovery-code";
