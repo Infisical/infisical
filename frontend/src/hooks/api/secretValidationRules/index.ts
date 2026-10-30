@@ -1,6 +1,7 @@
 export {
   useCreateSecretValidationRule,
   useDeleteSecretValidationRule,
+  useGenerateStaticSecretValue,
   useUpdateSecretValidationRule
 } from "./mutations";
 export { useListSecretValidationRules } from "./queries";

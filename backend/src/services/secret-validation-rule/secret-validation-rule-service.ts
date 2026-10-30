@@ -48,7 +48,7 @@ import {
   TUpdateSecretValidationRuleDTO,
   TValidateSecretsDTO
 } from "./secret-validation-rule-types";
-import { TStaticSecretsRuleConfig } from "./static-secrets";
+import { generateStaticSecretValue as generateValue, TStaticSecretsRuleConfig } from "./static-secrets";
 
 /** Only static-secret rules can ask for a value no other secret already holds. */
 const $preventsReuseAcrossSecrets = (config: TSecretValidationRuleConfig) =>
@@ -264,6 +264,17 @@ export const secretValidationRuleServiceFactory = ({
   ) => {
     const { rule, config } = await $findRuleOrThrow(ruleId, type, actor);
     return $toRecord(rule, config);
+  };
+
+  const generateStaticSecretValue = async ({ ruleId }: { ruleId: string }, actor: OrgServiceActor) => {
+    const { config } = await $findRuleOrThrow(ruleId, SecretValidationRuleType.StaticSecrets, actor);
+    const { valueConstraints } = config as TStaticSecretsRuleConfig;
+
+    if (!valueConstraints || !Object.values(valueConstraints).some((constraint) => constraint !== undefined)) {
+      throw new BadRequestError({ message: "This rule does not constrain secret values, so there is nothing to generate." });
+    }
+
+    return generateValue(valueConstraints);
   };
 
   const createSecretValidationRule = async (
@@ -613,6 +624,7 @@ export const secretValidationRuleServiceFactory = ({
   return {
     listSecretValidationRules,
     findSecretValidationRuleById,
+    generateStaticSecretValue,
     createSecretValidationRule,
     updateSecretValidationRule,
     deleteSecretValidationRule,

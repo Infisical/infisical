@@ -12,6 +12,16 @@ import {
 
 type TRuleResponse = { secretValidationRule: TSecretValidationRule };
 
+export const useGenerateStaticSecretValue = () =>
+  useMutation({
+    mutationFn: async (ruleId: string) => {
+      const { data } = await apiRequest.post<{ value: string }>(
+        `/api/v1/secret-validation-rules/static-secrets/${ruleId}/generated-values`
+      );
+      return data.value;
+    }
+  });
+
 export const useCreateSecretValidationRule = () => {
   const queryClient = useQueryClient();
   return useMutation({

@@ -1,13 +1,6 @@
 import { cloneElement, type ReactElement, useEffect, useId, useMemo, useState } from "react";
-import {
-  CheckIcon,
-  CopyIcon,
-  KeyRoundIcon,
-  RefreshCwIcon,
-  ShieldCheckIcon,
-  TriangleAlertIcon
-} from "lucide-react";
-import type RandExp from "randexp";
+import axios from "axios";
+import { CheckIcon, CopyIcon, KeyRoundIcon, RefreshCwIcon, ShieldCheckIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { useTimedReset } from "@app/hooks";
@@ -16,6 +9,7 @@ import {
   SecretValidationRuleType,
   TSecretValidationRule,
   TValueConstraints,
+  useGenerateStaticSecretValue,
   useListSecretValidationRules
 } from "@app/hooks/api/secretValidationRules";
 
@@ -27,7 +21,6 @@ import { IconButton } from "../../generic/IconButton";
 import { Label } from "../../generic/Label";
 import { Popover, PopoverContent, PopoverTrigger } from "../../generic/Popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
-import { buildSecureRandExp } from "./secure-randexp";
 
 type PasswordOptionsType = {
   length: number;
@@ -57,47 +50,16 @@ const getValueConstraints = (rule: TSecretValidationRule): TValueConstraints | u
 const hasValueConstraints = (rule: TSecretValidationRule): boolean =>
   Object.values(getValueConstraints(rule) ?? {}).some((value) => value !== undefined);
 
-const generateFromConstraints = (constraints: TValueConstraints): string => {
-  const prefix = constraints.requiredPrefix ?? "";
-  const suffix = constraints.requiredSuffix ?? "";
-  const regexValue = constraints.regexPattern;
-  const minLength = constraints.minLength ?? 16;
-  const maxLength = constraints.maxLength ?? 64;
+type RuleGeneration = { value?: string; error?: string; isPending: boolean };
 
-  let middle: string | undefined;
+const GENERATION_FAILED_MESSAGE =
+  "Could not generate a value for this rule. Enter a value manually.";
 
-  if (regexValue) {
-    // Regex takes full precedence over min/max length constraints
-    let generator: RandExp | undefined;
-    try {
-      generator = buildSecureRandExp(new RegExp(regexValue));
-    } catch {
-      // Fall through to manual generation if regex is invalid
-    }
-    middle = generator?.gen();
-  }
-
-  if (middle === undefined) {
-    middle = "";
-
-    const fixedLength = prefix.length + suffix.length;
-    const targetMin = Math.max(minLength - fixedLength, 1);
-    const targetMax = Math.max(maxLength - fixedLength, 1);
-    const lengthRange = Math.max(targetMax - targetMin, 0);
-    const randomLength =
-      lengthRange > 0
-        ? targetMin + (crypto.getRandomValues(new Uint32Array(1))[0] % (lengthRange + 1))
-        : Math.max(targetMin, 1);
-
-    const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~!*";
-    const randomBytes = new Uint32Array(randomLength);
-    crypto.getRandomValues(randomBytes);
-    for (let i = 0; i < randomLength; i += 1) {
-      middle += charset[randomBytes[i] % charset.length];
-    }
-  }
-
-  return prefix + middle + suffix;
+const getGenerationError = (error: unknown): string => {
+  const message = axios.isAxiosError<{ message?: unknown }>(error)
+    ? error.response?.data?.message
+    : undefined;
+  return typeof message === "string" ? message : GENERATION_FAILED_MESSAGE;
 };
 
 // The rule's constraints as chips. Reuse prevention carries no value of its own to show, so it
@@ -221,11 +183,6 @@ export const PasswordGenerator = ({
     [selectedRule]
   );
 
-  const hasRegexLengthConflict = Boolean(
-    valueConstraints?.regexPattern &&
-    (valueConstraints.minLength !== undefined || valueConstraints.maxLength !== undefined)
-  );
-
   // Auto-select matching rule only when exactly one environment is selected
   useEffect(() => {
     if (!applicableRules.length) {
@@ -248,10 +205,29 @@ export const PasswordGenerator = ({
     setSelectedRuleId(match?.id || "");
   }, [applicableRules, selectedEnvironments, secretPath]);
 
-  const password = useMemo(() => {
-    if (selectedRule && valueConstraints) {
-      return generateFromConstraints(valueConstraints);
-    }
+  const [ruleGeneration, setRuleGeneration] = useState<RuleGeneration>({ isPending: false });
+  const { mutateAsync: generateRuleValue } = useGenerateStaticSecretValue();
+
+  useEffect(() => {
+    if (!isOpen || !selectedRule) return undefined;
+
+    let isCurrent = true;
+    setRuleGeneration({ isPending: true });
+    generateRuleValue(selectedRule.id)
+      .then((value) => {
+        if (isCurrent) setRuleGeneration({ value, isPending: false });
+      })
+      .catch((error) => {
+        if (isCurrent) setRuleGeneration({ error: getGenerationError(error), isPending: false });
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isOpen, selectedRule, refresh, generateRuleValue]);
+
+  const customPassword = useMemo(() => {
+    if (selectedRule) return "";
 
     const charset = {
       uppercase: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
@@ -276,7 +252,9 @@ export const PasswordGenerator = ({
     }
 
     return newPassword;
-  }, [passwordOptions, refresh, selectedRule, valueConstraints]);
+  }, [passwordOptions, refresh, selectedRule]);
+
+  const password = selectedRule ? (ruleGeneration.value ?? "") : customPassword;
 
   const copyToClipboard = () => {
     navigator.clipboard
@@ -288,6 +266,8 @@ export const PasswordGenerator = ({
         setCopyText("Copy failed");
       });
   };
+
+  const hasValue = Boolean(password) && !(selectedRule && ruleGeneration.isPending);
 
   const usePassword = () => {
     onUsePassword?.(password);
@@ -346,7 +326,15 @@ export const PasswordGenerator = ({
 
           <div className="rounded-md border border-border bg-container/50 p-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="flex-1 font-mono text-sm break-all select-all">{password}</p>
+              {selectedRule && ruleGeneration.error ? (
+                <p role="alert" className="flex-1 text-sm text-danger">
+                  {ruleGeneration.error}
+                </p>
+              ) : (
+                <p className="flex-1 font-mono text-sm break-all select-all">
+                  {selectedRule && ruleGeneration.isPending ? "Generating…" : password}
+                </p>
+              )}
               <div className="flex shrink-0 gap-1">
                 <IconButton
                   aria-label="Generate another value"
@@ -360,6 +348,7 @@ export const PasswordGenerator = ({
                   aria-label="Copy generated value"
                   variant="ghost"
                   size="xs"
+                  isDisabled={!hasValue}
                   onClick={copyToClipboard}
                 >
                   {isCopying ? <CheckIcon /> : <CopyIcon />}
@@ -372,18 +361,6 @@ export const PasswordGenerator = ({
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5">
                 <Label className="text-xs text-accent">Constraints</Label>
-                {hasRegexLengthConflict && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <TriangleAlertIcon className="size-3.5 shrink-0 text-warning" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-64">
-                      When a regex pattern is set, it takes precedence over min/max length
-                      constraints. Consider defining length requirements directly in your regex
-                      pattern instead.
-                    </TooltipContent>
-                  </Tooltip>
-                )}
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -485,7 +462,13 @@ export const PasswordGenerator = ({
           )}
 
           {onUsePassword && (
-            <Button variant="project" size="xs" onClick={usePassword} className="w-full">
+            <Button
+              variant="project"
+              size="xs"
+              isDisabled={!hasValue}
+              onClick={usePassword}
+              className="w-full"
+            >
               Use Value
             </Button>
           )}
