@@ -50,12 +50,14 @@ const formSchema = z.discriminatedUnion("method", [
         .string()
         .trim()
         .min(1, "API ID is required")
-        .max(256, "API ID cannot exceed 256 characters"),
+        .max(256, "API ID cannot exceed 256 characters")
+        .regex(/^[\x21-\x7e]+$/, "API ID cannot contain spaces or line breaks"),
       apiKey: z
         .string()
         .trim()
         .min(1, "API key is required")
-        .max(512, "API key cannot exceed 512 characters"),
+        .max(512, "API key cannot exceed 512 characters")
+        .regex(/^[\x21-\x7e]+$/, "API key cannot contain spaces or line breaks"),
       accountId: z
         .string()
         .trim()

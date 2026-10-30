@@ -168,7 +168,7 @@ export const withImpervaOperation = async <T>(
 
   // withGatewayV2Proxy replaces the thrown error with one of its own, so Imperva's status and
   // message are kept here and rethrown once the proxies have been torn down.
-  let impervaError: Error | undefined;
+  let operationError: Error | undefined;
   // Pooled per host for the operation, then destroyed: the proxy's port goes away with it, so a
   // socket kept alive past the teardown points at nothing.
   const agents: Record<string, https.Agent> = {
@@ -194,19 +194,23 @@ export const withImpervaOperation = async <T>(
                 });
                 return resp.data;
               } catch (error) {
-                impervaError = toImpervaRequestError(error);
-                throw impervaError;
+                throw toImpervaRequestError(error);
               }
             };
 
-            return operation(makeRequest);
+            try {
+              return await operation(makeRequest);
+            } catch (error) {
+              operationError = error instanceof Error ? error : new Error(String(error));
+              throw operationError;
+            }
           },
           { protocol: GatewayProxyProtocol.Tcp, ...restTarget }
         ),
       { protocol: GatewayProxyProtocol.Tcp, ...provTarget }
     );
   } catch (error) {
-    if (impervaError) throw impervaError;
+    if (operationError) throw operationError;
     throw error;
   } finally {
     Object.values(agents).forEach((agent) => agent.destroy());
