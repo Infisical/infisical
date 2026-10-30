@@ -8,6 +8,11 @@ import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/ident
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import {
   ResourcePermissionPamResourceActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
@@ -351,7 +356,7 @@ export const pamMembershipServiceFactory = ({
   // Product members
 
   const listProductMembers = async ({ projectId, ...ctx }: TListPamProductMembersDTO & TActorContext) => {
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
       projectId,
@@ -359,6 +364,7 @@ export const pamMembershipServiceFactory = ({
       actorOrgId: ctx.actorOrgId,
       actionProjectType: ActionProjectType.PAM
     });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
     const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
     return resolveMemberships(memberships, PamProductRole.Member);
@@ -367,7 +373,7 @@ export const pamMembershipServiceFactory = ({
   // Identity members enriched with the identity's name and scope, so the PAM UI never has to
   // join against org- or project-level identity endpoints (the org list excludes PAM-scoped identities).
   const listProductIdentityMembers = async ({ projectId, ...ctx }: TListPamProductMembersDTO & TActorContext) => {
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
       projectId,
@@ -375,6 +381,10 @@ export const pamMembershipServiceFactory = ({
       actorOrgId: ctx.actorOrgId,
       actionProjectType: ActionProjectType.PAM
     });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionSub.Identity
+    );
 
     const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
     const identityMemberships = memberships.filter((m) => m.actorIdentityId);

@@ -1,7 +1,9 @@
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import knex, { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
@@ -212,10 +214,12 @@ describe("pamMembership addProductUserMembers", () => {
 });
 
 describe("pamMembership member lists", () => {
-  test("returns each user member's email and username from one batched lookup", async () => {
+  const buildListService = (rules: { action: string; subject: string }[]) => {
     const createdAt = new Date();
     const deps = {
-      permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
+      permissionService: {
+        getProjectPermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(rules) })
+      },
       membershipDAL: {
         find: vi.fn().mockResolvedValue([
           { id: "mem-1", actorUserId: "user-1", isActive: true, createdAt },
@@ -232,7 +236,16 @@ describe("pamMembership member lists", () => {
         ])
       }
     };
-    const service = pamMembershipServiceFactory(deps as unknown as Parameters<typeof pamMembershipServiceFactory>[0]);
+    return {
+      service: pamMembershipServiceFactory(deps as unknown as Parameters<typeof pamMembershipServiceFactory>[0]),
+      deps
+    };
+  };
+
+  test("returns each user member's email and username from one batched lookup", async () => {
+    const { service, deps } = buildListService([
+      { action: ProjectPermissionMemberActions.Read, subject: ProjectPermissionSub.Member }
+    ]);
 
     const members = await service.listProductMembers({ ...ctx, projectId: PROJECT_ID });
 
@@ -244,5 +257,14 @@ describe("pamMembership member lists", () => {
       { email: null, username: null },
       { email: null, username: null }
     ]);
+  });
+
+  // A delegated OAuth token scoped to secrets:read is left with no member or identity rules.
+  test("refuses a caller whose ability cannot read members", async () => {
+    const { service, deps } = buildListService([]);
+
+    await expect(service.listProductMembers({ ...ctx, projectId: PROJECT_ID })).rejects.toThrow(ForbiddenError);
+    await expect(service.listProductIdentityMembers({ ...ctx, projectId: PROJECT_ID })).rejects.toThrow(ForbiddenError);
+    expect(deps.membershipDAL.find).not.toHaveBeenCalled();
   });
 });
