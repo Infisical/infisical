@@ -9,9 +9,9 @@ import {
 } from "@app/hooks/api";
 
 import { BillingV2RenderState } from "../billing-v2-view-types";
-import { ErrorPanel } from "./states/ErrorPanel";
 import { Banner } from "./Banner";
 import { RootOrgFilter } from "./RootOrgFilter";
+import { ErrorPanel } from "./states/ErrorPanel";
 import { TabbedOverview, TabbedOverviewSkeleton } from "./TabbedOverview";
 import { TrialBanners } from "./TrialBanners";
 

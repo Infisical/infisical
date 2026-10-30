@@ -31,6 +31,7 @@ import {
 import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
+  TAgentVaultBundleSkill,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultMember,
   TAgentVaultOauthAuthorization,
@@ -45,11 +46,16 @@ import {
   TAgentVaultSessionLogReadCheck,
   TAgentVaultSessionLogSettingsState,
   TAgentVaultSessionLogTailPage,
+  TAgentVaultSkillDetail,
+  TAgentVaultSkillPage,
+  TAgentVaultSkillVersion,
+  TAgentVaultSkillVersionWithFiles,
   TAgentVaultVariable,
   TListAgentVaultAccessBundlesDTO,
   TListAgentVaultMembersDTO,
   TListAgentVaultProxiesDTO,
   TListAgentVaultSessionsDTO,
+  TListAgentVaultSkillsDTO,
   TListAgentVaultVariablesDTO
 } from "./types";
 
@@ -119,6 +125,19 @@ export const agentVaultKeys = {
     [...agentVaultKeys.variables(orgId), "list", params] as const,
   variableKeyStatus: (orgId: string, scope: AgentVaultVariableScope, keys: string[]) =>
     [...agentVaultKeys.variables(orgId), "key-status", scope, keys] as const,
+  skills: (orgId: string) => [...agentVaultKeys.all(orgId), "skills"] as const,
+  skillLists: (orgId: string) => [...agentVaultKeys.skills(orgId), "list"] as const,
+  skillList: (orgId: string, params: TListAgentVaultSkillsDTO) =>
+    [...agentVaultKeys.skillLists(orgId), params] as const,
+  skill: (orgId: string, skillId: string) =>
+    [...agentVaultKeys.skills(orgId), "detail", skillId] as const,
+  skillVersions: (orgId: string, skillId: string) =>
+    [...agentVaultKeys.skill(orgId, skillId), "versions"] as const,
+  skillVersion: (orgId: string, skillId: string, version: number) =>
+    [...agentVaultKeys.skillVersions(orgId, skillId), version] as const,
+  // Nested under accessBundle() so changes to the bundle refresh its skills too.
+  accessBundleSkills: (orgId: string, accessBundleId: string) =>
+    [...agentVaultKeys.accessBundle(orgId, accessBundleId), "skills"] as const,
   members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
   memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.members(orgId), params] as const,
@@ -690,4 +709,90 @@ export const useAgentVaultVariableKeyStatus = (
       ) as ReadonlySet<string>
     };
   }, [data, keySignature]);
+};
+
+export const useListAgentVaultSkills = (
+  params: TListAgentVaultSkillsDTO = {},
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.skillList(currentOrg.id, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TAgentVaultSkillPage>("/api/v1/agent-vault/skills", {
+        params
+      });
+      return data;
+    },
+    placeholderData: (prev) => prev,
+    enabled
+  });
+};
+
+export const useGetAgentVaultSkill = (skillId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.skill(currentOrg.id, skillId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ skill: TAgentVaultSkillDetail }>(
+        `/api/v1/agent-vault/skills/${skillId}`
+      );
+      return data.skill;
+    },
+    enabled: Boolean(skillId)
+  });
+};
+
+export const useListAgentVaultSkillVersions = (skillId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.skillVersions(currentOrg.id, skillId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ versions: TAgentVaultSkillVersion[] }>(
+        `/api/v1/agent-vault/skills/${skillId}/versions`
+      );
+      return data.versions;
+    },
+    enabled: Boolean(skillId)
+  });
+};
+
+export const fetchAgentVaultSkillVersion = async (skillId: string, version: number) => {
+  const { data } = await apiRequest.get<{ version: TAgentVaultSkillVersionWithFiles }>(
+    `/api/v1/agent-vault/skills/${skillId}/versions/${version}`
+  );
+  return data.version;
+};
+
+export const useGetAgentVaultSkillVersion = (skillId: string, version?: number) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.skillVersion(currentOrg.id, skillId, version ?? 0),
+    queryFn: () => fetchAgentVaultSkillVersion(skillId, version ?? 0),
+    enabled: Boolean(skillId) && Boolean(version),
+    // A version never changes once published.
+    staleTime: Infinity
+  });
+};
+
+export const useListAgentVaultAccessBundleSkills = (
+  accessBundleId: string,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.accessBundleSkills(currentOrg.id, accessBundleId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ skills: TAgentVaultBundleSkill[] }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/skills`
+      );
+      return data.skills;
+    },
+    enabled: enabled && Boolean(accessBundleId)
+  });
 };

@@ -15,14 +15,6 @@ import {
 import {
   Alert,
   AlertDescription,
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertTitle,
   Button,
   Combobox,
@@ -61,6 +53,7 @@ import {
   overviewResponsePhase,
   useOverviewTelemetry
 } from "../../OverviewTelemetry";
+import { SecretConflictsDialog } from "../SecretConflictsDialog";
 import { type CopySecretsErrorKind, getCopySecretsErrorKind } from "./copySecrets.data";
 import type {
   CopySecretsAttributes,
@@ -899,44 +892,19 @@ const CopySecretsSession = ({
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={isConflictDialogOpen} onOpenChange={setIsConflictDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Resolve Secret Conflicts</AlertDialogTitle>
-            <AlertDialogDescription>
-              These secrets already exist at the destination. Overwrite them or copy only secrets
-              without conflicts.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <ul className="max-h-64 overflow-y-auto rounded-md border border-border bg-container">
-            {conflictingSecrets.map(
-              ({ sourceSecretId, name, destinationPath: conflictDestinationPath }) => (
-                <li
-                  key={sourceSecretId}
-                  className="flex min-w-0 flex-col gap-1 border-b border-border px-3 py-2 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-                >
-                  <span className="font-mono text-sm break-all text-foreground">{name}</span>
-                  <span className="font-mono text-xs break-all text-muted">
-                    {conflictDestinationPath}
-                  </span>
-                </li>
-              )
-            )}
-          </ul>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="outline" onClick={() => handleConflictResolution("skip")}>
-              Skip conflicts
-            </AlertDialogAction>
-            <AlertDialogAction
-              variant="danger"
-              onClick={() => handleConflictResolution("overwrite")}
-            >
-              Overwrite conflicts
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SecretConflictsDialog
+        isOpen={isConflictDialogOpen}
+        onOpenChange={setIsConflictDialogOpen}
+        conflicts={conflictingSecrets.map(
+          ({ sourceSecretId, name, destinationPath: location }) => ({
+            id: sourceSecretId,
+            name,
+            location
+          })
+        )}
+        description="These secrets already exist at the destination. Overwrite them or copy only secrets without conflicts."
+        onResolve={handleConflictResolution}
+      />
     </>
   );
 };

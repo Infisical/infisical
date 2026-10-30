@@ -192,7 +192,6 @@ const ActiveDirectoryConfigForm = ({
 
   useEffect(() => {
     reset(defaults);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, reset]);
 
   const onSubmit = (data: z.infer<typeof activeDirectoryConfigSchema>) => {
@@ -282,7 +281,6 @@ const HostRangeConfigForm = ({
 
   useEffect(() => {
     reset(defaults);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, reset]);
 
   const onSubmit = (data: z.infer<typeof hostRangeConfigSchema>) => {

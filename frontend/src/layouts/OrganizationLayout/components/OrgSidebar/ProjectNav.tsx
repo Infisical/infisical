@@ -122,7 +122,7 @@ export const ProjectNav = () => {
 
   useEffect(() => {
     setActiveSubmenu(getInitialProjectSubmenu());
-  }, [pathname, hasMultipleSecretScanningProjects]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, hasMultipleSecretScanningProjects]);
 
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);
@@ -135,13 +135,10 @@ export const ProjectNav = () => {
       : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}/${submenu.pathSuffix}`;
     if (pathname === submenuPath || pathname.startsWith(`${submenuPath}/`)) return;
     navigate({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       to: isOrgScoped
         ? (`/organizations/$orgId/${typePath}/${submenu.pathSuffix}` as any)
         : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       params: { orgId: currentOrg.id, projectId: currentProject.id } as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       search: { selectedTab: submenu.defaultTab } as any
     });
   };

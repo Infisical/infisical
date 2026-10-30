@@ -284,7 +284,6 @@ const buildChain = async (leaf: TParsedCert, certs: TParsedCert[]) => {
       });
 
     let issuer: TParsedCert | null = null;
-    // eslint-disable-next-line no-restricted-syntax
     for (const candidate of candidates) {
       // eslint-disable-next-line no-await-in-loop
       const signed = await subject.cert
@@ -460,7 +459,6 @@ const extractPkcs12Entries = async ({
     (cert) => !issuerSubjects.has(cert.cert.subject) || cert.cert.subject === cert.cert.issuer
   );
 
-  // eslint-disable-next-line no-restricted-syntax
   for (const key of keys) {
     const leaf = findLeafForKey(key, keys, certs, leaves);
     const pairId = leaf ? `${leaf.fingerprint}:${key.pem}` : null;

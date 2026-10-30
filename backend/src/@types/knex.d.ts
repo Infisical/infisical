@@ -22,6 +22,9 @@ import {
   TAdditionalPrivilegesUpdate,
   TAgentVaultAccessBundles,
   TAgentVaultAccessBundlesInsert,
+  TAgentVaultAccessBundleSkills,
+  TAgentVaultAccessBundleSkillsInsert,
+  TAgentVaultAccessBundleSkillsUpdate,
   TAgentVaultAccessBundlesUpdate,
   TAgentVaultPersonalValueReferences,
   TAgentVaultPersonalValueReferencesInsert,
@@ -53,6 +56,12 @@ import {
   TAgentVaultSessions,
   TAgentVaultSessionsInsert,
   TAgentVaultSessionsUpdate,
+  TAgentVaultSkills,
+  TAgentVaultSkillsInsert,
+  TAgentVaultSkillsUpdate,
+  TAgentVaultSkillVersions,
+  TAgentVaultSkillVersionsInsert,
+  TAgentVaultSkillVersionsUpdate,
   TAgentVaultVariables,
   TAgentVaultVariablesInsert,
   TAgentVaultVariablesUpdate,
@@ -1893,6 +1902,21 @@ declare module "knex/types/tables" {
       TAgentVaultSessionLogConfigs,
       TAgentVaultSessionLogConfigsInsert,
       TAgentVaultSessionLogConfigsUpdate
+    >;
+    [TableName.AgentVaultSkill]: KnexOriginal.CompositeTableType<
+      TAgentVaultSkills,
+      TAgentVaultSkillsInsert,
+      TAgentVaultSkillsUpdate
+    >;
+    [TableName.AgentVaultSkillVersion]: KnexOriginal.CompositeTableType<
+      TAgentVaultSkillVersions,
+      TAgentVaultSkillVersionsInsert,
+      TAgentVaultSkillVersionsUpdate
+    >;
+    [TableName.AgentVaultAccessBundleSkill]: KnexOriginal.CompositeTableType<
+      TAgentVaultAccessBundleSkills,
+      TAgentVaultAccessBundleSkillsInsert,
+      TAgentVaultAccessBundleSkillsUpdate
     >;
     [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
       TPamAccountPolicies,

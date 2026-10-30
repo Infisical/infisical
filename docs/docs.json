@@ -701,28 +701,34 @@
                 ]
               },
               {
-                "group": "Agent guides",
+                "group": "Guides",
                 "pages": [
-                  "documentation/platform/agent-vault/guides/claude-code",
-                  "documentation/platform/agent-vault/guides/codex",
-                  "documentation/platform/agent-vault/guides/opencode",
                   {
-                    "group": "Hermes Agent",
-                    "root": "documentation/platform/agent-vault/guides/hermes",
+                    "group": "Sandboxes",
                     "pages": [
-                      "documentation/platform/agent-vault/guides/hermes-gateway"
+                      "documentation/platform/agent-vault/guides/modal",
+                      "documentation/platform/agent-vault/guides/daytona",
+                      "documentation/platform/agent-vault/guides/docker"
                     ]
                   },
                   {
-                    "group": "OpenClaw",
-                    "root": "documentation/platform/agent-vault/guides/openclaw",
+                    "group": "Messaging gateways",
                     "pages": [
+                      "documentation/platform/agent-vault/guides/hermes-gateway",
                       "documentation/platform/agent-vault/guides/openclaw-gateway"
                     ]
                   },
                   "documentation/platform/agent-vault/guides/custom-agent",
-                  "documentation/platform/agent-vault/guides/modal",
-                  "documentation/platform/agent-vault/guides/daytona"
+                  {
+                    "group": "Local development",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/claude-code",
+                      "documentation/platform/agent-vault/guides/codex",
+                      "documentation/platform/agent-vault/guides/opencode",
+                      "documentation/platform/agent-vault/guides/hermes",
+                      "documentation/platform/agent-vault/guides/openclaw"
+                    ]
+                  }
                 ]
               },
               {
@@ -738,6 +744,7 @@
                     ]
                   },
                   "documentation/platform/agent-vault/variables",
+                  "documentation/platform/agent-vault/skills",
                   {
                     "group": "Sessions",
                     "root": "documentation/platform/agent-vault/sessions",
@@ -2664,6 +2671,16 @@
                     ]
                   },
                   {
+                    "group": "Alerts",
+                    "pages": [
+                      "api-reference/endpoints/alerts/list",
+                      "api-reference/endpoints/alerts/create",
+                      "api-reference/endpoints/alerts/get-by-id",
+                      "api-reference/endpoints/alerts/update",
+                      "api-reference/endpoints/alerts/delete"
+                    ]
+                  },
+                  {
                     "group": "Events",
                     "pages": [
                       "api-reference/endpoints/events/project-events"
@@ -4551,6 +4568,22 @@
                       "api-reference/endpoints/agent-vault-variables/update",
                       "api-reference/endpoints/agent-vault-variables/delete",
                       "api-reference/endpoints/agent-vault-variables/get-value"
+                    ]
+                  },
+                  {
+                    "group": "Skills",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-skills/list",
+                      "api-reference/endpoints/agent-vault-skills/get",
+                      "api-reference/endpoints/agent-vault-skills/create",
+                      "api-reference/endpoints/agent-vault-skills/delete",
+                      "api-reference/endpoints/agent-vault-skills/list-versions",
+                      "api-reference/endpoints/agent-vault-skills/get-version",
+                      "api-reference/endpoints/agent-vault-skills/update",
+                      "api-reference/endpoints/agent-vault-skills/restore-version",
+                      "api-reference/endpoints/agent-vault-skills/list-bundle-skills",
+                      "api-reference/endpoints/agent-vault-skills/add",
+                      "api-reference/endpoints/agent-vault-skills/remove"
                     ]
                   },
                   {

@@ -1,4 +1,3 @@
-export * from "./AddResourceButtons";
 export * from "./DownloadEnvButton";
 export * from "./DynamicSecretTableRow";
 export * from "./EmptyResourceDisplay";

@@ -14,6 +14,7 @@ import {
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { Pkcs11Mechanism } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPkcs11Error, Pkcs11ErrorCode } from "@app/lib/gateway-v2/pkcs11-rpc";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -25,7 +26,8 @@ import {
   decryptHsmConnectorCredentials,
   encryptHsmConnectorCredentials,
   HsmConnectorCredentialsSchema,
-  HsmConnectorSanitizedSchema
+  HsmConnectorSanitizedSchema,
+  HsmGatewayCapability
 } from "./hsm-connector-fns";
 import { hsmConnectorRoutingFactory } from "./hsm-connector-routing";
 import type {
@@ -56,7 +58,12 @@ export type THsmConnectorServiceFactoryDep = {
 export type THsmConnectorServiceFactory = ReturnType<typeof hsmConnectorServiceFactory>;
 
 const OLD_GATEWAY_BAD_REQUEST_MESSAGE = "Invalid request";
-const GATEWAY_MAX_SIGN_DATA_BYTES = 64 * 1024;
+const GATEWAY_MAX_SIGN_DATA_BYTES = 16 * 1024 * 1024;
+const ML_DSA_HSM_KEY_ALGORITHMS = new Set<HsmKeyAlgorithm>([
+  HsmKeyAlgorithm.ML_DSA_44,
+  HsmKeyAlgorithm.ML_DSA_65,
+  HsmKeyAlgorithm.ML_DSA_87
+]);
 
 export const hsmConnectorServiceFactory = ({
   hsmConnectorDAL,
@@ -69,7 +76,7 @@ export const hsmConnectorServiceFactory = ({
   orgDAL,
   licenseService
 }: THsmConnectorServiceFactoryDep) => {
-  const routing = hsmConnectorRoutingFactory({ gatewayV2Service, gatewayPoolService });
+  const routing = hsmConnectorRoutingFactory({ gatewayV2Service, gatewayV2DAL, gatewayPoolService });
 
   const assertGatewayBelongsToOrg = async (
     actorOrgId: string,
@@ -469,7 +476,8 @@ export const hsmConnectorServiceFactory = ({
       connector: { gatewayId: row.gatewayId, gatewayPoolId: row.gatewayPoolId },
       credentials,
       endpoint: "/v1/generate-key-pair",
-      params: { keyLabel: fullLabel, keyAlgorithm: args.keyAlgorithm }
+      params: { keyLabel: fullLabel, keyAlgorithm: args.keyAlgorithm },
+      requiredCapability: ML_DSA_HSM_KEY_ALGORITHMS.has(args.keyAlgorithm) ? HsmGatewayCapability.MlDsa : undefined
     });
     return {
       publicKeySpkiDer: Buffer.from(result.publicKey, "base64"),
@@ -506,7 +514,8 @@ export const hsmConnectorServiceFactory = ({
           mechanism: args.mechanism,
           data: args.data.toString("base64"),
           isDigest: args.isDigest
-        }
+        },
+        requiredCapability: args.mechanism === Pkcs11Mechanism.MlDsa ? HsmGatewayCapability.MlDsa : undefined
       })
       .catch((err: unknown) => {
         if (isPkcs11Error(err, Pkcs11ErrorCode.KeyNotFound)) {
