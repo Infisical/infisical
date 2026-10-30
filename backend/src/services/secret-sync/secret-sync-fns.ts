@@ -17,7 +17,11 @@ import {
   AwsSecretsManagerSyncFns
 } from "@app/services/secret-sync/aws-secrets-manager";
 import { DATABRICKS_SYNC_LIST_OPTION, databricksSyncFactory } from "@app/services/secret-sync/databricks";
-import { GITHUB_SYNC_LIST_OPTION, GithubSyncFns } from "@app/services/secret-sync/github";
+import {
+  GITHUB_SYNC_LIST_OPTION,
+  gitHubPreSaveTransformDestinationConfig,
+  GithubSyncFns
+} from "@app/services/secret-sync/github";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
@@ -165,7 +169,8 @@ const PRE_SAVE_TRANSFORM_SYNC_OPTIONS_MAP: Partial<Record<SecretSync, TPreSaveTr
 const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPreSaveTransformDestinationConfigFn>> = {
   [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig,
   [SecretSync.Chef]: chefPreSaveTransformDestinationConfig,
-  [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig
+  [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig,
+  [SecretSync.GitHub]: gitHubPreSaveTransformDestinationConfig
 };
 
 export const preSaveTransformSyncOptions = async (

@@ -20,12 +20,6 @@ import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot
 import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
-import { TSecretDALFactory } from "@app/services/secret/secret-dal";
-import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
-import { TSecretQueueFactory, uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
-import { SecretOperations } from "@app/services/secret/secret-types";
-import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
-import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { FolderModifiedEventV1 } from "@app/services/secret-folder/secret-folder-events";
 import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types";
@@ -42,6 +36,12 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TSecretDALFactory } from "@app/services/secret/secret-dal";
+import { fnSecretBulkInsert, fnSecretBulkUpdate } from "@app/services/secret/secret-fns";
+import { TSecretQueueFactory, uniqueSecretQueueKey } from "@app/services/secret/secret-queue";
+import { SecretOperations } from "@app/services/secret/secret-types";
+import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 
 import { MAX_REPLICATION_DEPTH } from "./secret-replication-constants";
 

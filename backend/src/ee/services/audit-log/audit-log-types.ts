@@ -39,6 +39,11 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import {
   CertExtendedKeyUsage,
   CertificateDeletionEligibility,
@@ -46,19 +51,14 @@ import {
   CertKeyUsage,
   CrlReason
 } from "@app/services/certificate/certificate-types";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
-import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
-import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import type { ExternalMigrationImportStatus } from "@app/services/external-migration/external-migration-types";
-import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   TAWSAuthDetails,
   TKubernetesAuthDetails,
   TOidcAuthDetails
 } from "@app/services/identity-access-token/identity-access-token-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 import { OrgAccessRemovalCause } from "@app/services/org/org-membership-events";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
@@ -750,6 +750,7 @@ export enum EventType {
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS = "view-insights-secrets-management-unused-access",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION = "view-insights-secrets-management-org-auth-method-distribution",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
@@ -863,6 +864,9 @@ export enum EventType {
   ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
+  ACCESS_APPROVAL_REQUEST_DELEGATED_DISPATCH_RETRY = "access-approval-request-delegated-dispatch-retry",
+  ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION = "access-approval-request-delegated-decision",
+  ACCESS_APPROVAL_REQUEST_CANCEL = "access-approval-request-cancel",
   ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
   VIEW_AUDIT_LOGS = "view-audit-logs",
 
@@ -6003,6 +6007,17 @@ interface ViewSecretManagementInsightsAccessVolumeEvent {
   };
 }
 
+interface ViewSecretManagementInsightsUnusedAccessEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS;
+  metadata: {
+    projectId: string;
+    // Set when one principal's unused secrets were viewed rather than the project list.
+    principalType?: string;
+    principalId?: string;
+    principalName?: string;
+  };
+}
+
 interface ViewSecretManagementInsightsOrgAuthMethodDistributionEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION;
   metadata: {
@@ -7336,6 +7351,54 @@ interface AccessApprovalRequestRevokeEvent {
     requestId: string;
     requestedByUserId: string;
     policyId: string;
+  };
+}
+
+interface AccessApprovalRequestDelegatedDispatchRetryEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_DELEGATED_DISPATCH_RETRY;
+  metadata: {
+    requestId: string;
+    requestedByUserId: string;
+    requestedByUserName: string;
+    requestedByUserEmail: string;
+    policyId: string;
+    policyName: string;
+    environment: string;
+    secretPath: string;
+    delegatedApprovalType: string;
+  };
+}
+
+interface AccessApprovalRequestDelegatedDecisionEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    policyName?: string;
+    delegatedApprovalType: string;
+    delegatedProviderRequestId: string;
+    providerRecordNumber?: string;
+    permissions?: string[];
+    outcome: string;
+    decision?: string;
+    decidedBy?: string;
+    decidedAt?: string;
+    decisionNotes?: string;
+    reason?: string;
+  };
+}
+
+interface AccessApprovalRequestCancelEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_CANCEL;
+  metadata: {
+    requestId: string;
+    requestedByUserId: string;
+    requestedByUserName: string;
+    requestedByUserEmail: string;
+    policyId: string;
+    policyName: string;
+    environment: string;
+    secretPath: string;
   };
 }
 
@@ -8699,6 +8762,7 @@ export type Event =
   | DashboardGetSecretVersionValueEvent
   | ViewSecretManagementInsightsCalendarEvent
   | ViewSecretManagementInsightsAccessVolumeEvent
+  | ViewSecretManagementInsightsUnusedAccessEvent
   | ViewSecretManagementInsightsOrgAuthMethodDistributionEvent
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
@@ -8829,6 +8893,9 @@ export type Event =
   | AccessApprovalRequestCreateEvent
   | AccessApprovalRequestReviewEvent
   | AccessApprovalRequestRevokeEvent
+  | AccessApprovalRequestDelegatedDispatchRetryEvent
+  | AccessApprovalRequestDelegatedDecisionEvent
+  | AccessApprovalRequestCancelEvent
   | AccessApprovalRequestUpdateEvent
   | CreateAcmeAccountEvent
   | RetrieveAcmeAccountEvent

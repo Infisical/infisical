@@ -41,7 +41,6 @@ import {
 } from "@app/hooks/api/secretSyncs";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
-import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields/SecretSyncOptionsFields";
 import { getSecretSyncDestinationConfig, SecretSyncFormSchema, TSecretSyncForm } from "./schemas";
 import { SecretSyncDestinationFields } from "./SecretSyncDestinationFields";
 import { SecretSyncDetailsFields } from "./SecretSyncDetailsFields";
@@ -49,6 +48,7 @@ import {
   InitialSyncAlerts,
   SecretSyncInitialSyncBehaviorFields
 } from "./SecretSyncInitialSyncBehaviorFields";
+import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields/SecretSyncOptionsFields";
 import { SecretSyncReviewFields } from "./SecretSyncReviewFields";
 import { SecretSyncSourceFields } from "./SecretSyncSourceFields";
 

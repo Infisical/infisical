@@ -562,32 +562,31 @@ export const getProjectPermissionFingerprint = async (
   return `${membershipFingerprint}:${folderVersion}`;
 };
 
-export const fetchFolderScopedPrivileges = async (
+type TFolderScopedPrivilegeDeps = {
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findFolderScopedPrivileges">;
+  secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+};
+
+// A grant whose folder no longer exists, or that has no role, grants nothing and is left out.
+const $resolveFolderScopedPrivileges = async (
   projectId: string,
-  actor: ActorType.USER | ActorType.IDENTITY,
-  actorId: string,
-  {
-    additionalPrivilegeDAL,
-    secretFolderDAL
-  }: {
-    additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findFolderScopedPrivileges">;
-    secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
-  }
-): Promise<TCachedFolderScopedPrivileges> => {
-  const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges({ projectId, actorId, actorType: actor });
-  if (!rows.length) return { privileges: [] };
+  rows: Awaited<ReturnType<TAdditionalPrivilegeDALFactory["findFolderScopedPrivileges"]>>,
+  secretFolderDAL: TFolderScopedPrivilegeDeps["secretFolderDAL"]
+) => {
+  if (!rows.length) return [];
 
   const foldersWithPath = await secretFolderDAL.findSecretPathByFolderIds(
     projectId,
     rows.map((row) => row.folderId)
   );
 
-  return {
-    privileges: rows.flatMap((row, idx) => {
-      const folder = foldersWithPath[idx];
-      if (!folder || !row.role) return [];
-      return [
-        {
+  return rows.flatMap((row, idx) => {
+    const folder = foldersWithPath[idx];
+    if (!folder || !row.role) return [];
+    return [
+      {
+        actorId: row.actorUserId ?? row.actorIdentityId,
+        privilege: {
           id: row.id,
           folderId: row.folderId,
           role: row.role,
@@ -596,9 +595,34 @@ export const fetchFolderScopedPrivileges = async (
           isTemporary: row.isTemporary,
           temporaryAccessEndTime: row.temporaryAccessEndTime
         }
-      ];
-    })
-  };
+      }
+    ];
+  });
+};
+
+export const fetchFolderScopedPrivileges = async (
+  projectId: string,
+  actor: ActorType.USER | ActorType.IDENTITY,
+  actorId: string,
+  { additionalPrivilegeDAL, secretFolderDAL }: TFolderScopedPrivilegeDeps
+): Promise<TCachedFolderScopedPrivileges> => {
+  const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges({ projectId, actorId, actorType: actor });
+  const resolved = await $resolveFolderScopedPrivileges(projectId, rows, secretFolderDAL);
+  return { privileges: resolved.map(({ privilege }) => privilege) };
+};
+
+// Every user's and identity's folder grants in the project, keyed by the actor's id.
+export const fetchProjectFolderScopedPrivileges = async (
+  projectId: string,
+  { additionalPrivilegeDAL, secretFolderDAL }: TFolderScopedPrivilegeDeps
+) => {
+  const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges({ projectId });
+  const privilegesByActorId = new Map<string, TCachedFolderScopedPrivileges["privileges"]>();
+  (await $resolveFolderScopedPrivileges(projectId, rows, secretFolderDAL)).forEach(({ actorId, privilege }) => {
+    if (!actorId) return;
+    privilegesByActorId.set(actorId, [...(privilegesByActorId.get(actorId) ?? []), privilege]);
+  });
+  return privilegesByActorId;
 };
 
 export const filterOverriddenFolderScopedDenyRules = (

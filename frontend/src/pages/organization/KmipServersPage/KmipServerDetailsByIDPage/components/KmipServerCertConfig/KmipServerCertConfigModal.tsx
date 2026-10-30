@@ -66,7 +66,6 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
 
   useEffect(() => {
     if (isOpen) reset(toFormDefaults(kmipServer));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const onSubmit = async (form: FormData) => {

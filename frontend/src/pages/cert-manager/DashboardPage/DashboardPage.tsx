@@ -17,7 +17,6 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { CertManagerAdminOnly } from "@app/pages/cert-manager/components/CertManagerAdminOnly";
 
-import { getInventoryLink, type InventoryFilters } from "./components/inventory-link";
 import {
   ActivityTrend,
   CodeSigningSection,
@@ -28,6 +27,7 @@ import {
   PqcTrend,
   ValidityReadinessSection
 } from "./components";
+import { getInventoryLink, type InventoryFilters } from "./components/inventory-link";
 
 export const DashboardPage = () => {
   const { currentProject } = useProject();
@@ -48,7 +48,6 @@ export const DashboardPage = () => {
       navigate({
         to: "/organizations/$orgId/cert-manager/inventory",
         params: { orgId: currentProject?.orgId || "" },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         search: filters as any
       }),
     [navigate, currentProject?.orgId]

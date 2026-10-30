@@ -164,7 +164,6 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
     return () => {
       disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadTables = useCallback(
@@ -255,7 +254,6 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
     if (!isConnected) {
       wasConnectedRef.current = false;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected]);
 
   const handleSchemaChange = useCallback(

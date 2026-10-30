@@ -54,12 +54,12 @@ import {
   useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
 
+import { AccessTypeBadge } from "./AccessTypeBadge";
+import { useAccountSheetDetails } from "./accountSheetDetails";
 import {
   AutoApprovalRequestInputs,
   toAutoApprovalInputValues
 } from "./auto-approval/AutoApprovalRequestInputs";
-import { AccessTypeBadge } from "./AccessTypeBadge";
-import { useAccountSheetDetails } from "./accountSheetDetails";
 import { PamDetailSheet } from "./PamDetailSheet";
 
 // Mirrors the membership expiry picker options, capped at the default 7d policy maximum and
@@ -204,9 +204,9 @@ export const RequestAccessSheet = ({
   // With no approvers and no auto-approval rules that apply, break glass is the only way in
   const isBreakGlassOnly = Boolean(
     account?.canBreakGlass &&
-      approverData &&
-      !approverData.autoApprovalOnly &&
-      !approverData.steps.some((step) => step.approvers.length > 0)
+    approverData &&
+    !approverData.autoApprovalOnly &&
+    !approverData.steps.some((step) => step.approvers.length > 0)
   );
   const [breakGlassChosen, setBreakGlassChosen] = useState(false);
   const breakGlassOnSubmit = breakGlassChosen || isBreakGlassOnly;

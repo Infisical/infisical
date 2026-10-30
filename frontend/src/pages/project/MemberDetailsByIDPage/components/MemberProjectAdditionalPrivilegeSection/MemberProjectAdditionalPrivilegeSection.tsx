@@ -125,7 +125,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
   }, [assignPrivilegesConditions, membershipDetails?.user?.email]);
 
   const handlePrivilegeDelete = async () => {
-    const { id } = popUp?.deletePrivilege?.data as { id: string };
+    const { id } = popUp.deletePrivilege.data as { id: string };
     await deletePrivilegeMutation.mutateAsync({
       privilegeId: id,
       projectMembershipId: membershipDetails.id
@@ -135,7 +135,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
   };
 
   const handleRevokeAccess = async () => {
-    const { accessApprovalRequestId } = popUp?.revokeAccess?.data as {
+    const { accessApprovalRequestId } = popUp.revokeAccess.data as {
       accessApprovalRequestId: string;
     };
     await revokeAccessMutation.mutateAsync({

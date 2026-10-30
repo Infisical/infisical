@@ -327,9 +327,9 @@ export const SecretTableRow = ({
           );
           return Boolean(
             (secret.comment && canDescribeSecret && !secret.revokedProjectFolderGrant) ||
-              (canReadTags && secret.tags?.length) ||
-              secret.reminder ||
-              secret.secretMetadata?.length
+            (canReadTags && secret.tags?.length) ||
+            secret.reminder ||
+            secret.secretMetadata?.length
           );
         })
         .map(({ name }) => name);

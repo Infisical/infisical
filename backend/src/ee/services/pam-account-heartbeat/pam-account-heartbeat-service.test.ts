@@ -8,8 +8,8 @@ import {
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
-import { PamAccountType, PamHeartbeatStatus, PamSshAuthMethod } from "../pam/pam-enums";
 import { PAM_ROTATION_FACTORY_MAP, TPamRotationHandler } from "../pam-account-rotation/pam-rotation-handlers";
+import { PamAccountType, PamHeartbeatStatus, PamSshAuthMethod } from "../pam/pam-enums";
 import { pamAccountHeartbeatServiceFactory } from "./pam-account-heartbeat-service";
 
 vi.mock("@app/lib/logger", () => ({

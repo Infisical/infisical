@@ -276,9 +276,9 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
             </SheetHeader>
             <div className="thin-scrollbar flex-1 overflow-y-auto p-4">
               <SSOModalHeader
-                providerDetails={
-                  ssoAuthProviders.find((provider) => provider.value === authProvider)!
-                }
+                providerDetails={ssoAuthProviders.find(
+                  (provider) => provider.value === authProvider
+                )!}
                 isConnected={Boolean(data)}
               />
               <FieldGroup>

@@ -88,4 +88,19 @@ describe("secret sync destination comparison", () => {
       )
     ).toBe(false);
   });
+
+  test("treats a GitHub config saved before secretType existed as an Actions destination", () => {
+    const legacy = { scope: "repository", owner: "acme", repo: "app" };
+
+    expect(
+      areSecretSyncDestinationConfigsEqual(SecretSync.GitHub, legacy, { ...legacy, secretType: "actions" }, [])
+    ).toBe(true);
+    expect(
+      areSecretSyncDestinationConfigsEqual(SecretSync.GitHub, { ...legacy, secretType: "actions" }, legacy, [])
+    ).toBe(true);
+    expect(
+      areSecretSyncDestinationConfigsEqual(SecretSync.GitHub, legacy, { ...legacy, secretType: "dependabot" }, [])
+    ).toBe(false);
+    expect(legacy).not.toHaveProperty("secretType");
+  });
 });

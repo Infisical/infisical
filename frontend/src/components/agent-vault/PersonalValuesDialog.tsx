@@ -220,7 +220,6 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     const known = new Set(variableKeys);
     return new Set(referencedKeys.filter((key) => !known.has(key)));
     // Keyed on the joined list, which is new on every render as an array.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variableKeys, referencedKeys.join(",")]);
   const ownVariables = useMemo(
     () => ({
