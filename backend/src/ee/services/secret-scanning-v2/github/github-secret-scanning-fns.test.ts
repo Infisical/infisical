@@ -38,11 +38,17 @@ vi.mock("@app/lib/config/env", async (importOriginal) => ({
   })
 }));
 
-const scanContentAndGetFindings = vi.fn<(content: string, configPath?: string) => Promise<unknown[]>>();
+const scanContents =
+  vi.fn<(contents: string[], configPath?: string) => Promise<{ index: number; finding: Record<string, unknown> }[]>>();
 
 vi.mock("@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns", () => ({
-  scanContentAndGetFindings: (content: string, configPath?: string) => scanContentAndGetFindings(content, configPath)
+  scanContentsAndGetFindings: async <T>(items: T[], getContent: (item: T) => string, configPath?: string) => {
+    const results = await scanContents(items.map(getContent), configPath);
+    return results.map(({ index, finding }) => ({ item: items[index], finding }));
+  }
 }));
+
+const scannedContents = () => scanContents.mock.calls.flatMap(([contents]) => contents);
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
@@ -166,8 +172,8 @@ describe("completePullRequestCheckRun", () => {
 
 describe("scanGitHubCommitsAndGetFindings", () => {
   beforeEach(() => {
-    scanContentAndGetFindings.mockReset();
-    scanContentAndGetFindings.mockResolvedValue([]);
+    scanContents.mockReset();
+    scanContents.mockResolvedValue([]);
   });
 
   const commit = { sha: "c".repeat(40), authorName: "a", authorEmail: "a@a.com", date: "", message: "m" };
@@ -198,7 +204,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
       commits: [commit]
     });
 
-    const scanned = scanContentAndGetFindings.mock.calls.map(([content]) => content.trim());
+    const scanned = scannedContents().map((content) => content.trim());
     expect(scanned).toEqual(["added", "modified", "renamed", "copied", "changed"]);
   });
 
@@ -219,7 +225,8 @@ describe("scanGitHubCommitsAndGetFindings", () => {
 
     expect(getCommit).toHaveBeenCalledTimes(3);
     expect(getCommit).toHaveBeenLastCalledWith(expect.objectContaining({ page: 3, per_page: 100 }));
-    expect(scanContentAndGetFindings).toHaveBeenCalledTimes(205);
+    expect(scanContents).toHaveBeenCalledTimes(1);
+    expect(scannedContents()).toHaveLength(205);
   });
 
   test("fails a scan that requires every file when a commit has more files than GitHub lists", async () => {
@@ -240,7 +247,39 @@ describe("scanGitHubCommitsAndGetFindings", () => {
     ).rejects.toThrow("changes more than 3,000 files");
 
     expect(getCommit).toHaveBeenCalledTimes(30);
-    expect(scanContentAndGetFindings).not.toHaveBeenCalled();
+    expect(scannedContents()).toEqual([]);
+  });
+
+  test("scans every commit's files in one scan and maps each finding back to its file", async () => {
+    const secondCommit = { ...commit, sha: "d".repeat(40), authorName: "b" };
+    const getCommit = vi.fn().mockImplementation(({ ref }: { ref: string }) =>
+      Promise.resolve({
+        data: {
+          files: [
+            { status: "modified", filename: `${ref.slice(0, 1)}-one.txt`, patch: "@@ -1,0 +5,1 @@\n+one" },
+            { status: "added", filename: `${ref.slice(0, 1)}-two.txt`, patch: "@@ -0,0 +1,2 @@\n+safe\n+two" }
+          ]
+        }
+      })
+    );
+    scanContents.mockResolvedValue([
+      { index: 3, finding: { RuleID: "rule", StartLine: 3, EndLine: 3, StartColumn: 2, EndColumn: 4 } }
+    ]);
+
+    const findings = await scanGitHubCommitsAndGetFindings({
+      octokit: asOctokit(getCommit),
+      repositoryFullName: "acme/api",
+      resourceName: "acme/api",
+      commits: [commit, secondCommit]
+    });
+
+    expect(scanContents).toHaveBeenCalledTimes(1);
+    expect(scannedContents()).toHaveLength(4);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:d-two.txt:rule:2:1`);
+    expect(findings[0].details).toEqual(
+      expect.objectContaining({ file: "d-two.txt", commit: secondCommit.sha, author: "b", startLine: 2 })
+    );
   });
 
   describe("a file whose patch GitHub left out", () => {
@@ -263,8 +302,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
         repos: { getCommit: vi.fn().mockResolvedValue({ data: { files, parents: [{ sha: parentSha }] } }), getContent },
         git: { getBlob }
       }) as unknown as Parameters<typeof scanGitHubCommitsAndGetFindings>[0]["octokit"];
-    const scannedLines = () =>
-      scanContentAndGetFindings.mock.calls.map(([content]) => content.split("\n").filter(Boolean));
+    const scannedLines = () => scannedContents().map((content) => content.split("\n").filter(Boolean));
 
     test("scans every line of an added file", async () => {
       const getContent = vi.fn().mockResolvedValue(toContent("one\ntwo\n"));
@@ -331,7 +369,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
       });
 
       expect(getContent).not.toHaveBeenCalled();
-      expect(scanContentAndGetFindings).not.toHaveBeenCalled();
+      expect(scannedContents()).toEqual([]);
     });
 
     test("fails a scan that requires every file when the file is too large to fetch, and skips it otherwise", async () => {
@@ -359,7 +397,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
         })
       ).resolves.toEqual([]);
 
-      expect(scanContentAndGetFindings).not.toHaveBeenCalled();
+      expect(scannedContents()).toEqual([]);
     });
   });
 });

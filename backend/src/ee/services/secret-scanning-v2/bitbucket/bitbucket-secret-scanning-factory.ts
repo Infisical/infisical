@@ -278,7 +278,7 @@ export const BitbucketSecretScanningFactory = () => {
             if (!patch) continue;
 
             // eslint-disable-next-line no-await-in-loop
-            const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${patch}`), configPath);
+            const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(patch), configPath);
 
             const adjustedFindings = findings.map((finding) => {
               const startLine = convertPatchLineToFileLineNumber(patch, finding.StartLine);

@@ -30,7 +30,7 @@ import {
   GIT_PROCESS_ENV,
   SecretScanningExecPhase
 } from "@app/ee/services/secret-scanning/secret-scanning-exec";
-import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
+import { scanContentsAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
@@ -268,7 +268,7 @@ export const scanGitHubCommitsAndGetFindings = async ({
 }): Promise<TFindingsPayload> => {
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
-  const allFindings: SecretMatch[] = [];
+  const filesToScan: { commit: TGitHubCommitToScan; filename: string; patch: string }[] = [];
 
   for (const commit of commits) {
     // eslint-disable-next-line no-await-in-loop
@@ -323,44 +323,42 @@ export const scanGitHubCommitsAndGetFindings = async ({
         }
       }
 
-      if (patch) {
-        const filePatch = patch;
-        // eslint-disable-next-line
-        const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${filePatch}`), configPath);
-
-        const adjustedFindings = findings.map((finding) => {
-          const startLine = convertPatchLineToFileLineNumber(filePatch, finding.StartLine);
-          const endLine =
-            finding.StartLine === finding.EndLine
-              ? startLine
-              : convertPatchLineToFileLineNumber(filePatch, finding.EndLine);
-          const startColumn = finding.StartColumn - 1; // subtract 1 for +
-          const endColumn = finding.EndColumn - 1; // subtract 1 for +
-
-          return {
-            ...finding,
-            StartLine: startLine,
-            EndLine: endLine,
-            StartColumn: startColumn,
-            EndColumn: endColumn,
-            File: file.filename,
-            Commit: commit.sha,
-            Author: commit.authorName,
-            Email: commit.authorEmail,
-            Message: commit.message,
-            Fingerprint: `${commit.sha}:${file.filename}:${finding.RuleID}:${startLine}:${startColumn}`,
-            Date: commit.date,
-            Attributes: {
-              ...finding.Attributes,
-              url: `https://github.com/${resourceName}/blob/${commit.sha}/${file.filename}#L${startLine}`
-            }
-          };
-        });
-
-        allFindings.push(...adjustedFindings);
-      }
+      if (patch) filesToScan.push({ commit, filename: file.filename, patch });
     }
   }
+
+  const findings = await scanContentsAndGetFindings(
+    filesToScan,
+    ({ patch }) => replaceNonChangesWithNewlines(patch),
+    configPath
+  );
+
+  const allFindings: SecretMatch[] = findings.map(({ item: { commit, filename, patch }, finding }) => {
+    const startLine = convertPatchLineToFileLineNumber(patch, finding.StartLine);
+    const endLine =
+      finding.StartLine === finding.EndLine ? startLine : convertPatchLineToFileLineNumber(patch, finding.EndLine);
+    const startColumn = finding.StartColumn - 1; // subtract 1 for +
+    const endColumn = finding.EndColumn - 1; // subtract 1 for +
+
+    return {
+      ...finding,
+      StartLine: startLine,
+      EndLine: endLine,
+      StartColumn: startColumn,
+      EndColumn: endColumn,
+      File: filename,
+      Commit: commit.sha,
+      Author: commit.authorName,
+      Email: commit.authorEmail,
+      Message: commit.message,
+      Fingerprint: `${commit.sha}:${filename}:${finding.RuleID}:${startLine}:${startColumn}`,
+      Date: commit.date,
+      Attributes: {
+        ...finding.Attributes,
+        url: `https://github.com/${resourceName}/blob/${commit.sha}/${filename}#L${startLine}`
+      }
+    };
+  });
 
   return allFindings.map((finding) => ({
     details: toFindingDetails(finding),
