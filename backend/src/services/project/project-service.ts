@@ -994,6 +994,10 @@ export const projectServiceFactory = ({
     }
 
     try {
+      // Re-read under the lock: an overlapping restore may have just finished, and this one failing later
+      // would cancel the revocations it queued.
+      await $findDeletedProject(projectId, dto.actorOrgId);
+
       // Revoking a lease that expired while the project was deleted fails because the project can't be
       // resolved, and its retries may have run out, so queue those revocations again. They're queued
       // before the restore so a queue failure leaves the project deleted and the restore retryable, and
