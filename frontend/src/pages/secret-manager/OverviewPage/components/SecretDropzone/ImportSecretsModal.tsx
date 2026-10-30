@@ -1,5 +1,6 @@
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
+import { useQueries } from "@tanstack/react-query";
 import axios from "axios";
 import {
   ChevronRightIcon,
@@ -24,6 +25,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Button,
   Combobox,
   Field,
@@ -73,6 +75,9 @@ import {
   overviewResponsePhase,
   useOverviewTelemetry
 } from "../../OverviewTelemetry";
+import { normalizeCopyPath } from "../CopySecretsSheet/copySecrets.utils";
+import { getCopySecretsQueryOptions } from "../CopySecretsSheet/useCopySecretsQuery";
+import { SecretConflictsDialog } from "../SecretConflictsDialog";
 import { CsvColumnMapContent } from "./CsvColumnMapDialog";
 import {
   buildFolderTree,
@@ -164,6 +169,7 @@ const ImportSecretsContent = ({
   const [csvData, setCsvData] = useState<CsvData | null>(null);
   const [visibleSecretKeys, setVisibleSecretKeys] = useState<Set<string>>(new Set());
   const [shouldOverwrite, setShouldOverwrite] = useState(false);
+  const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
   const [keyOverrides, setKeyOverrides] = useState<Record<string, string>>({});
   const [nestedJson, setNestedJson] = useState<Record<string, unknown> | null>(null);
   const [shouldImportNested, setShouldImportNested] = useState(false);
@@ -268,6 +274,62 @@ const ImportSecretsContent = ({
     nestedImport.folderPaths.every((path) => collapsedFolders.has(path))
   );
 
+  const existingSecretQueries = useQueries({
+    queries: selectedEnvs.map((env) =>
+      getCopySecretsQueryOptions({
+        projectId,
+        environment: env.slug,
+        secretPath,
+        enabled: Boolean(activeSecrets)
+      })
+    )
+  });
+  const isCheckingExistingSecrets = existingSecretQueries.some(
+    (query) => query.isPending && query.fetchStatus !== "idle"
+  );
+  const hasExistingSecretsError = existingSecretQueries.some((query) => query.isError);
+  const incomingSecrets = (
+    nestedImport
+      ? Object.entries(nestedImport.secretsByPath).flatMap(([path, secrets]) =>
+          Object.entries(secrets).map(([key, secretData]) => ({
+            rowId: `${path}:${key}`,
+            key,
+            secretData,
+            path: joinSecretPath(secretPath, path)
+          }))
+        )
+      : Object.entries(activeSecrets ?? {}).map(([key, secretData]) => ({
+          rowId: key,
+          key,
+          secretData,
+          path: secretPath
+        }))
+  ).map(({ rowId, key, secretData, path }) => ({
+    rowId,
+    path: normalizeCopyPath(path),
+    finalKey: (secretData.isFileSecret ? (keyOverrides[key] ?? key) : key).trim()
+  }));
+  const secretConflicts = selectedEnvs.flatMap((env, index) => {
+    const existingLocations = new Set(
+      (existingSecretQueries[index]?.data ?? []).map(
+        ({ path, name }) => `${normalizeCopyPath(path)}\u0000${name}`
+      )
+    );
+    return incomingSecrets
+      .filter(({ path, finalKey }) => existingLocations.has(`${path}\u0000${finalKey}`))
+      .map(({ rowId, path, finalKey }) => ({
+        id: `${env.slug}\u0000${rowId}`,
+        rowId,
+        environmentName: env.name,
+        name: finalKey,
+        location: `${env.name}: ${path}`
+      }));
+  });
+  const conflictEnvironmentsByRowId = secretConflicts.reduce((map, { rowId, environmentName }) => {
+    map.set(rowId, [...(map.get(rowId) ?? []), environmentName]);
+    return map;
+  }, new Map<string, string[]>());
+
   const toggleFolder = (path: string) => {
     setCollapsedFolders((prev) => {
       const next = new Set(prev);
@@ -362,8 +424,9 @@ const ImportSecretsContent = ({
     if (initialFile) parseFile(initialFile);
   }, [initialFile, parseFile]);
 
-  const handleImport = async () => {
+  const handleImport = async (overwriteExisting: boolean) => {
     if (!activeSecrets || !selectedEnvs.length) return;
+    const skippedCount = overwriteExisting ? 0 : secretConflicts.length;
 
     if (isImportRunningRef.current) return;
     isImportRunningRef.current = true;
@@ -528,7 +591,7 @@ const ImportSecretsContent = ({
                     })
                   ]
                 : []),
-              ...(shouldOverwrite && secretsToUpdate.length
+              ...(overwriteExisting && secretsToUpdate.length
                 ? [
                     updateSecretBatch({
                       projectId,
@@ -549,7 +612,7 @@ const ImportSecretsContent = ({
           secretsToCreate,
           MAX_BATCH_REQUEST_BYTES
         );
-        const updates = shouldOverwrite
+        const updates = overwriteExisting
           ? chunkSecretsByRequestSize(envelope, secretsToUpdate, MAX_BATCH_REQUEST_BYTES)
           : { chunks: [], oversized: [] };
         const oversizedKeys = [...creates.oversized, ...updates.oversized].map(
@@ -725,7 +788,9 @@ const ImportSecretsContent = ({
       if (successEnvs.length) {
         createNotification({
           type: "success",
-          text: `Successfully uploaded ${secretCount} secret${secretCount > 1 ? "s" : ""}${folderSummary} into ${successEnvs.join(", ")}`
+          text: skippedCount
+            ? `Uploaded secrets${folderSummary} into ${successEnvs.join(", ")}; ${skippedCount} existing ${skippedCount === 1 ? "secret" : "secrets"} skipped`
+            : `Successfully uploaded ${secretCount} secret${secretCount > 1 ? "s" : ""}${folderSummary} into ${successEnvs.join(", ")}`
         });
       }
 
@@ -780,6 +845,19 @@ const ImportSecretsContent = ({
       setNestedProgress(null);
       setIsImporting.off();
     }
+  };
+
+  const handleUpload = () => {
+    if (secretConflicts.length && !shouldOverwrite) {
+      setIsConflictDialogOpen(true);
+      return;
+    }
+    handleImport(shouldOverwrite);
+  };
+
+  const handleConflictResolution = (resolution: "overwrite" | "skip") => {
+    setIsConflictDialogOpen(false);
+    handleImport(resolution === "overwrite");
   };
 
   const handleBack = () => {
@@ -1049,6 +1127,8 @@ const ImportSecretsContent = ({
                   const hasSkipMl = secretData.skipMultilineEncoding === true;
                   const editableKey = secretData.isFileSecret === true;
                   const editedKey = keyOverrides[key] ?? key;
+                  const conflictEnvironments = conflictEnvironmentsByRowId.get(id);
+                  const conflictLabel = shouldOverwrite ? "Overwrite" : "Conflict";
                   return (
                     <TableRow key={id} {...rowProps}>
                       <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
@@ -1125,6 +1205,24 @@ const ImportSecretsContent = ({
                               <TooltipContent>Multi-line encoding enabled</TooltipContent>
                             </Tooltip>
                           )}
+                          {conflictEnvironments && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="ml-auto shrink-0 rounded-sm focus-visible:ring-2 focus-visible:ring-ring"
+                                  aria-label={`${editedKey}: ${conflictLabel}`}
+                                >
+                                  <Badge variant="warning">{conflictLabel}</Badge>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-72">
+                                {shouldOverwrite
+                                  ? `This key already exists in ${conflictEnvironments.join(", ")} and will be overwritten.`
+                                  : `This key already exists in ${conflictEnvironments.join(", ")}. Choose whether to overwrite or skip it when you upload.`}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </ImportKeyContent>
                       </TableCell>
                       <TableCell isTruncatable className="w-1/2 font-mono text-xs whitespace-pre">
@@ -1187,8 +1285,8 @@ const ImportSecretsContent = ({
                 </TooltipTrigger>
                 <TooltipContent className="max-w-md text-center">
                   When enabled, secrets that already exist in the target environment will be updated
-                  with the imported values. When disabled, existing secrets will be skipped and only
-                  new secrets will be created.
+                  with the imported values. When disabled, you choose whether to overwrite or skip
+                  them when you upload.
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>
@@ -1198,6 +1296,20 @@ const ImportSecretsContent = ({
               onCheckedChange={setShouldOverwrite}
             />
           </Field>
+          {secretConflicts.length > 0 && (
+            <p className="-mt-2 text-xs text-muted" aria-live="polite">
+              {`${secretConflicts.length} ${secretConflicts.length === 1 ? "key already exists" : "keys already exist"} in the target environments. `}
+              {shouldOverwrite
+                ? "They will be overwritten."
+                : "Choose whether to overwrite or skip them when you upload."}
+            </p>
+          )}
+          {hasExistingSecretsError && (
+            <p className="-mt-2 text-xs text-muted" aria-live="polite">
+              Existing secrets couldn&apos;t be checked. Keys that already exist are skipped unless
+              you turn on overwrite.
+            </p>
+          )}
           {nestedJson && (
             <Field orientation="horizontal" className="w-fit">
               <FieldLabel htmlFor="import-nested-as-folders">
@@ -1246,20 +1358,28 @@ const ImportSecretsContent = ({
         </Button>
         <Button
           variant="project"
-          onClick={handleImport}
+          onClick={handleUpload}
           isDisabled={
             !selectedEnvs.length ||
             isImporting ||
+            isCheckingExistingSecrets ||
             isWaitingForTags ||
             hasInvalidKey ||
             isOverRequestLimit ||
             hasNestedErrors
           }
-          isPending={isImporting || isWaitingForTags}
+          isPending={isImporting || isWaitingForTags || isCheckingExistingSecrets}
         >
           Upload {secretCount} Secret{secretCount !== 1 ? "s" : ""}
         </Button>
       </SheetFooter>
+      <SecretConflictsDialog
+        isOpen={isConflictDialogOpen}
+        onOpenChange={setIsConflictDialogOpen}
+        conflicts={secretConflicts}
+        description="These secrets already exist in the target environments. Overwrite them or upload only secrets without conflicts."
+        onResolve={handleConflictResolution}
+      />
     </>
   );
 };
