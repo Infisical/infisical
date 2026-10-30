@@ -1,0 +1,101 @@
+---
+title: "Inline services"
+description: "Services that an Agent Vault admin sends in the request that creates a session, for that session alone."
+---
+
+An inline service is a [service](/documentation/platform/agent-vault/services) that you send in the request that creates a [session](/documentation/platform/agent-vault/sessions), instead of adding the service to an [access bundle](/documentation/platform/agent-vault/access-bundles). Only that session can use the inline service. A session can have inline services on their own, or together with one access bundle.
+
+Use inline services when an agent needs a credential that exists for only one run, such as a token that your job runner creates for each job. You can also use them to give one session access to an API that isn't in its access bundle. The other sessions that use the access bundle don't get access to the API.
+
+## Prerequisites
+
+- A machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership) (to set one up, follow [Step 1 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-1-set-up-a-machine-identity) and choose **Admin** in **Role**)
+- An access token for the machine identity, from [Step 2 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-2-log-in-as-the-machine-identity)
+- A running [proxy](/documentation/platform/agent-vault/proxies) that the agent's machine can reach
+
+## Create a session with inline services
+
+You can send inline services only through the API, not from the dashboard or the CLI. Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) as the machine identity, and list the inline services in `services`. In this example, the session gets one HTTP service for `api.github.com` with a bearer token, and the agent can send only `GET` requests to that host:
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ttl": "1h",
+    "label": "release notes",
+    "services": [
+      {
+        "type": "http",
+        "name": "github",
+        "hostPattern": "api.github.com",
+        "allowedMethods": ["GET"],
+        "credential": {"type": "bearer", "value": "<github-token>"}
+      }
+    ]
+  }'
+```
+
+An inline service has the same fields as an [HTTP API](/documentation/platform/agent-vault/http-apis) or an [MCP server](/documentation/platform/agent-vault/mcp-servers) in an access bundle, with these differences:
+
+- `name` is optional (without a name, the **Sessions** page and the [session logs](/documentation/platform/agent-vault/session-logs) show the service's first host)
+- Credentials, custom header values, and substitution values can't use [variables](/documentation/platform/agent-vault/variables), so they can't contain text in double braces, such as `{{GITHUB_TOKEN}}`
+- An MCP server can't use [OAuth](/documentation/platform/agent-vault/mcp-servers#oauth)
+- A credential can't use [member-provided values](/documentation/platform/agent-vault/http-apis#member-provided-values)
+- You can't change an inline service after you create the session
+
+A session can have up to 20 inline services. The reference for [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) lists every field and its limits.
+
+Start the agent with the session token from the response, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes. When the agent finishes, [revoke the session](/documentation/platform/agent-vault/sessions-api#step-5-revoke-the-session).
+
+<Tip>
+  A machine identity can also send inline services with a session that it creates [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users). The user doesn't need the **Admin** role, and the inline services don't use the user's [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values).
+</Tip>
+
+## Combine inline services with an access bundle
+
+To give a session an access bundle as well as inline services, name the access bundle in `accessBundles` in the same request. A session can have only one access bundle.
+
+When you create the session, Infisical compares the host patterns of the inline services with each other and with the access bundle's services, using the same [host conflict rules](/documentation/platform/agent-vault/http-apis#host-conflicts) as for the services in one access bundle:
+
+- If two of the services use the same host pattern, creating the session fails
+- If an inline service and a service in the access bundle cover the same host with different patterns, such as `api.github.com` and `*.github.com`, requests to that host use the service with the more specific pattern
+
+## Find a session's inline services
+
+To see a session's inline services, go to **Sessions** in Agent Vault, select **View Session Logs** on the session's row, and look under **Inline Services**.
+
+[The endpoint that reads a session](/api-reference/endpoints/agent-vault-sessions/get) and [the endpoint that lists sessions](/api-reference/endpoints/agent-vault-sessions/list) return the inline services in `services`, and the [audit event](/documentation/platform/agent-vault/sessions#audit-trail) for creating the session lists them too. Neither the API responses nor the audit event includes the inline services' credentials, custom header values, or substitution values.
+
+## When the session ends
+
+Infisical deletes the inline services' credentials, custom header values, and substitution values once the session ends:
+
+- If someone revokes the session, Infisical deletes the values right away
+- If the session expires, Infisical deletes the values within an hour
+
+If you set `ttl` to `never`, revoke the session when the agent finishes, so that Infisical deletes the values. Infisical keeps the rest of each inline service, such as its name and hosts, so you can still [find the session's inline services](#find-a-sessions-inline-services) after the session ends.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Creating the session fails with &quot;Only an Agent Vault admin can send services with a session&quot;">
+    The machine identity has the **Member** role in Agent Vault. Either give it the **Admin** role, or add the services to an access bundle and [grant the bundle](/documentation/platform/agent-vault/access-bundles#grant-access) to the machine identity.
+
+    To change the role, go to **Access Control** > **Machine Identities** in Agent Vault, select **Change Role** in the machine identity's menu, choose **Admin** in **Product Role**, and select **Save**.
+  </Accordion>
+  <Accordion title="Requests to an inline service's host stop getting credentials">
+    The user or machine identity that created the session no longer has the **Admin** role in Agent Vault. Give the role back, or create a new session as an admin.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Session logs" icon="list" href="/documentation/platform/agent-vault/session-logs">
+    Record every request an agent makes during a session.
+  </Card>
+  <Card title="HTTP APIs" icon="plug" href="/documentation/platform/agent-vault/http-apis">
+    Limit an HTTP service's methods and paths, and add custom headers and substitutions.
+  </Card>
+</CardGroup>

@@ -5,6 +5,7 @@ import {
   BanIcon,
   CircleAlertIcon,
   FilterIcon,
+  GlobeIcon,
   IdCardIcon,
   LogsIcon,
   MoreHorizontalIcon,
@@ -92,12 +93,18 @@ import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSett
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
+import { InlineServicesList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SampleSessionSheet, SampleSessionTable } from "./components/SampleSessionSheet";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
 import { SessionIdentity } from "./components/SessionIdentity";
+import {
+  inlineServicesLabel,
+  toAccessItems,
+  TSessionAccessItem
+} from "./components/sessionInlineServices";
 import { SessionLabel } from "./components/SessionLabel";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
@@ -106,6 +113,12 @@ const STATUS_OPTIONS = [
   AgentVaultSessionStatus.Revoked,
   AgentVaultSessionStatus.Expired
 ];
+
+const accessItemIcon = (item: TSessionAccessItem) =>
+  item.kind === "bundle" ? <PackageIcon /> : <GlobeIcon />;
+
+const accessItemHoverCard = (item: TSessionAccessItem) =>
+  item.kind === "inline" ? <InlineServicesList services={item.services} /> : undefined;
 
 export const AgentVaultSessionsPage = () => {
   const { currentOrg } = useOrganization();
@@ -457,19 +470,32 @@ export const AgentVaultSessionsPage = () => {
                       <TableCell>
                         <div className="max-w-72">
                           <OverflowBadgeList
-                            items={session.accessBundles}
-                            getKey={(bundle) => bundle.id ?? bundle.name}
-                            getLabel={(bundle) => bundle.name}
-                            icon={<PackageIcon />}
-                            getClassName={(bundle) => (bundle.id ? undefined : "text-muted")}
-                            getTooltip={(bundle) =>
-                              bundle.id ? bundle.name : `${bundle.name} (deleted)`
+                            items={toAccessItems(session)}
+                            getKey={(item) =>
+                              item.kind === "bundle"
+                                ? (item.bundle.id ?? item.bundle.name)
+                                : "inline-services"
                             }
-                            getLinkProps={(bundle) =>
-                              bundle.id
+                            getLabel={(item) =>
+                              item.kind === "bundle"
+                                ? item.bundle.name
+                                : inlineServicesLabel(item.services.length)
+                            }
+                            getIcon={accessItemIcon}
+                            getClassName={(item) =>
+                              item.kind === "bundle" && !item.bundle.id ? "text-muted" : undefined
+                            }
+                            getHoverCard={accessItemHoverCard}
+                            getTooltip={(item) =>
+                              item.kind === "bundle" && !item.bundle.id
+                                ? `${item.bundle.name} (deleted)`
+                                : undefined
+                            }
+                            getLinkProps={(item) =>
+                              item.kind === "bundle" && item.bundle.id
                                 ? linkOptions({
                                     to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-                                    params: { orgId: currentOrg.id, accessBundleId: bundle.id }
+                                    params: { orgId: currentOrg.id, accessBundleId: item.bundle.id }
                                   })
                                 : undefined
                             }

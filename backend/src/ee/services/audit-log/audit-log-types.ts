@@ -6908,9 +6908,24 @@ interface AgentVaultSessionMintEvent {
   metadata: {
     sessionId: string;
     label: string | null;
-    accessBundleId: string;
-    accessBundleName: string;
+    // Null for a session started with inline services only.
+    accessBundleId: string | null;
+    accessBundleName: string | null;
     expiresAt: string | null;
+    // Set when an admin sent services with the session. Never their values.
+    services?: {
+      serviceId: string;
+      name: string | null;
+      serviceType: string;
+      serverUrl?: string;
+      hostPattern: string;
+      credentialType: string;
+      headerName?: string;
+      allowedMethods: string[] | null;
+      allowedPathPrefixes: string[] | null;
+      customHeaderNames: string[];
+      substitutionPlaceholders: string[];
+    }[];
     // Set when a machine identity started the session on this user's behalf.
     onBehalfOfUserId?: string;
     onBehalfOfUserName?: string;

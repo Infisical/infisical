@@ -252,6 +252,24 @@ export type TAgentVaultSessionAccessBundle = {
   position: number;
 };
 
+/** A service an admin sent with the session itself. Its secrets are never returned. */
+export type TAgentVaultSessionInlineService = {
+  id: string;
+  name: string | null;
+  type: AgentVaultServiceType;
+  serverUrl: string | null;
+  transport: AgentVaultMcpTransport | null;
+  hostPattern: string;
+  allowedMethods: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes: string[] | null;
+  credential:
+    | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
+    | { type: AgentVaultCredentialType.Basic }
+    | { type: AgentVaultCredentialType.Passthrough };
+  customHeaders: { name: string; prefix: string }[];
+  substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
+};
+
 export type TAgentVaultSessionActor =
   | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "id"> & {
       id: string | null;
@@ -276,6 +294,7 @@ export type TAgentVaultSession = {
   revokedAt: string | null;
   createdAt: string;
   accessBundles: TAgentVaultSessionAccessBundle[];
+  services: TAgentVaultSessionInlineService[];
 };
 
 export type TAgentVaultDelegation = {
@@ -325,6 +344,7 @@ export type TAgentVaultMintedSession = {
   expiresAt: string | null;
   createdAt: string;
   accessBundles: TAgentVaultSessionAccessBundle[];
+  services: TAgentVaultSessionInlineService[];
 };
 
 export type TAgentVaultProxy = {

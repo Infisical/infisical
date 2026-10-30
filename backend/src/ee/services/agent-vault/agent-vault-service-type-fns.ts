@@ -218,10 +218,12 @@ const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
 
 export const assertCredentialTypeSupported = (
   definition: TAgentVaultServiceTypeDefinition,
-  credentialType: AgentVaultCredentialType
+  credentialType: AgentVaultCredentialType,
+  // Narrower than the type's own list where a caller can't offer every credential, so the refusal names only what works.
+  allowedCredentialTypes: AgentVaultCredentialType[] = definition.allowedCredentialTypes
 ) => {
-  if (definition.allowedCredentialTypes.includes(credentialType)) return;
-  const allowed = definition.allowedCredentialTypes.map((type) => CREDENTIAL_LABELS[type]);
+  if (allowedCredentialTypes.includes(credentialType)) return;
+  const allowed = allowedCredentialTypes.map((type) => CREDENTIAL_LABELS[type]);
   throw new BadRequestError({
     message: `An ${definition.label} service can't use ${CREDENTIAL_LABELS[credentialType]} as its credential. Use ${allowed.join(" or ")}.`
   });

@@ -165,7 +165,7 @@ To change a setting, select **Edit Settings** on the proxy's menu. If the proxy 
 The **Traffic Policy** setting controls which hosts agents can reach through the proxy:
 
 - **Any host** (default): the proxy forwards every request, and attaches a credential only for hosts covered by a service
-- **Access bundle hosts only**: the proxy refuses requests to hosts that no service in the session's access bundle covers, unless the host is an [exception](#exceptions)
+- **Access bundle hosts only**: the proxy refuses requests to hosts that no service in the session's access bundle covers, unless the host is an [exception](#exceptions) or one of the session's [inline services](/documentation/platform/agent-vault/inline-services) covers it
 
 <Tip>
 Use **Access bundle hosts only** if the proxy can reach systems that agents shouldn't have access to, such as internal services on the same network.
