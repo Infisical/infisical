@@ -60,8 +60,38 @@ This guide shows you how to create approval policies that require changes to sec
     ![Review a change request](../../images/platform/pr-workflows/secret-update-pr.png)
 
     After a change request is merged, the updated secrets are automatically synced to connected applications (for example, through the [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes)).
+
   </Step>
 </Steps>
+
+## Review several change requests at once
+
+To review several open change requests in one pass, select them on the **Approvals** page and review them together in one panel. You can select up to 25 requests at a time.
+
+<Steps>
+  <Step>
+    On the **Open** tab under **Change Requests**, select the checkbox next to each request you want to review, then select **Review & Merge**.
+  </Step>
+  <Step>
+    In the review panel, select **Approve** or **Reject** for every request. The panel groups requests by environment and folder and shows each request's changes and approval count. If two selected requests change the same secret, both show an **Overlaps on** warning, and the older request merges first.
+  </Step>
+  <Step>
+    Optionally, enter a **Comment**. Infisical adds the comment to each review.
+  </Step>
+  <Step>
+    Select **Submit & Merge**. If you rejected every request, the button reads **Submit Reviews**.
+  </Step>
+</Steps>
+
+Infisical records your reviews, then tries to merge each approved request. A bulk merge never bypasses a policy, even if you're allowed to bypass it. The panel shows one result per request:
+
+- **Merged**: the request met its policy's minimum approvals and was merged
+- **Approved** with **Awaiting other reviewers**: your approval was saved, and the request stays open until it has enough approvals
+- **Rejected**: your rejection was saved
+- **Approved, Not Merged**: your approval was saved, but the merge failed
+- **Failed**: your review couldn't be saved
+
+Requests marked **Approved, Not Merged** or **Failed** stay selected after you close the panel, so you can open them individually. All other requests are deselected.
 
 ## Verify the result
 
