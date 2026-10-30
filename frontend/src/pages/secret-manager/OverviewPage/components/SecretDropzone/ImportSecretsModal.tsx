@@ -671,23 +671,31 @@ const ImportSecretsContent = ({
                       addCount(updatedCountByEnv, environment, result, secretsToUpdate.length);
                       if (!("approval" in result))
                         shareableSecrets.push(
-                          ...resolvedEntries
-                            .filter(({ finalKey }) => existingKeys.has(finalKey))
-                            .map(({ finalKey, secretData }) => {
-                              const uploadedTags = secretData.tagSlugs?.filter((slug) =>
-                                slugToTagId.has(slug)
-                              );
-                              return {
+                          ...resolvedEntries.flatMap(({ finalKey, secretData }) => {
+                            const existing = existingSecrets.find(
+                              (secret) => secret.key === finalKey
+                            );
+                            // The API keeps the stored value of rotated secrets and honey tokens
+                            if (
+                              !existing ||
+                              existing.isRotatedSecret ||
+                              existing.isHoneyTokenSecret
+                            )
+                              return [];
+                            const uploadedTags = secretData.tagSlugs?.filter((slug) =>
+                              slugToTagId.has(slug)
+                            );
+                            return [
+                              {
                                 environment,
                                 key: finalKey,
                                 value: secretData.value,
                                 tags: uploadedTags?.length
                                   ? uploadedTags
-                                  : existingSecrets
-                                      .find((secret) => secret.key === finalKey)
-                                      ?.tags?.map((tag) => tag.slug)
-                              };
-                            })
+                                  : existing.tags?.map((tag) => tag.slug)
+                              }
+                            ];
+                          })
                         );
                       return result;
                     })
