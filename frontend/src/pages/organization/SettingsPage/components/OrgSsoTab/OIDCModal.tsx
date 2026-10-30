@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Code,
   DocumentationLinkBadge,
   Field,
   FieldDescription,
@@ -50,7 +51,7 @@ import { OIDCJWTSignatureAlgorithm } from "@app/hooks/api/oidcConfig/types";
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { FieldHint, FormSection } from "./SsoFormSection";
+import { FormSection } from "./SsoFormSection";
 
 enum ConfigurationType {
   CUSTOM = "custom",
@@ -459,8 +460,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                   render={({ field, fieldState: { error } }) => (
                     <Field>
                       <FieldLabel htmlFor="oidc-allowed-domains">
-                        Allowed Email Domains
-                        <FieldHint>Optional</FieldHint>
+                        Allowed Email Domains (Optional)
                       </FieldLabel>
                       <Input
                         id="oidc-allowed-domains"
@@ -481,7 +481,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
               <FormSection
                 title="MFA Signal"
                 description="Read when Trust IdP MFA is on, to decide whether to skip the Infisical MFA prompt."
-                badge={isMfaSignalInUse ? <Badge variant="success">In use</Badge> : undefined}
+                badge={isMfaSignalInUse ? <Badge variant="success">In Use</Badge> : undefined}
               >
                 <Controller
                   control={control}
@@ -510,8 +510,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <Field>
                       <FieldLabel htmlFor="oidc-mfa-amr-values">
-                        Additional MFA Claim Values
-                        <FieldHint>Optional</FieldHint>
+                        Additional MFA Claim Values (Optional)
                       </FieldLabel>
                       <TagsInput
                         id="oidc-mfa-amr-values"
@@ -521,7 +520,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                         isError={Boolean(error)}
                       />
                       <FieldDescription>
-                        Counted as MFA in addition to the standard <code>mfa</code> value.
+                        Counted as MFA in addition to the standard <Code>mfa</Code> value.
                       </FieldDescription>
                       <FieldError>{error?.message}</FieldError>
                     </Field>

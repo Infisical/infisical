@@ -59,7 +59,7 @@ export const SsoMfaTrustField = ({ isSsoActive }: Props) => {
             {!currentOrg?.enforceMfa && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge variant="shaded">No effect</Badge>
+                  <Badge variant="shaded">No Effect</Badge>
                 </TooltipTrigger>
                 <TooltipContent>
                   Applies once Enforce MFA is on under Security. Until then every login is prompted

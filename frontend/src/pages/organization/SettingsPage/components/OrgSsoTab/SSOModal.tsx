@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ExternalLinkIcon, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  CopyButton,
+  CodeBlock,
   DocumentationLinkBadge,
   Field,
   FieldDescription,
@@ -43,7 +43,7 @@ import { useCreateSSOConfig, useGetSSOConfig, useUpdateSSOConfig } from "@app/ho
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { FieldHint, FormSection } from "./SsoFormSection";
+import { FormSection } from "./SsoFormSection";
 
 enum AuthProvider {
   OKTA_SAML = "okta-saml",
@@ -72,6 +72,7 @@ type TProviderLabels = {
   entityId: string;
   entityHint?: string;
   entryPoint: string;
+  entryPointHint?: string;
   entryPointPlaceholder: string;
   issuer: string;
   issuerHint?: string;
@@ -98,6 +99,7 @@ const providerLabels = (authProvider: string): TProviderLabels => {
         entityId: "Identifier (Entity ID)",
         entityHint: "SP Entity ID",
         entryPoint: "Login URL",
+        entryPointHint: "IdP SSO URL",
         entryPointPlaceholder: "https://login.microsoftonline.com/xxx/saml2",
         issuer: "Azure / Entra Application ID",
         issuerPlaceholder: "abc-def-ghi-jkl-mno"
@@ -118,6 +120,7 @@ const providerLabels = (authProvider: string): TProviderLabels => {
         entityId: "Client ID",
         entityHint: "SP Entity ID",
         entryPoint: "IdP URL",
+        entryPointHint: "IdP SSO URL",
         entryPointPlaceholder: "https://keycloak.mysite.com/realms/myrealm/protocol/saml",
         issuer: "Client ID",
         issuerPlaceholder: window.origin
@@ -184,20 +187,9 @@ type Props = {
   hideDelete?: boolean;
 };
 
-const CopyableValue = ({ label, hint, value }: { label: string; hint?: string; value: string }) => (
-  <Field>
-    <FieldLabel>
-      {label}
-      {hint && <FieldHint>{hint}</FieldHint>}
-    </FieldLabel>
-    <div className="flex items-start gap-2">
-      <div className="min-w-0 flex-1 rounded-md border border-border bg-foreground/5 px-3 py-2 font-mono text-sm break-all">
-        {value}
-      </div>
-      <CopyButton value={value} ariaLabel={`Copy ${label}`} variant="outline" size="md" />
-    </div>
-  </Field>
-);
+// Labels read as the provider's console names them, with the generic SAML term in parentheses when the
+// provider's label hides it.
+const withHint = (label: string, hint?: string) => (hint ? `${label} (${hint})` : label);
 
 export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelete }: Props) => {
   const { currentOrg } = useOrganization();
@@ -293,6 +285,9 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
   const labels = providerLabels(authProvider);
   const provider = ssoAuthProviders.find((item) => item.value === authProvider);
   const providerName = provider?.name ?? "your IdP";
+  const docsUrl = provider
+    ? `${docsBaseUrl}/${provider.docsUrl}`
+    : "https://infisical.com/docs/integrations/user-authentication";
   const isMfaSignalInUse = currentOrg?.ssoMfaTrust === SsoMfaTrust.Signal;
 
   return (
@@ -309,7 +304,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
             <SheetHeader>
               <SheetTitle className="flex items-center gap-x-2">
                 Manage SAML Configuration
-                <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
+                <DocumentationLinkBadge href={docsUrl} />
               </SheetTitle>
             </SheetHeader>
             <div className="thin-scrollbar flex-1 overflow-y-auto">
@@ -323,24 +318,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                   defaultValue="okta-saml"
                   render={({ field: { onChange, value }, fieldState: { error } }) => (
                     <Field>
-                      <FieldLabel
-                        htmlFor="sso-auth-provider"
-                        className="flex items-center justify-between"
-                      >
-                        Provider
-                        {provider && (
-                          <Badge variant="info" iconPosition="right" asChild>
-                            <a
-                              href={`${docsBaseUrl}/${provider.docsUrl}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {provider.name} Documentation
-                              <ExternalLinkIcon />
-                            </a>
-                          </Badge>
-                        )}
-                      </FieldLabel>
+                      <FieldLabel htmlFor="sso-auth-provider">Provider</FieldLabel>
                       <Select value={value} onValueChange={onChange}>
                         <SelectTrigger
                           id="sso-auth-provider"
@@ -368,16 +346,11 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                   title={`Add Infisical to ${providerName}`}
                   description={`Copy these values into the SAML app you create in ${providerName}.`}
                 >
-                  <CopyableValue
-                    label={labels.acsUrl}
-                    hint={labels.acsHint}
+                  <CodeBlock
+                    label={withHint(labels.acsUrl, labels.acsHint)}
                     value={`${window.origin}/api/v1/sso/saml2/${data.id}`}
                   />
-                  <CopyableValue
-                    label={labels.entityId}
-                    hint={labels.entityHint}
-                    value={window.origin}
-                  />
+                  <CodeBlock label={withHint(labels.entityId, labels.entityHint)} value={window.origin} />
                 </FormSection>
               )}
 
@@ -391,8 +364,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                   render={({ field, fieldState: { error } }) => (
                     <Field>
                       <FieldLabel htmlFor="sso-entry-point">
-                        {labels.entryPoint}
-                        <FieldHint>IdP SSO URL</FieldHint>
+                        {withHint(labels.entryPoint, labels.entryPointHint)}
                       </FieldLabel>
                       <Input
                         id="sso-entry-point"
@@ -411,8 +383,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                   render={({ field, fieldState: { error } }) => (
                     <Field>
                       <FieldLabel htmlFor="sso-issuer">
-                        {labels.issuer}
-                        {labels.issuerHint && <FieldHint>{labels.issuerHint}</FieldHint>}
+                        {withHint(labels.issuer, labels.issuerHint)}
                       </FieldLabel>
                       <Input
                         id="sso-issuer"
@@ -430,10 +401,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                   name="cert"
                   render={({ field, fieldState: { error } }) => (
                     <Field>
-                      <FieldLabel htmlFor="sso-cert">
-                        X.509 Certificate
-                        <FieldHint>Optional</FieldHint>
-                      </FieldLabel>
+                      <FieldLabel htmlFor="sso-cert">X.509 Certificate (Optional)</FieldLabel>
                       <TextArea
                         id="sso-cert"
                         className="font-mono"
@@ -453,7 +421,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
               <FormSection
                 title="MFA Signal"
                 description="Read when Trust IdP MFA is on, to decide whether to skip the Infisical MFA prompt."
-                badge={isMfaSignalInUse ? <Badge variant="success">In use</Badge> : undefined}
+                badge={isMfaSignalInUse ? <Badge variant="success">In Use</Badge> : undefined}
               >
                 <Controller
                   control={control}
@@ -483,8 +451,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <Field>
                       <FieldLabel htmlFor="sso-mfa-authn-contexts">
-                        Additional MFA Authentication Contexts
-                        <FieldHint>Optional</FieldHint>
+                        Additional MFA Authentication Contexts (Optional)
                       </FieldLabel>
                       <TagsInput
                         id="sso-mfa-authn-contexts"
