@@ -210,7 +210,10 @@ type TProjectServiceFactoryDep = {
   >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findExpiredByProjectId">;
-  dynamicSecretQueueService: Pick<TDynamicSecretLeaseQueueServiceFactory, "setLeaseRevocation">;
+  dynamicSecretQueueService: Pick<
+    TDynamicSecretLeaseQueueServiceFactory,
+    "setLeaseRevocation" | "unsetRestoredLeaseRevocation"
+  >;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -995,29 +998,39 @@ export const projectServiceFactory = ({
         )
       );
 
-      // Read before the transaction: a plan cache miss queries on its own connection.
-      const plan = await licenseService.getPlan(project.orgId);
+      let restoredProject: TProjects;
+      try {
+        // Read before the transaction: a plan cache miss queries on its own connection.
+        const plan = await licenseService.getPlan(project.orgId);
 
-      const restoredProject = await projectDAL.transaction(async (tx) => {
-        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(project.orgId)]);
+        const restored = await projectDAL.transaction(async (tx) => {
+          await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(project.orgId)]);
 
-        if (plan.workspaceLimit !== null && project.type === ProjectType.SecretManager) {
-          const currentProjectCount = await projectDAL.countOfBillableOrgProjects(project.orgId, tx);
-          if (currentProjectCount >= plan.workspaceLimit) {
-            throw new BadRequestError({
-              message:
-                "Failed to restore project due to project limit reached. Upgrade plan or remove an existing project."
-            });
+          if (plan.workspaceLimit !== null && project.type === ProjectType.SecretManager) {
+            const currentProjectCount = await projectDAL.countOfBillableOrgProjects(project.orgId, tx);
+            if (currentProjectCount >= plan.workspaceLimit) {
+              throw new BadRequestError({
+                message:
+                  "Failed to restore project due to project limit reached. Upgrade plan or remove an existing project."
+              });
+            }
           }
-        }
 
-        return projectDAL.restoreById(project.id, tx);
-      });
-
-      if (!restoredProject) {
-        throw new BadRequestError({
-          message: "Cannot restore project: its deletion grace period has already elapsed."
+          return projectDAL.restoreById(project.id, tx);
         });
+
+        if (!restored) {
+          throw new BadRequestError({
+            message: "Cannot restore project: its deletion grace period has already elapsed."
+          });
+        }
+        restoredProject = restored;
+      } catch (error) {
+        // The project is still deleted, so the revocations queued above would only fail against it again.
+        await Promise.allSettled(
+          expiredLeases.map((lease) => dynamicSecretQueueService.unsetRestoredLeaseRevocation(lease.id))
+        );
+        throw error;
       }
 
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(project.orgId));
