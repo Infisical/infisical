@@ -944,6 +944,54 @@ export const certificateServiceFactory = ({
     algorithms: ReturnType<typeof extractCertificateAlgorithms>;
   };
 
+  const $extractImportedCertificateFacts = (
+    certObj: x509.X509Certificate,
+    certificatePem: string
+  ): TImportedCertificateFacts => {
+    const commonName = Array.from(certObj.subjectName.getField("CN")?.values() || [])[0] || "";
+
+    let altNames: undefined | string;
+    const sanExtension = certObj.extensions.find((ext) => ext.type === "2.5.29.17");
+    if (sanExtension) {
+      const sanNames = new x509.GeneralNames(sanExtension.value);
+      altNames = sanNames.items.map((name) => name.value).join(", ");
+    }
+
+    const { serialNumber, notBefore, notAfter } = certObj;
+
+    const keyUsagesExt = certObj.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
+
+    let keyUsages: CertKeyUsage[] = [];
+    if (keyUsagesExt) {
+      keyUsages = Object.values(CertKeyUsage).filter(
+        // eslint-disable-next-line no-bitwise
+        (keyUsage) => (x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0
+      );
+    }
+
+    const extKeyUsageExt = certObj.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
+    let extendedKeyUsages: CertExtendedKeyUsage[] = [];
+    if (extKeyUsageExt) {
+      extendedKeyUsages = extKeyUsageExt.usages.map((ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]);
+    }
+
+    const certificateBuffer = Buffer.from(certificatePem);
+    const certificateFields = extractCertificateFields(certificateBuffer);
+    const certificateAlgorithms = extractCertificateAlgorithms(certificateBuffer);
+
+    return {
+      serialNumber,
+      commonName,
+      altNames,
+      keyUsages,
+      extendedKeyUsages,
+      notBefore,
+      notAfter,
+      fields: certificateFields,
+      algorithms: certificateAlgorithms
+    };
+  };
+
   const $buildImportCertificateVerifier =
     ({
       policyId,
@@ -1140,6 +1188,30 @@ export const certificateServiceFactory = ({
   /**
    * Import certificate
    */
+  const $calculateImportRenewBeforeDays = async ({
+    applicationId,
+    profileId,
+    profileApiConfig,
+    notBefore,
+    notAfter
+  }: {
+    applicationId?: string;
+    profileId: string;
+    profileApiConfig: Awaited<ReturnType<typeof $resolveImportLinkage>>["profileApiConfig"];
+    notBefore: Date;
+    notAfter: Date;
+  }) => {
+    const effectiveApiConfig = await resolveEffectiveApiConfig({
+      applicationId,
+      profileId,
+      profileApiConfig: applicationId ? undefined : profileApiConfig,
+      pkiApplicationProfileDAL,
+      apiEnrollmentConfigDAL
+    });
+    const validityDays = Math.max(1, Math.ceil((notAfter.getTime() - notBefore.getTime()) / (24 * 60 * 60 * 1000)));
+    return calculateFinalRenewBeforeDays({ apiConfig: effectiveApiConfig }, `${validityDays}d`, notAfter);
+  };
+
   const importCert = async ({
     projectId: projectIdInput,
     projectSlug,
@@ -1306,50 +1378,22 @@ export const certificateServiceFactory = ({
       }
     }
 
-    // Get certificate attributes
-    const commonName = Array.from(leafCert.subjectName.getField("CN")?.values() || [])[0] || "";
-
-    let altNames: undefined | string;
-    const sanExtension = leafCert.extensions.find((ext) => ext.type === "2.5.29.17");
-    if (sanExtension) {
-      const sanNames = new x509.GeneralNames(sanExtension.value);
-      altNames = sanNames.items.map((name) => name.value).join(", ");
-    }
-
-    const { serialNumber, notBefore, notAfter } = leafCert;
-
-    const keyUsagesExt = leafCert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
-
-    let keyUsages: CertKeyUsage[] = [];
-    if (keyUsagesExt) {
-      keyUsages = Object.values(CertKeyUsage).filter(
-        // eslint-disable-next-line no-bitwise
-        (keyUsage) => (x509.KeyUsageFlags[keyUsage] & keyUsagesExt.usages) !== 0
-      );
-    }
-
-    const extKeyUsageExt = leafCert.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
-    let extendedKeyUsages: CertExtendedKeyUsage[] = [];
-    if (extKeyUsageExt) {
-      extendedKeyUsages = extKeyUsageExt.usages.map((ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]);
-    }
-
-    const certificateBuffer = Buffer.from(certificatePem);
-    const certificateFields = extractCertificateFields(certificateBuffer);
-    const certificateAlgorithms = extractCertificateAlgorithms(certificateBuffer);
-    const importedCustomExtensions = parseImportedCustomExtensions(certificateBuffer);
-
-    await linkage?.verifyCertificate({
-      serialNumber,
+    const certificateFacts = $extractImportedCertificateFacts(leafCert, certificatePem);
+    const {
       commonName,
       altNames,
-      keyUsages,
-      extendedKeyUsages,
+      serialNumber,
       notBefore,
       notAfter,
+      keyUsages,
+      extendedKeyUsages,
       fields: certificateFields,
       algorithms: certificateAlgorithms
-    });
+    } = certificateFacts;
+    const certificateBuffer = Buffer.from(certificatePem);
+    const importedCustomExtensions = parseImportedCustomExtensions(certificateBuffer);
+
+    await linkage?.verifyCertificate(certificateFacts);
 
     // Encrypt certificate for storage
     const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
@@ -1382,18 +1426,16 @@ export const certificateServiceFactory = ({
       deps: { projectDAL, licenseService, usageCounterDAL, keyStore }
     });
 
-    let renewBeforeDays: number | undefined;
-    if (profileId && linkage) {
-      const effectiveApiConfig = await resolveEffectiveApiConfig({
-        applicationId,
-        profileId,
-        profileApiConfig: applicationId ? undefined : linkage.profileApiConfig,
-        pkiApplicationProfileDAL,
-        apiEnrollmentConfigDAL
-      });
-      const validityDays = Math.max(1, Math.ceil((notAfter.getTime() - notBefore.getTime()) / (24 * 60 * 60 * 1000)));
-      renewBeforeDays = calculateFinalRenewBeforeDays({ apiConfig: effectiveApiConfig }, `${validityDays}d`, notAfter);
-    }
+    const renewBeforeDays =
+      profileId && linkage
+        ? await $calculateImportRenewBeforeDays({
+            applicationId,
+            profileId,
+            profileApiConfig: linkage.profileApiConfig,
+            notBefore,
+            notAfter
+          })
+        : undefined;
 
     const cert = await certificateDAL.transaction(async (tx) => {
       try {
@@ -1710,6 +1752,8 @@ export const certificateServiceFactory = ({
   const assignCertificateToApplication = async ({
     certificateId,
     applicationId,
+    profileId,
+    externalMetadata,
     actor,
     actorId,
     actorAuthMethod,
@@ -1745,11 +1789,76 @@ export const certificateServiceFactory = ({
       });
     }
 
-    const [updatedCert] = await certificateDAL.update({ id: cert.id }, { applicationId });
+    if (!profileId) {
+      if (externalMetadata) {
+        throw new BadRequestError({
+          message: "'externalMetadata' only applies when a certificate profile is chosen. Add 'profileId' or remove it."
+        });
+      }
+
+      const [updatedCert] = await certificateDAL.update({ id: cert.id }, { applicationId });
+      await queueCertificateFilterReconcile(cert.id, applicationId, pkiSyncQueue);
+      return { certificate: updatedCert, application, profileName: null };
+    }
+
+    if (cert.profileId) {
+      throw new BadRequestError({
+        message:
+          "This certificate is already managed by a certificate profile, which cannot be changed. To use a different profile, delete the certificate and import it again."
+      });
+    }
+
+    const linkage = await $resolveImportLinkage({
+      profileId,
+      projectId: cert.projectId,
+      applicationId,
+      externalMetadata,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+    if (!certBody?.encryptedCertificate) {
+      throw new BadRequestError({
+        message: "This certificate's PEM is not stored in Infisical, so it cannot be checked against a profile."
+      });
+    }
+
+    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
+      projectId: cert.projectId,
+      projectDAL,
+      kmsService
+    });
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKeyId });
+    const certificatePem = (await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate })).toString();
+    const certObj = new x509.X509Certificate(certificatePem);
+
+    await linkage.verifyCertificate($extractImportedCertificateFacts(certObj, certificatePem));
+
+    const renewBeforeDays = await $calculateImportRenewBeforeDays({
+      applicationId,
+      profileId,
+      profileApiConfig: linkage.profileApiConfig,
+      notBefore: certObj.notBefore,
+      notAfter: certObj.notAfter
+    });
+
+    const [updatedCert] = await certificateDAL.update(
+      { id: cert.id },
+      {
+        applicationId,
+        profileId,
+        caId: linkage.caId,
+        externalMetadata: linkage.externalMetadata ?? null,
+        renewBeforeDays
+      }
+    );
 
     await queueCertificateFilterReconcile(cert.id, applicationId, pkiSyncQueue);
 
-    return { certificate: updatedCert, application };
+    return { certificate: updatedCert, application, profileName: linkage.profileName };
   };
 
   return {

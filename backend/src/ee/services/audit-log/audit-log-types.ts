@@ -3341,6 +3341,8 @@ interface AssignCertToApplication {
     serialNumber: string;
     applicationId: string;
     applicationName: string;
+    profileId?: string;
+    profileName?: string;
   };
 }
 

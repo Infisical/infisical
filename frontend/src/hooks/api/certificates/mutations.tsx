@@ -323,13 +323,22 @@ export const useUnifiedCertificateIssuance = () => {
 
 export const useAssignCertificateToApplication = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCertificate, object, { certificateId: string; applicationId: string }>({
-    mutationFn: async ({ certificateId, applicationId }) => {
+  return useMutation<
+    TCertificate,
+    object,
+    {
+      certificateId: string;
+      applicationId: string;
+      profileId?: string;
+      externalMetadata?: TImportCertificateDTO["externalMetadata"];
+    }
+  >({
+    mutationFn: async ({ certificateId, ...body }) => {
       const {
         data: { certificate }
       } = await apiRequest.post<{ certificate: TCertificate }>(
         `/api/v1/cert-manager/certificates/${certificateId}/application`,
-        { applicationId }
+        body
       );
       return certificate;
     },

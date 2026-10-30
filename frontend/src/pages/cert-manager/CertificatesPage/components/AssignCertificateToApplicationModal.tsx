@@ -18,6 +18,8 @@ import {
   DialogTitle,
   Field,
   FieldContent,
+  FieldDescription,
+  FieldError,
   FieldLabel,
   Popover,
   PopoverContent,
@@ -27,13 +29,26 @@ import { useAssignCertificateToApplication } from "@app/hooks/api/certificates";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import {
+  CertificateProfileSelect,
+  CertificateReferenceField,
+  useCertificateImportProfiles,
+  useCertificateImportReference
+} from "./certificate-import-fields";
+
 type Props = {
   isOpen: boolean;
   onClose: () => void;
   certificateId: string;
+  hasProfile: boolean;
 };
 
-export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certificateId }: Props) => {
+export const AssignCertificateToApplicationModal = ({
+  isOpen,
+  onClose,
+  certificateId,
+  hasProfile
+}: Props) => {
   const [selectedApplication, setSelectedApplication] = useState<{
     id: string;
     name: string;
@@ -50,17 +65,47 @@ export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certifica
   const applications = data?.applications ?? [];
   const assign = useAssignCertificateToApplication();
 
+  const [profileId, setProfileId] = useState<string>();
+  const [providerReference, setProviderReference] = useState("");
+  const [referenceError, setReferenceError] = useState<string>();
+  const canChooseProfile = !hasProfile && Boolean(selectedApplication);
+  const { profileOptions, isProfilesLoading } = useCertificateImportProfiles(
+    canChooseProfile ? selectedApplication?.id : undefined
+  );
+  const selectedProfile = profileOptions.find((option) => option.id === profileId) ?? null;
+  const referenceSource = useCertificateImportReference(selectedProfile);
+  const { reference } = referenceSource;
+
+  const resetProfile = () => {
+    setProfileId(undefined);
+    setProviderReference("");
+    setReferenceError(undefined);
+  };
+
   useEffect(() => {
     if (!isOpen) {
       setSelectedApplication(null);
       setSearch("");
+      resetProfile();
     }
   }, [isOpen]);
 
   const handleSubmit = async () => {
     if (!selectedApplication) return;
+    const chosenProfileId = canChooseProfile ? profileId : undefined;
+    const externalMetadata =
+      chosenProfileId && reference ? reference.parse(providerReference.trim()) : undefined;
+    if (chosenProfileId && reference && !externalMetadata) {
+      setReferenceError(reference.invalidMessage);
+      return;
+    }
     try {
-      await assign.mutateAsync({ certificateId, applicationId: selectedApplication.id });
+      await assign.mutateAsync({
+        certificateId,
+        applicationId: selectedApplication.id,
+        ...(chosenProfileId ? { profileId: chosenProfileId } : {}),
+        ...(externalMetadata ? { externalMetadata } : {})
+      });
       createNotification({ type: "success", text: "Certificate assigned to Application" });
       onClose();
     } catch (err) {
@@ -116,6 +161,7 @@ export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certifica
                           key={app.id}
                           value={app.id}
                           onSelect={() => {
+                            if (selectedApplication?.id !== app.id) resetProfile();
                             setSelectedApplication({ id: app.id, name: app.name });
                             setPopoverOpen(false);
                           }}
@@ -136,6 +182,47 @@ export const AssignCertificateToApplicationModal = ({ isOpen, onClose, certifica
             </Popover>
           </FieldContent>
         </Field>
+
+        {canChooseProfile && (
+          <Field>
+            <FieldLabel>Certificate Profile (optional)</FieldLabel>
+            <FieldContent>
+              <CertificateProfileSelect
+                applicationId={selectedApplication?.id}
+                options={profileOptions}
+                isLoading={isProfilesLoading}
+                value={profileId}
+                onChange={(id) => {
+                  setProfileId(id);
+                  setProviderReference("");
+                  setReferenceError(undefined);
+                }}
+              />
+              <FieldDescription>
+                Lets the profile renew, reissue and revoke this certificate. It can&apos;t be
+                changed once set. Leave empty to only track the certificate.
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+        )}
+
+        {canChooseProfile && reference && (
+          <Field data-invalid={Boolean(referenceError)}>
+            <FieldLabel>{reference.label}</FieldLabel>
+            <FieldContent>
+              <CertificateReferenceField
+                source={referenceSource}
+                value={providerReference}
+                onChange={(value) => {
+                  setProviderReference(value);
+                  setReferenceError(undefined);
+                }}
+              />
+              <FieldDescription>{reference.description}</FieldDescription>
+              {referenceError && <FieldError>{referenceError}</FieldError>}
+            </FieldContent>
+          </Field>
+        )}
 
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={onClose}>

@@ -1975,7 +1975,11 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         id: z.string().uuid()
       }),
       body: z.object({
-        applicationId: z.string().uuid()
+        applicationId: z.string().uuid(),
+        profileId: z.string().trim().uuid().optional().describe(CERTIFICATES.ASSIGN_TO_APPLICATION.profileId),
+        externalMetadata: ImportExternalMetadataSchema.optional().describe(
+          CERTIFICATES.ASSIGN_TO_APPLICATION.externalMetadata
+        )
       }),
       response: {
         200: z.object({
@@ -1984,14 +1988,17 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { certificate, application } = await server.services.certificate.assignCertificateToApplication({
-        certificateId: req.params.id,
-        applicationId: req.body.applicationId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
-      });
+      const { certificate, application, profileName } =
+        await server.services.certificate.assignCertificateToApplication({
+          certificateId: req.params.id,
+          applicationId: req.body.applicationId,
+          profileId: req.body.profileId,
+          externalMetadata: req.body.externalMetadata,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -2003,7 +2010,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             cn: certificate.commonName,
             serialNumber: certificate.serialNumber,
             applicationId: application.id,
-            applicationName: application.name
+            applicationName: application.name,
+            ...(req.body.profileId && profileName ? { profileId: req.body.profileId, profileName } : {})
           }
         }
       });
