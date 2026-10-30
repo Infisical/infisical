@@ -18,7 +18,7 @@ import { GitRepositoryScanFindingDetailsSchema } from "@app/ee/services/secret-s
 import {
   TFindingsPayload,
   TQueueSecretScanningResourceDiffScan,
-  TSecretScanningDiffScanFindings,
+  TSecretScanningRealtimeScanFindings,
   TSecretScanningFactoryProcessEvent,
   TSecretScanningScanReport
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
@@ -274,7 +274,7 @@ export const scanGitHubPullRequest = async ({
   payload: TGitHubPullRequestScanPayload;
   resourceName: string;
   configPath?: string;
-}): Promise<TSecretScanningDiffScanFindings> => {
+}): Promise<TSecretScanningRealtimeScanFindings> => {
   const octokit = getGitHubRadarInstallationOctokit(payload.installationId);
 
   const { commits, totalCommits } = await listPullRequestCommits(octokit, {
@@ -645,7 +645,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
   secretScanningV2DAL,
   auditLogService,
   discoverResource,
-  queueReportedDiffScan
+  queueReportedRealtimeScan
 }) => {
   // Pull requests are checked only while the data source scans new commits. A repository the data source doesn't cover
   // yet is discovered the same way a push discovers it, or skipped when discovery is off. If the check run cannot be
@@ -771,7 +771,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
       checkRunId
     };
 
-    await queueReportedDiffScan({
+    await queueReportedRealtimeScan({
       scanId,
       dataSourceId: dataSource.id,
       dataSourceType: SecretScanningDataSource.GitHub,

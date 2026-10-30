@@ -47,7 +47,7 @@ export type TQueueGitHubResourceDiffScan = {
   scanId: string;
 };
 
-export type TGitHubDiffScanDetails = {
+export type TGitHubRealtimeScanDetails = {
   scannedCommitCount: number;
   totalCommitCount: number;
 };

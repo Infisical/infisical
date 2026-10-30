@@ -11,7 +11,7 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   TSecretScanningFactoryGetDiffScanFindingsPayload,
-  TSecretScanningFactoryGetDiffScanReport,
+  TSecretScanningFactoryGetRealtimeScanReport,
   TSecretScanningFactoryGetDiffScanResourcePayload,
   TSecretScanningFactoryGetFullScanPath,
   TSecretScanningFactoryGetScanReport,
@@ -183,7 +183,7 @@ export const GitHubSecretScanningFactory = () => {
   };
 
   // Pull request scans report to the check run they were created for; pushes report nowhere.
-  const getDiffScanReport: TSecretScanningFactoryGetDiffScanReport<TQueueGitHubResourceDiffScan["payload"]> = (
+  const getRealtimeScanReport: TSecretScanningFactoryGetRealtimeScanReport<TQueueGitHubResourceDiffScan["payload"]> = (
     payload
   ) => {
     if (!isGitHubPullRequestScanPayload(payload)) return undefined;
@@ -216,7 +216,7 @@ export const GitHubSecretScanningFactory = () => {
     getFullScanPath,
     getDiffScanResourcePayload,
     getDiffScanFindingsPayload,
-    getDiffScanReport,
+    getRealtimeScanReport,
     getScanReport,
     processEvent: processGitHubPullRequestEvent,
     teardown,

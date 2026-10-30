@@ -57,7 +57,7 @@ import {
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDiscoverResource,
   TSecretScanningFinding,
-  TSecretScanningQueueReportedDiffScan
+  TSecretScanningQueueReportedRealtimeScan
 } from "./secret-scanning-v2-types";
 
 type TSecretRotationV2QueueServiceFactoryDep = {
@@ -773,7 +773,7 @@ export const secretScanningV2QueueServiceFactory = ({
       appConnectionDAL
     });
 
-    const report = factory.getDiffScanReport?.(payload);
+    const report = factory.getRealtimeScanReport?.(payload);
 
     const prepareScan = async () => {
       // Primary for the same reason as the full scan: a lagging replica would drop a just-queued scan.
@@ -1303,7 +1303,7 @@ export const secretScanningV2QueueServiceFactory = ({
    * ID the report already carries. Nothing redelivers a realtime scan whose job was never submitted, so if either step
    * fails the scan is failed and its report closed here, rather than left queued.
    */
-  const queueReportedDiffScan: TSecretScanningQueueReportedDiffScan = async ({
+  const queueReportedRealtimeScan: TSecretScanningQueueReportedRealtimeScan = async ({
     scanId,
     dataSourceId,
     dataSourceType,
@@ -1340,18 +1340,18 @@ export const secretScanningV2QueueServiceFactory = ({
         }
       );
     } catch (error) {
-      logger.error(error, `secretScanningV2Queue: Failed to queue reported diff scan ${logDetails}`);
+      logger.error(error, `secretScanningV2Queue: Failed to queue reported realtime scan ${logDetails}`);
 
       const statusMessage = "The scan could not be started.";
 
       try {
         await markScanAsFailed({ scanId, statusMessage });
       } catch (markError) {
-        logger.error(markError, `secretScanningV2Queue: Failed to mark reported diff scan as failed ${logDetails}`);
+        logger.error(markError, `secretScanningV2Queue: Failed to mark reported realtime scan as failed ${logDetails}`);
       }
 
       await SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsService, appConnectionDAL })
-        .getDiffScanReport?.(payload)
+        .getRealtimeScanReport?.(payload)
         ?.fail({ reason: statusMessage });
     }
   };
@@ -1369,7 +1369,7 @@ export const secretScanningV2QueueServiceFactory = ({
       secretScanningV2DAL,
       auditLogService,
       discoverResource,
-      queueReportedDiffScan
+      queueReportedRealtimeScan
     });
   };
 
