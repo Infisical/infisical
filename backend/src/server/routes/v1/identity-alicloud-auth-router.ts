@@ -40,8 +40,13 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           .describe(ALICLOUD_AUTH.LOGIN.Version),
         AccessKeyId: z
           .string()
-          .refine((val) => new RE2("^[A-Za-z0-9]+$").test(val), {
-            message: "AccessKeyId must be alphanumeric"
+          // Standard Alibaba Cloud AccessKeyIds are alphanumeric (e.g.
+          // "LTAI4FaiEqQ7uvYPEXj4Aa3w"), but STS-issued temporary credentials
+          // use a "STS." prefix (e.g. "STS.NUgYrLnoC63mHtFkUL5MeF8r"). The
+          // dot in the STS prefix was previously rejected by the alphanumeric-
+          // only regex, breaking every STS-based login (#4937).
+          .refine((val) => new RE2("^(STS\\.)?[A-Za-z0-9]+$").test(val), {
+            message: "AccessKeyId must be alphanumeric, optionally prefixed with 'STS.' for STS credentials"
           })
           .describe(ALICLOUD_AUTH.LOGIN.AccessKeyId),
         organizationSlug: slugSchema().optional().describe(ALICLOUD_AUTH.LOGIN.organizationSlug),
@@ -68,7 +73,21 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           .refine((val) => new RE2("^[A-Za-z0-9+/=]+$").test(val), {
             message: "Signature must be base64 characters"
           })
-          .describe(ALICLOUD_AUTH.LOGIN.Signature)
+          .describe(ALICLOUD_AUTH.LOGIN.Signature),
+        // SecurityToken is required when authenticating with Alibaba Cloud STS
+        // temporary credentials. Per Alibaba's docs, every API request made with
+        // STS credentials must include the SecurityToken alongside the
+        // AccessKeyId/AccessKeySecret. Without forwarding it to GetCallerIdentity,
+        // Alibaba rejects the verification call with InvalidSecurityToken (#4937).
+        // Optional so that long-term AccessKey-based logins (which don't have a
+        // SecurityToken) keep working unchanged.
+        SecurityToken: z
+          .string()
+          .refine((val) => new RE2("^[A-Za-z0-9+/=._-]+$").test(val), {
+            message: "SecurityToken must contain only base64 and URL-safe characters"
+          })
+          .optional()
+          .describe(ALICLOUD_AUTH.LOGIN.SecurityToken)
       }),
       response: {
         200: z.object({
