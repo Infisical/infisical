@@ -155,7 +155,9 @@ describe("parsePkiSyncErrorMessage", () => {
   });
 
   test("falls back to a readable message for a non-error throw", () => {
-    expect(parsePkiSyncErrorMessage({ weird: true })).toBe("An unknown error occurred during PKI sync operation");
+    expect(parsePkiSyncErrorMessage({ weird: true })).toBe(
+      "An unknown error occurred during certificate sync operation"
+    );
   });
 });
 
