@@ -5,7 +5,7 @@ icon: "/images/stack/kubernetes.png"
 description: "Learn how to run AI agents in Kubernetes pods that contain no credentials and can only connect to the Agent Vault proxy."
 ---
 
-An AI agent runs commands that a prompt can influence, so any API key you put in the agent's pod can leak through a [prompt injection](/documentation/platform/agent-vault/why-agent-vault). With Agent Vault, agent pods contain no API keys. Each pod receives a [session](/documentation/platform/agent-vault/sessions) token instead, and sends its requests through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) that attaches the real credentials.
+When you run AI agents on Kubernetes, each agent usually runs in a pod with its API keys mounted from a Secret or set as environment variables. An agent runs commands that a prompt can influence, so those keys can leak through a [prompt injection](/documentation/platform/agent-vault/why-agent-vault) or be sent somewhere by mistake. With Agent Vault, agent pods contain no API keys. Each pod receives a [session](/documentation/platform/agent-vault/sessions) token instead, and sends its requests through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) that attaches the real credentials.
 
 This page explains how the pieces fit together in a cluster and how to choose an isolation level for agent pods. To set it up, follow [Set up Agent Vault on Kubernetes](/documentation/platform/agent-vault/guides/kubernetes-setup).
 
