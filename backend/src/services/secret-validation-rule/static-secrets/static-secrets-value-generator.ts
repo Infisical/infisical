@@ -62,7 +62,10 @@ const buildRegexGenerator = (regexPattern: string, repeatCap: number) => {
   generator.max = repeatCap;
   generator.randInt = (min: number, max: number) => crypto.randomInt(min, max + 1);
 
-  if (estimateMaxOutputLength(generator.tokens as TRegexToken, repeatCap) > MAX_REGEX_OUTPUT_LENGTH)
+  if (
+    estimateMaxOutputLength((generator as unknown as { tokens: TRegexToken }).tokens, repeatCap) >
+    MAX_REGEX_OUTPUT_LENGTH
+  )
     throw unsupported();
   return generator;
 };
