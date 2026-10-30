@@ -30,7 +30,9 @@ import {
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
+import { computeCertificateThumbprint } from "../identity-access-token/identity-access-token-fns";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
+import { CERTIFICATE_THUMBPRINT_CLAIM } from "../identity-access-token/identity-access-token-types";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -421,7 +423,10 @@ export const identityTlsCertAuthServiceFactory = ({
         accessTokenNumUsesLimit: Number(identityTlsCertAuth.accessTokenNumUsesLimit),
         // TLS Cert auth schema has no accessTokenPeriod column.
         accessTokenPeriod: 0,
-        accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIp[]
+        accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIp[],
+        cnf: identityTlsCertAuth.bindAccessTokenToCertificate
+          ? { [CERTIFICATE_THUMBPRINT_CLAIM]: computeCertificateThumbprint(clientCertificateX509.raw) }
+          : undefined
       });
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -489,7 +494,8 @@ export const identityTlsCertAuthServiceFactory = ({
     caCertificate,
     allowedCommonNames,
     allowedSubjectAltNames,
-    verifyClientCertificateChain: verifyClientCertificateChainOpt
+    verifyClientCertificateChain: verifyClientCertificateChainOpt,
+    bindAccessTokenToCertificate
   }) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -565,6 +571,7 @@ export const identityTlsCertAuthServiceFactory = ({
           accessTokenTTL,
           encryptedCaCertificate: encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob,
           verifyClientCertificateChain: verifyClientCertificateChainOpt ?? false,
+          bindAccessTokenToCertificate: bindAccessTokenToCertificate ?? false,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps)
         },
@@ -593,6 +600,7 @@ export const identityTlsCertAuthServiceFactory = ({
     allowedCommonNames,
     allowedSubjectAltNames,
     verifyClientCertificateChain: verifyClientCertificateChainOpt,
+    bindAccessTokenToCertificate,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -687,6 +695,7 @@ export const identityTlsCertAuthServiceFactory = ({
             ? encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob
             : undefined,
           verifyClientCertificateChain: verifyClientCertificateChainOpt,
+          bindAccessTokenToCertificate,
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,

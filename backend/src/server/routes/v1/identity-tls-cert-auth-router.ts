@@ -230,6 +230,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             .boolean()
             .default(false)
             .describe(TLS_CERT_AUTH.ATTACH.verifyClientCertificateChain),
+          bindAccessTokenToCertificate: z
+            .boolean()
+            .default(false)
+            .describe(TLS_CERT_AUTH.ATTACH.bindAccessTokenToCertificate),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -292,6 +296,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             allowedCommonNames: identityTlsCertAuth.allowedCommonNames,
             allowedSubjectAltNames: tlsCertAuthResponse.allowedSubjectAltNames,
             verifyClientCertificateChain: identityTlsCertAuth.verifyClientCertificateChain,
+            bindAccessTokenToCertificate: identityTlsCertAuth.bindAccessTokenToCertificate,
             accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
             accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
@@ -352,6 +357,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             .boolean()
             .optional()
             .describe(TLS_CERT_AUTH.UPDATE.verifyClientCertificateChain),
+          bindAccessTokenToCertificate: z
+            .boolean()
+            .optional()
+            .describe(TLS_CERT_AUTH.UPDATE.bindAccessTokenToCertificate),
           allowedCommonNames: validateCommonNames
             .optional()
             .nullable()
@@ -422,6 +431,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
             allowedCommonNames: identityTlsCertAuth.allowedCommonNames,
             allowedSubjectAltNames: tlsCertAuthResponse.allowedSubjectAltNames,
             verifyClientCertificateChain: identityTlsCertAuth.verifyClientCertificateChain,
+            bindAccessTokenToCertificate: identityTlsCertAuth.bindAccessTokenToCertificate,
             accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
             accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
             accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
