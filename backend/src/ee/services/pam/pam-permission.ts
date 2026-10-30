@@ -9,6 +9,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
+import { isActiveRole } from "../permission/permission-fns";
 import { resolveResourceRoleRules } from "../permission/permission-service";
 import {
   ResourcePermissionPamResourceActions,
@@ -126,6 +127,48 @@ export const checkAccountAccess = async (
     actorOrgId: ctx.actorOrgId
   });
   ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
+};
+
+// How long the actor keeps LaunchSessions on the account: null while a granting role is permanent, 0 once none
+// grants it.
+export const getLaunchAccessRemainingMs = async (
+  membershipDAL: TMembershipDep,
+  membershipRoleDAL: TMembershipRoleDep,
+  projectId: string,
+  account: { id: string; folderId?: string | null },
+  ctx: Pick<TActorContext, "actor" | "actorId">
+): Promise<number | null> => {
+  const [folderMemberships, accountMemberships] = await Promise.all([
+    account.folderId
+      ? membershipDAL.findResourceMembershipsForActor({
+          projectId,
+          resourceType: ResourceType.PamFolder,
+          actorType: ctx.actor,
+          actorId: ctx.actorId
+        })
+      : [],
+    membershipDAL.findResourceMembershipsForActor({
+      projectId,
+      resourceType: ResourceType.PamAccount,
+      actorType: ctx.actor,
+      actorId: ctx.actorId
+    })
+  ]);
+
+  const memberships = [
+    ...folderMemberships.filter((m) => m.scopeResourceId === account.folderId),
+    ...accountMemberships.filter((m) => m.scopeResourceId === account.id)
+  ].filter((m) => m.isActive);
+  if (memberships.length === 0) return 0;
+
+  const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } });
+  const grantingRoles = roles.filter(
+    (r) => isActiveRole(r) && pamRoleHasAction(r.role, ResourcePermissionPamResourceActions.LaunchSessions)
+  );
+  if (grantingRoles.some((r) => !r.isTemporary)) return null;
+
+  const endsAt = Math.max(0, ...grantingRoles.map((r) => new Date(r.temporaryAccessEndTime ?? 0).getTime()));
+  return Math.max(0, endsAt - Date.now());
 };
 
 // Non-throwing counterpart to checkAccountAccess, for deciding what a caller may do.
