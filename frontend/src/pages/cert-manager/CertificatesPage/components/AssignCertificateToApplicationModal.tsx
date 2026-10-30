@@ -90,7 +90,7 @@ export const AssignCertificateToApplicationModal = ({
     }
   }, [isOpen]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!selectedApplication) return;
     const chosenProfileId = canChooseProfile ? profileId : undefined;
     const externalMetadata =
@@ -99,19 +99,20 @@ export const AssignCertificateToApplicationModal = ({
       setReferenceError(reference.invalidMessage);
       return;
     }
-    try {
-      await assign.mutateAsync({
+    assign.mutate(
+      {
         certificateId,
         applicationId: selectedApplication.id,
         ...(chosenProfileId ? { profileId: chosenProfileId } : {}),
         ...(externalMetadata ? { externalMetadata } : {})
-      });
-      createNotification({ type: "success", text: "Certificate assigned to Application" });
-      onClose();
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : "Failed to assign certificate.";
-      createNotification({ type: "error", text: detail });
-    }
+      },
+      {
+        onSuccess: () => {
+          createNotification({ type: "success", text: "Certificate assigned to Application" });
+          onClose();
+        }
+      }
+    );
   };
 
   return (
