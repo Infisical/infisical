@@ -520,6 +520,18 @@ const ImportSecretsContent = ({
       }
 
       const skippedCountByEnv = new Map<string, number>();
+      const createdCountByEnv = new Map<string, number>();
+      const updatedCountByEnv = new Map<string, number>();
+      const addCount = (
+        counts: Map<string, number>,
+        environment: string,
+        result: object,
+        count: number
+      ) => {
+        if (!("approval" in result))
+          counts.set(environment, (counts.get(environment) ?? 0) + count);
+        return result;
+      };
 
       const resolveTagIds = (slugs?: string[]): string[] | undefined => {
         if (!slugs?.length) return undefined;
@@ -632,6 +644,7 @@ const ImportSecretsContent = ({
                       secretPath: path,
                       secrets: secretsToCreate
                     }).then((result) => {
+                      addCount(createdCountByEnv, environment, result, secretsToCreate.length);
                       if (!("approval" in result))
                         createdSecrets.push(
                           ...resolvedEntries
@@ -654,7 +667,9 @@ const ImportSecretsContent = ({
                       environment,
                       secretPath: path,
                       secrets: secretsToUpdate
-                    })
+                    }).then((result) =>
+                      addCount(updatedCountByEnv, environment, result, secretsToUpdate.length)
+                    )
                   ]
                 : [])
             ])
@@ -676,10 +691,14 @@ const ImportSecretsContent = ({
         );
         const results = await Promise.allSettled([
           ...creates.chunks.map((chunk) =>
-            enqueue(() => createNestedSecretBatch({ ...envelope, secrets: chunk }))
+            enqueue(() => createNestedSecretBatch({ ...envelope, secrets: chunk })).then((result) =>
+              addCount(createdCountByEnv, environment, result, chunk.length)
+            )
           ),
           ...updates.chunks.map((chunk) =>
-            enqueue(() => updateNestedSecretBatch({ ...envelope, secrets: chunk }))
+            enqueue(() => updateNestedSecretBatch({ ...envelope, secrets: chunk })).then((result) =>
+              addCount(updatedCountByEnv, environment, result, chunk.length)
+            )
           ),
           ...(oversizedKeys.length ? [Promise.reject(new Error("Secret exceeds 1 MB"))] : [])
         ]);
@@ -841,17 +860,26 @@ const ImportSecretsContent = ({
         }
       });
 
-      const skippedCount = successEnvSlugs.reduce(
-        (count, slug) => count + (skippedCountByEnv.get(slug) ?? 0),
-        0
-      );
-      if (successEnvs.length) {
-        notifySecretsCreated(
-          skippedCount
-            ? `Uploaded secrets${folderSummary} into ${successEnvs.join(", ")}; ${skippedCount} existing ${skippedCount === 1 ? "secret" : "secrets"} skipped`
-            : `Successfully uploaded ${secretCount} secret${secretCount > 1 ? "s" : ""}${folderSummary} into ${successEnvs.join(", ")}`,
-          createdSecrets
-        );
+      const sumForSuccessEnvs = (counts: Map<string, number>) =>
+        successEnvSlugs.reduce((count, slug) => count + (counts.get(slug) ?? 0), 0);
+      const skippedCount = sumForSuccessEnvs(skippedCountByEnv);
+      const createdCount = sumForSuccessEnvs(createdCountByEnv);
+      const updatedCount = sumForSuccessEnvs(updatedCountByEnv);
+      const existingDetail = [
+        updatedCount &&
+          `${updatedCount} existing ${updatedCount === 1 ? "secret" : "secrets"} overwritten`,
+        skippedCount &&
+          `${skippedCount} existing ${skippedCount === 1 ? "secret" : "secrets"} skipped`
+      ]
+        .filter(Boolean)
+        .join(", ");
+      if (successEnvs.length && createdCount) {
+        notifySecretsCreated(createdCount, createdSecrets, existingDetail || undefined);
+      } else if (successEnvs.length) {
+        createNotification({
+          type: "success",
+          text: `Uploaded secrets${folderSummary} into ${successEnvs.join(", ")}; ${existingDetail || "no new secrets"}`
+        });
       }
 
       if (approvalEnvs.length) {

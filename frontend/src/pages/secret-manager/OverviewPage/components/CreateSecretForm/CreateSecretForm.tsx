@@ -450,7 +450,7 @@ export const CreateSecretForm = ({
         });
       } else {
         notifySecretsCreated(
-          `${result.secrets.created.length} secrets created`,
+          result.secrets.created.length,
           secrets.map((secret) => ({
             environment: selectedEnv[0].slug,
             key: secret.key,
@@ -543,9 +543,7 @@ export const CreateSecretForm = ({
 
     if (updatedEnvs.length) {
       notifySecretsCreated(
-        `Secrets created in ${
-          updatedEnvs.length > 1 ? "environments" : "environment"
-        }: ${updatedEnvs.join(", ")}`,
+        responseCount,
         results.flatMap((result) =>
           result.status === "fulfilled" && !("approval" in result.value)
             ? [

@@ -13,7 +13,11 @@ export type TCreatedSecret = {
   tags?: string[];
 };
 
-export type TNotifySecretsCreated = (text: string, secrets: TCreatedSecret[]) => void;
+export type TNotifySecretsCreated = (
+  createdCount: number,
+  secrets: TCreatedSecret[],
+  detail?: string
+) => void;
 
 export type TCreatedSecretsShare = { value: string; name?: string };
 
@@ -28,8 +32,17 @@ const toEnvLine = (key: string, value: string) =>
 const toSavedValue = (value: string) =>
   value.at(-1) === "\n" ? `${value.trim()}\n` : value.trim();
 
-export const notifySecretsCreatedWithoutShare: TNotifySecretsCreated = (text) => {
-  createNotification({ type: "success", text });
+const toCreatedNotification = (createdCount: number, detail?: string) => {
+  const title = `${createdCount} New Secret${createdCount === 1 ? "" : "s"} Created`;
+  return detail ? { title, text: detail } : { text: title };
+};
+
+export const notifySecretsCreatedWithoutShare: TNotifySecretsCreated = (
+  createdCount,
+  _,
+  detail
+) => {
+  createNotification({ type: "success", ...toCreatedNotification(createdCount, detail) });
 };
 
 // Several secrets share as one KEY=value per line, so the recipient gets a pasteable .env block.
@@ -47,7 +60,7 @@ export const useNotifySecretsCreated = (
   }, []);
 
   return useCallback(
-    (text, secrets) => {
+    (createdCount, secrets, detail) => {
       const shareable = new Map<string, string>();
       if (currentProject.secretSharing) {
         secrets.forEach(({ environment, key, value, tags }) => {
@@ -72,14 +85,14 @@ export const useNotifySecretsCreated = (
         : share.value.length;
 
       if (!entries.length || sharedLength > MAX_SHARED_SECRET_LENGTH) {
-        createNotification({ type: "success", text });
+        createNotification({ type: "success", ...toCreatedNotification(createdCount, detail) });
         return;
       }
 
       const notificationId = createNotification(
         {
           type: "success",
-          text,
+          ...toCreatedNotification(createdCount, detail),
           callToAction: (
             <Button
               size="xs"

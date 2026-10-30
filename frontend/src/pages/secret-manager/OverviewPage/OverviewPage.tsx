@@ -2333,10 +2333,7 @@ const OverviewPageContent = () => {
         text: "Requested change has been sent for review"
       });
     } else {
-      notifySecretsCreated(
-        "Successfully created secret",
-        type === SecretType.Shared ? [{ environment: env, key, value }] : []
-      );
+      notifySecretsCreated(1, type === SecretType.Shared ? [{ environment: env, key, value }] : []);
 
       // The user just created a secret: check whether to surface the activation nudge.
       checkSecretsActivation();
@@ -2992,7 +2989,13 @@ const OverviewPageContent = () => {
               ]
             : []
         );
-        if (isSingleChange) {
+        if (createdSecrets.length) {
+          notifySecretsCreated(
+            createdSecrets.length,
+            createdSecrets,
+            createdSecrets.length === changeCount ? undefined : `${changeCount} changes committed`
+          );
+        } else if (isSingleChange) {
           const change = secretChange ?? folderChange;
           const pastTense = {
             [PendingAction.Create]: "created",
@@ -3002,9 +3005,9 @@ const OverviewPageContent = () => {
           const label = secretChange
             ? `Secret "${secretChange.type === PendingAction.Update && secretChange.newSecretName ? secretChange.newSecretName : secretChange.secretKey}"`
             : `Folder "${folderChange.folderName}"`;
-          notifySecretsCreated(`${label} ${pastTense}`, createdSecrets);
+          createNotification({ type: "success", text: `${label} ${pastTense}` });
         } else {
-          notifySecretsCreated(`${changeCount} changes committed`, createdSecrets);
+          createNotification({ type: "success", text: `${changeCount} changes committed` });
         }
 
         if (changes.secrets.some((secret) => secret.type === PendingAction.Create)) {
