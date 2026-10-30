@@ -191,7 +191,8 @@ export const GitHubSecretScanningFactory = () => {
     return createPullRequestScanReport({
       installationId: payload.installationId,
       repositoryFullName: payload.repository.full_name,
-      metadata: getPullRequestScanMetadata(payload)
+      metadata: getPullRequestScanMetadata(payload),
+      findingsUrl: payload.findingsUrl
     });
   };
 

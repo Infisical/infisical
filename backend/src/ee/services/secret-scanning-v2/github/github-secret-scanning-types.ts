@@ -37,6 +37,8 @@ export type TGitHubPullRequestScanPayload = {
     headSha: string;
   };
   checkRunId: number;
+  // The data source's findings page for the repository, linked from the check's summary.
+  findingsUrl?: string;
 };
 
 export type TQueueGitHubResourceDiffScan = {

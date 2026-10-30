@@ -76,15 +76,27 @@ const makeFinding = (index: number): TFindingsPayload[number] => ({
 
 describe("getPullRequestScanCheckRunResult", () => {
   test("fails on any finding and never includes the secret", () => {
+    const finding = makeFinding(0);
     const result = getPullRequestScanCheckRunResult({
-      findings: [makeFinding(0), makeFinding(1)],
+      findings: [
+        {
+          ...finding,
+          id: "0a1b2c3d-0000-4000-8000-000000000000",
+          status: SecretScanningFindingStatus.Unresolved,
+          details: { ...(finding.details as object), link: "https://github.com/acme/api/blob/abc123/my file.go#L1" }
+        },
+        makeFinding(1)
+      ],
       scannedCommitCount: 2,
-      totalCommitCount: 2
+      totalCommitCount: 2,
+      findingsUrl: "https://app.infisical.com/organizations/org/secret-scanning/findings?resourceId=r"
     });
 
     expect(result.conclusion).toBe("failure");
     expect(result.title).toBe("2 secret(s) found");
-    expect(result.summary).toContain("| github-pat | config\\|0.ts | 1 | abc123d |");
+    expect(result.summary).toContain(
+      "| [0a1b2c3d](https://app.infisical.com/organizations/org/secret-scanning/findings?resourceId=r) | Unresolved | github-pat | abc123d | config\\|0.ts:1 | [View secret](https://github.com/acme/api/blob/abc123/my%20file.go#L1) |"
+    );
     expect(result.summary).not.toContain(SECRET_VALUE);
   });
 

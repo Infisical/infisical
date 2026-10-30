@@ -416,7 +416,8 @@ const FindingLocationSchema = GitRepositoryScanFindingDetailsSchema.pick({
   startLine: true,
   endLine: true,
   commit: true,
-  description: true
+  description: true,
+  link: true
 });
 
 const getFindingLocations = (findings: TFindingsPayload) =>
@@ -437,14 +438,24 @@ const toCheckRunAnnotations = (findings: TFindingsPayload) =>
 
 const escapeMarkdownTableCell = (value: string) => value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 
+const toMarkdownUrl = (url: string) => url.replace(/ /g, "%20").replace(/\(/g, "%28").replace(/\)/g, "%29");
+
+const toStatusLabel = (status?: string | null) =>
+  (status ?? SecretScanningFindingStatus.Unresolved)
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
 export const getPullRequestScanCheckRunResult = ({
   findings: allFindings,
   scannedCommitCount,
-  totalCommitCount
+  totalCommitCount,
+  findingsUrl
 }: {
-  findings: (TFindingsPayload[number] & { status?: string | null })[];
+  findings: (TFindingsPayload[number] & { id?: string; status?: string | null })[];
   scannedCommitCount: number;
   totalCommitCount: number;
+  findingsUrl?: string;
 }): TPullRequestCheckRunResult => {
   const truncationNote =
     scannedCommitCount < totalCommitCount
@@ -484,12 +495,26 @@ export const getPullRequestScanCheckRunResult = ({
   }
 
   const table = [
-    "| Rule | File | Line | Commit |",
-    "| --- | --- | --- | --- |",
-    ...getFindingLocations(findings.slice(0, CHECK_RUN_MAX_SUMMARY_FINDINGS)).map(
-      ({ rule, file, startLine, commit }) =>
-        `| ${escapeMarkdownTableCell(rule)} | ${escapeMarkdownTableCell(file)} | ${startLine} | ${commit.slice(0, 7)} |`
-    )
+    "| Infisical ID | Status | Secret | Commit | File | |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...findings.slice(0, CHECK_RUN_MAX_SUMMARY_FINDINGS).flatMap((finding) => {
+      const details = FindingLocationSchema.safeParse(finding.details);
+      if (!details.success) return [];
+
+      const { file, startLine, commit, link } = details.data;
+      const shortId = finding.id ? finding.id.slice(0, 8) : "";
+
+      const cells = [
+        shortId && findingsUrl ? `[${shortId}](${toMarkdownUrl(findingsUrl)})` : shortId,
+        toStatusLabel(finding.status),
+        escapeMarkdownTableCell(finding.rule),
+        commit.slice(0, 7),
+        escapeMarkdownTableCell(`${file}:${startLine}`),
+        link ? `[View secret](${toMarkdownUrl(link)})` : ""
+      ];
+
+      return [`| ${cells.join(" | ")} |`];
+    })
   ].join("\n");
 
   const summary = [
@@ -599,11 +624,13 @@ export const getPullRequestScanMetadata = (payload: TGitHubPullRequestScanPayloa
 export const createPullRequestScanReport = ({
   installationId,
   repositoryFullName,
-  metadata
+  metadata,
+  findingsUrl
 }: {
   installationId: string;
   repositoryFullName: string;
   metadata: TGitHubPullRequestScanMetadata;
+  findingsUrl?: string;
 }): TSecretScanningScanReport => {
   const target = { installationId, repositoryFullName, checkRunId: metadata.checkRunId };
 
@@ -627,7 +654,8 @@ export const createPullRequestScanReport = ({
         result: getPullRequestScanCheckRunResult({
           findings,
           scannedCommitCount: details?.scannedCommitCount ?? 0,
-          totalCommitCount: details?.totalCommitCount ?? 0
+          totalCommitCount: details?.totalCommitCount ?? 0,
+          findingsUrl
         })
       }),
     fail: ({ reason, isTimedOut }) =>
@@ -743,6 +771,10 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
     const scanId = crypto.nativeCrypto.randomUUID();
     const { SITE_URL } = getConfig();
     const orgId = dataSource.connection?.orgId;
+    const findingsUrl =
+      SITE_URL && orgId
+        ? `${SITE_URL}/organizations/${orgId}/secret-scanning/findings?resourceId=${resource.id}`
+        : undefined;
 
     let checkRunId: number;
     try {
@@ -751,10 +783,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
         repositoryFullName: repository.full_name,
         headSha: pullRequest.headSha,
         scanId,
-        detailsUrl:
-          SITE_URL && orgId
-            ? `${SITE_URL}/organizations/${orgId}/secret-scanning/findings?resourceId=${resource.id}`
-            : undefined
+        detailsUrl: findingsUrl
       });
     } catch (error) {
       logger.warn(
@@ -768,7 +797,8 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
       installationId: String(installationId),
       repository: { id: repository.id, full_name: repository.full_name },
       pullRequest,
-      checkRunId
+      checkRunId,
+      findingsUrl
     };
 
     await queueReportedRealtimeScan({
