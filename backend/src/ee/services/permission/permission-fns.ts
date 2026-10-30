@@ -42,25 +42,17 @@ export function throwIfMissingSecretReadValueOrDescribePermission(
   >,
   subjectFields?: SecretSubjectFields
 ) {
-  try {
-    if (subjectFields) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.DescribeAndReadValue,
-        subject(ProjectPermissionSub.Secrets, subjectFields)
-      );
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.DescribeAndReadValue,
-        ProjectPermissionSub.Secrets
-      );
-    }
-  } catch {
-    if (subjectFields) {
-      ForbiddenError.from(permission).throwUnlessCan(action, subject(ProjectPermissionSub.Secrets, subjectFields));
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Secrets);
-    }
+  const secretSubject = subjectFields
+    ? subject(ProjectPermissionSub.Secrets, subjectFields)
+    : ProjectPermissionSub.Secrets;
+  // ForbiddenError captures a stack trace, so only build one when access is actually denied.
+  if (
+    permission.can(ProjectPermissionSecretActions.DescribeAndReadValue, secretSubject) ||
+    permission.can(action, secretSubject)
+  ) {
+    return;
   }
+  ForbiddenError.from(permission).throwUnlessCan(action, secretSubject);
 }
 
 export function hasSecretReadValueOrDescribePermission(

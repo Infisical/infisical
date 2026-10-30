@@ -13,6 +13,7 @@ import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas"
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
@@ -176,6 +177,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     config: {
       rateLimit: secretsLimit
     },
+    serializerCompiler: fastJsonSerializerCompiler,
     schema: {
       deprecated: true,
       description: "Deprecated. Use GET /api/v4/secrets instead.",
