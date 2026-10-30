@@ -72,6 +72,10 @@ export interface DataTableProps<Row> {
   loading?: boolean;
   loadingRows?: number;
   actionBar?: React.ReactNode;
+  /** The scroll container (vertical and horizontal), for ports that read scrollTop or observe it. */
+  containerRef?: React.Ref<HTMLDivElement>;
+  /** Layout classes for the scroll container, such as a flex-fill height. */
+  containerClassName?: string;
 }
 const interactiveTarget =
   "a, button, input, select, textarea, label, summary, [contenteditable], [tabindex]:not(tr), [role=button], [role=checkbox], [role=combobox], [role=link], [role=menuitem], [role=switch], [role=tab], [data-row-interactive]";
@@ -110,12 +114,22 @@ export function DataTable<Row>({
   pagination,
   loading = false,
   loadingRows = 5,
-  actionBar
+  actionBar,
+  containerRef,
+  containerClassName
 }: DataTableProps<Row>) {
   const [barPlacement, setBarPlacement] = React.useState<"fixed" | "contained" | null>(null);
   const [ownSelected, setOwnSelected] = React.useState<readonly string[]>(defaultSelectedIds);
   const [top, setTop] = React.useState(0);
   const scroll = React.useRef<HTMLDivElement>(null);
+  const attachScroll = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      scroll.current = node;
+      if (typeof containerRef === "function") containerRef(node);
+      else if (containerRef) containerRef.current = node;
+    },
+    [containerRef]
+  );
   const [landing, setLanding] = React.useState<number | null>(null);
   const [focusRow, setFocusRow] = React.useState<number | null>(null);
   const focusPending = React.useRef(false);
@@ -238,9 +252,9 @@ export function DataTable<Row>({
   );
   const scrollFrame = (
     <div
-      ref={scroll}
+      ref={attachScroll}
       data-scroll-fade="x"
-      className={cn(frame.frame, styles.tableScroll)}
+      className={cn(frame.frame, styles.tableScroll, containerClassName)}
       data-virtual={windowed || undefined}
       style={tableStyle}
       onScroll={(event) => setTop(event.currentTarget.scrollTop)}

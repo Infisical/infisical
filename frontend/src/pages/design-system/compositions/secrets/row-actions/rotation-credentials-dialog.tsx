@@ -10,7 +10,7 @@ import {
 } from "@app/components/v4/ui/dialog";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
-import { SecretInput } from "@app/components/v4/ui/sensitive-editor";
+import { SecretValue } from "@app/components/v4/ui/sensitive-editor";
 import { Snippet } from "@app/components/v4/ui/snippet";
 import { SmallText, Text } from "@app/components/v4/ui/text";
 
@@ -63,7 +63,7 @@ function CredentialSet({
           return (
             <Field key={field} label={label}>
               {sensitive ? (
-                <SecretInput value={value} label={label} />
+                <SecretValue value={value} label={label} />
               ) : (
                 <Snippet value={value} label={label} copyLabel={`Copy ${label}`} />
               )}

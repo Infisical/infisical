@@ -26,6 +26,24 @@ Source evidence:
 - src/components/v4/ui/toggle.tsx
 - src/pages/design-system/examples/toggle/default.tsx
 
+### toggle-not-switch
+
+Owner: toggle.
+
+When a v3 Toggle (an on/off setting switch) is ported to v4.
+
+Do: Port it to Switch with the same checked and onCheckedChange props.
+
+Avoid: Swap the import to the v4 Toggle, which is a pressed button with pressed and onPressedChange.
+
+Why: The names match but the components differ, so a setting would render as a toolbar button and silently drop its checked state.
+
+Checked by: src/components/v4/ui/migration-traps.test.tsx. A ts-expect-error on Toggle with checked and onCheckedChange; type:check fails if the type guard is removed.
+
+Source evidence:
+- src/components/v4/ui/toggle.tsx
+- src/pages/design-system/examples/toggle/default.tsx
+
 ## State guidance
 
 - pressed: Keep the associated preview consistent with the controlled state.
@@ -70,6 +88,7 @@ Exports: Toggle, toggleVariants. Source TypeScript defines the API.
 ## Limits
 
 - Pressed state does not save a preference by itself; the owner chooses whether the choice is immediate or local to a view.
+- Migration: v3 Toggle is a Radix Switch with checked, defaultChecked and onCheckedChange; v4 Toggle is a pressed button. Port v3 Toggle to v4 Switch. The v4 Toggle types reject checked, defaultChecked and onCheckedChange, so swapping only the import fails to compile.
 
 ## Declared example coverage
 

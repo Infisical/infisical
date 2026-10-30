@@ -14,7 +14,7 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
-import { SecretInput } from "@app/components/v4/ui/sensitive-editor";
+import { SecretValue } from "@app/components/v4/ui/sensitive-editor";
 import {
   Sheet,
   SheetBody,
@@ -188,7 +188,7 @@ export function ShareSecretSheet({
                   description="Locked to the stored value, so the link shares exactly what is saved in Infisical."
                   error={errors.secret}
                 >
-                  <SecretInput value={value} label="Secret value" copyable={false} />
+                  <SecretValue value={value} label="Secret value" copyable={false} />
                 </Field>
                 <div className={styles.formLabel}>Expiration</div>
                 <Field

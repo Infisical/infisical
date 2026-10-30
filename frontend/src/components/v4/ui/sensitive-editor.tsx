@@ -93,7 +93,7 @@ export function CopyButton({
     </span>
   );
 }
-export interface SecretInputProps {
+export interface SecretValueProps {
   value: string;
   copyable?: boolean;
   label?: string;
@@ -102,14 +102,14 @@ export interface SecretInputProps {
   "aria-describedby"?: string;
   "aria-invalid"?: boolean;
 }
-export function SecretInput({
+export function SecretValue({
   value,
   copyable = true,
   label = "Secret value",
   onCopy,
   id,
   ...aria
-}: SecretInputProps) {
+}: SecretValueProps) {
   const control = useFieldControlAttributes({ ...(id ? { id } : {}), ...aria });
   const [revealed, setRevealed] = React.useState<string | null>(null);
   React.useEffect(() => setRevealed(null), [value]);

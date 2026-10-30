@@ -9,8 +9,8 @@ export const sensitiveEditorDefinition = {
     "src/components/v4/ui/sensitive-editor.tsx",
     "src/components/v4/ui/data.module.css"
   ],
-  exports: ["SensitiveEditor", "SecretInput", "CopyButton", "StoredSecret"],
-  referenceNames: ["SecretInput"],
+  exports: ["SensitiveEditor", "SecretValue", "CopyButton", "StoredSecret"],
+  referenceNames: ["SecretValue"],
   behavior: [
     "Stored identity and replacement draft are separate. Replacing never fetches the stored value. One-line sensitive hosts use 32px with 24px nested reveal/copy actions; multiline content may grow.",
     "Blocked actions stay visible and disabled, never hidden: without onReveal (no view permission) Reveal and Copy render disabled with a reason, and without onSave or with readOnly, Replace without viewing renders disabled. Copy is gated only by the view permission: while the value is masked, Copy fetches it through onReveal and writes it without revealing it.",
@@ -24,7 +24,8 @@ export const sensitiveEditorDefinition = {
   ],
   limitations: [
     "Masking does not grant or enforce authorization. Hosts decide permission and perform fetch/decryption/save.",
-    "Read-only SecretInput already receives plaintext in memory. Use SensitiveEditor to defer retrieval until explicit reveal.",
+    "Read-only SecretValue already receives plaintext in memory. Use SensitiveEditor to defer retrieval until explicit reveal.",
+    "SecretValue was called SecretInput in earlier v4 builds. v3 SecretInput is an editable field, so it ports to the v4 SecretInput, not to SecretValue.",
     "Plaintext cannot be erased from browser memory reliably; remasking removes rendered/session references only.",
     "Copy writes to the system clipboard. The component cannot promise expiry or clearing.",
     "Keep stored identity and revision current. Capability changes remount the editor session and cancel pending work."
@@ -162,7 +163,7 @@ export const sensitiveEditorDefinition = {
     ],
     avoid: [],
     decision:
-      "Choose SensitiveEditor when a stored secret should be fetched only after explicit reveal. Use SecretInput only when the host already permits plaintext in memory.",
+      "Choose SensitiveEditor when a stored secret should be fetched only after explicit reveal. Use SecretValue only when the host already permits plaintext in memory, and SecretInput to type or paste a new value.",
     rules: [
       {
         id: "sensitive-editor-usage",

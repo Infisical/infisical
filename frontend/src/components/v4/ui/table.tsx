@@ -6,12 +6,24 @@ import { cn } from "../lib/utils";
 
 import styles from "./data.module.css";
 
-function Table({ className, ref, ...props }: React.ComponentProps<"table">) {
+function Table({
+  className,
+  containerClassName,
+  containerRef,
+  ref,
+  ...props
+}: React.ComponentProps<"table"> & {
+  /** Layout classes for the scroll container (height caps, flex sizing). ref targets the table element itself. */
+  containerClassName?: string;
+  /** The horizontal scroll container, which v3 Table's ref pointed at. */
+  containerRef?: React.Ref<HTMLDivElement>;
+}) {
   return (
     <div
+      ref={containerRef}
       data-slot="table-container"
       data-scroll-fade="x"
-      className={cn("relative w-full", styles.nativeTableContainer)}
+      className={cn("relative w-full", styles.nativeTableContainer, containerClassName)}
     >
       <table
         ref={ref}

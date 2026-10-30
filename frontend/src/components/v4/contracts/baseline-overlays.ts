@@ -6,7 +6,11 @@ export const baselineOverlays = [
     title: "Alert Dialog",
     group: "Overlays",
     summary: "Confirm an irreversible consequence before performing it.",
-    sourceFiles: ["src/components/v4/ui/alert-dialog.tsx"],
+    sourceFiles: [
+      "src/components/v4/ui/alert-dialog.tsx",
+      "src/components/v4/hooks/use-discard-changes-guard.ts",
+      "src/components/v4/lib/overlay-pending.ts"
+    ],
     exports: [
       "AlertDialog",
       "AlertDialogAction",
@@ -19,15 +23,19 @@ export const baselineOverlays = [
       "AlertDialogOverlay",
       "AlertDialogPortal",
       "AlertDialogTitle",
-      "AlertDialogTrigger"
+      "AlertDialogTrigger",
+      "DiscardChangesAlertDialog",
+      "useDiscardChangesGuard"
     ],
-    referenceNames: ["AlertDialog"],
+    referenceNames: ["AlertDialog", "DiscardChangesAlertDialog", "useDiscardChangesGuard"],
     behavior: [
       "Controlled open/onOpenChange or defaultOpen owns visibility. Action and Cancel are Radix close controls; an async operation must explicitly control closing while it runs.",
       "AlertDialog renders at most one lead tile. tone danger shows a 40px bad-bg tile with the trash icon; icon swaps the glyph and AlertDialogMedia replaces the tile entirely, tinted by tone. With tone neutral or no tone there is no automatic tile; an icon or AlertDialogMedia there gets the neutral tint tile. The destructive action is the solid danger Button: bad fill, on-bad text, the neutral disabled control when disabled.",
       "confirmText adds a mono field, labeled Type <name> to confirm and focused on open, above the footer; the action stays disabled until the field matches exactly.",
       "One pad (space-16) on all four sides. Header, body and footer stack with the content gap and no margins. The footer has no band or rule: the actions sit right-aligned on the panel. A failure shows as a bad Alert in the body above the footer.",
-      "When AlertDialogHeader or AlertDialogFooter is a direct child, the lead tile, header and body share one scroll region with the edge fade, and the footer stays pinned below it; the footer's own pad is the space above the actions."
+      "When AlertDialogHeader or AlertDialogFooter is a direct child, the lead tile, header and body share one scroll region with the edge fade, and the footer stays pinned below it; the footer's own pad is the space above the actions.",
+      "pending on AlertDialogContent blocks Escape and disables AlertDialogCancel while an action runs; the content is aria-busy. Show progress on the Action Button with loading.",
+      "DiscardChangesAlertDialog is the v3 discard prompt: a danger alert with the alert icon, title (default Discard Changes?), description (default Your changes will be lost.), Keep Editing and a destructive Discard that calls onDiscard. useDiscardChangesGuard({ isDirty, onDiscard }) returns the v3 shape (requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen) plus discardDialogProps to spread on the prompt. requestDiscard calls onDiscard at once when clean and opens the prompt when dirty; route a Dialog or Sheet onOpenChange(false) through it."
     ],
     accessibility: [
       "Title and Description name the alert dialog. Focus starts on Cancel and returns to the trigger on close. The dialog stays inside the viewport, and Escape inside an open editor closes that editor first."
@@ -59,6 +67,12 @@ export const baselineOverlays = [
         title: "Type to confirm and tone",
         module: "./examples/alert-dialog/confirm.tsx",
         states: ["default", "disabled"]
+      },
+      {
+        id: "discard",
+        title: "Discard changes",
+        module: "./examples/alert-dialog/discard.tsx",
+        states: ["default"]
       }
     ],
     coverage: [
@@ -149,7 +163,7 @@ export const baselineOverlays = [
     title: "Dialog",
     group: "Overlays",
     summary: "Edit or inspect a task in a modal with a title and description.",
-    sourceFiles: ["src/components/v4/ui/dialog.tsx"],
+    sourceFiles: ["src/components/v4/ui/dialog.tsx", "src/components/v4/lib/overlay-pending.ts"],
     exports: [
       "Dialog",
       "DialogClose",
@@ -167,7 +181,9 @@ export const baselineOverlays = [
     behavior: [
       "open/onOpenChange or defaultOpen controls the Radix dialog. Trigger and Close compose native controls; scoped Content portals into V4Scope and caps its height at the viewport minus size-overlay-margin on each side.",
       "When DialogHeader, DialogSubheader or DialogFooter is a direct child, Content wraps the header and the other content in one scroll region with the edge fade, so the header scrolls away with the body. DialogFooter and the corner close stay outside that region and remain visible. DialogSubheader pins itself and the header above the scroll region and runs the full width, without the space reserved for the close button: use it for an artifact or legend the content needs, such as a step meter, a path preview or a filter row. Content without these slots renders unchanged.",
-      "Corner close suits read-only or informational dialogs; footer close suits a dialog that ends in actions."
+      "Corner close suits read-only or informational dialogs; footer close suits a dialog that ends in actions.",
+      "pending on DialogContent (v3 isPending) blocks Escape, outside clicks and focus moves, and disables the corner close, DialogClose and the footer close while a save is in flight; the content is aria-busy. Clicks on a toast never dismiss the dialog, pending or not. Combobox and other popover lists inside the dialog are nested layers and do not dismiss it either.",
+      "For a form, route onOpenChange(false) through useDiscardChangesGuard so a dirty dialog asks with DiscardChangesAlertDialog before it closes."
     ],
     accessibility: [
       "Title and Description name the dialog. Focus stays inside it and returns to the trigger. Escape inside an open editor closes that editor before the dialog."
@@ -193,6 +209,12 @@ export const baselineOverlays = [
         title: "Constrained history",
         module: "./examples/dialog/content.tsx",
         states: ["overflow"]
+      },
+      {
+        id: "pending",
+        title: "Pending save and unsaved changes",
+        module: "./examples/dialog/pending.tsx",
+        states: ["controlled", "loading", "editing"]
       }
     ],
     coverage: [
@@ -606,7 +628,7 @@ export const baselineOverlays = [
     title: "Sheet",
     group: "Overlays",
     summary: "Inspect or edit a task in a side panel.",
-    sourceFiles: ["src/components/v4/ui/sheet.tsx"],
+    sourceFiles: ["src/components/v4/ui/sheet.tsx", "src/components/v4/lib/overlay-pending.ts"],
     exports: [
       "Sheet",
       "SheetBody",
@@ -623,13 +645,14 @@ export const baselineOverlays = [
     behavior: [
       "SheetBody owns the shared body inset. When SheetHeader, SheetSubheader, SheetBody or SheetFooter is a direct child, Content wraps the header and body in one scroll region with the edge fade, so the header scrolls away with the body; SheetFooter and the corner close stay outside it and remain visible. SheetSubheader pins itself and the header above the scroll region and runs the full width, without the space reserved for the close button: use it for an artifact or legend the content needs, such as a path preview, a step meter or a filter row. Content without these slots, such as a Sidebar, renders unchanged. Each slot forwards a div ref and native props.",
       "Sheet composes Radix Dialog with side-specific Content and scoped portals. open/onOpenChange controls visibility; Close is an explicit dismiss action.",
-      "SheetContent size sets the maximum width of a left or right sheet from a token: sm (size-sheet-sm, 384px, the default) for details and short forms, md (size-sheet-md, 512px) for create forms such as Create secret, and lg (size-sheet-lg, 672px) for form sheets with credentials, field pairs or a step bar, such as New connection and an auth method. The sheet is never wider than the viewport. Top and bottom sheets span the viewport and ignore size."
+      "SheetContent size sets the maximum width of a left or right sheet from a token: sm (size-sheet-sm, 384px, the default) for details and short forms, md (size-sheet-md, 512px) for create forms such as Create secret, and lg (size-sheet-lg, 672px) for form sheets with credentials, field pairs or a step bar, such as New connection and an auth method. The sheet is never wider than the viewport. Top and bottom sheets span the viewport and ignore size.",
+      "pending on SheetContent (v3 isPending) blocks Escape, outside clicks and focus moves, and disables the corner close and SheetClose while a save is in flight; the content is aria-busy. Clicks on a toast never dismiss the sheet. Route onOpenChange(false) through useDiscardChangesGuard so a dirty form asks with DiscardChangesAlertDialog first."
     ],
     accessibility: [
       "Provide SheetTitle and SheetDescription. Focus stays in the sheet and returns to the trigger. Escape inside an open editor closes the editor before the sheet."
     ],
     limitations: [
-      "Sheet does not own request state or automatically preserve unsaved work; the host decides whether closure is allowed."
+      "Sheet does not own request state or automatically preserve unsaved work; the host passes pending and routes closing through useDiscardChangesGuard."
     ],
     examples: [
       {
@@ -661,6 +684,12 @@ export const baselineOverlays = [
         title: "Path preview subheader",
         module: "./examples/sheet/subheader.tsx",
         states: ["default"]
+      },
+      {
+        id: "pending",
+        title: "Pending save and unsaved changes",
+        module: "./examples/sheet/pending.tsx",
+        states: ["controlled", "loading", "editing"]
       }
     ],
     coverage: [

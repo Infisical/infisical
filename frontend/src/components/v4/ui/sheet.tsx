@@ -5,6 +5,7 @@ import { useV4PortalContainer } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 
+import { OverlayPendingContext, useDismissGuard, useOverlayPending } from "../lib/overlay-pending";
 import { splitOverlaySections } from "../lib/overlay-sections";
 import { useOwnedEscape } from "../lib/use-owned-escape";
 import { cn } from "../lib/utils";
@@ -20,8 +21,20 @@ function SheetTrigger({ ref, ...props }: React.ComponentProps<typeof SheetPrimit
 }
 SheetTrigger.displayName = "SheetTrigger";
 
-function SheetClose({ ref, ...props }: React.ComponentProps<typeof SheetPrimitive.Close>) {
-  return <SheetPrimitive.Close ref={ref} data-slot="sheet-close" {...props} />;
+function SheetClose({
+  ref,
+  disabled,
+  ...props
+}: React.ComponentProps<typeof SheetPrimitive.Close>) {
+  const pending = useOverlayPending();
+  return (
+    <SheetPrimitive.Close
+      ref={ref}
+      data-slot="sheet-close"
+      disabled={disabled || pending}
+      {...props}
+    />
+  );
 }
 SheetClose.displayName = "SheetClose";
 
@@ -53,15 +66,25 @@ function SheetContent({
   side = "right",
   size = "sm",
   showCloseButton = true,
+  pending = false,
   onEscapeKeyDown,
+  onPointerDownOutside,
+  onInteractOutside,
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
   size?: "sm" | "md" | "lg";
   showCloseButton?: boolean;
+  /** While true, Escape, outside clicks and every close control are blocked, so an in-flight save cannot be abandoned. */
+  pending?: boolean;
 } & { ref?: React.Ref<React.ComponentRef<typeof SheetPrimitive.Content>> }) {
   const escape = useOwnedEscape(ref, onEscapeKeyDown);
+  const guard = useDismissGuard(pending, {
+    onEscapeKeyDown: escape.onEscapeKeyDown,
+    onPointerDownOutside,
+    onInteractOutside
+  });
   const sections = splitOverlaySections(children, {
     header: SheetHeader,
     subheader: SheetSubheader,
@@ -84,30 +107,33 @@ function SheetContent({
           overlay.sheet,
           className
         )}
+        aria-busy={pending || undefined}
         {...props}
-        onEscapeKeyDown={escape.onEscapeKeyDown}
+        {...guard}
       >
-        {sections ? (
-          <>
-            {sections.pinned}
-            {sections.scroll.length > 0 && (
-              <div data-slot="sheet-scroll" data-scroll-fade="y">
-                {sections.scroll}
-              </div>
-            )}
-            {sections.footer}
-          </>
-        ) : (
-          children
-        )}
-        {showCloseButton && (
-          <SheetPrimitive.Close data-slot="sheet-close" asChild>
-            <Button variant="ghost" className={overlay.close} size="icon-sm">
-              <Icon name="x" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </SheetPrimitive.Close>
-        )}
+        <OverlayPendingContext value={pending}>
+          {sections ? (
+            <>
+              {sections.pinned}
+              {sections.scroll.length > 0 && (
+                <div data-slot="sheet-scroll" data-scroll-fade="y">
+                  {sections.scroll}
+                </div>
+              )}
+              {sections.footer}
+            </>
+          ) : (
+            children
+          )}
+          {showCloseButton && (
+            <SheetPrimitive.Close data-slot="sheet-close" asChild>
+              <Button variant="ghost" className={overlay.close} size="icon-sm" disabled={pending}>
+                <Icon name="x" />
+                <span className="sr-only">Close</span>
+              </Button>
+            </SheetPrimitive.Close>
+          )}
+        </OverlayPendingContext>
       </SheetPrimitive.Content>
     </SheetPortal>
   );

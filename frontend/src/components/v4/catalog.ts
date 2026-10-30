@@ -28,6 +28,7 @@ import { pageHeaderDefinition } from "./contracts/page-header";
 import { paginationDefinition } from "./contracts/pagination";
 import { providerIconDefinition } from "./contracts/provider-icon";
 import { rowLinkDefinition } from "./contracts/row-link";
+import { secretInputDefinition } from "./contracts/secret-input";
 import { sensitiveEditorDefinition } from "./contracts/sensitive-editor";
 import { settingsCardDefinition } from "./contracts/settings-card";
 import { sidebarDefinition } from "./contracts/sidebar";
@@ -68,6 +69,7 @@ export const componentCatalog: readonly ComponentDefinition[] = [
   paginationDefinition,
   providerIconDefinition,
   rowLinkDefinition,
+  secretInputDefinition,
   sensitiveEditorDefinition,
   settingsCardDefinition,
   sidebarDefinition,

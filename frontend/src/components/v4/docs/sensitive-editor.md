@@ -4,7 +4,7 @@ Explicit reveal and replacement editing with host-owned access and persistence.
 
 ## Choose this component
 
-Choose SensitiveEditor when a stored secret should be fetched only after explicit reveal. Use SecretInput only when the host already permits plaintext in memory.
+Choose SensitiveEditor when a stored secret should be fetched only after explicit reveal. Use SecretValue only when the host already permits plaintext in memory, and SecretInput to type or paste a new value.
 
 ## Usage rules
 
@@ -62,7 +62,7 @@ Why: A mask is presentation; confusing it with actual data can overwrite or expo
 - src/components/v4/ui/sensitive-editor.tsx
 - src/components/v4/ui/data.module.css
 
-Exports: SensitiveEditor, SecretInput, CopyButton, StoredSecret. Source TypeScript defines the API.
+Exports: SensitiveEditor, SecretValue, CopyButton, StoredSecret. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -84,7 +84,8 @@ Exports: SensitiveEditor, SecretInput, CopyButton, StoredSecret. Source TypeScri
 ## Limits
 
 - Masking does not grant or enforce authorization. Hosts decide permission and perform fetch/decryption/save.
-- Read-only SecretInput already receives plaintext in memory. Use SensitiveEditor to defer retrieval until explicit reveal.
+- Read-only SecretValue already receives plaintext in memory. Use SensitiveEditor to defer retrieval until explicit reveal.
+- SecretValue was called SecretInput in earlier v4 builds. v3 SecretInput is an editable field, so it ports to the v4 SecretInput, not to SecretValue.
 - Plaintext cannot be erased from browser memory reliably; remasking removes rendered/session references only.
 - Copy writes to the system clipboard. The component cannot promise expiry or clearing.
 - Keep stored identity and revision current. Capability changes remount the editor session and cancel pending work.

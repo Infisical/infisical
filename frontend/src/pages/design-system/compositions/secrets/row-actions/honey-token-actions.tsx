@@ -20,7 +20,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Inline } from "@app/components/v4/ui/layout";
-import { SecretInput } from "@app/components/v4/ui/sensitive-editor";
+import { SecretValue } from "@app/components/v4/ui/sensitive-editor";
 import {
   Sheet,
   SheetBody,
@@ -403,7 +403,7 @@ function HoneyTokenDetailsSheet({
                       return (
                         value && (
                           <Field key={key} label={label}>
-                            <SecretInput value={value} label={label} />
+                            <SecretValue value={value} label={label} />
                           </Field>
                         )
                       );

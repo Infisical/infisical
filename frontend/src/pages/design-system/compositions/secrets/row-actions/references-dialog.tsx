@@ -10,7 +10,7 @@ import {
 import { Field } from "@app/components/v4/ui/field";
 import { FileTree, type FileTreeNode } from "@app/components/v4/ui/file-tree";
 import { Icon } from "@app/components/v4/ui/icon";
-import { SecretInput } from "@app/components/v4/ui/sensitive-editor";
+import { SecretValue } from "@app/components/v4/ui/sensitive-editor";
 import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
@@ -114,7 +114,7 @@ export function ReferencesDialog({
         </DialogHeader>
         <div className={styles.referenceBody}>
           <Field label="Expanded value">
-            <SecretInput value={forbidden ? "" : expanded} label="Expanded value" />
+            <SecretValue value={forbidden ? "" : expanded} label="Expanded value" />
           </Field>
           {circular && (
             <SmallText muted>

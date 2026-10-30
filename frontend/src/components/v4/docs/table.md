@@ -161,6 +161,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - loading replaces the rows with loadingRows (default 5) skeleton rows at the same row height: a square for the selection and actions cells and a size-skeleton-text bar for each value, shorter in the primary column. Empty and load-more stay hidden while loading.
 - When every column declares a width, or grows to fill the rest, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.
 - actionBar hosts the table's FloatingActionBar. While the bar shows, the table reserves size-action-bar plus the bar's offset (space-action-bar-offset, or space-action-bar-offset-contained) below itself, so the last row can scroll clear of the bar.
+- Table's ref targets the table element. containerRef targets its horizontal scroll container (what v3 Table's ref pointed at) and containerClassName adds layout classes to it. DataTable takes the same two props for its scroll frame, which scrolls both ways when height is set, so ports keep reading scrollTop, observing scroll or calling scrollTo.
 - A column with toggle is a boolean column: every cell is a Checkbox and the header gets a tri-state Checkbox before its title. The header reads checked when every enabled row is on, indeterminate when some are, and unchecked when none are. Selecting it turns every enabled row on, or off when all are on, and calls onChange once with only the row ids that change. Rows with a disabledReason keep their value, are left out of the count, and show the reason on their disabled cell; with no enabled rows the header is disabled. render is optional on a toggle column.
 - checked may return "indeterminate" for a partial grant: the cell shows a mixed Checkbox, and the header counts the row as not on, so it reads checked only when every counted row is fully on. From mixed, a cell click or a header click that turns the column on sets the row on. absent(row) marks a row with no such action: the cell shows a muted dash and no control, and the row is left out of the count like a disabled one. adornment(row) renders after the Checkbox inside the same cell, for marks such as conditions or forbid rules; they keep their own tab stops, and clicks on them never activate the row.
 
@@ -189,6 +190,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows.
 - onRowActivate is a pointer and keyboard shortcut. It cannot open a new tab or be copied as a link; navigation that needs those belongs on the link in the primary cell.
 - The pagination slot takes any node. The host slices rows, owns page and page size, and resets the page when filters change.
+- Migration: v3 Table's ref is the scroll container; in v4 pass that ref as containerRef, or ref still lands on the table element. There is no hasAttachedFooter or TableAttachedFooter: DataTable's loadMore, end and pagination slots render inside the frame below the rows, so a load-more action or completion message joins the table without a second border.
 - Only a FloatingActionBar passed through actionBar reserves space. A bar rendered elsewhere on the page cannot reach the table.
 - A toggle column acts on the rows passed in. With pagination the header counts and sets the current page only; the host decides whether a bulk change spans pages. The host owns the values and persists them through onChange.
 
@@ -554,6 +556,48 @@ export default function Example() {
             : undefined} end="End of events" footer={`Showing ${rows.length} of ${total} events`}/>
       </div>
     </div><figcaption className="text-muted-foreground text-xs">{"Load more after the last row, focus lands on the first new row"}</figcaption></figure>);
+}
+```
+
+### Scroll container ref
+
+Save this example at `src/pages/design-system/examples/table/scroll-container.tsx`; its relative imports are generated for that exact path. States: default, overflow.
+
+Registry items used: @infisical/button, @infisical/data-table. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useEffect, useRef, useState } from "react";
+import { Button } from "../../../../components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
+type Row = {
+    id: string;
+    name: string;
+};
+const rows: Row[] = Array.from({ length: 30 }, (_, index) => ({
+    id: `client-${index + 1}`,
+    name: `example-machine-identity-${index + 1}`
+}));
+const columns: DataTableColumn<Row>[] = [
+    { id: "name", header: "Identity", primary: true, grow: true, render: (row) => row.name }
+];
+export default function Example() {
+    const container = useRef<HTMLDivElement>(null);
+    const [scrolled, setScrolled] = useState(false);
+    useEffect(() => {
+        const node = container.current;
+        if (!node)
+            return undefined;
+        const update = () => setScrolled(node.scrollTop > 0);
+        node.addEventListener("scroll", update);
+        return () => node.removeEventListener("scroll", update);
+    }, []);
+    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+      <div className="relative min-w-0 w-full overflow-auto max-h-[400px]">
+        <DataTable label="Example identities" rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} height={240} containerRef={container} end={<Button variant="outline" disabled={!scrolled} onClick={() => container.current?.scrollTo({ top: 0 })}>
+              Back to Top
+            </Button>}/>
+      </div>
+    </div><figcaption className="text-muted-foreground text-xs">{"containerRef reads and drives the scroll container"}</figcaption></figure>);
 }
 ```
 

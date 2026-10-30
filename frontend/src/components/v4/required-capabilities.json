@@ -612,7 +612,7 @@
       "id": "input",
       "name": "Input",
       "kind": "component",
-      "exports": ["Input", "SecretInput", "CopyButton"],
+      "exports": ["Input", "SecretInput", "SecretValue", "CopyButton"],
       "variants": [
         "sm/md/lg",
         "plain/mono",
@@ -624,7 +624,7 @@
         "kbd/trailing",
         "multiline companion"
       ],
-      "behavior": "Native text input forwarding; focus border ink+nudge; read-only lock; trailing slots 24/28/32 with 4 gap; plaintext never receives secret; SecretInput masked reveal/copy companion. Default/sm32, md36, lg40; numeric native size remains a width hint.",
+      "behavior": "Native text input forwarding; focus border ink+nudge; read-only lock; trailing slots 24/28/32 with 4 gap; plaintext never receives secret; SecretValue masked reveal/copy companion; SecretInput editable masked field. Default/sm32, md36, lg40; numeric native size remains a width hint.",
       "acceptance": [
         "Native attrs/ref and Field wiring",
         "Read-only selectable",
@@ -989,7 +989,7 @@
         "save failed",
         "cancelled/unmounted"
       ],
-      "behavior": "SensitiveEditor defers value retrieval; SecretInput displays plaintext already held by the host. Owner controls permission, fetch and persistence; foundation owns explicit reveal/copy intent, scoped plaintext lifetime, editing/focus and status. No plaintext in DOM, title, aria, diagnostics, fixture files or generic grid clipboard before explicit permitted reveal. Preserve bytes including whitespace/newlines; Escape cancels; async failure retains draft only under current authorized editor lifetime. No authorization claims from masking. CopyButton supports size sm/md/lg host32/36/40 to action24/28/32, defaultsm, and iconOnly defaultfalse with a retained accessible label.",
+      "behavior": "SensitiveEditor defers value retrieval; SecretValue displays plaintext already held by the host. Owner controls permission, fetch and persistence; foundation owns explicit reveal/copy intent, scoped plaintext lifetime, editing/focus and status. No plaintext in DOM, title, aria, diagnostics, fixture files or generic grid clipboard before explicit permitted reveal. Preserve bytes including whitespace/newlines; Escape cancels; async failure retains draft only under current authorized editor lifetime. No authorization claims from masking. CopyButton supports size sm/md/lg host32/36/40 to action24/28/32, defaultsm, and iconOnly defaultfalse with a retained accessible label.",
       "acceptance": [
         "Initial masked DOM/a11y/title contains no plaintext",
         "Reveal only after explicit authorized owner success",

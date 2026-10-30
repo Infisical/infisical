@@ -59,6 +59,7 @@ Why: A crowded modal makes orientation and recovery harder than a page would.
 ## Import and exports
 
 - src/components/v4/ui/dialog.tsx
+- src/components/v4/lib/overlay-pending.ts
 
 Exports: Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogSubheader, DialogTitle, DialogTrigger. Source TypeScript defines the API.
 
@@ -67,6 +68,8 @@ Exports: Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 - open/onOpenChange or defaultOpen controls the Radix dialog. Trigger and Close compose native controls; scoped Content portals into V4Scope and caps its height at the viewport minus size-overlay-margin on each side.
 - When DialogHeader, DialogSubheader or DialogFooter is a direct child, Content wraps the header and the other content in one scroll region with the edge fade, so the header scrolls away with the body. DialogFooter and the corner close stay outside that region and remain visible. DialogSubheader pins itself and the header above the scroll region and runs the full width, without the space reserved for the close button: use it for an artifact or legend the content needs, such as a step meter, a path preview or a filter row. Content without these slots renders unchanged.
 - Corner close suits read-only or informational dialogs; footer close suits a dialog that ends in actions.
+- pending on DialogContent (v3 isPending) blocks Escape, outside clicks and focus moves, and disables the corner close, DialogClose and the footer close while a save is in flight; the content is aria-busy. Clicks on a toast never dismiss the dialog, pending or not. Combobox and other popover lists inside the dialog are nested layers and do not dismiss it either.
+- For a form, route onOpenChange(false) through useDiscardChangesGuard so a dirty dialog asks with DiscardChangesAlertDialog before it closes.
 
 ## Accessibility
 
@@ -222,6 +225,79 @@ export default function Example() {
       </UI.DialogContent>
     </UI.Dialog>
   );
+}
+```
+
+### Pending save and unsaved changes
+
+Save this example at `src/pages/design-system/examples/dialog/pending.tsx`; its relative imports are generated for that exact path. States: controlled, loading, editing.
+
+Registry items used: @infisical/alert-dialog, @infisical/button, @infisical/dialog, @infisical/field, @infisical/input. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useEffect, useId, useState } from "react";
+import { useDiscardChangesGuard } from "../../../../components/v4/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "../../../../components/v4/ui/alert-dialog";
+import { Button } from "../../../../components/v4/ui/button";
+import * as UI from "../../../../components/v4/ui/dialog";
+import { Field } from "../../../../components/v4/ui/field";
+import { Input } from "../../../../components/v4/ui/input";
+export default function Example() {
+    const [saved, setSaved] = useState("staging");
+    const [draft, setDraft] = useState(saved);
+    const [open, setOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const formId = useId();
+    const close = () => {
+        setDraft(saved);
+        setOpen(false);
+    };
+    const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+        isDirty: draft !== saved,
+        onDiscard: close
+    });
+    useEffect(() => {
+        if (!saving)
+            return undefined;
+        const timer = window.setTimeout(() => {
+            setSaved(draft);
+            setSaving(false);
+            setOpen(false);
+        }, 1500);
+        return () => window.clearTimeout(timer);
+    }, [saving, draft]);
+    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
+      <UI.Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : requestDiscard())}>
+        <UI.DialogTrigger asChild>
+          <Button variant="outline">Rename environment</Button>
+        </UI.DialogTrigger>
+        <UI.DialogContent pending={saving}>
+          <UI.DialogHeader>
+            <UI.DialogTitle>Rename environment</UI.DialogTitle>
+            <UI.DialogDescription>
+              Closing with unsaved edits asks first. While saving, the dialog cannot close.
+            </UI.DialogDescription>
+          </UI.DialogHeader>
+          <form id={formId} onSubmit={(event) => {
+            event.preventDefault();
+            setSaving(true);
+        }}>
+            <Field label="Environment name">
+              <Input required disabled={saving} value={draft} onChange={(event) => setDraft(event.target.value)}/>
+            </Field>
+          </form>
+          <UI.DialogFooter>
+            <UI.DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </UI.DialogClose>
+            <Button type="submit" form={formId} loading={saving} disabled={draft === saved}>
+              Save Changes
+            </Button>
+          </UI.DialogFooter>
+        </UI.DialogContent>
+      </UI.Dialog>
+      <DiscardChangesAlertDialog {...discardDialogProps} description="Your unsaved changes to this environment will be lost."/>
+    </div><figcaption className="text-muted-foreground text-xs">{`Saved name: ${saved}`}</figcaption></figure>);
 }
 ```
 

@@ -5,6 +5,7 @@ import { useV4PortalContainer } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 
+import { OverlayPendingContext, useDismissGuard, useOverlayPending } from "../lib/overlay-pending";
 import { splitOverlaySections } from "../lib/overlay-sections";
 import { useOwnedEscape } from "../lib/use-owned-escape";
 import { cn } from "../lib/utils";
@@ -30,8 +31,20 @@ function DialogPortal({ ...props }: React.ComponentProps<typeof DialogPrimitive.
   );
 }
 
-function DialogClose({ ref, ...props }: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close ref={ref} data-slot="dialog-close" {...props} />;
+function DialogClose({
+  ref,
+  disabled,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Close>) {
+  const pending = useOverlayPending();
+  return (
+    <DialogPrimitive.Close
+      ref={ref}
+      data-slot="dialog-close"
+      disabled={disabled || pending}
+      {...props}
+    />
+  );
 }
 DialogClose.displayName = "DialogClose";
 
@@ -55,13 +68,23 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  pending = false,
   onEscapeKeyDown,
+  onPointerDownOutside,
+  onInteractOutside,
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  /** While true, Escape, outside clicks and every close control are blocked, so an in-flight save cannot be abandoned. */
+  pending?: boolean;
 } & { ref?: React.Ref<React.ComponentRef<typeof DialogPrimitive.Content>> }) {
   const escape = useOwnedEscape(ref, onEscapeKeyDown);
+  const guard = useDismissGuard(pending, {
+    onEscapeKeyDown: escape.onEscapeKeyDown,
+    onPointerDownOutside,
+    onInteractOutside
+  });
   const sections = splitOverlaySections(children, {
     header: DialogHeader,
     subheader: DialogSubheader,
@@ -75,31 +98,34 @@ function DialogContent({
         data-slot="dialog-content"
         data-scroll-fade={sections ? undefined : "y"}
         data-sections={sections ? "" : undefined}
+        aria-busy={pending || undefined}
         className={cn("z-50", overlay.pop, overlay.dialog, className)}
         {...props}
-        onEscapeKeyDown={escape.onEscapeKeyDown}
+        {...guard}
       >
-        {sections ? (
-          <>
-            {sections.pinned.length > 0 && <div data-slot="dialog-head">{sections.pinned}</div>}
-            {sections.scroll.length > 0 && (
-              <div data-slot="dialog-scroll" data-scroll-fade="y">
-                {sections.scroll}
-              </div>
-            )}
-            {sections.footer}
-          </>
-        ) : (
-          children
-        )}
-        {showCloseButton && (
-          <DialogPrimitive.Close data-slot="dialog-close" asChild>
-            <Button variant="ghost" className={overlay.close} size="icon-sm">
-              <Icon name="x" />
-              <span className="sr-only">Close</span>
-            </Button>
-          </DialogPrimitive.Close>
-        )}
+        <OverlayPendingContext value={pending}>
+          {sections ? (
+            <>
+              {sections.pinned.length > 0 && <div data-slot="dialog-head">{sections.pinned}</div>}
+              {sections.scroll.length > 0 && (
+                <div data-slot="dialog-scroll" data-scroll-fade="y">
+                  {sections.scroll}
+                </div>
+              )}
+              {sections.footer}
+            </>
+          ) : (
+            children
+          )}
+          {showCloseButton && (
+            <DialogPrimitive.Close data-slot="dialog-close" asChild>
+              <Button variant="ghost" className={overlay.close} size="icon-sm" disabled={pending}>
+                <Icon name="x" />
+                <span className="sr-only">Close</span>
+              </Button>
+            </DialogPrimitive.Close>
+          )}
+        </OverlayPendingContext>
       </DialogPrimitive.Content>
     </DialogPortal>
   );
@@ -141,9 +167,9 @@ function DialogFooter({
     >
       {children}
       {showCloseButton && (
-        <DialogPrimitive.Close asChild>
+        <DialogClose asChild>
           <Button variant="outline">Close</Button>
-        </DialogPrimitive.Close>
+        </DialogClose>
       )}
     </div>
   );

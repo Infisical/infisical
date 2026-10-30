@@ -59,6 +59,7 @@ Why: Repeated panels obscure which object and draft the person is editing.
 ## Import and exports
 
 - src/components/v4/ui/sheet.tsx
+- src/components/v4/lib/overlay-pending.ts
 
 Exports: Sheet, SheetBody, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetSubheader, SheetTitle, SheetTrigger. Source TypeScript defines the API.
 
@@ -67,6 +68,7 @@ Exports: Sheet, SheetBody, SheetClose, SheetContent, SheetDescription, SheetFoot
 - SheetBody owns the shared body inset. When SheetHeader, SheetSubheader, SheetBody or SheetFooter is a direct child, Content wraps the header and body in one scroll region with the edge fade, so the header scrolls away with the body; SheetFooter and the corner close stay outside it and remain visible. SheetSubheader pins itself and the header above the scroll region and runs the full width, without the space reserved for the close button: use it for an artifact or legend the content needs, such as a path preview, a step meter or a filter row. Content without these slots, such as a Sidebar, renders unchanged. Each slot forwards a div ref and native props.
 - Sheet composes Radix Dialog with side-specific Content and scoped portals. open/onOpenChange controls visibility; Close is an explicit dismiss action.
 - SheetContent size sets the maximum width of a left or right sheet from a token: sm (size-sheet-sm, 384px, the default) for details and short forms, md (size-sheet-md, 512px) for create forms such as Create secret, and lg (size-sheet-lg, 672px) for form sheets with credentials, field pairs or a step bar, such as New connection and an auth method. The sheet is never wider than the viewport. Top and bottom sheets span the viewport and ignore size.
+- pending on SheetContent (v3 isPending) blocks Escape, outside clicks and focus moves, and disables the corner close and SheetClose while a save is in flight; the content is aria-busy. Clicks on a toast never dismiss the sheet. Route onOpenChange(false) through useDiscardChangesGuard so a dirty form asks with DiscardChangesAlertDialog first.
 
 ## Accessibility
 
@@ -82,7 +84,7 @@ Exports: Sheet, SheetBody, SheetClose, SheetContent, SheetDescription, SheetFoot
 
 ## Limits
 
-- Sheet does not own request state or automatically preserve unsaved work; the host decides whether closure is allowed.
+- Sheet does not own request state or automatically preserve unsaved work; the host passes pending and routes closing through useDiscardChangesGuard.
 
 ## Declared example coverage
 
@@ -332,6 +334,80 @@ export default function Example() {
         </UI.SheetContent>
       </UI.Sheet>
     </div>);
+}
+```
+
+### Pending save and unsaved changes
+
+Save this example at `src/pages/design-system/examples/sheet/pending.tsx`; its relative imports are generated for that exact path. States: controlled, loading, editing.
+
+Registry items used: @infisical/alert-dialog, @infisical/button, @infisical/field, @infisical/input, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useEffect, useId, useState } from "react";
+import { useDiscardChangesGuard } from "../../../../components/v4/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "../../../../components/v4/ui/alert-dialog";
+import { Button } from "../../../../components/v4/ui/button";
+import { Field } from "../../../../components/v4/ui/field";
+import { Input } from "../../../../components/v4/ui/input";
+import * as UI from "../../../../components/v4/ui/sheet";
+export default function Example() {
+    const [saved, setSaved] = useState("https://hooks.example.com/infisical");
+    const [draft, setDraft] = useState(saved);
+    const [open, setOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const formId = useId();
+    const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+        isDirty: draft !== saved,
+        onDiscard: () => {
+            setDraft(saved);
+            setOpen(false);
+        }
+    });
+    useEffect(() => {
+        if (!saving)
+            return undefined;
+        const timer = window.setTimeout(() => {
+            setSaved(draft);
+            setSaving(false);
+            setOpen(false);
+        }, 1500);
+        return () => window.clearTimeout(timer);
+    }, [saving, draft]);
+    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
+      <UI.Sheet open={open} onOpenChange={(next) => (next ? setOpen(true) : requestDiscard())}>
+        <UI.SheetTrigger asChild>
+          <Button variant="outline">Edit webhook</Button>
+        </UI.SheetTrigger>
+        <UI.SheetContent pending={saving}>
+          <UI.SheetHeader>
+            <UI.SheetTitle>Edit webhook</UI.SheetTitle>
+            <UI.SheetDescription>
+              Closing with unsaved edits asks first. While saving, the sheet cannot close.
+            </UI.SheetDescription>
+          </UI.SheetHeader>
+          <UI.SheetBody>
+            <form id={formId} onSubmit={(event) => {
+            event.preventDefault();
+            setSaving(true);
+        }}>
+              <Field label="Endpoint URL">
+                <Input required mono disabled={saving} value={draft} onChange={(event) => setDraft(event.target.value)}/>
+              </Field>
+            </form>
+          </UI.SheetBody>
+          <UI.SheetFooter>
+            <Button type="submit" form={formId} loading={saving} disabled={draft === saved}>
+              Save Changes
+            </Button>
+            <UI.SheetClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </UI.SheetClose>
+          </UI.SheetFooter>
+        </UI.SheetContent>
+      </UI.Sheet>
+      <DiscardChangesAlertDialog {...discardDialogProps} description="Your unsaved changes to this webhook will be lost."/>
+    </div><figcaption className="text-muted-foreground text-xs">{`Saved URL: ${saved}`}</figcaption></figure>);
 }
 ```
 
