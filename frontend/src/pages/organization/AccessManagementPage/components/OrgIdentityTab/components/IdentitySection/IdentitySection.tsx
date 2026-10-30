@@ -1,18 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  MachineIdentityTemplatesUpgradeIntent,
+  UpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Button,
   Card,
   CardAction,
@@ -20,10 +15,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DocumentationLinkBadge,
-  Field,
-  FieldLabel,
-  Input
+  ConfirmationAlertDialog,
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -35,7 +28,6 @@ import { OrgPermissionMachineIdentityAuthTemplateActions } from "@app/context/Or
 import { withPermission } from "@app/hoc";
 import { useDeleteOrgIdentity } from "@app/hooks/api";
 import { useDeleteIdentityAuthTemplate } from "@app/hooks/api/identityAuthTemplates";
-import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CreateOrgIdentitySheet } from "./CreateOrgIdentitySheet";
@@ -63,56 +55,17 @@ const ConfirmDeleteDialog = ({
   isPending,
   onOpenChange,
   onConfirm
-}: ConfirmDeleteDialogProps) => {
-  const [confirmation, setConfirmation] = useState("");
-
-  useEffect(() => {
-    if (!isOpen) setConfirmation("");
-  }, [isOpen]);
-
-  return (
-    <AlertDialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        onOpenChange(open);
-      }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete {name}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. Type &quot;confirm&quot; to continue.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <Field>
-          <FieldLabel htmlFor="delete-identity-resource-confirmation">
-            Type &quot;confirm&quot; to confirm
-          </FieldLabel>
-          <Input
-            id="delete-identity-resource-confirmation"
-            value={confirmation}
-            onChange={(event) => setConfirmation(event.target.value)}
-            autoComplete="off"
-          />
-        </Field>
-        <AlertDialogFooter>
-          <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="danger"
-            isDisabled={confirmation !== "confirm"}
-            isPending={isPending}
-            onClick={(event) => {
-              event.preventDefault();
-              onConfirm();
-            }}
-          >
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-};
+}: ConfirmDeleteDialogProps) => (
+  <ConfirmationAlertDialog
+    isOpen={isOpen}
+    onOpenChange={onOpenChange}
+    title={`Delete ${name}?`}
+    description="This action cannot be undone."
+    confirmKey="confirm"
+    isPending={isPending}
+    onConfirm={onConfirm}
+  />
+);
 
 const IdentitySectionContent = ({ view = "identities" }: Props) => {
   const { subscription } = useSubscription();
@@ -138,12 +91,6 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
     "viewUsages",
     "addOptions"
   ] as const);
-
-  const isMoreIdentitiesAllowed = subscription?.identityLimit
-    ? subscription.identitiesUsed < subscription.identityLimit
-    : true;
-
-  const isEnterprise = subscription?.slug === SubscriptionPlanTypes.Enterprise;
 
   const onDeleteIdentitySubmit = async (identityId: string) => {
     await deleteMutateAsync({
@@ -196,14 +143,6 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
                   <Button
                     variant={isSubOrganization ? "sub-org" : "org"}
                     onClick={() => {
-                      if (!isMoreIdentitiesAllowed && !isEnterprise) {
-                        handlePopUpOpen("upgradePlan", {
-                          description:
-                            "You can add more machine identities if you upgrade your Infisical Pro plan."
-                        });
-                        return;
-                      }
-
                       handlePopUpOpen("identity");
                     }}
                     isDisabled={!isAllowed}
@@ -323,11 +262,14 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
           />
         </>
       )}
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="organization.identity"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan.data?.text}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...MachineIdentityTemplatesUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );
@@ -335,7 +277,8 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
 
 export const IdentitySection = withPermission(() => <IdentitySectionContent />, {
   action: OrgPermissionIdentityActions.Read,
-  subject: OrgPermissionSubjects.Identity
+  subject: OrgPermissionSubjects.Identity,
+  accessRestrictedMode: "dialog"
 });
 
 export const IdentityAuthTemplatesSection = () => <IdentitySectionContent view="templates" />;

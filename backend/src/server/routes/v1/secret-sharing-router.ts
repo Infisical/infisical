@@ -1,5 +1,4 @@
 import fastifyMultipart from "@fastify/multipart";
-// @ts-expect-error this is due to esm compatibility issue
 import { fileTypeFromBuffer } from "file-type";
 import { z } from "zod";
 
@@ -29,11 +28,9 @@ import { SanitizedSecretSharingSchema } from "../sanitizedSchemas";
 const ALLOWED_IMAGE_CONTENT_TYPES = ["image/png", "image/jpeg"];
 const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
 
-// The share id in the link is itself the bearer credential for the unauthenticated
-// access endpoint, so telemetry carries only its digest: the funnel can still
-// correlate and dedupe by share without a live token leaving the API.
-const hashShareIdForTelemetry = (shareId: string) =>
-  crypto.nativeCrypto.createHash("sha256").update(shareId).digest("hex");
+// Keeps resource ids out of analytics (ANALYTICS.md) while a share's events still correlate.
+const getAnonymousShareDistinctId = (sharedSecretId: string) =>
+  `anonymous-${crypto.nativeCrypto.createHash("sha256").update(sharedSecretId).digest("hex")}`;
 
 export const registerSecretSharingRouter = async (server: FastifyZodProvider) => {
   // Allow multipart file uploads
@@ -121,16 +118,13 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         req.permission?.type
       );
 
-      const sharedSecretIdHash = hashShareIdForTelemetry(req.params.id);
-
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SharedSecretLinkOpened,
-          distinctId: req.permission?.id ? getTelemetryDistinctId(req) : `anonymous-${sharedSecretIdHash}`,
+          distinctId: req.permission?.id ? getTelemetryDistinctId(req) : getAnonymousShareDistinctId(sharedSecret.id),
           anonymous: !req.permission?.id,
           organizationId: sharedSecret.orgId ?? undefined,
           properties: {
-            sharedSecretIdHash,
             accessType: sharedSecret.accessType as SecretSharingAccessType,
             expiresAt: sharedSecret.expiresAt.toISOString(),
             hasPassword: sharedSecret.isPasswordProtected
@@ -192,20 +186,17 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         });
       }
 
-      const sharedSecretIdHash = hashShareIdForTelemetry(req.params.id);
-
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SharedSecretViewed,
-        distinctId: req.permission?.id ? getTelemetryDistinctId(req) : `anonymous-${sharedSecretIdHash}`,
+        distinctId: req.permission?.id ? getTelemetryDistinctId(req) : getAnonymousShareDistinctId(sharedSecret.id),
         // Suppress person-record creation for unauthenticated viewers — the
-        // `anonymous-<shareIdHash>` distinctId is synthesised per share and has
+        // `anonymous-<share hash>` distinctId is synthesised per share and has
         // no continuity with any real user or identity, so creating a
         // PostHog person for it inflates the person count without adding
         // any analytical value.
         anonymous: !req.permission?.id,
         organizationId: sharedSecret.orgId ?? undefined,
         properties: {
-          sharedSecretIdHash,
           accessType: sharedSecret.accessType as SecretSharingAccessType
         }
       });
@@ -276,7 +267,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretShared,
-        distinctId: `anonymous-${hashShareIdForTelemetry(sharedSecret.id)}`,
+        distinctId: getAnonymousShareDistinctId(sharedSecret.id),
         // The public share endpoint is unauthenticated and the distinctId
         // is unique per share, so creating a PostHog person for each share
         // would inflate the person count by one record per share forever.
@@ -475,6 +466,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: publicEndpointLimit
     },
     schema: {
+      operationId: "getPublicSharedSecretBrandingAsset",
       params: z.object({
         id: z.string(),
         assetType: z.enum(["brand-logo", "brand-favicon"])
@@ -512,6 +504,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "uploadSecretSharingBrandingAsset",
       params: z.object({
         assetType: z.enum(["brand-logo", "brand-favicon"])
       }),
@@ -574,6 +567,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteSecretSharingBrandingAsset",
       params: z.object({
         assetType: z.enum(["brand-logo", "brand-favicon"])
       }),
@@ -603,6 +597,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: publicEndpointLimit
     },
     schema: {
+      operationId: "getSecretSharingBranding",
       querystring: z.object({
         sharedSecretId: z.string().optional()
       }),
@@ -652,6 +647,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSecretSharingBrandingAsset",
       params: z.object({
         assetType: z.enum(["brand-logo", "brand-favicon"])
       })

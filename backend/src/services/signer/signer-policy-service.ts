@@ -11,29 +11,41 @@ import {
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
+import { dispatchApprovalNotification } from "../approval-policy/approval-notification-fns";
 import {
   TApprovalPolicyDALFactory,
   TApprovalPolicyStepApproversDALFactory,
   TApprovalPolicyStepsDALFactory
 } from "../approval-policy/approval-policy-dal";
 import {
+  ApprovalNotificationEvent,
   ApprovalPolicyScope,
   ApprovalPolicyType,
   ApprovalRequestGrantStatus,
   ApprovalRequestStatus
 } from "../approval-policy/approval-policy-enums";
+import { TApprovalResourceRegistry } from "../approval-policy/approval-policy-types";
 import {
   TApprovalRequestDALFactory,
   TApprovalRequestGrantsDALFactory,
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "../approval-policy/approval-request-dal";
-import { createApprovalRequestWithSteps, notifyStepApprovers } from "../approval-policy/approval-request-fns";
+import { createApprovalRequestWithSteps } from "../approval-policy/approval-request-fns";
+import { CodeSigningScopeField } from "../approval-policy/code-signing/code-signing-policy-enums";
+import { normalizeCodeSigningScope } from "../approval-policy/code-signing/code-signing-policy-fns";
+import {
+  TCodeSigningRequestData,
+  TCodeSigningRequestScopeInput,
+  TCodeSigningScope
+} from "../approval-policy/code-signing/code-signing-policy-types";
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
+import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSignerDALFactory } from "./signer-dal";
@@ -53,7 +65,10 @@ type TSignerPolicyServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById" | "updateById" | "findStepsByPolicyId">;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create" | "delete" | "find">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "create" | "delete">;
-  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "create" | "find" | "findById" | "updateById" | "transaction">;
+  approvalRequestDAL: Pick<
+    TApprovalRequestDALFactory,
+    "create" | "find" | "findById" | "findStepsByRequestId" | "updateById" | "transaction"
+  >;
   signerRequestDAL: TSignerRequestDALFactory;
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
@@ -61,6 +76,9 @@ type TSignerPolicyServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "find" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  approvalResources: TApprovalResourceRegistry;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -78,6 +96,15 @@ type TConstraintsBlob = {
   };
 };
 
+const $parseDurationMs = (duration: string): number | null => {
+  try {
+    const parsed = ms(duration);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
 const $loadSignerOrThrow = async (signerDAL: TSignerPolicyServiceFactoryDep["signerDAL"], signerId: string) => {
   const signer = await signerDAL.findById(signerId);
   if (!signer) {
@@ -89,6 +116,22 @@ const $loadSignerOrThrow = async (signerDAL: TSignerPolicyServiceFactoryDep["sig
     });
   }
   return signer;
+};
+
+const $resolveRequestedScope = (
+  scope: TCodeSigningRequestScopeInput | undefined,
+  actor: ActorType,
+  requestIpAddress: string | undefined
+): TCodeSigningScope | undefined => {
+  if (!scope) return undefined;
+
+  const { [CodeSigningScopeField.IpAddress]: declaredIpAddress, ...rest } = scope;
+  if (declaredIpAddress === null) return rest;
+  if (declaredIpAddress !== undefined) return { ...rest, [CodeSigningScopeField.IpAddress]: declaredIpAddress };
+  if (actor === ActorType.IDENTITY && requestIpAddress) {
+    return { ...rest, [CodeSigningScopeField.IpAddress]: requestIpAddress };
+  }
+  return rest;
 };
 
 export const signerPolicyServiceFactory = ({
@@ -104,6 +147,9 @@ export const signerPolicyServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   userGroupMembershipDAL,
+  slackIntegrationDAL,
+  kmsService,
+  approvalResources,
   identityGroupMembershipDAL,
   userDAL,
   identityDAL,
@@ -159,8 +205,8 @@ export const signerPolicyServiceFactory = ({
 
   const $resolveRequestEffectiveLimits = (
     policyConstraints: unknown,
-    dto: { requestedSignings?: number; requestedWindowStart?: string; requestedWindowEnd?: string }
-  ): { effectiveSignings?: number; effectiveWindowStart?: string; effectiveWindowEnd?: string } => {
+    dto: { requestedSignings?: number; requestedWindowDuration?: string }
+  ): { effectiveSignings?: number; effectiveWindowDuration?: string } => {
     const blob = (policyConstraints as TConstraintsBlob) ?? {};
     const maxSignings = blob.constraints?.maxSignings ?? null;
     const maxWindowDuration = blob.constraints?.maxWindowDuration ?? null;
@@ -174,50 +220,23 @@ export const signerPolicyServiceFactory = ({
       });
     }
 
-    let effectiveWindowStart: string | undefined;
-    let effectiveWindowEnd: string | undefined;
-    if (dto.requestedWindowEnd) {
-      const end = new Date(dto.requestedWindowEnd).getTime();
-      if (Number.isNaN(end)) {
-        throw new BadRequestError({ message: "Invalid requestedWindowEnd date." });
-      }
-      const rawStart = dto.requestedWindowStart ? new Date(dto.requestedWindowStart).getTime() : Date.now();
-      if (Number.isNaN(rawStart)) {
-        throw new BadRequestError({ message: "Invalid requestedWindowStart date." });
-      }
-      const startTime = Math.max(rawStart, Date.now());
-      if (end <= startTime) {
+    let effectiveWindowDuration: string | undefined;
+    if (dto.requestedWindowDuration) {
+      const requestedMs = $parseDurationMs(dto.requestedWindowDuration);
+      if (requestedMs === null) {
         throw new BadRequestError({
-          message: "requestedWindowEnd must be in the future and after requestedWindowStart."
+          message: `Invalid signing window duration '${dto.requestedWindowDuration}'. Use a duration such as '4h' or '30m'.`
         });
       }
-      if (maxWindowDuration) {
-        let allowedMs: number;
-        try {
-          allowedMs = ms(maxWindowDuration);
-        } catch {
-          allowedMs = Number.POSITIVE_INFINITY;
-        }
-        if (Number.isFinite(allowedMs) && end - startTime > allowedMs) {
-          throw new BadRequestError({
-            message: `Requested signing window exceeds the policy maximum of ${maxWindowDuration}.`
-          });
-        }
+      const allowedMs = maxWindowDuration ? $parseDurationMs(maxWindowDuration) : null;
+      if (allowedMs !== null && requestedMs > allowedMs) {
+        throw new BadRequestError({
+          message: `Requested signing window exceeds the policy maximum of ${maxWindowDuration}.`
+        });
       }
-      effectiveWindowStart = dto.requestedWindowStart;
-      effectiveWindowEnd = dto.requestedWindowEnd;
+      effectiveWindowDuration = dto.requestedWindowDuration;
     } else if (maxWindowDuration) {
-      let allowedMs: number;
-      try {
-        allowedMs = ms(maxWindowDuration);
-      } catch {
-        allowedMs = 0;
-      }
-      if (allowedMs > 0) {
-        const start = new Date();
-        effectiveWindowStart = dto.requestedWindowStart ?? start.toISOString();
-        effectiveWindowEnd = new Date(start.getTime() + allowedMs).toISOString();
-      }
+      effectiveWindowDuration = maxWindowDuration;
     }
 
     let effectiveSignings = dto.requestedSignings;
@@ -225,7 +244,47 @@ export const signerPolicyServiceFactory = ({
       effectiveSignings = maxSignings;
     }
 
-    return { effectiveSignings, effectiveWindowStart, effectiveWindowEnd };
+    return { effectiveSignings, effectiveWindowDuration };
+  };
+
+  const $findDuplicatePendingRequest = async ({
+    policyId,
+    signerId,
+    actor,
+    actorId,
+    scope,
+    effectiveSignings,
+    effectiveWindowDuration
+  }: {
+    policyId: string;
+    signerId: string;
+    actor: TRequestToSignDTO["actor"];
+    actorId: string;
+    scope: TCodeSigningScope;
+    effectiveSignings?: number;
+    effectiveWindowDuration?: string;
+  }) => {
+    const isHumanRequester = actor === ActorType.USER;
+    const pendingRequests = await approvalRequestDAL.find({
+      policyId,
+      status: ApprovalRequestStatus.Pending,
+      scopeType: ApprovalPolicyScope.Signer,
+      scopeId: signerId,
+      ...(isHumanRequester ? { requesterId: actorId } : { machineIdentityId: actorId })
+    });
+
+    return pendingRequests.find((request) => {
+      const requestData = (request.requestData as { requestData?: TCodeSigningRequestData } | null)?.requestData;
+      const pendingScope = requestData?.scope;
+      if (!pendingScope) return false;
+
+      if ((requestData?.requestedSignings ?? null) !== (effectiveSignings ?? null)) return false;
+      if ((requestData?.requestedWindowDuration ?? null) !== (effectiveWindowDuration ?? null)) return false;
+
+      return Object.values(CodeSigningScopeField).every(
+        (field) => (pendingScope[field] ?? null) === (scope[field] ?? null)
+      );
+    });
   };
 
   const $resolveGranteeEffectiveRoles = async ({
@@ -552,8 +611,8 @@ export const signerPolicyServiceFactory = ({
       });
     }
 
-    if (!dto.requestedSignings && !dto.requestedWindowEnd) {
-      throw new BadRequestError({ message: "Provide at least one of requestedSignings or requestedWindowEnd." });
+    if (!dto.requestedSignings && !dto.requestedWindowDuration) {
+      throw new BadRequestError({ message: "Provide at least one of requestedSignings or requestedWindowDuration." });
     }
 
     const policy = await approvalPolicyDAL.findById(signer.approvalPolicyId);
@@ -561,14 +620,26 @@ export const signerPolicyServiceFactory = ({
       throw new NotFoundError({ message: `Policy for signer '${signer.name}' has been removed.` });
     }
 
-    const { effectiveSignings, effectiveWindowStart, effectiveWindowEnd } = $resolveRequestEffectiveLimits(
-      policy.constraints,
-      {
-        requestedSignings: dto.requestedSignings,
-        requestedWindowStart: dto.requestedWindowStart,
-        requestedWindowEnd: dto.requestedWindowEnd
+    const { effectiveSignings, effectiveWindowDuration } = $resolveRequestEffectiveLimits(policy.constraints, {
+      requestedSignings: dto.requestedSignings,
+      requestedWindowDuration: dto.requestedWindowDuration
+    });
+    const scope = normalizeCodeSigningScope($resolveRequestedScope(dto.scope, dto.actor, dto.ipAddress));
+
+    if (scope) {
+      const duplicate = await $findDuplicatePendingRequest({
+        policyId: policy.id,
+        signerId: signer.id,
+        actor: dto.actor,
+        actorId: dto.actorId,
+        scope,
+        effectiveSignings,
+        effectiveWindowDuration
+      });
+      if (duplicate) {
+        return { ...duplicate, steps: await approvalRequestDAL.findStepsByRequestId(duplicate.id) };
       }
-    );
+    }
 
     const requester = await $resolveActorDisplay({
       userId: dto.actor === ActorType.USER ? dto.actorId : null,
@@ -590,8 +661,8 @@ export const signerPolicyServiceFactory = ({
           approvalPolicyId: policy.id,
           justification: dto.justification,
           requestedSignings: effectiveSignings,
-          requestedWindowStart: effectiveWindowStart,
-          requestedWindowEnd: effectiveWindowEnd
+          requestedWindowDuration: effectiveWindowDuration,
+          scope
         },
         justification: dto.justification,
         requesterUserId: dto.actor === ActorType.USER ? dto.actorId : null,
@@ -608,14 +679,15 @@ export const signerPolicyServiceFactory = ({
       }
     );
 
-    if (requestWithSteps.steps.length > 0) {
-      await notifyStepApprovers(requestWithSteps.steps[0], requestWithSteps, {
-        userGroupMembershipDAL,
-        notificationService,
-        userDAL,
-        smtpService
-      });
-    }
+    await dispatchApprovalNotification(
+      {
+        event: ApprovalNotificationEvent.Requested,
+        request: requestWithSteps,
+        resource: approvalResources[ApprovalPolicyType.CertCodeSigning]!,
+        approvers: requestWithSteps.steps[0]?.approvers ?? []
+      },
+      { userGroupMembershipDAL, userDAL, notificationService, smtpService, slackIntegrationDAL, kmsService }
+    );
 
     return requestWithSteps;
   };
@@ -635,8 +707,8 @@ export const signerPolicyServiceFactory = ({
     if (!dto.granteeUserId && !dto.granteeIdentityId) {
       throw new BadRequestError({ message: "granteeUserId or granteeIdentityId is required." });
     }
-    if (!dto.requestedSignings && !dto.requestedWindowEnd) {
-      throw new BadRequestError({ message: "Provide at least one of requestedSignings or requestedWindowEnd." });
+    if (!dto.requestedSignings && !dto.requestedWindowDuration) {
+      throw new BadRequestError({ message: "Provide at least one of requestedSignings or requestedWindowDuration." });
     }
 
     if (!signer.approvalPolicyId) {
@@ -648,14 +720,11 @@ export const signerPolicyServiceFactory = ({
     if (!policy) {
       throw new NotFoundError({ message: `Policy for signer '${signer.name}' has been removed.` });
     }
-    const { effectiveSignings, effectiveWindowStart, effectiveWindowEnd } = $resolveRequestEffectiveLimits(
-      policy.constraints,
-      {
-        requestedSignings: dto.requestedSignings,
-        requestedWindowStart: dto.requestedWindowStart,
-        requestedWindowEnd: dto.requestedWindowEnd
-      }
-    );
+    const { effectiveSignings, effectiveWindowDuration } = $resolveRequestEffectiveLimits(policy.constraints, {
+      requestedSignings: dto.requestedSignings,
+      requestedWindowDuration: dto.requestedWindowDuration
+    });
+    const scope = normalizeCodeSigningScope(dto.scope);
 
     const granteeRoles = await $resolveGranteeEffectiveRoles({
       projectId: signer.projectId,
@@ -677,6 +746,8 @@ export const signerPolicyServiceFactory = ({
     });
 
     const orgId = dto.actorOrgId;
+    const windowStart = new Date();
+    const windowDurationMs = effectiveWindowDuration ? $parseDurationMs(effectiveWindowDuration) : null;
     const result = await membershipDAL.transaction(async (tx) => {
       const request = await approvalRequestDAL.create(
         {
@@ -701,8 +772,8 @@ export const signerPolicyServiceFactory = ({
               approvalPolicyId: signer.approvalPolicyId,
               justification: dto.justification,
               requestedSignings: effectiveSignings,
-              requestedWindowStart: effectiveWindowStart,
-              requestedWindowEnd: effectiveWindowEnd
+              requestedWindowDuration: effectiveWindowDuration,
+              scope
             }
           }
         },
@@ -721,9 +792,10 @@ export const signerPolicyServiceFactory = ({
             signerId: signer.id,
             signerName: signer.name,
             maxSignings: effectiveSignings,
-            windowStart: effectiveWindowStart
+            windowStart: windowDurationMs ? windowStart.toISOString() : undefined,
+            scope
           },
-          expiresAt: effectiveWindowEnd ? new Date(effectiveWindowEnd) : null
+          expiresAt: windowDurationMs ? new Date(windowStart.getTime() + windowDurationMs) : null
         },
         tx
       );

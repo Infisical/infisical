@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { Loader2Icon, PauseIcon, PlayIcon, RotateCcwIcon } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { IconButton } from "@app/components/v3";
 import { TSessionEvent } from "@app/hooks/api/pam";
@@ -127,7 +127,6 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
       }
       lastParsedIndexRef.current = 0;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -158,7 +157,6 @@ export const RdpReplayView = ({ events, isStreaming = false, totalDurationMs }: 
 
   useEffect(() => {
     writeProgress(currentMsRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalMs]);
 
   const onPlayPause = () => {

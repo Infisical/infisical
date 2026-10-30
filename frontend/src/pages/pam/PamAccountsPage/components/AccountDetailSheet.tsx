@@ -47,7 +47,7 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization, useUser } from "@app/context";
-import { useListAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection, useListAppConnections } from "@app/hooks/api/appConnections";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
@@ -72,7 +72,6 @@ import {
   useRemoveAccountMember,
   useUpdatePamAccount
 } from "@app/hooks/api/pam";
-import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
@@ -89,6 +88,7 @@ import { PendingInvitationBadge } from "../../components/PendingInvitationBadge"
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { TabWarningPing } from "../../components/TabWarningPing";
+import { usePamProductUsers } from "../../components/usePamProductUsers";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
 import { EditAccountForm } from "./EditAccountForm";
 import { RecordingConnectionPicker } from "./RecordingConnectionPicker";
@@ -137,7 +137,7 @@ const PermissionsTab = ({
     navigate({ search: { folderId, tab: PamSheetTab.Permissions } as any });
   };
   const { data: resourceRoles } = useListPamResourceRoles();
-  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { userMap } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const groupMap = useMemo(
     () => new Map((orgGroups ?? []).map((g) => [g.id, g.name] as const)),
@@ -191,25 +191,6 @@ const PermissionsTab = ({
           .map((m) => m.identityId) as string[]
       ),
     [accountMembers]
-  );
-
-  const userMap = useMemo(
-    () =>
-      new Map(
-        (orgUsers ?? []).map((ou) => {
-          const name =
-            [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ") || ou.user.username;
-          return [
-            ou.user.id,
-            {
-              name,
-              email: ou.user.email ?? ou.inviteEmail ?? ou.user.username,
-              isPendingInvitation: ou.status === "invited"
-            }
-          ] as const;
-        })
-      ),
-    [orgUsers]
   );
 
   const directMembers = useMemo<ResolvedMember[]>(() => {
@@ -361,7 +342,7 @@ const PermissionsTab = ({
                   <TableHead>Assignee</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Expiry</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -386,7 +367,7 @@ const PermissionsTab = ({
                       <TableCell>
                         <MemberExpiry expiresAt={rm.member.expiresAt} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         {!isOwnMembership && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -585,6 +566,9 @@ const SettingsTab = ({
   const hasRecordingOverride =
     Boolean(recordingConnId) || Boolean(recordingBucket) || Boolean(recordingRegion);
   const isRecordingOverriding = hasRecordingOverride || showRecordingPicker;
+  const isS3CompatibleRecording =
+    appConnections.find((c) => c.id === (recordingConnId ?? template?.recordingConnectionId))
+      ?.app === AppConnection.S3Compatible;
 
   const resolveGatewayLabel = (gwId?: string | null, poolId?: string | null) => {
     if (poolId) return gatewayPools?.find((p) => p.id === poolId)?.name ?? "Gateway pool";
@@ -595,7 +579,7 @@ const SettingsTab = ({
 
   const resolveConnectionName = (connId?: string | null) => {
     if (!connId) return "None";
-    return appConnections.find((c) => c.id === connId)?.name ?? "AWS connection";
+    return appConnections.find((c) => c.id === connId)?.name ?? "Connection";
   };
   const inheritedRecordingLabel = resolveConnectionName(template?.recordingConnectionId);
 
@@ -632,7 +616,7 @@ const SettingsTab = ({
       ? {
           recordingS3Config: {
             bucket,
-            region,
+            ...(region && !isS3CompatibleRecording ? { region } : {}),
             ...(keyPrefix ? { keyPrefix } : {})
           }
         }
@@ -648,6 +632,7 @@ const SettingsTab = ({
         settingsOverrides
       },
       {
+        // oxlint-disable-next-line react/no-unstable-nested-components -- a callback that builds a toast, not a component
         onSuccess: async (result) => {
           createNotification({ type: "success", text: "Overrides updated" });
           const { corsProbeUrl } = result as { corsProbeUrl?: string | null };
@@ -799,7 +784,7 @@ const SettingsTab = ({
                     </AlertDescription>
                   </Alert>
                   <div>
-                    <p className="mb-1 text-sm text-muted">AWS Connection</p>
+                    <p className="mb-1 text-sm text-muted">Connection</p>
                     <RecordingConnectionPicker
                       value={recordingConnId}
                       onChange={(v) => setValue("recordingConnectionId", v, { shouldDirty: true })}
@@ -807,14 +792,16 @@ const SettingsTab = ({
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
+                    <div className={isS3CompatibleRecording ? "col-span-2" : undefined}>
                       <p className="mb-1 text-sm text-muted">S3 Bucket</p>
                       <Input placeholder="my-recordings-bucket" {...register("recordingBucket")} />
                     </div>
-                    <div>
-                      <p className="mb-1 text-sm text-muted">Region</p>
-                      <Input placeholder="us-east-1" {...register("recordingRegion")} />
-                    </div>
+                    {!isS3CompatibleRecording && (
+                      <div>
+                        <p className="mb-1 text-sm text-muted">Region</p>
+                        <Input placeholder="us-east-1" {...register("recordingRegion")} />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <p className="mb-1 text-sm text-muted">

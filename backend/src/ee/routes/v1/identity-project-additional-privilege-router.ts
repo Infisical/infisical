@@ -26,6 +26,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "createIdentityProjectPermanentPrivilegeV1",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Create a permanent or a non expiry specific privilege for identity.",
       security: [
@@ -108,6 +109,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "createIdentityProjectTemporaryPrivilegeV1",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Create a temporary or a expiring specific privilege for identity.",
       security: [
@@ -202,6 +204,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "updateIdentityProjectAdditionalPrivilegeV1",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Update a specific privilege of an identity.",
       security: [
@@ -314,6 +317,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "deleteIdentityProjectAdditionalPrivilegeV1",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Delete a specific privilege of an identity.",
       security: [
@@ -378,6 +382,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "getIdentityProjectAdditionalPrivilegeBySlugV1",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Retrieve details of a specific privilege by privilege slug.",
       security: [
@@ -398,7 +403,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id: projectId } = await server.services.convertor.projectSlugToId({
         orgId: req.permission.orgId,
@@ -444,6 +449,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "listIdentityProjectAdditionalPrivilegesV1",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "List of a specific privilege of an identity in a project.",
       security: [
@@ -461,7 +467,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id: projectId } = await server.services.convertor.projectSlugToId({
         orgId: req.permission.orgId,

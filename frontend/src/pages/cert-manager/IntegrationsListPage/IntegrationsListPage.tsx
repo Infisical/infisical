@@ -1,11 +1,10 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
+import { PageHeader, Tabs, TabsContent } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
+import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -15,8 +14,6 @@ import { AppConnectionsTab, PkiSyncsTab } from "./components";
 export const IntegrationsListPage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
-  const { t } = useTranslation();
 
   const { selectedTab } = useSearch({
     from: ROUTE_PATHS.CertManager.IntegrationsListPage.id
@@ -31,7 +28,6 @@ export const IntegrationsListPage = () => {
         selectedTab: tab as IntegrationsListPageTabs
       },
       params: {
-        projectId: currentProject?.id,
         orgId: currentOrg.id
       }
     });
@@ -39,24 +35,22 @@ export const IntegrationsListPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("integrations.title") })}</title>
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content="Manage your certificates in seconds" />
-        <meta name="og:description" content="Sync and manage PKI certificates across services" />
-      </Helmet>
-      <div className="relative mx-auto max-w-8xl pb-12 text-white">
-        <div className="mb-8">
+      <PageTitle title="Integrations" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content="Manage your certificates in seconds" />
+      <meta name="og:description" content="Sync and manage PKI certificates across services" />
+      <div className="relative mx-auto max-w-8xl pb-12 text-foreground-inverse">
+        <div className="mb-8 flex flex-col">
           <PageHeader
             scope={ProjectType.CertificateManager}
-            title="Project Integrations"
+            title="Integrations"
             description="Manage integrations with third-party certificate services."
           />
           <Tabs orientation="vertical" value={currentTab} onValueChange={updateSelectedTab}>
-            <TabPanel value={IntegrationsListPageTabs.AppConnections}>
+            <TabsContent value={IntegrationsListPageTabs.AppConnections}>
               <AppConnectionsTab />
-            </TabPanel>
-            <TabPanel value={IntegrationsListPageTabs.PkiSyncs}>
+            </TabsContent>
+            <TabsContent value={IntegrationsListPageTabs.PkiSyncs}>
               <ProjectPermissionCan
                 renderGuardBanner
                 I={ProjectPermissionPkiSyncActions.Read}
@@ -64,7 +58,7 @@ export const IntegrationsListPage = () => {
               >
                 <PkiSyncsTab />
               </ProjectPermissionCan>
-            </TabPanel>
+            </TabsContent>
           </Tabs>
         </div>
       </div>

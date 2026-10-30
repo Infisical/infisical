@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { SupabaseApiKeyType } from "@app/hooks/api/secretRotationsV2/types/supabase-api-key-rotation";
 
@@ -24,13 +24,13 @@ export const SupabaseApiKeyRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Project Reference">{parameters.projectRef}</GenericFieldLabel>
-        <GenericFieldLabel label="Key Type">
+        <ReviewField label="Project Reference">{parameters.projectRef}</ReviewField>
+        <ReviewField label="Key Type">
           {KEY_TYPE_LABELS[parameters.keyType] || parameters.keyType}
-        </GenericFieldLabel>
+        </ReviewField>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="API Key">{apiKey}</GenericFieldLabel>
+        <ReviewField label="API Key">{apiKey}</ReviewField>
       </SecretRotationReviewSection>
     </>
   );

@@ -28,12 +28,14 @@ import { SheetSaveBar } from "../../components/SheetSaveBar";
 import {
   accountFormSchema,
   applyServerValidationErrors,
-  buildDefaultFieldValues,
   buildEditCredentialValues,
+  buildEditFieldValues,
   getMissingRequiredFields,
+  omitUnsetAbsentFields,
   TAccountFormValues
 } from "./accountFormSchema";
 import { ConnectionDetailsForm } from "./ConnectionDetailsForm";
+import { CredentialHealthSection } from "./CredentialHealthSection";
 import { CredentialsForm } from "./CredentialsForm";
 
 function filterUnchangedCredentials(
@@ -108,26 +110,28 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
         description: account.description ?? "",
         folderId: account.folderId,
         templateId: account.templateId,
-        connectionDetails: {
-          ...buildDefaultFieldValues(metadata.connectionFields),
-          ...account.connectionDetails
-        },
+        connectionDetails: buildEditFieldValues(
+          metadata.connectionFields,
+          account.connectionDetails
+        ),
         credentials: buildEditCredentialValues(metadata.credentialFields, account.credentials)
       });
     }
   }, [account, metadata, reset]);
 
-  const onSubmit = (values: TAccountFormValues) => {
-    if (!accountId || !account || !metadata) return;
+  const onSubmit = async (values: TAccountFormValues): Promise<boolean> => {
+    if (!accountId || !account || !metadata) return false;
 
     clearErrors();
     const missingConnection = getMissingRequiredFields(
       metadata.connectionFields,
-      values.connectionDetails
+      "connectionDetails",
+      values
     );
     const missingCredentials = getMissingRequiredFields(
       metadata.credentialFields,
-      values.credentials
+      "credentials",
+      values
     );
     if (missingConnection.length || missingCredentials.length) {
       missingConnection.forEach((key) =>
@@ -139,7 +143,7 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
       missingCredentials.forEach((key) =>
         setError(`credentials.${key}`, { type: "required", message: "This field is required" })
       );
-      return;
+      return false;
     }
 
     // Drop unchanged secrets (sentinel) so they're preserved server-side; send the rest
@@ -154,31 +158,48 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
       ...metadata.credentialFields.map((f) => `credentials.${f.key}`)
     ]);
 
-    updateAccount.mutate(
-      {
-        accountId,
-        accountType: values.accountType,
-        name: values.name,
-        description: values.description || null,
-        folderId: values.folderId,
-        templateId: values.templateId,
-        connectionDetails: values.connectionDetails,
-        ...(filteredCredentials ? { credentials: filteredCredentials } : {})
-      },
-      {
-        onSuccess: () => createNotification({ text: "Account updated", type: "success" }),
-        onError: (error) => {
-          const unmapped = applyServerValidationErrors(error, setError, knownFields);
-          if (unmapped.length) {
-            createNotification({
-              type: "error",
-              title: "Validation Error",
-              text: unmapped.join(", ")
-            });
+    try {
+      await updateAccount.mutateAsync(
+        {
+          accountId,
+          accountType: values.accountType,
+          name: values.name,
+          description: values.description || null,
+          folderId: values.folderId,
+          templateId: values.templateId,
+          connectionDetails: omitUnsetAbsentFields(
+            values.connectionDetails,
+            account.connectionDetails
+          ),
+          ...(filteredCredentials ? { credentials: filteredCredentials } : {})
+        },
+        {
+          onSuccess: () => createNotification({ text: "Account updated", type: "success" }),
+          onError: (error) => {
+            const unmapped = applyServerValidationErrors(error, setError, knownFields);
+            if (unmapped.length) {
+              createNotification({
+                type: "error",
+                title: "Validation Error",
+                text: unmapped.join(", ")
+              });
+            }
           }
         }
-      }
-    );
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const saveBeforeCheck = async () => {
+    if (!isDirty) return true;
+    let saved = false;
+    await handleSubmit(async (values) => {
+      saved = await onSubmit(values);
+    })();
+    return saved;
   };
 
   if (isLoadingAccount) {
@@ -208,7 +229,12 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
                   Name<span className="text-product-pam">*</span>
                 </FieldLabel>
                 <FieldContent>
-                  <Input {...field} isError={!!fieldState.error} />
+                  <Input
+                    {...field}
+                    isError={!!fieldState.error}
+                    autoComplete="off"
+                    name="pam-account-name"
+                  />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>
@@ -301,8 +327,9 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
             <CardTitle className="text-base">Credentials</CardTitle>
             <CardDescription>Authentication used to connect to this account.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <CredentialsForm control={control} />
+          <CardContent className="flex flex-col gap-4">
+            <CredentialsForm control={control} setValue={setValue} />
+            <CredentialHealthSection accountId={accountId} onBeforeCheck={saveBeforeCheck} />
           </CardContent>
         </Card>
       )}

@@ -1,4 +1,6 @@
 /* eslint-disable no-await-in-loop */
+import { posix as posixPath } from "node:path";
+
 import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
@@ -17,19 +19,24 @@ import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { TFolderCheckpointDALFactory } from "../folder-checkpoint/folder-checkpoint-dal";
+import { EventModificationType } from "../event-outbox/event-definition";
+import { TEventEmitter, TEventInput } from "../event-outbox/event-outbox-types";
 import { TFolderCheckpointResourcesDALFactory } from "../folder-checkpoint-resources/folder-checkpoint-resources-dal";
+import { TFolderCheckpointDALFactory } from "../folder-checkpoint/folder-checkpoint-dal";
 import { TFolderCommitChangesDALFactory } from "../folder-commit-changes/folder-commit-changes-dal";
-import { TFolderTreeCheckpointDALFactory } from "../folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { TFolderTreeCheckpointResourcesDALFactory } from "../folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
+import { TFolderTreeCheckpointDALFactory } from "../folder-tree-checkpoint/folder-tree-checkpoint-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { FolderModifiedEventV1, previousSecretLocation } from "../secret-folder/secret-folder-events";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
+import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
+import { secretModifiedEvents } from "../secret-v2-bridge/secret-events";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -164,6 +171,7 @@ type TFolderCommitServiceFactoryDep = {
   userDAL: TUserDALFactory;
   identityDAL: TIdentityDALFactory;
   folderDAL: TSecretFolderDALFactory;
+  eventEmitter: TEventEmitter;
   folderVersionDAL: TSecretFolderVersionDALFactory;
   secretVersionV2BridgeDAL: TSecretVersionV2DALFactory;
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
@@ -185,6 +193,42 @@ type TFolderCommitServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany" | "delete">;
 };
 
+const pluralizeResource = (count: number, resource: string) => `${count} ${resource}${count === 1 ? "" : "s"}`;
+
+const buildDefaultCommitMessage = (changes: TCommitResourceChangeDTO[]) => {
+  const counts = {
+    created: { secret: 0, folder: 0 },
+    updated: { secret: 0, folder: 0 },
+    deleted: { secret: 0, folder: 0 }
+  };
+
+  changes.forEach((change) => {
+    let resource: "secret" | "folder" | undefined;
+    if (change.folderVersionId) resource = "folder";
+    else if (change.secretVersionId) resource = "secret";
+    if (!resource) return;
+
+    if (change.type === CommitType.DELETE) counts.deleted[resource] += 1;
+    else if (change.isUpdate) counts.updated[resource] += 1;
+    else counts.created[resource] += 1;
+  });
+
+  const segments: string[] = [];
+  (["created", "updated", "deleted"] as const).forEach((action) => {
+    const resources: string[] = [];
+    if (counts[action].secret > 0) resources.push(pluralizeResource(counts[action].secret, "secret"));
+    if (counts[action].folder > 0) resources.push(pluralizeResource(counts[action].folder, "folder"));
+    if (resources.length) segments.push(`${action} ${resources.join(" and ")}`);
+  });
+
+  if (!segments.length) return undefined;
+
+  const summary = segments.join(", ");
+  return `${summary.charAt(0).toUpperCase()}${summary.slice(1)}`;
+};
+
+type TBlindIndexRepairer = (version: TSecretVersionsV2) => Promise<TSecretVersionsV2> | TSecretVersionsV2;
+
 export const folderCommitServiceFactory = ({
   folderCommitDAL,
   folderCommitChangesDAL,
@@ -203,7 +247,8 @@ export const folderCommitServiceFactory = ({
   permissionService,
   kmsService,
   secretTagDAL,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  eventEmitter
 }: TFolderCommitServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -918,7 +963,7 @@ export const folderCommitServiceFactory = ({
         {
           actorMetadata: metadata,
           actorType: data.actor.type,
-          message: data.message,
+          message: data.message?.trim() || buildDefaultCommitMessage(changes),
           folderId: data.folderId,
           envId: folder.envId
         },
@@ -961,7 +1006,7 @@ export const folderCommitServiceFactory = ({
       await createFolderCheckpoint({ folderId: data.folderId, folderCommitId: newCommit.id, tx });
       if (folderCommitQueueService) {
         if (!folder.parentId) {
-          const previousTreeCommit = await folderTreeCheckpointDAL.findLatestByEnvId(folder.envId);
+          const previousTreeCommit = await folderTreeCheckpointDAL.findLatestByEnvId(folder.envId, tx);
           if (!previousTreeCommit) {
             await folderCommitQueueService.createFolderTreeCheckpoint(folder.envId, newCommit.id, tx);
           }
@@ -977,6 +1022,25 @@ export const folderCommitServiceFactory = ({
     }
   };
 
+  // A rollback recomputes the digests from the restored value instead of copying them from the version
+  // row, so the secret version table (which is very large) never needed a digest migration.
+  const $buildBlindIndexRepairer = async (projectId: string, tx?: Knex): Promise<TBlindIndexRepairer> => {
+    const project = await projectDAL.findById(projectId, tx);
+    if (!project) return (version) => version;
+
+    const [{ decryptor }, blindIndexer] = await Promise.all([
+      kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, tx),
+      createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsService, tx })
+    ]);
+
+    return async (version) => {
+      if (!version.encryptedValue) return version;
+
+      const value = decryptor({ cipherTextBlob: version.encryptedValue });
+      return { ...version, ...(await blindIndexer.generateBlindIndexes(value)) };
+    };
+  };
+
   /**
    * Process secret changes when applying folder state differences
    */
@@ -985,9 +1049,11 @@ export const folderCommitServiceFactory = ({
     secretVersions: Record<string, TSecretVersionsV2>,
     actorInfo: ActorInfo,
     folderId: string,
+    repairBlindIndexes: TBlindIndexRepairer,
     tx?: Knex
   ) => {
     const commitChanges = [];
+    const modifiedSecrets: { id: string; type: string; modificationType: EventModificationType }[] = [];
     const folder = await folderDAL.findById(folderId, tx);
     if (!folder) {
       return [];
@@ -1006,9 +1072,11 @@ export const folderCommitServiceFactory = ({
     const latestVersionsMap = await secretVersionV2BridgeDAL.findLatestVersionMany(folderId, secretIds, tx);
 
     for (const change of secretChanges) {
-      const secretVersion = secretVersions[change.id];
+      const storedVersion = secretVersions[change.id];
       // eslint-disable-next-line no-continue
-      if (!secretVersion) continue;
+      if (!storedVersion) continue;
+      // eslint-disable-next-line no-await-in-loop
+      const secretVersion = await repairBlindIndexes(storedVersion);
 
       // Get the latest version from our batch result
       const latestVersion = latestVersionsMap[secretVersion.secretId];
@@ -1030,10 +1098,16 @@ export const folderCommitServiceFactory = ({
                 encryptedComment: secretVersion.encryptedComment,
                 userId: secretVersion.userId,
                 folderId,
-                secretValueBlindIndex: secretVersion.secretValueBlindIndex
+                secretValueBlindIndex: secretVersion.secretValueBlindIndex,
+                secretValueOrgBlindIndex: secretVersion.secretValueOrgBlindIndex
               }
             ];
             await secretV2BridgeDAL.insertMany(newSecret, tx);
+            modifiedSecrets.push({
+              id: change.id,
+              type: secretVersion.type,
+              modificationType: EventModificationType.Created
+            });
 
             const metadata: { key: string; value?: string; encryptedValue?: string }[] = Array.isArray(
               secretVersion.metadata
@@ -1068,6 +1142,7 @@ export const folderCommitServiceFactory = ({
                 actorType: actorInfo.actorType,
                 metadata: metadata ? JSON.stringify(metadata) : null,
                 secretValueBlindIndex: secretVersion.secretValueBlindIndex,
+                secretValueOrgBlindIndex: secretVersion.secretValueOrgBlindIndex,
                 ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
                 ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
               },
@@ -1097,6 +1172,11 @@ export const folderCommitServiceFactory = ({
 
         case "update":
           {
+            modifiedSecrets.push({
+              id: change.id,
+              type: secretVersion.type,
+              modificationType: EventModificationType.Updated
+            });
             await secretV2BridgeDAL.updateById(
               change.id,
               {
@@ -1109,7 +1189,8 @@ export const folderCommitServiceFactory = ({
                 encryptedValue: secretVersion?.encryptedValue,
                 encryptedComment: secretVersion?.encryptedComment,
                 userId: secretVersion?.userId,
-                secretValueBlindIndex: secretVersion?.secretValueBlindIndex
+                secretValueBlindIndex: secretVersion?.secretValueBlindIndex,
+                secretValueOrgBlindIndex: secretVersion?.secretValueOrgBlindIndex
               },
               tx
             );
@@ -1148,6 +1229,7 @@ export const folderCommitServiceFactory = ({
                 folderId,
                 secretId: secretVersion.secretId,
                 secretValueBlindIndex: secretVersion.secretValueBlindIndex,
+                secretValueOrgBlindIndex: secretVersion.secretValueOrgBlindIndex,
                 ...(actorInfo.actorType === ActorType.IDENTITY && { identityActorId: actorInfo.actorId }),
                 ...(actorInfo.actorType === ActorType.USER && { userActorId: actorInfo.actorId })
               },
@@ -1191,6 +1273,11 @@ export const folderCommitServiceFactory = ({
         // Delete case remains unchanged
         case "delete":
           await secretV2BridgeDAL.deleteById(change.id, tx);
+          modifiedSecrets.push({
+            id: change.id,
+            type: secretVersion.type,
+            modificationType: EventModificationType.Deleted
+          });
           commitChanges.push({
             type: ChangeType.DELETE,
             secretVersionId: change.versionId
@@ -1199,6 +1286,26 @@ export const folderCommitServiceFactory = ({
 
         default:
           throw new BadRequestError({ message: `Unknown change type: ${change.changeType}` });
+      }
+    }
+
+    if (modifiedSecrets.length) {
+      const [folderLocation] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folderId], tx);
+      if (folderLocation) {
+        await eventEmitter.emit(
+          modifiedSecrets.flatMap(({ modificationType, ...secret }) =>
+            secretModifiedEvents(
+              {
+                projectId: folder.projectId,
+                environment: folderLocation.environmentSlug,
+                secretPath: folderLocation.path,
+                modificationType
+              },
+              [secret]
+            )
+          ),
+          tx
+        );
       }
     }
 
@@ -1215,6 +1322,7 @@ export const folderCommitServiceFactory = ({
     projectId,
     reconstructNewFolders,
     reconstructUpToCommit,
+    repairBlindIndexes,
     step = 0,
     tx
   }: {
@@ -1224,6 +1332,7 @@ export const folderCommitServiceFactory = ({
     projectId: string;
     reconstructNewFolders: boolean;
     reconstructUpToCommit?: string;
+    repairBlindIndexes: TBlindIndexRepairer;
     step: number;
     tx?: Knex;
   }): Promise<StateChangeResult> => {
@@ -1241,6 +1350,14 @@ export const folderCommitServiceFactory = ({
         (change): change is ResourceChange & FolderChange => change.type === ResourceType.FOLDER
       );
 
+      // An update can rename and re-parent, so read the old paths before any write instead of deriving them.
+      const existingFolderIds = folderChanges.filter(({ changeType }) => changeType !== "create").map(({ id }) => id);
+      const [parentLocation, ...existingLocations] = folderChanges.length
+        ? await folderDAL.findSecretPathByFolderIds(projectId, [folderId, ...existingFolderIds], tx)
+        : [];
+      const existingLocationById = new Map(existingFolderIds.map((id, index) => [id, existingLocations[index]]));
+      const folderEvents: TEventInput[] = [];
+
       for (const change of folderChanges) {
         const folderVersion = folderVersions[change.id];
 
@@ -1256,6 +1373,17 @@ export const folderCommitServiceFactory = ({
                 description: folderVersion.description
               };
               await folderDAL.create(newFolder, tx);
+              if (parentLocation) {
+                folderEvents.push(
+                  FolderModifiedEventV1.build({
+                    folderId: change.id,
+                    projectId,
+                    environment: parentLocation.environmentSlug,
+                    secretPath: posixPath.join(parentLocation.path, folderVersion.name),
+                    modificationType: EventModificationType.Created
+                  })
+                );
+              }
 
               const newFolderVersion = await folderVersionDAL.create(
                 {
@@ -1285,6 +1413,7 @@ export const folderCommitServiceFactory = ({
                       actorInfo,
                       folderId: change.id,
                       projectId,
+                      repairBlindIndexes,
                       reconstructNewFolders,
                       reconstructUpToCommit,
                       step: step + 1,
@@ -1310,6 +1439,27 @@ export const folderCommitServiceFactory = ({
               );
               if (latestVersionDetails && Object.keys(latestVersionDetails).length > 0) {
                 const versionDetails = Object.values(latestVersionDetails)[0];
+                if (parentLocation) {
+                  const location = {
+                    environment: parentLocation.environmentSlug,
+                    secretPath: posixPath.join(parentLocation.path, versionDetails.name)
+                  };
+                  const before = existingLocationById.get(change.id);
+                  folderEvents.push(
+                    FolderModifiedEventV1.build({
+                      folderId: change.id,
+                      projectId,
+                      ...location,
+                      modificationType: EventModificationType.Updated,
+                      previous: before
+                        ? previousSecretLocation(
+                            { environment: before.environmentSlug, secretPath: before.path },
+                            location
+                          )
+                        : undefined
+                    })
+                  );
+                }
                 await folderDAL.updateById(
                   change.id,
                   {
@@ -1342,8 +1492,20 @@ export const folderCommitServiceFactory = ({
             }
             break;
 
-          case "delete":
+          case "delete": {
             await folderDAL.deleteById(change.id, tx);
+            const before = existingLocationById.get(change.id);
+            if (before) {
+              folderEvents.push(
+                FolderModifiedEventV1.build({
+                  folderId: change.id,
+                  projectId,
+                  environment: before.environmentSlug,
+                  secretPath: before.path,
+                  modificationType: EventModificationType.Deleted
+                })
+              );
+            }
 
             commitChanges.push({
               type: ChangeType.DELETE,
@@ -1351,11 +1513,14 @@ export const folderCommitServiceFactory = ({
               folderId: change.id
             });
             break;
+          }
 
           default:
             throw new BadRequestError({ message: `Unknown change type: ${change.changeType}` });
         }
       }
+
+      await eventEmitter.emit(folderEvents, tx);
       return commitChanges;
     };
 
@@ -1383,7 +1548,7 @@ export const folderCommitServiceFactory = ({
 
     // Process changes in parallel
     const [secretCommitChanges, folderCommitChanges] = await Promise.all([
-      processSecretChanges(differences, secretVersions, actorInfo, folderId, tx),
+      processSecretChanges(differences, secretVersions, actorInfo, folderId, repairBlindIndexes, tx),
       processFolderChanges(differences, folderVersions)
     ]);
 
@@ -1427,13 +1592,19 @@ export const folderCommitServiceFactory = ({
     reconstructUpToCommit?: string;
     tx?: Knex;
   }): Promise<StateChangeResult> => {
+    // Resolved here, before any transaction is opened, because it reaches the KMS: an org on an
+    // external provider would otherwise put a network call between BEGIN and COMMIT.
+    const repairBlindIndexes = await $buildBlindIndexRepairer(params.projectId, params.tx);
+
     // If a transaction was provided, use it directly
     if (params.tx) {
-      return applyFolderStateDifferencesFn({ ...params, step: 0 });
+      return applyFolderStateDifferencesFn({ ...params, repairBlindIndexes, step: 0 });
     }
 
     // Otherwise, start a new transaction
-    return folderCommitDAL.transaction((newTx) => applyFolderStateDifferencesFn({ ...params, tx: newTx, step: 0 }));
+    return folderCommitDAL.transaction((newTx) =>
+      applyFolderStateDifferencesFn({ ...params, repairBlindIndexes, tx: newTx, step: 0 })
+    );
   };
 
   /**
@@ -1497,7 +1668,8 @@ export const folderCommitServiceFactory = ({
     offset = 0,
     limit = 20,
     search,
-    sort = "desc"
+    sort = "desc",
+    authorFilter
   }: {
     actor: ActorType;
     actorId: string;
@@ -1510,6 +1682,7 @@ export const folderCommitServiceFactory = ({
     limit: number;
     search?: string;
     sort: "asc" | "desc";
+    authorFilter?: { actorId?: string; actorType?: string };
   }) => {
     await checkProjectCommitReadPermission({
       actor,
@@ -1523,16 +1696,56 @@ export const folderCommitServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) {
       throw new NotFoundError({
-        message: `Folder not found for project ID ${projectId}, environment ${environment}, path ${path}`
+        message: `Folder not found for path '${path}' in environment '${environment}'`
       });
     }
     const folderCommits = await folderCommitDAL.findByFolderIdPaginated(folder.id, {
       offset,
       limit,
       search,
-      sort
+      sort,
+      actorId: authorFilter?.actorId,
+      actorType: authorFilter?.actorType
     });
     return folderCommits;
+  };
+
+  /**
+   * Get the distinct set of users, identities and platform actors that have committed to a folder
+   */
+  const getCommitAuthorsForFolder = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId,
+    environment,
+    path
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    projectId: string;
+    environment: string;
+    path: string;
+  }) => {
+    await checkProjectCommitReadPermission({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId,
+      environment,
+      secretPath: path
+    });
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    if (!folder) {
+      throw new NotFoundError({
+        message: `Folder not found for path '${path}' in environment '${environment}'`
+      });
+    }
+    return folderCommitDAL.findCommitAuthorsByFolderId(folder.id);
   };
 
   const getCommitsCount = async ({
@@ -2242,6 +2455,7 @@ export const folderCommitServiceFactory = ({
     deepCompareFolder,
     reconstructFolderState,
     getCommitsForFolder,
+    getCommitAuthorsForFolder,
     revertCommitChanges
   };
 };

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Controller, FieldPath, FormProvider, useForm } from "react-hook-form";
+import { Controller, FieldErrors, FieldPath, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangleIcon } from "lucide-react";
 
@@ -20,31 +20,52 @@ import {
   FieldContent,
   FieldDescription,
   Label,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import {
+  isPaloAltoNetworksPkiSync,
+  PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE,
+  PKI_SYNC_MAP,
+  PRESERVE_ARN_DESTINATIONS,
+  PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS
+} from "@app/helpers/pkiSyncs";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { usePaloAltoNetworksConnectionListTemplates } from "@app/hooks/api/appConnections/palo-alto-networks";
 import {
   PkiSync,
   PkiSyncExportFormat,
   TPkiSync,
+  useCanSetHealthCheckCommand,
   useCanSetPostSyncCommand,
   useCreatePkiSync,
   usePkiSyncOption
 } from "@app/hooks/api/pkiSyncs";
 
-import { KEMP_DEFAULT_CA_NAME_SCHEMA } from "./schemas/kemp-loadmaster-pki-sync-destination-schema";
-import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
+import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
 import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
+import { PkiSyncTargetHostField } from "./PkiSyncTargetHostField";
+import { KEMP_DEFAULT_CA_NAME_SCHEMA } from "./schemas/kemp-loadmaster-pki-sync-destination-schema";
+import {
+  isPaloAltoNetworksTemplateMissing,
+  PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
+} from "./schemas/palo-alto-networks-pki-sync-destination-schema";
+import {
+  getKeystoreFieldIssues,
+  PkiSyncFormSchema,
+  removeUnusedKeystoreOptions,
+  TPkiSyncForm
+} from "./schemas/pki-sync-schema";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
@@ -65,6 +86,13 @@ const STEP_META: Record<
     rightDescription:
       "Choose the connection and the destination where certificates will be pushed. The available fields depend on the selected service."
   },
+  targetHost: {
+    short: "Which machine to reach",
+    subtitle: "Name the machine this sync delivers to and how to reach it.",
+    rightLabel: "TARGET HOST",
+    rightDescription:
+      "An LDAP Connection supplies the credential for a whole domain rather than one machine, so each sync names its own host.\n\nMachines found in the directory are offered as suggestions, and you can enter one that is not listed."
+  },
   options: {
     short: "Sync behavior",
     subtitle: "Control how certificates are written and whether they sync automatically.",
@@ -79,12 +107,12 @@ const STEP_META: Record<
     rightDescription:
       "Map each certificate component (certificate, private key, and chain) to the field names used at the destination."
   },
-  postSyncCommand: {
-    short: "Command after sync",
-    subtitle: "Optionally run a command on the host after certificates are written.",
-    rightLabel: "POST-SYNC COMMAND",
+  hostCommands: {
+    short: "Commands on the host",
+    subtitle: "Check the host before the sync, and run a command after it.",
+    rightLabel: "COMMANDS",
     rightDescription:
-      "The gateway runs your command on the destination host once the run's files are in place, so a service can reload and pick up the new certificate. It only runs when the sync delivers a file, and a failure marks the sync failed."
+      "The health check runs first. If the host is not ready, the sync stops and no certificate is delivered.\n\nThe post-sync command runs after the certificates are written, so a service can reload and pick up the new one. It only runs when the sync delivers a file. If either command fails, the sync is marked failed."
   },
   details: {
     short: "Name and description",
@@ -95,10 +123,10 @@ const STEP_META: Record<
   },
   certificates: {
     short: "Certificates to sync",
-    subtitle: "Select which of this application's certificates are included in the sync.",
+    subtitle: "Link the certificates this sync pushes.",
     rightLabel: "CERTIFICATES",
     rightDescription:
-      "Select which of this application's certificates are included in the sync. You can change this selection after the sync is created."
+      "Anything in the application matching these filters is synced as it is issued. A sync with no filters syncs nothing."
   },
   review: {
     short: "Confirm and create",
@@ -111,34 +139,36 @@ const STEP_META: Record<
 
 const getFormTabs = (
   destination: PkiSync,
-  canRunPostSyncCommand: boolean
+  canRunHostCommands: boolean,
+  needsTargetHost: boolean
 ): { name: string; key: string; fields: FieldPath<TPkiSyncForm>[] }[] => {
   const baseTabs = [
     {
       name: "Destination",
       key: "destination",
       fields: ["connection", "destinationConfig"] as FieldPath<TPkiSyncForm>[]
-    },
-    {
-      name: "Sync Options",
-      key: "options",
-      fields: ["syncOptions", "credentials"] as FieldPath<TPkiSyncForm>[]
     }
   ];
+
+  if (needsTargetHost) {
+    baseTabs.push({
+      name: "Target Host",
+      key: "targetHost",
+      fields: ["destinationConfig"] as FieldPath<TPkiSyncForm>[]
+    });
+  }
+
+  baseTabs.push({
+    name: "Sync Options",
+    key: "options",
+    fields: ["syncOptions", "credentials"] as FieldPath<TPkiSyncForm>[]
+  });
 
   if (destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) {
     baseTabs.push({
       name: "Mappings",
       key: "mappings",
       fields: ["syncOptions"] as FieldPath<TPkiSyncForm>[]
-    });
-  }
-
-  if (canRunPostSyncCommand) {
-    baseTabs.push({
-      name: "Post-Sync Command",
-      key: "postSyncCommand",
-      fields: ["syncOptions.postSyncCommand"] as FieldPath<TPkiSyncForm>[]
     });
   }
 
@@ -151,10 +181,22 @@ const getFormTabs = (
     {
       name: "Certificates",
       key: "certificates",
-      fields: ["certificateIds"] as FieldPath<TPkiSyncForm>[]
-    },
-    { name: "Review", key: "review", fields: [] as FieldPath<TPkiSyncForm>[] }
+      fields: ["filters"] as FieldPath<TPkiSyncForm>[]
+    }
   );
+
+  if (canRunHostCommands) {
+    baseTabs.push({
+      name: "Commands",
+      key: "hostCommands",
+      fields: [
+        "syncOptions.healthCheckCommand",
+        "syncOptions.postSyncCommand"
+      ] as FieldPath<TPkiSyncForm>[]
+    });
+  }
+
+  baseTabs.push({ name: "Review", key: "review", fields: [] as FieldPath<TPkiSyncForm>[] });
 
   return baseTabs;
 };
@@ -175,22 +217,21 @@ export const CreatePkiSyncForm = ({
 
   const { syncOption } = usePkiSyncOption(destination);
   const canSetPostSyncCommand = useCanSetPostSyncCommand(applicationId);
-  const FORM_TABS = getFormTabs(
-    destination,
-    Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand
-  );
-
+  const canSetHealthCheckCommand = useCanSetHealthCheckCommand(applicationId);
   const formMethods = useForm<TPkiSyncForm>({
     resolver: zodResolver(PkiSyncFormSchema),
     defaultValues: {
       destination,
       isAutoSyncEnabled: false,
-      certificateIds: [],
+      filters: null,
       syncOptions: {
         canImportCertificates: false,
         canRemoveCertificates: false,
-        preserveArn: true,
         certificateNameSchema: syncOption?.defaultCertificateNameSchema,
+        ...(PRESERVE_ARN_DESTINATIONS.includes(destination) && { preserveArn: true }),
+        ...(PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS.includes(destination) && {
+          preserveItemOnRenewal: true
+        }),
         ...((destination === PkiSync.LinuxServer || destination === PkiSync.WindowsServer) && {
           exportFormat:
             destination === PkiSync.WindowsServer
@@ -219,68 +260,97 @@ export const CreatePkiSyncForm = ({
     reValidateMode: "onChange"
   });
 
-  const onSubmit = async ({
-    connection,
-    destinationConfig,
-    certificateIds,
-    ...formData
-  }: TPkiSyncForm) => {
+  const selectedConnectionApp = formMethods.watch("connection")?.app;
+  const FORM_TABS = getFormTabs(
+    destination,
+    (Boolean(syncOption?.canRunHealthCheckCommand) && canSetHealthCheckCommand) ||
+      (Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand),
+    selectedConnectionApp === AppConnection.LDAP
+  );
+
+  const onSubmit = async ({ connection, destinationConfig, ...formData }: TPkiSyncForm) => {
     try {
       const pkiSync = await createPkiSync.mutateAsync({
-        ...formData,
+        ...removeUnusedKeystoreOptions(formData),
         connectionId: connection.id,
         projectId: currentProject.id,
         applicationId,
-        destinationConfig,
-        certificateIds: certificateIds || []
+        destinationConfig
       });
 
       createNotification({
-        text: `Successfully created ${destinationName} Certificate Sync${
-          certificateIds && certificateIds.length > 0
-            ? ` with ${certificateIds.length} certificate(s)`
-            : ""
-        }`,
+        text: `Successfully created ${destinationName} Certificate Sync`,
         type: "success"
       });
       setShowConfirmation(false);
       onComplete(pkiSync);
     } catch {
-      /* empty */
+      setShowConfirmation(false);
     }
   };
 
   const { handleSubmit, trigger, control, getValues, setError, watch } = formMethods;
   const canRemoveCertificates = watch("syncOptions.canRemoveCertificates");
+  const { data: paloAltoNetworksDevice, isLoading: isDetectingPaloAltoNetworksDevice } =
+    usePaloAltoNetworksConnectionListTemplates(watch("connection.id"), {
+      enabled: isPaloAltoNetworksPkiSync(destination)
+    });
 
   const isStepValid = async (index: number) => {
     const isValid = await trigger(FORM_TABS[index].fields);
     if (!isValid) return false;
 
-    if (FORM_TABS[index].key === "options") {
-      const values = getValues() as {
-        destination?: PkiSync;
-        syncOptions?: { exportFormat?: PkiSyncExportFormat };
-        credentials?: { exportPassword?: string };
-      };
-      const requiresPassword =
-        (values.destination === PkiSync.WindowsServer ||
-          values.destination === PkiSync.LinuxServer) &&
-        values.syncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
-        !values.credentials?.exportPassword;
-      if (requiresPassword) {
-        setError("credentials.exportPassword" as FieldPath<TPkiSyncForm>, {
+    // The union member is still incomplete at this point (name is unset), so the schema's cross-field
+    // rule does not surface here. Same reason the PKCS#12 rule below is checked by hand.
+    if (FORM_TABS[index].key === "targetHost") {
+      const { destinationConfig } = getValues() as { destinationConfig?: { host?: string } };
+      if (!destinationConfig?.host) {
+        setError("destinationConfig.host" as FieldPath<TPkiSyncForm>, {
           type: "manual",
-          message: "A password is required for PKCS#12 exports"
+          message: "A target host is required when using an LDAP connection"
         });
         return false;
       }
     }
 
+    if (
+      FORM_TABS[index].key === "destination" &&
+      isPaloAltoNetworksPkiSync(destination) &&
+      isPaloAltoNetworksTemplateMissing(
+        paloAltoNetworksDevice?.isPanorama,
+        getValues("destinationConfig")
+      )
+    ) {
+      setError("destinationConfig.template" as FieldPath<TPkiSyncForm>, {
+        type: "manual",
+        message: PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
+      });
+      return false;
+    }
+
+    if (FORM_TABS[index].key === "options") {
+      const issues = getKeystoreFieldIssues(getValues(), { requirePassword: true });
+      issues.forEach(({ path, message }) =>
+        setError(path.join(".") as FieldPath<TPkiSyncForm>, { type: "manual", message })
+      );
+      if (issues.length > 0) return false;
+    }
+
     return true;
   };
 
+  // A field from an earlier step can fail only when the whole form is checked, so show that step.
+  const onInvalid = (errors: FieldErrors<TPkiSyncForm>) => {
+    const errorKeys = Object.keys(errors);
+    const stepIndex = FORM_TABS.findIndex((tab) =>
+      tab.fields.some((field) => errorKeys.includes(String(field).split(".")[0]))
+    );
+    setShowConfirmation(false);
+    if (stepIndex >= 0) setSelectedTabIndex(stepIndex);
+  };
+
   const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
+  const isNextBusy = (isFinalStep && createPkiSync.isPending) || isDetectingPaloAltoNetworksDevice;
 
   const handleNext = async () => {
     if (isFinalStep) {
@@ -309,6 +379,10 @@ export const CreatePkiSyncForm = ({
   const currentKey = FORM_TABS[selectedTabIndex].key;
   const currentName = FORM_TABS[selectedTabIndex].name;
   const currentDetail = STEP_META[currentKey];
+  const rightDescription =
+    currentKey === "certificates" && isPaloAltoNetworksPkiSync(destination)
+      ? `${currentDetail.rightDescription}\n\n${PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE}`
+      : currentDetail.rightDescription;
 
   return (
     <form
@@ -341,10 +415,13 @@ export const CreatePkiSyncForm = ({
 
           <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-foreground">{currentName}</h2>
+              <h2 className="text-lg font-normal text-foreground">{currentName}</h2>
               <p className="mt-1 text-sm text-muted">{currentDetail.subtitle}</p>
             </div>
             {currentKey === "destination" && <PkiSyncDestinationFields />}
+            {currentKey === "targetHost" && (
+              <PkiSyncTargetHostField applicationId={applicationId} />
+            )}
             {currentKey === "options" && (
               <>
                 <PkiSyncOptionsFields destination={destination} />
@@ -361,7 +438,7 @@ export const CreatePkiSyncForm = ({
                             off to only sync manually.
                           </FieldDescription>
                         </FieldContent>
-                        <Switch
+                        <Toggle
                           id="auto-sync-enabled"
                           variant="project"
                           checked={value}
@@ -374,17 +451,24 @@ export const CreatePkiSyncForm = ({
               </>
             )}
             {currentKey === "mappings" && <PkiSyncFieldMappingsFields destination={destination} />}
-            {currentKey === "postSyncCommand" && (
-              <PkiSyncPostSyncCommandFields
-                destination={destination}
-                canEditCommand={canSetPostSyncCommand}
-              />
+            {currentKey === "hostCommands" && (
+              <div className="flex flex-col gap-8">
+                <PkiSyncHealthCheckCommandFields
+                  destination={destination}
+                  applicationId={applicationId}
+                  canEditCommand={canSetHealthCheckCommand}
+                />
+                <PkiSyncPostSyncCommandFields
+                  destination={destination}
+                  canEditCommand={canSetPostSyncCommand}
+                />
+              </div>
             )}
             {currentKey === "details" && <PkiSyncDetailsFields />}
             {currentKey === "certificates" && (
               <PkiSyncCertificatesFields applicationId={applicationId} />
             )}
-            {currentKey === "review" && <PkiSyncReviewFields />}
+            {currentKey === "review" && <PkiSyncReviewFields applicationId={applicationId} />}
           </div>
 
           <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
@@ -398,15 +482,17 @@ export const CreatePkiSyncForm = ({
                 />
               </div>
               <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {currentDetail.rightDescription}
-              </p>
+              {rightDescription.split("\n\n").map((paragraph) => (
+                <p key={paragraph} className="mt-2 text-sm leading-relaxed text-muted">
+                  {paragraph}
+                </p>
+              ))}
             </div>
           </aside>
         </div>
       </FormProvider>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+      <SheetFooter className="shrink-0 items-center justify-between border-t">
         <span className="text-xs text-muted">
           Step {selectedTabIndex + 1} of {FORM_TABS.length}
         </span>
@@ -419,12 +505,12 @@ export const CreatePkiSyncForm = ({
             variant="project"
             onClick={handleNext}
             isPending={isFinalStep && createPkiSync.isPending}
-            isDisabled={isFinalStep && createPkiSync.isPending}
+            isDisabled={isNextBusy}
           >
             {isFinalStep ? "Create Sync" : "Continue"}
           </Button>
         </div>
-      </div>
+      </SheetFooter>
 
       <AlertDialog
         open={showConfirmation}
@@ -447,8 +533,9 @@ export const CreatePkiSyncForm = ({
                 </p>
                 {syncOption?.canRemoveCertificates && canRemoveCertificates && (
                   <p>
-                    Certificates in {destinationName} that are no longer active in Infisical will be
-                    removed.
+                    Certificates that leave this sync will be deleted from {destinationName},
+                    whether they stopped being active, were deleted, or stopped matching the
+                    sync&apos;s filters.
                   </p>
                 )}
               </div>
@@ -459,7 +546,7 @@ export const CreatePkiSyncForm = ({
             <AlertDialogAction
               variant="project"
               isDisabled={createPkiSync.isPending}
-              onClick={handleSubmit(onSubmit)}
+              onClick={handleSubmit(onSubmit, onInvalid)}
             >
               I Understand
             </AlertDialogAction>

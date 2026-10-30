@@ -6,6 +6,11 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external-signer";
 import { BadRequestError } from "@app/lib/errors";
+import { isPkcs11Error, Pkcs11ErrorCode } from "@app/lib/gateway-v2/pkcs11-rpc";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { keyAlgorithmToAlgCfg } from "@app/services/certificate-authority/certificate-authority-fns";
+import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -14,10 +19,7 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm
 } from "@app/services/certificate/certificate-types";
-import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
-import { keyAlgorithmToAlgCfg } from "@app/services/certificate-authority/certificate-authority-fns";
-import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { certKeyAlgorithmToHsmKeyAlgorithm } from "@app/services/hsm-connector/hsm-connector-fns";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -91,7 +93,7 @@ export const issueSignerCertificate = async (
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
   if (!ca || ca.projectId !== projectId) {
     throw new BadRequestError({
-      message: `Certificate authority '${caId}' is not in this project.`
+      message: `Certificate authority '${caId}' is not in this organization.`
     });
   }
   if (ca.status !== CaStatus.ACTIVE) {
@@ -202,12 +204,20 @@ export const hsmKeyAlgorithmToCertKeyAlgorithm = (hsmAlg: HsmKeyAlgorithm): Cert
   switch (hsmAlg) {
     case HsmKeyAlgorithm.RSA_2048:
       return CertKeyAlgorithm.RSA_2048;
+    case HsmKeyAlgorithm.RSA_3072:
+      return CertKeyAlgorithm.RSA_3072;
     case HsmKeyAlgorithm.RSA_4096:
       return CertKeyAlgorithm.RSA_4096;
     case HsmKeyAlgorithm.ECC_P256:
       return CertKeyAlgorithm.ECDSA_P256;
     case HsmKeyAlgorithm.ECC_P384:
       return CertKeyAlgorithm.ECDSA_P384;
+    case HsmKeyAlgorithm.ML_DSA_44:
+      return CertKeyAlgorithm.ML_DSA_44;
+    case HsmKeyAlgorithm.ML_DSA_65:
+      return CertKeyAlgorithm.ML_DSA_65;
+    case HsmKeyAlgorithm.ML_DSA_87:
+      return CertKeyAlgorithm.ML_DSA_87;
     default: {
       const exhaustive: never = hsmAlg;
       throw new BadRequestError({ message: `Unsupported HSM key algorithm: ${exhaustive as string}` });
@@ -216,30 +226,23 @@ export const hsmKeyAlgorithmToCertKeyAlgorithm = (hsmAlg: HsmKeyAlgorithm): Cert
 };
 
 export const mapCertKeyAlgorithmToHsmKeyAlgorithm = (certAlg: string): HsmKeyAlgorithm => {
-  switch (certAlg) {
-    case CertKeyAlgorithm.RSA_2048:
-      return HsmKeyAlgorithm.RSA_2048;
-    case CertKeyAlgorithm.RSA_4096:
-      return HsmKeyAlgorithm.RSA_4096;
-    case CertKeyAlgorithm.ECDSA_P256:
-      return HsmKeyAlgorithm.ECC_P256;
-    case CertKeyAlgorithm.ECDSA_P384:
-      return HsmKeyAlgorithm.ECC_P384;
-    default:
-      throw new BadRequestError({
-        message: `Cannot route HSM renewal: cert keyAlgorithm "${certAlg}" is not supported by the HSM Connector.`
-      });
+  const hsmKeyAlgorithm = isPqcAlgorithm(certAlg) ? undefined : certKeyAlgorithmToHsmKeyAlgorithm(certAlg);
+  if (!hsmKeyAlgorithm) {
+    throw new BadRequestError({
+      message: `Cannot route HSM renewal: cert keyAlgorithm "${certAlg}" is not supported by the HSM Connector.`
+    });
   }
+  return hsmKeyAlgorithm;
 };
 
 export const issueHsmBackedSignerCertificate = async (
   deps: THsmBackedDeps,
   input: THsmBackedInput
-): Promise<{ certificateId: string; hsmKeyLabel: string }> => {
+): Promise<{ certificateId: string; hsmKeyLabel: string; hsmKeyId: string | null }> => {
   const ca = await deps.certificateAuthorityDAL.findByIdWithAssociatedCa(input.caId);
   if (!ca || ca.projectId !== input.projectId) {
     throw new BadRequestError({
-      message: `Certificate authority '${input.caId}' is not in this project.`
+      message: `Certificate authority '${input.caId}' is not in this organization.`
     });
   }
   if (ca.status !== CaStatus.ACTIVE) {
@@ -253,7 +256,7 @@ export const issueHsmBackedSignerCertificate = async (
 
   const keyLabelSuffix = `signer-${crypto.nativeCrypto.randomUUID()}`;
 
-  const { publicKeySpkiDer, keyLabel } = await deps.hsmConnectorService.generateKeyPair({
+  const { publicKeySpkiDer, keyLabel, keyId } = await deps.hsmConnectorService.generateKeyPair({
     connectorId: input.hsmConnectorId,
     projectId: input.projectId,
     keyLabel: keyLabelSuffix,
@@ -268,6 +271,8 @@ export const issueHsmBackedSignerCertificate = async (
         connectorId: input.hsmConnectorId,
         projectId: input.projectId,
         keyLabel,
+        keyId,
+        publicKeySpki: publicKeySpkiDer,
         mechanism,
         data: tbsBytes,
         isDigest
@@ -298,6 +303,7 @@ export const issueHsmBackedSignerCertificate = async (
         keySource: CertKeySource.Hsm,
         hsmConnectorId: input.hsmConnectorId,
         hsmKeyLabel: keyLabel,
+        hsmKeyId: keyId,
         hsmPublicKeySpki: publicKeySpkiDer,
         keyAlgorithm: hsmKeyAlgorithmToCertKeyAlgorithm(input.hsmKeyAlgorithm)
       },
@@ -307,7 +313,7 @@ export const issueHsmBackedSignerCertificate = async (
   };
   const certificateId = input.tx ? await run(input.tx) : await deps.projectDAL.transaction(run);
 
-  return { certificateId, hsmKeyLabel: keyLabel };
+  return { certificateId, hsmKeyLabel: keyLabel, hsmKeyId: keyId };
 };
 
 type THsmBackedRenewInput = {
@@ -317,6 +323,7 @@ type THsmBackedRenewInput = {
   certificateTtlDays: number;
   hsmConnectorId: string;
   hsmKeyLabel: string;
+  hsmKeyId?: string | null;
   hsmKeyAlgorithm: HsmKeyAlgorithm;
   expectedPublicKeySpkiDer?: Buffer;
   tx?: Knex;
@@ -329,7 +336,7 @@ type THsmBackedRenewDeps = THsmBackedDeps & {
 export const renewHsmBackedSignerCertificate = async (
   deps: THsmBackedRenewDeps,
   input: THsmBackedRenewInput
-): Promise<{ certificateId: string; hsmKeyLabel: string }> => {
+): Promise<{ certificateId: string; hsmKeyLabel: string; hsmKeyId: string | null }> => {
   const ca = await deps.certificateAuthorityDAL.findByIdWithAssociatedCa(input.caId);
   if (!ca || ca.projectId !== input.projectId) {
     throw new BadRequestError({ message: `Certificate authority '${input.caId}' was not found.` });
@@ -346,7 +353,8 @@ export const renewHsmBackedSignerCertificate = async (
   const publicKeySpkiDer = await deps.hsmConnectorService.getPublicKey({
     connectorId: input.hsmConnectorId,
     projectId: input.projectId,
-    keyLabel: input.hsmKeyLabel
+    keyLabel: input.hsmKeyLabel,
+    keyId: input.hsmKeyId
   });
   if (input.expectedPublicKeySpkiDer) {
     const stored = input.expectedPublicKeySpkiDer;
@@ -366,6 +374,8 @@ export const renewHsmBackedSignerCertificate = async (
         connectorId: input.hsmConnectorId,
         projectId: input.projectId,
         keyLabel: input.hsmKeyLabel,
+        keyId: input.hsmKeyId,
+        publicKeySpki: publicKeySpkiDer,
         mechanism,
         data: tbsBytes,
         isDigest
@@ -396,6 +406,8 @@ export const renewHsmBackedSignerCertificate = async (
         keySource: CertKeySource.Hsm,
         hsmConnectorId: input.hsmConnectorId,
         hsmKeyLabel: input.hsmKeyLabel,
+        hsmKeyId: input.hsmKeyId ?? null,
+        hsmPublicKeySpki: publicKeySpkiDer,
         keyAlgorithm: hsmKeyAlgorithmToCertKeyAlgorithm(input.hsmKeyAlgorithm)
       },
       tx
@@ -404,5 +416,96 @@ export const renewHsmBackedSignerCertificate = async (
   };
   const certificateId = input.tx ? await run(input.tx) : await deps.projectDAL.transaction(run);
 
-  return { certificateId, hsmKeyLabel: input.hsmKeyLabel };
+  return { certificateId, hsmKeyLabel: input.hsmKeyLabel, hsmKeyId: input.hsmKeyId ?? null };
+};
+
+const PUBLIC_KEY_PRECHECK_FALLBACK_CODES = [
+  Pkcs11ErrorCode.KeyNotFound,
+  Pkcs11ErrorCode.MechanismInvalid,
+  Pkcs11ErrorCode.Internal
+];
+
+export const assertHsmKeyMatchesCertificate = async (
+  deps: { hsmConnectorService: Pick<THsmConnectorServiceFactory, "signWithKeyId" | "getPublicKey"> },
+  input: {
+    hsmConnectorId: string;
+    projectId: string;
+    hsmKeyLabel: string;
+    hsmKeyId?: string | null;
+    certificate: x509.X509Certificate;
+  }
+): Promise<{ hsmKeyId: string | null }> => {
+  const keyMismatchError = () =>
+    new BadRequestError({
+      message: input.hsmKeyId
+        ? `The HSM key with the label '${input.hsmKeyLabel}' and key ID '${input.hsmKeyId}' does not match the certificate's public key. Select the private key the certificate was issued for.`
+        : `The HSM key labeled '${input.hsmKeyLabel}' does not match the certificate's public key. Check that the label points to the private key the certificate was issued for.`
+    });
+
+  const keyRejectedError = () =>
+    new BadRequestError({
+      message: `The HSM rejected the key labeled '${input.hsmKeyLabel}'. Check that exactly one private key in the HSM Connector's slot has this label.`
+    });
+
+  const publicKey = crypto.nativeCrypto.createPublicKey({
+    key: Buffer.from(input.certificate.publicKey.rawData),
+    format: "der",
+    type: "spki"
+  });
+  const isEcdsa = publicKey.asymmetricKeyType === "ec";
+  if (!isEcdsa && publicKey.asymmetricKeyType !== "rsa") {
+    throw new BadRequestError({
+      message: `The certificate uses an unsupported key type '${publicKey.asymmetricKeyType}'. Only RSA and ECDSA keys are supported.`
+    });
+  }
+
+  const hsmPublicKey = await deps.hsmConnectorService
+    .getPublicKey({
+      connectorId: input.hsmConnectorId,
+      projectId: input.projectId,
+      keyLabel: input.hsmKeyLabel,
+      keyId: input.hsmKeyId
+    })
+    .then((spki) => crypto.nativeCrypto.createPublicKey({ key: spki, format: "der", type: "spki" }))
+    .catch((err: unknown) => {
+      if (PUBLIC_KEY_PRECHECK_FALLBACK_CODES.some((code) => isPkcs11Error(err, code))) return null;
+      if (isPkcs11Error(err, Pkcs11ErrorCode.BadRequest)) throw keyRejectedError();
+      throw err;
+    });
+  if (hsmPublicKey && !hsmPublicKey.equals(publicKey)) {
+    throw keyMismatchError();
+  }
+
+  const challenge = crypto.randomBytes(32);
+  const signed = await deps.hsmConnectorService
+    .signWithKeyId({
+      connectorId: input.hsmConnectorId,
+      projectId: input.projectId,
+      keyLabel: input.hsmKeyLabel,
+      keyId: input.hsmKeyId,
+      publicKeySpki: Buffer.from(input.certificate.publicKey.rawData),
+      mechanism: isEcdsa ? "CKM_ECDSA_SHA256" : "CKM_SHA256_RSA_PKCS",
+      data: challenge,
+      isDigest: false
+    })
+    .catch((err: unknown) => {
+      if (isPkcs11Error(err, Pkcs11ErrorCode.KeyTypeMismatch)) {
+        throw keyMismatchError();
+      }
+      if (isPkcs11Error(err, Pkcs11ErrorCode.BadRequest)) {
+        throw keyRejectedError();
+      }
+      throw err;
+    });
+
+  const isMatch = crypto.nativeCrypto.verify(
+    "sha256",
+    challenge,
+    isEcdsa ? { key: publicKey, dsaEncoding: "ieee-p1363" } : publicKey,
+    signed.signature
+  );
+  if (!isMatch) {
+    throw keyMismatchError();
+  }
+  return { hsmKeyId: signed.keyId };
 };

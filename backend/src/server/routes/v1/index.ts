@@ -8,6 +8,10 @@ import {
 import { registerCmekRouter } from "@app/server/routes/v1/cmek-router";
 import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
 import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/server/routes/v1/secret-sync-routers";
+import {
+  registerSecretValidationRuleRouter,
+  SECRET_VALIDATION_RULE_REGISTER_ROUTER_MAP
+} from "@app/server/routes/v1/secret-validation-rule-routers";
 
 import { registerAccountRecoveryRouter } from "./account-recovery-router";
 import { registerAdminRouter } from "./admin-router";
@@ -27,6 +31,8 @@ import { registerCertificateInventoryViewRouter } from "./certificate-inventory-
 import { registerCertificatePolicyRouter } from "./certificate-policy-router";
 import { registerCertificateProfilesRouter } from "./certificate-profiles-router";
 import { registerCertificateRouter } from "./certificate-router";
+import { registerDelegatedApprovalCallbackRouter } from "./delegated-approval-callback-router";
+import { registerDelegatedApprovalRouter } from "./delegated-approval-router";
 import { DEPRECATED_CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./deprecated-certificate-authority-routers";
 import { registerDeprecatedCertRouter } from "./deprecated-certificate-router";
 import { registerDeprecatedCertificateTemplateRouter } from "./deprecated-certificate-template-router";
@@ -67,6 +73,7 @@ import { registerInviteOrgRouter } from "./invite-org-router";
 import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 import { registerNotificationRouter } from "./notification-router";
 import { registerOAuthRouter } from "./oauth-router";
+import { registerOidcIssuerRouter } from "./oidc-issuer-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgIdentityRouter } from "./org-identity-router";
 import { registerOrganizationMembershipsRouter } from "./organization-memberships-router";
@@ -88,7 +95,6 @@ import { SECRET_REMINDER_REGISTER_ROUTER_MAP } from "./reminder-routers";
 import { registerSecretRequestsRouter } from "./secret-requests-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
-import { registerSecretValidationRuleRouter } from "./secret-validation-rule-router";
 import { registerSignerMembershipRoutes } from "./signer-membership-routers";
 import { registerSignerRouter } from "./signer-routers";
 import { registerSlackRouter } from "./slack-router";
@@ -125,6 +131,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerPasswordRouter, { prefix: "/password" });
   await server.register(registerAccountRecoveryRouter, { prefix: "/account-recovery" });
   await server.register(registerOAuthRouter, { prefix: "/oauth" });
+  await server.register(registerOidcIssuerRouter, { prefix: "/oidc-issuer" });
   await server.register(
     async (orgRouter) => {
       await orgRouter.register(registerOrgRouter);
@@ -178,7 +185,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await projectRouter.register(registerProjectIdentityRouter);
       await projectRouter.register(registerProjectEnvRouter);
       await projectRouter.register(registerSecretTagRouter);
-      await projectRouter.register(registerSecretValidationRuleRouter);
       await projectRouter.register(registerGroupProjectRouter);
       await projectRouter.register(registerDeprecatedIdentityProjectMembershipRouter);
     },
@@ -352,6 +358,17 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(
+    async (validationRuleRouter) => {
+      await validationRuleRouter.register(registerSecretValidationRuleRouter);
+
+      for await (const [type, router] of Object.entries(SECRET_VALIDATION_RULE_REGISTER_ROUTER_MAP)) {
+        await router(withRoutePrefix(validationRuleRouter, `/${type}`));
+      }
+    },
+    { prefix: "/secret-validation-rules" }
+  );
+
+  await server.register(
     async (reminderRouter) => {
       // register service specific reminder endpoints (reminders/secret)
       for await (const [reminderType, router] of Object.entries(SECRET_REMINDER_REGISTER_ROUTER_MAP)) {
@@ -362,6 +379,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerEventRouter, { prefix: "/events" });
+  await server.register(registerDelegatedApprovalRouter, { prefix: "/delegated-approvals" });
+  await server.register(registerDelegatedApprovalCallbackRouter, { prefix: "/delegated-approvals" });
   await server.register(
     async (approvalPolicyRouter) => {
       // Register policy type-specific endpoints

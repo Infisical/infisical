@@ -3,6 +3,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { BadRequestError } from "@app/lib/errors";
 import { buildFindFilter, ormify } from "@app/lib/knex";
 
 import { IdentityAuthTemplateMethod } from "./identity-auth-template-enums";
@@ -58,12 +59,38 @@ export const identityAuthTemplateDALFactory = (db: TDbClient) => {
           .where(buildFindFilter({ templateId }, TableName.IdentityLdapAuth))
           .select(
             db.ref("identityId").withSchema(TableName.IdentityLdapAuth),
-            db.ref("name").withSchema(TableName.Identity).as("identityName")
+            db.ref("name").withSchema(TableName.Identity).as("identityName"),
+            db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId")
           );
         const docs = await query;
         return docs;
+      case IdentityAuthTemplateMethod.KUBERNETES:
+        const kubernetesQuery = (tx || db.replicaNode())(TableName.IdentityKubernetesAuth)
+          .join(TableName.Identity, `${TableName.IdentityKubernetesAuth}.identityId`, `${TableName.Identity}.id`)
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+          .where(buildFindFilter({ templateId }, TableName.IdentityKubernetesAuth))
+          .select(
+            db.ref("identityId").withSchema(TableName.IdentityKubernetesAuth),
+            db.ref("name").withSchema(TableName.Identity).as("identityName"),
+            db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId")
+          );
+        const kubernetesDocs = await kubernetesQuery;
+        return kubernetesDocs;
+      case IdentityAuthTemplateMethod.OIDC:
+        const oidcQuery = (tx || db.replicaNode())(TableName.IdentityOidcAuth)
+          .join(TableName.Identity, `${TableName.IdentityOidcAuth}.identityId`, `${TableName.Identity}.id`)
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
+          .where(buildFindFilter({ templateId }, TableName.IdentityOidcAuth))
+          .select(
+            db.ref("identityId").withSchema(TableName.IdentityOidcAuth),
+            db.ref("name").withSchema(TableName.Identity).as("identityName"),
+            db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId")
+          );
+        const oidcDocs = await oidcQuery;
+        return oidcDocs;
       default:
-        return [];
+        // fail loudly so a future auth method cannot silently report zero usages
+        throw new BadRequestError({ message: `Templates with auth method '${authMethod}' are not supported` });
     }
   };
 
@@ -73,11 +100,26 @@ export const identityAuthTemplateDALFactory = (db: TDbClient) => {
     return doc?.[0];
   };
 
+  const findByIdForUpdate = async (id: string, tx: Knex) => {
+    const doc = await tx(TableName.IdentityAuthTemplate).where({ id }).forUpdate().first();
+    return doc;
+  };
+
+  const findByIdForShare = async (id: string, tx: Knex) => {
+    const doc = await tx(TableName.IdentityAuthTemplate).where({ id }).forShare().first();
+    return doc;
+  };
+
+  const primaryNode = () => db.primaryNode();
+
   return {
     ...identityAuthTemplateOrm,
     findByOrgId,
     findByAuthMethod,
     findTemplateUsages,
-    findByIdAndOrgId
+    findByIdAndOrgId,
+    findByIdForUpdate,
+    findByIdForShare,
+    primaryNode
   };
 };

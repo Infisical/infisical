@@ -1,100 +1,60 @@
 ---
-title: "Bitbucket Secret Scanning"
+title: "Bitbucket secret scanning"
 sidebarTitle: "Bitbucket"
-description: "Learn how to configure secret scanning for Bitbucket."
+icon: "/images/platform/secret-scanning/icons/bitbucket.svg"
+description: "Scan the repositories in a Bitbucket workspace."
 ---
+
+To scan your Bitbucket repositories for leaked secrets, create a Bitbucket [data source](/documentation/platform/secret-scanning/scan-repositories) in Infisical.
 
 ## Prerequisites
 
-- Create a [Bitbucket Connection](/integrations/app-connections/bitbucket) with Secret Scanning permissions
+- A [Bitbucket Connection](/integrations/app-connections/bitbucket) with secret scanning permissions
 
-## Create a Bitbucket Data Source in Infisical
+## Create a Bitbucket data source in Infisical
 
-<Tabs>
-    <Tab title="Infisical UI">
-        1. Navigate to your Secret Scanning Project's Dashboard and click the **Add Data Source** button.
-        ![Secret Scanning Dashboard](/images/platform/secret-scanning/github/github-data-source-step-1.png)
+<Steps>
+  <Step>
+    Go to **Secret Scanning** > **Data Sources** and select **Add Data Source**.
+    ![Secret Scanning Dashboard](/images/platform/secret-scanning/github/github-data-source-step-1.png)
+  </Step>
+  <Step>
+    Select **Bitbucket**.
 
-        2. Select the **Bitbucket** option.
+    ![Select Bitbucket](/images/platform/secret-scanning/bitbucket/step-2.png)
+  </Step>
+  <Step>
+    Select the connection to use, the workspace, and the repositories to scan, then select **Next**.
+    ![Data Source Configuration](/images/platform/secret-scanning/bitbucket/step-3.png)
 
-        ![Select Bitbucket](/images/platform/secret-scanning/bitbucket/step-2.png)
+    - **Bitbucket Connection**: The connection that can access the repositories you want to scan
+    - **Workspace**: The Bitbucket workspace that contains the repositories
+    - **Scan Repositories**: Which of the workspace's repositories Infisical scans
+        - **All Repositories**: Every repository in the workspace that the connection can access
+        - **Select Repositories**: Only the repositories you select in **Include Repositories**
+    - **Auto-Scan Enabled**: Whether Infisical scans each new push to the repositories
+  </Step>
+  <Step>
+    Enter a name and, optionally, a description for the data source, then select **Next**.
+    ![Data Source Details](/images/platform/secret-scanning/bitbucket/step-4.png)
 
-        3. Configure which workspace and repositories you would like to scan. Then click **Next**.
-        ![Data Source Configuration](/images/platform/secret-scanning/bitbucket/step-3.png)
-
-            - **Bitbucket Connection** - the connection that has access to the repositories you want to scan.
-            - **Workspace** - the Bitbucket workspace to scan secrets in.
-            - **Scan Repositories** - select which repositories you would like to scan.
-                - **All Repositories** - Infisical will scan all repositories associated with your connection.
-                - **Select Repositories** - Infisical will scan the selected repositories.
-            - **Auto-Scan Enabled** - whether Infisical should automatically perform a scan when a push is made to configured repositories.
-
-        4. Give your data source a name and description (optional). Then click **Next**.
-        ![Data Source Details](/images/platform/secret-scanning/bitbucket/step-4.png)
-
-            - **Name** - the name of the data source. Must be slug-friendly.
-            - **Description** (optional) - a description of this data source.
-
-        5. Review your data source, then click **Create Data Source**.
-        ![Data Source Review](/images/platform/secret-scanning/bitbucket/step-5.png)
-
-        6. Your **Bitbucket Data Source** is now available and will begin a full scan if **Auto-Scan** is enabled.
-        ![Data Source Created](/images/platform/secret-scanning/bitbucket/step-6.png)
-
-        7. You can view repositories and scan results by clicking on your data source.
-        ![Data Source Page](/images/platform/secret-scanning/bitbucket/step-7.png)
-
-        8. In addition, you can review any findings from the **Findings Page**.
-        ![Findings Page](/images/platform/secret-scanning/bitbucket/step-8.png)
-    </Tab>
-    <Tab title="API">
-        To create a Bitbucket Data Source, make an API request to the [Create Bitbucket Data Source](/api-reference/endpoints/secret-scanning/data-sources/bitbucket/create) API endpoint.
-
-        ### Sample request
-
-        ```bash Request
-        curl --request POST \
-        --url https://us.infisical.com/api/v2/secret-scanning/data-sources/bitbucket \
-        --header 'Content-Type: application/json' \
-        --data '{
-            "name": "my-bitbucket-source",
-            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "description": "my bitbucket data source",
-            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "isAutoScanEnabled": true,
-            "config": {
-                "workspaceSlug": "my-workspace",
-                "includeRepos": ["*"]
-            }
-        }'
-        ```
-
-        ### Sample response
-
-        ```bash Response
-        {
-            "dataSource": {
-                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "externalId": "1234567890",
-                "name": "my-bitbucket-source",
-                "description": "my bitbucket data source",
-                "isAutoScanEnabled": true,
-                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "createdAt": "2023-11-07T05:31:56Z",
-                "updatedAt": "2023-11-07T05:31:56Z",
-                "type": "bitbucket",
-                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "connection": {
-                    "app": "bitbucket",
-                    "name": "my-bitbucket-app",
-                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
-                },
-                "config": {
-                    "workspaceSlug": "my-workspace",
-                    "includeRepos": ["*"]
-                }
-            }
-        }
-        ```
-    </Tab>
-</Tabs>
+    - **Name**: A name that contains only lowercase letters, numbers, and hyphens
+    - **Description** (optional): A description of the data source
+  </Step>
+  <Step>
+    Review the data source, then select **Create Data Source**.
+    ![Data Source Review](/images/platform/secret-scanning/bitbucket/step-5.png)
+  </Step>
+  <Step>
+    The data source appears in **Data Sources**. If auto-scan is enabled, Infisical starts a [historical scan](/documentation/platform/secret-scanning/scan-repositories#scans) of every repository.
+    ![Data Source Created](/images/platform/secret-scanning/bitbucket/step-6.png)
+  </Step>
+  <Step>
+    To see the data source's repositories and scan history, select the data source.
+    ![Data Source Page](/images/platform/secret-scanning/bitbucket/step-7.png)
+  </Step>
+  <Step>
+    To review the secrets the scans found, go to **Findings**. To learn what each finding contains and how to change its status, see [Findings](/documentation/platform/secret-scanning/findings).
+    ![Findings Page](/images/platform/secret-scanning/bitbucket/step-8.png)
+  </Step>
+</Steps>

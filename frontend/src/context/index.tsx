@@ -8,6 +8,7 @@ export {
   OrgPermissionGroupActions,
   OrgPermissionHoneyTokenActions,
   OrgPermissionIdentityActions,
+  OrgPermissionMemberActions,
   OrgPermissionProjectActions,
   OrgPermissionSsoActions,
   OrgPermissionSubjects,
@@ -17,6 +18,10 @@ export { useProject } from "./ProjectContext";
 export type { TProjectPermission } from "./ProjectPermissionContext";
 export {
   ProjectPermissionActions,
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
@@ -35,6 +40,8 @@ export {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
+  ProjectPermissionProjectFolderGrantActions,
+  ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
   useProjectPermission
 } from "./ProjectPermissionContext";

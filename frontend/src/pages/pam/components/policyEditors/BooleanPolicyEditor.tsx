@@ -1,4 +1,4 @@
-import { Field, FieldContent, FieldDescription, FieldTitle, Switch } from "@app/components/v3";
+import { Field, FieldContent, FieldDescription, FieldTitle, Toggle } from "@app/components/v3";
 
 import { PolicyEditorProps } from "./types";
 
@@ -8,7 +8,7 @@ export const BooleanPolicyEditor = ({ label, description, value, onChange }: Pol
       <FieldTitle>{label}</FieldTitle>
       <FieldDescription>{description}</FieldDescription>
     </FieldContent>
-    <Switch
+    <Toggle
       checked={value === true}
       variant="pam"
       onCheckedChange={(checked) => onChange(checked)}

@@ -51,6 +51,7 @@ export enum TableName {
   AlertChannelMembership = "alert_channel_memberships",
   AlertHistory = "alert_history",
   AlertHistoryTarget = "alert_history_target",
+  EventOutbox = "event_outbox",
   Groups = "groups",
   GroupProjectMembership = "group_project_memberships",
   GroupProjectMembershipRole = "group_project_membership_roles",
@@ -71,7 +72,6 @@ export enum TableName {
   UserSecretActivation = "user_secret_activation",
   SignupOnboardingResponse = "signup_onboarding_responses",
   SuperAdmin = "super_admin",
-  RateLimit = "rate_limit",
   // dropped with the SSH product; member kept for historical migrations
   ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
@@ -152,6 +152,7 @@ export enum TableName {
   AuditLog = "audit_logs",
   AuditLogStream = "audit_log_streams",
   AuditLogStreamOutbox = "audit_log_stream_outbox",
+  AuditLogSettings = "audit_log_settings",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",
@@ -160,6 +161,7 @@ export enum TableName {
   DynamicSecretLease = "dynamic_secret_leases",
   SecretV2 = "secrets_v2",
   SecretReferenceV2 = "secret_references_v2",
+  SecretReadActivity = "secret_read_activity",
   SecretVersionV2 = "secret_versions_v2",
   SecretApprovalRequestSecretV2 = "secret_approval_requests_secrets_v2",
   SecretApprovalRequestSecretTagV2 = "secret_approval_request_secret_tags_v2",
@@ -167,7 +169,9 @@ export enum TableName {
   ProjectSplitBackfillIds = "project_split_backfill_ids",
   UserNotifications = "user_notifications",
   ScimEvents = "scim_events",
-  // Gateway
+  // Gateway v1. Retired: nothing reads or writes these tables, or the gatewayId columns on
+  // dynamic_secrets / identity_kubernetes_auths / identity_auth_templates that point at them.
+  // They are kept populated so the removal can be reverted without data loss.
   OrgGatewayConfig = "org_gateway_config",
   Gateway = "gateways",
   ProjectGateway = "project_gateways",
@@ -178,6 +182,8 @@ export enum TableName {
   SecretVersionV2Tag = "secret_version_v2_tag_junction",
   // KMS Service
   KmsServerRootConfig = "kms_root_config",
+  KmsLegacyEncryptionKey = "kms_legacy_encryption_keys",
+  KmsKekHistory = "kms_kek_history",
   KmsKey = "kms_keys",
   ExternalKms = "external_kms",
   InternalKms = "internal_kms",
@@ -240,6 +246,8 @@ export enum TableName {
   GatewayV2 = "gateways_v2",
   ResourceAuthMethod = "resource_auth_methods",
   ResourceAwsAuth = "resource_aws_auths",
+  ResourceGcpAuth = "resource_gcp_auths",
+  ResourceKubernetesAuth = "resource_kubernetes_auths",
   ResourceTokenAuth = "resource_token_auths",
   GatewayPool = "gateway_pools",
   GatewayPoolMembership = "gateway_pool_memberships",
@@ -267,8 +275,24 @@ export enum TableName {
   PamResourceFavorite = "pam_resource_favorites",
   PamDomain = "pam_domains",
   PamAccountPolicy = "pam_account_policies",
+  AgentVaultAccessBundle = "agent_vault_access_bundles",
+  AgentVaultService = "agent_vault_services",
+  AgentVaultServiceCustomHeader = "agent_vault_service_custom_headers",
+  AgentVaultServiceSubstitution = "agent_vault_service_substitutions",
+  AgentVaultVariable = "agent_vault_variables",
+  AgentVaultServiceVariableReference = "agent_vault_service_variable_references",
+  AgentVaultPersonalValue = "agent_vault_personal_values",
+  AgentVaultPersonalValueReference = "agent_vault_personal_value_references",
+  AgentVaultSession = "agent_vault_sessions",
+  AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
+  AgentVaultProxy = "agent_vault_proxies",
+  AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
+  AgentVaultSkill = "agent_vault_skills",
+  AgentVaultSkillVersion = "agent_vault_skill_versions",
+  AgentVaultAccessBundleSkill = "agent_vault_access_bundle_skills",
+  // Dropped; kept only for the migrations that create and drop it.
+  AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 
-  VaultExternalMigrationConfig = "vault_external_migration_configs",
   ExternalMigrationConfig = "external_migration_configs",
 
   // PKI ACME
@@ -305,11 +329,18 @@ export enum TableName {
   ApprovalPolicySteps = "approval_policy_steps",
   ApprovalPolicyStepApprovers = "approval_policy_step_approvers",
   ApprovalPolicyBypassers = "approval_policy_bypassers",
+  ApprovalPolicyAutoApprovalInputs = "approval_policy_auto_approval_inputs",
+  ApprovalPolicyAutoApprovalRules = "approval_policy_auto_approval_rules",
+  ApprovalPolicyAutoApprovalConditions = "approval_policy_auto_approval_conditions",
+  ApprovalPolicySecretEnvironment = "approval_policy_secret_environments",
   ApprovalRequests = "approval_requests",
   ApprovalRequestSteps = "approval_request_steps",
   ApprovalRequestStepEligibleApprovers = "approval_request_step_eligible_approvers",
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
+  SecretChangeRequests = "secret_change_requests",
+  DelegatedApprovalPolicies = "delegated_approval_policies",
+  DelegatedApprovalRequests = "delegated_approval_requests",
 
   // Code Signing
   PkiSigners = "pki_signers",
@@ -341,7 +372,8 @@ export enum TableName {
   DeprecatedSecretRotationV1 = "secret_rotations",
   DeprecatedSecretRotationOutput = "secret_rotation_outputs",
   DeprecatedSecretRotationOutputV2 = "secret_rotation_output_v2",
-  DeprecatedApiKey = "api_keys"
+  DeprecatedApiKey = "api_keys",
+  DeprecatedRateLimit = "rate_limit"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -391,11 +423,22 @@ export enum ResourceMembershipRole {
   Custom = "custom"
 }
 
+// Stored in additional_privileges.role for folder-scoped grants. The tiers are cumulative: each is
+// a superset of the one above it.
+export enum SecretFolderRole {
+  List = "list",
+  Read = "read",
+  Edit = "edit",
+  Manage = "manage",
+  FullAccess = "full-access"
+}
+
 export enum ResourceType {
   CertificateApplication = "certificate-application",
   Signer = "pki-signer",
   PamFolder = "pam-folder",
-  PamAccount = "pam-account"
+  PamAccount = "pam-account",
+  AgentVaultAccessBundle = "agent-vault-access-bundle"
 }
 
 export enum SecretEncryptionAlgo {
@@ -446,8 +489,21 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  AgentVault = "agent-vault"
 }
+
+// These products resolve every non-admin slug to their member rule set, so a viewer, no-access or
+// custom role would promise less access than it grants. Write paths reject those roles outright;
+// rows written before a product joined this list are not re-validated.
+const ADMIN_MEMBER_ONLY_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
+  [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.PAM]: "Privileged Access Manager",
+  [ProjectType.AgentVault]: "Agent Vault"
+};
+
+export const getAdminMemberOnlyProductLabel = (projectType?: string | null) =>
+  projectType ? ADMIN_MEMBER_ONLY_PRODUCT_LABELS[projectType as ProjectType] : undefined;
 
 export enum ActionProjectType {
   SecretManager = ProjectType.SecretManager,
@@ -455,6 +511,7 @@ export enum ActionProjectType {
   KMS = ProjectType.KMS,
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
+  AgentVault = ProjectType.AgentVault,
   // project operations that happen on all types
   Any = "any"
 }

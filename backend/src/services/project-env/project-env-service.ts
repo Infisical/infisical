@@ -9,6 +9,8 @@ import { TSecretApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/sec
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TApprovalPolicySecretEnvironmentDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
 import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -26,11 +28,12 @@ import {
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
   accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
   secretApprovalPolicyEnvironmentDAL: Pick<TSecretApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
+  approvalPolicySecretEnvironmentDAL: Pick<TApprovalPolicySecretEnvironmentDALFactory, "findPolicyByEnvId">;
 };
 
 export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFactory>;
@@ -42,7 +45,8 @@ export const projectEnvServiceFactory = ({
   keyStore,
   folderDAL,
   accessApprovalPolicyEnvironmentDAL,
-  secretApprovalPolicyEnvironmentDAL
+  secretApprovalPolicyEnvironmentDAL,
+  approvalPolicySecretEnvironmentDAL
 }: TProjectEnvServiceFactoryDep) => {
   const createEnvironment = async ({
     projectId,
@@ -219,7 +223,9 @@ export const projectEnvServiceFactory = ({
             await projectEnvDAL.updateAllPosition(projectId, oldEnv.position, position, tx);
           }
         }
-        return projectEnvDAL.updateById(oldEnv.id, { name, slug, position }, tx);
+        const updated = await projectEnvDAL.updateById(oldEnv.id, { name, slug, position }, tx);
+        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
+        return updated;
       });
 
       await keyStore.setItemWithExpiry(
@@ -282,6 +288,13 @@ export const projectEnvServiceFactory = ({
             name: "DeleteEnvironment"
           });
         }
+        const approvalPolicy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvId(id, tx);
+        if (approvalPolicy) {
+          throw new BadRequestError({
+            message: `Environment is in use by ${approvalPolicy.policyType === ApprovalPolicyType.SecretAccess ? "an access approval policy" : "a secret approval policy"}`,
+            name: "DeleteEnvironment"
+          });
+        }
         if (hardDelete) {
           const [doc] = await projectEnvDAL.delete({ id, projectId }, tx);
           if (!doc)
@@ -291,6 +304,7 @@ export const projectEnvServiceFactory = ({
             });
 
           await projectEnvDAL.closePositionGap(projectId, doc.position, tx);
+          await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
 
           return doc;
         }
@@ -328,6 +342,7 @@ export const projectEnvServiceFactory = ({
             name: "DeleteEnvironment"
           });
 
+        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
         return doc;
       });
 
@@ -419,6 +434,7 @@ export const projectEnvServiceFactory = ({
             name: "RestoreEnvironment"
           });
 
+        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
         return doc;
       });
 

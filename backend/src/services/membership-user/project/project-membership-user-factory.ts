@@ -3,11 +3,12 @@ import { ForbiddenError } from "@casl/ability";
 import {
   AccessScope,
   ActionProjectType,
+  getAdminMemberOnlyProductLabel,
   OrgMembershipStatus,
-  ProjectMembershipRole,
-  ProjectType
+  ProjectMembershipRole
 } from "@app/db/schemas";
 import {
+  assertRoleSetBoundary,
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
@@ -21,6 +22,10 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import {
+  filterRolesNeedingPrivilegeBoundary,
+  resolveMembershipRoleSlugs
+} from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -32,9 +37,9 @@ import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TProjectMembershipUserScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "findActorsWithOrgAccess">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "getUserById">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "findById">;
   projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
@@ -65,6 +70,7 @@ export const newProjectMembershipUserFactory = ({
 
   const isCustomRole: TMembershipUserScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
 
+  // Same add rule as everywhere else (findActorsWithActiveOrgAccess).
   const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
     dto,
     newUsers
@@ -80,31 +86,48 @@ export const newProjectMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
 
-    // TODO(namespace): this becomes tricky in namespace due to group flow
-    const orgMemberships = await membershipUserDAL.find({
-      scope: AccessScope.Organization,
-      scopeOrgId: dto.permission.orgId,
-      $in: {
-        actorUserId: newUsers.map((el) => el.id)
-      }
+    const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({
+      orgId: dto.permission.orgId,
+      userIds: newUsers.map((el) => el.id),
+      identityIds: []
     });
-    if (orgMemberships.length !== newUsers.length) {
-      const missingUsers = newUsers
-        .filter((el) => !orgMemberships.find((memb) => memb.actorUserId === el.id))
-        .map((el) => el.email);
-      throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
+    const withoutActiveAccess = newUsers.filter((el) => !withOrgAccess.userIds.has(el.id));
+    if (withoutActiveAccess.length) {
+      const withAnyAccess = await orgDAL.findActorsWithOrgAccess({
+        orgId: dto.permission.orgId,
+        userIds: withoutActiveAccess.map((el) => el.id),
+        identityIds: []
+      });
+      const deactivatedUsers = withoutActiveAccess.filter((el) => withAnyAccess.userIds.has(el.id));
+      if (deactivatedUsers.length) {
+        throw new BadRequestError({
+          message: `${deactivatedUsers.map((el) => `'${el.email}'`).join(", ")} ${
+            deactivatedUsers.length === 1 ? "is" : "are"
+          } deactivated in this organization. Reactivate them before adding them to this project.`
+        });
+      }
+      throw new BadRequestError({
+        message: `Users ${withoutActiveAccess.map((el) => el.email).join(",")} not part of organization`
+      });
     }
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
       projectDAL.findById(scope.value)
     );
-    if (project?.type === ProjectType.CertificateManager) {
+    const adminMemberOnlyLabel = getAdminMemberOnlyProductLabel(project?.type);
+    if (adminMemberOnlyLabel) {
       const invalidRoles = dto.data.roles.filter(
         (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
       );
       if (invalidRoles.length > 0) {
         throw new BadRequestError({
-          message: "Certificate Manager only supports Admin and Member roles."
+          message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
+        });
+      }
+      // One role per membership: the product routes write exactly one, and their member lists read one.
+      if (dto.data.roles.length > 1) {
+        throw new BadRequestError({
+          message: `${adminMemberOnlyLabel} memberships hold a single role.`
         });
       }
     }
@@ -114,7 +137,7 @@ export const newProjectMembershipUserFactory = ({
       () => orgDAL.findById(dto.permission.orgId)
     );
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       scope.value
     );
 
@@ -147,6 +170,7 @@ export const newProjectMembershipUserFactory = ({
     }
   };
 
+  // Only email users who can already sign in: accepted direct members and group-only members.
   const onCreateMembershipComplete: TMembershipUserScopeFactory["onCreateMembershipComplete"] = async (
     dto,
     newMembers
@@ -160,16 +184,26 @@ export const newProjectMembershipUserFactory = ({
       });
     }
 
-    const orgMembershipAccepted = await membershipUserDAL.find({
+    const newMemberIds = newMembers.map((el) => el.id);
+    const directOrgMemberships = await membershipUserDAL.find({
       scope: AccessScope.Organization,
       scopeOrgId: dto.permission.orgId,
-      status: OrgMembershipStatus.Accepted,
       $in: {
-        actorUserId: newMembers.map((el) => el.id)
+        actorUserId: newMemberIds
       }
     });
+    const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({
+      orgId: dto.permission.orgId,
+      userIds: newMemberIds,
+      identityIds: []
+    });
+    const directByUserId = new Map(directOrgMemberships.map((el) => [el.actorUserId as string, el]));
+    const orgMembershipAcceptedUserIds = newMemberIds.filter((userId) => {
+      const direct = directByUserId.get(userId);
+      return direct ? direct.status === OrgMembershipStatus.Accepted : withOrgAccess.userIds.has(userId);
+    });
 
-    if (!orgMembershipAccepted.length) return { signUpTokens: [] };
+    if (!orgMembershipAcceptedUserIds.length) return { signUpTokens: [] };
 
     const appCfg = getConfig();
     const scope = getScopeField(dto.scopeData);
@@ -177,7 +211,6 @@ export const newProjectMembershipUserFactory = ({
       projectDAL.findById(scope.value)
     );
 
-    const orgMembershipAcceptedUserIds = orgMembershipAccepted.map((el) => el.actorUserId as string);
     const emails = newMembers
       .filter((el) => Boolean(el?.email) && orgMembershipAcceptedUserIds.includes(el.id))
       .map((el) => el?.email as string);
@@ -210,13 +243,20 @@ export const newProjectMembershipUserFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
       projectDAL.findById(scope.value)
     );
-    if (project?.type === ProjectType.CertificateManager) {
+    const adminMemberOnlyLabel = getAdminMemberOnlyProductLabel(project?.type);
+    if (adminMemberOnlyLabel) {
       const invalidRoles = dto.data.roles.filter(
         (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
       );
       if (invalidRoles.length > 0) {
         throw new BadRequestError({
-          message: "Certificate Manager only supports Admin and Member roles."
+          message: `${adminMemberOnlyLabel} only supports Admin and Member roles.`
+        });
+      }
+      // One role per membership: the product routes write exactly one, and their member lists read one.
+      if (dto.data.roles.length > 1) {
+        throw new BadRequestError({
+          message: `${adminMemberOnlyLabel} memberships hold a single role.`
         });
       }
     }
@@ -232,8 +272,27 @@ export const newProjectMembershipUserFactory = ({
       requestMemoKeys.orgFindById(dto.permission.orgId),
       () => orgDAL.findById(dto.permission.orgId)
     );
+
+    const targetMembership = await membershipUserDAL.getUserById({
+      scopeData: dto.scopeData,
+      userId: dto.selector.userId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+      ignoreUnresolvedRoles: true
+    });
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.GrantPrivileges],
+      opSubject: ProjectPermissionSub.Member,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to change the roles of a more privileged member",
+      subjectFields: { userEmail: targetUser.email || undefined }
+    });
+
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
+      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
       scope.value
     );
 
@@ -274,6 +333,29 @@ export const newProjectMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
+
+    const targetMembership = await membershipUserDAL.getUserById({
+      scopeData: dto.scopeData,
+      userId: dto.selector.userId
+    });
+    const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
+    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+      ignoreUnresolvedRoles: true
+    });
+    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
+      requestMemoKeys.orgFindById(dto.permission.orgId),
+      () => orgDAL.findById(dto.permission.orgId)
+    );
+
+    assertRoleSetBoundary({
+      shouldUseNewPrivilegeSystem,
+      opActions: ProjectPermissionMemberActions.Delete,
+      opSubject: ProjectPermissionSub.Member,
+      actorPermission: permission,
+      targetPermissions,
+      baseMessage: "Failed to remove a more privileged member from the project",
+      subjectFields: { userEmail: targetMembership?.user.email || undefined }
+    });
   };
 
   const onListMembershipUserGuard: TMembershipUserScopeFactory["onListMembershipUserGuard"] = async (dto) => {

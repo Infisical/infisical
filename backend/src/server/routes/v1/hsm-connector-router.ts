@@ -11,6 +11,8 @@ import { HsmConnectorSanitizedSchema } from "@app/services/hsm-connector/hsm-con
 import {
   CreateHsmConnectorBodySchema,
   HsmConnectorIdParamSchema,
+  HsmConnectorKeysQuerySchema,
+  HsmConnectorKeysResponseSchema,
   HsmConnectorLinkedResourcesQuerySchema,
   HsmConnectorLinkedResourcesResponseSchema,
   HsmConnectorTestResultSchema,
@@ -75,7 +77,7 @@ export const createHsmConnectorRouter =
         tags: [ApiDocsTags.HsmConnectors],
         response: { 200: z.object({ hsmConnectors: HsmConnectorSanitizedSchema.array() }) }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         const hsmConnectors = await server.services.hsmConnector.listHsmConnectors(
           { projectId: resolveProjectId(req) },
@@ -96,7 +98,7 @@ export const createHsmConnectorRouter =
         params: HsmConnectorIdParamSchema,
         response: { 200: z.object({ hsmConnector: HsmConnectorSanitizedSchema }) }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         const hsmConnector = await server.services.hsmConnector.getHsmConnectorById(
           { connectorId: req.params.connectorId },
@@ -223,7 +225,7 @@ export const createHsmConnectorRouter =
         querystring: HsmConnectorLinkedResourcesQuerySchema,
         response: { 200: HsmConnectorLinkedResourcesResponseSchema }
       },
-      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         return server.services.hsmConnector.listLinkedResources(
           {
@@ -233,6 +235,28 @@ export const createHsmConnectorRouter =
           },
           req.permission
         );
+      }
+    });
+
+    server.route({
+      method: "GET",
+      url: "/:connectorId/keys",
+      config: { rateLimit: readLimit },
+      schema: {
+        hide: false,
+        operationId: "listHsmConnectorKeys",
+        tags: [ApiDocsTags.HsmConnectors],
+        params: HsmConnectorIdParamSchema,
+        querystring: HsmConnectorKeysQuerySchema,
+        response: { 200: HsmConnectorKeysResponseSchema }
+      },
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+      handler: async (req) => {
+        const { keys } = await server.services.hsmConnector.listHsmConnectorKeys(
+          { connectorId: req.params.connectorId, projectId: resolveProjectId(req), keyLabel: req.query.label },
+          req.permission
+        );
+        return { keys };
       }
     });
   };

@@ -1,15 +1,16 @@
-import { faGithub, IconDefinition } from "@fortawesome/free-brands-svg-icons";
-import {
-  faBullseye,
-  faCertificate,
-  faKey,
-  faLink,
-  faLock,
-  faPassport,
-  faServer,
-  faUser
-} from "@fortawesome/free-solid-svg-icons";
 import { useRouterState } from "@tanstack/react-router";
+import {
+  FileBadgeIcon,
+  GithubIcon,
+  IdCardIcon,
+  KeyRoundIcon,
+  LinkIcon,
+  LockIcon,
+  LucideIcon,
+  RadarIcon,
+  ServerIcon,
+  UserIcon
+} from "lucide-react";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -23,6 +24,7 @@ import {
   CamundaConnectionMethod,
   CloudflareConnectionMethod,
   DatabricksConnectionMethod,
+  DaytonaConnectionMethod,
   DbtConnectionMethod,
   DevinConnectionMethod,
   FlyioConnectionMethod,
@@ -71,6 +73,9 @@ import { FireworksConnectionMethod } from "@app/hooks/api/appConnections/types/f
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { HpeIloConnectionMethod } from "@app/hooks/api/appConnections/types/hpe-ilo-connection";
+import { JiraConnectionMethod } from "@app/hooks/api/appConnections/types/jira-connection";
+import { KeeperConnectionMethod } from "@app/hooks/api/appConnections/types/keeper-connection";
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
@@ -84,17 +89,24 @@ import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-con
 import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
+import { PaloAltoNetworksConnectionMethod } from "@app/hooks/api/appConnections/types/palo-alto-networks-connection";
+import { PortainerConnectionMethod } from "@app/hooks/api/appConnections/types/portainer-connection";
+import { PowerDnsConnectionMethod } from "@app/hooks/api/appConnections/types/powerdns-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/rundeck-connection";
+import { S3CompatibleConnectionMethod } from "@app/hooks/api/appConnections/types/s3-compatible-connection";
 import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
+import { ServiceNowConnectionMethod } from "@app/hooks/api/appConnections/types/servicenow-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
 import { SpaceliftConnectionMethod } from "@app/hooks/api/appConnections/types/spacelift-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
+import { StripeConnectionMethod } from "@app/hooks/api/appConnections/types/stripe-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
 import { TriggerDevConnectionMethod } from "@app/hooks/api/appConnections/types/trigger-dev-connection";
+import { UltraDNSConnectionMethod } from "@app/hooks/api/appConnections/types/ultradns-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
 import { WinRMConnectionMethod } from "@app/hooks/api/appConnections/types/winrm-connection";
@@ -108,7 +120,7 @@ export const APP_CONNECTION_MAP: Record<
     category: string;
     description: string;
     size?: number;
-    icon?: IconDefinition;
+    icon?: LucideIcon;
     enterprise?: boolean;
     aliases?: string[];
   }
@@ -128,7 +140,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.GitHubRadar]: {
     name: "GitHub Radar",
     image: "GitHub.png",
-    icon: faBullseye,
+    icon: RadarIcon,
     category: "SECURITY",
     description: "GitHub App connection used for secret scanning."
   },
@@ -281,11 +293,23 @@ export const APP_CONNECTION_MAP: Record<
     category: "PASSWORD MANAGER",
     description: "Read and manage items in 1Password vaults."
   },
+  [AppConnection.Keeper]: {
+    name: "Keeper",
+    image: "Keeper.png",
+    category: "PASSWORD MANAGER",
+    description: "Connect to Keeper Commander Service Mode."
+  },
   [AppConnection.Heroku]: {
     name: "Heroku",
     image: "Heroku.png",
     category: "HOSTING",
     description: "App and config var access for Heroku."
+  },
+  [AppConnection.Stripe]: {
+    name: "Stripe",
+    image: "Stripe.svg",
+    category: "PLATFORM",
+    description: "API key management for Stripe."
   },
   [AppConnection.Render]: {
     name: "Render",
@@ -317,6 +341,18 @@ export const APP_CONNECTION_MAP: Record<
     size: 120,
     category: "DNS",
     description: "Manage DNS records on DNS Made Easy."
+  },
+  [AppConnection.PowerDns]: {
+    name: "PowerDNS",
+    image: "PowerDNS.png",
+    category: "DNS",
+    description: "Manage DNS records on a self-hosted PowerDNS server."
+  },
+  [AppConnection.UltraDNS]: {
+    name: "UltraDNS",
+    image: "UltraDNS.png",
+    category: "DNS",
+    description: "Manage DNS records on UltraDNS."
   },
   [AppConnection.Zabbix]: {
     name: "Zabbix",
@@ -496,6 +532,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "NETWORKING",
     description: "Manage a Citrix NetScaler appliance."
   },
+  [AppConnection.PaloAltoNetworks]: {
+    name: "Palo Alto Networks",
+    image: "Palo Alto Networks.png",
+    category: "NETWORKING",
+    description: "Connect to a Palo Alto Networks firewall or Panorama."
+  },
   [AppConnection.KempLoadMaster]: {
     name: "Kemp LoadMaster",
     image: "Kemp LoadMaster.png",
@@ -588,6 +630,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "NETWORKING",
     description: "Manage an F5 BIG-IP appliance."
   },
+  [AppConnection.HpeIloRedFish]: {
+    name: "HPE iLO",
+    image: "HPE iLO.png",
+    category: "INFRASTRUCTURE",
+    description: "Manage an HPE iLO server through the Redfish API."
+  },
   [AppConnection.Convex]: {
     name: "Convex",
     image: "Convex.png",
@@ -612,6 +660,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "INFRASTRUCTURE",
     description: "Job and project access for Rundeck."
   },
+  [AppConnection.Portainer]: {
+    name: "Portainer",
+    image: "Portainer.png",
+    category: "INFRASTRUCTURE",
+    description: "Stack and environment access for Portainer."
+  },
   [AppConnection.NutanixPrismCentral]: {
     name: "Nutanix Prism Central",
     image: "Nutanix.png",
@@ -623,8 +677,86 @@ export const APP_CONNECTION_MAP: Record<
     image: "Spacelift.png",
     category: "INFRASTRUCTURE",
     description: "Sync and manage resources with Spacelift."
+  },
+  [AppConnection.Daytona]: {
+    name: "Daytona",
+    image: "Daytona.png",
+    category: "PLATFORM",
+    description: "Organization secret access for Daytona sandboxes."
+  },
+  [AppConnection.ServiceNow]: {
+    name: "ServiceNow",
+    image: "ServiceNow.png",
+    category: "PLATFORM",
+    description: "Route access requests through ServiceNow approvals.",
+    enterprise: true
+  },
+  [AppConnection.S3Compatible]: {
+    name: "S3-Compatible Storage",
+    image: "S3 Compatible.svg",
+    aliases: ["aws s3", "cloudflare r2", "google cloud storage", "gcs", "oracle", "oci"],
+    category: "STORAGE",
+    description: "Connect to AWS S3, Cloudflare R2, Google Cloud Storage or OCI Object Storage."
+  },
+  [AppConnection.Jira]: {
+    name: "Jira",
+    image: "Jira.svg",
+    category: "PRODUCTIVITY",
+    description: "Atlassian Jira Cloud and Data Center."
   }
 };
+
+const S3_COMPATIBLE_PROVIDERS = [
+  { name: "AWS S3", hostname: /^s3\.[a-z0-9-]+\.amazonaws\.com$/ },
+  { name: "Cloudflare R2", hostname: /^[a-f0-9]{32}(\.[a-z]+)?\.r2\.cloudflarestorage\.com$/ },
+  { name: "Google Cloud Storage", hostname: /^storage\.googleapis\.com$/ },
+  {
+    name: "OCI Object Storage",
+    hostname:
+      /^[a-z0-9-]+\.compat\.objectstorage\.[a-z0-9-]+\.(oraclecloud\.com|oci\.customer-oci\.com)$/
+  }
+];
+
+const STORAGE_HOSTNAME_REGEX = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?$/;
+
+export const isStorageHostname = (hostname: string) => {
+  if (!STORAGE_HOSTNAME_REGEX.test(hostname)) return false;
+  try {
+    return new URL(`https://${hostname}`).host === hostname;
+  } catch {
+    return false;
+  }
+};
+
+export const getS3CompatibleProviderName = (
+  endpoint: string,
+  allowedStorageHostnames: string[] = []
+) => {
+  try {
+    const url = new URL(endpoint);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.pathname !== "/" ||
+      url.search ||
+      url.hash
+    ) {
+      return null;
+    }
+    const providerName = url.port
+      ? undefined
+      : S3_COMPATIBLE_PROVIDERS.find(({ hostname }) => hostname.test(url.hostname))?.name;
+    if (providerName) return providerName;
+    return allowedStorageHostnames.includes(url.host) ? url.host : null;
+  } catch {
+    return null;
+  }
+};
+
+export const getAppConnectionProviderName = (connection: TAppConnection) =>
+  (connection.app === AppConnection.S3Compatible &&
+    getS3CompatibleProviderName(connection.credentials.endpoint)) ||
+  APP_CONNECTION_MAP[connection.app].name;
 
 export const POPULAR_APP_CONNECTIONS: AppConnection[] = [
   AppConnection.AWS,
@@ -639,10 +771,11 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
   switch (method) {
     case GitHubConnectionMethod.App:
     case GitHubRadarConnectionMethod.App:
-      return { name: "GitHub App", icon: faGithub };
+      return { name: "GitHub App", icon: GithubIcon };
     case GitHubConnectionMethod.Pat:
     case OnaConnectionMethod.PersonalAccessToken:
-      return { name: "Personal Access Token", icon: faKey };
+    case JiraConnectionMethod.PersonalAccessToken:
+      return { name: "Personal Access Token", icon: KeyRoundIcon };
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
     case AzureClientSecretsConnectionMethod.OAuth:
@@ -651,18 +784,20 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case HerokuConnectionMethod.OAuth:
     case GitLabConnectionMethod.OAuth:
     case VenafiTppConnectionMethod.OAuth:
-      return { name: "OAuth", icon: faPassport };
+    case StripeConnectionMethod.OAuth:
+      return { name: "OAuth", icon: IdCardIcon };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
-      return { name: "Access Key", icon: faKey };
+    case S3CompatibleConnectionMethod.AccessKey:
+      return { name: "Access Key", icon: KeyRoundIcon };
     case AwsConnectionMethod.AssumeRole:
-      return { name: "Assume Role", icon: faUser };
+      return { name: "Assume Role", icon: UserIcon };
     case GcpConnectionMethod.ServiceAccountImpersonation:
-      return { name: "Service Account Impersonation", icon: faUser };
+      return { name: "Service Account Impersonation", icon: UserIcon };
     case DatabricksConnectionMethod.ServicePrincipal:
-      return { name: "Service Principal", icon: faUser };
+      return { name: "Service Principal", icon: UserIcon };
     case CamundaConnectionMethod.ClientCredentials:
-      return { name: "Client Credentials", icon: faKey };
+      return { name: "Client Credentials", icon: KeyRoundIcon };
     case HumanitecConnectionMethod.ApiToken:
     case TerraformCloudConnectionMethod.ApiToken:
     case VercelConnectionMethod.ApiToken:
@@ -679,9 +814,11 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case TravisCIConnectionMethod.ApiToken:
     case DopplerConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
-      return { name: "API Token", icon: faKey };
+    case PortainerConnectionMethod.ApiToken:
+    case JiraConnectionMethod.ApiToken:
+      return { name: "API Token", icon: KeyRoundIcon };
     case VenafiConnectionMethod.ApiKey:
-      return { name: "API Key", icon: faKey };
+      return { name: "API Key", icon: KeyRoundIcon };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
@@ -690,9 +827,10 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AdcsConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
-      return { name: "Username & Password", icon: faLock };
+    case UltraDNSConnectionMethod.UsernamePassword:
+      return { name: "Username & Password", icon: LockIcon };
     case SnowflakeConnectionMethod.UsernameAndToken:
-      return { name: "Username & Token", icon: faKey };
+      return { name: "Username & Token", icon: KeyRoundIcon };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
@@ -703,23 +841,23 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case HasuraCloudConnectionMethod.AccessToken:
     case QoveryConnectionMethod.AccessToken:
     case Cloud66ConnectionMethod.AccessToken:
-      return { name: "Personal Access Token", icon: faKey };
+      return { name: "Personal Access Token", icon: KeyRoundIcon };
     case Auth0ConnectionMethod.ClientCredentials:
     case SalesforceConnectionMethod.ClientCredentials:
-      return { name: "Client Credentials", icon: faServer };
+      return { name: "Client Credentials", icon: ServerIcon };
     case HCVaultConnectionMethod.AppRole:
-      return { name: "App Role", icon: faUser };
+      return { name: "App Role", icon: UserIcon };
     case LdapConnectionMethod.SimpleBind:
-      return { name: "Simple Bind", icon: faLink };
+      return { name: "Simple Bind", icon: LinkIcon };
     case HerokuConnectionMethod.AuthToken:
-      return { name: "Auth Token", icon: faKey };
+      return { name: "Auth Token", icon: KeyRoundIcon };
     case RailwayConnectionMethod.AccountToken:
     case SupabaseConnectionMethod.AccessToken:
-      return { name: "Account Token", icon: faKey };
+      return { name: "Account Token", icon: KeyRoundIcon };
     case RailwayConnectionMethod.TeamToken:
-      return { name: "Team Token", icon: faKey };
+      return { name: "Team Token", icon: KeyRoundIcon };
     case RailwayConnectionMethod.ProjectToken:
-      return { name: "Project Token", icon: faKey };
+      return { name: "Project Token", icon: KeyRoundIcon };
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
@@ -732,47 +870,53 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case GoDaddyConnectionMethod.ApiKey:
     case TriggerDevConnectionMethod.ApiKey:
     case DatadogConnectionMethod.ApiKey:
-      return { name: "API Key", icon: faKey };
+    case DaytonaConnectionMethod.ApiKey:
+    case PowerDnsConnectionMethod.ApiKey:
+    case KeeperConnectionMethod.ApiKey:
+      return { name: "API Key", icon: KeyRoundIcon };
     case ChefConnectionMethod.UserKey:
-      return { name: "User Key", icon: faKey };
+      return { name: "User Key", icon: KeyRoundIcon };
     case AzureClientSecretsConnectionMethod.ClientSecret:
     case AzureAppConfigurationConnectionMethod.ClientSecret:
     case AzureKeyVaultConnectionMethod.ClientSecret:
     case AzureDevOpsConnectionMethod.ClientSecret:
-      return { name: "Client Secret", icon: faKey };
+      return { name: "Client Secret", icon: KeyRoundIcon };
     case AzureClientSecretsConnectionMethod.Certificate:
     case AzureKeyVaultConnectionMethod.Certificate:
-      return { name: "Certificate", icon: faCertificate };
+      return { name: "Certificate", icon: FileBadgeIcon };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
     case SpaceliftConnectionMethod.ApiKeySecret:
-      return { name: "API Key & Secret", icon: faKey };
+      return { name: "API Key & Secret", icon: KeyRoundIcon };
     case AzureDNSConnectionMethod.ClientSecret:
     case AzureEntraIdConnectionMethod.ClientSecret:
     case MicrosoftIntuneConnectionMethod.ClientSecret:
-      return { name: "Client Secret", icon: faKey };
+      return { name: "Client Secret", icon: KeyRoundIcon };
     case OctopusDeployConnectionMethod.ApiKey:
-      return { name: "API Key", icon: faKey };
+      return { name: "API Key", icon: KeyRoundIcon };
     case DatadogConnectionMethod.Token:
-      return { name: "Service Access Token", icon: faKey };
+      return { name: "Service Access Token", icon: KeyRoundIcon };
     case SshConnectionMethod.Password:
-      return { name: "Password", icon: faLock };
+      return { name: "Password", icon: LockIcon };
     case SshConnectionMethod.SshKey:
-      return { name: "SSH Key", icon: faKey };
+      return { name: "SSH Key", icon: KeyRoundIcon };
     case SmbConnectionMethod.Credentials:
-      return { name: "Credentials", icon: faLock };
+      return { name: "Credentials", icon: LockIcon };
     case WinRMConnectionMethod.UsernamePassword:
-      return { name: "Username & Password", icon: faLock };
+      return { name: "Username & Password", icon: LockIcon };
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
-      return { name: "Machine Identity - Universal Auth", icon: faKey };
+      return { name: "Machine Identity - Universal Auth", icon: KeyRoundIcon };
     case NetScalerConnectionMethod.BasicAuth:
+    case PaloAltoNetworksConnectionMethod.BasicAuth:
     case KempLoadMasterConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
-      return { name: "Basic Auth", icon: faLock };
+    case HpeIloConnectionMethod.BasicAuth:
+    case ServiceNowConnectionMethod.BasicAuth:
+      return { name: "Basic Auth", icon: LockIcon };
     case NutanixPrismCentralConnectionMethod.ApiKey:
-      return { name: "API Key", icon: faKey };
+      return { name: "API Key", icon: KeyRoundIcon };
     case OVHConnectionMethod.Certificate:
-      return { name: "Certificate", icon: faCertificate };
+      return { name: "Certificate", icon: FileBadgeIcon };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

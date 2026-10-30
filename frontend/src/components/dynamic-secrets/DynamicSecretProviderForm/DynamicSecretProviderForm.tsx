@@ -12,12 +12,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
-  Input
+  Input,
+  SheetFooter
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { useCreateDynamicSecret, useUpdateDynamicSecret } from "@app/hooks/api";
@@ -233,6 +234,9 @@ export const DynamicSecretProviderForm = <
   const nameError = form.formState.errors.name;
   const defaultTtlError = form.formState.errors.defaultTTL;
   const maxTtlError = form.formState.errors.maxTTL;
+  const ttlDescriptionId = commonFields?.ttlDescription
+    ? "dynamic-secret-ttl-description"
+    : undefined;
 
   return (
     <FormProvider {...form}>
@@ -243,8 +247,8 @@ export const DynamicSecretProviderForm = <
         data-slot="dynamic-secret-provider-form"
         className="@container flex min-h-0 flex-1 flex-col overflow-hidden"
       >
+        {header}
         <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-5 overflow-y-auto px-4 py-5">
-          {header}
           <section className="flex flex-col gap-4" aria-label="Dynamic secret details">
             <div className={cn("grid grid-cols-1 gap-3", commonFieldGrid)}>
               {commonFields?.name?.isVisible !== false && (
@@ -299,6 +303,7 @@ export const DynamicSecretProviderForm = <
                             commonFields?.defaultTTL?.description
                               ? "dynamic-secret-default-ttl-description"
                               : undefined,
+                            ttlDescriptionId,
                             defaultTtlError ? "dynamic-secret-default-ttl-error" : undefined
                           ]
                             .filter(Boolean)
@@ -342,6 +347,7 @@ export const DynamicSecretProviderForm = <
                             commonFields?.maxTTL?.description
                               ? "dynamic-secret-max-ttl-description"
                               : undefined,
+                            ttlDescriptionId,
                             maxTtlError ? "dynamic-secret-max-ttl-error" : undefined
                           ]
                             .filter(Boolean)
@@ -364,6 +370,11 @@ export const DynamicSecretProviderForm = <
                 />
               )}
             </div>
+            {ttlDescriptionId && ttlFieldCount > 0 && (
+              <FieldDescription id={ttlDescriptionId}>
+                {commonFields?.ttlDescription}
+              </FieldDescription>
+            )}
             {mode === "create" &&
               !isSingleEnvironmentMode &&
               commonFields?.environment?.isVisible !== false && (
@@ -375,17 +386,20 @@ export const DynamicSecretProviderForm = <
                       <FieldLabel htmlFor="dynamic-secret-environment">
                         {commonFields?.environment?.label ?? "Environment"}
                       </FieldLabel>
-                      <FilterableSelect<TDynamicSecretFormEnvironment>
-                        inputId="dynamic-secret-environment"
+                      <Combobox<TDynamicSecretFormEnvironment>
+                        id="dynamic-secret-environment"
                         options={environments}
                         value={(field.value as TDynamicSecretFormEnvironment | undefined) ?? null}
                         onBlur={field.onBlur}
-                        onChange={field.onChange}
+                        onValueChange={field.onChange}
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.slug}
                         placeholder="Select the environment to create the secret in..."
+                        searchPlaceholder="Search environments..."
+                        searchAriaLabel="Search environments"
                         isDisabled={commonFields?.environment?.isDisabled}
                         isError={Boolean(error)}
+                        modal
                         aria-describedby={
                           [
                             commonFields?.environment?.description
@@ -422,7 +436,7 @@ export const DynamicSecretProviderForm = <
             }
           >
             {commonFields?.configurationHeading !== false && (
-              <h3 id="dynamic-secret-configuration-heading" className="text-base font-medium">
+              <h3 id="dynamic-secret-configuration-heading" className="text-base font-normal">
                 {commonFields?.configurationHeading ?? "Configuration"}
               </h3>
             )}
@@ -443,18 +457,9 @@ export const DynamicSecretProviderForm = <
           </section>
         </div>
 
-        <div
-          data-slot="dynamic-secret-provider-form-footer"
-          className="flex shrink-0 flex-col-reverse gap-2 border-t border-border px-4 py-3 @sm:flex-row @sm:items-center @sm:justify-end"
-        >
+        <SheetFooter className="shrink-0 border-t">
           {onBack && (
-            <Button
-              type="button"
-              variant="ghost"
-              className="@sm:mr-auto"
-              onClick={onBack}
-              isDisabled={isPending}
-            >
+            <Button type="button" variant="ghost" onClick={onBack} isDisabled={isPending}>
               Back
             </Button>
           )}
@@ -469,7 +474,7 @@ export const DynamicSecretProviderForm = <
           >
             {mode === "create" ? definition.create.submitLabel : definition.edit.submitLabel}
           </Button>
-        </div>
+        </SheetFooter>
       </form>
     </FormProvider>
   );

@@ -1,11 +1,14 @@
 import { AlertTriangle, FileCheck, FileClock, FileKey, FileX } from "lucide-react";
 
-import { Badge, Card, CardContent } from "@app/components/v3";
+import { Badge, Card, CardContent, RowLink } from "@app/components/v3";
 import type { TDashboardStats } from "@app/hooks/api/certificates";
+
+import { formatShare } from "./chart-theme";
+import type { InventoryFilters, InventoryLink } from "./inventory-link";
 
 type Props = {
   stats: TDashboardStats;
-  onNavigate: (filters: Record<string, string | undefined>) => void;
+  getLink: (filters: InventoryFilters) => InventoryLink;
 };
 
 const cards = [
@@ -60,10 +63,9 @@ const getBadge = (key: string, stats: TDashboardStats) => {
   const { total, active } = stats.totals;
 
   if (key === "total" && total > 0) {
-    const pct = Math.round((active / total) * 100);
     return {
       variant: "org" as const,
-      label: `${pct}% active`
+      label: `${formatShare(active, total)} active`
     };
   }
   if (key === "active" && total > 0) {
@@ -93,7 +95,7 @@ const getBadge = (key: string, stats: TDashboardStats) => {
   return null;
 };
 
-export const KpiCards = ({ stats, onNavigate }: Props) => {
+export const KpiCards = ({ stats, getLink }: Props) => {
   return (
     <div className="flex flex-wrap gap-4">
       {cards.map((card) => {
@@ -103,12 +105,17 @@ export const KpiCards = ({ stats, onNavigate }: Props) => {
         return (
           <Card
             key={card.key}
-            className="h-auto min-w-[180px] flex-1 cursor-pointer gap-0 p-0 transition-colors hover:bg-container-hover"
-            onClick={() => onNavigate(card.filters)}
+            linked
+            className="h-auto min-w-[180px] flex-1 gap-0 p-0 transition-colors hover:bg-container-hover"
           >
             <CardContent className="flex h-full flex-col p-4">
               <div className="flex items-start justify-between">
-                <span className="text-base font-semibold text-foreground">{card.label}</span>
+                <RowLink
+                  {...getLink(card.filters)}
+                  className="text-base font-semibold text-foreground after:rounded-card"
+                >
+                  {card.label}
+                </RowLink>
                 <div
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${card.iconBg}`}
                 >

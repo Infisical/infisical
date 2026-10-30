@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   CheckCircle2Icon,
   ChevronDownIcon,
@@ -30,6 +30,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  ProviderIcon,
   Table,
   TableBody,
   TableHead,
@@ -42,7 +43,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper, useSlashFocusSearch } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   PkiSync,
@@ -122,6 +123,8 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
   } = usePagination<PkiSyncsOrderBy>(PkiSyncsOrderBy.Name, {
     initPerPage: getUserTablePreference("pkiSyncTable", PreferenceKey.PerPage, 20)
   });
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSlashFocusSearch(searchInputRef);
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -260,6 +263,7 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            ref={searchInputRef}
             placeholder="Search certificate syncs..."
           />
         </InputGroup>
@@ -319,18 +323,14 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
                     key={destination}
                   >
                     <div className="flex items-center gap-2">
-                      <img
-                        alt={`${name} integration`}
-                        src={`/images/integrations/${image}`}
-                        className="h-4 w-4"
-                      />
+                      <ProviderIcon alt={`${name} integration`} icon={image} className="h-4 w-4" />
                       <span>{name}</span>
                     </div>
                   </DropdownMenuCheckboxItem>
                 );
               })
             ) : (
-              <DropdownMenuLabel className="font-normal text-mineshaft-400">
+              <DropdownMenuLabel className="font-normal text-muted">
                 No Certificate Syncs Configured
               </DropdownMenuLabel>
             )}

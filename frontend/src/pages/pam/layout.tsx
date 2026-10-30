@@ -1,14 +1,13 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { BreadcrumbTypes } from "@app/components/v2";
 import { projectKeys } from "@app/hooks/api";
 import { organizationKeys } from "@app/hooks/api/organization/queries";
 import { Organization } from "@app/hooks/api/organization/types";
 import { fetchPamProjectId } from "@app/hooks/api/pam/queries";
 import { fetchProjectById } from "@app/hooks/api/projects/queries";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 import { PamLayout } from "@app/layouts/PamLayout";
-import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout"
@@ -52,12 +51,9 @@ export const Route = createFileRoute(
     ]);
 
     return {
-      breadcrumbs: [
-        {
-          type: BreadcrumbTypes.Component,
-          component: ProjectSelect
-        }
-      ]
+      implicitProjectId: pamProjectId,
+      implicitProductType: ProjectType.PAM,
+      breadcrumbs: []
     };
   }
 });

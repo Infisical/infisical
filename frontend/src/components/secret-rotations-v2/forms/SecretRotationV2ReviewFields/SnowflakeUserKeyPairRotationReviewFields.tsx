@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { SecretRotationReviewSection } from "./shared";
@@ -21,12 +21,12 @@ export const SnowflakeUserKeyPairRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="User">{username}</GenericFieldLabel>
-        <GenericFieldLabel label="RSA Modulus Length">{`${modulusLength}-bit`}</GenericFieldLabel>
+        <ReviewField label="User">{username}</ReviewField>
+        <ReviewField label="RSA Modulus Length">{`${modulusLength}-bit`}</ReviewField>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="Private Key">{privateKey}</GenericFieldLabel>
-        <GenericFieldLabel label="Public Key">{publicKey}</GenericFieldLabel>
+        <ReviewField label="Private Key">{privateKey}</ReviewField>
+        <ReviewField label="Public Key">{publicKey}</ReviewField>
       </SecretRotationReviewSection>
     </>
   );

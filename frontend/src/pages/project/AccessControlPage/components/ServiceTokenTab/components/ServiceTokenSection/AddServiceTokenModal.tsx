@@ -1,5 +1,4 @@
 import crypto from "crypto";
-
 import { useId, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -41,7 +40,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { useTimedReset } from "@app/hooks";
+import { useScopeVariant, useTimedReset } from "@app/hooks";
 import { useCreateServiceToken } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -92,6 +91,7 @@ type Props = {
 };
 
 const ServiceTokenForm = () => {
+  const scopeVariant = useScopeVariant();
   const { t } = useTranslation();
   const fieldId = useId();
 
@@ -159,7 +159,7 @@ const ServiceTokenForm = () => {
         onSubmit={handleSubmit(onFormSubmit)}
         className="flex flex-1 flex-col overflow-hidden"
       >
-        <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div className="relative flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
           {hasServiceToken ? (
             <>
               <Field>
@@ -214,6 +214,8 @@ const ServiceTokenForm = () => {
                         autoFocus
                         isError={Boolean(error)}
                         placeholder="Type your token name"
+                        autoComplete="off"
+                        name="service-token-name"
                       />
                       <FieldError errors={[error]} />
                     </FieldContent>
@@ -376,7 +378,7 @@ const ServiceTokenForm = () => {
                         <Field key={optionValue} orientation="horizontal">
                           <Checkbox
                             id={`permission-${optionValue}`}
-                            variant="project"
+                            variant={scopeVariant}
                             isChecked={value[optionValue]}
                             isDisabled={optionValue === "read"}
                             onCheckedChange={(state) =>
@@ -403,29 +405,29 @@ const ServiceTokenForm = () => {
           )}
         </div>
       </form>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
         {hasServiceToken ? (
           <SheetClose asChild>
-            <Button type="button" variant="project">
+            <Button type="button" variant={scopeVariant}>
               Done
             </Button>
           </SheetClose>
         ) : (
           <>
-            <Button
-              type="submit"
-              form="add-service-token-form"
-              variant="project"
-              isPending={isSubmitting}
-              isDisabled={isSubmitting}
-            >
-              Create
-            </Button>
             <SheetClose asChild>
               <Button type="button" variant="outline" isDisabled={isSubmitting}>
                 Cancel
               </Button>
             </SheetClose>
+            <Button
+              type="submit"
+              form="add-service-token-form"
+              variant={scopeVariant}
+              isPending={isSubmitting}
+              isDisabled={isSubmitting}
+            >
+              Create
+            </Button>
           </>
         )}
       </SheetFooter>

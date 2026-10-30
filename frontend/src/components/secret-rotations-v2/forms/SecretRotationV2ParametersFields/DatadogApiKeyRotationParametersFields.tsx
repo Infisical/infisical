@@ -1,7 +1,8 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { FormControl, Input } from "@app/components/v2";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
+import { Field, FieldError, Input } from "@app/components/v3";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 /** Max length for the generated Datadog API key name (matches backend schema). */
@@ -18,20 +19,26 @@ export const DatadogApiKeyRotationParametersFields = () => {
     <Controller
       name="parameters.name"
       control={control}
-      render={({ field: { value, onChange }, fieldState: { error } }) => (
-        <FormControl
-          isError={Boolean(error)}
-          errorText={error?.message}
-          label="Key Name"
-          tooltipText="The name for the generated Datadog API key"
-        >
+      render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
+        <Field data-invalid={Boolean(error)}>
+          <FieldLabelWithTooltip
+            htmlFor="datadog-api-key-name"
+            tooltip="The name for the generated Datadog API key"
+          >
+            Key Name
+          </FieldLabelWithTooltip>
           <Input
+            ref={ref}
+            id="datadog-api-key-name"
             value={value}
+            onBlur={onBlur}
             onChange={onChange}
             placeholder="Infisical Rotated API Key"
             maxLength={DATADOG_API_KEY_NAME_MAX_LENGTH}
+            isError={Boolean(error)}
           />
-        </FormControl>
+          <FieldError>{error?.message}</FieldError>
+        </Field>
       )}
     />
   );

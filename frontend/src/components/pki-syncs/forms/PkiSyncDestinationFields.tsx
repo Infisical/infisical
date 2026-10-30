@@ -2,7 +2,6 @@ import { useFormContext } from "react-hook-form";
 
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { AwsCertificateManagerPkiSyncFields } from "./AwsCertificateManagerPkiSyncFields";
 import { AwsElasticLoadBalancerPkiSyncFields } from "./AwsElasticLoadBalancerPkiSyncFields";
 import { AwsSecretsManagerPkiSyncFields } from "./AwsSecretsManagerPkiSyncFields";
@@ -10,13 +9,20 @@ import { AzureKeyVaultPkiSyncFields } from "./AzureKeyVaultPkiSyncFields";
 import { ChefPkiSyncFields } from "./ChefPkiSyncFields";
 import { CloudflareCustomCertificatePkiSyncFields } from "./CloudflareCustomCertificatePkiSyncFields";
 import { F5BigIpPkiSyncFields } from "./F5BigIpPkiSyncFields";
+import { GcpCertificateManagerPkiSyncFields } from "./GcpCertificateManagerPkiSyncFields";
 import { KempLoadMasterPkiSyncFields } from "./KempLoadMasterPkiSyncFields";
 import { LinuxServerPkiSyncFields } from "./LinuxServerPkiSyncFields";
 import { NetScalerPkiSyncFields } from "./NetScalerPkiSyncFields";
 import { NutanixPrismCentralPkiSyncFields } from "./NutanixPrismCentralPkiSyncFields";
+import { PaloAltoNetworksPkiSyncFields } from "./PaloAltoNetworksPkiSyncFields";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { WindowsServerPkiSyncFields } from "./WindowsServerPkiSyncFields";
 
-export const PkiSyncDestinationFields = () => {
+type Props = {
+  isUpdate?: boolean;
+};
+
+export const PkiSyncDestinationFields = ({ isUpdate }: Props) => {
   const { watch } = useFormContext<TPkiSyncForm>();
 
   const destination = watch("destination");
@@ -34,8 +40,14 @@ export const PkiSyncDestinationFields = () => {
       return <ChefPkiSyncFields />;
     case PkiSync.CloudflareCustomCertificate:
       return <CloudflareCustomCertificatePkiSyncFields />;
+    case PkiSync.GcpCertificateManager:
+      return <GcpCertificateManagerPkiSyncFields isUpdate={isUpdate} />;
     case PkiSync.NetScaler:
       return <NetScalerPkiSyncFields />;
+    case PkiSync.PaloAltoNetworks:
+      return <PaloAltoNetworksPkiSyncFields />;
+    case PkiSync.PaloAltoNetworksSslTlsProfile:
+      return <PaloAltoNetworksPkiSyncFields withSslTlsServiceProfile />;
     case PkiSync.F5BigIp:
       return <F5BigIpPkiSyncFields />;
     case PkiSync.KempLoadMaster:
@@ -48,7 +60,7 @@ export const PkiSyncDestinationFields = () => {
       return <NutanixPrismCentralPkiSyncFields />;
     default:
       return (
-        <div className="flex items-center justify-center rounded-md border border-red-500 bg-red-100 p-4 text-red-700">
+        <div className="flex items-center justify-center rounded-md border border-danger bg-danger/10 p-4 text-danger">
           <p>Unsupported destination: {destination}</p>
         </div>
       );

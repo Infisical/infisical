@@ -68,6 +68,13 @@ export enum ProjectPermissionSecretSyncActions {
   RemoveSecrets = "remove-secrets"
 }
 
+export enum ProjectPermissionSecretValidationRuleActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionPkiSyncActions {
   Read = "read",
   Create = "create",
@@ -77,7 +84,9 @@ export enum ProjectPermissionPkiSyncActions {
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates",
-  SetPostSyncCommand = "set-post-sync-command"
+  SetPostSyncCommand = "set-post-sync-command",
+  SetTargetHost = "set-target-host",
+  SetHealthCheckCommand = "set-health-check-command"
 }
 
 export enum ProjectPermissionPkiDiscoveryActions {
@@ -185,6 +194,12 @@ export enum ProjectPermissionCertificateProfileActions {
   ManageApplicationAttachments = "manage-application-attachments"
 }
 
+export enum ProjectPermissionApplicationActions {
+  Read = "read",
+  List = "list",
+  Create = "create"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -222,7 +237,8 @@ export enum ProjectPermissionSecretEventActions {
 }
 
 export enum ProjectPermissionAuditLogsActions {
-  Read = "read"
+  Read = "read",
+  Edit = "edit"
 }
 
 export enum ProjectPermissionInsightsActions {
@@ -282,6 +298,37 @@ export enum ProjectPermissionProxiedServiceActions {
   ReportUsage = "report-usage"
 }
 
+export enum ProjectPermissionAgentVaultAccessBundleActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  ManageMembers = "manage-members"
+}
+
+export enum ProjectPermissionAgentVaultSkillActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+export enum ProjectPermissionAgentVaultSessionActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Revoke = "revoke"
+}
+
+export enum ProjectPermissionAgentVaultProxyActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueToken = "issue-token",
+  Revoke = "revoke"
+}
+
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -300,6 +347,10 @@ export enum ProjectPermissionProjectFolderGrantActions {
 
 export enum ProjectPermissionSecretApprovalRequestActions {
   Read = "read"
+}
+
+export enum ProjectPermissionSecretFolderActions {
+  ManageAccess = "manage-access"
 }
 
 export type MemberManagementSubjectFields = {
@@ -412,9 +463,11 @@ export enum ProjectPermissionSub {
   PkiSubscribers = "pki-subscribers",
   CertificateProfiles = "certificate-profiles",
   CertificatePolicies = "certificate-policies",
+  Application = "certificate-application",
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
+  SecretValidationRules = "secret-validation-rules",
   PkiSyncs = "pki-syncs",
   PkiDiscovery = "pki-discovery",
   PkiCertificateInstallations = "pki-certificate-installations",
@@ -429,6 +482,10 @@ export enum ProjectPermissionSub {
   HsmConnectors = "hsm-connectors",
   HoneyTokens = "honey-tokens",
   ProxiedServices = "proxied-services",
+  AgentVaultAccessBundles = "agent-vault-access-bundles",
+  AgentVaultSessions = "agent-vault-sessions",
+  AgentVaultProxies = "agent-vault-proxies",
+  AgentVaultSkills = "agent-vault-skills",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
@@ -542,6 +599,13 @@ export type ProjectPermissionSet =
       )
     ]
   | [
+      ProjectPermissionSecretFolderActions,
+      (
+        | ProjectPermissionSub.SecretFolders
+        | (ForcedSubject<ProjectPermissionSub.SecretFolders> & SecretFolderSubjectFields)
+      )
+    ]
+  | [
       ProjectPermissionDynamicSecretActions,
       (
         | ProjectPermissionSub.DynamicSecrets
@@ -592,6 +656,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Environments]
   | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
+  | [ProjectPermissionSecretValidationRuleActions, ProjectPermissionSub.SecretValidationRules]
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [
@@ -645,6 +710,7 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.CertificatePolicies> & CertificatePolicySubjectFields)
       )
     ]
+  | [ProjectPermissionApplicationActions, ProjectPermissionSub.Application]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionActions, ProjectPermissionSub.CertificateInventoryViews]
@@ -701,6 +767,10 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
       )
     ]
+  | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
+  | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
+  | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
+  | [ProjectPermissionAgentVaultSkillActions, ProjectPermissionSub.AgentVaultSkills]
   | [
       ProjectPermissionProjectFolderGrantActions,
       (

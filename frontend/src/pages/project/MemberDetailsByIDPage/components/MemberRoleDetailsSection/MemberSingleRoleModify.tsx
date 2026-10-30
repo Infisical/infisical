@@ -1,9 +1,11 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleAlertIcon, RefreshCwIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, PageLoader } from "@app/components/v3";
+import { Alert, AlertDescription, AlertTitle, Button, PageLoader } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -33,10 +35,17 @@ export const MemberSingleRoleModify = ({
   onOpenUpgradeModal,
   onSuccess
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { subscription } = useSubscription();
   const { projectId, currentProject } = useProject();
-  const { isRolesLoading, assignableRoleSlugs, getRolesForSelect, isEditDisabled } =
-    useMemberRoleGrant(projectMember);
+  const {
+    isRolesLoading,
+    isRolesError,
+    refetchRoles,
+    assignableRoleSlugs,
+    getRolesForSelect,
+    isEditDisabled
+  } = useMemberRoleGrant(projectMember);
   const updateMembershipRole = useUpdateUserWorkspaceRole();
 
   const roleForm = useForm<TRoleAssignment>({
@@ -74,6 +83,25 @@ export const MemberSingleRoleModify = ({
     onSuccess?.();
   };
 
+  if (isRolesError) {
+    return (
+      <Alert variant="danger">
+        <CircleAlertIcon />
+        <AlertTitle>
+          Could not load{" "}
+          {currentProject?.type === ProjectType.CertificateManager ? "roles" : "project roles"}
+        </AlertTitle>
+        <AlertDescription>
+          <span>Retry to edit this role.</span>
+          <Button size="xs" variant="danger" onClick={() => refetchRoles().catch(() => undefined)}>
+            <RefreshCwIcon />
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   if (isRolesLoading) {
     return (
       <div className="h-40">
@@ -94,7 +122,7 @@ export const MemberSingleRoleModify = ({
       <div className="mt-4 flex justify-end">
         <Button
           type="submit"
-          variant="project"
+          variant={scopeVariant}
           isDisabled={!roleForm.formState.isDirty || isEditDisabled}
           isPending={roleForm.formState.isSubmitting}
         >

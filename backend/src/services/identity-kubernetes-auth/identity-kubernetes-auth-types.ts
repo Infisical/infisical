@@ -13,14 +13,15 @@ export enum IdentityKubernetesAuthTokenReviewMode {
 
 export type TAttachKubernetesAuthDTO = {
   identityId: string;
-  kubernetesHost: string | null;
+  templateId?: string;
+  kubernetesHost?: string | null;
   caCert?: string;
   verifyTlsCertificate?: boolean;
   tokenReviewerJwt?: string;
-  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode;
+  tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
   allowedNamespaces: string;
   allowedNames: string;
-  allowedAudience: string;
+  allowedAudience?: string;
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
   accessTokenTTL: number;
@@ -32,6 +33,7 @@ export type TAttachKubernetesAuthDTO = {
 
 export type TUpdateKubernetesAuthDTO = {
   identityId: string;
+  templateId?: string | null;
   kubernetesHost?: string | null;
   caCert?: string;
   verifyTlsCertificate?: boolean;

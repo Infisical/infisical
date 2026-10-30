@@ -7,5 +7,6 @@ export const AWS_ELASTIC_LOAD_BALANCER_PKI_SYNC_LIST_OPTION = {
   destination: PkiSync.AwsElasticLoadBalancer,
   canImportCertificates: false,
   canRemoveCertificates: true,
-  canRunPostSyncCommand: false
+  canRunPostSyncCommand: false,
+  canRunHealthCheckCommand: false
 } as const;

@@ -21,7 +21,7 @@ Creates an OpenAI Service Account secret rotation. Infisical will create and rot
 | `isAutoRotationEnabled` | boolean | Yes | Whether to rotate automatically on the schedule. |
 | `rotationInterval` | number | Yes | Days between rotations (e.g. `30`). |
 | `rotateAtUtc` | object | Yes | Time of day (UTC) to run rotation: `{ "hours", "minutes" }`. |
-| `parameters.projectId` | string | Yes | ID of the OpenAI project to create service accounts in (e.g. `proj_abc123`). Cannot be changed after creation. |
+| `parameters.projectId` | string | Yes | ID of the OpenAI project to create service accounts in (e.g. `proj_abc123`). Can't be changed after creation. |
 | `parameters.name` | string | Yes | Name for the generated service account in OpenAI (max 100 characters). |
 | `secretsMapping.apiKey` | string | Yes | Secret key name to store the generated API key (e.g. `OPENAI_API_KEY`). |
 | `description` | string | No | Optional description. |

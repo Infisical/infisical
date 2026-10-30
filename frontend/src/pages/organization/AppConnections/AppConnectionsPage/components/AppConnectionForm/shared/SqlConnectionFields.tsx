@@ -10,12 +10,12 @@ import {
   Input,
   Label,
   SecretInput,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
 
@@ -122,13 +122,23 @@ export const SqlConnectionFields = ({
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field className="flex-1">
-                  <FieldLabel>Password</FieldLabel>
+                  <FieldLabel htmlFor="app-connection-sql-connection-fields-password">
+                    Password
+                  </FieldLabel>
                   <SecretInput
+                    aria-describedby={
+                      error ? "app-connection-sql-connection-fields-password-error" : undefined
+                    }
+                    id="app-connection-sql-connection-fields-password"
+                    isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     isDisabled={isPlatformManagedCredentials}
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError
+                    id="app-connection-sql-connection-fields-password-error"
+                    errors={[error]}
+                  />
                 </Field>
               )}
             />
@@ -144,7 +154,8 @@ export const SqlConnectionFields = ({
                   <FieldContent>
                     <Label htmlFor="ssl-enabled">Enable SSL</Label>
                   </FieldContent>
-                  <Switch
+                  <Toggle
+                    aria-invalid={Boolean(error)}
                     id="ssl-enabled"
                     variant={scopeVariant}
                     checked={value}
@@ -188,7 +199,8 @@ export const SqlConnectionFields = ({
                       trusted SSL certificate.
                     </FieldDescription>
                   </FieldContent>
-                  <Switch
+                  <Toggle
+                    aria-invalid={Boolean(error)}
                     id="ssl-reject-unauthorized"
                     variant={scopeVariant}
                     checked={sslEnabled ? value : false}
@@ -216,7 +228,8 @@ export const SqlConnectionFields = ({
                     updating the password on creation.
                   </FieldDescription>
                 </FieldContent>
-                <Switch
+                <Toggle
+                  aria-invalid={Boolean(error)}
                   id="platform-managed"
                   variant={scopeVariant}
                   checked={value}

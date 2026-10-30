@@ -1,7 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 import { SecretRotationReviewSection } from "./shared";
@@ -18,12 +18,12 @@ export const AwsIamUserSecretRotationReviewFields = () => {
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
-        <GenericFieldLabel label="Region">{parameters.region}</GenericFieldLabel>
-        <GenericFieldLabel label="User Name">{parameters.userName}</GenericFieldLabel>
+        <ReviewField label="Region">{parameters.region}</ReviewField>
+        <ReviewField label="User Name">{parameters.userName}</ReviewField>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
-        <GenericFieldLabel label="Secret Access Key ID">{accessKeyId}</GenericFieldLabel>
-        <GenericFieldLabel label="Secret Access Key">{secretAccessKey}</GenericFieldLabel>
+        <ReviewField label="Secret Access Key ID">{accessKeyId}</ReviewField>
+        <ReviewField label="Secret Access Key">{secretAccessKey}</ReviewField>
       </SecretRotationReviewSection>
     </>
   );

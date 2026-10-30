@@ -68,7 +68,7 @@ export const ResourceEnvironmentStatusCell = ({ status, hasOverride }: Props) =>
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="absolute top-5 right-0 bottom-0 flex w-5 flex-col rounded-tl border-t border-l border-override/50 bg-override/15">
-              <GitBranchIcon className="m-auto size-3 text-override" />
+              <GitBranchIcon className="m-auto size-3 text-override-foreground" />
             </div>
           </TooltipTrigger>
           <TooltipContent>Has personal override</TooltipContent>

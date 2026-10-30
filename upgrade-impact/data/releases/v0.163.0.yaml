@@ -1,0 +1,94 @@
+version: v0.163.0
+releasedAt: 2026-08-26T10:56:43-03:00
+sourceTag: v0.163.0
+previousTag: v0.162.24
+impactLevel: low
+summary: Startup runs additive schema changes and drops two legacy super-admin
+  trust-email columns. Existing SAML and OIDC auth continues, but custom admin
+  tooling that still writes those removed fields must stop.
+requiresDbMigration: true
+breakingChanges:
+  - title: Server admin trust-email fields
+    description: The super-admin table drops `trustSamlEmails` and
+      `trustOidcEmails`. Existing SAML and OIDC auth settings are no longer
+      stored there, so admin automation that still reads or writes those fields
+      can fail.
+    action: Update any direct database scripts or custom admin integrations to stop
+      using those two fields.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260824231000_drop-saml-oidc-trust-emails.ts
+        path: backend/src/db/migrations/20260824231000_drop-saml-oidc-trust-emails.ts
+        description: Drops both SuperAdmin columns
+      - type: pr
+        ref: "#7792"
+        url: https://github.com/Infisical/infisical/pull/7792
+        description: Admin trust-email toggles removed
+dbSchemaChanges:
+  - title: OAuth client grant types
+    description: OAuth client records gain grant type, token exchange, and access
+      token TTL columns. Existing rows are backfilled for redirect-flow clients.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260806120000_add-oauth-client-grant-types.ts
+        path: backend/src/db/migrations/20260806120000_add-oauth-client-grant-types.ts
+        description: Backfills existing OAuth clients
+  - title: KMS delete protection
+    description: KMS keys gain a `hasDeleteProtection` column with a default of
+      `false`. Existing keys remain usable after the schema update.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260821094312_add-kms-key-delete-protection.ts
+        path: backend/src/db/migrations/20260821094312_add-kms-key-delete-protection.ts
+        description: Adds KMS delete protection column
+  - title: Secret approval machine identity fields
+    description: Secret approval policies gain `bypassForMachineIdentities`, and
+      approval requests gain `committerIdentityId`. The new policy field
+      defaults to `true` for existing rows.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260804130000_add-bypass-machine-identities-secret-approval.ts
+        path: backend/src/db/migrations/20260804130000_add-bypass-machine-identities-secret-approval.ts
+        description: Adds approval policy and request columns
+  - title: Large-table secret indexes
+    description: Several migrations add concurrent indexes on auth token sessions
+      and secret-related tables, with elevated statement and lock timeouts. On
+      large Postgres datasets, startup can take longer while indexes build.
+    action: If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260822120000_add-auth-token-session-lookup-indexes.ts
+        path: backend/src/db/migrations/20260822120000_add-auth-token-session-lookup-indexes.ts
+        description: Concurrent indexes on auth token sessions
+      - type: file
+        ref: backend/src/db/migrations/20260825120000_add-secret-references-v2-secret-id-index.ts
+        path: backend/src/db/migrations/20260825120000_add-secret-references-v2-secret-id-index.ts
+        description: Concurrent index on secret references
+      - type: file
+        ref: backend/src/db/migrations/20260825120100_add-secret-approval-secret-id-index.ts
+        path: backend/src/db/migrations/20260825120100_add-secret-approval-secret-id-index.ts
+        description: Concurrent index on approval secrets
+      - type: file
+        ref: backend/src/db/migrations/20260825120200_add-secret-rotation-mapping-secret-id-index.ts
+        path: backend/src/db/migrations/20260825120200_add-secret-rotation-mapping-secret-id-index.ts
+        description: Concurrent index on rotation mappings
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-08-26T14:53:52.983Z
+  sourceRange:
+    from: v0.162.24
+    to: v0.163.0

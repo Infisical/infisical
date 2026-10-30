@@ -15,6 +15,7 @@ export type TOpenRouterApiKeyRotation = TSecretRotationV2Base & {
   type: SecretRotation.OpenRouterApiKey;
   parameters: {
     name: string;
+    workspaceId?: string;
     limit?: number | null;
     limitReset?: OpenRouterLimitReset | null;
     includeByokInLimit?: boolean | null;

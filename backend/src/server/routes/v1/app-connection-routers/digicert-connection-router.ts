@@ -43,7 +43,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       return server.services.appConnection.digicert.listOrganizations(connectionId, req.permission);
@@ -72,7 +72,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       return server.services.appConnection.digicert.listProducts(connectionId, req.permission);
@@ -92,7 +92,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
         organizationId: z.coerce.number().int().positive()
       }),
       querystring: z.object({
-        productNameId: z.string().trim().min(1)
+        productNameId: z.string().trim().min(1).max(64)
       }),
       response: {
         200: z.object({
@@ -100,7 +100,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId, organizationId } = req.params;
       const { productNameId } = req.query;
@@ -126,7 +126,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
         organizationId: z.coerce.number().int().positive()
       }),
       querystring: z.object({
-        productNameId: z.string().trim().min(1)
+        productNameId: z.string().trim().min(1).max(64)
       }),
       response: {
         200: z
@@ -140,7 +140,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId, organizationId } = req.params;
       const { productNameId } = req.query;

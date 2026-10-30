@@ -4,8 +4,12 @@ import { z } from "zod";
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
 
-import { CertKeyAlgorithm } from "../certificate/certificate-types";
+import {
+  TCodeSigningRequestScopeInput,
+  TCodeSigningScope
+} from "../approval-policy/code-signing/code-signing-policy-types";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
+import { CertKeyAlgorithm } from "../certificate/certificate-types";
 import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
 
 type TActorPermission = Omit<TProjectPermission, "projectId">;
@@ -24,17 +28,16 @@ export type TCreateSignerApprovalPolicyInput = {
 export type TSignerCertificateInput = {
   keySource?: CertKeySource;
   hsmConnectorId?: string;
+  hsmKeyLabel?: string;
+  hsmKeyId?: string;
 };
 
-export type TSignerExternalConfigurationInput =
-  | {
-      caType: CaType.DIGICERT;
-      reissueFromExternalOrderId?: string;
-    }
-  | {
-      caType: CaType.ADCS;
-      template?: string;
-    };
+export type TSignerExternalConfigurationInput = {
+  caType?: CaType.DIGICERT | CaType.ADCS;
+  reissueFromExternalOrderId?: string;
+  importFromExternalOrderId?: string;
+  template?: string;
+};
 
 const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
 
@@ -97,9 +100,13 @@ export type TSignDataDTO = {
   actorName?: string;
   clientMetadata?: {
     tool?: string;
+    signingApplication?: string;
     hostname?: string;
-    reportedIp?: string;
+    command?: string;
+    osUsername?: string;
+    signingApplicationHash?: string;
   };
+  ipAddress?: string;
 } & TActorPermission;
 
 export type TGetPublicKeyDTO = {
@@ -111,6 +118,11 @@ export type TListSigningOperationsDTO = {
   offset?: number;
   limit?: number;
   status?: SigningOperationStatus;
+} & TActorPermission;
+
+export type TGetSigningOperationDTO = {
+  signerId: string;
+  operationId: string;
 } & TActorPermission;
 
 export type TEnableSignerDTO = {
@@ -129,6 +141,21 @@ export type TReissueCertificateDTO = {
   keyAlgorithm?: CertKeyAlgorithm;
   certificate?: TSignerCertificateInput;
   externalConfiguration?: TSignerExternalConfigurationInput;
+} & TActorPermission;
+
+export type TImportCertificateDTO = {
+  signerId: string;
+  caId: string;
+  externalOrderId: string;
+  certificate: { hsmConnectorId: string; hsmKeyLabel: string; hsmKeyId?: string };
+  certificateRenewBeforeDays?: number | null;
+} & TActorPermission;
+
+export type TCheckCertificateImportDTO = {
+  projectId: string;
+  caId: string;
+  externalOrderId: string;
+  certificate: { hsmConnectorId: string; hsmKeyLabel: string; hsmKeyId?: string };
 } & TActorPermission;
 
 export type TExportCertificateDTO = {
@@ -171,8 +198,9 @@ export type TRequestToSignDTO = {
   signerId: string;
   justification: string;
   requestedSignings?: number;
-  requestedWindowStart?: string;
-  requestedWindowEnd?: string;
+  requestedWindowDuration?: string;
+  scope?: TCodeSigningRequestScopeInput;
+  ipAddress?: string;
 } & TActorPermission;
 
 export type TPreApproveSigningDTO = {
@@ -181,8 +209,8 @@ export type TPreApproveSigningDTO = {
   granteeIdentityId?: string;
   justification: string;
   requestedSignings?: number;
-  requestedWindowStart?: string;
-  requestedWindowEnd?: string;
+  requestedWindowDuration?: string;
+  scope?: TCodeSigningScope;
 } & TActorPermission;
 
 export type TRevokeSignerRequestDTO = {

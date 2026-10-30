@@ -133,4 +133,13 @@ describe("Admin V1 Router", () => {
       });
     });
   });
+
+  describe("server config unrecognized fields", () => {
+    test("rejects a body that only contains removed fields", async () => {
+      const response = await updateServerConfig({ trustSamlEmails: true });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().message).toContain("No recognized instance configuration fields were provided");
+    });
+  });
 });

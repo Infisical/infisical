@@ -2,15 +2,20 @@ import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon, CircleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
+  Combobox,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -18,17 +23,17 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect
+  Skeleton
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { useDebounce } from "@app/hooks";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
+import { useDebounce, useScopeVariant } from "@app/hooks";
 import {
   useAddGroupToWorkspace,
   useGetProjectRoles,
   useListWorkspaceGroups,
   useSearchOrganizationGroups
 } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -48,8 +53,10 @@ type Props = {
 // TODO: update backend to support adding multiple roles at once
 
 const Content = ({ onClose }: { onClose: () => void }) => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const productLabel = getProjectLabel(currentProject?.type);
 
   const orgId = currentOrg?.id || "";
 
@@ -58,19 +65,30 @@ const Content = ({ onClose }: { onClose: () => void }) => {
 
   const {
     data: orgGroupsData,
-    isLoading: isLoadingGroups,
-    isFetching: isFetchingGroups
+    isError: isGroupsError,
+    isFetching: isGroupsFetching,
+    isPending: isGroupsPending,
+    refetch: refetchGroups
   } = useSearchOrganizationGroups({
     organizationId: orgId,
     search: debouncedSearch,
     limit: GROUP_PAGE_SIZE
   });
-  const { data: groupMemberships } = useListWorkspaceGroups(
-    currentProject?.id || "",
-    currentProject?.type
-  );
+  const {
+    data: groupMemberships,
+    isError: isGroupMembershipsError,
+    isFetching: isGroupMembershipsFetching,
+    isPending: isGroupMembershipsPending,
+    refetch: refetchGroupMemberships
+  } = useListWorkspaceGroups(currentProject?.id || "", currentProject?.type);
 
-  const { data: roles } = useGetProjectRoles(currentProject?.id || "", currentProject?.type);
+  const {
+    data: roles,
+    isError: isRolesError,
+    isFetching: isRolesFetching,
+    isPending: isRolesPending,
+    refetch: refetchRoles
+  } = useGetProjectRoles(currentProject?.id || "", currentProject?.type);
 
   const { mutateAsync: addGroupToWorkspaceMutateAsync } = useAddGroupToWorkspace();
 
@@ -105,18 +123,74 @@ const Content = ({ onClose }: { onClose: () => void }) => {
     onClose();
 
     createNotification({
-      text: "Successfully added group to project",
+      text: `Successfully added group to ${productLabel.toLowerCase()}`,
       type: "success"
     });
   };
+
+  const isDataPending = isGroupsPending || isGroupMembershipsPending || isRolesPending;
+  const isDataError = isGroupsError || isGroupMembershipsError || isRolesError;
+  const isRetrying = isGroupsFetching || isGroupMembershipsFetching || isRolesFetching;
+
+  if (isDataPending) {
+    return (
+      <div className="flex flex-col gap-4" role="status" aria-label="Loading groups and roles">
+        <Field>
+          <FieldLabel>Group</FieldLabel>
+          <Skeleton className="h-9 w-full" />
+        </Field>
+        <Field>
+          <FieldLabel>Role</FieldLabel>
+          <Skeleton className="h-9 w-full" />
+        </Field>
+        <DialogFooter>
+          <Button variant="ghost" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant={scopeVariant} type="button" isPending isDisabled>
+            Add
+          </Button>
+        </DialogFooter>
+      </div>
+    );
+  }
+
+  if (isDataError) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Alert variant="danger">
+          <CircleAlertIcon />
+          <AlertTitle>Unable to load groups and roles</AlertTitle>
+          <AlertDescription>
+            We couldn&apos;t load the information needed to add a group. Try again.
+          </AlertDescription>
+        </Alert>
+        <DialogFooter>
+          <Button variant="ghost" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="outline"
+            type="button"
+            isPending={isRetrying}
+            isDisabled={isRetrying}
+            onClick={async () => {
+              await Promise.all([refetchGroups(), refetchGroupMemberships(), refetchRoles()]);
+            }}
+          >
+            Try again
+          </Button>
+        </DialogFooter>
+      </div>
+    );
+  }
 
   const totalOrgGroups = orgGroupsData?.totalCount ?? 0;
   const assignedCount = groupMemberships?.length ?? 0;
   // totalCount is scoped to the active search, so only trust it against the project's group count
   // once both the input and the debounced query it drives are clear.
   const hasSearchTerm = Boolean(searchInput || debouncedSearch);
-  const hasNoAvailableGroups =
-    !isLoadingGroups && !hasSearchTerm && assignedCount >= totalOrgGroups;
+  const hasNoAvailableGroups = !hasSearchTerm && assignedCount >= totalOrgGroups;
   const isGroupListTruncated = totalOrgGroups > GROUP_PAGE_SIZE;
 
   const noOptionsMessage = () => {
@@ -132,24 +206,21 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <Field>
             <FieldLabel htmlFor="group">Group</FieldLabel>
-            <FilterableSelect
-              inputId="group"
+            <Combobox
+              id="group"
               value={value}
-              onChange={onChange}
+              isClearable={false}
+              onValueChange={onChange}
               placeholder="Select group..."
+              searchAriaLabel="Search groups"
               autoFocus
               isError={Boolean(error)}
-              isLoading={isFetchingGroups || searchInput !== debouncedSearch}
-              options={isFetchingGroups ? [] : filteredGroupMembershipOrgs}
-              onInputChange={(newValue, actionMeta) => {
-                if (actionMeta.action === "input-change") {
-                  setSearchInput(newValue);
-                }
-              }}
-              filterOption={() => true}
+              isLoading={isGroupsFetching || searchInput !== debouncedSearch}
+              options={isGroupsFetching ? [] : filteredGroupMembershipOrgs}
+              onSearchChange={setSearchInput}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
-              noOptionsMessage={noOptionsMessage}
+              emptyMessage={noOptionsMessage}
             />
             <FieldDescription>
               {isGroupListTruncated ? "Search by name to find groups that are not listed." : null}
@@ -164,16 +235,19 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <Field>
             <FieldLabel htmlFor="role">Role</FieldLabel>
-            <FilterableSelect
-              inputId="role"
+            <Combobox
+              id="role"
               value={value}
-              onChange={onChange}
+              isClearable={false}
+              onValueChange={onChange}
               options={roles ?? []}
               placeholder="Select role..."
+              searchAriaLabel="Search roles"
               isError={Boolean(error)}
               getOptionValue={(option) => option.slug}
+              getOptionKeywords={(option) => [option.slug]}
               getOptionLabel={(option) => option.name}
-              components={{ Option: RoleOption }}
+              renderOption={(option) => <RoleOptionContent role={option} />}
             />
             <FieldError>{error?.message}</FieldError>
           </Field>
@@ -183,7 +257,12 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         <Button variant="ghost" type="button" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="project" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          variant={scopeVariant}
+          type="submit"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           Add
         </Button>
       </DialogFooter>
@@ -192,7 +271,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
     <div className="flex flex-col gap-4">
       <p className="text-sm">
         {totalOrgGroups === 0
-          ? "Your organization has no groups yet. Create one at the organization level to add it to this project."
+          ? `Your organization has no groups yet. Create one at the organization level to add it to ${hidesProjects(currentProject?.type) ? productLabel : "this project"}.`
           : "Every group in your organization is already added. To add another group, create one at the organization level first."}
       </p>
       <DialogFooter>
@@ -212,8 +291,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
 
 export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
 
   return (
     <Dialog
@@ -223,6 +301,9 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{`Add Group to ${productLabel}`}</DialogTitle>
+          <DialogDescription>
+            Select an organization group and assign its {productLabel.toLowerCase()} role.
+          </DialogDescription>
         </DialogHeader>
         <Content onClose={() => handlePopUpToggle("group", false)} />
       </DialogContent>

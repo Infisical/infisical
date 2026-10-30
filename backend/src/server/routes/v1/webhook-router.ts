@@ -213,7 +213,13 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       operationId: "deleteWebhook",
       params: z.object({
         webhookId: z.string().trim()
-      })
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          webhook: sanitizedWebhookSchema
+        })
+      }
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.deleteWebhook({
@@ -288,7 +294,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "getWebhookById",
       params: z.object({
@@ -318,7 +324,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       operationId: "listWebhooks",
       querystring: z.object({

@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BanIcon, TrashIcon, UserPlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { EmailServiceSetupModal } from "@app/components/auth/EmailServiceSetupModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, EmailServiceSetupModal, Tooltip } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -16,20 +16,26 @@ import {
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
-  SelectedActionBar
+  SelectedActionBar,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
-  useSubscription,
   useUser
 } from "@app/context";
-import { useDeleteOrgMembership, useGetOrgUsers, useUpdateOrgMembership } from "@app/hooks/api";
-import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
+import {
+  useDeleteOrgMembership,
+  useGetOrgUserAccess,
+  useUpdateOrgMembership
+} from "@app/hooks/api";
 import { useDeleteOrgMembershipBatch } from "@app/hooks/api/users/queries";
-import { OrgUser } from "@app/hooks/api/users/types";
+import { TOrgUserAccess } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddOrgMemberModal } from "./AddOrgMemberModal";
@@ -37,7 +43,6 @@ import { AddSubOrgMemberModal } from "./AddSubOrgMemberModal";
 import { OrgMembersTable } from "./OrgMembersTable";
 
 export const OrgMembersSection = () => {
-  const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
   const navigate = useNavigate();
   const orgId = currentOrg?.id ?? "";
@@ -80,20 +85,7 @@ export const OrgMembersSection = () => {
   const { mutateAsync: deleteBatchMutateAsync } = useDeleteOrgMembershipBatch();
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
 
-  const isMoreIdentitiesAllowed = subscription?.identityLimit
-    ? subscription.identitiesUsed < subscription.identityLimit
-    : true;
-
-  const isEnterprise = subscription?.slug === SubscriptionPlanTypes.Enterprise;
-
   const handleAddMemberModal = () => {
-    if (!isMoreIdentitiesAllowed && !isEnterprise) {
-      handlePopUpOpen("upgradePlan", {
-        text: "You have reached the maximum number of members allowed on your current plan. Upgrade to Infisical Pro plan to add more members."
-      });
-      return;
-    }
-
     handlePopUpOpen("addMember");
   };
 
@@ -126,14 +118,16 @@ export const OrgMembersSection = () => {
     handlePopUpClose("removeMember");
   };
 
-  const { data: members = [] } = useGetOrgUsers(orgId);
+  const { data: members = [] } = useGetOrgUserAccess(orgId);
+  const membersToRemove = (popUp.removeMembers.data?.selectedOrgMemberships ??
+    []) as TOrgUserAccess[];
 
-  const handleRemoveMembers = async (selectedMembers: OrgUser[]) => {
+  const handleRemoveMembers = async (selectedMembers: TOrgUserAccess[]) => {
     await deleteBatchMutateAsync({
       orgId,
-      membershipIds: selectedMembers
-        .filter((member) => member.user.id !== userId)
-        .map((member) => member.id)
+      membershipIds: selectedMembers.flatMap((member) =>
+        member.membership && member.user.id !== userId ? [member.membership.id] : []
+      )
     });
 
     createNotification({
@@ -152,7 +146,7 @@ export const OrgMembersSection = () => {
         onClearSelection={() => setSelectedMemberIds([])}
       >
         <OrgPermissionCan
-          I={OrgPermissionActions.Delete}
+          I={OrgPermissionMemberActions.Delete}
           a={OrgPermissionSubjects.Member}
           renderTooltip
         >
@@ -160,8 +154,8 @@ export const OrgMembersSection = () => {
             <Button
               variant="danger"
               onClick={() => {
-                const selectedOrgMemberships = members.filter((member) =>
-                  selectedMemberIds.includes(member.id)
+                const selectedOrgMemberships = members.filter(
+                  (member) => member.membership && selectedMemberIds.includes(member.membership.id)
                 );
 
                 if (!selectedOrgMemberships.length) return;
@@ -187,7 +181,10 @@ export const OrgMembersSection = () => {
             Invite and manage {isSubOrganization ? "sub-" : ""}organization users
           </CardDescription>
           <CardAction>
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+            <OrgPermissionCan
+              I={OrgPermissionMemberActions.Create}
+              a={OrgPermissionSubjects.Member}
+            >
               {(isAllowed) => (
                 <Button
                   variant={isSubOrganization ? "sub-org" : "org"}
@@ -222,83 +219,93 @@ export const OrgMembersSection = () => {
         setCompleteInviteLinks={setCompleteInviteLinks}
       />
       <AddSubOrgMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.removeMember.isOpen}
         title={`Are you sure you want to remove member with username ${
           (popUp?.removeMember?.data as { username: string })?.username || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemoveMemberSubmit(
             (popUp?.removeMember?.data as { orgMembershipId: string })?.orgMembershipId
           )
         }
       />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deactivateMember.isOpen}
         title={`Are you sure you want to deactivate member with username ${
           (popUp?.deactivateMember?.data as { username: string })?.username || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deactivateMember", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deactivateMember", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeactivateMemberSubmit(
             (popUp?.deactivateMember?.data as { orgMembershipId: string })?.orgMembershipId
           )
         }
-        buttonText="Deactivate"
+        confirmLabel="Deactivate"
       />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.removeMembers.isOpen}
         title="Are you sure you want to remove the following members?"
-        onChange={(isOpen) => handlePopUpToggle("removeMembers", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
-          handleRemoveMembers(popUp.removeMembers.data.selectedOrgMemberships as OrgUser[])
-        }
-        buttonText="Remove"
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("removeMembers", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() => handleRemoveMembers(membersToRemove)}
+        confirmLabel="Remove"
       >
-        <div className="mt-4 text-sm text-mineshaft-400">
+        <div className="text-sm text-muted">
           The following members will be removed:
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border-control bg-danger/10 p-4 pl-8 text-sm text-danger">
+            <ul className="list-disc">
+              {membersToRemove.map((member) => {
+                const email =
+                  member.user.email ?? member.user.username ?? member.membership?.inviteEmail;
+                return (
+                  <li key={member.user.id}>
+                    <div className="flex items-center">
+                      <p className={userId === member.user.id ? "line-through" : ""}>
+                        {member.user.firstName || member.user.lastName ? (
+                          <>
+                            {`${`${member.user.firstName ?? ""} ${member.user.lastName ?? ""}`.trim()} `}
+                            (<span className="break-all">{email}</span>)
+                          </>
+                        ) : (
+                          <span className="break-all">{email}</span>
+                        )}{" "}
+                      </p>
+                      {userId === member.user.id && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="danger" className="ml-2">
+                              <BanIcon />
+                              Ignored
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            You cannot remove yourself from this organization
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </div>
-        <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
-          <ul className="list-disc">
-            {(popUp.removeMembers.data?.selectedOrgMemberships as OrgUser[])?.map((member) => {
-              const email = member.user.email ?? member.user.username ?? member.inviteEmail;
-              return (
-                <li key={member.id}>
-                  <div className="flex items-center">
-                    <p className={userId === member.user.id ? "line-through" : ""}>
-                      {member.user.firstName || member.user.lastName ? (
-                        <>
-                          {`${`${member.user.firstName ?? ""} ${member.user.lastName ?? ""}`.trim()} `}
-                          (<span className="break-all">{email}</span>)
-                        </>
-                      ) : (
-                        <span className="break-all">{email}</span>
-                      )}{" "}
-                    </p>
-                    {userId === member.user.id && (
-                      <Tooltip content="You cannot remove yourself from this organization">
-                        <Badge variant="danger" className="ml-2">
-                          <BanIcon />
-                          Ignored
-                        </Badge>
-                      </Tooltip>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </DeleteActionModal>
-      <UpgradePlanModal
+      </ConfirmationAlertDialog>
+      <UpgradeGate
+        paywallKey="organization.org-members"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan?.data?.text}
-        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan?.data?.isEnterpriseFeature)
+        }}
       />
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}

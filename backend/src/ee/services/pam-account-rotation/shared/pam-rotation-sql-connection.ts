@@ -1,6 +1,5 @@
 import { Knex } from "knex";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { executeWithPotentialGateway } from "@app/services/app-connection/shared/sql";
@@ -21,7 +20,6 @@ export type TPamSqlConnectionDetails = {
 };
 
 export type TPamRotationGatewayDeps = {
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
@@ -35,7 +33,7 @@ export const withPamSqlClient = async <T>(
     gatewayId?: string | null;
     gatewayPoolId?: string | null;
   },
-  { gatewayService, gatewayV2Service, gatewayPoolService }: TPamRotationGatewayDeps,
+  { gatewayV2Service, gatewayPoolService }: TPamRotationGatewayDeps,
   operation: (client: Knex) => Promise<T>
 ): Promise<T> => {
   const { accountType, connectionDetails, auth, gatewayId, gatewayPoolId } = input;
@@ -56,5 +54,5 @@ export const withPamSqlClient = async <T>(
     gatewayPoolId
   } as TSqlConnectionConfig;
 
-  return executeWithPotentialGateway(config, gatewayService, gatewayV2Service, operation, gatewayPoolService);
+  return executeWithPotentialGateway(config, gatewayV2Service, operation, gatewayPoolService);
 };

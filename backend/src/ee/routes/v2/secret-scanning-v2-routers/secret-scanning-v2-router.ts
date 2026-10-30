@@ -1,3 +1,4 @@
+import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { SecretScanningConfigsSchema } from "@app/db/schemas";
@@ -6,6 +7,7 @@ import { BitbucketDataSourceListItemSchema } from "@app/ee/services/secret-scann
 import { GitHubDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/github";
 import { GitLabDataSourceListItemSchema } from "@app/ee/services/secret-scanning-v2/gitlab";
 import {
+  SecretScanningFindingOrderBy,
   SecretScanningFindingStatus,
   SecretScanningScanStatus
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
@@ -17,8 +19,10 @@ import {
   ApiDocsTags,
   SecretScanningConfigs,
   SecretScanningDataSources,
-  SecretScanningFindings
+  SecretScanningFindings,
+  SecretScanningProjects
 } from "@app/lib/api-docs";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -32,6 +36,99 @@ const SecretScanningDataSourceOptionsSchema = z.discriminatedUnion("type", [
 ]);
 
 export const registerSecretScanningV2Router = async (server: FastifyZodProvider) => {
+  // Only an open finding being closed out counts; reopening one, or moving it between closed statuses, does not.
+  const sendFindingClosedTelemetry = (
+    req: FastifyRequest,
+    {
+      finding,
+      previousStatus
+    }: {
+      finding: { status: string };
+      previousStatus?: SecretScanningFindingStatus;
+    }
+  ) => {
+    if (
+      previousStatus !== SecretScanningFindingStatus.Unresolved ||
+      finding.status === SecretScanningFindingStatus.Unresolved
+    )
+      return;
+
+    void server.services.telemetry
+      .sendPostHogEvents({
+        event: PostHogEventTypes.SecretScanningFindingClosed,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          status: finding.status as SecretScanningFindingStatus
+        }
+      })
+      .catch(() => {});
+  };
+
+  server.route({
+    method: "GET",
+    url: "/project",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "getSecretScanningProject",
+      tags: [ApiDocsTags.SecretScanning],
+      description: "Resolve the organization's active Secret Scanning project, creating it on first access.",
+      response: {
+        200: z.object({ projectId: z.string().describe(SecretScanningProjects.GET_ACTIVE.projectId) })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const projectId = await server.services.secretScanningV2Instance.resolveActiveProjectId({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      return { projectId };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/instance",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "getSecretScanningInstanceState",
+      tags: [ApiDocsTags.SecretScanning],
+      description: "Get the active Secret Scanning project and every Secret Scanning project in the organization.",
+      response: {
+        200: z.object({
+          activeProjectId: z.string().nullable().describe(SecretScanningProjects.GET_INSTANCE.activeProjectId),
+          projects: z
+            .object({
+              id: z.string().describe(SecretScanningProjects.GET_INSTANCE.id),
+              name: z.string().describe(SecretScanningProjects.GET_INSTANCE.name),
+              slug: z.string().describe(SecretScanningProjects.GET_INSTANCE.slug),
+              createdAt: z.date().describe(SecretScanningProjects.GET_INSTANCE.createdAt)
+            })
+            .array()
+            .describe(SecretScanningProjects.GET_INSTANCE.projects),
+          isMultiInstance: z.boolean().describe(SecretScanningProjects.GET_INSTANCE.isMultiInstance)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) =>
+      server.services.secretScanningV2Instance.getInstanceState({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      })
+  });
+
   server.route({
     method: "GET",
     url: "/data-sources/options",
@@ -39,7 +136,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listSecretScanningDataSourceOptions",
       tags: [ApiDocsTags.SecretScanning],
       description: "List the available Secret Scanning Data Source Options.",
@@ -49,7 +146,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: () => {
       const dataSourceOptions = server.services.secretScanningV2.listSecretScanningDataSourceOptions();
       return { dataSourceOptions };
@@ -63,23 +160,26 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listSecretScanningDataSources",
       tags: [ApiDocsTags.SecretScanning],
       description: "List all the Secret Scanning Data Sources for the specified project.",
       querystring: z.object({
-        projectId: z.string().trim().min(1, "Project ID required").describe(SecretScanningDataSources.LIST().projectId)
+        projectId: z
+          .string()
+          .trim()
+          .min(1, "Project ID required")
+          .optional()
+          .describe(SecretScanningDataSources.LIST().projectId)
       }),
       response: {
         200: z.object({ dataSources: SecretScanningDataSourceSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const {
-        query: { projectId },
-        permission
-      } = req;
+      const { permission } = req;
+      const projectId = req.internalSecretScanningProjectId;
 
       const dataSources = await server.services.secretScanningV2.listSecretScanningDataSourcesByProjectId(
         { projectId },
@@ -109,26 +209,44 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listSecretScanningFindings",
       tags: [ApiDocsTags.SecretScanning],
       description: "List all the Secret Scanning Findings for the specified project.",
       querystring: z.object({
-        projectId: z.string().trim().min(1, "Project ID required").describe(SecretScanningFindings.LIST.projectId)
+        projectId: z
+          .string()
+          .trim()
+          .min(1, "Project ID required")
+          .optional()
+          .describe(SecretScanningFindings.LIST.projectId),
+        status: z.nativeEnum(SecretScanningFindingStatus).optional().describe(SecretScanningFindings.LIST.status),
+        dataSourceId: z.string().trim().uuid().optional().describe(SecretScanningFindings.LIST.dataSourceId),
+        resourceId: z.string().trim().uuid().optional().describe(SecretScanningFindings.LIST.resourceId),
+        orderBy: z
+          .nativeEnum(SecretScanningFindingOrderBy)
+          .default(SecretScanningFindingOrderBy.CreatedAt)
+          .describe(SecretScanningFindings.LIST.orderBy),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.DESC)
+          .describe(SecretScanningFindings.LIST.orderDirection),
+        offset: z.coerce.number().int().min(0).default(0).describe(SecretScanningFindings.LIST.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(100).describe(SecretScanningFindings.LIST.limit)
       }),
       response: {
-        200: z.object({ findings: SecretScanningFindingSchema.array() })
+        200: z.object({ findings: SecretScanningFindingSchema.array(), totalCount: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const {
-        query: { projectId },
-        permission
-      } = req;
+      const { permission } = req;
+      const projectId = req.internalSecretScanningProjectId;
+      const { status, dataSourceId, resourceId, orderBy, orderDirection, offset, limit } = req.query;
 
-      const findings = await server.services.secretScanningV2.listSecretScanningFindingsByProjectId(
+      const { findings, totalCount } = await server.services.secretScanningV2.listSecretScanningFindingsByProjectId(
         projectId,
+        { status, dataSourceId, resourceId, orderBy, orderDirection, offset, limit },
         permission
       );
 
@@ -144,7 +262,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         }
       });
 
-      return { findings };
+      return { findings, totalCount };
     }
   });
 
@@ -155,7 +273,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "updateSecretScanningFinding",
       tags: [ApiDocsTags.SecretScanning],
       description: "Update the specified Secret Scanning Finding.",
@@ -164,13 +282,13 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       }),
       body: z.object({
         status: z.nativeEnum(SecretScanningFindingStatus).optional().describe(SecretScanningFindings.UPDATE.status),
-        remarks: z.string().nullish().describe(SecretScanningFindings.UPDATE.remarks)
+        triageComment: z.string().trim().max(1024).nullish().describe(SecretScanningFindings.UPDATE.triageComment)
       }),
       response: {
         200: z.object({ finding: SecretScanningFindingSchema })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         params: { findingId },
@@ -178,10 +296,8 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         permission
       } = req;
 
-      const { finding, projectId } = await server.services.secretScanningV2.updateSecretScanningFindingById(
-        { findingId, ...body },
-        permission
-      );
+      const { finding, projectId, previousStatus } =
+        await server.services.secretScanningV2.updateSecretScanningFindingById({ findingId, ...body }, permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -195,16 +311,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         }
       });
 
-      if (body.status === SecretScanningFindingStatus.Resolved) {
-        void server.services.telemetry
-          .sendPostHogEvents({
-            event: PostHogEventTypes.SecretScanningFindingResolved,
-            distinctId: getTelemetryDistinctId(req),
-            organizationId: permission.orgId,
-            properties: { findingId, projectId }
-          })
-          .catch(() => {});
-      }
+      sendFindingClosedTelemetry(req, { finding, previousStatus });
 
       return { finding };
     }
@@ -217,7 +324,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "updateSecretScanningFindingsBatch",
       tags: [ApiDocsTags.SecretScanning],
       description: "Update one or more Secret Scanning Findings in a batch.",
@@ -225,7 +332,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         .object({
           findingId: z.string().trim().min(1, "Finding ID required").describe(SecretScanningFindings.UPDATE.findingId),
           status: z.nativeEnum(SecretScanningFindingStatus).optional().describe(SecretScanningFindings.UPDATE.status),
-          remarks: z.string().nullish().describe(SecretScanningFindings.UPDATE.remarks)
+          triageComment: z.string().trim().max(1024).nullish().describe(SecretScanningFindings.UPDATE.triageComment)
         })
         .array()
         .max(500),
@@ -233,15 +340,13 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ findings: SecretScanningFindingSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { body, permission } = req;
 
       const updatedFindingPromises = body.map(async (findingUpdatePayload) => {
-        const { finding, projectId } = await server.services.secretScanningV2.updateSecretScanningFindingById(
-          findingUpdatePayload,
-          permission
-        );
+        const { finding, projectId, previousStatus } =
+          await server.services.secretScanningV2.updateSecretScanningFindingById(findingUpdatePayload, permission);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
@@ -251,6 +356,8 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
             metadata: findingUpdatePayload
           }
         });
+
+        sendFindingClosedTelemetry(req, { finding, previousStatus });
 
         return finding;
       });
@@ -268,7 +375,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "getSecretScanningConfig",
       tags: [ApiDocsTags.SecretScanning],
       description: "Get the Secret Scanning Config for the specified project.",
@@ -277,6 +384,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           .string()
           .trim()
           .min(1, "Project ID required")
+          .optional()
           .describe(SecretScanningConfigs.GET_BY_PROJECT_ID.projectId)
       }),
       response: {
@@ -285,12 +393,10 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const {
-        query: { projectId },
-        permission
-      } = req;
+      const { permission } = req;
+      const projectId = req.internalSecretScanningProjectId;
 
       const config = await server.services.secretScanningV2.findSecretScanningConfigByProjectId(projectId, permission);
 
@@ -313,12 +419,17 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "updateSecretScanningConfig",
       tags: [ApiDocsTags.SecretScanning],
       description: "Update the specified Secret Scanning Configuration.",
       querystring: z.object({
-        projectId: z.string().trim().min(1, "Project ID required").describe(SecretScanningConfigs.UPDATE.projectId)
+        projectId: z
+          .string()
+          .trim()
+          .min(1, "Project ID required")
+          .optional()
+          .describe(SecretScanningConfigs.UPDATE.projectId)
       }),
       body: z.object({
         content: z.string().nullable().describe(SecretScanningConfigs.UPDATE.content)
@@ -329,11 +440,8 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const {
-        query: { projectId },
-        body,
-        permission
-      } = req;
+      const { body, permission } = req;
+      const projectId = req.internalSecretScanningProjectId;
 
       const config = await server.services.secretScanningV2.upsertSecretScanningConfig(
         { projectId, ...body },
@@ -374,14 +482,15 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
                 lastScannedAt: z.date().nullish(),
                 lastScanStatus: z.nativeEnum(SecretScanningScanStatus).nullish(),
                 lastScanStatusMessage: z.string().nullish(),
-                unresolvedFindings: z.number().nullish()
+                unresolvedFindings: z.number().nullish(),
+                resourceCount: z.number()
               })
             )
             .array()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId },
@@ -419,18 +528,21 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       operationId: "getSecretScanningUnresolvedFindingsCount",
       tags: [ApiDocsTags.SecretScanning],
       querystring: z.object({
-        projectId: z.string().trim().min(1, "Project ID required").describe(SecretScanningFindings.LIST.projectId)
+        projectId: z
+          .string()
+          .trim()
+          .min(1, "Project ID required")
+          .optional()
+          .describe(SecretScanningFindings.LIST.projectId)
       }),
       response: {
         200: z.object({ unresolvedFindings: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const {
-        query: { projectId },
-        permission
-      } = req;
+      const { permission } = req;
+      const projectId = req.internalSecretScanningProjectId;
 
       const unresolvedFindings =
         await server.services.secretScanningV2.getSecretScanningUnresolvedFindingsCountByProjectId(

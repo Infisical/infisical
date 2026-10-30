@@ -39,7 +39,7 @@ import {
   TGitHubSyncListItem,
   TGitHubSyncWithCredentials
 } from "@app/services/secret-sync/github";
-import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
+import { TSecretSyncWithFolder } from "@app/services/secret-sync/secret-sync-dal";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
   TWindmillSync,
@@ -114,11 +114,23 @@ import {
   TCloudflarePagesSyncWithCredentials
 } from "./cloudflare-pages/cloudflare-pages-types";
 import {
+  TCloudflareSecretsStoreSync,
+  TCloudflareSecretsStoreSyncInput,
+  TCloudflareSecretsStoreSyncListItem,
+  TCloudflareSecretsStoreSyncWithCredentials
+} from "./cloudflare-secrets-store";
+import {
   TCloudflareWorkersSync,
   TCloudflareWorkersSyncInput,
   TCloudflareWorkersSyncListItem,
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
+import {
+  TDaytonaSync,
+  TDaytonaSyncInput,
+  TDaytonaSyncListItem,
+  TDaytonaSyncWithCredentials
+} from "./daytona/daytona-sync-types";
 import { TDevinSync, TDevinSyncInput, TDevinSyncListItem, TDevinSyncWithCredentials } from "./devin/devin-sync-types";
 import {
   TDigitalOceanAppPlatformSyncInput,
@@ -154,6 +166,12 @@ import {
   THumanitecSyncWithCredentials
 } from "./humanitec";
 import {
+  TKeeperSync,
+  TKeeperSyncInput,
+  TKeeperSyncListItem,
+  TKeeperSyncWithCredentials
+} from "./keeper/keeper-sync-types";
+import {
   TLaravelForgeSync,
   TLaravelForgeSyncInput,
   TLaravelForgeSyncListItem,
@@ -174,6 +192,12 @@ import {
 } from "./octopus-deploy";
 import { TOnaSync, TOnaSyncInput, TOnaSyncListItem, TOnaSyncWithCredentials } from "./ona";
 import { TOvhSync, TOvhSyncInput, TOvhSyncListItem, TOvhSyncWithCredentials } from "./ovh";
+import {
+  TPortainerSync,
+  TPortainerSyncInput,
+  TPortainerSyncListItem,
+  TPortainerSyncWithCredentials
+} from "./portainer/portainer-sync-types";
 import { TQoverySync, TQoverySyncInput, TQoverySyncListItem, TQoverySyncWithCredentials } from "./qovery";
 import {
   TRailwaySync,
@@ -261,11 +285,13 @@ export type TSecretSync =
   | TGitLabSync
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
+  | TCloudflareSecretsStoreSync
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
   | TRundeckSync
+  | TPortainerSync
   | TNetlifySync
   | TNorthflankSync
   | TBitbucketSync
@@ -280,7 +306,9 @@ export type TSecretSync =
   | TSnowflakeSync
   | THasuraCloudSync
   | TCloud66Sync
-  | TSpaceliftSync;
+  | TSpaceliftSync
+  | TDaytonaSync
+  | TKeeperSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -309,11 +337,13 @@ export type TSecretSyncWithCredentials =
   | TGitLabSyncWithCredentials
   | TCloudflarePagesSyncWithCredentials
   | TCloudflareWorkersSyncWithCredentials
+  | TCloudflareSecretsStoreSyncWithCredentials
   | TZabbixSyncWithCredentials
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
   | TSupabaseSyncWithCredentials
   | TRundeckSyncWithCredentials
+  | TPortainerSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
   | TNorthflankSyncWithCredentials
@@ -330,7 +360,9 @@ export type TSecretSyncWithCredentials =
   | TSnowflakeSyncWithCredentials
   | THasuraCloudSyncWithCredentials
   | TCloud66SyncWithCredentials
-  | TSpaceliftSyncWithCredentials;
+  | TSpaceliftSyncWithCredentials
+  | TDaytonaSyncWithCredentials
+  | TKeeperSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -359,11 +391,13 @@ export type TSecretSyncInput =
   | TGitLabSyncInput
   | TCloudflarePagesSyncInput
   | TCloudflareWorkersSyncInput
+  | TCloudflareSecretsStoreSyncInput
   | TZabbixSyncInput
   | TRailwaySyncInput
   | TChecklySyncInput
   | TSupabaseSyncInput
   | TRundeckSyncInput
+  | TPortainerSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
   | TNorthflankSyncInput
@@ -380,7 +414,9 @@ export type TSecretSyncInput =
   | TSnowflakeSyncInput
   | THasuraCloudSyncInput
   | TCloud66SyncInput
-  | TSpaceliftSyncInput;
+  | TSpaceliftSyncInput
+  | TDaytonaSyncInput
+  | TKeeperSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -410,11 +446,13 @@ export type TSecretSyncListItem =
   | TGitLabSyncListItem
   | TCloudflarePagesSyncListItem
   | TCloudflareWorkersSyncListItem
+  | TCloudflareSecretsStoreSyncListItem
   | TZabbixSyncListItem
   | TRailwaySyncListItem
   | TChecklySyncListItem
   | TSupabaseSyncListItem
   | TRundeckSyncListItem
+  | TPortainerSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
   | TNorthflankSyncListItem
@@ -430,7 +468,9 @@ export type TSecretSyncListItem =
   | TSnowflakeSyncListItem
   | THasuraCloudSyncListItem
   | TCloud66SyncListItem
-  | TSpaceliftSyncListItem;
+  | TSpaceliftSyncListItem
+  | TDaytonaSyncListItem
+  | TKeeperSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
@@ -489,6 +529,13 @@ export type TCheckDuplicateDestinationDTO = {
   projectId: string;
 };
 
+export type TFindRecursiveSyncConflictsDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  keySchema?: string;
+};
+
 export enum SecretSyncStatus {
   Pending = "pending",
   Running = "running",
@@ -508,7 +555,9 @@ export type TSyncSecretsResult = {
   deletedSecretKeys: string[];
 };
 
-export type TSecretSyncRaw = NonNullable<Awaited<ReturnType<TSecretSyncDALFactory["findById"]>>>;
+// ReturnType<> resolves findById's includeFolderPath generic to boolean, a union whose members may
+// lack `folder`, so the default row (path resolved) is named here directly.
+export type TSecretSyncRaw = TSecretSyncWithFolder;
 
 export type TQueueSecretSyncsByPathDTO = {
   secretPath: string;
@@ -606,6 +655,7 @@ export type TPreSaveTransformSyncOptionsParams = {
 
 export type TPreSaveTransformDestinationConfigParams = {
   destinationConfig: Record<string, unknown> | undefined;
+  existingDestinationConfig?: Record<string, unknown>;
   connectionId: string;
 };
 

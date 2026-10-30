@@ -2,8 +2,20 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { getGcpSecretManagerProjectLocations, getGcpSecretManagerProjects } from "./gcp-connection-fns";
-import { TGcpConnection, TGetGCPProjectLocationsDTO } from "./gcp-connection-types";
+import {
+  getGcpCertificateManagerLocations,
+  getGcpCertificateManagerProjects,
+  getGcpCertificateMaps,
+  getGcpCloudDnsProjects,
+  getGcpCloudDnsZones,
+  getGcpSecretManagerProjectLocations,
+  getGcpSecretManagerProjects
+} from "./gcp-connection-fns";
+import {
+  TGcpCertificateManagerProjectScopedDTO,
+  TGcpConnection,
+  TGetGCPProjectLocationsDTO
+} from "./gcp-connection-types";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
@@ -40,8 +52,80 @@ export const gcpConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
     }
   };
 
+  const listCertificateManagerProjects = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
+
+    try {
+      return await getGcpCertificateManagerProjects(appConnection);
+    } catch (error) {
+      logger.error(error, "Error listing GCP Certificate Manager projects");
+      throw error;
+    }
+  };
+
+  const listCertificateManagerLocations = async (
+    { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
+
+    try {
+      return await getGcpCertificateManagerLocations(gcpProjectId, appConnection);
+    } catch (error) {
+      logger.error(error, "Error listing GCP Certificate Manager locations");
+      throw error;
+    }
+  };
+
+  const listCertificateMaps = async (
+    { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
+
+    try {
+      return await getGcpCertificateMaps(gcpProjectId, appConnection);
+    } catch (error) {
+      logger.error(error, "Error listing GCP certificate maps");
+      throw error;
+    }
+  };
+
+  const listCloudDnsProjects = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
+
+    try {
+      return await getGcpCloudDnsProjects(appConnection);
+    } catch (error) {
+      logger.error(error, `Error listing GCP Cloud DNS projects [connectionId=${connectionId}]`);
+      throw error;
+    }
+  };
+
+  const listCloudDnsZones = async (
+    { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
+    actor: OrgServiceActor
+  ) => {
+    const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
+
+    try {
+      return await getGcpCloudDnsZones(gcpProjectId, appConnection);
+    } catch (error) {
+      logger.error(
+        error,
+        `Error listing GCP Cloud DNS zones [connectionId=${connectionId}] [gcpProjectId=${gcpProjectId}]`
+      );
+      throw error;
+    }
+  };
+
   return {
+    listCloudDnsProjects,
+    listCloudDnsZones,
     listSecretManagerProjects,
-    listSecretManagerProjectLocations
+    listSecretManagerProjectLocations,
+    listCertificateManagerProjects,
+    listCertificateManagerLocations,
+    listCertificateMaps
   };
 };

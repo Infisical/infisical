@@ -1,37 +1,54 @@
-import { type ReactNode, useMemo, useRef, useState } from "react";
 import {
-  FilterIcon,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
+import {
   FingerprintIcon,
   FolderIcon,
   KeyIcon,
+  ListFilterIcon,
   RefreshCw,
   SearchIcon
 } from "lucide-react";
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
+  Button,
+  Checkbox,
+  Combobox,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  IconButton,
+  Field,
+  FieldDescription,
+  FieldLabel,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  PageLoader,
+  Pagination,
+  ScrollableContent,
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
   TableHead,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableHeader,
+  TableRow
 } from "@app/components/v3";
-import { useDebounce } from "@app/hooks";
+import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   useGetProjectSecretsQuickSearch,
   useSearchSecretsByMetadata
@@ -43,23 +60,26 @@ import {
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { WsTag } from "@app/hooks/api/tags/types";
 import { groupBy } from "@app/lib/fn/array";
-import {
-  ResourceFilterMenuContent,
-  type ResourceTypeOption
-} from "@app/pages/secret-manager/OverviewPage/components/ResourceFilter";
+import { ResourceCount } from "@app/pages/secret-manager/OverviewPage/components/ResourceCount";
+import { type ResourceTypeOption } from "@app/pages/secret-manager/OverviewPage/components/ResourceFilter";
 import { QuickSearchSecretRotationItem } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput/components/QuickSearchSecretRotationItem";
 import { RowType } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.types";
 
 import { QuickSearchDynamicSecretItem } from "./QuickSearchDynamicSecretItem";
 import { QuickSearchEnvTable } from "./QuickSearchEnvTable";
 import { QuickSearchFolderItem } from "./QuickSearchFolderItem";
+import { QuickSearchFolderPicker } from "./QuickSearchFolderPicker";
+import { QuickSearchMetadata } from "./QuickSearchMetadataList";
 import { QuickSearchMetadataSecretItem } from "./QuickSearchMetadataSecretItem";
 import { QuickSearchSecretItem } from "./QuickSearchSecretItem";
+import { QuickSearchSelection } from "./quickSearchTypes";
 import {
   MetadataMatchType,
   MetadataSearchCondition,
   SecretMetadataSearchBuilder
 } from "./SecretMetadataSearchBuilder";
+
+export type { QuickSearchSelection } from "./quickSearchTypes";
 
 export type QuickSearchModalProps = {
   environments: ProjectEnv[];
@@ -67,7 +87,8 @@ export type QuickSearchModalProps = {
   tags?: WsTag[];
   isSingleEnv?: boolean;
   initialValue: string;
-  onClose: () => void;
+  onSelectResult: (selection: QuickSearchSelection) => void;
+  onClose: (clearSearch?: boolean) => void;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 };
@@ -77,6 +98,8 @@ type ResourceType =
   | RowType.DynamicSecret
   | RowType.Folder
   | RowType.SecretRotation;
+
+const QUICK_SEARCH_PER_PAGE_OPTIONS = [25, 50, 100];
 
 const QUICK_SEARCH_RESOURCE_TYPES: ResourceTypeOption[] = [
   { type: RowType.Folder, label: "Folders", icon: <FolderIcon className="text-folder" /> },
@@ -93,29 +116,111 @@ const QUICK_SEARCH_RESOURCE_TYPES: ResourceTypeOption[] = [
   { type: RowType.Secret, label: "Secrets", icon: <KeyIcon className="text-secret" /> }
 ];
 
+const QUICK_SEARCH_SKELETON_ROWS = [
+  { key: "row-a", name: "w-40", path: "w-72" },
+  { key: "row-b", name: "w-28", path: "w-56" },
+  { key: "row-c", name: "w-48", path: "w-80" },
+  { key: "row-d", name: "w-36", path: "w-64" },
+  { key: "row-e", name: "w-44", path: "w-72" },
+  { key: "row-f", name: "w-32", path: "w-60" },
+  { key: "row-g", name: "w-40", path: "w-80" },
+  { key: "row-h", name: "w-28", path: "w-64" }
+];
+
+// Mirrors QuickSearchEnvTable's heading + column layout so results swap in without shifting
+const QuickSearchResultsSkeleton = () => (
+  <div role="status" aria-label="Loading search results">
+    <div className="mb-2 flex h-5 items-center">
+      <Skeleton className="h-3.5 w-28" />
+    </div>
+    <Table className="[&_td:first-child]:w-10 [&_td:first-child]:max-w-10 [&_td:first-child]:min-w-10 [&_td:first-child]:px-2 [&_th:first-child]:w-10 [&_th:first-child]:max-w-10 [&_th:first-child]:min-w-10 [&_th:first-child]:px-2">
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-8" />
+          <TableHead className="min-w-60">Name</TableHead>
+          <TableHead className="min-w-36">Location</TableHead>
+          <TableHead className="min-w-56">Metadata</TableHead>
+          <TableHead className="w-24" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {QUICK_SEARCH_SKELETON_ROWS.map((row) => (
+          <TableRow key={row.key}>
+            <TableCell>
+              <div className="flex h-6 items-center">
+                <Skeleton className="size-5" />
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex h-5 items-center">
+                <Skeleton className={`h-3.5 ${row.name}`} />
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex h-5 items-center">
+                <Skeleton className={`h-3.5 ${row.path}`} />
+              </div>
+            </TableCell>
+            <TableCell />
+            <TableCell />
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
+);
+
 const Content = ({
   environments,
   projectId,
   onClose,
+  onSelectResult,
   tags,
-  initialValue = ""
-}: Omit<QuickSearchModalProps, "isOpen" | "onOpenChange" | "isSingleEnv">) => {
+  initialValue = "",
+  searchInputRef
+}: Omit<QuickSearchModalProps, "isOpen" | "onOpenChange" | "isSingleEnv"> & {
+  searchInputRef: RefObject<HTMLInputElement | null>;
+}) => {
   const [search, setSearch] = useState(initialValue);
   const [debouncedSearch] = useDebounce(search);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(QUICK_SEARCH_PER_PAGE_OPTIONS[0]);
   const [filterTags, setFilterTags] = useState<Record<string, boolean>>({});
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+  );
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [selectedEnvironments, setSelectedEnvironments] = useState<string[]>([]);
+  const [folderPath, setFolderPath] = useState("/");
+  const environmentSlugs = selectedEnvironments.length
+    ? selectedEnvironments
+    : environments.map((env) => env.slug);
+  const folderEnvironment = environmentSlugs.length === 1 ? environmentSlugs[0] : undefined;
+  const secretPath = folderEnvironment ? folderPath : "/";
   const [showFilter, setShowFilter] = useState<Record<ResourceType, boolean>>({
-    [RowType.Secret]: false,
-    [RowType.Folder]: false,
-    [RowType.DynamicSecret]: false,
-    [RowType.SecretRotation]: false
+    [RowType.Secret]: true,
+    [RowType.Folder]: true,
+    [RowType.DynamicSecret]: true,
+    [RowType.SecretRotation]: true
   });
 
   // Metadata search: a structured key/value condition builder backed by /secrets-by-metadata.
   // When at least one condition is complete, it "takes over" the results from the free-text search.
-  const [metadataConditions, setMetadataConditions] = useState<MetadataSearchCondition[]>([]);
+  const [metadataConditions, setMetadataConditions] = useState<MetadataSearchCondition[]>([
+    { id: "cond-1", key: "", value: "", operator: SecretMetadataSearchOperator.Is }
+  ]);
   const [metadataMatch, setMetadataMatch] = useState<MetadataMatchType>("all");
-  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
-  const conditionIdRef = useRef(0);
+  const conditionIdRef = useRef(1);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => {
+      setIsMobile(media.matches);
+      if (!media.matches) setIsFiltersOpen(false);
+    };
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   const createCondition = (): MetadataSearchCondition => {
     conditionIdRef.current += 1;
@@ -152,6 +257,8 @@ const Content = ({
   } = useSearchSecretsByMetadata(
     {
       projectId,
+      environments: environmentSlugs,
+      secretPath,
       operator:
         metadataMatch === "all"
           ? SecretMetadataSearchLogicalOperator.And
@@ -165,22 +272,47 @@ const Content = ({
   const isDeepSearchEnabled =
     (Boolean(search.trim()) || Object.values(filterTags).length > 0) && !isMetadataMode;
 
-  const { data, isPending: isDeepSearchPending } = useGetProjectSecretsQuickSearch(
+  const {
+    data,
+    isPending: isDeepSearchPending,
+    isFetching: isDeepSearchFetching
+  } = useGetProjectSecretsQuickSearch(
     {
-      secretPath: "/",
-      environments: environments.map((env) => env.slug),
+      secretPath,
+      environments: environmentSlugs,
       projectId,
       search: debouncedSearch,
-      tags: filterTags
+      tags: filterTags,
+      limit: perPage,
+      offset: (page - 1) * perPage
     },
     { enabled: isDeepSearchEnabled }
   );
 
-  const { folders = {}, secrets = {}, dynamicSecrets = {}, secretRotations = {} } = data ?? {};
+  const isDeepSearchLoading = isDeepSearchPending || isDeepSearchFetching;
+  const isMetadataLoading = isMetadataPending || isMetadataFetching;
+
+  const {
+    folders = {},
+    secrets = {},
+    dynamicSecrets = {},
+    secretRotations = {},
+    totalFolderCount = 0,
+    totalSecretCount = 0,
+    totalDynamicSecretCount = 0,
+    totalSecretRotationCount = 0,
+    searchLimit = 0,
+    isSearchLimitReached = false
+  } = data ?? {};
 
   const envIdToSlug = useMemo(
     () => new Map(environments.map((env) => [env.id, env.slug])),
     [environments]
+  );
+
+  const showType = useCallback(
+    (type: ResourceType) => (isMetadataMode ? type === RowType.Secret : Boolean(showFilter[type])),
+    [isMetadataMode, showFilter]
   );
 
   const resultsByEnv = useMemo(() => {
@@ -196,10 +328,6 @@ const Content = ({
     const secretsByEnv = groupBy(allSecrets, (secret) => secret.env);
     const dynamicSecretsByEnv = groupBy(allDynamicSecrets, (ds) => ds.environment);
     const rotationsByEnv = groupBy(allRotations, (r) => r.environment.slug);
-
-    // When no resource types are checked, show all (empty filter = no filter)
-    const hasActiveResourceFilter = Object.values(showFilter).some(Boolean);
-    const showType = (type: ResourceType) => !hasActiveResourceFilter || showFilter[type];
 
     return environments
       .map((env) => {
@@ -225,7 +353,29 @@ const Content = ({
         };
       })
       .filter((group) => group.total > 0);
-  }, [folders, secrets, dynamicSecrets, secretRotations, environments, envIdToSlug, showFilter]);
+  }, [folders, secrets, dynamicSecrets, secretRotations, environments, envIdToSlug, showType]);
+
+  // the endpoint applies one offset to each resource type independently, so the largest type sets the page count
+  const visibleResultCount = Math.max(
+    showType(RowType.Folder) ? totalFolderCount : 0,
+    showType(RowType.Secret) ? totalSecretCount : 0,
+    showType(RowType.DynamicSecret) ? totalDynamicSecretCount : 0,
+    showType(RowType.SecretRotation) ? totalSecretRotationCount : 0
+  );
+
+  // the endpoint rejects an offset past its search window, so stop the pager at the last page it accepts
+  const pageableResultCount = Math.min(visibleResultCount, searchLimit + perPage);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, filterTags, showFilter, secretPath, selectedEnvironments, isMetadataMode]);
+
+  // a background refetch can shrink the counts and leave the current offset past the data
+  useResetPageHelper({
+    totalCount: pageableResultCount,
+    offset: (page - 1) * perPage,
+    setPage
+  });
 
   const metadataResultsByEnv = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
@@ -241,63 +391,69 @@ const Content = ({
       .filter((group) => group.secrets.length > 0);
   }, [metadataData, environments, debouncedSearch]);
 
-  // count the secrets actually shown (after env + text filtering) so the builder's tally matches the rows
   const metadataResultCount = metadataResultsByEnv.reduce(
     (total, group) => total + group.secrets.length,
     0
   );
 
-  const handleToggleTag = (tag: string) => {
-    setFilterTags((prev) => {
-      const updated = { ...prev };
-      if (prev[tag]) {
-        delete updated[tag];
-      } else {
-        updated[tag] = true;
-        setShowFilter((f) => ({ ...f, [RowType.Secret]: true }));
-      }
-      return updated;
-    });
-  };
-
-  const handleClearTags = () => {
-    setFilterTags({});
-  };
-
-  // metadata search only supports secrets, so fully reset it (conditions, builder, match)
+  // metadata search only supports secrets, so clear its conditions and match mode
   // whenever it should no longer apply
   const resetMetadataSearch = () => {
-    setMetadataConditions([]);
-    setIsBuilderOpen(false);
+    setMetadataConditions([createCondition()]);
     setMetadataMatch("all");
   };
 
-  const handleToggleShowType = (type: string) => {
-    setShowFilter((prev) => {
-      const newValue = !prev[type as ResourceType];
-      if (type === RowType.Secret && !newValue) {
-        // Secrets turned off: tags and metadata search are secrets-only
-        setFilterTags({});
-        resetMetadataSearch();
-      }
-      if (type !== RowType.Secret && newValue) {
-        // switched to a non-secret resource type: metadata search only supports secrets
-        resetMetadataSearch();
-      }
-      return {
-        ...prev,
-        [type]: newValue
-      };
+  const handleChangeResourceTypes = (options: ResourceTypeOption[]) => {
+    const selected = options.map((option) => option.type);
+    if (!selected.includes(RowType.Secret)) {
+      setFilterTags({});
+      resetMetadataSearch();
+    } else if (selected.some((type) => type !== RowType.Secret)) {
+      resetMetadataSearch();
+    }
+    setShowFilter({
+      [RowType.Secret]: selected.includes(RowType.Secret),
+      [RowType.Folder]: selected.includes(RowType.Folder),
+      [RowType.DynamicSecret]: selected.includes(RowType.DynamicSecret),
+      [RowType.SecretRotation]: selected.includes(RowType.SecretRotation)
     });
-  };
-
-  const handleOpenMetadata = () => {
-    setIsBuilderOpen(true);
-    setMetadataConditions((prev) => (prev.length ? prev : [createCondition()]));
   };
 
   const handleAddCondition = () => {
     setMetadataConditions((prev) => [...prev, createCondition()]);
+  };
+
+  const handleApplyMetadataFilter = (metadata: QuickSearchMetadata) => {
+    const { key: metadataKey, value: metadataValue } = metadata;
+    if (!metadataValue) return;
+
+    setMetadataConditions((prev) => {
+      const key = metadataKey.trim();
+      const value = metadataValue.trim();
+      const alreadyApplied = prev.some(
+        (condition) => condition.key.trim() === key && condition.value.trim() === value
+      );
+
+      if (alreadyApplied) return prev;
+
+      const emptyCondition = prev.find(
+        (condition) => !condition.key.trim() && !condition.value.trim()
+      );
+      if (emptyCondition) {
+        return prev.map((condition) =>
+          condition.id === emptyCondition.id ? { ...condition, key, value } : condition
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          ...createCondition(),
+          key,
+          value
+        }
+      ];
+    });
   };
 
   const handleUpdateCondition = (
@@ -310,39 +466,54 @@ const Content = ({
   };
 
   const handleRemoveCondition = (id: string) => {
-    setMetadataConditions((prev) => prev.filter((condition) => condition.id !== id));
+    setMetadataConditions((prev) =>
+      prev[0].id === id ? prev : prev.filter((condition) => condition.id !== id)
+    );
   };
 
   const handleClearMetadata = () => {
-    setMetadataConditions([]);
-  };
-
-  // closing the builder discards the conditions so a metadata filter never stays active while hidden
-  const handleCloseBuilder = () => {
     resetMetadataSearch();
   };
 
-  const hasActiveFilters =
-    Object.keys(filterTags).length > 0 ||
-    Object.values(showFilter).some(Boolean) ||
-    activeConditions.length > 0;
+  const activeFilterCount =
+    Number(selectedEnvironments.length > 0) +
+    Number(Boolean(folderPath.trim().replace(/\//g, ""))) +
+    Number(Object.keys(filterTags).length > 0) +
+    Number(QUICK_SEARCH_RESOURCE_TYPES.some(({ type }) => !showType(type as ResourceType))) +
+    activeConditions.length;
+
+  let folderHelpText = "Select one environment to choose a folder.";
+  if (folderEnvironment) {
+    folderHelpText =
+      folderPath === "/"
+        ? "Choose a folder to narrow the search."
+        : "Includes subfolders. Clear to search all folders.";
+  }
+
+  const handleResetFilters = () => {
+    setSelectedEnvironments([]);
+    setFolderPath("/");
+    setFilterTags({});
+    handleChangeResourceTypes(QUICK_SEARCH_RESOURCE_TYPES);
+    setPage(1);
+  };
 
   const noResultsEmpty = (
-    <Empty className="mt-7 border">
+    <Empty className="border">
       <EmptyHeader>
-        <EmptyTitle>No results match search.</EmptyTitle>
-        <EmptyDescription>Try updating your search filters...</EmptyDescription>
+        <EmptyTitle>No Matching Resources</EmptyTitle>
+        <EmptyDescription>Try a different search or remove a filter.</EmptyDescription>
       </EmptyHeader>
     </Empty>
   );
 
   let resultsContent: ReactNode;
   if (isMetadataMode) {
-    if (isMetadataPending) {
-      resultsContent = <PageLoader />;
+    if (isMetadataLoading) {
+      resultsContent = <QuickSearchResultsSkeleton />;
     } else if (metadataResultsByEnv.length === 0) {
       resultsContent = (
-        <Empty className="mt-7 border">
+        <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>No secrets match these conditions.</EmptyTitle>
             <EmptyDescription>Try removing a condition or switching ALL to ANY.</EmptyDescription>
@@ -353,17 +524,15 @@ const Content = ({
       resultsContent = (
         <div className="flex flex-col gap-6">
           {metadataResultsByEnv.map(({ env, secrets: envSecrets }) => (
-            <QuickSearchEnvTable
-              key={env.slug}
-              envName={env.name}
-              trailingHead={<TableHead>Metadata</TableHead>}
-            >
+            <QuickSearchEnvTable key={env.slug} envName={env.name}>
               {envSecrets.map((secret) => (
                 <QuickSearchMetadataSecretItem
                   key={secret.secretId}
                   secret={secret}
                   envSlug={env.slug}
                   onClose={onClose}
+                  onSelectResult={onSelectResult}
+                  onApplyMetadataFilter={handleApplyMetadataFilter}
                 />
               ))}
             </QuickSearchEnvTable>
@@ -372,8 +541,8 @@ const Content = ({
       );
     }
   } else if (isDeepSearchEnabled) {
-    if (isDeepSearchPending) {
-      resultsContent = <PageLoader />;
+    if (isDeepSearchLoading) {
+      resultsContent = <QuickSearchResultsSkeleton />;
     } else if (resultsByEnv.length === 0) {
       resultsContent = noResultsEmpty;
     } else {
@@ -394,6 +563,7 @@ const Content = ({
                     folder={folder}
                     envSlug={env.slug}
                     onClose={onClose}
+                    onSelectResult={onSelectResult}
                   />
                 ))}
                 {envDynamic.map((ds) => (
@@ -402,6 +572,7 @@ const Content = ({
                     dynamicSecret={ds}
                     envSlug={env.slug}
                     onClose={onClose}
+                    onSelectResult={onSelectResult}
                   />
                 ))}
                 {envRotations.map((rotation) => (
@@ -410,6 +581,7 @@ const Content = ({
                     secretRotation={rotation}
                     envSlug={env.slug}
                     onClose={onClose}
+                    onSelectResult={onSelectResult}
                   />
                 ))}
                 {envSecrets.map((secret) => (
@@ -420,6 +592,8 @@ const Content = ({
                     search={debouncedSearch}
                     tags={Object.keys(filterTags)}
                     onClose={onClose}
+                    onSelectResult={onSelectResult}
+                    onApplyMetadataFilter={handleApplyMetadataFilter}
                   />
                 ))}
               </QuickSearchEnvTable>
@@ -428,77 +602,263 @@ const Content = ({
         </div>
       );
     }
-  } else if (!isBuilderOpen) {
+  } else {
     resultsContent = (
-      <Empty className="mt-7 border">
+      <Empty className="border">
         <EmptyHeader>
-          <EmptyTitle>Start typing to begin search...</EmptyTitle>
-          <EmptyDescription>Search by resource name, secret metadata or tag...</EmptyDescription>
+          <EmptyTitle>Search Across Folders</EmptyTitle>
+          <EmptyDescription>
+            Enter a resource name, select a tag, or add a metadata condition.
+          </EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
-  } else {
-    resultsContent = null;
   }
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col p-4">
-      <div className="flex gap-2 border-b border-border pb-4">
-        <DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <IconButton variant={hasActiveFilters ? "project" : "outline"}>
-                  <FilterIcon />
-                </IconButton>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent>Search Filters</TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent align="start">
-            <ResourceFilterMenuContent
-              resourceTypes={QUICK_SEARCH_RESOURCE_TYPES}
-              resourceTypeFilter={showFilter}
-              onToggleResourceType={handleToggleShowType}
-              tags={tags}
-              selectedTagSlugs={filterTags}
-              onToggleTag={handleToggleTag}
-              onClearTags={handleClearTags}
-              onOpenMetadata={handleOpenMetadata}
-              metadataCount={activeConditions.length}
-              menuLabel="Filter By"
+  const filtersPanel = (
+    <div
+      id="quick-search-filters"
+      role="complementary"
+      aria-labelledby="quick-search-filters-heading"
+      className={`flex min-h-0 flex-col bg-card select-none [&_input]:select-text ${
+        isMobile ? "flex-1" : "shrink-0 rounded-lg ring-1 ring-border ring-inset md:w-94"
+      }`}
+    >
+      <h3 id="quick-search-filters-heading" className="sr-only">
+        Search filters
+      </h3>
+      <ScrollableContent
+        aria-label="Filter options"
+        outline={false}
+        maxHeight="100%"
+        containerClassName="min-h-0 flex-1"
+        contentClassName="flex flex-col gap-5 p-4"
+      >
+        {environments.length > 1 && (
+          <Field>
+            <FieldLabel htmlFor="quick-search-environments">Environments</FieldLabel>
+            <Combobox
+              id="quick-search-environments"
+              multiple
+              options={environments}
+              value={environments.filter((env) => selectedEnvironments.includes(env.slug))}
+              onValueChange={(options) => {
+                setSelectedEnvironments(options.map((env) => env.slug));
+                setFolderPath("/");
+              }}
+              getOptionValue={(env) => env.slug}
+              getOptionLabel={(env) => env.name}
+              placeholder="All environments"
+              searchPlaceholder="Find environments..."
+              searchAriaLabel="Find environments"
+              clearAriaLabel="Clear environment filters"
             />
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <InputGroup className="flex-1">
+          </Field>
+        )}
+        <Field>
+          <FieldLabel htmlFor="quick-search-folder-path">Folder Path</FieldLabel>
+          <QuickSearchFolderPicker
+            key={folderEnvironment ?? "all"}
+            projectId={projectId}
+            environment={folderEnvironment}
+            value={folderPath}
+            onChange={setFolderPath}
+          />
+          <FieldDescription id="quick-search-folder-help">{folderHelpText}</FieldDescription>
+        </Field>
+        <div
+          role="group"
+          aria-labelledby="quick-search-resource-types-label"
+          className="flex flex-col gap-3"
+        >
+          <FieldLabel asChild>
+            <span id="quick-search-resource-types-label">Resource Types</span>
+          </FieldLabel>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+            {QUICK_SEARCH_RESOURCE_TYPES.map((option) => (
+              <Field key={option.type} orientation="horizontal">
+                <Checkbox
+                  id={`quick-search-type-${option.type}`}
+                  isChecked={showType(option.type as ResourceType)}
+                  onCheckedChange={(checked) =>
+                    handleChangeResourceTypes(
+                      QUICK_SEARCH_RESOURCE_TYPES.filter(({ type }) =>
+                        type === option.type ? checked === true : showFilter[type as ResourceType]
+                      )
+                    )
+                  }
+                />
+                <FieldLabel htmlFor={`quick-search-type-${option.type}`}>
+                  <span className="flex items-center gap-2 [&_svg]:size-4">
+                    {option.icon}
+                    {option.label}
+                  </span>
+                </FieldLabel>
+              </Field>
+            ))}
+          </div>
+        </div>
+        <Field>
+          <FieldLabel htmlFor="quick-search-tags">Tags</FieldLabel>
+          <Combobox
+            id="quick-search-tags"
+            multiple
+            options={tags ?? []}
+            value={(tags ?? []).filter((tag) => filterTags[tag.slug])}
+            onValueChange={(options) => {
+              setFilterTags(Object.fromEntries(options.map((tag) => [tag.slug, true])));
+              if (options.length > 0) {
+                setShowFilter((previous) => ({ ...previous, [RowType.Secret]: true }));
+              }
+            }}
+            getOptionValue={(tag) => tag.slug}
+            getOptionLabel={(tag) => tag.slug}
+            placeholder="Any tag"
+            searchPlaceholder="Find tags..."
+            searchAriaLabel="Find tags"
+            clearAriaLabel="Clear tag filters"
+            emptyMessage="No tags found."
+          />
+        </Field>
+        <div className="flex flex-col gap-2">
+          <FieldLabel asChild>
+            <span>Metadata</span>
+          </FieldLabel>
+          <div className="rounded-md border border-border bg-container p-4">
+            <SecretMetadataSearchBuilder
+              conditions={metadataConditions}
+              match={metadataMatch}
+              onChangeMatch={setMetadataMatch}
+              onAddCondition={handleAddCondition}
+              onUpdateCondition={handleUpdateCondition}
+              onRemoveCondition={handleRemoveCondition}
+              onClear={handleClearMetadata}
+            />
+          </div>
+        </div>
+      </ScrollableContent>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 py-2">
+        <span className="text-xs text-accent">
+          {activeFilterCount} {activeFilterCount === 1 ? "filter" : "filters"}
+        </span>
+        <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+          Reset Filters
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 md:flex-row">
+      {!isMobile && filtersPanel}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+        <InputGroup className="shrink-0">
           <InputGroupAddon>
             <SearchIcon />
           </InputGroupAddon>
           <InputGroupInput
+            ref={searchInputRef}
+            aria-label="Search resources"
             placeholder="Search by resource name, secret metadata or tag..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </InputGroup>
-      </div>
-
-      <div className="min-h-0 thin-scrollbar flex-1 overflow-y-auto pt-4">
-        {isBuilderOpen && (
-          <SecretMetadataSearchBuilder
-            conditions={metadataConditions}
-            match={metadataMatch}
-            matchingCount={metadataResultCount}
-            isPending={isMetadataFetching}
-            hasActiveConditions={isMetadataMode}
-            onChangeMatch={setMetadataMatch}
-            onAddCondition={handleAddCondition}
-            onUpdateCondition={handleUpdateCondition}
-            onRemoveCondition={handleRemoveCondition}
-            onClear={handleClearMetadata}
-            onClose={handleCloseBuilder}
-          />
+        {isMobile && (
+          <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="w-fit">
+                <ListFilterIcon />
+                Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-full max-w-sm gap-0 p-0"
+              onEscapeKeyDown={(event) => {
+                if (
+                  (event.currentTarget as HTMLElement | null)?.querySelector(
+                    '[role="combobox"][aria-expanded="true"]'
+                  )
+                ) {
+                  event.preventDefault();
+                }
+              }}
+            >
+              <SheetHeader>
+                <SheetTitle>Filters</SheetTitle>
+                <SheetDescription>Narrow the search results.</SheetDescription>
+              </SheetHeader>
+              {filtersPanel}
+              <SheetFooter className="border-t">
+                <SheetClose asChild>
+                  <Button variant="project" className="w-full">
+                    Show Results
+                  </Button>
+                </SheetClose>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
         )}
-        {resultsContent}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <ScrollableContent
+            aria-label="Search results"
+            edgeBehavior="fade"
+            outline={false}
+            maxHeight="100%"
+            containerClassName="flex min-h-0 flex-1 flex-col"
+            className="flex-1"
+          >
+            {resultsContent}
+          </ScrollableContent>
+          {isMetadataMode && (
+            <div
+              className="shrink-0 space-y-1 border-t border-border py-4 text-xs text-accent"
+              role="status"
+            >
+              <p className="font-medium text-foreground">
+                {isMetadataLoading
+                  ? "Searching..."
+                  : `${metadataResultCount} matching ${metadataResultCount === 1 ? "secret" : "secrets"} shown`}
+              </p>
+              <p>{`Search checks up to ${metadataData?.searchLimit ?? 100} candidates per metadata query. Results may be incomplete. Narrow your filters to see the rest.`}</p>
+            </div>
+          )}
+          {isDeepSearchEnabled && !isDeepSearchLoading && visibleResultCount > 0 && (
+            <div className="shrink-0 border-t border-border py-2">
+              <Pagination
+                startAdornment={
+                  <div className="flex items-center gap-3">
+                    <ResourceCount
+                      folderCount={showType(RowType.Folder) ? totalFolderCount : 0}
+                      secretCount={showType(RowType.Secret) ? totalSecretCount : 0}
+                      dynamicSecretCount={
+                        showType(RowType.DynamicSecret) ? totalDynamicSecretCount : 0
+                      }
+                      secretRotationCount={
+                        showType(RowType.SecretRotation) ? totalSecretRotationCount : 0
+                      }
+                    />
+                    {(isSearchLimitReached || pageableResultCount < visibleResultCount) && (
+                      <span className="text-xs text-accent">
+                        {`Only the first ${searchLimit} matches per resource type can be reached. Narrow your search to see the rest.`}
+                      </span>
+                    )}
+                  </div>
+                }
+                count={pageableResultCount}
+                page={page}
+                perPage={perPage}
+                perPageList={QUICK_SEARCH_PER_PAGE_OPTIONS}
+                onChangePage={setPage}
+                onChangePerPage={(newPerPage) => {
+                  setPerPage(newPerPage);
+                  setPage(1);
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -510,18 +870,41 @@ export const QuickSearchModal = ({
   onOpenChange,
   ...props
 }: QuickSearchModalProps) => {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex flex-col overflow-hidden sm:max-w-7xl">
+      <SheetContent
+        className="flex w-full flex-col overflow-hidden sm:max-w-7xl"
+        onEscapeKeyDown={(event) => {
+          if (
+            searchInputRef.current
+              ?.closest('[data-slot="sheet-content"]')
+              ?.querySelector('[role="combobox"][aria-expanded="true"]')
+          ) {
+            event.preventDefault();
+          }
+        }}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          const input = searchInputRef.current;
+          if (!input) return;
+          input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        }}
+        onPointerDownOutside={(event) => {
+          if ((event.target as HTMLElement).closest('[data-slot="hover-card-content"]')) {
+            event.preventDefault();
+          }
+        }}
+      >
         <SheetHeader>
           <SheetTitle>{`Search All Folders${isSingleEnv ? " In Environment" : ""}`}</SheetTitle>
           <SheetDescription>
-            {`Search the ${
-              isSingleEnv ? "current environment" : "entire project"
-            } to quickly reference secrets and navigate deeply.`}
+            {`Find resources across folders in ${isSingleEnv ? "this environment" : "your project"}.`}
           </SheetDescription>
         </SheetHeader>
-        <Content {...props} />
+        <Content {...props} searchInputRef={searchInputRef} />
       </SheetContent>
     </Sheet>
   );

@@ -22,6 +22,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSecretAccessList",
       description: "Get list of users, machine identities, and groups with access to a secret",
       security: [
         {
@@ -57,7 +58,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { secretName } = req.params;
       const { secretPath, environment, projectId, includeAllEntities } = req.query;

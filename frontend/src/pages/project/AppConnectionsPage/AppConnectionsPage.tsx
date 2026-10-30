@@ -1,32 +1,31 @@
-import { Helmet } from "react-helmet";
-
-import { PageHeader } from "@app/components/v2";
+import { PageTitle } from "@app/components/PageTitle";
+import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { withProjectPermission } from "@app/hoc";
 import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
-export const AppConnectionsPage = withProjectPermission(
+const AppConnectionsPageContent = withProjectPermission(
   () => {
     const { currentProject } = useProject();
 
     return (
-      <div className="bg-bunker-800">
-        <Helmet>
-          <title>Infisical | App Connections</title>
-          <link rel="icon" href="/infisical.ico" />
-          <meta property="og:image" content="/images/message.png" />
-        </Helmet>
-        <div className="flex w-full justify-center bg-bunker-800 text-white">
+      <div className="bg-page">
+        <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
+        <div className="flex w-full justify-center bg-page text-foreground-inverse">
           <div className="w-full max-w-8xl">
             <PageHeader
               scope={currentProject.type}
               className="w-full"
-              title="Project App Connections"
-              description="Manage project App Connections"
+              title={
+                hidesProjects(currentProject.type) ? "App Connections" : "Project App Connections"
+              }
+              description={`Manage ${getProjectLabel(currentProject.type)} App Connections`}
             />
 
             <AppConnectionsTable projectId={currentProject.id} projectType={currentProject.type} />
@@ -37,6 +36,14 @@ export const AppConnectionsPage = withProjectPermission(
   },
   {
     action: ProjectPermissionAppConnectionActions.Read,
-    subject: ProjectPermissionSub.AppConnections
+    subject: ProjectPermissionSub.AppConnections,
+    accessRestrictedMode: "dialog"
   }
+);
+
+export const AppConnectionsPage = () => (
+  <>
+    <PageTitle title="App Connections" />
+    <AppConnectionsPageContent />
+  </>
 );

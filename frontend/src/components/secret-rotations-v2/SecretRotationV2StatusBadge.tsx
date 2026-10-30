@@ -3,8 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistanceToNow } from "date-fns";
 import { BanIcon, RefreshCwIcon, XIcon } from "lucide-react";
 
-import { Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { SecretRotationStatus, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 
 type Props = {
@@ -26,33 +25,32 @@ export const SecretRotationV2StatusBadge = ({ secretRotation }: Props) => {
     }
 
     return (
-      <Tooltip
-        position="left"
-        className="max-w-sm select-text"
-        content={
+      <Tooltip hoverable selectable delayDuration={50}>
+        <TooltipTrigger asChild>
+          <Badge variant="danger">
+            <XIcon />
+            Rotation Failed
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-sm">
           <div className="flex flex-col gap-2 py-1 whitespace-normal">
             <div>
-              <div className="mb-2 flex self-start text-red">
+              <div className="mb-2 flex self-start text-danger">
                 <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
                 <div className="text-xs">Failure Reason</div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
+              <div className="rounded-sm bg-surface-active p-2 text-xs break-words">
                 {errorMessage}
               </div>
             </div>
             {nextRotationAt && (
-              <span className="text-xs text-mineshaft-300">
+              <span className="text-xs text-label">
                 Next rotation attempt on {format(nextRotationAt, "MM/dd/yyyy")} at{" "}
                 {format(nextRotationAt, "h:mm aa")}.
               </span>
             )}
           </div>
-        }
-      >
-        <Badge variant="danger">
-          <XIcon />
-          Rotation Failed
-        </Badge>
+        </TooltipContent>
       </Tooltip>
     );
   }
@@ -70,24 +68,21 @@ export const SecretRotationV2StatusBadge = ({ secretRotation }: Props) => {
     (new Date(nextRotationAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24);
 
   return (
-    <Tooltip
-      className="max-w-lg"
-      content={
-        <>
-          <span>
-            Rotates on {format(nextRotationAt, "MM/dd/yyyy")} at {format(nextRotationAt, "h:mm aa")}
-          </span>{" "}
-          <span className="text-mineshaft-300">(Local Time)</span>
-        </>
-      }
-      asChild
-    >
-      <Badge variant={daysToRotation >= 7 ? "info" : "warning"} className="capitalize">
-        <RefreshCwIcon />
-        {daysToRotation < 0
-          ? "Rotating"
-          : `Rotates ${formatDistanceToNow(nextRotationAt, { addSuffix: true })}`}
-      </Badge>
+    <Tooltip hoverable delayDuration={50}>
+      <TooltipTrigger asChild>
+        <Badge variant={daysToRotation >= 7 ? "info" : "warning"} className="capitalize">
+          <RefreshCwIcon />
+          {daysToRotation < 0
+            ? "Rotating"
+            : `Rotates ${formatDistanceToNow(nextRotationAt, { addSuffix: true })}`}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-lg">
+        <span>
+          Rotates on {format(nextRotationAt, "MM/dd/yyyy")} at {format(nextRotationAt, "h:mm aa")}
+        </span>{" "}
+        <span className="text-label">(Local Time)</span>
+      </TooltipContent>
     </Tooltip>
   );
 };

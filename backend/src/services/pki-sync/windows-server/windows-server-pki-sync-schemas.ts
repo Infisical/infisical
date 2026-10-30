@@ -5,8 +5,26 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
-import { PkiSyncSchema, PostSyncCommandSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  EXPORT_PASSWORD_BLANK_MESSAGE,
+  isBlankExportPassword,
+  isKeystoreExportFormat,
+  KEYSTORE_PASSWORD_REQUIRED_MESSAGE,
+  PemCertificateExtension,
+  PkiSyncExportFormat
+} from "@app/services/pki-sync/pki-sync-export-fns";
+import {
+  BaseHealthCheckTestSchema,
+  ExportPasswordSchema,
+  HostCommandSchema,
+  IncludeTruststoreSchema,
+  KeystoreAliasSchema,
+  PkiSyncFiltersField,
+  PkiSyncSchema,
+  PkiSyncTargetHostSchema,
+  PkiSyncTargetPortSchema,
+  UpdatePkiSyncFiltersField
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 import { WINDOWS_SERVER_NAMING } from "./windows-server-pki-sync-constants";
 
@@ -50,7 +68,20 @@ export const WindowsServerPkiSyncConfigSchema = z.object({
     .refine((p) => !WINDOWS_PATH_TRAVERSAL.test(p), { message: "Destination path must not contain '..'" })
     .refine((p) => !WINDOWS_DOUBLE_SEPARATOR.test(p), {
       message: "Destination path must not contain consecutive path separators"
-    })
+    }),
+  host: PkiSyncTargetHostSchema,
+  port: PkiSyncTargetPortSchema,
+  sslEnabled: z
+    .boolean()
+    .optional()
+    .describe("Reach the host over HTTPS WinRM instead of HTTP with NTLM message encryption."),
+  sslRejectUnauthorized: z.boolean().optional().describe("Verify the host's WinRM certificate when using HTTPS."),
+  sslCertificate: z
+    .string()
+    .trim()
+    .max(8192)
+    .optional()
+    .describe("CA certificate (PEM) used to verify a self-signed WinRM HTTPS listener (HTTPS only).")
 });
 
 export const WindowsServerPkiSyncOptionsSchema = z.object({
@@ -60,6 +91,8 @@ export const WindowsServerPkiSyncOptionsSchema = z.object({
   exportFormat: z.nativeEnum(PkiSyncExportFormat).default(PkiSyncExportFormat.Pkcs12),
   pemCertificateExtension: z.nativeEnum(PemCertificateExtension).default(PemCertificateExtension.Pem),
   combineCertificateChain: z.boolean().default(false),
+  keystoreAlias: KeystoreAliasSchema,
+  includeTruststore: IncludeTruststoreSchema,
   fileAccessRules: z
     .array(
       z.object({
@@ -76,7 +109,8 @@ export const WindowsServerPkiSyncOptionsSchema = z.object({
     )
     .max(20)
     .optional(),
-  postSyncCommand: PostSyncCommandSchema,
+  healthCheckCommand: HostCommandSchema,
+  postSyncCommand: HostCommandSchema,
   certificateNameSchema: z
     .string()
     .trim()
@@ -96,10 +130,10 @@ export const WindowsServerPkiSyncOptionsSchema = z.object({
     )
 });
 
-// Sync-level secrets (the PKCS#12 export password) accepted on create/update. Stored encrypted in
+// Sync-level secrets (the PKCS#12 / JKS export password) accepted on create/update. Stored encrypted in
 // pki_syncs.encryptedCredentials and never returned.
 export const WindowsServerPkiSyncCredentialsSchema = z.object({
-  exportPassword: z.string().min(1).optional()
+  exportPassword: ExportPasswordSchema.optional()
 });
 
 export const WindowsServerPkiSyncSchema = PkiSyncSchema.extend({
@@ -119,14 +153,22 @@ export const CreateWindowsServerPkiSyncSchema = z
     subscriberId: z.string().nullish(),
     connectionId: z.string(),
     applicationId: z.string().uuid().optional(),
-    certificateIds: z.array(z.string().uuid()).optional()
+    certificateIds: z.array(z.string().uuid()).optional(),
+    filters: PkiSyncFiltersField
   })
   .superRefine((data, ctx) => {
-    if (data.syncOptions.exportFormat === PkiSyncExportFormat.Pkcs12 && !data.credentials?.exportPassword) {
+    if (!isKeystoreExportFormat(data.syncOptions.exportFormat)) return;
+    if (!data.credentials?.exportPassword) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["credentials", "exportPassword"],
-        message: "A password is required when the export format is PKCS#12"
+        message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE
+      });
+    } else if (isBlankExportPassword(data.credentials.exportPassword)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["credentials", "exportPassword"],
+        message: EXPORT_PASSWORD_BLANK_MESSAGE
       });
     }
   });
@@ -139,13 +181,20 @@ export const UpdateWindowsServerPkiSyncSchema = z.object({
   syncOptions: WindowsServerPkiSyncOptionsSchema.optional(),
   credentials: WindowsServerPkiSyncCredentialsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const WindowsServerPkiSyncListItemSchema = z.object({
   name: z.literal("Windows Server"),
   connection: z.literal(AppConnection.WinRM),
+  additionalConnections: z.literal(AppConnection.LDAP).array().optional(),
   destination: z.literal(PkiSync.WindowsServer),
   canImportCertificates: z.literal(false),
   canRemoveCertificates: z.literal(true)
+});
+
+export const WindowsServerPkiSyncHealthCheckTestSchema = BaseHealthCheckTestSchema.extend({
+  destinationConfig: WindowsServerPkiSyncConfigSchema,
+  syncOptions: WindowsServerPkiSyncOptionsSchema.partial()
 });

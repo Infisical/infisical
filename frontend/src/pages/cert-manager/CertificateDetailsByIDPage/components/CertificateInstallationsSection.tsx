@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 
-import { Lottie } from "@app/components/v2";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  Loader,
   Pagination,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -17,6 +17,8 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useListPkiInstallations } from "@app/hooks/api";
 import { getEndpoint, getGatewayLabel } from "@app/pages/cert-manager/pki-discovery-utils";
 
@@ -27,10 +29,8 @@ type Props = {
 const PER_PAGE_INIT = 10;
 
 export const CertificateInstallationsSection = ({ certificateId }: Props) => {
-  const navigate = useNavigate();
-  const { orgId, projectId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificates/$certificateId"
-  });
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
@@ -53,7 +53,7 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
         </CardHeader>
         <CardContent>
           <div className="flex h-40 w-full items-center justify-center">
-            <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+            <Loader />
           </div>
         </CardContent>
       </Card>
@@ -83,20 +83,19 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
           </TableHeader>
           <TableBody>
             {paginatedInstallations.map((installation) => (
-              <TableRow
-                key={installation.id}
-                onClick={() =>
-                  navigate({
-                    to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId",
-                    params: {
-                      orgId,
-                      projectId,
-                      installationId: installation.id
-                    }
-                  })
-                }
-              >
-                <TableCell>{installation.name || getEndpoint(installation)}</TableCell>
+              <TableRow key={installation.id} linked>
+                <TableCell className="max-w-80">
+                  <RowLink
+                    {...getInstancePinningLink(
+                      currentProject.orgId,
+                      currentProject,
+                      `discovery/installations/${installation.id}`
+                    )!}
+                    title={installation.name || getEndpoint(installation)}
+                  >
+                    {installation.name || getEndpoint(installation)}
+                  </RowLink>
+                </TableCell>
                 <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                 <TableCell>
                   {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { QueueName } from "@app/queue";
 
 import { auditLogQueueServiceFactory } from "./audit-log-queue";
+import { MAX_AUDIT_LOG_EXPIRES_AT } from "./audit-log-retention-fns";
 
 // Mutable config the mocked getConfig() returns. CLICKHOUSE_AUDIT_LOG_ENABLED is read once at
 // factory construction; AUDIT_LOG_STREAMS_ENABLED is read per consumer run.
@@ -12,7 +13,7 @@ const mockConfig = {
   CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS: {},
   AUDIT_LOG_STREAMS_ENABLED: false,
   DISABLE_POSTGRES_AUDIT_LOG_STORAGE: false,
-  QUEUE_WORKERS_ENABLED: true
+  isGeneralWorkerRunModeEnabled: true
 };
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
@@ -53,10 +54,10 @@ const collectResult = (payloads: Record<string, unknown>[], lastId = "9-0") => (
   lastId
 });
 
-const createHarness = async ({ clickhouse = false, streamsEnabled = false, queueWorkersEnabled = true } = {}) => {
+const createHarness = async ({ clickhouse = false, streamsEnabled = false, generalWorkers = true } = {}) => {
   mockConfig.CLICKHOUSE_AUDIT_LOG_ENABLED = clickhouse;
   mockConfig.AUDIT_LOG_STREAMS_ENABLED = streamsEnabled;
-  mockConfig.QUEUE_WORKERS_ENABLED = queueWorkersEnabled;
+  mockConfig.isGeneralWorkerRunModeEnabled = generalWorkers;
 
   const startHandlers = new Map<string, (job?: unknown) => Promise<void>>();
   const queueService = {
@@ -91,12 +92,17 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, queue
     findById: vi.fn<(id: string) => Promise<Record<string, unknown> | undefined>>(async () => undefined)
   };
   const licenseService = {
-    getPlan: vi.fn<(orgId: string) => Promise<{ auditLogsRetentionDays: number }>>(async () => ({
+    getPlan: vi.fn<(orgId: string) => Promise<{ auditLogsRetentionDays: number | null }>>(async () => ({
       auditLogsRetentionDays: 30
     }))
   };
   const auditLogStreamOutboxService = {
     enqueueForLogs: vi.fn<(logs: unknown[]) => Promise<void>>(async () => undefined)
+  };
+  const auditLogSettingsService = {
+    getEffectiveSettings: vi.fn<(orgId: string, projectId?: string | null) => Promise<Record<string, unknown> | null>>(
+      async () => null
+    )
   };
   const clickhouseClient = clickhouse
     ? {
@@ -111,6 +117,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, queue
     queueService: queueService as never,
     projectDAL: projectDAL as never,
     licenseService: licenseService as never,
+    auditLogSettingsService: auditLogSettingsService as never,
     auditLogStreamOutboxService: auditLogStreamOutboxService as never,
     clickhouseClient: clickhouseClient as never,
     keyStore: keyStore as never
@@ -125,6 +132,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, queue
     projectDAL,
     licenseService,
     auditLogStreamOutboxService,
+    auditLogSettingsService,
     clickhouseClient,
     consumer: startHandlers.get(QueueName.AuditLogClickHouseBatch)!
   };
@@ -139,18 +147,19 @@ beforeEach(() => {
 });
 
 describe("audit-log-queue construction", () => {
-  test("registers the batch scheduler when queue workers are enabled", async () => {
+  test("registers the batch scheduler in the general-workers run mode", async () => {
     const { queueService } = await createHarness();
 
     expect(queueService.upsertJobScheduler).toHaveBeenCalledTimes(1);
   });
 
-  test("skips scheduler registration when queue workers are disabled", async () => {
-    // A pod with workers disabled never initializes the queue, and upsertJobScheduler throws on a
-    // missing queue; the factory must branch instead of crashing the boot.
-    const { queueService } = await createHarness({ queueWorkersEnabled: false });
+  test("skips scheduler registration outside the general-workers run mode", async () => {
+    // An api or secret-scanning pod has no worker on this queue, so arming the 5s schedule from
+    // there leaves iterations nobody drains.
+    const { queueService } = await createHarness({ generalWorkers: false });
 
     expect(queueService.upsertJobScheduler).not.toHaveBeenCalled();
+    expect(queueService.start).toHaveBeenCalledWith(QueueName.AuditLogClickHouseBatch, expect.any(Function));
   });
 });
 
@@ -222,6 +231,27 @@ describe("audit-log-queue pushToLog", () => {
     expect(keyStore.streamAdd).not.toHaveBeenCalled();
   });
 
+  test("keeps logs until the expiry cap when the plan's retention is unlimited (null)", async () => {
+    const { service, keyStore, licenseService } = await createHarness();
+    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: null });
+
+    await service.pushToLog(dto({ orgId: "org-unlimited" }) as never);
+
+    expect(pushedEntry(keyStore).expiresAt).toBe(MAX_AUDIT_LOG_EXPIRES_AT.toISOString());
+  });
+
+  test("applies the project-level retention under an unlimited plan", async () => {
+    const { service, keyStore, projectDAL, licenseService } = await createHarness();
+    projectDAL.findById.mockResolvedValueOnce({ id: "p1", orgId: "org-1", name: "proj", auditLogsRetentionDays: 5 });
+    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: null });
+
+    await service.pushToLog(dto({ orgId: undefined, projectId: "p1" }) as never);
+
+    const parsed = pushedEntry(keyStore);
+    const ttl = new Date(parsed.expiresAt as string).getTime() - new Date(parsed.createdAt as string).getTime();
+    expect(ttl).toBe(5 * MS_IN_DAY);
+  });
+
   test("never throws when streamAdd fails", async () => {
     const { service, keyStore } = await createHarness();
     keyStore.streamAdd.mockRejectedValueOnce(new Error("redis down"));
@@ -235,6 +265,102 @@ describe("audit-log-queue pushToLog", () => {
 
     await expect(service.pushToLog(dto({ orgId: "o" }) as never)).resolves.toBeUndefined();
     expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("pushToLogOrThrow rejects when streamAdd fails", async () => {
+    const { service, keyStore } = await createHarness();
+    keyStore.streamAdd.mockRejectedValueOnce(new Error("redis down"));
+
+    await expect(service.pushToLogOrThrow(dto({ orgId: "o" }) as never)).rejects.toThrow("redis down");
+  });
+});
+
+describe("audit-log-queue event class settings", () => {
+  const settings = (overrides: Record<string, unknown> = {}) => ({
+    org: {},
+    shouldUseNewPrivilegeSystem: true,
+    ...overrides
+  });
+
+  test("drops an authentication event when the org disabled the class", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { authentication: false } }));
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("stores an authentication event when the class is enabled", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { authentication: true } }));
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("records management and data-access events without looking up settings", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+
+    await service.pushToLog(dto({ event: { type: "update-secret", metadata: {} } }) as never);
+    await service.pushToLog(dto({ event: { type: "get-secrets", metadata: {} } }) as never);
+    await service.pushToLog(dto({ projectId: "p1", event: { type: "get-secrets", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(3);
+    expect(auditLogSettingsService.getEffectiveSettings).not.toHaveBeenCalled();
+  });
+
+  test("a project event uses the project's own setting, never the org's", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockImplementation(async (_orgId, projectId) =>
+      settings({ org: { authentication: false }, project: projectId === "p-off" ? { authentication: false } : {} })
+    );
+
+    await service.pushToLog(dto({ projectId: "p-none", event: { type: "user-login", metadata: {} } }) as never);
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+
+    await service.pushToLog(dto({ projectId: "p-off", event: { type: "user-login", metadata: {} } }) as never);
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+    expect(auditLogSettingsService.getEffectiveSettings).toHaveBeenLastCalledWith(expect.any(String), "p-off");
+  });
+
+  test("an org-scoped event ignores project settings", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(
+      settings({ org: {}, project: { authentication: false } })
+    );
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("drops a permission denial when no scope has turned authorization on", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings());
+
+    await service.pushToLog(dto({ event: { type: "permission-denied", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("records an authentication event when no scope has a setting", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings());
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("records the event when the settings lookup returns nothing", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(null);
+
+    await service.pushToLog(dto({ event: { type: "permission-denied", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -402,5 +528,81 @@ describe("audit-log-queue unified consumer", () => {
     await expect(consumer()).rejects.toThrow("redis hiccup");
 
     expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  describe("free-text normalization reaches both sinks", () => {
+    const NUL = String.fromCharCode(0);
+    const ESC = String.fromCharCode(0x1b);
+    const RLO = String.fromCodePoint(0x202e);
+
+    const hostileEntry = () =>
+      streamEntry({
+        projectId: "p1",
+        projectName: `proj${RLO}x`,
+        ipAddress: `1.1.1.1${String.fromCharCode(0x9b)}[31m`,
+        userAgent: `Agent/1.0${ESC}[31m`,
+        actor: { type: "user", metadata: { name: `svc${NUL}acct` } },
+        event: {
+          type: "test-event",
+          metadata: { reason: `approved by${String.fromCharCode(10)}ops`, nested: { note: `a${RLO}b` } }
+        }
+      });
+
+    // projectName only exists on the postgres path.
+    const expectClean = (row: Record<string, unknown>, { withProjectName = true } = {}) => {
+      if (withProjectName) expect(row.projectName).toBe("projx");
+      expect(row.ipAddress).toBe("1.1.1.1[31m");
+      expect(row.userAgent).toBe("Agent/1.0");
+      expect((row.actorMetadata as Record<string, unknown>).name).toBe("svcacct");
+
+      const eventMetadata = row.eventMetadata as Record<string, unknown>;
+      expect(eventMetadata.reason).toBe(`approved by${String.fromCharCode(10)}ops`);
+      expect((eventMetadata.nested as Record<string, unknown>).note).toBe("ab");
+    };
+
+    test("the postgres insert receives normalized values", async () => {
+      const { consumer, auditLogDAL, keyStore } = await createHarness();
+      keyStore.streamCollect.mockResolvedValueOnce(collectResult([hostileEntry()]));
+
+      await consumer();
+
+      expectClean(auditLogDAL.batchCreate.mock.calls[0][0][0]);
+    });
+
+    test("the stream outbox receives the same normalized rows", async () => {
+      const { consumer, auditLogStreamOutboxService, keyStore } = await createHarness({ streamsEnabled: true });
+      keyStore.streamCollect.mockResolvedValueOnce(collectResult([hostileEntry()]));
+
+      await consumer();
+
+      expect(auditLogStreamOutboxService.enqueueForLogs).toHaveBeenCalledTimes(1);
+      expectClean(auditLogStreamOutboxService.enqueueForLogs.mock.calls[0][0][0] as Record<string, unknown>);
+    });
+
+    test("the clickhouse insert receives normalized values", async () => {
+      const { consumer, clickhouseClient, keyStore } = await createHarness({ clickhouse: true });
+      keyStore.streamCollect.mockResolvedValueOnce(collectResult([hostileEntry()]));
+
+      await consumer();
+
+      expectClean(clickhouseClient!.insert.mock.calls[0][0].values[0], { withProjectName: false });
+    });
+
+    test("legitimate nesting survives the walk intact", async () => {
+      const { consumer, auditLogDAL, keyStore } = await createHarness();
+      let claims: Record<string, unknown> = { sub: `id${NUL}1`, keep: 7 };
+      for (let i = 0; i < 20; i += 1) claims = { nested: claims };
+      keyStore.streamCollect.mockResolvedValueOnce(
+        collectResult([streamEntry({ event: { type: "test-event", metadata: { oidcClaimsReceived: claims } } })])
+      );
+
+      await consumer();
+
+      const row = auditLogDAL.batchCreate.mock.calls[0][0][0];
+      let cursor = (row.eventMetadata as Record<string, unknown>).oidcClaimsReceived as Record<string, unknown>;
+      for (let i = 0; i < 20; i += 1) cursor = cursor.nested as Record<string, unknown>;
+      expect(cursor.sub).toBe("id1");
+      expect(cursor.keep).toBe(7);
+    });
   });
 });

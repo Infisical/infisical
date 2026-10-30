@@ -19,7 +19,8 @@ import {
   TListSigningOperationsDTO,
   TListSigningOperationsResponse,
   TSigner,
-  TSignerPolicy
+  TSignerPolicy,
+  TSigningOperationDetail
 } from "./types";
 
 const SIGNER_LIST_POLL_MS = 4000;
@@ -35,6 +36,8 @@ export const signerKeys = {
   operations: (signerId: string) => [...signerKeys.all, "operations", signerId] as const,
   operationsWithOpts: (filters: TListSigningOperationsDTO) =>
     [...signerKeys.operations(filters.signerId), filters] as const,
+  operationById: (signerId: string, operationId: string) =>
+    [...signerKeys.operations(signerId), operationId] as const,
   members: (signerId: string, kind: string) =>
     [...signerKeys.all, "members", signerId, kind] as const,
   effectiveMembers: (signerId: string, kind: "user" | "identity") =>
@@ -127,6 +130,19 @@ export const useListSigningOperations = (dto: TListSigningOperationsDTO) => {
     },
     enabled: Boolean(dto.signerId),
     placeholderData: (previousData) => previousData
+  });
+};
+
+export const useGetSigningOperation = (signerId: string, operationId: string) => {
+  return useQuery({
+    queryKey: signerKeys.operationById(signerId, operationId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TSigningOperationDetail>(
+        `/api/v1/cert-manager/signers/${signerId}/operations/${operationId}`
+      );
+      return data;
+    },
+    enabled: Boolean(signerId && operationId)
   });
 };
 

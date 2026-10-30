@@ -20,7 +20,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -43,12 +42,11 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  Field,
   IconButton,
-  Input,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -68,7 +66,7 @@ import {
   OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteRelayById, useGetRelays } from "@app/hooks/api/relays";
 
 import { RelayDeployModal } from "./components/RelayDeployModal";
@@ -104,8 +102,8 @@ const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
 
 export const RelayTab = withPermission(
   () => {
+    const scopeVariant = useScopeVariant();
     const [search, setSearch] = useState("");
-    const [deleteConfirmation, setDeleteConfirmation] = useState("");
     const { data: relays, isPending: isRelaysLoading } = useGetRelays();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
@@ -163,7 +161,7 @@ export const RelayTab = withPermission(
           </CardTitle>
           <CardDescription>Create and manage network relays from Infisical</CardDescription>
           <CardAction>
-            <Button variant="org" onClick={() => handlePopUpOpen("deployRelay")}>
+            <Button variant={scopeVariant} onClick={() => handlePopUpOpen("deployRelay")}>
               <PlusIcon />
               Create Relay
             </Button>
@@ -192,19 +190,19 @@ export const RelayTab = withPermission(
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table className="min-w-[62rem] table-fixed">
+            <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-80 min-w-80">
+                  <TableHead>
                     <TableHeadLabel>Name</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-72">
+                  <TableHead>
                     <TableHeadLabel>Host</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-44">
+                  <TableHead>
                     <TableHeadLabel>Created</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-40">
+                  <TableHead>
                     <TableHeadLabel
                       trailing={
                         <Tooltip>
@@ -220,7 +218,7 @@ export const RelayTab = withPermission(
                       Health Check
                     </TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -235,21 +233,17 @@ export const RelayTab = withPermission(
                     </TableRow>
                   ))}
                 {filteredRelays?.map((el) => (
-                  <TableRow
-                    key={el.id}
-                    onClick={
-                      el.orgId
-                        ? () =>
-                            navigate({
-                              to: "/organizations/$orgId/networking/relays/$relayId",
-                              params: { orgId, relayId: el.id }
-                            })
-                        : undefined
-                    }
-                  >
-                    <TableCell className="min-w-80">
+                  <TableRow key={el.id} linked={Boolean(el.orgId)}>
+                    <TableCell>
                       <div className="flex min-w-0 items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate">{el.name}</span>
+                        <RowLink
+                          to="/organizations/$orgId/networking/relays/$relayId"
+                          params={{ orgId, relayId: el.id }}
+                          disabled={!el.orgId}
+                          className="min-w-0 flex-1"
+                        >
+                          {el.name}
+                        </RowLink>
                         {!el.orgId && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -267,7 +261,7 @@ export const RelayTab = withPermission(
                     <TableCell>
                       <RelayHealthStatus heartbeat={el.heartbeat} />
                     </TableCell>
-                    <TableCell className="w-12" onClick={(event) => event.stopPropagation()}>
+                    <TableCell variant="action">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton aria-label="Relay options" variant="ghost" size="sm">
@@ -303,11 +297,10 @@ export const RelayTab = withPermission(
             </Table>
           )}
           <AlertDialog
+            isPending={deleteRelayById.isPending}
             open={popUp.deleteRelay.isOpen}
-            onOpenChange={(open) => {
-              if (!open) setDeleteConfirmation("");
-              handlePopUpToggle("deleteRelay", open);
-            }}
+            confirmationValue={(popUp.deleteRelay.data as { name?: string })?.name || "relay"}
+            onOpenChange={(open) => handlePopUpToggle("deleteRelay", open)}
           >
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -316,36 +309,18 @@ export const RelayTab = withPermission(
                   This permanently removes the relay from your organization.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogConfirmationField>
-                <Field>
-                  <AlertDialogConfirmationLabel
-                    htmlFor="delete-relay-confirmation"
-                    confirmationValue={
-                      (popUp.deleteRelay.data as { name?: string })?.name || "relay"
-                    }
-                  />
-                  <Input
-                    id="delete-relay-confirmation"
-                    value={deleteConfirmation}
-                    onChange={(event) => setDeleteConfirmation(event.target.value)}
-                    placeholder={(popUp.deleteRelay.data as { name?: string })?.name || "relay"}
-                    autoComplete="off"
-                    autoFocus
-                  />
-                </Field>
-              </AlertDialogConfirmationField>
+              <AlertDialogConfirmationField
+                inputProps={{
+                  placeholder: (popUp.deleteRelay.data as { name?: string })?.name || "relay"
+                }}
+              />
               <Alert variant="danger" appearance="borderless">
                 <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
               </Alert>
               <AlertDialogFooter>
-                <AlertDialogCancel isDisabled={deleteRelayById.isPending}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   variant="danger"
-                  isPending={deleteRelayById.isPending}
-                  isDisabled={
-                    deleteConfirmation !==
-                    ((popUp.deleteRelay.data as { name?: string })?.name || "relay")
-                  }
                   onClick={(event) => {
                     event.preventDefault();
                     handleDeleteRelay();
@@ -364,5 +339,9 @@ export const RelayTab = withPermission(
       </Card>
     );
   },
-  { action: OrgRelayPermissionActions.ListRelays, subject: OrgPermissionSubjects.Relay }
+  {
+    action: OrgRelayPermissionActions.ListRelays,
+    subject: OrgPermissionSubjects.Relay,
+    accessRestrictedMode: "dialog"
+  }
 );

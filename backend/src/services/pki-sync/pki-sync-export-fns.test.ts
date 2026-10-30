@@ -1,4 +1,16 @@
-import { exportCertificateForSync, PkiSyncExportFormat, TExportedCertificateFile } from "./pki-sync-export-fns";
+import forge from "node-forge";
+
+import { crypto } from "@app/lib/crypto/cryptography";
+
+import {
+  exportCertificateForSync,
+  getExportedCertificateFileSuffixes,
+  getUnusedKeystoreOptionMessage,
+  isExportFormatBlockedByFips,
+  PemCertificateExtension,
+  PkiSyncExportFormat,
+  TExportedCertificateFile
+} from "./pki-sync-export-fns";
 
 const CERT = "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----";
 const CHAIN = "-----BEGIN CERTIFICATE-----\nchain\n-----END CERTIFICATE-----";
@@ -47,5 +59,198 @@ describe("exportCertificateForSync (PEM)", () => {
     });
 
     expect(suffixes(files)).toEqual([".key", ".pem"]);
+  });
+});
+
+const everyPemShape = () => {
+  const shapes = [];
+  for (const pemCertificateExtension of [PemCertificateExtension.Pem, PemCertificateExtension.Crt]) {
+    for (const combineCertificateChain of [true, false]) {
+      for (const includePrivateKey of [true, false]) {
+        for (const hasCertificateChain of [true, false]) {
+          for (const hasPrivateKey of [true, false]) {
+            shapes.push({
+              format: PkiSyncExportFormat.Pem,
+              pemCertificateExtension,
+              combineCertificateChain,
+              includePrivateKey,
+              hasCertificateChain,
+              hasPrivateKey
+            });
+          }
+        }
+      }
+    }
+  }
+  return shapes;
+};
+
+describe("getExportedCertificateFileSuffixes matches the real export", () => {
+  test.each(everyPemShape())(
+    "PEM ext=$pemCertificateExtension combined=$combineCertificateChain includeKey=$includePrivateKey chain=$hasCertificateChain key=$hasPrivateKey",
+    async (shape) => {
+      const exported = await exportCertificateForSync({
+        format: shape.format,
+        certificate: CERT,
+        certificateChain: shape.hasCertificateChain ? CHAIN : undefined,
+        privateKey: shape.hasPrivateKey ? KEY : undefined,
+        includePrivateKey: shape.includePrivateKey,
+        password: "pw",
+        alias: "api.example.com",
+        pemCertificateExtension: shape.pemCertificateExtension,
+        combineCertificateChain: shape.combineCertificateChain
+      });
+
+      expect(getExportedCertificateFileSuffixes(shape).sort()).toEqual(suffixes(exported));
+    }
+  );
+
+  const realPair = (() => {
+    const keys = forge.pki.rsa.generateKeyPair(2048);
+    const cert = forge.pki.createCertificate();
+    cert.publicKey = keys.publicKey;
+    cert.serialNumber = "01";
+    cert.validity.notBefore = new Date(2026, 0, 1);
+    cert.validity.notAfter = new Date(2027, 0, 1);
+    const attrs = [{ name: "commonName", value: "api.example.com" }];
+    cert.setSubject(attrs);
+    cert.setIssuer(attrs);
+    cert.sign(keys.privateKey);
+
+    return {
+      certificate: forge.pki.certificateToPem(cert),
+      privateKey: forge.pki.privateKeyInfoToPem(
+        forge.pki.wrapRsaPrivateKey(forge.pki.privateKeyToAsn1(keys.privateKey))
+      )
+    };
+  })();
+
+  test.each([
+    [true, true],
+    [true, false],
+    [false, true],
+    [false, false]
+  ])("PKCS#12 includeKey=%s chain=%s", async (includePrivateKey, hasCertificateChain) => {
+    const shape = {
+      format: PkiSyncExportFormat.Pkcs12 as const,
+      includePrivateKey,
+      hasCertificateChain,
+      hasPrivateKey: true
+    };
+
+    const exported = await exportCertificateForSync({
+      format: shape.format,
+      certificate: realPair.certificate,
+      certificateChain: hasCertificateChain ? realPair.certificate : undefined,
+      privateKey: realPair.privateKey,
+      includePrivateKey,
+      password: "pw",
+      alias: "api.example.com"
+    });
+
+    expect(getExportedCertificateFileSuffixes(shape).sort()).toEqual(suffixes(exported));
+  });
+
+  test("PKCS#12 needs the private key, so a certificate without one cannot be exported at all", async () => {
+    await expect(
+      exportCertificateForSync({
+        format: PkiSyncExportFormat.Pkcs12,
+        certificate: realPair.certificate,
+        includePrivateKey: true,
+        password: "pw",
+        alias: "api.example.com"
+      })
+    ).rejects.toThrow(/PKCS#12 export is not supported for this key type/);
+  });
+
+  const otherCa = (() => {
+    const keys = forge.pki.rsa.generateKeyPair(2048);
+    const cert = forge.pki.createCertificate();
+    cert.publicKey = keys.publicKey;
+    cert.serialNumber = "02";
+    cert.validity.notBefore = new Date(2026, 0, 1);
+    cert.validity.notAfter = new Date(2027, 0, 1);
+    const attrs = [{ name: "commonName", value: "Example CA" }];
+    cert.setSubject(attrs);
+    cert.setIssuer(attrs);
+    cert.sign(keys.privateKey);
+    return forge.pki.certificateToPem(cert);
+  })();
+
+  test.each([
+    [true, true, false],
+    [true, false, true],
+    [true, false, false],
+    [false, true, true]
+  ])("JKS truststore=%s chain=%s root=%s", async (includeTruststore, hasCertificateChain, hasRoot) => {
+    const shape = {
+      format: PkiSyncExportFormat.Jks as const,
+      includePrivateKey: true,
+      hasCertificateChain,
+      hasPrivateKey: true,
+      includeTruststore,
+      hasTruststoreCertificates: hasCertificateChain || hasRoot
+    };
+
+    const exported = await exportCertificateForSync({
+      format: shape.format,
+      certificate: realPair.certificate,
+      certificateChain: hasCertificateChain ? otherCa : undefined,
+      caCertificate: hasRoot ? otherCa : undefined,
+      privateKey: realPair.privateKey,
+      includePrivateKey: true,
+      includeTruststore,
+      password: "changeit",
+      alias: "api.example.com"
+    });
+
+    expect(getExportedCertificateFileSuffixes(shape).sort()).toEqual(suffixes(exported));
+    expect(exported.find((f) => f.suffix === ".jks")?.isPrivateKey).toBe(true);
+    expect(exported.find((f) => f.suffix === ".truststore.jks")?.isPrivateKey).toBeFalsy();
+  });
+});
+
+describe("getUnusedKeystoreOptionMessage", () => {
+  test("rejects keystore-only options a format does not use", () => {
+    expect(
+      getUnusedKeystoreOptionMessage({ exportFormat: PkiSyncExportFormat.Pem, keystoreAlias: "tomcat" })
+    ).toContain("keystoreAlias");
+    expect(
+      getUnusedKeystoreOptionMessage({ exportFormat: PkiSyncExportFormat.Pkcs12, includeTruststore: true })
+    ).toContain("includeTruststore");
+  });
+
+  test("accepts options that match the format", () => {
+    expect(
+      getUnusedKeystoreOptionMessage({
+        exportFormat: PkiSyncExportFormat.Jks,
+        keystoreAlias: "tomcat",
+        includeTruststore: true
+      })
+    ).toBeUndefined();
+    expect(
+      getUnusedKeystoreOptionMessage({ exportFormat: PkiSyncExportFormat.Pkcs12, keystoreAlias: "tomcat" })
+    ).toBeUndefined();
+    expect(
+      getUnusedKeystoreOptionMessage({ exportFormat: PkiSyncExportFormat.Pem, includeTruststore: false })
+    ).toBeUndefined();
+  });
+});
+
+describe("isExportFormatBlockedByFips", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("blocks only JKS when FIPS mode is on", () => {
+    vi.spyOn(crypto, "isFipsModeEnabled").mockReturnValue(true);
+    expect(isExportFormatBlockedByFips(PkiSyncExportFormat.Jks)).toBe(true);
+    expect(isExportFormatBlockedByFips(PkiSyncExportFormat.Pkcs12)).toBe(false);
+    expect(isExportFormatBlockedByFips(PkiSyncExportFormat.Pem)).toBe(false);
+  });
+
+  test("allows JKS when FIPS mode is off", () => {
+    vi.spyOn(crypto, "isFipsModeEnabled").mockReturnValue(false);
+    expect(isExportFormatBlockedByFips(PkiSyncExportFormat.Jks)).toBe(false);
   });
 });

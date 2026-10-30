@@ -6,6 +6,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { getCaKeySourceAuditMetadata } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   TCertificateAuthority,
   TCertificateAuthorityInput
@@ -55,7 +56,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema.array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
         query: { projectId }
@@ -100,7 +101,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { caName } = req.params;
       const { projectId } = req.query;
@@ -141,7 +142,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
         { ...req.body, type: caType },
@@ -155,7 +156,8 @@ export const registerCertificateAuthorityEndpoints = <
           type: EventType.CREATE_CA,
           metadata: {
             name: certificateAuthority.name,
-            caId: certificateAuthority.id
+            caId: certificateAuthority.id,
+            ...getCaKeySourceAuditMetadata(certificateAuthority.configuration)
           }
         }
       });
@@ -181,7 +183,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { caName } = req.params;
 
@@ -230,7 +232,7 @@ export const registerCertificateAuthorityEndpoints = <
         200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { caName } = req.params;
       const { projectId } = req.body;
@@ -247,7 +249,8 @@ export const registerCertificateAuthorityEndpoints = <
           type: EventType.DELETE_CA,
           metadata: {
             name: certificateAuthority.name,
-            caId: certificateAuthority.id
+            caId: certificateAuthority.id,
+            ...getCaKeySourceAuditMetadata(certificateAuthority.configuration)
           }
         }
       });

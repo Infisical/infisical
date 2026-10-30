@@ -5,7 +5,6 @@ import { ClockAlertIcon, ClockIcon, EllipsisIcon, PlusIcon } from "lucide-react"
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -26,6 +25,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  PageLoader,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -48,16 +48,17 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { getProjectLabel } from "@app/helpers/project";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteIdentityProjectAdditionalPrivilege } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { useListIdentityProjectPrivileges } from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   canModifyByGrantConditions,
   getIdentityAssignPrivilegesConditions
 } from "@app/lib/fn/permission";
 
+import { IdentityActionConfirmationDialog } from "../IdentityActionConfirmationDialog";
 import { IdentityProjectAdditionalPrivilegeModifySection } from "./IdentityProjectAdditionalPrivilegeModifySection";
 
 type Props = {
@@ -65,6 +66,7 @@ type Props = {
 };
 
 export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDetails }: Props) => {
+  const scopeVariant = useScopeVariant();
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deletePrivilege",
@@ -73,7 +75,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
   const { permission } = useProjectPermission();
   const identityId = identityMembershipDetails?.identity?.id;
   const { projectId, currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const projectLabel = getProjectLabel(currentProject?.type);
 
   const { mutateAsync: deletePrivilege } = useDeleteIdentityProjectAdditionalPrivilege();
 
@@ -99,7 +101,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
   }, [assignPrivilegesConditions, identityMembershipDetails?.identity?.id]);
 
   const handlePrivilegeDelete = async () => {
-    const { id } = popUp?.deletePrivilege?.data as { id: string };
+    const { id } = popUp.deletePrivilege.data as { id: string };
     await deletePrivilege({
       privilegeId: id,
       projectId,
@@ -116,9 +118,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager
-              ? "Certificate Manager Additional Privileges"
-              : "Project Additional Privileges"}
+            {`${projectLabel} Additional Privileges`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges#api" />
           </CardTitle>
           <CardDescription>Assign one-off policies to this machine identity</CardDescription>
@@ -165,9 +165,8 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
         <CardContent>
           {/* eslint-disable-next-line no-nested-ternary */}
           {isPending ? (
-            // scott: todo proper loader
-            <div className="flex h-40 w-full items-center justify-center">
-              <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+            <div className="h-40">
+              <PageLoader lottieClassName="w-16" />
             </div>
           ) : identityProjectPrivileges?.length ? (
             <Table>
@@ -228,7 +227,11 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton size="xs" variant="ghost">
+                              <IconButton
+                                aria-label={`Open actions for ${privilegeDetails.slug || "additional privilege"}`}
+                                size="xs"
+                                variant="ghost"
+                              >
                                 <EllipsisIcon />
                               </IconButton>
                             </DropdownMenuTrigger>
@@ -304,7 +307,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                     const isEditDisabled = !isAllowed || !canModifyIdentityPrivileges;
                     const button = (
                       <Button
-                        variant="project"
+                        variant={scopeVariant}
                         size="xs"
                         onClick={() => {
                           handlePopUpOpen("modifyPrivilege");
@@ -361,14 +364,16 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
           />
         </SheetContent>
       </Sheet>
-      <DeleteActionModal
-        isOpen={popUp.deletePrivilege.isOpen}
-        deleteKey="remove"
-        title={`Do you want to remove privilege ${
-          (popUp?.deletePrivilege?.data as { slug: string; id: string })?.slug
+      <IdentityActionConfirmationDialog
+        open={popUp.deletePrivilege.isOpen}
+        confirmationText="remove"
+        title={`Remove privilege ${
+          (popUp?.deletePrivilege?.data as { slug: string; id: string })?.slug || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePrivilege", isOpen)}
-        onDeleteApproved={() => handlePrivilegeDelete()}
+        description="The machine identity will lose the permissions granted by this additional privilege."
+        actionLabel="Remove Privilege"
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePrivilege", isOpen)}
+        onConfirm={handlePrivilegeDelete}
       />
     </>
   );

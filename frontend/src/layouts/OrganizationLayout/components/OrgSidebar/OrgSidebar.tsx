@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { useLocation, useParams } from "@tanstack/react-router";
 
 import { Sidebar, SidebarContent, SidebarFooter, SidebarTrigger } from "@app/components/v3";
@@ -7,6 +8,8 @@ import {
   parseProjectSlugFromPath,
   urlSlugToProjectType
 } from "@app/helpers/project";
+import { useImplicitProduct } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { OrgNav } from "./OrgNav";
 import { ProjectNav } from "./ProjectNav";
@@ -23,18 +26,22 @@ export const OrgSidebar = () => {
     })
   });
   const { pathname } = useLocation();
-  const isPamRoute = pathname.includes("/pam/");
-  const isInsideProject = Boolean(projectId) || isPamRoute;
+  const orgScopedProduct = useImplicitProduct();
+  const isInsideProject = Boolean(projectId) || Boolean(orgScopedProduct);
   // The org-wide KMIP servers and Secret Sharing pages live at literal /projects/<slug>/<resource>
   // paths with no $type route param, so fall back to parsing the product slug from the pathname.
   const effectiveTypeSlug = typeSlug ?? parseProjectSlugFromPath(pathname);
   const projectType = effectiveTypeSlug ? urlSlugToProjectType(effectiveTypeSlug) : null;
   const isOnProjectTypeListing =
-    !isInsideProject && Boolean(projectType) && hasIntermediateProjectsView(projectType!);
+    !isInsideProject &&
+    Boolean(projectType) &&
+    (hasIntermediateProjectsView(projectType!) || pathname.includes("/product-settings"));
   const { isSubOrganization } = useOrganization();
 
-  let scope: "project" | "sub-org" | "org" | "pam" = "org";
-  if (isPamRoute) scope = "pam";
+  let scope: "project" | "sub-org" | "org" | "pam" | "agent-vault" | "secret-scanning" = "org";
+  if (orgScopedProduct === ProjectType.PAM) scope = "pam";
+  else if (orgScopedProduct === ProjectType.AgentVault) scope = "agent-vault";
+  else if (orgScopedProduct === ProjectType.SecretScanning) scope = "secret-scanning";
   else if (isInsideProject || isOnProjectTypeListing) scope = "project";
   else if (isSubOrganization) scope = "sub-org";
 
@@ -46,7 +53,7 @@ export const OrgSidebar = () => {
   return (
     <Sidebar scope={scope} collapsible="none" side="left">
       <SidebarContent>{body}</SidebarContent>
-      <SidebarFooter className="border-t border-border p-2">
+      <SidebarFooter className="border-t border-border-soft p-2">
         <SidebarTrigger variant="ghost" className="w-full" />
       </SidebarFooter>
     </Sidebar>

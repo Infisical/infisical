@@ -16,6 +16,7 @@ import {
   EmptyTitle
 } from "@app/components/v3";
 import { TCertificateProfileWithDetails } from "@app/hooks/api/certificateProfiles";
+import { CustomExtensionList } from "@app/pages/cert-manager/components/CustomExtensionList";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
@@ -28,7 +29,7 @@ type Props = {
 };
 
 const SectionHeader = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
-  <h3 className="mb-4 flex items-center gap-2 text-base font-medium text-foreground">
+  <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
     <span className="text-label [&>svg]:size-4">{icon}</span>
     {title}
   </h3>
@@ -39,12 +40,12 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
 
   const hasSubjectDefaults = Boolean(
     defaults?.commonName ||
-      defaults?.organization ||
-      defaults?.organizationalUnit ||
-      defaults?.country ||
-      defaults?.state ||
-      defaults?.locality ||
-      (defaults?.domainComponents && defaults.domainComponents.length > 0)
+    defaults?.organization ||
+    defaults?.organizationalUnit ||
+    defaults?.country ||
+    defaults?.state ||
+    defaults?.locality ||
+    (defaults?.domainComponents && defaults.domainComponents.length > 0)
   );
 
   const hasCryptoDefaults = Boolean(
@@ -53,7 +54,7 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
 
   const hasKeyUsages = Boolean(
     (defaults?.keyUsages && defaults.keyUsages.length > 0) ||
-      (defaults?.extendedKeyUsages && defaults.extendedKeyUsages.length > 0)
+    (defaults?.extendedKeyUsages && defaults.extendedKeyUsages.length > 0)
   );
 
   const hasBasicConstraints = Boolean(defaults?.basicConstraints);
@@ -241,6 +242,25 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
               </Detail>
             )}
           </div>
+        </>
+      )
+    });
+  }
+
+  if (defaults.customExtensions?.length) {
+    sections.push({
+      id: "customExtensions",
+      node: (
+        <>
+          <p className="mb-3 text-sm font-medium text-foreground">Custom extensions</p>
+          <CustomExtensionList
+            extensions={defaults.customExtensions.map((extension) => ({
+              oid: extension.oid,
+              label: extension.label,
+              critical: extension.critical,
+              displayValue: extension.value ?? "Supplied by the request"
+            }))}
+          />
         </>
       )
     });

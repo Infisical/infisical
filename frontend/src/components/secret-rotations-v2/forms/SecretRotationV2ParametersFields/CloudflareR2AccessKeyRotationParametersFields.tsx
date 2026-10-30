@@ -1,18 +1,22 @@
 import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { MultiValue } from "react-select";
 
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
-  FilterableSelect,
-  FormControl,
+  Combobox,
+  Field,
+  FieldError,
   Input,
   Select,
+  SelectContent,
   SelectItem,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { useCloudflareConnectionListR2Buckets } from "@app/hooks/api/appConnections/cloudflare";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
@@ -35,7 +39,7 @@ enum ParameterTab {
   Restrictions = "restrictions"
 }
 
-// One source for the picker label's content and order: the JSX dims the jurisdiction, and react-select
+// One source for the picker label's content and order: the JSX dims the jurisdiction, and Combobox
 // filters on the plain-text join, so the two must not drift apart.
 const bucketLabelParts = ({ name, jurisdiction }: TCloudflareR2BucketSelection) =>
   [name, CLOUDFLARE_R2_JURISDICTION_MAP[jurisdiction]] as const;
@@ -45,7 +49,7 @@ const formatBucketOptionLabel = (bucket: TCloudflareR2BucketSelection) => {
 
   return (
     <span>
-      {name} <span className="text-mineshaft-400">{jurisdiction}</span>
+      {name} <span className="text-muted">{jurisdiction}</span>
     </span>
   );
 };
@@ -79,83 +83,92 @@ export const CloudflareR2AccessKeyRotationParametersFields = () => {
 
   return (
     <Tabs defaultValue={ParameterTab.General}>
-      <TabList>
-        <Tab value={ParameterTab.General}>General</Tab>
-        <Tab value={ParameterTab.Restrictions}>Restrictions</Tab>
-      </TabList>
-      <TabPanel value={ParameterTab.General}>
+      <TabsList variant="project" className="w-full justify-start">
+        <TabsTrigger value={ParameterTab.General}>General</TabsTrigger>
+        <TabsTrigger value={ParameterTab.Restrictions}>Restrictions</TabsTrigger>
+      </TabsList>
+      <TabsContent value={ParameterTab.General} className="space-y-4">
         <Controller
           control={control}
           name="parameters.name"
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error?.message)}
-              errorText={error?.message}
-              label="Token Name"
-              tooltipText="The name for the generated Cloudflare API token that backs the access key. A timestamp is appended so each rotated key is distinct."
-            >
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabelWithTooltip tooltip="The name for the generated Cloudflare API token that backs the access key. A timestamp is appended so each rotated key is distinct.">
+                Token Name
+              </FieldLabelWithTooltip>
               <Input
                 {...field}
                 placeholder="infisical-r2-access-key"
                 maxLength={CLOUDFLARE_TOKEN_NAME_MAX_LENGTH}
+                isError={Boolean(error)}
               />
-            </FormControl>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="parameters.buckets"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error?.message)}
-              errorText={error?.message}
-              label="Buckets"
-              tooltipText="The R2 buckets the generated access key can act on. Buckets are granted by name, so renaming one in Cloudflare requires updating this rotation."
-            >
-              <FilterableSelect
-                isMulti
+          render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabelWithTooltip tooltip="The R2 buckets the generated access key can act on. Buckets are granted by name, so renaming one in Cloudflare requires updating this rotation.">
+                Buckets
+              </FieldLabelWithTooltip>
+              <Combobox
+                multiple
                 isLoading={isBucketsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 options={bucketOptions}
                 placeholder="Select buckets..."
-                formatOptionLabel={formatBucketOptionLabel}
+                renderOption={formatBucketOptionLabel}
+                renderValue={formatBucketOptionLabel}
                 getOptionLabel={getBucketSearchLabel}
                 getOptionValue={r2BucketKey}
-                // the form field holds the option shape itself, and react-select matches selections by
+                getOptionKeywords={(option) => [r2BucketKey(option)]}
+                // the form field holds the option shape itself, and Combobox matches selections by
                 // `getOptionValue`, so the stored value can be handed back as-is
                 value={value ?? []}
-                onChange={(option) => onChange(option as MultiValue<TCloudflareR2BucketSelection>)}
+                onBlur={onBlur}
+                onValueChange={onChange}
+                isError={Boolean(error)}
               />
-            </FormControl>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="parameters.accessLevel"
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error?.message)}
-              errorText={error?.message}
-              label="Access Level"
-              tooltipText="What the generated key can do on the selected buckets. Read only allows get and list; Read & Write also allows put and delete."
-            >
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabelWithTooltip tooltip="What the generated key can do on the selected buckets. Read only allows get and list; Read & Write also allows put and delete.">
+                Access Level
+              </FieldLabelWithTooltip>
               <Select
-                className="w-full"
-                position="popper"
                 value={field.value}
-                onValueChange={field.onChange}
+                onValueChange={(nextValue) => {
+                  // Radix Select can emit a spurious empty onValueChange while options mount.
+                  if (!nextValue || nextValue === field.value) return;
+                  field.onChange(nextValue);
+                }}
               >
-                {Object.entries(CLOUDFLARE_R2_ACCESS_LEVEL_MAP).map(([accessLevel, label]) => (
-                  <SelectItem key={accessLevel} value={accessLevel}>
-                    {label}
-                  </SelectItem>
-                ))}
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.entries(CLOUDFLARE_R2_ACCESS_LEVEL_MAP).map(([accessLevel, label]) => (
+                    <SelectItem key={accessLevel} value={accessLevel}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError>{error?.message}</FieldError>
+            </Field>
           )}
         />
-      </TabPanel>
-      <TabPanel value={ParameterTab.Restrictions}>
+      </TabsContent>
+      <TabsContent value={ParameterTab.Restrictions} className="space-y-4">
         <CloudflareIpListField
           control={control}
           name="parameters.allowedIps"
@@ -168,7 +181,7 @@ export const CloudflareR2AccessKeyRotationParametersFields = () => {
           label="Disallowed IPs"
           tooltipText="The generated access key cannot be used from these IP addresses or CIDR blocks. One entry per line."
         />
-      </TabPanel>
+      </TabsContent>
     </Tabs>
   );
 };

@@ -1,7 +1,6 @@
 import { ReactNode, useCallback, useRef, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 
-import { Spinner } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -9,11 +8,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Spinner,
   TextArea
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 import { PamPolicyType, TPamAccount } from "@app/hooks/api/pam";
+import { getAccessErrorMessage } from "@app/pages/pam/access-error";
 
 type TAccessPolicy = {
   requireReason: boolean;
@@ -75,7 +76,6 @@ export const SessionAccessGate = ({ account, children }: Props) => {
         response?: {
           data?: {
             error?: string;
-            message?: string;
             details?: { mfaSessionId?: string; mfaMethod?: string };
           };
         };
@@ -89,9 +89,7 @@ export const SessionAccessGate = ({ account, children }: Props) => {
         }
       }
 
-      setErrorMessage(
-        axiosErr?.response?.data?.message ?? "Failed to access account. Please try again."
-      );
+      setErrorMessage(getAccessErrorMessage(err, "Failed to access account. Please try again."));
       setStep("error");
     }
   }, [reason, policy.requireMfa, account.id]);
@@ -187,7 +185,7 @@ export const SessionAccessGate = ({ account, children }: Props) => {
           <CardContent>
             {mfaVerifying ? (
               <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted">
-                <Spinner className="h-4 w-4" />
+                <Spinner size="xs" />
                 Waiting for verification...
               </div>
             ) : (

@@ -9,7 +9,8 @@ import {
 } from "@app/context/ProjectPermissionContext";
 import {
   PermissionConditionOperators,
-  ProjectPermissionSecretActions
+  ProjectPermissionSecretActions,
+  ProjectPermissionSecretFolderActions
 } from "@app/context/ProjectPermissionContext/types";
 import { TSecretFolderWithPath } from "@app/hooks/api/secretFolders/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
@@ -29,13 +30,15 @@ const ACTION_MAP: Record<string, string[] | undefined> = {
   [ProjectPermissionSub.SecretFolders]: [
     ProjectPermissionSecretActions.Create,
     ProjectPermissionSecretActions.Edit,
-    ProjectPermissionSecretActions.Delete
+    ProjectPermissionSecretActions.Delete,
+    ProjectPermissionSecretFolderActions.ManageAccess
   ]
 };
 
 const SUBJECT_HEIGHT_MAP: Record<string, number> = {
   [ProjectPermissionSub.DynamicSecrets]: 130,
   [ProjectPermissionSub.Secrets]: 85,
+  [ProjectPermissionSub.SecretFolders]: 85,
   default: 64
 };
 

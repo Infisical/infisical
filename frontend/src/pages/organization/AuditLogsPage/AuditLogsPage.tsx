@@ -1,18 +1,25 @@
-import { Helmet } from "react-helmet";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import { PageTitle } from "@app/components/PageTitle";
+import {
+  LookingForOrgPageLink,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
-import { AuditLogStreamsTab } from "./components/AuditLogStreamTab";
 import { LogsSection } from "./components";
+import { AuditLogSettingsTab } from "./components/AuditLogSettingsTab";
+import { AuditLogStreamsTab } from "./components/AuditLogStreamTab";
 
 enum AuditLogsPageTabs {
   AuditLogs = "audit-logs",
-  Streams = "streams"
+  Streams = "streams",
+  Settings = "settings"
 }
 
 const AuditLogsTab = () => <LogsSection pageView />;
@@ -26,7 +33,12 @@ export const AuditLogsPage = () => {
 
   const tabs = [
     { key: AuditLogsPageTabs.AuditLogs, label: "Audit Logs", component: AuditLogsTab },
-    { key: AuditLogsPageTabs.Streams, label: "External Log Streams", component: AuditLogStreamsTab }
+    {
+      key: AuditLogsPageTabs.Streams,
+      label: "External Log Streams",
+      component: AuditLogStreamsTab
+    },
+    { key: AuditLogsPageTabs.Settings, label: "Settings", component: AuditLogSettingsTab }
   ];
 
   const activeTab = tabs.some((tab) => tab.key === selectedTab)
@@ -42,30 +54,18 @@ export const AuditLogsPage = () => {
   };
 
   return (
-    <div className="h-full bg-bunker-800">
-      <Helmet>
-        <title>Infisical | Audit Logs</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
-      <div className="flex w-full justify-center bg-bunker-800 pb-6 text-white">
+    <div className="bg-page">
+      <PageTitle title="Audit Logs" />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
+      <div className="flex w-full justify-center bg-page pb-6 text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
             title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Audit Logs`}
             description="Audit logs for security and compliance teams to monitor information access."
           >
-            {isSubOrganization && (
-              <Link
-                to="/organizations/$orgId/audit-logs"
-                params={{
-                  orgId: currentOrg.rootOrgId ?? ""
-                }}
-                className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
-              >
-                <InfoIcon size={12} /> Looking for root organization audit logs?
-              </Link>
-            )}
+            <LookingForOrgPageLink page="auditLogs" target="root" />
           </PageHeader>
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
             <TabsList variant={isSubOrganization ? "sub-org" : "org"}>

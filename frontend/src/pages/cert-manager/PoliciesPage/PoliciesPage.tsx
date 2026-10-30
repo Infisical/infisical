@@ -1,11 +1,8 @@
 import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PermissionDeniedBanner } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
-import { PageLoader } from "@app/components/v3";
+import { PageTitle } from "@app/components/PageTitle";
+import { AccessRestrictedDialog, PageHeader, PageLoader } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
@@ -28,12 +25,11 @@ enum TabSections {
 }
 
 export const PoliciesPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const navigate = useNavigate();
   const searchParams = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/policies"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/policies"
   });
 
   const activeTab = (searchParams.selectedTab as TabSections) || TabSections.Certificates;
@@ -106,7 +102,6 @@ export const PoliciesPage = () => {
   const handleViewCertificateFromRequest = (certificateId: string) => {
     setCertificateFilter({ search: certificateId });
     navigate({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       search: { selectedTab: TabSections.Certificates } as any
     });
   };
@@ -123,17 +118,24 @@ export const PoliciesPage = () => {
     ProjectPermissionCertificateActions.Read,
     ProjectPermissionSub.Certificates
   );
+  const certificateRequirement = {
+    action: ProjectPermissionCertificateActions.Read,
+    subject: ProjectPermissionSub.Certificates
+  };
 
   if (!currentProject) {
-    return <PageLoader />;
+    return (
+      <>
+        <PageTitle title="Certificate Manager" />
+        <PageLoader />
+      </>
+    );
   }
 
   return (
-    <div className="mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Certificate Manager" })}</title>
-      </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+    <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
+      <PageTitle title="Certificate Manager" />
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Certificate Manager"
@@ -148,7 +150,7 @@ export const PoliciesPage = () => {
                 dashboardViewId={searchParams.viewId}
               />
             ) : (
-              <PermissionDeniedBanner />
+              <AccessRestrictedDialog requirement={certificateRequirement} />
             ))}
           {activeTab === TabSections.CertificateRequests &&
             (canReadCertificates ? (
@@ -156,12 +158,30 @@ export const PoliciesPage = () => {
                 onViewCertificateFromRequest={handleViewCertificateFromRequest}
               />
             ) : (
-              <PermissionDeniedBanner />
+              <AccessRestrictedDialog requirement={certificateRequirement} />
             ))}
           {activeTab === TabSections.CertificateProfiles &&
-            (canReadCertificateProfiles ? <CertificateProfilesTab /> : <PermissionDeniedBanner />)}
+            (canReadCertificateProfiles ? (
+              <CertificateProfilesTab />
+            ) : (
+              <AccessRestrictedDialog
+                requirement={{
+                  action: ProjectPermissionCertificateProfileActions.Read,
+                  subject: ProjectPermissionSub.CertificateProfiles
+                }}
+              />
+            ))}
           {activeTab === TabSections.CertificatePolicies &&
-            (canReadCertificatePolicies ? <CertificatePoliciesTab /> : <PermissionDeniedBanner />)}
+            (canReadCertificatePolicies ? (
+              <CertificatePoliciesTab />
+            ) : (
+              <AccessRestrictedDialog
+                requirement={{
+                  action: ProjectPermissionCertificatePolicyActions.Read,
+                  subject: ProjectPermissionSub.CertificatePolicies
+                }}
+              />
+            ))}
         </div>
       </div>
     </div>

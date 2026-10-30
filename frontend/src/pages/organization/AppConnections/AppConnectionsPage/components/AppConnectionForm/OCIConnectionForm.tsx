@@ -232,9 +232,15 @@ export const OCIConnectionForm = ({ appConnection, onSubmit }: Props) => {
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
-              <FieldLabel>Private Key PEM</FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-              <FieldError errors={[error]} />
+              <FieldLabel htmlFor="app-connection-oci-private-key">Private Key PEM</FieldLabel>
+              <SecretInput
+                aria-describedby={error ? "app-connection-oci-private-key-error" : undefined}
+                id="app-connection-oci-private-key"
+                isError={Boolean(error)}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              <FieldError id="app-connection-oci-private-key-error" errors={[error]} />
             </Field>
           )}
         />

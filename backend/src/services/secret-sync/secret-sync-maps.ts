@@ -1,6 +1,9 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
+import { TDaytonaConnection } from "@app/services/app-connection/daytona";
+import { getPortainerInstanceUrl } from "@app/services/app-connection/portainer/portainer-connection-fns";
+import { TPortainerConnection } from "@app/services/app-connection/portainer/portainer-connection-types";
 import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
@@ -30,8 +33,10 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.GitLab]: "GitLab",
   [SecretSync.CloudflarePages]: "Cloudflare Pages",
   [SecretSync.CloudflareWorkers]: "Cloudflare Workers",
+  [SecretSync.CloudflareSecretsStore]: "Cloudflare Secrets Store",
   [SecretSync.Supabase]: "Supabase",
   [SecretSync.Rundeck]: "Rundeck",
+  [SecretSync.Portainer]: "Portainer",
   [SecretSync.Zabbix]: "Zabbix",
   [SecretSync.Railway]: "Railway",
   [SecretSync.Checkly]: "Checkly",
@@ -53,7 +58,9 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.HasuraCloud]: "Hasura Cloud",
   [SecretSync.Qovery]: "Qovery",
   [SecretSync.Cloud66]: "Cloud 66",
-  [SecretSync.Spacelift]: "Spacelift"
+  [SecretSync.Spacelift]: "Spacelift",
+  [SecretSync.Daytona]: "Daytona",
+  [SecretSync.Keeper]: "Keeper Password Manager"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -81,8 +88,10 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
+  [SecretSync.CloudflareSecretsStore]: AppConnection.Cloudflare,
   [SecretSync.Supabase]: AppConnection.Supabase,
   [SecretSync.Rundeck]: AppConnection.Rundeck,
+  [SecretSync.Portainer]: AppConnection.Portainer,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
   [SecretSync.Railway]: AppConnection.Railway,
   [SecretSync.Checkly]: AppConnection.Checkly,
@@ -104,7 +113,9 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
   [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66,
-  [SecretSync.Spacelift]: AppConnection.Spacelift
+  [SecretSync.Spacelift]: AppConnection.Spacelift,
+  [SecretSync.Daytona]: AppConnection.Daytona,
+  [SecretSync.Keeper]: AppConnection.Keeper
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -132,8 +143,10 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.GitLab]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflarePages]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflareWorkers]: SecretSyncPlanType.Regular,
+  [SecretSync.CloudflareSecretsStore]: SecretSyncPlanType.Regular,
   [SecretSync.Supabase]: SecretSyncPlanType.Regular,
   [SecretSync.Rundeck]: SecretSyncPlanType.Regular,
+  [SecretSync.Portainer]: SecretSyncPlanType.Regular,
   [SecretSync.Zabbix]: SecretSyncPlanType.Regular,
   [SecretSync.Railway]: SecretSyncPlanType.Regular,
   [SecretSync.Checkly]: SecretSyncPlanType.Regular,
@@ -155,7 +168,9 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.HasuraCloud]: SecretSyncPlanType.Regular,
   [SecretSync.Qovery]: SecretSyncPlanType.Regular,
   [SecretSync.Cloud66]: SecretSyncPlanType.Regular,
-  [SecretSync.Spacelift]: SecretSyncPlanType.Regular
+  [SecretSync.Spacelift]: SecretSyncPlanType.Regular,
+  [SecretSync.Daytona]: SecretSyncPlanType.Regular,
+  [SecretSync.Keeper]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -190,10 +205,14 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
     "groupId",
     "projectId"
   ],
-  [SecretSync.CloudflarePages]: [],
-  [SecretSync.CloudflareWorkers]: [],
+  // Syncs of any variable type write to the same variables, so blocking duplicate destinations has to
+  // cover them all or one project could overwrite another project's variables.
+  [SecretSync.CloudflarePages]: ["variableType"],
+  [SecretSync.CloudflareWorkers]: ["variableType"],
+  [SecretSync.CloudflareSecretsStore]: ["storeName", "scopes"],
   [SecretSync.Supabase]: ["projectName"],
   [SecretSync.Rundeck]: [],
+  [SecretSync.Portainer]: [],
   [SecretSync.Zabbix]: ["hostName", "macroType"],
   [SecretSync.Railway]: ["projectName", "environmentName", "serviceName"],
   [SecretSync.Checkly]: ["groupName", "accountName"],
@@ -215,10 +234,42 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.HasuraCloud]: ["projectName"],
   [SecretSync.Qovery]: ["organizationName", "projectName", "environmentName"],
   [SecretSync.Cloud66]: ["stackName"],
-  [SecretSync.Spacelift]: ["contextName"]
+  [SecretSync.Spacelift]: ["contextName"],
+  [SecretSync.Daytona]: [],
+  [SecretSync.Keeper]: ["folderName"]
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
+
+// Portainer environment and stack IDs are local to an instance, so identical IDs on
+// different instances are not the same destination. The same address behind two
+// gateways is two instances too, while `https://host` and `https://host:443` are one.
+const getPortainerInstanceKey = (connection: TPortainerConnection) => {
+  const url = new URL(getPortainerInstanceUrl(connection));
+  const route = connection.gatewayPoolId ?? connection.gatewayId ?? "direct";
+
+  return `${url.origin}${url.pathname.replace(/\/+$/, "")}@${route}`;
+};
+
+const portainerDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+  if (!newSync.connectionId) return true;
+
+  if (existingSync.connectionId === newSync.connectionId) {
+    return true;
+  }
+
+  if (!existingSync.connectionId) return false;
+
+  const [existingConn, newConn] = await Promise.all([
+    decryptConnection(existingSync.connectionId),
+    decryptConnection(newSync.connectionId)
+  ]);
+
+  return (
+    getPortainerInstanceKey(existingConn as TPortainerConnection) ===
+    getPortainerInstanceKey(newConn as TPortainerConnection)
+  );
+};
 const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
   if (!newSync.connectionId) return true;
 
@@ -244,6 +295,27 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, ne
   if (!existingAccountId || !newAccountId) return false;
 
   return existingAccountId === newAccountId;
+};
+
+// A Daytona API key is bound to one organization and nothing scopes below it, so two syncs collide
+// exactly when their connections resolve to the same organization, whether or not they share a
+// connection.
+const daytonaDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+  if (!newSync.connectionId || !existingSync.connectionId) return false;
+
+  if (existingSync.connectionId === newSync.connectionId) return true;
+
+  const [existingConn, newConn] = await Promise.all([
+    decryptConnection(existingSync.connectionId),
+    decryptConnection(newSync.connectionId)
+  ]);
+
+  const existingOrgId = (existingConn as TDaytonaConnection).credentials.organizationId;
+  const newOrgId = (newConn as TDaytonaConnection).credentials.organizationId;
+
+  if (!existingOrgId || !newOrgId) return false;
+
+  return existingOrgId === newOrgId;
 };
 
 const gcpDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync }) => {
@@ -311,8 +383,10 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   },
   [SecretSync.CloudflarePages]: defaultDuplicateCheck,
   [SecretSync.CloudflareWorkers]: defaultDuplicateCheck,
+  [SecretSync.CloudflareSecretsStore]: defaultDuplicateCheck,
   [SecretSync.Supabase]: defaultDuplicateCheck,
   [SecretSync.Rundeck]: defaultDuplicateCheck,
+  [SecretSync.Portainer]: portainerDuplicateCheck,
   [SecretSync.Zabbix]: defaultDuplicateCheck,
   [SecretSync.Railway]: defaultDuplicateCheck,
   [SecretSync.Checkly]: defaultDuplicateCheck,
@@ -334,7 +408,9 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.HasuraCloud]: defaultDuplicateCheck,
   [SecretSync.Qovery]: defaultDuplicateCheck,
   [SecretSync.Cloud66]: defaultDuplicateCheck,
-  [SecretSync.Spacelift]: defaultDuplicateCheck
+  [SecretSync.Spacelift]: defaultDuplicateCheck,
+  [SecretSync.Daytona]: daytonaDuplicateCheck,
+  [SecretSync.Keeper]: defaultDuplicateCheck
 };
 
 /**

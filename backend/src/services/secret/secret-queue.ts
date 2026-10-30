@@ -19,42 +19,43 @@ import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approv
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { highCardinalityMeter } from "@app/lib/telemetry/metrics";
+import { highCardinalityMeter, recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
-import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
-import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
-import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
+import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 
 import { ActorType } from "../auth/auth-type";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TIntegrationDALFactory } from "../integration/integration-dal";
-import { buildNativeIntegrationsUrl } from "../integration/integration-deprecation-fns";
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
+import { TIntegrationDALFactory } from "../integration/integration-dal";
+import { buildNativeIntegrationsUrl } from "../integration/integration-deprecation-fns";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
-import { TProjectDALFactory } from "../project/project-dal";
-import { createProjectKey } from "../project/project-fns";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TProjectDALFactory } from "../project/project-dal";
+import { createProjectKey } from "../project/project-fns";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
@@ -76,7 +77,6 @@ import { WebhookEvents } from "../webhook/webhook-types";
 import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
 import {
-  TCreateSecretReminderDTO,
   TFailedIntegrationSyncEmailsPayload,
   THandleReminderDTO,
   TIntegrationSyncPayload,
@@ -123,8 +123,9 @@ type TSecretQueueFactoryDep = {
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
-  reminderService: Pick<TReminderServiceFactory, "createReminderInternal" | "deleteReminderBySecretId">;
+  reminderService: Pick<TReminderServiceFactory, "createReminder" | "deleteReminderBySecretId">;
   projectEventsService: TProjectEventsService;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -190,6 +191,7 @@ export const secretQueueFactory = ({
   resourceMetadataDAL,
   secretSyncQueue,
   folderCommitService,
+  eventEmitter,
   reminderService,
   projectEventsService,
   licenseService,
@@ -273,44 +275,7 @@ export const secretQueueFactory = ({
       .replace(":", "-");
   };
 
-  const addSecretReminder = async ({
-    oldSecret,
-    newSecret,
-    projectId,
-    secretReminderRecipients
-  }: TCreateSecretReminderDTO) => {
-    try {
-      if (oldSecret.id !== newSecret.id) {
-        throw new BadRequestError({
-          name: "SecretReminderIdMismatch",
-          message: "Existing secret didn't match the updated secret ID."
-        });
-      }
-
-      if (!newSecret.secretReminderRepeatDays) {
-        throw new BadRequestError({
-          name: "SecretReminderRepeatDaysMissing",
-          message: "Secret reminder repeat days is missing."
-        });
-      }
-
-      await reminderService.createReminderInternal({
-        secretId: newSecret.id,
-        message: newSecret.secretReminderNote,
-        repeatDays: newSecret.secretReminderRepeatDays,
-        recipients: secretReminderRecipients,
-        projectId
-      });
-    } catch (err) {
-      logger.error(err, "Failed to create secret reminder.");
-      throw new BadRequestError({
-        name: "SecretReminderCreateFailed",
-        message: "Failed to create secret reminder."
-      });
-    }
-  };
-
-  const handleSecretReminder = async ({ newSecret, oldSecret, projectId }: THandleReminderDTO) => {
+  const handleSecretReminder = async ({ newSecret, oldSecret, projectId, actor }: THandleReminderDTO) => {
     const { secretReminderRepeatDays, secretReminderNote, secretReminderRecipients } = newSecret;
 
     if (newSecret.type !== SecretType.Personal && secretReminderRepeatDays !== undefined) {
@@ -318,12 +283,14 @@ export const secretQueueFactory = ({
         (secretReminderRepeatDays && oldSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
         (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote)
       ) {
-        await addSecretReminder({
-          oldSecret,
-          newSecret,
-          projectId,
-          secretReminderRecipients: secretReminderRecipients ?? [],
-          deleteRecipients: false
+        await reminderService.createReminder({
+          ...actor,
+          reminder: {
+            secretId: newSecret.id,
+            message: secretReminderNote,
+            repeatDays: secretReminderRepeatDays,
+            recipients: secretReminderRecipients ?? []
+          }
         });
       } else if (
         secretReminderRepeatDays === null &&
@@ -352,7 +319,8 @@ export const secretQueueFactory = ({
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
-    folderCommitService
+    folderCommitService,
+    eventEmitter
   });
 
   const updateManySecretsRawFn = updateManySecretsRawFnFactory({
@@ -369,7 +337,8 @@ export const secretQueueFactory = ({
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
-    folderCommitService
+    folderCommitService,
+    eventEmitter
   });
 
   /**
@@ -401,7 +370,6 @@ export const secretQueueFactory = ({
       canExpandValue: () => true,
       actorOrgId: dto.orgId,
       orgDAL,
-      licenseService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -454,7 +422,6 @@ export const secretQueueFactory = ({
       projectFolderGrantDAL,
       actorOrgId: dto.orgId,
       orgDAL,
-      licenseService,
       kmsService
     });
 
@@ -703,7 +670,6 @@ export const secretQueueFactory = ({
         }
       },
       {
-        jobId: `secret-webhook-${environment}-${projectId}-${secretPath}`,
         removeOnFail: { count: 5 },
         removeOnComplete: true,
         delay: 1000,
@@ -711,6 +677,14 @@ export const secretQueueFactory = ({
         backoff: {
           type: "exponential",
           delay: 3000
+        },
+        // A plain jobId dedupes only while the previous job is queued/delayed: BullMQ silently drops an
+        // add() that collides with an *active* job, so a secret change merged mid-webhook-call never fired.
+        // keepLastIfActive stores that add and replays it once the active job finishes instead of dropping it.
+        deduplication: {
+          id: `secret-webhook-${environment}-${projectId}-${secretPath}`,
+          keepLastIfActive: true,
+          replace: true
         }
       }
     );
@@ -1332,6 +1306,8 @@ export const secretQueueFactory = ({
           },
           tx
         );
+        recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "project_ghost_user" });
+        logger.info(`Legacy root key used to create a project ghost user [projectId=${project.id}]`);
         const { iv, tag, ciphertext, encoding, algorithm } = crypto
           .encryption()
           .symmetric()
@@ -1636,7 +1612,6 @@ export const secretQueueFactory = ({
     syncSecrets,
     startSecretV2Migration,
     syncIntegrations,
-    addSecretReminder,
     removeSecretReminder,
     handleSecretReminder,
     replicateSecrets

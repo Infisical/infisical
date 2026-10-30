@@ -2,7 +2,10 @@ import { ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
 import { TriangleAlert } from "lucide-react";
 
-import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
+import {
+  getSecretSyncDestinationConfig,
+  TSecretSyncForm
+} from "@app/components/secret-syncs/forms/schemas";
 import {
   Alert,
   AlertDescription,
@@ -36,7 +39,11 @@ import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { Cloud66SyncReviewFields } from "./Cloud66SyncReviewFields";
-import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
+import {
+  CloudflarePagesSyncOptionsReviewFields,
+  CloudflarePagesSyncReviewFields
+} from "./CloudflarePagesReviewFields";
+import { CloudflareSecretsStoreSyncReviewFields } from "./CloudflareSecretsStoreSyncReviewFields";
 import {
   CloudflareWorkersSyncOptionsReviewFields,
   CloudflareWorkersSyncReviewFields
@@ -53,6 +60,7 @@ import { HasuraCloudSyncReviewFields } from "./HasuraCloudSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { KeeperSyncReviewFields } from "./KeeperSyncReviewFields";
 import { LaravelForgeSyncReviewFields } from "./LaravelForgeSyncReviewFields";
 import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
 import { NorthflankSyncReviewFields } from "./NorthflankSyncReviewFields";
@@ -61,6 +69,7 @@ import { OctopusDeploySyncReviewFields } from "./OctopusDeploySyncReviewFields";
 import { OnaSyncReviewFields } from "./OnaSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
+import { PortainerSyncReviewFields } from "./PortainerSyncReviewFields";
 import { QoverySyncReviewFields } from "./QoverySyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
@@ -96,7 +105,7 @@ export const SecretSyncReviewFields = () => {
     connection,
     environment,
     secretPath,
-    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema },
+    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema, includeAllSubFolders },
     destination,
     isAutoSyncEnabled
   } = watch();
@@ -108,7 +117,7 @@ export const SecretSyncReviewFields = () => {
     projectId: currentProject?.id || "",
     connectionId: connection?.id,
     enabled: true,
-    destinationConfig: watch("destinationConfig")
+    destinationConfig: getSecretSyncDestinationConfig(destination, watch("destinationConfig"))
   });
 
   switch (destination) {
@@ -181,10 +190,14 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CloudflarePages:
       DestinationFieldsComponent = <CloudflarePagesSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <CloudflarePagesSyncOptionsReviewFields />;
       break;
     case SecretSync.CloudflareWorkers:
       DestinationFieldsComponent = <CloudflareWorkersSyncReviewFields />;
       AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsReviewFields />;
+      break;
+    case SecretSync.CloudflareSecretsStore:
+      DestinationFieldsComponent = <CloudflareSecretsStoreSyncReviewFields />;
       break;
     case SecretSync.Zabbix:
       DestinationFieldsComponent = <ZabbixSyncReviewFields />;
@@ -203,6 +216,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Rundeck:
       DestinationFieldsComponent = <RundeckSyncReviewFields />;
+      break;
+    case SecretSync.Portainer:
+      DestinationFieldsComponent = <PortainerSyncReviewFields />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationFieldsComponent = <DigitalOceanAppPlatformSyncReviewFields />;
@@ -258,6 +274,12 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Cloud66:
       DestinationFieldsComponent = <Cloud66SyncReviewFields />;
+      break;
+    case SecretSync.Daytona:
+      // The connection is the whole destination; it is already shown above.
+      break;
+    case SecretSync.Keeper:
+      DestinationFieldsComponent = <KeeperSyncReviewFields />;
       break;
     case SecretSync.Spacelift:
       DestinationFieldsComponent = <SpaceliftSyncReviewFields />;
@@ -354,6 +376,14 @@ export const SecretSyncReviewFields = () => {
             )}
           </Detail>
           {AdditionalSyncOptionsFieldsComponent}
+          <Detail>
+            <DetailLabel>Include All Subfolders</DetailLabel>
+            <DetailValue>
+              <Badge variant={includeAllSubFolders ? "success" : "neutral"}>
+                {includeAllSubFolders ? "Enabled" : "Disabled"}
+              </Badge>
+            </DetailValue>
+          </Detail>
           <Detail>
             <DetailLabel>Secret Deletion Protection</DetailLabel>
             <DetailValue>

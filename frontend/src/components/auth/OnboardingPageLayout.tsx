@@ -1,5 +1,5 @@
 import { ComponentProps, ReactNode, useEffect, useRef } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { cn } from "@app/components/v3/utils";
 
@@ -11,7 +11,7 @@ type Props = Omit<ComponentProps<typeof AuthPageLayout>, "children" | "headerAct
   totalSteps: number;
 };
 
-const OnboardingProgress = ({
+export const OnboardingProgress = ({
   currentStep,
   totalSteps
 }: Pick<Props, "currentStep" | "totalSteps">) => (

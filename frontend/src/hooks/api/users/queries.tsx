@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
+import { getMfaStepUpChallenge } from "@app/helpers/mfaSession";
 import { adminQueryKeys } from "@app/hooks/api/admin/queries";
 import { getAuthToken, queryClient as qc } from "@app/hooks/api/reactQuery";
 
@@ -22,6 +23,7 @@ import {
   OrgUser,
   RenameUserDTO,
   TokenVersion,
+  TOrgUserAccess,
   TWorkspaceUser,
   UpdateOrgMembershipDTO,
   User,
@@ -170,10 +172,22 @@ export const useGetUserProjectFavorites = (orgId: string) =>
     queryFn: () => fetchUserProjectFavorites(orgId)
   });
 
-export const useGetOrgUsers = (orgId: string) =>
+export const useGetOrgUsers = (orgId: string, options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: userKeys.getOrgUsers(orgId),
     queryFn: () => fetchOrgUsers(orgId),
+    enabled: Boolean(orgId) && (options?.enabled ?? true)
+  });
+
+export const useGetOrgUserAccess = (orgId: string) =>
+  useQuery({
+    queryKey: userKeys.getOrgUserAccess(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ users: TOrgUserAccess[] }>(
+        `/api/v1/organization/${orgId}/user-access`
+      );
+      return data.users;
+    },
     enabled: Boolean(orgId)
   });
 
@@ -192,6 +206,7 @@ export const useAddUsersToOrg = () => {
       grantFailures?: {
         projectIds: string[];
         pamAccess: boolean;
+        agentVaultAccess: boolean;
       };
     };
   };
@@ -271,22 +286,6 @@ export const useDeleteOrgMembershipBatch = () => {
     },
     onSuccess: (_, { orgId }) => {
       queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(orgId) });
-    }
-  });
-};
-
-export const useDeactivateOrgMembership = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<object, object, DeleteOrgMembershipDTO>({
-    mutationFn: ({ membershipId, orgId }) => {
-      return apiRequest.post(
-        `/api/v2/organizations/${orgId}/memberships/${membershipId}/deactivate`
-      );
-    },
-    onSuccess: (_, { orgId, membershipId }) => {
-      queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(orgId) });
-      queryClient.invalidateQueries({ queryKey: userKeys.getOrgMembership(orgId, membershipId) });
     }
   });
 };
@@ -428,6 +427,7 @@ export const useRevokeMySessions = () => {
 export const useEnrollMfa = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { handledErrorCodes: ["SESSION_MFA_REQUIRED"] },
     mutationFn: async (
       dto:
         | { method: MfaMethod.TOTP; totp: string }
@@ -510,7 +510,9 @@ export const useGetUserTotpRegistration = (options?: { enabled?: boolean }) => {
 
       return data;
     },
-    enabled: options?.enabled ?? true
+    enabled: options?.enabled ?? true,
+    // Retrying a step-up error would mint a second challenge and email a second code.
+    retry: (failureCount, error) => !getMfaStepUpChallenge(error) && failureCount < 1
   });
 };
 

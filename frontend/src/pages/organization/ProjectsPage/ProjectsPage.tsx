@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, Outlet, useMatches } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
+import { Outlet, useMatches } from "@tanstack/react-router";
 
 import { AnnouncementModal } from "@app/components/announcements/AnnouncementModal";
 import { useAnnouncementSeen } from "@app/components/announcements/useAnnouncementSeen";
-import { PageHeader } from "@app/components/v2";
-import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
+import { PageTitle } from "@app/components/PageTitle";
+import { PageHeader } from "@app/components/v3/platform";
 import { useOrganization } from "@app/context";
 import { useGetRecentAnnouncements } from "@app/hooks/api/announcement";
 
@@ -16,7 +14,7 @@ import { ProjectCategoryOverview } from "./components/ProjectCategoryOverview";
 export const ProjectsPage = () => {
   const { t } = useTranslation();
   const matches = useMatches();
-  const { currentOrg, isSubOrganization } = useOrganization();
+  const { isSubOrganization } = useOrganization();
 
   const projectsRouteId =
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects";
@@ -45,33 +43,15 @@ export const ProjectsPage = () => {
   }
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col justify-start bg-bunker-800 px-6">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+    <div className="mx-auto flex max-w-8xl flex-col justify-start px-0 md:px-6">
+      <PageTitle title={t("page-titles.projects")} />
+      <link rel="icon" href="/infisical.ico" />
       <PageHeader
+        className="mb-6 md:mb-10"
         scope={isSubOrganization ? "namespace" : "org"}
         title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Overview`}
         description="Your team's complete security toolkit — organized and ready when you need them."
       />
-      <Alert variant="info" className="mb-6">
-        <InfoIcon />
-        <AlertTitle>Secret Sharing Has Moved</AlertTitle>
-        <AlertDescription>
-          <p>
-            Secret sharing now lives under Secrets Management. Go to{" "}
-            <Link
-              to="/organizations/$orgId/projects/secret-management/secret-sharing"
-              params={{ orgId: currentOrg.id }}
-              className="inline underline hover:opacity-80"
-            >
-              Secret Sharing
-            </Link>
-            .
-          </p>
-        </AlertDescription>
-      </Alert>
       <ProjectCategoryOverview />
       {announcements && announcements.length > 0 && (
         <AnnouncementModal

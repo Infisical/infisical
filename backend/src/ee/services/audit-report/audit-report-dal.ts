@@ -56,10 +56,55 @@ export const auditReportDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByOrg = async (
+    orgId: string,
+    { offset = 0, limit = 50 }: { offset?: number; limit?: number },
+    tx?: Knex
+  ) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.AuditReport)
+        .where(`${TableName.AuditReport}.orgId`, orgId)
+        .orderBy(`${TableName.AuditReport}.createdAt`, "desc")
+        .offset(offset)
+        .limit(limit);
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindAuditReportsByOrg" });
+    }
+  };
+
+  const countByOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.AuditReport)
+        .where(`${TableName.AuditReport}.orgId`, orgId)
+        .count("* as count")
+        .first<{ count: string | number } | undefined>();
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountAuditReportsByOrg" });
+    }
+  };
+
+  const countInFlightByOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.AuditReport)
+        .where(`${TableName.AuditReport}.orgId`, orgId)
+        .whereIn(`${TableName.AuditReport}.status`, IN_FLIGHT_STATUSES)
+        .count("* as count")
+        .first<{ count: string | number } | undefined>();
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountInFlightAuditReportsByOrg" });
+    }
+  };
+
   return {
     ...auditReportOrm,
     findByProject,
     countByProject,
-    countInFlightByProject
+    countInFlightByProject,
+    findByOrg,
+    countByOrg,
+    countInFlightByOrg
   };
 };

@@ -1,13 +1,27 @@
 # Security Policy
 
+## Reporting a vulnerability
+
+**Please do not open a public GitHub issue for a security problem.**
+
+Report it through our vulnerability disclosure policy at <https://infisical.com/vulnerability-disclosure>.
+
+Please include what you found, where, how to reproduce it, what an attacker could achieve, and how you would like to be credited.
+
+## Scope and safe harbour
+
+The full scope of the program, along with our safe harbour and coordinated disclosure terms, is set out in the policy linked above.
+
+## Rewards
+
+**This is a vulnerability disclosure program, not a bug bounty.** It offers acknowledgement and public credit rather than payment.
+
+Infisical's paid bug bounty is a separate **private, invitation-only program** covering Infisical Cloud. It is not open to public submissions, and reports made through this repository are not eligible for its rewards. Strong reports here are a good route to an invitation.
+
 ## Supported versions
 
-We always recommend using the latest version of Infisical to ensure you get all security updates.
+Security fixes ship in the latest release. We always recommend running the latest version of Infisical. If you self-host, upgrading promptly is the fastest way to stay protected.
 
-## Reporting vulnerabilities
+## General security contact
 
-Please do not file GitHub issues or post on our public forum for security vulnerabilities, as they are public!
-
-Infisical takes security issues very seriously. If you have any concerns about Infisical or believe you have uncovered a vulnerability, please get in touch via the e-mail address security@infisical.com. In the message, try to provide a description of the issue and ideally a way of reproducing it. The security team will get back to you as soon as possible.
-
-Note that this security address should be used only for undisclosed vulnerabilities. Please report any security problems to us before disclosing it publicly.
+For compliance documentation, security questionnaires, penetration-test reports and SOC 2 requests, use [security@infisical.com](mailto:security@infisical.com). That address is not a vulnerability intake channel.

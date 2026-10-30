@@ -1,12 +1,13 @@
 ---
-title: "Spring Boot with Maven"
-description: "How to use Infisical to inject environment variables into Java Spring Boot"
+title: "Inject secrets into a Spring Boot app with Maven"
+sidebarTitle: "Spring Boot with Maven"
+description: "How to use Infisical to inject environment variables and secrets into a Spring Boot app with Maven."
 ---
 
 Prerequisites:
 
 - Set up and add your environment variables to [Infisical Cloud](https://app.infisical.com)
-- [Install the CLI](/cli/overview)
+- [Install the CLI](/cli/install)
 
 ## Initialize Infisical 
 In order for Infisical to know which secrets to fetch, you'll need to first initialize Infisical at the root of your project. 
@@ -25,7 +26,7 @@ To pass in Infisical secrets into your application, we will utilize the Infisica
 The Maven wrapper executable should already be present in the root directory of your project.
 
 ```bash 
-infisical run -- ./mvnw spring-boot:run --quiet
+infisical sm run -- ./mvnw spring-boot:run --quiet
 ```
 
 #### Accessing injected secrets 
@@ -54,7 +55,7 @@ Note that these instructions are currently only available for IntelliJ.
 
 <img height="200" src="../../images/spring-maven-debug-1.png" />
 
-**Step 2:** Click the plus icon
+**Step 2:** Select the plus icon
 
 <img height="200" src="../../images/spring-maven-debug-2.png" />
 
@@ -67,7 +68,7 @@ Note that these instructions are currently only available for IntelliJ.
 <img height="200" src="../../images/spring-maven-debug-4.png" />
 
 ```
-infisical run -- ./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=*:5005"
+infisical sm run -- ./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=*:5005"
 ```
 
 **Step 5:** When you need to run a block of code in debug mode, select the Infisical script

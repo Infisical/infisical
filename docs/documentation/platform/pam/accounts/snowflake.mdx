@@ -1,0 +1,145 @@
+---
+title: "Snowflake accounts"
+sidebarTitle: "Snowflake"
+description: "Give people and agents access to a Snowflake database without sharing its credentials."
+---
+
+A Snowflake [account](/documentation/platform/pam/accounts/overview) stores the credentials for one Snowflake user. Members connect in the browser or through the Infisical CLI, and Infisical records every statement they run.
+
+The [gateway](/documentation/platform/gateways/overview) in your network runs every statement against Snowflake, so the credential never reaches the member's machine.
+
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A Snowflake user for Infisical to sign in as, with a role that can use a warehouse
+- A key pair or a programmatic access token for that user (Snowflake blocks password sign-in for human users, so a password only works for a service user whose policy allows it)
+- A gateway on version 0.43.133 or later that can reach your Snowflake account, including over AWS PrivateLink if you use it
+- If the gateway's outbound traffic is restricted, access from the gateway to the cloud storage that Snowflake returns large results from
+- A Snowflake [account template](/documentation/platform/pam/templates/overview)
+
+## Set up the credential
+
+Set up a key pair or a programmatic access token for the Snowflake user before you create the account.
+
+### Key pair
+
+<Steps>
+  <Step>
+    Generate a key pair:
+
+    ```bash
+    openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out infisical_key.p8 -nocrypt
+    openssl rsa -in infisical_key.p8 -pubout -out infisical_key.pub
+    ```
+  </Step>
+  <Step>
+    Assign the public key to the Snowflake user. Paste the contents of `infisical_key.pub` without the header and footer lines:
+
+    ```sql
+    ALTER USER pam_service SET RSA_PUBLIC_KEY = '<public-key>';
+    ```
+  </Step>
+</Steps>
+
+When you create the account, paste the contents of `infisical_key.p8` into **Private Key**, then delete your local copy of the file.
+
+To replace the key later without downtime, set the new key in `RSA_PUBLIC_KEY_2`, update the account, then remove the old key. To rotate the key pair on a schedule, use a [Snowflake user key pair rotation](/documentation/platform/secret-rotation/snowflake-user-key-pair).
+
+### Programmatic access token
+
+Snowflake only issues a programmatic access token to a user who has a network policy, and only for a token that's restricted to one role:
+
+```sql
+ALTER USER pam_service SET NETWORK_POLICY = <network-policy>;
+ALTER USER pam_service ADD PROGRAMMATIC ACCESS TOKEN infisical
+  ROLE_RESTRICTION = 'PAM_READER' DAYS_TO_EXPIRY = 90;
+```
+
+Snowflake shows the token once. When you create the account, paste the token into **Programmatic Access Token**, and enter the same role in **Default Role**.
+
+## Grant the role permissions
+
+A session can do whatever the role it uses can do, so grant the role only what the account's users need. To appear in the browser, a table needs the role to have `USAGE` on the warehouse, the database, and the table's schema:
+
+```sql
+GRANT USAGE ON WAREHOUSE analytics_wh TO ROLE pam_reader;
+GRANT USAGE ON DATABASE analytics TO ROLE pam_reader;
+GRANT USAGE ON SCHEMA analytics.public TO ROLE pam_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics.public TO ROLE pam_reader;
+```
+
+**Default Role** only sets the role that a session starts with. A session can run `USE ROLE` to switch to any other role that the Snowflake user holds, so grant the user only the roles its sessions should use.
+
+## Create the account
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
+  </Step>
+  <Step>
+    Select the **Folder** and a Snowflake **Account Template**, then select **Next**.
+  </Step>
+  <Step>
+    Enter a **Name** and the connection details:
+
+    | Field | Description |
+    | --- | --- |
+    | **Account Identifier** | The account identifier from your Snowflake URL, without `snowflakecomputing.com`, such as `myorg-myaccount` |
+    | **Default Warehouse** | The warehouse that sessions run queries on (leave it empty to use the user's default warehouse) |
+    | **Database** | The database that sessions open |
+    | **Default Schema** | The schema that sessions start in (optional) |
+    | **Default Role** | The role that sessions start with (optional) |
+  </Step>
+  <Step>
+    Select the **Auth Method**, enter the Snowflake **Username**, and enter the credential:
+
+    | Auth method | Fields |
+    | --- | --- |
+    | **Key Pair (Recommended)** | **Private Key** (PKCS#8), and **Private Key Passphrase** if the key is encrypted |
+    | **Programmatic Access Token** | **Programmatic Access Token** |
+    | **Password** | **Password** |
+  </Step>
+  <Step>
+    Select **Create**. Infisical signs in to Snowflake through the gateway to check the credential and the warehouse before it saves the account.
+  </Step>
+</Steps>
+
+## Connect
+
+To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect).
+
+<Tabs>
+  <Tab title="Browser">
+    The browser session has a table browser and a SQL editor. The table browser shows the first 1,000 rows of a result.
+
+    Snowflake doesn't enforce primary keys, but the table browser needs a declared primary key to edit a table's rows. If a table has no primary key, edit its rows from the SQL editor.
+  </Tab>
+  <Tab title="CLI">
+    The CLI needs to be on version 0.43.133 or later.
+
+    Start the local proxy:
+
+    ```bash
+    infisical pam access analytics/snowflake-prod
+    ```
+
+    The CLI prints the port and a connection string for each supported client, such as SnowSQL, DBeaver, and the Snowflake drivers. The proxy uses plain HTTP on `127.0.0.1`, so connect with `ssl=off`. The gateway signs in for you, so the proxy ignores the username and password that your client sends.
+  </Tab>
+</Tabs>
+
+## Recording and command blocking
+
+Infisical records every statement in a session and its outcome. To see them, open the session and go to **Session Logs**.
+
+The template's **Command Blocking** patterns apply to Snowflake statements. If a statement matches a pattern, Infisical rejects the statement before it reaches Snowflake and records the rejection. Command blocking only matches the text of each statement, so it can't stop SQL that a statement builds while it runs, such as with `EXECUTE IMMEDIATE`. For restrictions that must always hold, use Snowflake privileges.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
+    Review and end the connections that people and agents make to your accounts.
+  </Card>
+  <Card title="Access requests" icon="hand" href="/documentation/platform/pam/access-requests/overview">
+    Require approval before a member can use a sensitive account.
+  </Card>
+</CardGroup>

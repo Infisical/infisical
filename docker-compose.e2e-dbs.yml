@@ -1,5 +1,10 @@
 version: '3.8'
 
+# Same project as docker-compose.test.yml, so these databases share its network and the suite
+# reaches them by service name. The alternative was host networking, which made the local and CI
+# runs behave differently and left the local one unable to reach these at all.
+name: infisical-test
+
 services:
   # Oracle Databases
   oracle-db-23.8:

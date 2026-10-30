@@ -1,31 +1,26 @@
 import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
-import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 import { BaseLink } from "./BaseLink";
 
 interface AccessPamRequestBypassedTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
-  projectName: string;
   requesterFullName: string;
   requesterEmail: string;
   resourceName?: string;
   accountName?: string;
   accessDuration: string;
   bypassReason: string;
-  approvalUrl: string;
 }
 
 export const AccessPamRequestBypassedTemplate = ({
-  projectName,
   siteUrl,
   requesterFullName,
   requesterEmail,
   resourceName,
   accountName,
   accessDuration,
-  bypassReason,
-  approvalUrl
+  bypassReason
 }: AccessPamRequestBypassedTemplateProps) => {
   const target = [resourceName, accountName].filter(Boolean).join(" / ") || "PAM resource";
 
@@ -36,7 +31,7 @@ export const AccessPamRequestBypassedTemplate = ({
       siteUrl={siteUrl}
     >
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        A PAM access approval has been bypassed in the project <strong>{projectName}</strong>
+        A PAM access approval has been bypassed in <strong>Privileged Access Manager</strong>
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
@@ -48,9 +43,6 @@ export const AccessPamRequestBypassedTemplate = ({
           <strong className="text-black">The following reason was provided for bypassing the policy:</strong> "
           {bypassReason}"
         </Text>
-      </Section>
-      <Section className="text-center">
-        <BaseButton href={approvalUrl}>Review Bypass</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );
@@ -65,6 +57,5 @@ AccessPamRequestBypassedTemplate.PreviewProps = {
   accountName: "postgres",
   accessDuration: "1h",
   siteUrl: "https://infisical.com",
-  projectName: "Example Project",
   bypassReason: "Production database failover playbook needed."
 } as AccessPamRequestBypassedTemplateProps;

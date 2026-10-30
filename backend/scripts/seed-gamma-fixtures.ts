@@ -40,6 +40,8 @@ import { initLogger, logger } from "@app/lib/logger";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
+import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
+import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -130,6 +132,8 @@ const main = async () => {
 
   const superAdminDAL = superAdminDALFactory(knex);
   const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
+  const kmsLegacyEncryptionKeyDAL = kmsLegacyEncryptionKeyDALFactory(knex);
+  const kmsKekHistoryDAL = kmsKekHistoryDALFactory(knex);
   const hsmConfig = getHsmConfig(logger);
 
   const hsmModule = initializeHsmModule(hsmConfig);
@@ -152,6 +156,8 @@ const main = async () => {
   const projectDAL = projectDALFactory(knex);
   const kmsService = kmsServiceFactory({
     kmsRootConfigDAL,
+    kmsLegacyEncryptionKeyDAL,
+    kmsKekHistoryDAL,
     kmsDAL,
     internalKmsDAL,
     internalKmsKeyVersionDAL,
@@ -342,7 +348,7 @@ const main = async () => {
   console.log(`  E2E_SCIM_TOKEN      = ${jwt}`);
   console.log(`  E2E_SAML_CONFIG_ID  = ${samlConfigId}`);
   console.log("");
-  console.log("Next steps (see e2e/CLAUDE.md):");
+  console.log("Next steps (see e2e/AGENTS.md):");
   console.log("  1. Confirm plan.scim and plan.samlSSO are enabled for this org.");
   console.log("  2. Deploy the mock IdP Worker with the SAML_IDP_PRIVATE_KEY and SAML_IDP_ADMIN_TOKEN");
   console.log("     secrets set via `wrangler secret put`, and an IDP_SESSIONS KV namespace created.");

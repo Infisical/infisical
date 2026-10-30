@@ -1,8 +1,7 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
+import { PageTitle } from "@app/components/PageTitle";
+import { PageHeader } from "@app/components/v3";
 
 import {
   EmailDomainsTable,
@@ -12,7 +11,6 @@ import {
 } from "./components";
 
 export const ResourceOverviewPage = () => {
-  const { t } = useTranslation();
   const { selectedTab } = useSearch({
     from: "/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview"
   });
@@ -20,12 +18,10 @@ export const ResourceOverviewPage = () => {
   const activeTab = selectedTab || "organizations";
 
   return (
-    <div className="h-full bg-background text-foreground">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Resource Overview" })}</title>
-      </Helmet>
+    <div className="h-full text-foreground">
+      <PageTitle title="Resource Overview" />
       <div className="mx-auto flex flex-col justify-between">
-        <div className="mx-auto mb-6 w-full max-w-8xl">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
             scope="instance"
             title="Resource Overview"

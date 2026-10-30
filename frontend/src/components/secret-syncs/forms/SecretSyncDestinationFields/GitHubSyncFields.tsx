@@ -1,24 +1,25 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { MultiValue, SingleValue } from "react-select";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
+import { GITHUB_SYNC_SECRET_TYPES } from "@app/helpers/secretSyncs";
 import {
-  TGitHubConnectionEnvironment,
-  TGitHubConnectionOrganization,
-  TGitHubConnectionRepository,
   useGitHubConnectionListEnvironments,
   useGitHubConnectionListOrganizations,
   useGitHubConnectionListRepositories
@@ -26,6 +27,7 @@ import {
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import {
   GitHubSyncScope,
+  GitHubSyncSecretType,
   GitHubSyncVisibility
 } from "@app/hooks/api/secretSyncs/types/github-sync";
 
@@ -38,6 +40,10 @@ export const GitHubSyncFields = () => {
 
   const connectionId = useWatch({ name: "connection.id", control });
   const currentScope = watch("destinationConfig.scope");
+  const currentSecretType = watch("destinationConfig.secretType");
+  // Unset until the secret type field registers its default, which is Actions
+  const isActionsSecretType =
+    !currentSecretType || currentSecretType === GitHubSyncSecretType.Actions;
   const currentVisibility = watch("destinationConfig.visibility");
   const currentOrg = watch("destinationConfig.org");
   const currentRepo = watch("destinationConfig.repo");
@@ -63,9 +69,9 @@ export const GitHubSyncFields = () => {
       {
         enabled: Boolean(
           connectionId &&
-            currentRepo &&
-            currentOwner &&
-            currentScope === GitHubSyncScope.RepositoryEnvironment
+          currentRepo &&
+          currentOwner &&
+          currentScope === GitHubSyncScope.RepositoryEnvironment
         )
       }
     );
@@ -77,8 +83,67 @@ export const GitHubSyncFields = () => {
           setValue("destinationConfig.org", "");
           setValue("destinationConfig.repo", "");
           setValue("destinationConfig.owner", "");
-          setValue("destinationConfig.selectedRepositoryIds", undefined);
+          setValue("destinationConfig.selectedRepositoryIds", []);
         }}
+      />
+      <Controller
+        name="destinationConfig.secretType"
+        control={control}
+        defaultValue={GitHubSyncSecretType.Actions}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel>
+              Secret Type
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-lg">
+                  <div className="flex flex-col gap-3">
+                    <p>Choose which type of GitHub secret Infisical should sync to:</p>
+                    <ul className="flex list-disc flex-col gap-3 pl-4">
+                      {Object.values(GITHUB_SYNC_SECRET_TYPES).map(({ name, description }) => (
+                        <li key={name}>
+                          <p className="text-label">
+                            <span className="font-medium text-foreground-soft">{name}</span>:{" "}
+                            {description}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Select
+                value={value}
+                onValueChange={(val) => {
+                  onChange(val);
+                  if (
+                    val !== GitHubSyncSecretType.Actions &&
+                    currentScope === GitHubSyncScope.RepositoryEnvironment
+                  ) {
+                    setValue("destinationConfig.scope", GitHubSyncScope.Repository);
+                    setValue("destinationConfig.env", "");
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a secret type..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(GitHubSyncSecretType).map((secretType) => (
+                    <SelectItem value={secretType} key={secretType}>
+                      {GITHUB_SYNC_SECRET_TYPES[secretType].name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
+        )}
       />
       <Controller
         name="destinationConfig.scope"
@@ -93,11 +158,16 @@ export const GitHubSyncFields = () => {
                   <SelectValue placeholder="Select a scope..." />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {Object.values(GitHubSyncScope).map((scope) => (
-                    <SelectItem className="capitalize" value={scope} key={scope}>
-                      {scope.replace("-", " ")}
-                    </SelectItem>
-                  ))}
+                  {Object.values(GitHubSyncScope)
+                    .filter(
+                      (scope) =>
+                        scope !== GitHubSyncScope.RepositoryEnvironment || isActionsSecretType
+                    )
+                    .map((scope) => (
+                      <SelectItem className="capitalize" value={scope} key={scope}>
+                        {scope.replace("-", " ")}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <FieldError errors={[error]} />
@@ -112,23 +182,31 @@ export const GitHubSyncFields = () => {
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>Organization</FieldLabel>
+                <FieldLabel id="secret-sync-git-hub-org-label" htmlFor="secret-sync-git-hub-org">
+                  Organization
+                </FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
+                  <Combobox
+                    aria-labelledby="secret-sync-git-hub-org-label"
+                    aria-describedby={error ? "secret-sync-git-hub-org-error" : undefined}
+                    id="secret-sync-git-hub-org"
+                    isError={Boolean(error)}
                     isLoading={isOrganizationsPending && Boolean(connectionId)}
                     isDisabled={!connectionId}
                     value={organizations.find((org) => org.login === value) ?? null}
-                    onChange={(option) =>
-                      onChange(
-                        (option as SingleValue<TGitHubConnectionOrganization>)?.login ?? null
-                      )
-                    }
+                    onValueChange={(option) => {
+                      if (option?.login === value) return;
+
+                      onChange(option?.login ?? "");
+                      setValue("destinationConfig.selectedRepositoryIds", []);
+                    }}
                     options={organizations}
                     placeholder="Select an organization..."
                     getOptionLabel={(option) => option.login}
                     getOptionValue={(option) => option.login}
+                    modal
                   />
-                  <FieldError errors={[error]} />
+                  <FieldError id="secret-sync-git-hub-org-error" errors={[error]} />
                 </FieldContent>
               </Field>
             )}
@@ -145,7 +223,7 @@ export const GitHubSyncFields = () => {
                     value={value}
                     onValueChange={(val) => {
                       onChange(val);
-                      setValue("destinationConfig.selectedRepositoryIds", undefined);
+                      setValue("destinationConfig.selectedRepositoryIds", []);
                     }}
                   >
                     <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
@@ -168,23 +246,39 @@ export const GitHubSyncFields = () => {
             <Controller
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel>Selected Repositories</FieldLabel>
+                  <FieldLabel
+                    id="secret-sync-git-hub-selected-repository-ids-label"
+                    htmlFor="secret-sync-git-hub-selected-repository-ids"
+                  >
+                    Selected Repositories
+                  </FieldLabel>
                   <FieldContent>
-                    <FilterableSelect
+                    <Combobox
+                      aria-labelledby="secret-sync-git-hub-selected-repository-ids-label"
+                      aria-describedby={
+                        error ? "secret-sync-git-hub-selected-repository-ids-error" : undefined
+                      }
+                      id="secret-sync-git-hub-selected-repository-ids"
+                      isError={Boolean(error)}
                       isLoading={isRepositoriesPending && Boolean(currentOrg)}
                       isDisabled={!currentOrg || !connectionId}
-                      isMulti
+                      multiple
                       value={repositories.filter((repo) => value?.includes(repo.id))}
-                      onChange={(option) => {
-                        const repos = option as MultiValue<TGitHubConnectionRepository>;
+                      onValueChange={(option) => {
+                        const repos = option;
                         onChange(repos.map((repo) => repo.id));
                       }}
                       options={repositories.filter((repo) => repo.owner.login === currentOrg)}
                       placeholder="Select one or more repositories..."
                       getOptionLabel={(option) => `${option.owner.login}/${option.name}`}
                       getOptionValue={(option) => option.id.toString()}
+                      getOptionKeywords={(option) => [option.id.toString()]}
+                      modal
                     />
-                    <FieldError errors={[error]} />
+                    <FieldError
+                      id="secret-sync-git-hub-selected-repository-ids-error"
+                      errors={[error]}
+                    />
                   </FieldContent>
                 </Field>
               )}
@@ -198,14 +292,24 @@ export const GitHubSyncFields = () => {
         <Controller
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Repository</FieldLabel>
+              <FieldLabel id="secret-sync-git-hub-repo-label" htmlFor="secret-sync-git-hub-repo">
+                Repository
+              </FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
+                  aria-labelledby="secret-sync-git-hub-repo-label"
+                  aria-describedby={error ? "secret-sync-git-hub-repo-error" : undefined}
+                  id="secret-sync-git-hub-repo"
+                  isError={Boolean(error)}
                   isLoading={isRepositoriesPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
-                  value={repositories.find((repo) => repo.name === value) ?? null}
-                  onChange={(option) => {
-                    const repo = option as SingleValue<TGitHubConnectionRepository>;
+                  value={
+                    repositories.find(
+                      (repo) => repo.name === value && repo.owner.login === currentOwner
+                    ) ?? null
+                  }
+                  onValueChange={(option) => {
+                    const repo = option;
 
                     onChange(repo?.name);
                     setValue("destinationConfig.owner", repo?.owner.login ?? "");
@@ -215,8 +319,10 @@ export const GitHubSyncFields = () => {
                   placeholder="Select a repository..."
                   getOptionLabel={(option) => `${option.owner.login}/${option.name}`}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
+                  modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-git-hub-repo-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}
@@ -230,21 +336,27 @@ export const GitHubSyncFields = () => {
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>Environment</FieldLabel>
+              <FieldLabel id="secret-sync-git-hub-env-label" htmlFor="secret-sync-git-hub-env">
+                Environment
+              </FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
+                  aria-labelledby="secret-sync-git-hub-env-label"
+                  aria-describedby={error ? "secret-sync-git-hub-env-error" : undefined}
+                  id="secret-sync-git-hub-env"
+                  isError={Boolean(error)}
                   isLoading={isEnvironmentsPending && Boolean(connectionId) && Boolean(currentRepo)}
                   isDisabled={!connectionId || !currentRepo}
                   value={environments.find((env) => env.name === value) ?? null}
-                  onChange={(option) =>
-                    onChange((option as SingleValue<TGitHubConnectionEnvironment>)?.name ?? null)
-                  }
+                  onValueChange={(option) => onChange(option?.name ?? null)}
                   options={environments}
                   placeholder="Select an environment..."
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.id.toString()}
+                  getOptionKeywords={(option) => [option.id.toString()]}
+                  modal
                 />
-                <FieldError errors={[error]} />
+                <FieldError id="secret-sync-git-hub-env-error" errors={[error]} />
               </FieldContent>
             </Field>
           )}

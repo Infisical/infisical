@@ -102,7 +102,7 @@ export type TExternalKmsGcpSchema = z.infer<typeof ExternalKmsGcpSchema>;
 
 export const SanitizedExternalKmsGcpSchema = ExternalKmsGcpSchema.pick({ gcpRegion: true, keyName: true });
 
-const ExternalKmsGcpClientSchema = ExternalKmsGcpSchema.pick({ gcpRegion: true }).extend({
+export const ExternalKmsGcpClientSchema = ExternalKmsGcpSchema.pick({ gcpRegion: true }).extend({
   credential: ExternalKmsGcpCredentialSchema
 });
 export type TExternalKmsGcpClientSchema = z.infer<typeof ExternalKmsGcpClientSchema>;
@@ -124,6 +124,6 @@ export type TExternalKmsInputUpdateSchema = z.infer<typeof ExternalKmsInputUpdat
 export type TExternalKmsProviderFns = {
   validateConnection: () => Promise<boolean>;
   encrypt: (data: Buffer) => Promise<{ encryptedBlob: Buffer }>;
-  decrypt: (encryptedBlob: Buffer) => Promise<{ data: Buffer }>;
+  decrypt: (encryptedBlob: Buffer) => Promise<{ data: Buffer<ArrayBuffer> }>;
   cleanup: () => Promise<void>;
 };

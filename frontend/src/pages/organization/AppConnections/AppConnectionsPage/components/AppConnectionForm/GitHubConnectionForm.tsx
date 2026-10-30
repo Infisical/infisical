@@ -59,7 +59,7 @@ import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { TGitHubApp, useListGitHubApps } from "@app/hooks/api/gitHubApps";
 
 import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -128,8 +128,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   const [isEnterpriseEnabled, setIsEnterpriseEnabled] = useState(() =>
     Boolean(
       appConnection?.credentials &&
-        "host" in appConnection.credentials &&
-        appConnection.credentials.host
+      "host" in appConnection.credentials &&
+      appConnection.credentials.host
     )
   );
 
@@ -212,6 +212,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   // the Connect button enabled.
   const [isResumed, setIsResumed] = useState(false);
 
+  useAppConnectionFormDirtyState(isDirty || isResumed);
+
   // When we come back from creating a new GitHub App, restore the in-progress form and remember the
   // new app so we can select it. The connection itself is created later when the user hits Connect.
   useEffect(() => {
@@ -251,7 +253,6 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
       localStorage.removeItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
     }
     // run once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Resolve the pending (newly created) app to the loaded list, then select it.
@@ -620,9 +621,22 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
             shouldUnregister
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <Field className="mb-4">
-                <FieldLabel>Personal Access Token</FieldLabel>
-                <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                <FieldError errors={[error]} />
+                <FieldLabel htmlFor="app-connection-git-hub-personal-access-token">
+                  Personal Access Token
+                </FieldLabel>
+                <SecretInput
+                  aria-describedby={
+                    error ? "app-connection-git-hub-personal-access-token-error" : undefined
+                  }
+                  id="app-connection-git-hub-personal-access-token"
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+                <FieldError
+                  id="app-connection-git-hub-personal-access-token-error"
+                  errors={[error]}
+                />
               </Field>
             )}
           />

@@ -1,6 +1,6 @@
 ---
-title: "Infisical"
-sidebarTitle: "Infisical"
+title: "Deploy Infisical with Helm"
+sidebarTitle: "Deploy with Helm"
 description: "Learn how to deploy Infisical on Kubernetes using our official Helm chart."
 ---
 
@@ -17,7 +17,7 @@ Learn how to deploy **Infisical** on Kubernetes using the official Helm chart. T
   This guide assumes familiarity with Kubernetes. If you're new to Kubernetes, consider starting with the [Docker Compose guide](/self-hosting/deployment-options/docker-compose) for simpler deployments.
 </Warning>
 
-## System Requirements
+## System requirements
 
 The following are minimum requirements for running Infisical on Kubernetes:
 
@@ -38,7 +38,7 @@ The following are minimum requirements for running Infisical on Kubernetes:
 
 For production deployments with many users or secrets, increase these values accordingly.
 
-## Deployment Steps
+## Deployment steps
 
 <Steps>
   <Step title="Create a namespace">
@@ -110,7 +110,7 @@ For production deployments with many users or secrets, increase these values acc
     infisical:
       image:
         repository: infisical/infisical
-        tag: "v0.161.11"  # Check https://hub.docker.com/r/infisical/infisical/tags for latest
+        tag: "v0.167.0"  # Check https://hub.docker.com/r/infisical/infisical/tags for latest
         pullPolicy: IfNotPresent
       replicaCount: 2
 
@@ -184,7 +184,7 @@ Your Infisical instance should now be running on Kubernetes. Access it via the i
 
 ![self-hosted sign up](/images/self-hosting/applicable-to-all/selfhost-signup.png)
 
-## Default Helm Values
+## Default Helm values
 
 ```yaml
 # -- Overrides the default release name
@@ -205,7 +205,7 @@ infisical:
 
     image:
       # -- Infisical Infisical CLI image tag version
-      tag: "0.41.86"
+      tag: "0.44.6"
 
     # -- Template for the data/stringData section of the Kubernetes secret. Available functions: encodeBase64
     secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token}}"}}'
@@ -214,8 +214,8 @@ infisical:
       # -- Name of the bootstrap secret to create in the Kubernetes cluster which will store the formatted root identity credentials
       name: "infisical-bootstrap-secret"
 
-      # -- Namespace to create the bootstrap secret in. If not provided, the secret will be created in the same namespace as the release.
-      namespace: "default"
+      # -- Namespace to create the bootstrap secret in. Leave empty to use the release namespace.
+      namespace: ""
 
     # -- Infisical organization to create in the Infisical instance during auto-bootstrap
     organization: "default-org"
@@ -247,6 +247,8 @@ infisical:
   podAnnotations: {}
   # -- Custom annotations for Infisical deployment
   deploymentAnnotations: {}
+  # -- Adds an `updatedAt` timestamp annotation to the Deployment and pods, so every render (each `helm upgrade` or GitOps sync) rolls the pods and picks up changes to `kubeSecretRef`. Set to `false` for GitOps tools like Argo CD, and restart with `kubectl rollout restart` after changing the secret.
+  rolloutOnEveryRender: true
   # -- Number of pod replicas for high availability
   replicaCount: 2
 
@@ -254,7 +256,7 @@ infisical:
     # -- Image repository for the Infisical service
     repository: infisical/infisical
     # -- Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical
-    tag: "v0.158.0"
+    tag: "v0.167.0"
     # -- Pulls image only if not already present on the node
     pullPolicy: IfNotPresent
     # -- Secret references for pulling the image, if needed
@@ -418,13 +420,13 @@ ingress-nginx:
     ingressClass: infisical-nginx
 ```
 
-## Production Hardening
+## Production hardening
 
 <Warning>
   The PostgreSQL PVC contains all your encrypted secrets. Never delete this PVC unless you intend to lose all data. Always back up before any maintenance operations.
 </Warning>
 
-### Additional Configuration
+### Additional configuration
 
 <AccordionGroup>
   <Accordion title="SMTP/Email Configuration">

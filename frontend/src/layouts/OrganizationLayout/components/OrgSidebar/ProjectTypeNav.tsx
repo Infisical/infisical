@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from "@tanstack/react-router";
-import { ChevronLeft, Server, Share2, SlidersHorizontal } from "lucide-react";
+import { ActivityIcon, ChevronLeft, Server, Share2, SlidersHorizontal } from "lucide-react";
 
 import {
   ProjectIcon,
@@ -9,8 +9,17 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
-import { parseProjectSlugFromPath, urlSlugToProjectType } from "@app/helpers/project";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission
+} from "@app/context";
+import {
+  hasProjectTemplates,
+  parseProjectSlugFromPath,
+  urlSlugToProjectType
+} from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 export const ProjectTypeNav = () => {
@@ -20,6 +29,7 @@ export const ProjectTypeNav = () => {
   };
   const { pathname } = useLocation();
   const { currentOrg } = useOrganization();
+  const { permission } = useOrgPermission();
   const resolvedOrgId = orgId ?? currentOrg.id;
 
   // KMIP servers and Secret Sharing live at literal /projects/<slug>/<resource> paths (no $type
@@ -28,14 +38,17 @@ export const ProjectTypeNav = () => {
   const isKms = typeSlug === ProjectType.KMS;
   // Secret Manager's URL slug ("secret-management") differs from the enum value ("secret-manager"),
   // so resolve through the helper rather than comparing the slug directly.
-  const isSecretManager = typeSlug
-    ? urlSlugToProjectType(typeSlug) === ProjectType.SecretManager
-    : false;
+  const projectType = typeSlug ? urlSlugToProjectType(typeSlug) : null;
+  const isSecretManager = projectType === ProjectType.SecretManager;
+  const hasProductSettings =
+    isSecretManager ||
+    (projectType !== null &&
+      hasProjectTemplates(projectType) &&
+      permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates));
   const isOnKmipServers = pathname.includes("/kmip-servers");
   const isOnSecretSharing = pathname.includes("/secret-sharing");
-  const isOnSecretManagementProductSettings = pathname.includes(
-    "/secret-management/product-settings"
-  );
+  const isOnSecretManagementInsights = pathname.includes("/secret-management/insights");
+  const isOnProductSettings = pathname.includes("/product-settings");
 
   return (
     <SidebarGroup>
@@ -57,7 +70,10 @@ export const ProjectTypeNav = () => {
             asChild
             closeOnMobile
             isActive={
-              !isOnKmipServers && !isOnSecretSharing && !isOnSecretManagementProductSettings
+              !isOnKmipServers &&
+              !isOnSecretSharing &&
+              !isOnSecretManagementInsights &&
+              !isOnProductSettings
             }
             tooltip="Projects"
           >
@@ -97,6 +113,26 @@ export const ProjectTypeNav = () => {
               scope="project"
               asChild
               closeOnMobile
+              isActive={isOnSecretManagementInsights}
+              tooltip="Insights"
+            >
+              <Link
+                to="/organizations/$orgId/projects/secret-management/insights"
+                params={{ orgId: resolvedOrgId }}
+              >
+                <ActivityIcon className="size-4" />
+                <span>Insights</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
+        {isSecretManager && (
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              scope="project"
+              asChild
+              closeOnMobile
               isActive={isOnSecretSharing}
               tooltip="Secret Sharing"
             >
@@ -110,23 +146,33 @@ export const ProjectTypeNav = () => {
             </SidebarMenuButton>
           </SidebarMenuItem>
         )}
-        {isSecretManager && (
+        {hasProductSettings && (
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
               scope="project"
               asChild
               closeOnMobile
-              isActive={isOnSecretManagementProductSettings}
+              isActive={isOnProductSettings}
               tooltip="Product Settings"
             >
-              <Link
-                to="/organizations/$orgId/projects/secret-management/product-settings"
-                params={{ orgId: resolvedOrgId }}
-              >
-                <SlidersHorizontal className="size-4" />
-                <span>Product Settings</span>
-              </Link>
+              {isSecretManager ? (
+                <Link
+                  to="/organizations/$orgId/projects/secret-management/product-settings"
+                  params={{ orgId: resolvedOrgId }}
+                >
+                  <SlidersHorizontal className="size-4" />
+                  <span>Product Settings</span>
+                </Link>
+              ) : (
+                <Link
+                  to="/organizations/$orgId/projects/product-settings/$type"
+                  params={{ orgId: resolvedOrgId, type: typeSlug ?? "" }}
+                >
+                  <SlidersHorizontal className="size-4" />
+                  <span>Product Settings</span>
+                </Link>
+              )}
             </SidebarMenuButton>
           </SidebarMenuItem>
         )}

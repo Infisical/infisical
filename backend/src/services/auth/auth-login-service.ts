@@ -30,7 +30,8 @@ import {
   AuthAttemptAuthMethod,
   AuthAttemptAuthResult,
   authAttemptCounter,
-  recordAuthAttemptMetric
+  recordAuthAttemptMetric,
+  recordLegacyRootKeyUsageMetric
 } from "@app/lib/telemetry/metrics";
 import { matchesAllowedEmailDomain, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -38,8 +39,8 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
@@ -48,17 +49,17 @@ import { getDefaultOrgMembershipRole } from "../org/org-role-fns";
 import { SmtpTemplates, throwIfSmtpError, TSmtpService } from "../smtp/smtp-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
-import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { ensureSsoAccountVerified, isStaleSsoAlias } from "../user-alias/user-alias-fns";
 import { UserAliasType } from "../user-alias/user-alias-types";
+import { TUserDALFactory } from "../user/user-dal";
 import {
   assertOAuthLoginMethodEnabled,
   enforceUserLockStatus,
   getRequiredMfaMethod,
   isOAuthLoginMethodDisabled,
   OAuthAuthMethod,
-  verifyCaptcha
+  RECOVERY_CODE_MFA_ASSURANCE
 } from "./auth-fns";
 import {
   TLoginClientProofDTO,
@@ -76,6 +77,7 @@ import {
   ProviderAuthResult,
   TProviderAuthCallback
 } from "./auth-type";
+import { verifyCaptcha } from "./captcha-fns";
 import { TMfaLockoutServiceFactory } from "./mfa-lockout-service";
 
 type TAuthLoginServiceFactoryDep = {
@@ -93,7 +95,7 @@ type TAuthLoginServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   mfaLockoutService: Pick<
     TMfaLockoutServiceFactory,
-    "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth"
+    "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth" | "clearRecentMfaAuth"
   >;
 };
 
@@ -169,7 +171,9 @@ export const authLoginServiceFactory = ({
         subjectLine: "Infisical MFA code",
         recipients: [email],
         substitutions: {
-          code
+          code,
+          challengeFor: "sign-in",
+          preview: "Sign-in attempt requires further verification."
         }
       })
       .catch((err) => throwIfSmtpError(err, "Failed to send MFA code email"));
@@ -252,6 +256,10 @@ export const authLoginServiceFactory = ({
       tx
     );
     if (!tokenSession) throw new Error("Failed to create token");
+
+    // Logins from the same IP and user agent reuse one session row, so a password-only
+    // login would otherwise inherit the MFA an earlier login proved on it.
+    if (!isMfaVerified) await mfaLockoutService.clearRecentMfaAuth(userId, tokenSession.id);
 
     let tokenSessionExpiresIn: string | number = cfg.JWT_AUTH_LIFETIME;
     let refreshTokenExpiresIn: string | number = cfg.JWT_REFRESH_LIFETIME;
@@ -483,6 +491,7 @@ export const authLoginServiceFactory = ({
 
       const hashedPassword = await crypto.hashing().createHash(password, cfg.SALT_ROUNDS);
 
+      recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "user_private_key" });
       const { iv, tag, ciphertext, encoding } = crypto
         .encryption()
         .symmetric()
@@ -736,8 +745,13 @@ export const authLoginServiceFactory = ({
     // Open the grace window for THIS session only (the one that just proved MFA), so
     // MFA-management step-up isn't re-prompted right after login - including recovery-code
     // logins, which is what lets a user with a lost factor still manage their MFA. Keyed
-    // by the new session's tokenVersionId so no other session inherits it.
-    await mfaLockoutService.recordRecentMfaAuth(user.id, token.tokenVersionId);
+    // by the new session's tokenVersionId so no other session inherits it. A non-recovery
+    // login can only have proven the required method.
+    await mfaLockoutService.recordRecentMfaAuth(
+      user.id,
+      token.tokenVersionId,
+      isRecoveryCode ? RECOVERY_CODE_MFA_ASSURANCE : requiredMfaMethod
+    );
 
     if (isRecoveryCode && userEnc.email) {
       await smtpService
@@ -809,12 +823,19 @@ export const authLoginServiceFactory = ({
     // user's signup (used by the caller to fire signup telemetry exactly once per account).
     const wasUserAcceptedBeforeLogin = Boolean(user?.isAccepted);
 
-    // Mirror complete-account's invite detection: a not-yet-accepted user who already has an org
-    // membership was invited (the inviter created it), versus an organic signup that has none yet.
-    // Only meaningful when this login completes the signup, so skip the read for accepted users.
+    // Mirror complete-account's invite detection: a not-yet-accepted user who already holds a
+    // pending invitation was invited (the inviter created it), versus an organic signup that has
+    // none. Only meaningful when this login completes the signup, so skip the read for accepted
+    // users.
     const wasInvited =
       !wasUserAcceptedBeforeLogin && user
-        ? (await orgDAL.findMembership({ actorUserId: user.id, scope: AccessScope.Organization })).length > 0
+        ? (
+            await orgDAL.findMembership({
+              actorUserId: user.id,
+              scope: AccessScope.Organization,
+              status: OrgMembershipStatus.Invited
+            })
+          ).length > 0
         : false;
 
     const serverCfg = await getServerCfg();
@@ -1132,7 +1153,7 @@ export const authLoginServiceFactory = ({
     organizationId,
     userId,
     userAuthMethod,
-    actorOrgId,
+    actorRootOrgId,
     isMfaVerified,
     mfaMethod
   }: {
@@ -1141,7 +1162,7 @@ export const authLoginServiceFactory = ({
     organizationId: string;
     userId: string;
     userAuthMethod: AuthMethod;
-    actorOrgId?: string;
+    actorRootOrgId?: string;
     isMfaVerified?: boolean;
     mfaMethod?: MfaMethod;
   }) => {
@@ -1267,8 +1288,8 @@ export const authLoginServiceFactory = ({
     }
 
     const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
-    // Check if organization has changed
-    const hasOrganizationChanged = actorOrgId ? actorOrgId !== rootOrg.id : false;
+    // The MFA policy belongs to the root org, so moving between a root org and its sub-orgs is not a change.
+    const hasOrganizationChanged = actorRootOrgId ? actorRootOrgId !== rootOrg.id : false;
     // Check if MFA method has changed
     const hasMfaMethodChanged = mfaMethod !== requiredMfaMethod;
     // Trigger MFA if required and either not verified or something changed

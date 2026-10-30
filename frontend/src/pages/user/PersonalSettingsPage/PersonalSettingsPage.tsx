@@ -1,9 +1,9 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
 
 import { WishForm } from "@app/components/features/WishForm";
+import { PageTitle } from "@app/components/PageTitle";
 
 import { PersonalTabGroup } from "./components/PersonalTabGroup";
 
@@ -16,10 +16,8 @@ export const PersonalSettingsPage = () => {
 
   return (
     <div className="mx-auto w-full max-w-5xl p-4 lg:p-8">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.personal.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("settings.personal.title")} />
+      <link rel="icon" href="/infisical.ico" />
       <Link
         to="/"
         className="mb-6 inline-flex items-center gap-2 rounded-sm text-sm text-muted transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -29,9 +27,7 @@ export const PersonalSettingsPage = () => {
       </Link>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="grid gap-1">
-          <h1 className="font-alliance text-2xl font-semibold text-foreground">
-            Personal Settings
-          </h1>
+          <h1 className="font-alliance text-2xl font-normal text-foreground">Personal Settings</h1>
           <p className="text-sm text-muted">
             Manage your profile, authentication, and active sessions.
           </p>

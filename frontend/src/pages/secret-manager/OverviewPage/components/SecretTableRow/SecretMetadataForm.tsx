@@ -15,7 +15,7 @@ import {
   FieldLabel,
   IconButton,
   Input,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
@@ -99,7 +99,7 @@ export const SecretMetadataForm = ({
   // array reference when nested field values change (typing in key/value inputs).
   const watchedMetadata = watch("metadata");
   const serializedMetadata = JSON.stringify(watchedMetadata);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (!isBatchMode) return () => {};
@@ -119,7 +119,6 @@ export const SecretMetadataForm = ({
         clearTimeout(debounceTimer.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBatchMode, serializedMetadata, onMetadataChange]);
 
   const onSubmit = async (data: TFormSchema) => {
@@ -216,7 +215,7 @@ export const SecretMetadataForm = ({
                 control={control}
                 name={`metadata.${index}.isEncrypted`}
                 render={({ field: switchField }) => (
-                  <Switch
+                  <Toggle
                     className="mt-2"
                     variant="project"
                     size="default"

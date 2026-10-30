@@ -1,9 +1,7 @@
 import { ReactNode } from "react";
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { KeyIcon } from "lucide-react";
+import { ArrowRightIcon, KeyIcon } from "lucide-react";
 
-import { FormLabel } from "@app/components/v2";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import { Badge } from "@app/components/v3";
 
 type Props = {
@@ -16,16 +14,14 @@ export const SecretsMappingTable = ({ items }: Props) => {
       <table className="w-full table-auto">
         <thead>
           <tr className="text-left">
-            <th className="whitespace-nowrap">
-              <FormLabel label="Rotated Credentials" />
+            <th className="pb-2 whitespace-nowrap">
+              <FieldLabelWithTooltip>Rotated Credentials</FieldLabelWithTooltip>
             </th>
             <th />
-            <th>
-              <FormLabel
-                tooltipClassName="max-w-sm"
-                tooltipText="The name of the secret that the active credentials will be mapped to."
-                label="Secret Name"
-              />
+            <th className="pb-2">
+              <FieldLabelWithTooltip tooltip="The name of the secret that the active credentials will be mapped to.">
+                Secret Name
+              </FieldLabelWithTooltip>
             </th>
           </tr>
         </thead>
@@ -34,16 +30,15 @@ export const SecretsMappingTable = ({ items }: Props) => {
             <tr key={name}>
               <td className="whitespace-nowrap">
                 <div className="mb-4 flex h-full items-start justify-center">
-                  {/* TODO(scott): probably shouldn't be a badge */}
-                  <Badge variant="neutral" className="h-[36px] w-full justify-center text-xs">
+                  <Badge variant="neutral" className="h-9 w-full justify-center text-xs">
                     <KeyIcon />
                     {name}
                   </Badge>
                 </div>
               </td>
-              <td className="pr-5 pl-5 whitespace-nowrap">
+              <td className="px-5 whitespace-nowrap">
                 <div className="mb-4 flex items-center justify-center">
-                  <FontAwesomeIcon className="text-mineshaft-400" icon={faArrowRight} />
+                  <ArrowRightIcon className="size-4 text-muted" />
                 </div>
               </td>
               <td className="w-full">{input}</td>

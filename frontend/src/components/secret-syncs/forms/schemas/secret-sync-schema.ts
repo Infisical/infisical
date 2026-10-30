@@ -14,8 +14,10 @@ import { ChefSyncDestinationSchema } from "./chef-sync-destination-schema";
 import { CircleCISyncDestinationSchema } from "./circleci-sync-destination-schema";
 import { Cloud66SyncDestinationSchema } from "./cloud-66-sync-destination-schema";
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
+import { CloudflareSecretsStoreSyncDestinationSchema } from "./cloudflare-secrets-store-sync-destination-schema";
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
+import { DaytonaSyncDestinationSchema } from "./daytona-sync-destination-schema";
 import { DevinSyncDestinationSchema } from "./devin-sync-destination-schema";
 import { DigitalOceanAppPlatformSyncDestinationSchema } from "./digital-ocean-app-platform-sync-destination-schema";
 import { ExternalInfisicalSyncDestinationSchema } from "./external-infisical-sync-destination-schema";
@@ -27,6 +29,7 @@ import { HasuraCloudSyncDestinationSchema } from "./hasura-cloud-sync-destinatio
 import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema";
 import { HerokuSyncDestinationSchema } from "./heroku-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
+import { KeeperSyncDestinationSchema } from "./keeper-sync-destination-schema";
 import { LaravelForgeSyncDestinationSchema } from "./laravel-forge-sync-destination-schema";
 import { NetlifySyncDestinationSchema } from "./netlify-sync-destination-schema";
 import { NorthflankSyncDestinationSchema } from "./northflank-sync-destination-schema";
@@ -34,6 +37,7 @@ import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-sche
 import { OctopusDeploySyncDestinationSchema } from "./octopus-deploy-sync-destination-schema";
 import { OnaSyncDestinationSchema } from "./ona-sync-destination-schema";
 import { OvhSyncDestinationSchema } from "./ovh-sync-destination-schema";
+import { PortainerSyncDestinationSchema } from "./portainer-sync-destination-schema";
 import { QoverySyncDestinationSchema } from "./qovery-sync-destination-schema";
 import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema";
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
@@ -73,8 +77,10 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   GitlabSyncDestinationSchema,
   CloudflarePagesSyncDestinationSchema,
   CloudflareWorkersSyncDestinationSchema,
+  CloudflareSecretsStoreSyncDestinationSchema,
   SupabaseSyncDestinationSchema,
   RundeckSyncDestinationSchema,
+  PortainerSyncDestinationSchema,
   ZabbixSyncDestinationSchema,
   RailwaySyncDestinationSchema,
   ChecklySyncDestinationSchema,
@@ -97,6 +103,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   HasuraCloudSyncDestinationSchema,
   QoverySyncDestinationSchema,
   Cloud66SyncDestinationSchema,
+  DaytonaSyncDestinationSchema,
+  KeeperSyncDestinationSchema,
   SpaceliftSyncDestinationSchema
 ]);
 
@@ -105,3 +113,12 @@ export const SecretSyncFormSchema = SecretSyncUnionSchema;
 export const UpdateSecretSyncFormSchema = SecretSyncUnionSchema;
 
 export type TSecretSyncForm = z.infer<typeof SecretSyncFormSchema>;
+
+export const getSecretSyncDestinationConfig = (
+  destination: TSecretSyncForm["destination"],
+  config: unknown
+) => {
+  const schema = SecretSyncFormSchema.optionsMap.get(destination)?.shape.destinationConfig;
+  const result = schema?.safeParse(config);
+  return result?.success ? result.data : undefined;
+};

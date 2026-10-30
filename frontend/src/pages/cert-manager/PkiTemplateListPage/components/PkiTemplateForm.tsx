@@ -1,7 +1,7 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleHelpIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -12,12 +12,17 @@ import {
   AccordionTrigger,
   Button,
   Checkbox,
-  FilterableSelect,
-  FormControl,
-  FormLabel,
+  Combobox,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
   Input,
-  Tooltip
-} from "@app/components/v2";
+  SheetFooter,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   useCreateCertTemplateV2,
@@ -32,6 +37,7 @@ import {
 import { CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { TCertificateTemplateV2 } from "@app/hooks/api/certificateTemplates/types";
 import { slugSchema } from "@app/lib/schemas";
+import { useCaCreation } from "@app/pages/cert-manager/components/useCaCreation";
 
 const validateTemplateRegexField = z.string().trim().min(1).max(100);
 
@@ -63,11 +69,18 @@ const schema = z.object({
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
+  onCancel: () => void;
+  onStateChange: (state: { isDirty: boolean; isPending: boolean }) => void;
   certTemplate?: TCertificateTemplateV2;
   handlePopUpToggle: (state?: boolean) => void;
 };
 
-export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
+export const PkiTemplateForm = ({
+  certTemplate,
+  handlePopUpToggle,
+  onCancel,
+  onStateChange
+}: Props) => {
   const { currentProject } = useProject();
 
   const { data: cas, isPending: isCaLoading } = useListCasByProjectId();
@@ -79,7 +92,8 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    setValue,
+    formState: { isSubmitting, isDirty }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: async () => {
@@ -110,6 +124,10 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
       };
     }
   });
+
+  useEffect(() => {
+    onStateChange({ isDirty, isPending: isSubmitting });
+  }, [isDirty, isSubmitting, onStateChange]);
 
   const onFormSubmit = async ({
     name,
@@ -177,223 +195,259 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
     handlePopUpToggle(false);
   };
 
+  const { creation: caCreation, caCreationModals } = useCaCreation<{ id: string; name: string }>(
+    (ca) => {
+      setValue("ca", { id: ca.id, name: ca.name }, { shouldDirty: true, shouldValidate: true });
+    }
+  );
+
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      {certTemplate && (
-        <FormControl label="Certificate Template ID">
-          <Input value={certTemplate.id} isDisabled className="bg-white/[0.07]" />
-        </FormControl>
-      )}
-      <Controller
-        control={control}
-        defaultValue=""
-        name="name"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Template Name"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isRequired
-          >
-            <Input {...field} placeholder="my-template" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            label="Issuing CA"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            isRequired
-          >
-            <FilterableSelect
-              options={cas || []}
-              isLoading={isCaLoading}
-              placeholder="Select CA..."
-              onChange={onChange}
-              value={value}
-              getOptionValue={(option) => option.id}
-              getOptionLabel={(option) => option.name}
-            />
-          </FormControl>
-        )}
-        control={control}
-        name="ca"
-      />
-      <Controller
-        control={control}
-        defaultValue=""
-        name="commonName"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label={
-              <div>
-                <FormLabel
-                  isRequired
-                  label="Common Name (CN)"
-                  icon={
-                    <Tooltip
-                      className="text-center"
-                      content={
-                        <span>
-                          This field accepts limited regular expressions: spaces, *, ., @, -, \ (for
-                          escaping), and alphanumeric characters only
-                        </span>
-                      }
-                    >
-                      <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                    </Tooltip>
-                  }
-                />
-              </div>
-            }
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isRequired
-          >
-            <Input {...field} placeholder=".*\.acme.com" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        defaultValue=""
-        name="subjectAlternativeName"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label={
-              <div>
-                <FormLabel
-                  isRequired
-                  label="Alternative Names (SAN)"
-                  icon={
-                    <Tooltip
-                      className="text-center"
-                      content={
-                        <span>
-                          This field accepts limited regular expressions: spaces, *, ., @, -, \ (for
-                          escaping), and alphanumeric characters only
-                        </span>
-                      }
-                    >
-                      <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                    </Tooltip>
-                  }
-                />
-              </div>
-            }
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isRequired
-          >
-            <Input {...field} placeholder="service\.acme.\..*" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="ttl"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Max TTL"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isRequired
-          >
-            <Input {...field} placeholder="2 days, 1d, 2h, 1y, ..." />
-          </FormControl>
-        )}
-      />
-      <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="key-usages" className="data-[state=open]:border-none">
-          <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-            <div className="order-1 ml-3">Key Usage</div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <Controller
-              control={control}
-              name="keyUsages"
-              render={({ field: { onChange, value }, fieldState: { error } }) => {
-                return (
-                  <FormControl
-                    label="Key Usage"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
-                      {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
-                        return (
-                          <Checkbox
-                            id={optionValue}
-                            key={optionValue}
-                            isChecked={value[optionValue]}
-                            onCheckedChange={(state) => {
-                              onChange({
-                                ...value,
-                                [optionValue]: state
-                              });
-                            }}
-                          >
-                            {label}
-                          </Checkbox>
-                        );
-                      })}
-                    </div>
-                  </FormControl>
-                );
-              }}
-            />
-            <Controller
-              control={control}
-              name="extendedKeyUsages"
-              render={({ field: { onChange, value }, fieldState: { error } }) => {
-                return (
-                  <FormControl
-                    label="Extended Key Usage"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
-                      {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
-                        return (
-                          <Checkbox
-                            id={optionValue}
-                            key={optionValue}
-                            isChecked={value[optionValue]}
-                            onCheckedChange={(state) => {
-                              onChange({
-                                ...value,
-                                [optionValue]: state
-                              });
-                            }}
-                          >
-                            {label}
-                          </Checkbox>
-                        );
-                      })}
-                    </div>
-                  </FormControl>
-                );
-              }}
-            />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-      <div className="mt-4 flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
+    <>
+      <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit(onFormSubmit)}>
+        <fieldset
+          disabled={isSubmitting}
+          className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
         >
-          Save
-        </Button>
-        <Button colorSchema="secondary" variant="plain" onClick={() => handlePopUpToggle(false)}>
-          Cancel
-        </Button>
-      </div>
-    </form>
+          {certTemplate && (
+            <Field>
+              <FieldLabel htmlFor="pki-template-id">Certificate Template ID</FieldLabel>
+              <Input id="pki-template-id" value={certTemplate.id} disabled />
+            </Field>
+          )}
+          <Controller
+            control={control}
+            defaultValue=""
+            name="name"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="pki-template-name">
+                  Template Name <span className="text-danger">*</span>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    {...field}
+                    id="pki-template-name"
+                    placeholder="my-template"
+                    autoComplete="off"
+                    name="pki-template-name"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
+            )}
+          />
+          <Controller
+            render={({ field: { value, onChange, onBlur, name, ref }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="pki-template-ca">
+                  Issuing CA <span className="text-danger">*</span>
+                </FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    ref={ref}
+                    onBlur={onBlur}
+                    name={name}
+                    isError={Boolean(error)}
+                    id="pki-template-ca"
+                    options={cas || []}
+                    isLoading={isCaLoading}
+                    isClearable={false}
+                    placeholder="Select CA..."
+                    onValueChange={onChange}
+                    value={value?.id ? value : null}
+                    getOptionValue={(option) => option.id}
+                    getOptionLabel={(option) => option.name}
+                    creation={caCreation}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
+            )}
+            control={control}
+            name="ca"
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="commonName"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="pki-template-common-name">
+                  Common Name (CN) <span className="text-danger">*</span>
+                  <Tooltip hoverable delayDuration={50}>
+                    <TooltipTrigger asChild>
+                      <CircleHelpIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-center">
+                      This field accepts limited regular expressions: spaces, *, ., @, -, \ (for
+                      escaping), and alphanumeric characters only
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    {...field}
+                    id="pki-template-common-name"
+                    placeholder=".*\.acme.com"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="subjectAlternativeName"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="pki-template-san">
+                  Alternative Names (SAN) <span className="text-danger">*</span>
+                  <Tooltip hoverable delayDuration={50}>
+                    <TooltipTrigger asChild>
+                      <CircleHelpIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-center">
+                      This field accepts limited regular expressions: spaces, *, ., @, -, \ (for
+                      escaping), and alphanumeric characters only
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    {...field}
+                    id="pki-template-san"
+                    placeholder="service\.acme.\..*"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="ttl"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="pki-template-ttl">
+                  Max TTL <span className="text-danger">*</span>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    {...field}
+                    id="pki-template-ttl"
+                    placeholder="2 days, 1d, 2h, 1y, ..."
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
+            )}
+          />
+          <Accordion type="single" collapsible variant="ghost" className="w-full">
+            <AccordionItem value="key-usages" className="border-b-0">
+              <AccordionTrigger>Key Usage</AccordionTrigger>
+              <AccordionContent>
+                <Controller
+                  control={control}
+                  name="keyUsages"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => {
+                    return (
+                      <Field className="mb-7">
+                        <FieldLabel>Key Usage</FieldLabel>
+                        <FieldContent>
+                          <div className="mt-2 grid grid-cols-2 gap-2">
+                            {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                              return (
+                                <div key={optionValue} className="flex items-center gap-3">
+                                  <Checkbox
+                                    id={`key-usage-${optionValue}`}
+                                    variant="project"
+                                    isChecked={value[optionValue]}
+                                    onCheckedChange={(state) => {
+                                      onChange({
+                                        ...value,
+                                        [optionValue]: state
+                                      });
+                                    }}
+                                  />
+                                  <label
+                                    htmlFor={`key-usage-${optionValue}`}
+                                    className="cursor-pointer text-sm text-foreground"
+                                  >
+                                    {label}
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <FieldError errors={[error]} />
+                        </FieldContent>
+                      </Field>
+                    );
+                  }}
+                />
+                <Controller
+                  control={control}
+                  name="extendedKeyUsages"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => {
+                    return (
+                      <Field className="mb-7">
+                        <FieldLabel>Extended Key Usage</FieldLabel>
+                        <FieldContent>
+                          <div className="mt-2 grid grid-cols-2 gap-2">
+                            {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                              return (
+                                <div key={optionValue} className="flex items-center gap-3">
+                                  <Checkbox
+                                    id={`extended-key-usage-${optionValue}`}
+                                    variant="project"
+                                    isChecked={value[optionValue]}
+                                    onCheckedChange={(state) => {
+                                      onChange({
+                                        ...value,
+                                        [optionValue]: state
+                                      });
+                                    }}
+                                  />
+                                  <label
+                                    htmlFor={`extended-key-usage-${optionValue}`}
+                                    className="cursor-pointer text-sm text-foreground"
+                                  >
+                                    {label}
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <FieldError errors={[error]} />
+                        </FieldContent>
+                      </Field>
+                    );
+                  }}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </fieldset>
+        <SheetFooter className="justify-end border-t">
+          <Button variant="ghost" isDisabled={isSubmitting} onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            variant="project"
+            type="submit"
+            isPending={isSubmitting}
+            isDisabled={isSubmitting}
+          >
+            Save
+          </Button>
+        </SheetFooter>
+      </form>
+      {caCreationModals}
+    </>
   );
 };

@@ -1,5 +1,4 @@
 import crypto from "crypto";
-
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,7 +35,7 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { GitHubRadarFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -81,6 +80,8 @@ export const GitHubRadarConnectionForm = ({ appConnection, projectId }: Props) =
     watch,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const selectedMethod = watch("method");
 

@@ -1,0 +1,61 @@
+import { TFeatureSet, TPlanNotice } from "@app/ee/services/license/license-types";
+
+import { FEATURE_MAPPINGS } from "./feature-mapping";
+import { TEntitlementsResponse, trialPaymentFailedNoticeSchema } from "./license-client-types";
+
+// Unknown notice types are expected (the License Server adds them ahead of us), so they are dropped silently.
+const projectNotices = (rawNotices: unknown[]): TPlanNotice[] =>
+  rawNotices.flatMap((rawNotice) => {
+    const parsed = trialPaymentFailedNoticeSchema.safeParse(rawNotice);
+    if (!parsed.success) {
+      return [];
+    }
+    return [
+      {
+        type: parsed.data.type,
+        productKey: parsed.data.product_key,
+        trialPlanKey: parsed.data.trial_plan_key ?? null,
+        accessEndsAt: parsed.data.access_ends_at,
+        nextAttemptAt: parsed.data.next_attempt_at ?? null,
+        cause: parsed.data.cause ?? null
+      }
+    ];
+  });
+
+// Builds a plan-shaped TFeatureSet from the License Server entitlement set so getPlan can serve it
+// without changing its callers. Starts from the passed base (free-tier defaults) and overlays each
+// mapped feature; a key v2 omits keeps the base value, while a null is written through because that is
+// how v2 says "no limit" (eg unlimited audit log retention). Base is passed in (not
+// imported from license-fns) to avoid a license-service <-> license-fns import cycle.
+export const projectV2ToFeatureSet = (base: TFeatureSet, entitlements: TEntitlementsResponse): TFeatureSet => {
+  const plan = JSON.parse(JSON.stringify(base)) as Record<string, unknown> & { rateLimits: Record<string, unknown> };
+  plan.slug = entitlements?.slug;
+  plan.productPlans = (entitlements.products ?? []).map((product) => ({
+    productKey: product.product_key,
+    planKey: product.plan_key ?? null,
+    status: product.status ?? null,
+    trialPlanKey: product.trial_plan_key ?? null,
+    trialEndsAt: product.trial_ends_at ?? null
+  }));
+  plan.notices = projectNotices(entitlements.notices ?? []);
+
+  FEATURE_MAPPINGS.forEach((mapping) => {
+    if (mapping.v1Field === null) {
+      return;
+    }
+    const isLegacyGranted = mapping.legacyV2Keys?.some((key) => entitlements.features[key]?.value === true);
+    const value = isLegacyGranted ? true : entitlements.features[mapping.v2Key]?.value;
+    if (value === undefined) {
+      return;
+    }
+
+    if (mapping.v1Field.includes(".")) {
+      const [parent, child] = mapping.v1Field.split(".");
+      (plan[parent] as Record<string, unknown>)[child] = value;
+    } else {
+      plan[mapping.v1Field] = value;
+    }
+  });
+
+  return plan as unknown as TFeatureSet;
+};

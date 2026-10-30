@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, PlusIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 
+import {
+  CertificateDiscoveryUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { HoverCard, HoverCardContent, HoverCardTrigger, Tag } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -25,7 +27,9 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  OverflowBadgeList,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -37,41 +41,86 @@ import {
 import {
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub,
-  useOrganization
+  useProject,
+  useSubscription
 } from "@app/context";
+import { PKI_DISCOVERY_TYPE_MAP } from "@app/helpers/pkiDiscovery";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   PkiDiscoveryScanStatus,
+  PkiDiscoveryType,
   TPkiDiscovery,
   useDeletePkiDiscovery,
   useListPkiDiscoveries,
   useTriggerPkiDiscoveryScan
 } from "@app/hooks/api";
+import { WindowsCertificateStoreLabels } from "@app/hooks/api/pkiDiscovery/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { getDiscoveryStatusBadge, parsePorts } from "@app/pages/cert-manager/pki-discovery-utils";
+import {
+  getDiscoveryStatusBadge,
+  getItemLabel,
+  parsePorts
+} from "@app/pages/cert-manager/pki-discovery-utils";
 
 import { DeleteDiscoveryModal } from "./DeleteDiscoveryModal";
-import { DiscoveryJobModal } from "./DiscoveryJobModal";
+import { DiscoveryJobSheet } from "./DiscoveryJobSheet";
+import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 
 type Props = {
   projectId: string;
 };
 
 const PAGE_SIZE = 25;
-const MAX_PORTS_TO_SHOW = 2;
+
+const getScopeItems = (discovery: TPkiDiscovery) => {
+  if (discovery.discoveryType === PkiDiscoveryType.WindowsServer) {
+    return (discovery.targetConfig.certificateStores ?? []).map(
+      (store) => WindowsCertificateStoreLabels[store] ?? store
+    );
+  }
+  if (discovery.discoveryType === PkiDiscoveryType.LinuxServer) {
+    return discovery.targetConfig.searchFolderPaths ?? [];
+  }
+  const ports = parsePorts(discovery.targetConfig.ports);
+  return ports.length ? ports : ["443"];
+};
+
+const getTargetItems = (discovery: TPkiDiscovery) => {
+  if (
+    discovery.discoveryType === PkiDiscoveryType.LinuxServer ||
+    discovery.discoveryType === PkiDiscoveryType.WindowsServer
+  ) {
+    return (discovery.connections ?? []).map((connection) => connection.name);
+  }
+  return [...(discovery.targetConfig.domains ?? []), ...(discovery.targetConfig.ipRanges ?? [])];
+};
 
 export const DiscoveryJobsTab = ({ projectId }: Props) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter, 300);
+
+  const { subscription } = useSubscription();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "createJob",
     "editJob",
     "deleteJob"
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+
+  const handleCreateJob = () => {
+    if (!subscription.pkiDiscovery) {
+      openUpgradeGate({
+        intent: CertificateDiscoveryUpgradeIntent,
+        paywallKey: "cert-manager.discovery-jobs"
+      });
+      return;
+    }
+    handlePopUpOpen("createJob");
+  };
 
   const { data, isPending } = useListPkiDiscoveries({
     projectId,
@@ -104,61 +153,12 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
     handlePopUpClose("deleteJob");
   };
 
-  const getTargetDisplay = (discovery: TPkiDiscovery) => {
-    const targets: string[] = [];
-    if (discovery.targetConfig.domains?.length) {
-      targets.push(...discovery.targetConfig.domains.slice(0, 2));
-    }
-    if (discovery.targetConfig.ipRanges?.length) {
-      targets.push(...discovery.targetConfig.ipRanges.slice(0, 2));
-    }
-    const display = targets.slice(0, 2).join(", ");
-    const total =
-      (discovery.targetConfig.domains?.length || 0) +
-      (discovery.targetConfig.ipRanges?.length || 0);
-    return total > 2 ? `${display} +${total - 2} more` : display;
-  };
-
-  const renderPortsBadges = (discovery: TPkiDiscovery) => {
-    const ports = parsePorts(discovery.targetConfig.ports);
-
-    if (ports.length === 0) {
-      return <Tag>443</Tag>;
-    }
-
-    const visiblePorts = ports.slice(0, MAX_PORTS_TO_SHOW);
-    const remainingPorts = ports.slice(MAX_PORTS_TO_SHOW);
-
-    return (
-      <div className="flex items-center gap-1">
-        {visiblePorts.map((port) => (
-          <Tag key={port}>{port}</Tag>
-        ))}
-        {remainingPorts.length > 0 && (
-          <HoverCard>
-            <HoverCardTrigger>
-              <Tag>+{remainingPorts.length}</Tag>
-            </HoverCardTrigger>
-            <HoverCardContent className="border border-gray-700 bg-mineshaft-800 p-3">
-              <div className="flex flex-wrap gap-1">
-                {remainingPorts.map((port) => (
-                  <Tag key={port}>{port}</Tag>
-                ))}
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-        )}
-      </div>
-    );
-  };
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Discovery Jobs</CardTitle>
         <CardDescription>
-          Configure scans to run on a schedule and find certificates on the domains and IP addresses
-          you select.
+          Configure scans to find certificates served on your network or stored on your servers.
         </CardDescription>
         <CardAction>
           <ProjectPermissionCan
@@ -166,11 +166,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             a={ProjectPermissionSub.PkiDiscovery}
           >
             {(isAllowed) => (
-              <Button
-                variant="project"
-                onClick={() => handlePopUpOpen("createJob")}
-                isDisabled={!isAllowed}
-              >
+              <Button variant="project" onClick={handleCreateJob} isDisabled={!isAllowed}>
                 <PlusIcon />
                 Add Job
               </Button>
@@ -187,7 +183,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             <InputGroupInput
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Search by name, domain, or IP…"
+              placeholder="Search by name or description…"
             />
           </InputGroup>
         </div>
@@ -204,8 +200,8 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
             <EmptyHeader>
               <EmptyTitle>No discovery jobs defined</EmptyTitle>
               <EmptyDescription>
-                Define a job to scan domains or IP ranges and surface the certificates running on
-                them.
+                Define a job to scan your network or your servers and surface the certificates it
+                finds.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -215,8 +211,9 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Target</TableHead>
-                  <TableHead>Ports</TableHead>
+                  <TableHead>Scope</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Scan</TableHead>
                   <TableHead className="w-5" />
@@ -224,25 +221,38 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
               </TableHeader>
               <TableBody>
                 {discoveries.map((discovery) => (
-                  <TableRow
-                    key={discovery.id}
-                    className="cursor-pointer"
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId",
-                        params: {
-                          orgId: currentOrg.id,
-                          projectId,
-                          discoveryId: discovery.id
-                        }
-                      })
-                    }
-                  >
-                    <TableCell>{discovery.name}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {getTargetDisplay(discovery)}
+                  <TableRow key={discovery.id} linked>
+                    <TableCell>
+                      <RowLink
+                        {...getInstancePinningLink(
+                          currentProject.orgId,
+                          currentProject,
+                          `discovery/${discovery.id}`
+                        )!}
+                      >
+                        {discovery.name}
+                      </RowLink>
                     </TableCell>
-                    <TableCell>{renderPortsBadges(discovery)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <DiscoveryTypeIcon type={discovery.discoveryType} className="size-4" />
+                        {PKI_DISCOVERY_TYPE_MAP[discovery.discoveryType]?.name}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[200px]">
+                      <OverflowBadgeList
+                        items={getTargetItems(discovery)}
+                        getKey={getItemLabel}
+                        getLabel={getItemLabel}
+                      />
+                    </TableCell>
+                    <TableCell className="max-w-[200px]">
+                      <OverflowBadgeList
+                        items={getScopeItems(discovery)}
+                        getKey={getItemLabel}
+                        getLabel={getItemLabel}
+                      />
+                    </TableCell>
                     <TableCell>
                       {getDiscoveryStatusBadge(
                         discovery.lastScanStatus,
@@ -255,7 +265,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
                         ? format(new Date(discovery.lastScannedAt), "MMM dd, yyyy HH:mm")
                         : "Never"}
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell data-row-interactive>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs">
@@ -331,13 +341,13 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
         )}
       </CardContent>
 
-      <DiscoveryJobModal
+      <DiscoveryJobSheet
         isOpen={popUp.createJob.isOpen}
         onClose={() => handlePopUpClose("createJob")}
         projectId={projectId}
       />
 
-      <DiscoveryJobModal
+      <DiscoveryJobSheet
         isOpen={popUp.editJob.isOpen}
         onClose={() => handlePopUpClose("editJob")}
         projectId={projectId}
@@ -350,6 +360,8 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
         onConfirm={handleDelete}
         discoveryName={(popUp.deleteJob.data as TPkiDiscovery)?.name || ""}
       />
+
+      {upgradeGate}
     </Card>
   );
 };

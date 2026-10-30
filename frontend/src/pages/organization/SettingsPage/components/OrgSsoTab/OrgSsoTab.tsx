@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { ArrowLeftRight, IdCardIcon, Info, Plus } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  LdapUpgradeIntent,
+  OidcSsoUpgradeIntent,
+  SamlSsoUpgradeIntent,
+  UpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -173,9 +178,22 @@ export const OrgSsoTab = withPermission(
       shouldDisplaySection(LoginMethod.OIDC) ||
       shouldDisplaySection(LoginMethod.LDAP);
 
+    let ssoUpgradeIntent:
+      | typeof SamlSsoUpgradeIntent
+      | typeof OidcSsoUpgradeIntent
+      | typeof LdapUpgradeIntent = SamlSsoUpgradeIntent;
+    if (popUp.upgradePlan.data?.featureName === "OIDC SSO") {
+      ssoUpgradeIntent = OidcSsoUpgradeIntent;
+    } else if (popUp.upgradePlan.data?.featureName === "LDAP") {
+      ssoUpgradeIntent = LdapUpgradeIntent;
+    }
+
     const handleConnectSaml = async () => {
       if (!subscription?.samlSSO) {
-        handlePopUpOpen("upgradePlan", { featureName: "SAML SSO" });
+        handlePopUpOpen("upgradePlan", {
+          featureName: "SAML SSO",
+          paywallKey: "organization.org-sso.chooser"
+        });
         return;
       }
       if (!currentOrg) return;
@@ -196,7 +214,8 @@ export const OrgSsoTab = withPermission(
       if (!subscription?.oidcSSO) {
         handlePopUpOpen("upgradePlan", {
           featureName: "OIDC SSO",
-          isEnterpriseFeature: true
+          isEnterpriseFeature: true,
+          paywallKey: "organization.org-oidc.chooser"
         });
         return;
       }
@@ -207,7 +226,8 @@ export const OrgSsoTab = withPermission(
       if (!subscription?.ldap) {
         handlePopUpOpen("upgradePlan", {
           featureName: "LDAP",
-          isEnterpriseFeature: true
+          isEnterpriseFeature: true,
+          paywallKey: "organization.org-ldap.chooser"
         });
         return;
       }
@@ -574,14 +594,21 @@ export const OrgSsoTab = withPermission(
             </AlertDialog>
           </>
         )}
-        <UpgradePlanModal
+        <UpgradeGate
+          paywallKey={popUp.upgradePlan.data?.paywallKey ?? "organization.org-sso.chooser"}
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
-          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+          intent={{
+            ...ssoUpgradeIntent,
+            isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+          }}
         />
       </>
     );
   },
-  { action: OrgPermissionSsoActions.Read, subject: OrgPermissionSubjects.Sso }
+  {
+    action: OrgPermissionSsoActions.Read,
+    subject: OrgPermissionSubjects.Sso,
+    accessRestrictedMode: "dialog"
+  }
 );

@@ -29,7 +29,7 @@ export const registerWorkflowIntegrationRouter = async (server: FastifyZodProvid
         200: sanitizedWorkflowIntegrationSchema.array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const workflowIntegrations = await server.services.workflowIntegration.getIntegrationsByOrg({
         actor: req.permission.type,

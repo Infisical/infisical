@@ -6,7 +6,8 @@ import { TKmipServer, TKmipServerWithAuthMethod } from "./types";
 
 export const kmipServerQueryKeys = {
   list: () => ["kmip-servers"] as const,
-  byId: (kmipServerId: string) => [{ kmipServerId }, "kmip-server"] as const
+  byId: (kmipServerId: string) => [{ kmipServerId }, "kmip-server"] as const,
+  enrollment: (kmipServerId: string) => [{ kmipServerId }, "kmip-server-enrollment"] as const
 };
 
 const fetchKmipServers = async (): Promise<TKmipServer[]> => {

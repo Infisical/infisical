@@ -1,12 +1,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { DynamicSecretLeasesSchema, TableName } from "@app/db/schemas";
+import { DynamicSecretLeasesSchema, ProjectType, ProjectVersion, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 
 export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.DynamicSecretLease>, "findById"> {
   countLeasesForDynamicSecret: (dynamicSecretId: string, tx?: Knex) => Promise<number>;
+  countLeasesForOrg: (orgId: string, tx?: Knex) => Promise<number>;
   findById: (
     id: string,
     tx?: Knex
@@ -23,6 +24,7 @@ export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.Dy
           folderId: string;
           status: string | null | undefined;
           statusDetails: string | null | undefined;
+          revocationFailing: boolean;
           createdAt: Date;
           updatedAt: Date;
         };
@@ -36,6 +38,7 @@ export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.Dy
         status?: string | null | undefined;
         config?: unknown;
         statusDetails?: string | null | undefined;
+        encryptedLeaseData?: Buffer | null | undefined;
       }
     | undefined
   >;
@@ -46,13 +49,40 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
 
   const countLeasesForDynamicSecret = async (dynamicSecretId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.DynamicSecretLease)
-        .count("*")
+      const doc = (await (tx || db.replicaNode())(TableName.DynamicSecretLease)
+        .count("* as count")
         .where({ dynamicSecretId })
-        .first();
-      return parseInt(doc || "0", 10);
+        .first()) as { count: string | number } | undefined;
+      return parseInt(String(doc?.count ?? "0"), 10);
     } catch (error) {
       throw new DatabaseError({ error, name: "DynamicSecretCountLeases" });
+    }
+  };
+
+  // Leases are hard-deleted on revocation/expiry, so this is a count of currently active leases
+  // rather than of every lease the org has ever created.
+  const countLeasesForOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const doc = (await (tx || db.replicaNode())(TableName.DynamicSecretLease)
+        .join(
+          TableName.DynamicSecret,
+          `${TableName.DynamicSecretLease}.dynamicSecretId`,
+          `${TableName.DynamicSecret}.id`
+        )
+        .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.Project}.type`, ProjectType.SecretManager)
+        .where(`${TableName.Project}.version`, ProjectVersion.V3)
+        .count(`${TableName.DynamicSecretLease}.id as count`)
+        .first()) as { count: string } | undefined;
+
+      return parseInt(doc?.count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DynamicSecretCountLeasesForOrg" });
     }
   };
 
@@ -78,6 +108,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
           db.ref("folderId").withSchema(TableName.DynamicSecret).as("dynFolderId"),
           db.ref("status").withSchema(TableName.DynamicSecret).as("dynStatus"),
           db.ref("statusDetails").withSchema(TableName.DynamicSecret).as("dynStatusDetails"),
+          db.ref("revocationFailing").withSchema(TableName.DynamicSecret).as("dynRevocationFailing"),
           db.ref("createdAt").withSchema(TableName.DynamicSecret).as("dynCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.DynamicSecret).as("dynUpdatedAt")
         );
@@ -96,6 +127,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
           folderId: doc.dynFolderId,
           status: doc.dynStatus,
           statusDetails: doc.dynStatusDetails,
+          revocationFailing: doc.dynRevocationFailing as boolean,
           createdAt: doc.dynCreatedAt,
           updatedAt: doc.dynUpdatedAt
         }
@@ -105,5 +137,5 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findById, countLeasesForDynamicSecret };
+  return { ...orm, findById, countLeasesForDynamicSecret, countLeasesForOrg };
 };

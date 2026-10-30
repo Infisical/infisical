@@ -23,12 +23,12 @@ import { TAzureDNSConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
 
-import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
 type Props = {
   appConnection?: TAzureDNSConnection;
@@ -173,11 +173,14 @@ export const AzureDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <Field className="mb-4">
               <FieldLabel htmlFor="client-secret">Client Secret</FieldLabel>
               <SecretInput
+                aria-describedby={error ? "client-secret-error" : undefined}
+                id="client-secret"
+                isError={Boolean(error)}
                 placeholder="~JzD8e6S.tH~w8XRaNnKcb7W1fM4rCns7FY"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />
-              <FieldError errors={[error]} />
+              <FieldError id="client-secret-error" errors={[error]} />
             </Field>
           )}
         />

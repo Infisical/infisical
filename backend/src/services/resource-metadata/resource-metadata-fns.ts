@@ -24,7 +24,7 @@ export const copyMetadataFromRequestToCertificate = async (
     tx?: Knex;
   }
 ) => {
-  const certRequestMetadata = await resourceMetadataDAL.find({ certificateRequestId });
+  const certRequestMetadata = await resourceMetadataDAL.find({ certificateRequestId }, { tx });
   if (certRequestMetadata.length > 0) {
     await resourceMetadataDAL.insertMany(
       certRequestMetadata.map(({ key, value, orgId }) => ({
@@ -113,7 +113,7 @@ export const copyMetadataFromCertificate = async (
     tx?: Knex;
   }
 ) => {
-  const originalMetadata = await resourceMetadataDAL.find({ certificateId: sourceCertificateId });
+  const originalMetadata = await resourceMetadataDAL.find({ certificateId: sourceCertificateId }, { tx });
   if (originalMetadata.length === 0) return;
 
   if (targetCertificateId) {

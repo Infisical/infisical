@@ -1,4 +1,7 @@
-import { postGatewayRpc } from "./gateway-rpc";
+import { HttpStatusCode } from "axios";
+
+import { GatewayRpcResponseTooLargeError, postGatewayRpc } from "./gateway-rpc";
+import { GatewayFailureKind } from "./test-connection-rpc";
 
 export enum WinRmRpcEndpoint {
   Test = "/v1/test-connection",
@@ -9,7 +12,8 @@ export enum WinRmRpcEndpoint {
   EnumerateDependencies = "/v1/enumerate-dependencies",
   RotateCredential = "/v1/rotate-credential",
   SyncDependency = "/v1/sync-dependency",
-  ValidateCredential = "/v1/validate-credential"
+  ValidateCredential = "/v1/validate-credential",
+  ScanCertificates = "/v1/scan-certificates"
 }
 
 export type WinRmTransportParams = {
@@ -35,7 +39,13 @@ export type WinRmRemoveResult = { removed: number };
 export type WinRmRunCommandResult = { stdout: string; stderr: string; exitCode: number };
 
 export type WinRmRpcSuccess<T> = { ok: true; status: number; result: T };
-export type WinRmRpcFailure = { ok: false; status: number; errorMessage: string };
+export type WinRmRpcFailure = {
+  ok: false;
+  status: number;
+  errorMessage: string;
+  // Older gateways send nothing.
+  kind?: GatewayFailureKind | null;
+};
 export type WinRmRpcResponse<T> = WinRmRpcSuccess<T> | WinRmRpcFailure;
 
 // Must exceed the gateway's own connection deadline (op 120s + 15s flush margin) so a gateway-side timeout
@@ -48,16 +58,26 @@ export const callWinRmEndpoint = async <T>(args: {
   port: number;
   endpoint: WinRmRpcEndpoint;
   body: WinRmRpcRequestBody;
+  maxResponseBytes?: number;
 }): Promise<WinRmRpcResponse<T>> => {
-  const { status, text } = await postGatewayRpc({
-    port: args.port,
-    path: args.endpoint,
-    payload: JSON.stringify(args.body),
-    timeoutMs: WINRM_RPC_TIMEOUT_MS,
-    deadlineMs: WINRM_RPC_TIMEOUT_MS,
-    maxResponseBytes: MAX_WINRM_RPC_RESPONSE_BYTES,
-    label: "WinRM"
-  });
+  let raw: Awaited<ReturnType<typeof postGatewayRpc>>;
+  try {
+    raw = await postGatewayRpc({
+      port: args.port,
+      path: args.endpoint,
+      payload: JSON.stringify(args.body),
+      timeoutMs: WINRM_RPC_TIMEOUT_MS,
+      deadlineMs: WINRM_RPC_TIMEOUT_MS,
+      maxResponseBytes: args.maxResponseBytes ?? MAX_WINRM_RPC_RESPONSE_BYTES,
+      label: "WinRM"
+    });
+  } catch (error) {
+    if (error instanceof GatewayRpcResponseTooLargeError) {
+      return { ok: false, status: HttpStatusCode.PayloadTooLarge, errorMessage: error.message, kind: null };
+    }
+    throw error;
+  }
+  const { status, text } = raw;
 
   if (!text) {
     return { ok: false, status, errorMessage: `Empty response body from Gateway (status ${status})` };
@@ -75,6 +95,11 @@ export const callWinRmEndpoint = async <T>(args: {
     }
     return { ok: true, status, result };
   }
-  const errEnv = (parsed as { error?: { message?: string } }).error;
-  return { ok: false, status, errorMessage: errEnv?.message ?? `Gateway returned HTTP ${status}` };
+  const errEnv = (parsed as { error?: { message?: string; kind?: GatewayFailureKind } }).error;
+  return {
+    ok: false,
+    status,
+    errorMessage: errEnv?.message ?? `Gateway returned HTTP ${status}`,
+    kind: errEnv?.kind ?? null
+  };
 };

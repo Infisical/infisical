@@ -13,14 +13,18 @@ export const symmetricCipherService = (
     const iv = crypto.randomBytes(IV_LENGTH);
     const cipher = crypto.nativeCrypto.createCipheriv(type, key, iv);
 
-    let encrypted = cipher.update(text);
-    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    const encrypted = cipher.update(text);
+    // AES-GCM is unpadded, so final() is always zero-length. Folding it into the single
+    // concat below rather than its own avoids a full-size copy of the ciphertext.
+    const final = cipher.final();
 
     // Get the authentication tag
     const tag = cipher.getAuthTag();
 
     // Concatenate IV, encrypted text, and tag into a single buffer
-    const ciphertextBlob = Buffer.concat([iv, encrypted, tag]);
+    const ciphertextBlob = final.length
+      ? Buffer.concat([iv, encrypted, final, tag])
+      : Buffer.concat([iv, encrypted, tag]);
     return ciphertextBlob;
   };
 
@@ -33,8 +37,11 @@ export const symmetricCipherService = (
     const decipher = crypto.nativeCrypto.createDecipheriv(type, key, iv);
     decipher.setAuthTag(tag);
 
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-    return decrypted;
+    // final() must still be called since that is what verifies the auth tag, but AES-GCM is
+    // unpadded so it returns zero bytes. Concatenating it would copy the whole plaintext again.
+    const decrypted = decipher.update(encrypted);
+    const final = decipher.final();
+    return final.length ? Buffer.concat([decrypted, final]) : decrypted;
   };
 
   return {

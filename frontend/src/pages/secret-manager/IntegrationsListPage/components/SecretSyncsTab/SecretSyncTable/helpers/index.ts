@@ -1,9 +1,11 @@
+import { getGitHubSyncSecretTypeName } from "@app/helpers/secretSyncs";
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import {
   GitHubSyncScope,
+  GitHubSyncSecretType,
   GitHubSyncVisibility
 } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
@@ -49,6 +51,12 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
           break;
         default:
           throw new Error(`Unhandled GitHub Scope Destination Col Values ${destination}`);
+      }
+      if (
+        destinationConfig.secretType &&
+        destinationConfig.secretType !== GitHubSyncSecretType.Actions
+      ) {
+        secondaryText = `${getGitHubSyncSecretTypeName(destinationConfig.secretType)} - ${secondaryText}`;
       }
       break;
     case SecretSync.GCPSecretManager:
@@ -178,6 +186,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.scriptId;
       secondaryText = "Script ID";
       break;
+    case SecretSync.CloudflareSecretsStore:
+      primaryText = destinationConfig.storeName || destinationConfig.storeId;
+      secondaryText = "Secrets Store";
+      break;
     case SecretSync.Zabbix:
       if (destinationConfig.scope === ZabbixSyncScope.Host) {
         primaryText = destinationConfig.hostName;
@@ -208,6 +220,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.Rundeck:
       primaryText = destinationConfig.project;
       secondaryText = destinationConfig.path;
+      break;
+    case SecretSync.Portainer:
+      primaryText = `Stack #${destinationConfig.stackId}`;
+      secondaryText = `Environment #${destinationConfig.environmentId}`;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       primaryText = destinationConfig.appName;
@@ -288,6 +304,14 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.Cloud66:
       primaryText = destinationConfig.stackName;
       secondaryText = "Stack";
+      break;
+    case SecretSync.Daytona:
+      primaryText = secretSync.connection.name;
+      secondaryText = "Daytona Organization";
+      break;
+    case SecretSync.Keeper:
+      primaryText = destinationConfig.folderName || destinationConfig.folderUid;
+      secondaryText = "Shared Folder";
       break;
     case SecretSync.Spacelift:
       primaryText = destinationConfig.contextName;

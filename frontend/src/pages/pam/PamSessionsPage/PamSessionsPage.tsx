@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { Activity, Ban, SearchIcon, Video } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { PageTitle } from "@app/components/PageTitle";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Badge,
   Button,
@@ -25,6 +23,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  ProviderIcon,
   Select,
   SelectContent,
   SelectItem,
@@ -38,6 +37,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3/platform";
 import { useOrganization, useProject } from "@app/context";
 import {
   getUserTablePreference,
@@ -73,11 +73,16 @@ const TerminateCell = ({
   session: TPamSession;
   onTerminate: (session: TPamSession, e?: React.MouseEvent) => void;
 }) => {
-  const { data: perm } = usePamAccountPermission(session.accountId ?? "");
-  const canTerminate = perm?.permission.can(
-    PamResourcePermissionActions.TerminateSessions,
-    PamResourcePermissionSub.PamResource
+  const { data: perm } = usePamAccountPermission(
+    session.accountId ?? "",
+    Boolean(session.accountId)
   );
+  const canTerminate =
+    !session.accountId ||
+    perm?.permission.can(
+      PamResourcePermissionActions.TerminateSessions,
+      PamResourcePermissionSub.PamResource
+    );
 
   if (session.status !== PamSessionStatus.Active || !canTerminate) return null;
 
@@ -137,7 +142,6 @@ const FolderNameCell = ({ session, search }: { session: TPamSession; search: str
 };
 
 export const PamSessionsPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
@@ -199,9 +203,7 @@ export const PamSessionsPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Sessions" })}</title>
-      </Helmet>
+      <PageTitle title="Sessions" />
       <PageHeader
         scope={ProjectType.PAM}
         icon={Video}
@@ -310,8 +312,8 @@ export const PamSessionsPage = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {accountTypeDetails && (
-                          <img
-                            src={`/images/integrations/${accountTypeDetails.icon}`}
+                          <ProviderIcon
+                            icon={accountTypeDetails.icon}
                             alt={accountTypeDetails.name}
                             className="size-5 shrink-0 rounded-sm"
                           />
@@ -378,16 +380,16 @@ export const PamSessionsPage = () => {
         onTerminate={requestTerminate}
       />
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={!!sessionToTerminate}
-        onChange={(open) => {
+        onOpenChange={(open) => {
           if (!open) setSessionToTerminate(null);
         }}
         title="Terminate Session"
-        subTitle="Are you sure you want to terminate this session? The user's connection will be immediately dropped."
-        deleteKey="terminate"
-        buttonText="Terminate"
-        onDeleteApproved={confirmTerminate}
+        description="Are you sure you want to terminate this session? The user's connection will be immediately dropped."
+        confirmKey="terminate"
+        confirmLabel="Terminate"
+        onConfirm={confirmTerminate}
       />
     </div>
   );

@@ -1,9 +1,8 @@
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { callWinRmEndpoint, WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -100,9 +99,7 @@ export const executeWinRMGatewayOperation = async <T>(
       }),
     {
       protocol: GatewayProxyProtocol.WinRm,
-      relayHost: connectionDetails.relayHost,
-      gateway: connectionDetails.gateway,
-      relay: connectionDetails.relay
+      ...connectionDetails
     }
   );
 
@@ -114,7 +111,6 @@ export const executeWinRMGatewayOperation = async <T>(
 
 export const validateWinRMConnectionCredentials = async (
   config: TWinRMConnectionConfig,
-  _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   try {

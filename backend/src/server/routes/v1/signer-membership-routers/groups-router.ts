@@ -30,7 +30,7 @@ export const registerSignerGroupMembershipRouter = async (server: FastifyZodProv
       params: SignerIdParamsSchema,
       response: { 200: z.object({ memberships: z.array(SignerMemberSchema) }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.signerMembership.listMembers({
         actor: req.permission.type,

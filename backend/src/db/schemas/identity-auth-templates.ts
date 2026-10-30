@@ -16,7 +16,10 @@ export const IdentityAuthTemplatesSchema = z.object({
   name: z.string(),
   authMethod: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  gatewayId: z.string().uuid().nullable().optional(),
+  gatewayV2Id: z.string().uuid().nullable().optional(),
+  gatewayPoolId: z.string().uuid().nullable().optional()
 });
 
 export type TIdentityAuthTemplates = z.infer<typeof IdentityAuthTemplatesSchema>;

@@ -2,30 +2,34 @@ import FileSaver from "file-saver";
 
 import { SecretType } from "@app/hooks/api/types";
 
+type SecretEnvFileSecret = {
+  secretKey: string;
+  secretValue?: string;
+  secretComment?: string;
+  type?: string;
+};
+
+type SecretEnvFileImport = {
+  secrets: SecretEnvFileSecret[];
+};
+
+type SecretEnvFileEntry = {
+  key: string;
+  value: string;
+  comment?: string;
+};
+
 export const downloadTxtFile = (filename: string, content: string) => {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
   FileSaver.saveAs(blob, filename);
 };
 
-/**
- * Merges local secrets with imported secrets (local > later imports > earlier imports),
- * formats them as a .env file string, and triggers a download.
- * Personal overrides take precedence over shared secret values.
- */
-export const downloadSecretEnvFile = (
-  environment: string,
-  localSecrets: {
-    secretKey: string;
-    secretValue?: string;
-    secretComment?: string;
-    type?: string;
-  }[],
-  importedSecrets: {
-    secrets: { secretKey: string; secretValue?: string; secretComment?: string; type?: string }[];
-  }[]
+const getSecretEnvFileEntries = (
+  localSecrets: SecretEnvFileSecret[],
+  importedSecrets: SecretEnvFileImport[]
 ) => {
   const secretsPicked = new Set<string>();
-  const secretsToDownload: { key: string; value: string; comment?: string }[] = [];
+  const secretsToDownload: SecretEnvFileEntry[] = [];
 
   // Build a map of personal override values (personal overrides take precedence)
   const personalOverrides = new Map<string, { value?: string }>();
@@ -72,7 +76,24 @@ export const downloadSecretEnvFile = (
     }
   }
 
-  const file = secretsToDownload
+  return secretsToDownload;
+};
+
+export const getSecretEnvFileEntryCount = (
+  localSecrets: SecretEnvFileSecret[],
+  importedSecrets: SecretEnvFileImport[]
+) => getSecretEnvFileEntries(localSecrets, importedSecrets).length;
+
+/**
+ * Merges local secrets with imported secrets (local > later imports > earlier imports),
+ * and formats them as a .env file string.
+ * Personal overrides take precedence over shared secret values.
+ */
+export const formatSecretEnvFile = (
+  localSecrets: SecretEnvFileSecret[],
+  importedSecrets: SecretEnvFileImport[]
+) =>
+  getSecretEnvFileEntries(localSecrets, importedSecrets)
     .sort((a, b) => a.key.toLowerCase().localeCompare(b.key.toLowerCase()))
     .reduce((prev, { key, comment, value }) => {
       const escapedValue = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -88,7 +109,12 @@ export const downloadSecretEnvFile = (
       return `${prev}${commentLines}\n${key}=${formattedValue}\n`;
     }, "");
 
-  downloadTxtFile(`${environment}.env`, file);
+export const downloadSecretEnvFile = (
+  environment: string,
+  localSecrets: SecretEnvFileSecret[],
+  importedSecrets: SecretEnvFileImport[]
+) => {
+  downloadTxtFile(`${environment}.env`, formatSecretEnvFile(localSecrets, importedSecrets));
 };
 
 export const downloadFile = (content: string, filename: string, mimeType: string = "text/csv") => {

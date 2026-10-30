@@ -36,8 +36,8 @@ export default defineConfig({
     },
     environment: "./e2e-test/vitest-environment-knex.ts",
     include: ["./e2e-test/**/*.spec.ts"],
-    // Runs per test file, after the environment is up — see the file for why.
-    setupFiles: ["./e2e-test/setup/reset-shared-org-flags.ts"],
+    // Runs per test file, after the environment is up — see each file for why.
+    setupFiles: ["./e2e-test/setup/reset-shared-org-flags.ts", "./e2e-test/setup/reset-fakes.ts"],
     sequence: { sequencer: PathSequencer },
     pool: "forks",
     poolOptions: {
@@ -49,9 +49,68 @@ export default defineConfig({
     },
     fileParallelism: false,
 
-    alias: {
-      "./license-fns": path.resolve(__dirname, "./src/ee/services/license/__mocks__/license-fns")
-    }
+    // The AWS IAM user secret rotation provider and the AWS app connection are replaced by fakes
+    // for the whole e2e run, so the secret rotation spec can assert what Infisical hands a
+    // rotation provider without reaching AWS. Nothing under src/ knows the fakes exist (see
+    // e2e-test/fakes/).
+    //
+    // Entries match the *import specifier*, which is what keeps this surgical rather than
+    // sweeping: "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns" is imported only by
+    // secret-rotation-v2-service.ts, and "./aws-connection-fns" only by aws/index.ts. The
+    // full-path entry covers the twelve modules that import the connection functions directly,
+    // of which secret-sync-maps.ts matters here: it calls getAwsAccountId on every sync
+    // creation, which would otherwise be a real STS request that fails slowly and silently.
+    //
+    // An ordered array rather than an object so the exact @app/… entry is matched before the
+    // generic "@app" prefix alias in resolve.alias below.
+    alias: [
+      {
+        find: "./license-fns",
+        replacement: path.resolve(__dirname, "./src/ee/services/license/__mocks__/license-fns")
+      },
+      {
+        find: "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns",
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-iam-user-secret-rotation-fns")
+      },
+      {
+        find: /^@app\/services\/app-connection\/aws\/aws-connection-fns$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-connection-fns")
+      },
+      {
+        find: "./aws-connection-fns",
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-connection-fns")
+      },
+      {
+        find: /^@app\/lib\/aws\/s3$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/s3")
+      },
+      // Every file under src/ imports this module by exactly this specifier, so one entry swaps it everywhere. A relative
+      // import would bypass the fake.
+      {
+        find: /^@app\/services\/object-storage\/object-storage-default-fns$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/object-storage-default-fns")
+      },
+      // Pass-through wrappers that hand a spec the real job, to run on demand. Only
+      // server/routes/index.ts imports either specifier.
+      {
+        find: /^@app\/services\/reminder\/reminder-queue$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/reminder-queue")
+      },
+      {
+        find: /^@app\/services\/event-outbox\/event-outbox-queue$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/event-outbox-queue")
+      },
+      // Adds a consumer that records the secret events so specs can read them.
+      {
+        find: /^@app\/services\/event-outbox\/event-outbox-registry$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/event-outbox-registry")
+      },
+      // Only audit-log-stream-outbox-service.ts imports this specifier.
+      {
+        find: "./audit-log-stream-outbox-constants",
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/audit-log-stream-outbox-constants")
+      }
+    ]
   },
   resolve: {
     alias: {

@@ -1,19 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
-import {
-  THasuraCloudProject,
-  useHasuraCloudConnectionListProjects
-} from "@app/hooks/api/appConnections/hasura-cloud";
+import { useHasuraCloudConnectionListProjects } from "@app/hooks/api/appConnections/hasura-cloud";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -43,14 +39,23 @@ export const HasuraCloudSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Select a project</FieldLabel>
+            <FieldLabel
+              id="secret-sync-hasura-cloud-project-id-label"
+              htmlFor="secret-sync-hasura-cloud-project-id"
+            >
+              Select a project
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-hasura-cloud-project-id-label"
+                aria-describedby={error ? "secret-sync-hasura-cloud-project-id-error" : undefined}
+                id="secret-sync-hasura-cloud-project-id"
+                isError={Boolean(error)}
                 isLoading={isProjectsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={projects.find((p) => p.id === value) ?? null}
-                onChange={(option) => {
-                  const v = option as SingleValue<THasuraCloudProject>;
+                onValueChange={(option) => {
+                  const v = option;
                   onChange(v?.id ?? null);
                   setValue("destinationConfig.projectName", v?.name ?? "");
                 }}
@@ -58,8 +63,10 @@ export const HasuraCloudSyncFields = () => {
                 placeholder="Select a project..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-hasura-cloud-project-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

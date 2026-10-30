@@ -21,15 +21,17 @@ import {
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO,
+  TGetSecretMetadataDTO,
   TGetSecretValueDTO,
   TSearchSecretsByMetadataDTO,
-  TSearchSecretsByMetadataResponse
+  TSearchSecretsByMetadataResponse,
+  TSecretMetadataPage
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { groupBy, unique } from "@app/lib/fn/array";
 
-import { SecretV3Raw } from "../types";
+import { SecretType, SecretV3Raw } from "../types";
 
 export const dashboardKeys = {
   all: () => ["dashboard"] as const,
@@ -115,6 +117,14 @@ export const dashboardKeys = {
     ] as const
 };
 
+export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?: AbortSignal) => {
+  const { data } = await apiRequest.get<TSecretMetadataPage>(
+    "/api/v1/dashboard/accessible-secrets/metadata",
+    { params, signal }
+  );
+  return data;
+};
+
 export const fetchProjectSecretsOverview = async ({
   environments,
   tags,
@@ -163,21 +173,53 @@ export const fetchProjectSecretsDetails = async ({
   return data;
 };
 
+// Keys travel in the querystring and Node rejects a request whose request line and headers exceed
+// 16KB, so a long key list is split across requests that each stay well under it. The joined keys
+// are encoded here and again by axios, so each key is measured in that double-encoded form.
+const SECRETS_BY_KEYS_MAX_ENCODED_LENGTH = 6_000;
+
+const chunkKeysByEncodedLength = (keys: string[]) => {
+  const chunks: string[][] = [];
+  let chunk: string[] = [];
+  let chunkLength = 0;
+
+  keys.forEach((key) => {
+    const keyLength = encodeURIComponent(encodeURIComponent(`${key},`)).length;
+    if (chunk.length && chunkLength + keyLength > SECRETS_BY_KEYS_MAX_ENCODED_LENGTH) {
+      chunks.push(chunk);
+      chunk = [];
+      chunkLength = 0;
+    }
+    chunk.push(key);
+    chunkLength += keyLength;
+  });
+
+  if (chunk.length) chunks.push(chunk);
+
+  return chunks;
+};
+
 export const fetchDashboardProjectSecretsByKeys = async ({
   keys,
   ...params
-}: TGetDashboardProjectSecretsByKeys) => {
-  const { data } = await apiRequest.get<DashboardProjectSecretsByKeys>(
-    "/api/v1/dashboard/secrets-by-keys",
-    {
-      params: {
-        ...params,
-        keys: encodeURIComponent(keys.join(","))
-      }
-    }
+}: TGetDashboardProjectSecretsByKeys): Promise<DashboardProjectSecretsByKeys> => {
+  const responses = await Promise.all(
+    chunkKeysByEncodedLength(keys).map(async (keyChunk) => {
+      const { data } = await apiRequest.get<DashboardProjectSecretsByKeys>(
+        "/api/v1/dashboard/secrets-by-keys",
+        {
+          params: {
+            ...params,
+            keys: encodeURIComponent(keyChunk.join(","))
+          }
+        }
+      );
+
+      return data;
+    })
   );
 
-  return data;
+  return { secrets: responses.flatMap(({ secrets }) => secrets) };
 };
 
 const mergePersonalRotationSecrets = (secrets: (SecretV3Raw | null)[]) => {
@@ -203,6 +245,7 @@ export const useGetProjectSecretsOverview = (
     limit = 100,
     orderBy = DashboardSecretsOrderBy.Name,
     orderDirection = OrderByDirection.ASC,
+    sortEnvironment,
     search = "",
     tags,
     includeSecrets,
@@ -237,6 +280,7 @@ export const useGetProjectSecretsOverview = (
       limit,
       orderBy,
       orderDirection,
+      sortEnvironment,
       offset,
       projectId,
       includeSecrets,
@@ -256,6 +300,7 @@ export const useGetProjectSecretsOverview = (
         limit,
         orderBy,
         orderDirection,
+        sortEnvironment,
         offset,
         projectId,
         includeSecrets,
@@ -462,7 +507,9 @@ export const useGetProjectSecretsQuickSearch = (
     secretPath,
     search = "",
     environments,
-    tags
+    tags,
+    limit,
+    offset
   }: TGetDashboardProjectSecretsQuickSearchDTO,
   options?: Omit<
     UseQueryOptions<
@@ -485,7 +532,9 @@ export const useGetProjectSecretsQuickSearch = (
       search,
       projectId,
       environments,
-      tags
+      tags,
+      limit,
+      offset
     }),
     queryFn: () =>
       fetchProjectSecretsQuickSearch({
@@ -493,10 +542,12 @@ export const useGetProjectSecretsQuickSearch = (
         search,
         projectId,
         environments,
-        tags
+        tags,
+        limit,
+        offset
       }),
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsQuickSearch>>) => {
-      const { secrets, folders, dynamicSecrets, secretRotations } = data;
+      const { secrets, folders, dynamicSecrets, secretRotations, ...counts } = data;
 
       const groupedFolders = groupBy(folders, (folder) => folder.path);
       const groupedSecrets = groupBy(
@@ -514,6 +565,7 @@ export const useGetProjectSecretsQuickSearch = (
       );
 
       return {
+        ...counts,
         folders: groupedFolders,
         secrets: groupedSecrets,
         dynamicSecrets: groupedDynamicSecrets,
@@ -526,6 +578,8 @@ export const useGetProjectSecretsQuickSearch = (
 
 export const fetchSearchSecretsByMetadata = async ({
   projectId,
+  environments,
+  secretPath,
   operator,
   filters,
   tags
@@ -534,6 +588,8 @@ export const fetchSearchSecretsByMetadata = async ({
   // raw querystring, so build it explicitly rather than relying on axios' default array serialization.
   const params = new URLSearchParams();
   params.append("projectId", projectId);
+  if (environments?.length) params.append("environments", environments.join(","));
+  if (secretPath) params.append("secretPath", secretPath);
   params.append("operator", operator);
   filters.forEach((filter, index) => {
     params.append(`filters[${index}][key]`, filter.key);
@@ -555,7 +611,7 @@ export const fetchSearchSecretsByMetadata = async ({
 };
 
 export const useSearchSecretsByMetadata = (
-  { projectId, operator, filters, tags }: TSearchSecretsByMetadataDTO,
+  { projectId, operator, filters, tags, environments, secretPath }: TSearchSecretsByMetadataDTO,
   options?: Omit<
     UseQueryOptions<
       TSearchSecretsByMetadataResponse,
@@ -569,8 +625,23 @@ export const useSearchSecretsByMetadata = (
   return useQuery({
     ...options,
     enabled: (options?.enabled ?? true) && filters.length > 0 && Boolean(projectId),
-    queryKey: dashboardKeys.searchSecretsByMetadata({ projectId, operator, filters, tags }),
-    queryFn: () => fetchSearchSecretsByMetadata({ projectId, operator, filters, tags }),
+    queryKey: dashboardKeys.searchSecretsByMetadata({
+      projectId,
+      operator,
+      filters,
+      tags,
+      environments,
+      secretPath
+    }),
+    queryFn: () =>
+      fetchSearchSecretsByMetadata({
+        projectId,
+        operator,
+        filters,
+        tags,
+        environments,
+        secretPath
+      }),
     placeholderData: (previousData) => previousData
   });
 };
@@ -615,6 +686,96 @@ export const fetchSecretValue = async (params: TGetSecretValueDTO) => {
   return data;
 };
 
+type TPendingSecretValue = {
+  params: TGetSecretValueDTO;
+  resolve: (value: DashboardSecretValue) => void;
+  reject: (reason: unknown) => void;
+};
+
+// Every visible overview row asks for its own value, so revealing a page, searching or expanding an
+// import would send one request per row. Requests made in the same tick are grouped by folder and
+// sent as one secrets-by-keys call instead.
+const pendingSecretValues = new Map<string, TPendingSecretValue[]>();
+
+const fetchSecretValuesIndividually = (requests: TPendingSecretValue[]) => {
+  requests.forEach(({ params, resolve, reject }) => {
+    fetchSecretValue(params).then(resolve, reject);
+  });
+};
+
+const fetchSecretValueGroup = async (requests: TPendingSecretValue[]) => {
+  if (requests.length === 1) {
+    fetchSecretValuesIndividually(requests);
+    return;
+  }
+
+  const { projectId, environment, secretPath } = requests[0].params;
+  let secrets: SecretV3Raw[];
+  try {
+    ({ secrets } = await fetchDashboardProjectSecretsByKeys({
+      projectId,
+      environment,
+      secretPath,
+      keys: [...new Set(requests.map(({ params }) => params.secretKey))],
+      viewSecretValue: true,
+      hideUnreadableValues: true
+    }));
+  } catch (error) {
+    // unreadable values come back masked, so a refusal here is about the request as a whole; each
+    // value is fetched on its own so every row still gets its own result
+    if (error instanceof AxiosError && error.status === 403) {
+      fetchSecretValuesIndividually(requests);
+    } else {
+      requests.forEach(({ reject }) => reject(error));
+    }
+    return;
+  }
+
+  const secretsByTypeAndKey = new Map(
+    secrets.map((secret) => [`${secret.type}:${secret.secretKey}`, secret])
+  );
+  const unresolved: TPendingSecretValue[] = [];
+  requests.forEach((request) => {
+    const { secretKey, isOverride } = request.params;
+    const type = isOverride ? SecretType.Personal : SecretType.Shared;
+    const secret = secretsByTypeAndKey.get(`${type}:${secretKey}`);
+    const value = secret?.secretValue;
+    if (!secret || secret.secretValueHidden || value === undefined) {
+      unresolved.push(request);
+      return;
+    }
+
+    request.resolve(
+      isOverride ? { value: undefined, valueOverride: value } : { value, valueOverride: undefined }
+    );
+  });
+
+  // a value reached through an import of this folder (cross-project imports) only resolves
+  // through /secret-value
+  fetchSecretValuesIndividually(unresolved);
+};
+
+const fetchSecretValueBatched = (params: TGetSecretValueDTO) =>
+  new Promise<DashboardSecretValue>((resolve, reject) => {
+    if (!pendingSecretValues.size) {
+      setTimeout(() => {
+        const groups = [...pendingSecretValues.values()];
+        pendingSecretValues.clear();
+        groups.forEach((requests) => {
+          // anything unexpected must still settle every row, or it would stay loading forever
+          fetchSecretValueGroup(requests).catch((error) =>
+            requests.forEach((request) => request.reject(error))
+          );
+        });
+      });
+    }
+
+    const groupKey = JSON.stringify([params.projectId, params.environment, params.secretPath]);
+    const requests = pendingSecretValues.get(groupKey) ?? [];
+    requests.push({ params, resolve, reject });
+    pendingSecretValues.set(groupKey, requests);
+  });
+
 export const useGetSecretValue = (
   params: TGetSecretValueDTO,
   options?: Omit<
@@ -629,8 +790,14 @@ export const useGetSecretValue = (
 ) => {
   return useQuery({
     queryKey: dashboardKeys.getSecretValue(params),
-    queryFn: async () => fetchSecretValue(params),
+    queryFn: async () => fetchSecretValueBatched(params),
     staleTime: 1000 * 60,
+    retry: (count, error) => {
+      // retrying a throttled request only extends the throttle
+      if (error instanceof AxiosError && error.status === 429) return false;
+
+      return count < 1;
+    },
     ...options
   });
 };
@@ -680,9 +847,13 @@ export const useGetFoldersMoveEligibility = (folderIds: string[], enabled = true
         blockingType?: FolderMoveBlockingType;
         blockingPath?: string;
       }[] = [];
+      // non-blocking: folders whose subtree carries folder-scoped access policies, surfaced as a warning
+      const seenRbacWarnings = new Set<string>();
+      const foldersWithRbacPolicies: string[] = [];
       results.forEach((result) => {
         const { data } = result;
-        if (data && !data.canMove && !seen.has(data.folderName)) {
+        if (!data) return;
+        if (!data.canMove && !seen.has(data.folderName)) {
           seen.add(data.folderName);
           blockedFolders.push({
             folderName: data.folderName,
@@ -690,9 +861,13 @@ export const useGetFoldersMoveEligibility = (folderIds: string[], enabled = true
             blockingPath: data.blockingPath
           });
         }
+        if (data.hasRbacPolicies && !seenRbacWarnings.has(data.folderName)) {
+          seenRbacWarnings.add(data.folderName);
+          foldersWithRbacPolicies.push(data.folderName);
+        }
       });
 
-      return { isChecking, canMove, blockedFolders };
+      return { isChecking, canMove, blockedFolders, foldersWithRbacPolicies };
     }
   });
 

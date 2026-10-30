@@ -1,7 +1,6 @@
 import { subject } from "@casl/ability";
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -18,6 +17,7 @@ import {
   EmptyTitle
 } from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { IdentityAuthMethod, TProjectIdentity } from "@app/hooks/api";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
@@ -29,6 +29,7 @@ type Props = {
 };
 
 export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
     "identityAuthMethod",
     "upgradePlan"
@@ -112,7 +113,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
                 >
                   {(isAllowed) => (
                     <Button
-                      variant="project"
+                      variant={scopeVariant}
                       size="xs"
                       isDisabled={!isAllowed}
                       onClick={() => {
@@ -137,12 +138,6 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handleAuthMethodPopUpToggle}
-      />
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </>
   );

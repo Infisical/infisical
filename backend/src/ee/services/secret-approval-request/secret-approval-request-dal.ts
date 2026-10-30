@@ -5,6 +5,7 @@ import {
   AccessScope,
   SecretApprovalRequestsSchema,
   TableName,
+  TIdentities,
   TMemberships,
   TSecretApprovalRequests,
   TSecretApprovalRequestsSecrets,
@@ -13,13 +14,21 @@ import {
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
-import { ormify, selectAllTableCols, sqlNestRelationships, stripUndefinedInWhere, TFindFilter } from "@app/lib/knex";
+import {
+  ormify,
+  rowWithSameIdIn,
+  selectAllTableCols,
+  sqlNestRelationships,
+  stripUndefinedInWhere,
+  TFindFilter
+} from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
 
-import { RequestState } from "./secret-approval-request-types";
+import { RequestState, SecretApprovalRequestOrderBy } from "./secret-approval-request-types";
 
 export type TSecretApprovalRequestDALFactory = ReturnType<typeof secretApprovalRequestDALFactory>;
 
-type TFindQueryFilter = {
+export type TSecretApprovalRequestListFilter = {
   projectId: string;
   userId?: string;
   status?: RequestState;
@@ -28,11 +37,16 @@ type TFindQueryFilter = {
   limit?: number;
   offset?: number;
   search?: string;
+  orderBy?: SecretApprovalRequestOrderBy;
+  orderDirection?: OrderByDirection;
 };
+
+type TFindQueryFilter = TSecretApprovalRequestListFilter;
 
 // Type for the query result documents in findByProjectId and findByProjectIdBridgeSecretV2
 type TSecretApprovalRequestDoc = TSecretApprovalRequests & {
   environment: string;
+  environmentName: string;
   projectId: string;
   policyId: string;
   policyName: string;
@@ -45,6 +59,8 @@ type TSecretApprovalRequestDoc = TSecretApprovalRequests & {
   committerUserFirstName: string | null;
   committerUserLastName: string | null;
   committerUserUsername: string | null;
+  committerIdentityId: string | null;
+  committerIdentityName: string | null;
   reviewerId: string | null;
   reviewerUserId: string | null;
   reviewerStatus: string | null;
@@ -71,12 +87,38 @@ const buildUserAccessFilter = (qb: Knex.QueryBuilder, userId?: string) => {
   }
 };
 
+const getOrderExpression = (orderBy = SecretApprovalRequestOrderBy.CreatedAt) => {
+  switch (orderBy) {
+    case SecretApprovalRequestOrderBy.Environment:
+      return 'LOWER(COALESCE("environmentName", "environment", \'\'))';
+    case SecretApprovalRequestOrderBy.SecretPath:
+      return "LOWER(COALESCE(\"policySecretPath\", ''))";
+    case SecretApprovalRequestOrderBy.Author:
+      return `LOWER(COALESCE(
+        NULLIF(TRIM(CONCAT_WS(' ', "committerUserFirstName", "committerUserLastName")), ''),
+        "committerUserEmail",
+        "committerIdentityName",
+        ''
+      ))`;
+    case SecretApprovalRequestOrderBy.CreatedAt:
+    default:
+      return '"createdAt"';
+  }
+};
+
+export const applyRequestOrdering = (
+  query: Knex.QueryBuilder,
+  orderBy?: SecretApprovalRequestOrderBy,
+  orderDirection = OrderByDirection.DESC
+) => query.orderByRaw(`${getOrderExpression(orderBy)} ${orderDirection}`).orderBy("id", OrderByDirection.ASC);
+
 export const secretApprovalRequestDALFactory = (db: TDbClient) => {
   const secretApprovalRequestOrm = ormify(db, TableName.SecretApprovalRequest);
 
   const findQuery = (filter: TFindFilter<TSecretApprovalRequests>, tx: Knex) =>
     tx(TableName.SecretApprovalRequest)
       .where(filter)
+      .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.SecretApprovalRequest))
       .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, function joinActiveEnvForSecretFolder() {
         this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
@@ -106,6 +148,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         db(TableName.Users).as("committerUser"),
         `${TableName.SecretApprovalRequest}.committerUserId`,
         `committerUser.id`
+      )
+      .leftJoin<TIdentities>(
+        db(TableName.Identity).as("committerIdentity"),
+        `${TableName.SecretApprovalRequest}.committerIdentityId`,
+        `committerIdentity.id`
       )
       .leftJoin(
         TableName.SecretApprovalPolicyApprover,
@@ -210,6 +257,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("username").withSchema("committerUser").as("committerUserUsername"),
         tx.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
         tx.ref("lastName").withSchema("committerUser").as("committerUserLastName"),
+        tx.ref("id").withSchema("committerIdentity").as("committerIdentityId"),
+        tx.ref("name").withSchema("committerIdentity").as("committerIdentityName"),
         tx.ref("reviewerUserId").withSchema(TableName.SecretApprovalRequestReviewer),
         tx.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
         tx.ref("comment").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerComment"),
@@ -258,6 +307,12 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 firstName: el.committerUserFirstName,
                 lastName: el.committerUserLastName,
                 username: el.committerUserUsername
+              }
+            : null,
+          committerIdentity: el.committerIdentityId
+            ? {
+                identityId: el.committerIdentityId,
+                name: el.committerIdentityName ?? ""
               }
             : null,
           policy: {
@@ -418,6 +473,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               `${TableName.UserGroupMembership}.groupId`
             )
             .where({ projectId })
+            .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.SecretApprovalRequest))
             .where((qb) => {
               if (policyId) void qb.where(`${TableName.SecretApprovalPolicy}.id`, policyId);
             })
@@ -446,7 +502,18 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
   };
 
   const findByProjectId = async (
-    { status, limit = 20, offset = 0, projectId, committer, environment, userId, search }: TFindQueryFilter,
+    {
+      status,
+      limit = 20,
+      offset = 0,
+      projectId,
+      committer,
+      environment,
+      userId,
+      search,
+      orderBy,
+      orderDirection
+    }: TFindQueryFilter,
     tx?: Knex
   ) => {
     try {
@@ -492,6 +559,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `committerUser.id`
         )
         .leftJoin(
+          db(TableName.Identity).as("committerIdentity"),
+          `${TableName.SecretApprovalRequest}.committerIdentityId`,
+          `committerIdentity.id`
+        )
+        .leftJoin(
           TableName.SecretApprovalRequestReviewer,
           `${TableName.SecretApprovalRequest}.id`,
           `${TableName.SecretApprovalRequestReviewer}.requestId`
@@ -503,17 +575,19 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         )
         .where(
           stripUndefinedInWhere({
-            projectId,
+            [`${TableName.Environment}.projectId` as "projectId"]: projectId,
             [`${TableName.Environment}.slug` as "slug"]: environment,
             [`${TableName.SecretApprovalRequest}.status`]: status,
             committerUserId: committer
           })
         )
+        .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.SecretApprovalRequest))
         .modify((qb) => buildUserAccessFilter(qb, userId))
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
+          db.ref("name").withSchema(TableName.Environment).as("environmentName"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerId"),
           db.ref("reviewerUserId").withSchema(TableName.SecretApprovalRequestReviewer),
           db.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
@@ -522,9 +596,6 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("op").withSchema(TableName.SecretApprovalRequestSecret).as("commitOp"),
           db.ref("secretId").withSchema(TableName.SecretApprovalRequestSecret).as("commitSecretId"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestSecret).as("commitId"),
-          db.raw(
-            `DENSE_RANK() OVER (PARTITION BY ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."createdAt" DESC) as rank`
-          ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
           db.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
           db.ref("allowedSelfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policyAllowedSelfApprovals"),
@@ -539,52 +610,43 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("email").withSchema("committerUser").as("committerUserEmail"),
           db.ref("username").withSchema("committerUser").as("committerUserUsername"),
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
-          db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
+          db.ref("lastName").withSchema("committerUser").as("committerUserLastName"),
+          db.ref("id").withSchema("committerIdentity").as("committerIdentityId"),
+          db.ref("name").withSchema("committerIdentity").as("committerIdentityName")
         )
         .distinctOn(`${TableName.SecretApprovalRequest}.id`)
         .as("inner");
 
-      const query = (tx || db.replicaNode())
-        .select("*")
-        .from(innerQuery)
-        .orderBy("createdAt", "desc") as typeof innerQuery;
+      const query = (tx || db.replicaNode()).select("*").from(innerQuery);
 
       if (search) {
         void query.where((qb) => {
           void qb
             .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
-              db.ref("firstName").withSchema("committerUser"),
-              db.ref("lastName").withSchema("committerUser"),
+              db.ref("committerUserFirstName"),
+              db.ref("committerUserLastName"),
               `%${sanitizeSqlLikeString(search)}%`
             ])
-            .orWhereRaw(`?? ilike ?`, [
-              db.ref("username").withSchema("committerUser"),
-              `%${sanitizeSqlLikeString(search)}%`
-            ])
-            .orWhereRaw(`?? ilike ?`, [
-              db.ref("email").withSchema("committerUser"),
-              `%${sanitizeSqlLikeString(search)}%`
-            ])
-            .orWhereILike(`${TableName.Environment}.name`, `%${sanitizeSqlLikeString(search)}%`)
-            .orWhereILike(`${TableName.Environment}.slug`, `%${sanitizeSqlLikeString(search)}%`)
-            .orWhereILike(`${TableName.SecretApprovalPolicy}.secretPath`, `%${sanitizeSqlLikeString(search)}%`);
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserUsername"), `%${sanitizeSqlLikeString(search)}%`])
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), `%${sanitizeSqlLikeString(search)}%`])
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerIdentityName"), `%${sanitizeSqlLikeString(search)}%`])
+            .orWhereILike("environmentName", `%${sanitizeSqlLikeString(search)}%`)
+            .orWhereILike("environment", `%${sanitizeSqlLikeString(search)}%`)
+            .orWhereILike("policySecretPath", `%${sanitizeSqlLikeString(search)}%`);
         });
       }
+
+      void applyRequestOrdering(query, orderBy, orderDirection);
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const countResult = await (tx || db.replicaNode())
         .count({ count: "*" })
-        .from(query.clone().as("count_query"))
+        .from(query.clone().clearOrder().as("count_query"))
         .first();
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const totalCount = Number(countResult?.count || 0);
 
-      const docs = await (tx || db)
-        .with("w", query)
-        .select("*")
-        .from<Awaited<typeof query>[number]>("w")
-        .where("w.rank", ">=", offset)
-        .andWhere("w.rank", "<", offset + limit);
+      const docs = await query.clone().offset(offset).limit(limit);
 
       const formattedDoc = sqlNestRelationships({
         data: docs as TSecretApprovalRequestDoc[],
@@ -592,6 +654,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
           environment: el.environment,
+          environmentName: el.environmentName,
           projectId: el.projectId,
           policy: {
             id: el.policyId,
@@ -608,6 +671,12 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 firstName: el.committerUserFirstName,
                 lastName: el.committerUserLastName,
                 username: el.committerUserUsername!
+              }
+            : null,
+          committerIdentity: el.committerIdentityId
+            ? {
+                identityId: el.committerIdentityId,
+                name: el.committerIdentityName ?? ""
               }
             : null
         }),
@@ -661,7 +730,18 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
   };
 
   const findByProjectIdBridgeSecretV2 = async (
-    { status, limit = 20, offset = 0, projectId, committer, environment, userId, search }: TFindQueryFilter,
+    {
+      status,
+      limit = 20,
+      offset = 0,
+      projectId,
+      committer,
+      environment,
+      userId,
+      search,
+      orderBy,
+      orderDirection
+    }: TFindQueryFilter,
     tx?: Knex
   ) => {
     try {
@@ -707,6 +787,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `committerUser.id`
         )
         .leftJoin(
+          db(TableName.Identity).as("committerIdentity"),
+          `${TableName.SecretApprovalRequest}.committerIdentityId`,
+          `committerIdentity.id`
+        )
+        .leftJoin(
           TableName.SecretApprovalRequestReviewer,
           `${TableName.SecretApprovalRequest}.id`,
           `${TableName.SecretApprovalRequestReviewer}.requestId`
@@ -718,12 +803,13 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         )
         .where(
           stripUndefinedInWhere({
-            projectId,
+            [`${TableName.Environment}.projectId` as "projectId"]: projectId,
             [`${TableName.Environment}.slug` as "slug"]: environment,
             [`${TableName.SecretApprovalRequest}.status`]: status,
             committerUserId: committer
           })
         )
+        .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.SecretApprovalRequest))
         .modify((qb) => buildUserAccessFilter(qb, userId))
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
@@ -740,9 +826,6 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("secretId").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitSecretId"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestSecretV2).as("commitId"),
           db.ref("key").withSchema(TableName.SecretApprovalRequestSecretV2).as("secretKey"),
-          db.raw(
-            `DENSE_RANK() OVER (PARTITION BY ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."createdAt" DESC) as rank`
-          ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
           db.ref("allowedSelfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policyAllowedSelfApprovals"),
           db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
@@ -757,11 +840,13 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("email").withSchema("committerUser").as("committerUserEmail"),
           db.ref("username").withSchema("committerUser").as("committerUserUsername"),
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
-          db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
+          db.ref("lastName").withSchema("committerUser").as("committerUserLastName"),
+          db.ref("id").withSchema("committerIdentity").as("committerIdentityId"),
+          db.ref("name").withSchema("committerIdentity").as("committerIdentityName")
         )
         .as("inner");
 
-      const query = (tx || db).select("*").from(innerQuery).orderBy("createdAt", "desc") as typeof innerQuery;
+      const query = (tx || db.replicaNode()).select("*").from(innerQuery);
 
       if (search) {
         void query.where((qb) => {
@@ -773,6 +858,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             ])
             .orWhereRaw(`?? ilike ?`, [db.ref("committerUserUsername"), `%${sanitizeSqlLikeString(search)}%`])
             .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), `%${sanitizeSqlLikeString(search)}%`])
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerIdentityName"), `%${sanitizeSqlLikeString(search)}%`])
             .orWhereILike(`environmentName`, `%${sanitizeSqlLikeString(search)}%`)
             .orWhereILike(`environment`, `%${sanitizeSqlLikeString(search)}%`)
             .orWhereILike(`policySecretPath`, `%${sanitizeSqlLikeString(search)}%`)
@@ -781,49 +867,52 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         });
       }
 
-      // Phase 1: Get page of change request ids (one row per request) + total count
-      // Use createdAt DESC, id so DENSE_RANK is deterministic (no ties => exactly `limit` rows per page)
-      const rankOffset = offset + 1;
       const distinctRequestsSub = query
         .clone()
         .clearSelect()
         .clearOrder()
-        .select(db.raw('DISTINCT ON (id) id, "createdAt"'))
+        .distinctOn("id")
+        .select(
+          "id",
+          "createdAt",
+          "environmentName",
+          "environment",
+          "policySecretPath",
+          "committerUserFirstName",
+          "committerUserLastName",
+          "committerUserEmail",
+          "committerIdentityName"
+        )
         .orderBy("id")
         .orderBy("createdAt", "desc");
-      const rankedSub = (tx || db)
-        .select(
-          db.raw('id, "createdAt", DENSE_RANK() OVER (ORDER BY "createdAt" DESC, id) as r, COUNT(*) OVER () as total')
-        )
-        .from(distinctRequestsSub.as("dr"));
-      const pageIdsResult = (await (tx || db)
-        .select("id", "r", "total")
-        .from(rankedSub.as("ranked"))
-        .where("r", ">=", rankOffset)
-        .where("r", "<", rankOffset + limit)
-        .orderBy("r", "asc")
-        .limit(limit)) as Array<{ id: string; r: number; total: string }>;
 
-      const pageIds = pageIdsResult.map((row) => row.id).slice(0, limit);
-      let totalCount = pageIdsResult.length > 0 ? Number(pageIdsResult[0]?.total ?? 0) : 0;
+      const distinctRequestsQuery = (tx || db.replicaNode()).select("*").from(distinctRequestsSub.as("requests"));
+      void applyRequestOrdering(distinctRequestsQuery, orderBy, orderDirection);
 
-      if (pageIdsResult.length === 0) {
-        const countResult = (await (tx || db)
-          .select(db.raw("COUNT(DISTINCT id) as total_count"))
-          .from(query.clone().as("count_query"))
-          .first()) as { total_count: string } | undefined;
-        totalCount = Number(countResult?.total_count ?? 0);
+      const pageIdsResult = (await distinctRequestsQuery
+        .clone()
+        .clearSelect()
+        .select("id", db.raw("COUNT(*) OVER () as total"))
+        .offset(offset)
+        .limit(limit)) as Array<{ id: string; total: string }>;
+      const pageIds = pageIdsResult.map(({ id }) => id);
+      let totalCount = Number(pageIdsResult[0]?.total ?? 0);
+
+      if (!pageIdsResult.length) {
+        const countResult = (await (tx || db.replicaNode())
+          .count({ count: "*" })
+          .from(distinctRequestsQuery.clone().clearOrder().as("count_query"))
+          .first()) as { count: string } | undefined;
+        totalCount = Number(countResult?.count ?? 0);
       }
 
       // Phase 2: Full data for this page's request ids (all commit rows for display)
       const docs =
         pageIds.length === 0
           ? []
-          : ((await (tx || db)
-              .select("*")
-              .from(innerQuery)
-              .whereIn(`id`, pageIds)
-              .orderBy("createdAt", "desc")) as Awaited<typeof query>[number][]);
+          : ((await (tx || db.replicaNode()).select("*").from(innerQuery).whereIn(`id`, pageIds)) as Awaited<
+              typeof query
+            >[number][]);
 
       const formattedDoc = sqlNestRelationships({
         data: docs as TSecretApprovalRequestDoc[],
@@ -831,6 +920,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
           environment: el.environment,
+          environmentName: el.environmentName,
           projectId: el.projectId,
           policy: {
             id: el.policyId,
@@ -847,6 +937,12 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 firstName: el.committerUserFirstName,
                 lastName: el.committerUserLastName,
                 username: el.committerUserUsername!
+              }
+            : null,
+          committerIdentity: el.committerIdentityId
+            ? {
+                identityId: el.committerIdentityId,
+                name: el.committerIdentityName ?? ""
               }
             : null
         }),
@@ -891,7 +987,10 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      const capped = formattedDoc.slice(0, limit);
+      const pageOrder = new Map(pageIds.map((id, index) => [id, index]));
+      const capped = formattedDoc
+        .sort((requestOne, requestTwo) => pageOrder.get(requestOne.id)! - pageOrder.get(requestTwo.id)!)
+        .slice(0, limit);
       const approvals = capped.map((el) => ({
         ...el,
         policy: { ...el.policy, approvers: el.approvers, bypassers: el.bypassers }
@@ -899,6 +998,19 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
       return { approvals, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindSAR" });
+    }
+  };
+
+  const findOpenByFolderIds = async (folderIds: string[], tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretApprovalRequest)
+        .whereIn("folderId", folderIds)
+        .where({ status: RequestState.Open })
+        .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.SecretApprovalRequest))
+        .select("id", "folderId");
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOpenByFolderIds" });
     }
   };
 
@@ -923,6 +1035,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     findProjectRequestCount,
     findByProjectId,
     findByProjectIdBridgeSecretV2,
+    findOpenByFolderIds,
     deleteByProjectId
   };
 };

@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
+import {
+  IdentityKubernetesAuthTokenReviewMode,
+  IdentityTrustedIp
+} from "@app/hooks/api/identities/types";
 
 import { SECONDS_PER_DAY } from "./datetime";
 import { isValidIpOrCidr } from "./ip";
@@ -54,3 +57,74 @@ export const mapTrustedIpsFromServer = (trustedIps: IdentityTrustedIp[]) =>
   trustedIps.map(({ ipAddress, prefix }) => ({
     ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
   }));
+
+// Cross-field Kubernetes connection rules mirroring the backend's shared validator
+// (identity-kubernetes-auth-validators.ts); used by the identity k8s auth form and the
+// auth template modal so the two surfaces cannot drift apart.
+export const superRefineKubernetesConnectionFields = (
+  data: {
+    tokenReviewMode?: IdentityKubernetesAuthTokenReviewMode;
+    kubernetesHost?: string | null;
+    caCert?: string;
+    verifyTlsCertificate?: boolean;
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+  },
+  ctx: z.RefinementCtx
+) => {
+  const tokenReviewMode = data.tokenReviewMode ?? IdentityKubernetesAuthTokenReviewMode.Api;
+
+  if (
+    tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+    !data.kubernetesHost?.length
+  ) {
+    ctx.addIssue({
+      path: ["kubernetesHost"],
+      code: z.ZodIssueCode.custom,
+      message: "When token review mode is set to API, a Kubernetes host must be provided"
+    });
+  }
+  if (
+    tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+    !data.gatewayId &&
+    !data.gatewayPoolId
+  ) {
+    ctx.addIssue({
+      path: ["gatewayId"],
+      code: z.ZodIssueCode.custom,
+      message:
+        "When token review mode is set to Gateway, a gateway or gateway pool must be selected"
+    });
+  }
+  if (data.gatewayId && data.gatewayPoolId) {
+    ctx.addIssue({
+      path: ["gatewayPoolId"],
+      code: z.ZodIssueCode.custom,
+      message: "Cannot specify both a gateway and a gateway pool"
+    });
+  }
+  if (
+    data.verifyTlsCertificate &&
+    tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+    !data.caCert?.length
+  ) {
+    ctx.addIssue({
+      path: ["caCert"],
+      code: z.ZodIssueCode.custom,
+      message:
+        "A CA certificate is required when TLS certificate verification is enabled. Either paste the Kubernetes API server's CA certificate or disable verification."
+    });
+  }
+  if (
+    data.verifyTlsCertificate === false &&
+    tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
+    data.caCert?.length
+  ) {
+    ctx.addIssue({
+      path: ["verifyTlsCertificate"],
+      code: z.ZodIssueCode.custom,
+      message:
+        "TLS certificate verification cannot be disabled when a CA certificate is provided. Either remove the CA certificate or enable verification."
+    });
+  }
+};

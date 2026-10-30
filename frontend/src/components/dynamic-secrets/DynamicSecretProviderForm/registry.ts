@@ -1,14 +1,13 @@
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
+import { getDynamicSecretProviderRuntimeMetadata } from "./runtimeMetadata";
 import type { TDynamicSecretProviderDefinition } from "./types";
 
 export type TRegisteredDynamicSecretProviderDefinition = TDynamicSecretProviderDefinition<
   DynamicSecretProviders,
   // Provider value types remain available from each concrete definition. The
   // composition root intentionally erases them for heterogeneous lookup.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   any
 >;
 
@@ -24,7 +23,7 @@ export const defineDynamicSecretProviderModule = <
   definitions: TDefinitions;
 }) => module;
 
-/** Product picker order. Partially migrated registries expose only registered entries. */
+/** Product picker order. The registry exposes only registered entries. */
 export const DYNAMIC_SECRET_PROVIDER_PICKER_ORDER = [
   DynamicSecretProviders.SqlDatabase,
   DynamicSecretProviders.Cassandra,
@@ -52,8 +51,20 @@ export const DYNAMIC_SECRET_PROVIDER_PICKER_ORDER = [
   DynamicSecretProviders.Clickhouse,
   DynamicSecretProviders.Ssh,
   DynamicSecretProviders.IbmApiConnect,
-  DynamicSecretProviders.Tailscale
+  DynamicSecretProviders.Tailscale,
+  DynamicSecretProviders.OAuth2,
+  DynamicSecretProviders.Kafka
 ] as const satisfies readonly DynamicSecretProviders[];
+
+type TProvidersMissingFromPickerOrder = Exclude<
+  DynamicSecretProviders,
+  (typeof DYNAMIC_SECRET_PROVIDER_PICKER_ORDER)[number]
+>;
+export const isDynamicSecretProviderPickerOrderExhaustive: [
+  TProvidersMissingFromPickerOrder
+] extends [never]
+  ? true
+  : TProvidersMissingFromPickerOrder = true;
 
 const DYNAMIC_SECRET_PROVIDER_DOCS_SLUG: Partial<Record<DynamicSecretProviders, string>> = {
   [DynamicSecretProviders.SqlDatabase]: "postgresql",
@@ -106,6 +117,26 @@ export const createDynamicSecretProviderRegistry = (
       return definition;
     },
     getLabel: (provider: DynamicSecretProviders) => definitions.get(provider)?.label,
+    getPresentation: (provider: DynamicSecretProviders) =>
+      definitions.has(provider)
+        ? getDynamicSecretProviderRuntimeMetadata(provider).presentation
+        : undefined,
+    requirePresentation: (provider: DynamicSecretProviders) => {
+      if (!definitions.has(provider)) {
+        throw new Error(`Dynamic-secret provider "${provider}" is not registered.`);
+      }
+      return getDynamicSecretProviderRuntimeMetadata(provider).presentation;
+    },
+    getLeaseCapabilities: (provider: DynamicSecretProviders) =>
+      definitions.has(provider)
+        ? getDynamicSecretProviderRuntimeMetadata(provider).leaseCapabilities
+        : undefined,
+    requireLeaseCapabilities: (provider: DynamicSecretProviders) => {
+      if (!definitions.has(provider)) {
+        throw new Error(`Dynamic-secret provider "${provider}" is not registered.`);
+      }
+      return getDynamicSecretProviderRuntimeMetadata(provider).leaseCapabilities;
+    },
     getDocsSlug: (provider: DynamicSecretProviders) =>
       DYNAMIC_SECRET_PROVIDER_DOCS_SLUG[provider] ?? provider
   });

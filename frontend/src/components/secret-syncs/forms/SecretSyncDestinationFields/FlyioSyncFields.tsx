@@ -1,16 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
-import { TFlyioApp, useFlyioConnectionListApps } from "@app/hooks/api/appConnections/flyio";
+import { useFlyioConnectionListApps } from "@app/hooks/api/appConnections/flyio";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
@@ -39,22 +38,30 @@ export const FlyioSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>App</FieldLabel>
+            <FieldLabel id="secret-sync-flyio-app-id-label" htmlFor="secret-sync-flyio-app-id">
+              App
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-flyio-app-id-label"
+                aria-describedby={error ? "secret-sync-flyio-app-id-error" : undefined}
+                id="secret-sync-flyio-app-id"
+                isError={Boolean(error)}
                 isLoading={isAppsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={apps?.find((v) => v.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TFlyioApp>;
+                onValueChange={(option) => {
+                  const selected = option;
                   onChange(selected?.id ?? null);
                 }}
                 options={apps}
                 placeholder="Select an app..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-flyio-app-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}

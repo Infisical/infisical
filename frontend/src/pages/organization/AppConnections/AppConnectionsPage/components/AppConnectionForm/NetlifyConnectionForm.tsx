@@ -109,9 +109,17 @@ export const NetlifyConnectionForm = ({ appConnection, onSubmit }: Props) => {
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
-              <FieldLabel>Access Token Value</FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-              <FieldError errors={[error]} />
+              <FieldLabel htmlFor="app-connection-netlify-access-token">
+                Access Token Value
+              </FieldLabel>
+              <SecretInput
+                aria-describedby={error ? "app-connection-netlify-access-token-error" : undefined}
+                id="app-connection-netlify-access-token"
+                isError={Boolean(error)}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              <FieldError id="app-connection-netlify-access-token-error" errors={[error]} />
             </Field>
           )}
         />

@@ -1,8 +1,8 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
+import { Combobox, Field, FieldError } from "@app/components/v3";
 import {
   TFireworksServiceAccount,
   useFireworksConnectionListServiceAccounts
@@ -13,7 +13,7 @@ const getUserId = (name: string) => name.split("/").pop() ?? name;
 
 const formatServiceAccountLabel = (option: TFireworksServiceAccount) => (
   <span>
-    {option.displayName} <span className="text-mineshaft-400">({getUserId(option.name)})</span>
+    {option.displayName} <span className="text-muted">({getUserId(option.name)})</span>
   </span>
 );
 
@@ -35,28 +35,32 @@ export const FireworksApiKeyRotationParametersFields = () => {
     <Controller
       name="parameters.serviceAccountUserId"
       control={control}
-      render={({ field: { value, onChange }, fieldState: { error } }) => (
-        <FormControl
-          isError={Boolean(error)}
-          errorText={error?.message}
-          label="Service Account"
-          tooltipText="The Fireworks service account to create the API key for"
-        >
-          <FilterableSelect
+      render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+        <Field data-invalid={Boolean(error)}>
+          <FieldLabelWithTooltip
+            htmlFor="fireworks-service-account"
+            tooltip="The Fireworks service account to create the API key for"
+          >
+            Service Account
+          </FieldLabelWithTooltip>
+          <Combobox
+            id="fireworks-service-account"
             isLoading={isServiceAccountsLoading && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={serviceAccounts.find((sa) => getUserId(sa.name) === value) ?? null}
-            onChange={(option) => {
-              const selected = option as SingleValue<TFireworksServiceAccount>;
-              onChange(selected ? getUserId(selected.name) : null);
-            }}
+            onBlur={onBlur}
+            onValueChange={(selected) => onChange(getUserId(selected.name))}
+            isClearable={false}
             options={serviceAccounts}
             placeholder="Select a service account..."
             getOptionLabel={(option) => `${option.displayName} (${getUserId(option.name)})`}
             getOptionValue={(option) => getUserId(option.name)}
-            formatOptionLabel={formatServiceAccountLabel}
+            renderOption={formatServiceAccountLabel}
+            renderValue={formatServiceAccountLabel}
+            isError={Boolean(error)}
           />
-        </FormControl>
+          <FieldError>{error?.message}</FieldError>
+        </Field>
       )}
     />
   );

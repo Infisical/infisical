@@ -10,11 +10,26 @@ import {
 import {
   AuditReportResultEntrySchema,
   AuditReportStatus,
-  AuditReportType
+  AuditReportType,
+  OrgAuditReportResultEntrySchema,
+  OrgAuditReportType
 } from "@app/ee/services/audit-report/audit-report-types";
+import {
+  OrgAuthMethodDistributionSchema,
+  OrgSecretsAccessVolumeSchema,
+  SecretReadActivitySchema,
+  SecretsProjectsSchema,
+  SecretsSummarySchema,
+  StaticSecretsUsageSchema,
+  UnusedAccessActorSchema,
+  UnusedAccessSchema
+} from "@app/ee/services/insights/insights-schemas";
+import { INSIGHTS } from "@app/lib/api-docs";
+import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { BaseSecretNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 // Each report type declares exactly which inputs it accepts. The `inputs` schemas are the same consts
 // the generators use, so request validation and generation never drift.
@@ -46,17 +61,335 @@ const AuditReportSchema = z.object({
   updatedAt: z.date()
 });
 
+// Org-scoped counterparts. None of the org report types take inputs today; the discriminated union
+// mirrors the project one so a type can grow inputs later without reshaping the request.
+const OrgAuditReportRequestConfigSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal(OrgAuditReportType.OrgUsageSummary), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(OrgAuditReportType.OrgNeedsAttention), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(OrgAuditReportType.OrgAuthMethods), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(OrgAuditReportType.OrgStaticSecretUsage), inputs: NoInputsSchema.optional() }),
+  z.object({ type: z.literal(OrgAuditReportType.OrgSecretAccessVolume), inputs: NoInputsSchema.optional() })
+]);
+
+const OrgAuditReportSchema = z.object({
+  id: z.string().uuid(),
+  orgId: z.string().uuid(),
+  requestedByUserId: z.string().uuid().nullable(),
+  status: z.nativeEnum(AuditReportStatus),
+  reportConfigs: z.array(
+    z.object({
+      type: z.nativeEnum(OrgAuditReportType),
+      inputs: z.record(z.unknown())
+    })
+  ),
+  emailRecipients: z.string().array(),
+  resultSummary: z.array(OrgAuditReportResultEntrySchema).nullable(),
+  errorMessage: z.string().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
 export const registerInsightsRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/secrets/calendar",
+    url: "/secrets/summary",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    schema: {
+      operationId: "getSecretsSummary",
+      description: "Get secrets management usage counts for the requesting organization.",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          usageInsights: SecretsSummarySchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const usageInsights = await server.services.insights.getSecretsUsageInsights({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE,
+          metadata: usageInsights
+        }
+      });
+
+      return { usageInsights };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/projects",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    schema: {
+      operationId: "getSecretsProjects",
+      description: "List the organization's secret management projects, ordered by severity.",
+      security: [{ bearerAuth: [] }],
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).max(10000).default(0).describe(INSIGHTS.GET_SECRETS_PROJECTS.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(20).describe(INSIGHTS.GET_SECRETS_PROJECTS.limit)
+      }),
+      response: {
+        200: z.object({
+          projectWarnings: SecretsProjectsSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const projectWarnings = await server.services.insights.getSecretsProjects({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId,
+        offset: req.query.offset,
+        limit: req.query.limit
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS,
+          metadata: {
+            totalProjects: projectWarnings.totalProjects,
+            projectsWithIssues: projectWarnings.projectsWithIssues,
+            offset: req.query.offset,
+            limit: req.query.limit
+          }
+        }
+      });
+
+      return { projectWarnings };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/access-volume",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    schema: {
+      operationId: "getSecretsAccessVolume",
+      description:
+        "Get secret access volume for the requesting organization, aggregated by day and actor for the past week.",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          accessVolume: OrgSecretsAccessVolumeSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const accessVolume = await server.services.insights.getOrgAccessVolume({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+
+      return { accessVolume };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/usage/auth-methods",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    schema: {
+      operationId: "getSecretsUsageAuthMethods",
+      description:
+        "Get the number of times each machine identity authentication method was used to access a secret value in the requesting organization over the past week.",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          authMethodDistribution: OrgAuthMethodDistributionSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const authMethodDistribution = await server.services.insights.getOrgAuthMethodDistribution({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION,
+          metadata: {
+            totalFetches: authMethodDistribution.totalFetches
+          }
+        }
+      });
+
+      return { authMethodDistribution };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/usage/static-secrets",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    schema: {
+      operationId: "getStaticSecretsUsage",
+      description:
+        "Get how many static secrets the requesting organization created in each of the last twelve UTC calendar weeks.",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          staticSecretUsage: StaticSecretsUsageSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const staticSecretUsage = await server.services.insights.getStaticSecretsUsage({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId
+      });
+
+      return { staticSecretUsage };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/secrets/reports",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      operationId: "createOrgSecretsAuditReport",
+      body: z.object({
+        reports: OrgAuditReportRequestConfigSchema.array().min(1).max(5),
+        emailRecipients: z.array(z.string().trim().email().max(255)).max(20).optional()
+      }),
+      response: {
+        200: OrgAuditReportSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const report = await server.services.auditReport.generateOrgReport(req.body, req.permission);
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CREATE_ORG_AUDIT_REPORT,
+          metadata: {
+            auditReportId: report.id,
+            reportTypes: report.reportConfigs.map((config) => config.type),
+            recipientCount: report.emailRecipients.length
+          }
+        }
+      });
+      return report;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/reports",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "listOrgSecretsAuditReports",
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).max(10000).default(0),
+        limit: z.coerce.number().int().min(1).max(100).default(10)
+      }),
+      response: {
+        200: z.object({ reports: z.array(OrgAuditReportSchema), totalCount: z.number() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { offset, limit } = req.query;
+      const { reports, totalCount } = await server.services.auditReport.listOrgReports(
+        { offset, limit },
+        req.permission
+      );
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GET_ORG_AUDIT_REPORTS,
+          metadata: { offset, limit }
+        }
+      });
+      return { reports, totalCount };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/secrets/reports/:reportId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      operationId: "deleteOrgSecretsAuditReport",
+      params: z.object({ reportId: z.string().uuid() }),
+      response: {
+        200: OrgAuditReportSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const report = await server.services.auditReport.deleteOrgReport(req.params.reportId, req.permission);
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_ORG_AUDIT_REPORT,
+          metadata: { auditReportId: report.id }
+        }
+      });
+      return report;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/secrets/calendar",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsCalendar",
       description: "Get secret rotation and reminder events for a calendar month view",
       security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
       querystring: z.object({
-        projectId: z.string().trim(),
         month: z.coerce.number().min(1).max(12),
         year: z.coerce.number().min(2000).max(2100)
       }),
@@ -91,9 +424,10 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId, month, year } = req.query;
+      const { projectId } = req.params;
+      const { month, year } = req.query;
       const result = await server.services.insights.getCalendar({ projectId, month, year }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -106,13 +440,13 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/access-volume",
+    url: "/:projectId/secrets/access-volume",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsAccessVolume",
       description: "Get secret access volume aggregated by day and actor for the past week",
       security: [{ bearerAuth: [] }],
-      querystring: z.object({
+      params: z.object({
         projectId: z.string().trim()
       }),
       response: {
@@ -127,9 +461,9 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId } = req.query;
+      const { projectId } = req.params;
       const result = await server.services.insights.getAccessVolume({ projectId }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -140,49 +474,141 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // server.route({
-  //   method: "GET",
-  //   url: "/secrets/access-locations",
-  //   config: { rateLimit: readLimit },
-  //   schema: {
-  //     operationId: "getInsightsAccessLocations",
-  //     description: "Get geographic locations of secret access based on audit log IP addresses",
-  //     security: [{ bearerAuth: [] }],
-  //     querystring: z.object({
-  //       projectId: z.string().trim(),
-  //       days: z.coerce.number().min(1).max(90).default(30)
-  //     }),
-  //     response: {
-  //       200: z.object({
-  //         locations: z.array(
-  //           z.object({ lat: z.number(), lng: z.number(), city: z.string(), country: z.string(), count: z.number() })
-  //         )
-  //       })
-  //     }
-  //   },
-  //   onRequest: verifyAuth([AuthMode.JWT]),
-  //   handler: async (req) => {
-  //     const { projectId, days } = req.query;
-  //     const result = await server.services.insights.getAccessLocations({ projectId, days }, req.permission);
-  //     await server.services.auditLog.createAuditLog({
-  //       projectId,
-  //       event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS, metadata: { projectId, days } },
-  //       ...req.auditLogInfo
-  //     });
-  //     return result;
-  //   }
-  // });
+  server.route({
+    method: "GET",
+    url: "/:projectId/secrets/unused-access",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsUnusedAccess",
+      description:
+        "List the users and machine identities that can read secrets they have not read in the last 30 days, those with the most such secrets first",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS.projectId)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).max(10000).default(0).describe(INSIGHTS.GET_UNUSED_ACCESS.offset),
+        limit: z.coerce.number().int().min(1).max(100).default(20).describe(INSIGHTS.GET_UNUSED_ACCESS.limit),
+        search: z.string().trim().max(255).optional().describe(INSIGHTS.GET_UNUSED_ACCESS.search)
+      }),
+      response: {
+        200: UnusedAccessSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { projectId } = req.params;
+      const { result, remainingTTL } = await server.services.secretReadActivity.listUnusedAccess(
+        { projectId, ...req.query },
+        req.permission
+      );
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS, metadata: { projectId } },
+        ...req.auditLogInfo
+      });
+
+      if (remainingTTL && remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+
+      return result;
+    }
+  });
 
   server.route({
     method: "GET",
-    url: "/auth/method-distribution",
+    url: "/:projectId/secrets/unused-access/:actorType/:actorId",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsUnusedAccessActor",
+      description: "List the secrets one user or machine identity can read but has not read in the last 30 days",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.projectId),
+        actorType: z.enum([ActorType.USER, ActorType.IDENTITY]).describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.actorType),
+        actorId: z.string().uuid().describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.actorId)
+      }),
+      response: {
+        200: UnusedAccessActorSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { projectId, actorType, actorId } = req.params;
+      const { result, remainingTTL } = await server.services.secretReadActivity.getUnusedAccessActor(
+        { projectId, actorType, actorId },
+        req.permission
+      );
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS,
+          metadata: { projectId, principalType: actorType, principalId: actorId, principalName: result.actor.name }
+        },
+        ...req.auditLogInfo
+      });
+
+      if (remainingTTL && remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+
+      return result;
+    }
+  });
+
+  // The fixed segment comes before the secret name, so a secret named like another route here (reports, summary)
+  // cannot be routed to it.
+  server.route({
+    method: "GET",
+    url: "/:projectId/secrets/read-activity/:secretName",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsSecretReadActivity",
+      description:
+        "List the users and machine identities that can read a secret's value, with each one's latest read and whether it counts as unused access",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.projectId),
+        secretName: BaseSecretNameSchema.max(500).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.secretName)
+      }),
+      querystring: z.object({
+        environment: z.string().trim().min(1).max(255).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .max(1024)
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.secretPath)
+      }),
+      response: {
+        200: z.object({ readActivity: SecretReadActivitySchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const readActivity = await server.services.secretReadActivity.getSecretReadActivity(
+        { projectId: req.params.projectId, secretName: req.params.secretName, ...req.query },
+        req.permission
+      );
+      return { readActivity };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/usage/auth-methods",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsAuthMethodDistribution",
       description: "Get distribution of authentication methods from secret access audit logs",
       security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
       querystring: z.object({
-        projectId: z.string().trim(),
         days: z.coerce.number().min(1).max(90).default(30)
       }),
       response: {
@@ -191,9 +617,10 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId, days } = req.query;
+      const { projectId } = req.params;
+      const { days } = req.query;
       const result = await server.services.insights.getAuthMethodDistribution({ projectId, days }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -209,10 +636,118 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     url: "/secrets/secrets-duplication",
     config: { rateLimit: readLimit },
     schema: {
+      operationId: "getOrgInsightsSecretsDuplication",
+      description: "Get groups of secrets that share a value anywhere in the organization",
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: z.object({
+          orgWideSecretValueTrackingEnabled: z.boolean(),
+          groups: z.array(
+            z.object({
+              projectCount: z.number(),
+              locationCount: z.number(),
+              secrets: z.array(
+                z.object({
+                  key: z.string(),
+                  projectId: z.string(),
+                  projectName: z.string(),
+                  environment: z.object({ name: z.string(), slug: z.string() }),
+                  secretPath: z.string()
+                })
+              )
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { result, remainingTTL } = await server.services.insights.getOrgSecretsDuplication({
+        orgId: req.permission.orgId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION,
+          metadata: { groupCount: result.groups.length }
+        }
+      });
+
+      if (remainingTTL && remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+
+      return result;
+    }
+  });
+
+  // POST rather than GET because the secret value goes in the body. A GET would put it in the URL,
+  // where it lands in access logs, proxy logs and browser history.
+  server.route({
+    method: "POST",
+    url: "/secrets/search-by-value",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "searchOrgInsightsSecretsByValue",
+      description:
+        "Locate every secret in the organization holding the supplied value, including secrets in projects the caller is not a member of",
+      security: [{ bearerAuth: [] }],
+      body: z.object({
+        secretValue: z.string().min(1)
+      }),
+      response: {
+        200: z.object({
+          secrets: z
+            .object({
+              key: z.string(),
+              projectId: z.string(),
+              projectName: z.string(),
+              environment: z.object({ name: z.string(), slug: z.string() }),
+              secretPath: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const secrets = await server.services.insights.searchOrgSecretsByValue({
+        secretValue: req.body.secretValue,
+        orgId: req.permission.orgId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.SEARCH_SECRETS_BY_VALUE,
+          metadata: { matchCount: secrets.length }
+        }
+      });
+
+      return { secrets };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/secrets/secrets-duplication",
+    config: { rateLimit: readLimit },
+    schema: {
       operationId: "getInsightsSecretsDuplication",
       description: "Get groups of duplicated secrets across environments and paths",
       security: [{ bearerAuth: [] }],
-      querystring: z.object({
+      params: z.object({
         projectId: z.string().trim()
       }),
       response: {
@@ -235,9 +770,9 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
-      const { projectId } = req.query;
+      const { projectId } = req.params;
       const { result, remainingTTL } = await server.services.insights.getSecretsDuplication(
         { projectId },
         req.permission
@@ -258,15 +793,17 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/summary",
+    url: "/:projectId/secrets/summary",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsSummary",
       description:
         "Get summary stats for the insights dashboard: upcoming rotations, upcoming reminders, and stale secrets",
       security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
       querystring: z.object({
-        projectId: z.string().trim(),
         staleSecretsOffset: z.coerce.number().min(0).max(10000).default(0),
         staleSecretsLimit: z.coerce.number().min(1).max(100).default(50)
       }),
@@ -313,9 +850,10 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId, staleSecretsOffset, staleSecretsLimit } = req.query;
+      const { projectId } = req.params;
+      const { staleSecretsOffset, staleSecretsLimit } = req.query;
       const result = await server.services.insights.getSummary(
         { projectId, staleSecretsOffset, staleSecretsLimit },
         req.permission
@@ -331,13 +869,13 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/counts",
+    url: "/:projectId/secrets/counts",
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getInsightsCounts",
       description: "Get project-wide entity counts for the insights dashboard header",
       security: [{ bearerAuth: [] }],
-      querystring: z.object({
+      params: z.object({
         projectId: z.string().trim()
       }),
       response: {
@@ -350,9 +888,9 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId } = req.query;
+      const { projectId } = req.params;
       const result = await server.services.insights.getCounts({ projectId }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -365,12 +903,15 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/secrets/reports",
+    url: "/:projectId/secrets/reports",
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
+      operationId: "createProjectSecretsAuditReport",
+      params: z.object({
+        projectId: z.string().trim()
+      }),
       body: z.object({
-        projectId: z.string().trim(),
         reports: AuditReportRequestConfigSchema.array().min(1),
         emailRecipients: z.array(z.string().email()).optional()
       }),
@@ -378,9 +919,12 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         200: AuditReportSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const report = await server.services.auditReport.generateReport(req.body, req.permission);
+      const report = await server.services.auditReport.generateReport(
+        { projectId: req.params.projectId, ...req.body },
+        req.permission
+      );
       await server.services.auditLog.createAuditLog({
         projectId: report.projectId,
         event: {
@@ -400,12 +944,15 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/reports",
+    url: "/:projectId/secrets/reports",
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
+      operationId: "listProjectSecretsAuditReports",
+      params: z.object({
+        projectId: z.string().trim()
+      }),
       querystring: z.object({
-        projectId: z.string().trim(),
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(10)
       }),
@@ -413,9 +960,10 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         200: z.object({ reports: z.array(AuditReportSchema), totalCount: z.number() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId, offset, limit } = req.query;
+      const { projectId } = req.params;
+      const { offset, limit } = req.query;
       const { reports, totalCount } = await server.services.auditReport.listReports(
         { projectId, offset, limit },
         req.permission
@@ -431,18 +979,23 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secrets/reports/:reportId",
+    url: "/:projectId/secrets/reports/:reportId",
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
-      params: z.object({ reportId: z.string().uuid() }),
+      operationId: "getProjectSecretsAuditReport",
+      params: z.object({ projectId: z.string().trim(), reportId: z.string().uuid() }),
       response: {
         200: AuditReportSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const report = await server.services.auditReport.getReportById(req.params.reportId, req.permission);
+      const report = await server.services.auditReport.getReportById(
+        req.params.reportId,
+        req.params.projectId,
+        req.permission
+      );
       await server.services.auditLog.createAuditLog({
         projectId: report.projectId,
         event: {
@@ -457,18 +1010,23 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/secrets/reports/:reportId",
+    url: "/:projectId/secrets/reports/:reportId",
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
-      params: z.object({ reportId: z.string().uuid() }),
+      operationId: "deleteProjectSecretsAuditReport",
+      params: z.object({ projectId: z.string().trim(), reportId: z.string().uuid() }),
       response: {
         200: AuditReportSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const report = await server.services.auditReport.deleteReport(req.params.reportId, req.permission);
+      const report = await server.services.auditReport.deleteReport(
+        req.params.reportId,
+        req.params.projectId,
+        req.permission
+      );
       await server.services.auditLog.createAuditLog({
         projectId: report.projectId,
         event: {

@@ -214,6 +214,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     },
     schema: {
       hide: false,
+      operationId: "listProjectTemplates",
       tags: [ApiDocsTags.ProjectTemplates],
       description: "List project templates for the current organization.",
       querystring: z.object({
@@ -225,7 +226,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectTemplates = await server.services.projectTemplate.listProjectTemplatesByOrg(
         req.permission,
@@ -258,6 +259,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     },
     schema: {
       hide: false,
+      operationId: "getProjectTemplateById",
       tags: [ApiDocsTags.ProjectTemplates],
       description: "Get a project template by ID.",
       params: z.object({
@@ -269,7 +271,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectTemplate = await server.services.projectTemplate.findProjectTemplateById(
         req.params.templateId,
@@ -299,6 +301,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     },
     schema: {
       hide: false,
+      operationId: "createProjectTemplate",
       tags: [ApiDocsTags.ProjectTemplates],
       description: "Create a project template.",
       body: z
@@ -362,6 +365,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     },
     schema: {
       hide: false,
+      operationId: "updateProjectTemplate",
       tags: [ApiDocsTags.ProjectTemplates],
       description: "Update a project template.",
       params: z.object({ templateId: z.string().uuid().describe(ProjectTemplates.UPDATE.templateId) }),
@@ -440,6 +444,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     },
     schema: {
       hide: false,
+      operationId: "deleteProjectTemplate",
       tags: [ApiDocsTags.ProjectTemplates],
       description: "Delete a project template.",
       params: z.object({ templateId: z.string().uuid().describe(ProjectTemplates.DELETE.templateId) }),

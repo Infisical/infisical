@@ -206,5 +206,9 @@ export const WorkflowIntegrationTab = withProjectPermission(
       </Card>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Settings }
+  {
+    action: ProjectPermissionActions.Read,
+    subject: ProjectPermissionSub.Settings,
+    accessRestrictedMode: "dialog"
+  }
 );

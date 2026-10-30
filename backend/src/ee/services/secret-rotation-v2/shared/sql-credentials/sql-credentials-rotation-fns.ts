@@ -68,9 +68,9 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   secretRotation,
   _appConnectionDAL,
   _kmsService,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
+  _keyStore,
   passwordValidationContext
 ) => {
   const {
@@ -94,7 +94,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   // When a secret validation rule covers this rotation, its constraints
   // fully replace the user-configured passwordRequirements.
   const generateRotationPassword = () =>
-    passwordValidationContext?.constraints?.length
+    passwordValidationContext
       ? generatePasswordWithConstraints(passwordValidationContext.constraints)
       : generatePassword(passwordRequirement);
 
@@ -125,7 +125,6 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
         ...conn,
         credentials: finalCredentials
       },
-      gatewayService,
       gatewayV2Service,
       (client) => operation(client)
     );

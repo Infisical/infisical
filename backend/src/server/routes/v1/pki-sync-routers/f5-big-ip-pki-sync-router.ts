@@ -17,7 +17,8 @@ export const registerF5BigIpPkiSyncRouter = async (server: FastifyZodProvider, e
     updateSchema: UpdateF5BigIpPkiSyncSchema,
     syncOptions: {
       canImportCertificates: F5_BIG_IP_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: F5_BIG_IP_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: F5_BIG_IP_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: F5_BIG_IP_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });

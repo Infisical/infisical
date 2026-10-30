@@ -1,6 +1,6 @@
 # infisical-standalone
 
-![Version: 1.10.0](https://img.shields.io/badge/Version-1.10.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.1](https://img.shields.io/badge/AppVersion-1.0.1-informational?style=flat-square)
+![Version: 1.11.0](https://img.shields.io/badge/Version-1.11.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.1](https://img.shields.io/badge/AppVersion-1.0.1-informational?style=flat-square)
 
 A helm chart to deploy Infisical
 
@@ -41,6 +41,7 @@ A helm chart to deploy Infisical
 | infisical.replicaCount | int | `2` | Number of pod replicas for high availability |
 | infisical.resources.limits.memory | string | `"600Mi"` | Memory limit for Infisical container |
 | infisical.resources.requests.cpu | string | `"350m"` | CPU request for Infisical container |
+| infisical.rolloutOnEveryRender | bool | `true` | Adds an `updatedAt` timestamp annotation to the Deployment and pods, so every render (each `helm upgrade` or GitOps sync) rolls the pods and picks up changes to `kubeSecretRef`. Set to `false` for GitOps tools like Argo CD, and restart with `kubectl rollout restart` after changing the secret. |
 | infisical.service.annotations | object | `{}` | Custom annotations for Infisical service |
 | infisical.service.nodePort | string | `""` | Optional node port for service when using NodePort type |
 | infisical.service.type | string | `"ClusterIP"` | Service type, can be changed based on exposure needs (e.g., LoadBalancer) |

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { MoreHorizontal, Plus, Settings, ShieldCheck, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  PamFolderCallerAccess,
   PamResourcePermissionActions,
   TPamFolderWithCount,
   usePamFolderActions
@@ -26,14 +27,28 @@ type Props = {
   onOpenTab: (tab: PamSheetTab) => void;
   onAddAccount: () => void;
   onDelete: () => void;
+  onJoinAsAdmin: () => void;
 };
 
-export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }: Props) => {
+export const FolderActionsMenu = ({
+  folder,
+  onOpenTab,
+  onAddAccount,
+  onDelete,
+  onJoinAsAdmin
+}: Props) => {
   const [isOpen, setIsOpen] = useState(false);
 
   // Every role sees the same menu with the same items, so permissions only decide what's disabled —
-  // fetch them when the menu opens rather than once per visible folder on page load.
-  const { can, isLoading } = usePamFolderActions(folder.id, isOpen);
+  // fetch them when the menu opens rather than once per visible folder on page load. An org admin
+  // with no membership on the folder has none to fetch.
+  const { can, isLoading } = usePamFolderActions(
+    folder.id,
+    isOpen && folder.callerAccess !== PamFolderCallerAccess.None
+  );
+  // callerAccess is only returned to org admins, the only role that can join a folder as admin.
+  const isOrgAdmin = folder.callerAccess !== undefined;
+  const canJoinAsAdmin = isOrgAdmin && folder.callerAccess !== PamFolderCallerAccess.Admin;
 
   // Treat an unresolved permission set as "not allowed" so nothing is actionable until it loads.
   const allowed = (action: PamResourcePermissionActions) => !isLoading && can(action);
@@ -42,6 +57,10 @@ export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }:
   // Items are disabled while permissions load, but the reason isn't known yet — don't claim it's
   // a permission problem until the fetch settles.
   const showReason = !isLoading;
+
+  const availableTabs = PAM_FOLDER_TABS.filter((tab) => !tab.action || allowed(tab.action));
+  const configureTab =
+    availableTabs.find((tab) => tab.value === PamSheetTab.Configuration) ?? availableTabs[0];
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -57,29 +76,24 @@ export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }:
         </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        {PAM_FOLDER_TABS.map((tab) => {
-          const hasPermission = !tab.action || allowed(tab.action);
-          return (
-            <Tooltip key={tab.value}>
-              <TooltipTrigger asChild>
-                <div>
-                  <DropdownMenuItem
-                    isDisabled={!hasPermission}
-                    onClick={() => onOpenTab(tab.value)}
-                  >
-                    <tab.icon />
-                    {tab.label}
-                  </DropdownMenuItem>
-                </div>
-              </TooltipTrigger>
-              {!hasPermission && showReason && (
-                <TooltipContent side="left">
-                  You don&apos;t have permission to access {tab.label.toLowerCase()}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          );
-        })}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <DropdownMenuItem
+                isDisabled={!configureTab}
+                onClick={() => configureTab && onOpenTab(configureTab.value)}
+              >
+                <Settings />
+                Configure
+              </DropdownMenuItem>
+            </div>
+          </TooltipTrigger>
+          {!configureTab && showReason && (
+            <TooltipContent side="left">
+              You don&apos;t have permission to configure this folder
+            </TooltipContent>
+          )}
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <div>
@@ -92,6 +106,23 @@ export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }:
           {!canCreateAccounts && showReason && (
             <TooltipContent side="left">
               You don&apos;t have permission to create accounts in this folder
+            </TooltipContent>
+          )}
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <DropdownMenuItem isDisabled={!canJoinAsAdmin} onClick={onJoinAsAdmin}>
+                <ShieldCheck />
+                Join as Admin
+              </DropdownMenuItem>
+            </div>
+          </TooltipTrigger>
+          {!canJoinAsAdmin && (
+            <TooltipContent side="left">
+              {isOrgAdmin
+                ? "You're already an admin of this folder"
+                : "Only organization admins can join a folder as admin"}
             </TooltipContent>
           )}
         </Tooltip>

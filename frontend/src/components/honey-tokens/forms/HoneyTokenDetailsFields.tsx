@@ -1,25 +1,31 @@
-import { Controller, useFormContext } from "react-hook-form";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
+import slugify from "@sindresorhus/slugify";
 
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-  Input,
-  TextArea
-} from "@app/components/v3";
+import { Field, FieldContent, FieldError, FieldLabel, Input, TextArea } from "@app/components/v3";
+import { HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 
 import { THoneyTokenForm } from "./schemas";
 
-export const HoneyTokenDetailsFields = () => {
+type Props = {
+  isUpdate: boolean;
+};
+
+export const HoneyTokenDetailsFields = ({ isUpdate }: Props) => {
   const { control } = useFormContext<THoneyTokenForm>();
+  const [type, environment] = useWatch({ control, name: ["type", "environment"] });
+
+  const suggestedName =
+    isUpdate || !environment?.slug
+      ? ""
+      : slugify(`${HONEY_TOKEN_MAP[type].name} honey token ${environment.slug}`, {
+          lowercase: true,
+          decamelize: false
+        })
+          .slice(0, 64)
+          .replace(/-+$/, "");
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-bunker-300">
-        Provide a name and description for this honey token.
-      </p>
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
@@ -29,14 +35,13 @@ export const HoneyTokenDetailsFields = () => {
                 autoFocus
                 value={value}
                 onChange={onChange}
+                suggestedValue={suggestedName}
                 placeholder="aws-canary-prod-key"
                 isError={Boolean(error)}
+                autoComplete="off"
+                name="honey-token-name"
               />
-              {error ? (
-                <FieldError>{error.message}</FieldError>
-              ) : (
-                <FieldDescription>Must be slug-friendly</FieldDescription>
-              )}
+              {error && <FieldError>{error.message}</FieldError>}
             </FieldContent>
           </Field>
         )}

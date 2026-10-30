@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { Link, linkOptions, useLocation, useParams } from "@tanstack/react-router";
-import { Check, ChevronsUpDown, Plus, Star } from "lucide-react";
+import { Link, linkOptions, useParams } from "@tanstack/react-router";
+import { Check, Plus, Star } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
@@ -12,12 +12,9 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandItemLink,
   CommandList,
   IconButton,
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger,
   ProjectIcon
 } from "@app/components/v3";
 import {
@@ -28,15 +25,22 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { getProjectHomePage } from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
+import { getProjectHomePage, isOrgScopedProduct } from "@app/helpers/project";
+import { useImplicitProduct, usePopUp } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import {
+  NavbarBlock,
+  NavbarSwitcher,
+  NavbarSwitcherContent,
+  NavbarSwitcherTrigger
+} from "@app/layouts/NavbarSwitcher";
 
 const ProjectSelectInner = () => {
   const [open, setOpen] = useState(false);
+  const [selectedValue, setSelectedValue] = useState("");
   const { currentProject: currentWorkspace } = useProject();
   const { currentOrg } = useOrganization();
   const { data: projects = [] } = useGetUserProjects();
@@ -81,12 +85,17 @@ const ProjectSelectInner = () => {
     return projectOptions;
   }, [projects, projectFavorites, currentWorkspace.type]);
 
+  // cmdk activates a row through onSelect, which fires both on pointer click and on
+  // Enter for the arrow-key selected row, so all plain activation is funnelled here.
   const handleSelectProject = (projectId: string) => {
     const workspace = projects.find((p) => p.id === projectId);
     if (!workspace || workspace.id === currentWorkspace.id) {
       setOpen(false);
       return;
     }
+
+    // Switching projects reloads the page instead of navigating client-side: React Query
+    // throws in the overview when the two projects have a different environment count.
     const url = linkOptions({
       to: getProjectHomePage(workspace.type, workspace.environments),
       params: {
@@ -102,22 +111,31 @@ const ProjectSelectInner = () => {
 
   if (
     currentWorkspace.type === ProjectType.CertificateManager ||
-    currentWorkspace.type === ProjectType.PAM
+    currentWorkspace.type === ProjectType.SecretScanning ||
+    isOrgScopedProduct(currentWorkspace.type)
   ) {
     return null;
   }
 
   return (
-    <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverAnchor className="absolute left-18" />
+    <NavbarBlock className="min-w-16">
+      <NavbarSwitcher
+        open={open}
+        onOpenChange={(nextOpen) => {
+          // Clearing on open lets cmdk pick the first row again, as it did while its
+          // selection was uncontrolled. Reset here rather than on close so the paths that
+          // call setOpen(false) directly cannot leave a stale row selected.
+          if (nextOpen) setSelectedValue("");
+          setOpen(nextOpen);
+        }}
+      >
         <Link
           to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
           params={{
             projectId: currentWorkspace.id,
             orgId: currentWorkspace.orgId
           }}
-          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
+          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
         >
           <ProjectIcon className="size-[14px] shrink-0 text-project" />
           <span className="truncate">{currentWorkspace?.name}</span>
@@ -125,13 +143,9 @@ const ProjectSelectInner = () => {
             Project
           </Badge>
         </Link>
-        <PopoverTrigger asChild>
-          <IconButton variant="ghost" size="xs" aria-label="switch-project">
-            <ChevronsUpDown />
-          </IconButton>
-        </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={20} className="w-96 p-0">
-          <Command>
+        <NavbarSwitcherTrigger aria-label="switch-project" />
+        <NavbarSwitcherContent className="w-96">
+          <Command value={selectedValue} onValueChange={setSelectedValue}>
             <CommandInput aria-label="Search projects" placeholder="Search projects..." />
             <CommandList>
               <CommandEmpty>No projects found.</CommandEmpty>
@@ -142,7 +156,7 @@ const ProjectSelectInner = () => {
                     value={workspace.id}
                     keywords={[workspace.name]}
                     onSelect={() => handleSelectProject(workspace.id)}
-                    className="gap-2"
+                    className="relative gap-2"
                   >
                     <Check
                       className={
@@ -150,7 +164,22 @@ const ProjectSelectInner = () => {
                       }
                     />
                     <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm">{workspace.name}</span>
+                      {/* The name is the row's link, so its accessible name comes from visible
+                          text and its stretched pseudo-element covers the row. Being a tab stop
+                          means focus must drive cmdk's selection: cmdk resolves Enter against the
+                          row it has marked aria-selected, never against the focused element, so
+                          without this onFocus a tabbed-to row would activate whichever row the
+                          arrow keys last selected and switch the user to the wrong project. */}
+                      <CommandItemLink
+                        to={getProjectHomePage(workspace.type, workspace.environments)}
+                        params={{
+                          projectId: workspace.id,
+                          orgId: workspace.orgId
+                        }}
+                        onFocus={() => setSelectedValue(workspace.id)}
+                      >
+                        {workspace.name}
+                      </CommandItemLink>
                       <span className="truncate text-[11px] text-muted">
                         {workspace.description || "No description"}
                       </span>
@@ -159,10 +188,10 @@ const ProjectSelectInner = () => {
                       variant="ghost"
                       size="xs"
                       aria-label="toggle favorite"
+                      className="relative z-10"
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={async (e) => {
                         e.stopPropagation();
-                        e.preventDefault();
                         await (
                           workspace.isFavorite ? removeProjectFromFavorites : addProjectToFavorites
                         )(workspace.id);
@@ -173,9 +202,7 @@ const ProjectSelectInner = () => {
                     >
                       <Star
                         className={
-                          workspace.isFavorite
-                            ? "fill-yellow-600 text-yellow-600"
-                            : "text-yellow-600"
+                          workspace.isFavorite ? "fill-warning text-warning" : "text-warning"
                         }
                       />
                     </IconButton>
@@ -183,7 +210,7 @@ const ProjectSelectInner = () => {
                 ))}
               </CommandGroup>
             </CommandList>
-            <div className="border-t border-border p-1">
+            <div className="border-t border-border-soft p-1">
               <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
                 {(isOldProjectPermissionAllowed) => (
                   <OrgPermissionCan
@@ -209,29 +236,28 @@ const ProjectSelectInner = () => {
               </OrgPermissionCan>
             </div>
           </Command>
-        </PopoverContent>
-      </Popover>
-      <UpgradePlanModal
+        </NavbarSwitcherContent>
+      </NavbarSwitcher>
+      <UpgradeGate
+        paywallKey="project.limit"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You've reached the maximum number of projects available on the Free plan. Upgrade to the Infisical Pro plan to create more projects."
+        intent={ProjectLimitUpgradeIntent}
       />
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
         projectType={currentWorkspace.type}
       />
-    </div>
+    </NavbarBlock>
   );
 };
 
 export const ProjectSelect = () => {
   const params = useParams({ strict: false });
-  const { pathname } = useLocation();
+  const orgScopedProduct = useImplicitProduct();
 
-  const isPamRoute = pathname.includes("/pam/");
-
-  if (!params.projectId && !isPamRoute) {
+  if (!params.projectId && !orgScopedProduct) {
     return null;
   }
 

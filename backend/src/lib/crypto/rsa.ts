@@ -1,5 +1,7 @@
 import forge from "node-forge";
 
+import { asNonSharedBuffer } from "@app/lib/fn";
+
 import { crypto } from "./cryptography";
 
 const { nativeCrypto } = crypto;
@@ -16,10 +18,28 @@ export const rsaPkcs1Decrypt = (encryptedKey: Buffer, privateKeyDer: Buffer): Bu
     .export({ type: "pkcs8", format: "pem" }) as string;
 
   const forgePrivateKey = forge.pki.privateKeyFromPem(privateKeyPem);
-  const decrypted = forgePrivateKey.decrypt(forge.util.createBuffer(encryptedKey).getBytes(), "RSAES-PKCS1-V1_5");
+  const decrypted = forgePrivateKey.decrypt(
+    forge.util.createBuffer(asNonSharedBuffer(encryptedKey)).getBytes(),
+    "RSAES-PKCS1-V1_5"
+  );
 
   return Buffer.from(decrypted, "binary");
 };
+
+export const rsaOaepDecrypt = (
+  encryptedKey: Buffer,
+  privateKeyDer: Buffer,
+  { hash, label }: { hash: string; label?: Buffer }
+): Buffer =>
+  nativeCrypto.privateDecrypt(
+    {
+      key: nativeCrypto.createPrivateKey({ key: privateKeyDer, format: "der", type: "pkcs8" }),
+      padding: nativeCrypto.constants.RSA_PKCS1_OAEP_PADDING,
+      oaepHash: hash,
+      oaepLabel: label
+    },
+    encryptedKey
+  );
 
 /**
  * RSA PKCS#1 v1.5 encryption using node-forge.
@@ -31,7 +51,10 @@ export const rsaPkcs1Encrypt = (key: Buffer, recipientPublicKeyDer: Buffer): Buf
     .export({ type: "spki", format: "pem" }) as string;
 
   const forgePublicKey = forge.pki.publicKeyFromPem(publicKeyPem);
-  const encrypted = forgePublicKey.encrypt(forge.util.createBuffer(key).getBytes(), "RSAES-PKCS1-V1_5");
+  const encrypted = forgePublicKey.encrypt(
+    forge.util.createBuffer(asNonSharedBuffer(key)).getBytes(),
+    "RSAES-PKCS1-V1_5"
+  );
 
   return Buffer.from(encrypted, "binary");
 };

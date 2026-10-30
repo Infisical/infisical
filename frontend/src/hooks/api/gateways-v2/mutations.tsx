@@ -14,8 +14,7 @@ const invalidateGatewayQueries = (
   queryClient: ReturnType<typeof useQueryClient>,
   gatewayId?: string
 ) => {
-  queryClient.invalidateQueries(gatewaysQueryKeys.list());
-  queryClient.invalidateQueries(gatewaysQueryKeys.listWithTokens());
+  queryClient.invalidateQueries({ queryKey: gatewaysQueryKeys.listKey() });
   if (gatewayId) {
     queryClient.invalidateQueries({ queryKey: gatewaysV2QueryKeys.byIdKey(gatewayId) });
     queryClient.invalidateQueries({
@@ -71,14 +70,16 @@ export const useUpdateGateway = () => {
   return useMutation({
     mutationFn: async ({
       gatewayId,
+      name,
       authMethod
     }: {
       gatewayId: string;
+      name?: string;
       authMethod?: SettableAuthMethodInput;
     }) => {
       const { data } = await apiRequest.patch<TGatewayV2WithAuthMethod>(
         `/api/v3/gateways/${gatewayId}`,
-        { authMethod }
+        { name, authMethod }
       );
       return data;
     },
@@ -104,7 +105,7 @@ export const useRevokeGatewayAccess = () => {
   return useMutation({
     mutationFn: async ({ gatewayId }: { gatewayId: string }) => {
       const { data } = await apiRequest.post<{
-        method: "aws" | "token";
+        method: "aws" | "gcp" | "kubernetes" | "token";
       }>(`/api/v3/gateways/${gatewayId}/revoke`);
       return data;
     },

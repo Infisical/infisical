@@ -15,16 +15,21 @@ function HoverCardContent({
   className,
   align = "center",
   sideOffset = 4,
+  collisionPadding = 8,
+  container,
   ...props
-}: React.ComponentProps<typeof HoverCardPrimitive.Content>) {
+}: React.ComponentProps<typeof HoverCardPrimitive.Content> & {
+  container?: React.ComponentProps<typeof HoverCardPrimitive.Portal>["container"];
+}) {
   return (
-    <HoverCardPrimitive.Portal data-slot="hover-card-portal">
+    <HoverCardPrimitive.Portal data-slot="hover-card-portal" container={container}>
       <HoverCardPrimitive.Content
         data-slot="hover-card-content"
         align={align}
         sideOffset={sideOffset}
+        collisionPadding={collisionPadding}
         className={cn(
-          "z-50 w-64 origin-(--radix-hover-card-content-transform-origin) rounded-lg bg-popover p-2.5",
+          "z-[var(--z-index-popover)] w-64 origin-(--radix-hover-card-content-transform-origin) rounded-lg bg-popover p-2.5",
           "border border-border text-sm text-foreground/90 shadow-md outline-hidden",
           "duration-100 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2",

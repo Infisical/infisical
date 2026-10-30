@@ -1,0 +1,237 @@
+import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx";
+
+<AgentVaultBranch service="none">
+  > Run `curl -sS <endpoint-url>` and show me the output.
+
+  The API should respond successfully. The agent doesn't need any real API credentials because the proxy attaches the credential as the request passes through. Run the same command outside the agent, and it fails with an authentication error.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="github">
+  > Run `curl -sS https://api.github.com/user` and show me the output.
+
+  GitHub returns your account. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="slack">
+  > Run `curl -sS https://slack.com/api/auth.test` and show me the output.
+
+  Slack returns your workspace and user IDs. Run the same request outside the agent and it returns `not_authed`.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="anthropic">
+  > Run `curl -sS https://api.anthropic.com/v1/models -H "anthropic-version: 2023-06-01"` and show me the output.
+
+  Anthropic returns the list of available models. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="openai">
+  > Run `curl -sS https://api.openai.com/v1/models` and show me the output.
+
+  OpenAI returns the list of available models. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch serviceNot="anthropic,cloudflare,cohere,datadog,deepseek,discord,fireworks,gemini,github,github-npm,gitlab,google-workspace,groq,jira,linear,mistral,none,notion,npm,openai,openrouter,pagerduty,perplexity,postmark,resend,sendgrid,sentry,shopify,slack,stripe,supabase,together,twilio,vercel,xai">
+  Ask the agent to hit an authenticated endpoint. The proxy attaches the credential as the request passes through, so the agent needs no real token. Run the same request outside the agent and it should fail with an authentication error.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="gemini">
+  > Run `curl -sS https://generativelanguage.googleapis.com/v1beta/models` and show me the output.
+
+  Google Gemini returns the list of available models. Run the same request outside the agent and it fails with a 403.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="mistral">
+  > Run `curl -sS https://api.mistral.ai/v1/models` and show me the output.
+
+  Mistral AI returns the list of available models. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="cohere">
+  > Run `curl -sS https://api.cohere.com/v1/models` and show me the output.
+
+  Cohere returns the list of available models. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="groq">
+  > Run `curl -sS https://api.groq.com/openai/v1/models` and show me the output.
+
+  Groq returns the list of available models. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="deepseek">
+  > Run `curl -sS https://api.deepseek.com/v1/models` and show me the output.
+
+  DeepSeek returns the list of available models. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="openrouter">
+  > Run `curl -sS https://openrouter.ai/api/v1/credits` and show me the output.
+
+  OpenRouter returns your credit balance. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="together">
+  > Run `curl -sS https://api.together.xyz/v1/models` and show me the output.
+
+  Together AI returns the list of available models. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="xai">
+  > Run `curl -sS https://api.x.ai/v1/models` and show me the output.
+
+  xAI returns the list of available models. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="fireworks">
+  > Run `curl -sS https://api.fireworks.ai/inference/v1/models` and show me the output.
+
+  Fireworks AI returns the list of available models. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="perplexity">
+  > Run `curl -sS https://api.perplexity.ai/async/chat/completions` and show me the output.
+
+  Perplexity returns the list of your async requests. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="cloudflare">
+  > Run `curl -sS https://api.cloudflare.com/client/v4/user/tokens/verify` and show me the output.
+
+  Cloudflare returns your token's status. Run the same request outside the agent and it fails with a 400.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="datadog">
+  > Run `curl -sS https://api.datadoghq.com/api/v1/validate` and show me the output.
+
+  Datadog confirms your API key is valid. Run the same request outside the agent and it fails with a 403.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="discord">
+  > Run `curl -sS https://discord.com/api/v10/users/@me` and show me the output.
+
+  Discord returns your bot user. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="gitlab">
+  > Run `curl -sS https://gitlab.com/api/v4/user` and show me the output.
+
+  GitLab returns your user profile. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="github-npm">
+  > Run `curl -sS https://npm.pkg.github.com/-/whoami` and show me the output.
+
+  GitHub Packages returns your npm username, confirming the token is valid. Run the same request outside the agent and it fails with a 403.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="notion">
+  > Run `curl -sS https://api.notion.com/v1/users/me -H "Notion-Version: 2022-06-28"` and show me the output.
+
+  Notion returns your bot user. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="npm">
+  > Run `curl -sS https://registry.npmjs.org/-/whoami` and show me the output.
+
+  npm returns your username. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="pagerduty">
+  > Run `curl -sS https://api.pagerduty.com/users/me` and show me the output.
+
+  PagerDuty returns your user profile. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="postmark">
+  > Run `curl -sS https://api.postmarkapp.com/server` and show me the output.
+
+  Postmark returns your server's info. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="resend">
+  > Run `curl -sS https://api.resend.com/api-keys` and show me the output.
+
+  Resend returns your API keys. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="sendgrid">
+  > Run `curl -sS https://api.sendgrid.com/v3/user/account` and show me the output.
+
+  SendGrid returns your account info. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="sentry">
+  > Run `curl -sS https://sentry.io/api/0/organizations/` and show me the output.
+
+  Sentry returns the organizations your token can access. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="stripe">
+  > Run `curl -sS https://api.stripe.com/v1/account` and show me the output.
+
+  Stripe returns your account. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="vercel">
+  > Run `curl -sS https://api.vercel.com/v2/user` and show me the output.
+
+  Vercel returns your user profile. Run the same request outside the agent and it fails with a 403.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="google-workspace">
+  Ask the agent to make a call to a Google Workspace API. For example:
+
+  <CodeGroup>
+    ```bash Gmail
+    curl -sS https://gmail.googleapis.com/gmail/v1/users/me/profile
+    ```
+
+    ```bash Google Calendar
+    curl -sS https://www.googleapis.com/calendar/v3/users/me/calendarList
+    ```
+
+    ```bash Google Drive
+    curl -sS https://www.googleapis.com/drive/v3/about?fields=user
+    ```
+  </CodeGroup>
+
+  Google returns your Gmail profile, calendars, or Drive info depending on the endpoint. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="jira">
+  <Note>Replace `<your-tenant>` with your Atlassian subdomain (for example, `mycompany` from `mycompany.atlassian.net`).</Note>
+
+  > Run `curl -sS https://<your-tenant>.atlassian.net/rest/api/3/myself` and show me the output.
+
+  Jira returns your user profile. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="twilio">
+  <Note>Replace `<your-account-sid>` with your Twilio Account SID from the [Twilio console](https://console.twilio.com/).</Note>
+
+  > Run `curl -sS https://api.twilio.com/2010-04-01/Accounts/<your-account-sid>.json` and show me the output.
+
+  Twilio returns your account. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="shopify">
+  <Note>Replace `<your-store>` with your Shopify store subdomain (for example, `mystore` from `mystore.myshopify.com`).</Note>
+
+  > Run `curl -sS https://<your-store>.myshopify.com/admin/api/2024-01/shop.json` and show me the output.
+
+  Shopify returns your shop info. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="supabase">
+  <Note>Replace `<your-project>` with your Supabase project ref from the [project settings](https://supabase.com/dashboard).</Note>
+
+  > Run `curl -sS https://<your-project>.supabase.co/rest/v1/` and show me the output.
+
+  Supabase returns the OpenAPI schema for your project. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="linear">
+  > Run `curl -sS -X POST https://api.linear.app/graphql -H "Content-Type: application/json" -d '{"query":"{ viewer { id name } }"}'` and show me the output.
+
+  Linear returns your user info. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>

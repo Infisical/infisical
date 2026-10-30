@@ -1,11 +1,8 @@
-import {
-  components as ReactSelectComponents,
-  type OptionProps,
-  type SingleValueProps
-} from "react-select";
-import { CheckIcon, KeyIcon } from "lucide-react";
+import { KeyIcon } from "lucide-react";
 
-export type NetworkingAuthMethod = "aws" | "token";
+import { ProviderIcon } from "@app/components/v3";
+
+export type NetworkingAuthMethod = "aws" | "gcp" | "kubernetes" | "token";
 
 export type NetworkingAuthMethodOption = {
   value: NetworkingAuthMethod;
@@ -14,20 +11,44 @@ export type NetworkingAuthMethodOption = {
 
 export const NETWORKING_AUTH_METHOD_OPTIONS: NetworkingAuthMethodOption[] = [
   { value: "token", label: "Token Auth" },
-  { value: "aws", label: "AWS Auth" }
+  { value: "aws", label: "AWS Auth" },
+  { value: "gcp", label: "GCP Auth" },
+  { value: "kubernetes", label: "Kubernetes Auth" }
 ];
 
-const NetworkingAuthMethodIcon = ({ method }: { method: NetworkingAuthMethod }) =>
-  method === "aws" ? (
-    <img
-      src="/images/integrations/Amazon Web Services.png"
-      alt=""
-      aria-hidden
-      className="size-4 object-contain"
-    />
-  ) : (
-    <KeyIcon className="size-4 text-accent" />
-  );
+const NetworkingAuthMethodIcon = ({ method }: { method: NetworkingAuthMethod }) => {
+  if (method === "aws") {
+    return (
+      <ProviderIcon
+        icon="Amazon Web Services.png"
+        alt=""
+        aria-hidden
+        className="size-4 object-contain"
+      />
+    );
+  }
+  if (method === "gcp") {
+    return (
+      <img
+        src="/images/integrations/Google Cloud Platform.png"
+        alt=""
+        aria-hidden
+        className="size-4 object-contain"
+      />
+    );
+  }
+  if (method === "kubernetes") {
+    return (
+      <img
+        src="/images/integrations/Kubernetes.png"
+        alt=""
+        aria-hidden
+        className="size-4 object-contain"
+      />
+    );
+  }
+  return <KeyIcon className="size-4 text-accent" />;
+};
 
 export const NetworkingAuthMethodLabel = ({
   method,
@@ -43,28 +64,3 @@ export const NetworkingAuthMethodLabel = ({
     </span>
   </span>
 );
-
-export const NetworkingAuthMethodOption = (props: OptionProps<NetworkingAuthMethodOption>) => {
-  const { data, isSelected } = props;
-
-  return (
-    <ReactSelectComponents.Option {...props}>
-      <span className="flex items-center justify-between gap-2">
-        <NetworkingAuthMethodLabel method={data.value} label={data.label} />
-        {isSelected && <CheckIcon className="size-4 shrink-0" />}
-      </span>
-    </ReactSelectComponents.Option>
-  );
-};
-
-export const NetworkingAuthMethodSingleValue = (
-  props: SingleValueProps<NetworkingAuthMethodOption>
-) => {
-  const { data } = props;
-
-  return (
-    <ReactSelectComponents.SingleValue {...props}>
-      <NetworkingAuthMethodLabel method={data.value} label={data.label} />
-    </ReactSelectComponents.SingleValue>
-  );
-};

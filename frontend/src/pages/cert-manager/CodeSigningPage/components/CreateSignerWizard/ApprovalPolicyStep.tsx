@@ -2,6 +2,7 @@ import { ClockIcon, PlusIcon, ShieldIcon, XIcon } from "lucide-react";
 
 import {
   Button,
+  Combobox,
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -12,7 +13,6 @@ import {
   FieldContent,
   FieldDescription,
   FieldLabel,
-  FilterableSelect,
   Input,
   Select,
   SelectContent,
@@ -103,8 +103,8 @@ export const ApprovalPolicyStep = ({
     <div>
       <div className="mb-4 flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-mineshaft-100">Approves</div>
-          <p className="text-xs text-mineshaft-400">
+          <div className="text-sm font-semibold text-foreground">Approves</div>
+          <p className="text-xs text-muted">
             Approvals run in order. Each step needs the listed number of approvers to approve.
           </p>
         </div>
@@ -120,16 +120,15 @@ export const ApprovalPolicyStep = ({
           const takenGroups = new Set(s.approverGroupIds);
           const isTaken = (o: ApproverOption) =>
             o.kind === "user" ? takenUsers.has(o.value) : takenGroups.has(o.value);
-          const optionsForStep = approverOptions.filter((o) => !isTaken(o));
           const valueForStep = approverOptions.filter(isTaken);
 
           return (
             <div
               key={s.key}
-              className="rounded-md border border-mineshaft-700 bg-mineshaft-900/40 p-4"
+              className="rounded-md border border-border-subtle bg-surface-base/40 p-4"
             >
               <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-mineshaft-800 text-[11px] font-medium text-muted">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface-raised text-[11px] font-medium text-muted">
                   {idx + 1}
                 </div>
                 <Input
@@ -144,24 +143,23 @@ export const ApprovalPolicyStep = ({
                   onClick={() => removeStep(s.key)}
                   aria-label="Remove step"
                 >
-                  <XIcon className="h-3.5 w-3.5 text-mineshaft-300" />
+                  <XIcon className="h-3.5 w-3.5 text-label" />
                 </Button>
               </div>
 
               <div className="grid grid-cols-[1fr_140px] gap-3">
                 <Field>
-                  <FieldLabel>Approvers</FieldLabel>
+                  <FieldLabel htmlFor={`create-signer-approvers-${s.key}`}>Approvers</FieldLabel>
                   <FieldContent>
-                    <FilterableSelect<ApproverOption>
-                      isMulti
-                      options={optionsForStep}
-                      groupBy="kind"
-                      getGroupHeaderLabel={(g) => (g === "group" ? "Groups" : "Users")}
-                      getOptionValue={(o) => approverOptionKey(o as ApproverOption)}
-                      isOptionSelected={(o) => isTaken(o as ApproverOption)}
+                    <Combobox
+                      id={`create-signer-approvers-${s.key}`}
+                      multiple
+                      options={approverOptions}
+                      getOptionGroup={(option) => (option.kind === "group" ? "Groups" : "Users")}
+                      getOptionValue={approverOptionKey}
+                      getOptionLabel={(option) => option.label}
                       value={valueForStep}
-                      onChange={(selected) => {
-                        const picks = (selected as ApproverOption[] | null) ?? [];
+                      onValueChange={(picks) => {
                         patchStep(s.key, {
                           approverUserIds: picks
                             .filter((p) => p.kind === "user")
@@ -172,7 +170,7 @@ export const ApprovalPolicyStep = ({
                         });
                       }}
                       placeholder="Pick approvers from members..."
-                      noOptionsMessage={() => "Add member users in the previous step first."}
+                      emptyMessage="Add member users in the previous step first."
                     />
                     <FieldDescription>Approvers must already be members.</FieldDescription>
                   </FieldContent>
@@ -198,18 +196,18 @@ export const ApprovalPolicyStep = ({
         })}
       </div>
 
-      <div className="mt-6 text-sm font-semibold text-mineshaft-100">What an approval allows</div>
-      <p className="mb-3 text-xs text-mineshaft-300">
+      <div className="mt-6 text-sm font-semibold text-foreground">What an approval allows</div>
+      <p className="mb-3 text-xs text-label">
         Once approval is granted, define how it can be used. At least one limit is required.
       </p>
 
-      <div className="overflow-hidden rounded-md border border-mineshaft-700 bg-mineshaft-900/40">
-        <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-800 px-4 py-3">
+      <div className="overflow-hidden rounded-md border border-border-subtle bg-surface-base/40">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border-faint px-4 py-3">
           <div className="flex min-w-0 items-start gap-3">
-            <ShieldIcon className="mt-0.5 h-4 w-4 shrink-0 text-mineshaft-300" />
+            <ShieldIcon className="mt-0.5 h-4 w-4 shrink-0 text-label" />
             <div className="min-w-0">
-              <div className="text-sm font-medium text-mineshaft-100">Signatures per approval</div>
-              <p className="text-xs text-mineshaft-400">
+              <div className="text-sm font-medium text-foreground">Signatures per approval</div>
+              <p className="text-xs text-muted">
                 How many signatures one approval is good for. Leave empty for unlimited.
               </p>
             </div>
@@ -230,11 +228,12 @@ export const ApprovalPolicyStep = ({
         </div>
         <div className="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3">
           <div className="flex min-w-0 items-start gap-3">
-            <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-mineshaft-300" />
+            <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-label" />
             <div className="min-w-0">
-              <div className="text-sm font-medium text-mineshaft-100">Signing window</div>
-              <p className="text-xs text-mineshaft-400">
-                After approval is granted, how long signing is allowed before it expires.
+              <div className="text-sm font-medium text-foreground">Signing window</div>
+              <p className="text-xs text-muted">
+                The longest signing window a request can ask for. The window runs from the moment
+                the request is approved.
               </p>
             </div>
           </div>

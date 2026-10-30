@@ -48,7 +48,7 @@ type TSAMLConfig = {
 export const registerSamlRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
   const passport = new Authenticator({ key: "saml", userProperty: "passportUser" });
-  await server.register(fastifySession, { secret: appCfg.COOKIE_SECRET_SIGN_KEY });
+  await server.register(fastifySession, { secret: server.cookieSigningKey });
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
   server.decorateRequest("ssoConfig");
@@ -255,6 +255,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "redirectSamlByDomain",
       params: z.object({
         domain: z.string().trim()
       }),
@@ -286,6 +287,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "redirectSamlByOrgSlug",
       params: z.object({
         orgSlug: z.string().trim()
       }),
@@ -317,6 +319,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "redirectSamlByConfigId",
       params: z.object({
         samlConfigId: z.string().trim()
       }),
@@ -348,8 +351,15 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "samlAcs",
+      consumes: ["application/x-www-form-urlencoded"],
       params: z.object({
-        samlConfigId: z.string().trim()
+        samlConfigId: z.string().trim().describe(SamlSso.ACS.samlConfigId)
+      }),
+      // Unbounded on purpose: passport reads the body in preValidation, before this schema runs.
+      body: z.object({
+        SAMLResponse: z.string().optional().describe(SamlSso.ACS.SAMLResponse),
+        RelayState: z.string().optional().describe(SamlSso.ACS.RelayState)
       })
     },
     preValidation: passport.authenticate(
@@ -398,10 +408,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.SamlSso],
+      operationId: "getSamlConfig",
       description: "Get SAML config",
       security: [
         {
@@ -449,6 +460,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.SamlSso],
+      operationId: "createSamlConfig",
       description: "Create SAML config",
       security: [
         {
@@ -513,6 +525,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.SamlSso],
+      operationId: "updateSamlConfig",
       description: "Update SAML config",
       security: [
         {

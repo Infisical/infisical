@@ -23,7 +23,7 @@ type Props = {
 const tabs = [
   { name: "General", key: "general" },
   { name: "Authentication", key: "authentication" },
-  { name: "API keys", key: "api-keys", icon: TriangleAlertIcon }
+  { name: "API Keys", key: "api-keys", icon: TriangleAlertIcon }
 ] satisfies { name: string; key: PersonalSettingsTab; icon?: typeof TriangleAlertIcon }[];
 
 export const PersonalTabGroup = ({ selectedTab, onTabChange }: Props) => {
@@ -33,10 +33,10 @@ export const PersonalTabGroup = ({ selectedTab, onTabChange }: Props) => {
       onValueChange={(value) => onTabChange(value as PersonalSettingsTab)}
       className="mt-8"
     >
-      <TabsList variant="admin" aria-label="Personal settings sections">
+      <TabsList variant="filled" aria-label="Personal settings sections">
         {tabs.map(({ name, key, icon: Icon }) => (
           <TabsTrigger value={key} key={key}>
-            {Icon && <Icon aria-hidden className="text-warning" />}
+            {Icon && <Icon aria-hidden className="text-danger" />}
             {name}
           </TabsTrigger>
         ))}
@@ -48,21 +48,13 @@ export const PersonalTabGroup = ({ selectedTab, onTabChange }: Props) => {
         <PersonalAuthTab />
       </TabsContent>
       <TabsContent value="api-keys">
-        <Alert variant="warning">
+        <Alert variant="danger">
           <KeyRoundIcon />
-          <AlertTitle>API keys are deprecated</AlertTitle>
+          <AlertTitle>API key authentication is no longer supported</AlertTitle>
           <AlertDescription>
             <p>
-              Use machine identities for programmatic access. API keys will be removed according to
-              the published{" "}
-              <a
-                href="https://infisical.com/blog/deprecating-api-keys"
-                target="_blank"
-                rel="noreferrer"
-              >
-                deprecation timeline <ExternalLinkIcon className="inline size-3" />
-              </a>
-              {". See the "}
+              Existing keys no longer authenticate requests. Use machine identities for programmatic
+              access. See the{" "}
               <a
                 href="https://infisical.com/docs/documentation/platform/identities/overview"
                 target="_blank"

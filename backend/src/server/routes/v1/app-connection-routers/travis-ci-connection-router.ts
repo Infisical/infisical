@@ -43,7 +43,7 @@ export const registerTravisCIConnectionRouter = async (server: FastifyZodProvide
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -76,7 +76,7 @@ export const registerTravisCIConnectionRouter = async (server: FastifyZodProvide
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const { repositoryId } = req.query;

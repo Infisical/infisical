@@ -1,13 +1,14 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
 import picomatch from "picomatch";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Lottie } from "@app/components/v2";
+import { ConfirmationAlertDialog, PageLoader } from "@app/components/v3";
 import {
+  Alert,
+  AlertDescription,
   Badge,
   Button,
   Card,
@@ -31,6 +32,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  RowLink,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -49,13 +51,14 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission,
   useUser
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getInstancePinningLink, getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
@@ -76,11 +79,12 @@ export const MemberRoleDetailsSection = ({
   isMembershipDetailsLoading,
   onOpenUpgradeModal
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { user } = useUser();
   const userId = user?.id;
+  const { currentOrg } = useOrganization();
   const { projectId, currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const navigate = useNavigate();
 
   const assignRoleConditions = useMemo(
     () => getMemberAssignRoleConditions(permission),
@@ -104,15 +108,15 @@ export const MemberRoleDetailsSection = ({
     "modifyManyRoles",
     "modifyRole"
   ] as const);
-  const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
+  const updateUserWorkspaceRole = useUpdateUserWorkspaceRole();
 
   const isOwnProjectMembershipDetails = userId === membershipDetails?.user?.id;
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   const handleRoleDelete = async () => {
-    const { id } = popUp?.deleteRole?.data as TProjectRole;
+    const { id } = popUp.deleteRole.data as TProjectRole;
     const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
-    await updateUserWorkspaceRole({
+    await updateUserWorkspaceRole.mutateAsync({
       projectId,
       projectType: currentProject?.type,
       roles: updatedRoles.map(
@@ -151,7 +155,7 @@ export const MemberRoleDetailsSection = ({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>{isCertManager ? "Roles" : "Project Roles"}</CardTitle>
+          <CardTitle>{hidesProjects(currentProject?.type) ? "Roles" : "Project Roles"}</CardTitle>
           <CardDescription>Manage roles assigned to this user</CardDescription>
           {!isOwnProjectMembershipDetails && hasRoles && (
             <CardAction>
@@ -195,9 +199,8 @@ export const MemberRoleDetailsSection = ({
           {
             /* eslint-disable-next-line no-nested-ternary */
             isMembershipDetailsLoading ? (
-              // scott: todo proper loader
-              <div className="flex h-40 w-full items-center justify-center">
-                <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+              <div className="h-40 w-full">
+                <PageLoader lottieClassName="w-16" />
               </div>
             ) : hasRoles ? (
               <Table>
@@ -233,30 +236,31 @@ export const MemberRoleDetailsSection = ({
                       }
                     }
 
+                    const roleSlug =
+                      roleDetails.role === "custom" ? roleDetails.customRoleSlug : roleDetails.role;
+                    const roleLink =
+                      getInstancePinningLink(currentOrg.id, currentProject, `roles/${roleSlug}`) ??
+                      ({
+                        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                        params: {
+                          orgId: currentOrg.id,
+                          projectId: currentProject.id,
+                          roleSlug
+                        }
+                      } as const);
+
                     return (
                       <TableRow
-                        className={`group h-10 ${isCertManager ? "" : "cursor-pointer"}`}
+                        className="group h-10"
                         key={`user-project-identity-${roleDetails?.id}`}
-                        onClick={
-                          isCertManager
-                            ? undefined
-                            : () =>
-                                navigate({
-                                  to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                                  params: {
-                                    projectId: currentProject.id,
-                                    roleSlug:
-                                      roleDetails.role === "custom"
-                                        ? roleDetails.customRoleSlug
-                                        : roleDetails.role
-                                  }
-                                })
-                        }
+                        linked={!isCertManager}
                       >
                         <TableCell className="max-w-0 truncate">
-                          {roleDetails.role === "custom"
-                            ? roleDetails.customRoleName
-                            : formatProjectRoleName(roleDetails.role)}
+                          <RowLink {...roleLink} disabled={isCertManager}>
+                            {roleDetails.role === "custom"
+                              ? roleDetails.customRoleName
+                              : formatProjectRoleName(roleDetails.role)}
+                          </RowLink>
                         </TableCell>
                         <TableCell>
                           {isTemporary ? (
@@ -265,6 +269,7 @@ export const MemberRoleDetailsSection = ({
                                 <Badge
                                   className="capitalize"
                                   variant={isExpired ? "danger" : "warning"}
+                                  data-row-interactive
                                 >
                                   {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
                                   {text}
@@ -283,7 +288,9 @@ export const MemberRoleDetailsSection = ({
                                 <IconButton
                                   size="xs"
                                   variant="ghost"
+                                  aria-label="Open role actions"
                                   onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => e.stopPropagation()}
                                 >
                                   <EllipsisIcon />
                                 </IconButton>
@@ -350,7 +357,7 @@ export const MemberRoleDetailsSection = ({
                         !isAllowed || isOwnProjectMembershipDetails || !canModifyMemberRoles;
                       const button = (
                         <Button
-                          variant="project"
+                          variant={scopeVariant}
                           size="xs"
                           onClick={() => {
                             handlePopUpOpen("modifyManyRoles");
@@ -382,12 +389,19 @@ export const MemberRoleDetailsSection = ({
         </CardContent>
       </Card>
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteRole.isOpen}
-        deleteKey="remove"
-        title={`Do you want to remove role ${(popUp?.deleteRole?.data as TProjectRole)?.slug}?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
-        onDeleteApproved={() => handleRoleDelete()}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
+        title={`Remove role "${(popUp?.deleteRole?.data as TProjectRole)?.slug}"?`}
+        description={
+          <Alert variant="danger" appearance="borderless">
+            <AlertDescription>This role will no longer grant access to this user.</AlertDescription>
+          </Alert>
+        }
+        confirmKey="remove"
+        confirmLabel="Remove Role"
+        isPending={updateUserWorkspaceRole.isPending}
+        onConfirm={handleRoleDelete}
       />
       <Sheet
         open={popUp.modifyManyRoles.isOpen}
@@ -397,8 +411,9 @@ export const MemberRoleDetailsSection = ({
           <SheetHeader className="border-b">
             <SheetTitle>Roles</SheetTitle>
             <SheetDescription>
-              Select one or more of the pre-defined or custom roles to configure project
-              permissions.
+              {isCertManager
+                ? "Select one or more of the pre-defined or custom roles to configure Certificate Manager permissions."
+                : "Select one or more of the pre-defined or custom roles to configure project permissions."}
             </SheetDescription>
           </SheetHeader>
           <MemberMultiRoleModify

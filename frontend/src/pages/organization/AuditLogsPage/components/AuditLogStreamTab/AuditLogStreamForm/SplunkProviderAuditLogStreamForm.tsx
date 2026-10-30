@@ -3,7 +3,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Field, FieldError, FieldLabel, Input, SecretInput } from "@app/components/v3";
-import { LogProvider, REDACTED_CREDENTIAL_VALUE } from "@app/hooks/api/auditLogStreams/enums";
+import {
+  LogProvider,
+  REDACTED_CREDENTIAL_VALUE,
+  SPLUNK_DEFAULT_HEC_PORT
+} from "@app/hooks/api/auditLogStreams/enums";
 import { TSplunkProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/splunk-provider";
 
 import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
@@ -43,6 +47,11 @@ const formSchema = z.object({
           ctx.addIssue({ code: "custom", message: "Invalid hostname" });
         }
       }),
+    port: z.coerce
+      .number({ invalid_type_error: "Port must be a number" })
+      .int("Port must be a whole number")
+      .min(1, "Port must be between 1 and 65535")
+      .max(65535, "Port must be between 1 and 65535"),
     token: z.string().uuid().trim().min(1)
   }),
   ...auditLogStreamFiltersSchema.shape
@@ -55,9 +64,18 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: auditLogStream ?? {
-      provider: LogProvider.Splunk
-    }
+    defaultValues: auditLogStream
+      ? {
+          ...auditLogStream,
+          credentials: {
+            ...auditLogStream.credentials,
+            port: auditLogStream.credentials.port ?? SPLUNK_DEFAULT_HEC_PORT
+          }
+        }
+      : {
+          provider: LogProvider.Splunk,
+          credentials: { port: SPLUNK_DEFAULT_HEC_PORT }
+        }
   });
 
   const { handleSubmit, control } = form;
@@ -65,23 +83,37 @@ export const SplunkProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Controller
-          name="credentials.hostname"
-          control={control}
-          shouldUnregister
-          render={({ field, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel htmlFor="hostname">Hostname</FieldLabel>
-              <Input
-                id="hostname"
-                {...field}
-                placeholder="splunk.example.com"
-                isError={Boolean(error?.message)}
-              />
-              <FieldError errors={[error]} />
-            </Field>
-          )}
-        />
+        <div className="grid grid-cols-[1fr_auto] gap-2">
+          <Controller
+            name="credentials.hostname"
+            control={control}
+            shouldUnregister
+            render={({ field, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="hostname">Hostname</FieldLabel>
+                <Input
+                  id="hostname"
+                  {...field}
+                  placeholder="splunk.example.com"
+                  isError={Boolean(error?.message)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          <Controller
+            name="credentials.port"
+            control={control}
+            shouldUnregister
+            render={({ field, fieldState: { error } }) => (
+              <Field className="mb-4 w-28">
+                <FieldLabel htmlFor="port">Port</FieldLabel>
+                <Input id="port" type="number" {...field} isError={Boolean(error?.message)} />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        </div>
         <Controller
           name="credentials.token"
           control={control}

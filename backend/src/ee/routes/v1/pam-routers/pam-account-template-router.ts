@@ -2,8 +2,8 @@ import z from "zod";
 
 import { PamAccountTemplatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { PamTemplateSettingsInputSchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
+import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -45,7 +45,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const templates = await server.services.pamAccountTemplate.list({
         projectId: req.internalPamProjectId,
@@ -80,7 +80,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const template = await server.services.pamAccountTemplate.getById({
         templateId: req.params.templateId,
@@ -119,7 +119,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { corsProbeUrl, ...template } = await server.services.pamAccountTemplate.create({
         ...req.body,
@@ -187,7 +187,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { corsProbeUrl, ...template } = await server.services.pamAccountTemplate.update({
         templateId: req.params.templateId,

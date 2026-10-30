@@ -22,7 +22,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     method: "POST",
     url: "/",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
@@ -99,7 +99,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     method: "GET",
     url: "/",
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
@@ -126,7 +126,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     method: "GET",
     url: "/:serviceId",
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
@@ -150,7 +150,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     method: "GET",
     url: "/slug/:name",
     config: { rateLimit: readLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
@@ -187,7 +187,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     method: "PATCH",
     url: "/:serviceId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],
@@ -237,7 +237,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     method: "POST",
     url: "/:serviceId/report-usage",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: true,
       tags: [ApiDocsTags.ProxiedServices],
@@ -257,7 +257,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     method: "DELETE",
     url: "/:serviceId",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProxiedServices],

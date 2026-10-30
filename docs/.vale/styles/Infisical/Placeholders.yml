@@ -1,0 +1,15 @@
+extends: existence
+message: "Use an obvious placeholder such as '<your-api-key>' instead of '%s'."
+level: error
+link: https://github.com/Infisical/infisical/blob/main/docs/STYLE_GUIDE.md#code-examples
+# Code blocks are skipped by every other scope, and placeholders live in them.
+scope: raw
+nonword: true
+ignorecase: false
+# Only a standalone lowercase token counts. Neighbouring word characters or
+# hyphens mean it is part of an identifier, where `main-abc123.js` is a
+# legitimate illustration of a content-hashed filename rather than a lazy
+# placeholder. Uppercase FOO and BAR are left alone: they read as secret key
+# names, not as stand-ins for a real value.
+raw:
+  - '(?<![\w-])(?:abc123|foobar|foo|baz|qux)(?![\w-])'

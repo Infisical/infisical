@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import * as x509 from "@peculiar/x509";
 import { KeyObject } from "crypto";
+import { Knex } from "knex";
 
 import {
   AccessScope,
@@ -30,9 +31,12 @@ import {
   Pkcs11Mechanism,
   wrapRsaPkcs1DigestInfo
 } from "@app/lib/csr/pkcs11-algorithm-map";
-import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import {
   TApprovalPolicyDALFactory,
@@ -42,20 +46,35 @@ import {
 import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
-  ApprovalRequestGrantStatus
+  ApprovalRequestGrantStatus,
+  ApprovalRequestStatus
 } from "../approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory, TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-request-dal";
-import { TCodeSigningGrantAttributes } from "../approval-policy/code-signing/code-signing-policy-types";
+import {
+  CODE_SIGNING_SCOPE_FIELD_LABELS,
+  CodeSigningScopeField
+} from "../approval-policy/code-signing/code-signing-policy-enums";
+import {
+  buildObservedSigningContext,
+  getCodeSigningScopeMismatches,
+  redactCommandCredentials,
+  TObservedSigningContext
+} from "../approval-policy/code-signing/code-signing-policy-fns";
+import {
+  TCodeSigningGrantAttributes,
+  TCodeSigningRequestData
+} from "../approval-policy/code-signing/code-signing-policy-types";
 import { ActorType } from "../auth/auth-type";
-import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { getCertificateCredentials } from "../certificate/certificate-fns";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertStatus, CrlReason } from "../certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { TDigiCertCertificateAuthorityFns } from "../certificate-authority/digicert/digicert-certificate-authority-fns";
+import { MAX_CS_VALIDITY_DAYS } from "../certificate-authority/digicert/digicert-code-signing-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "../certificate-authority/internal/internal-certificate-authority-service";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { extractCertificateAlgorithms, getCertificateCredentials } from "../certificate/certificate-fns";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertStatus, CrlReason } from "../certificate/certificate-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -63,9 +82,16 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { isBuiltInSignerRole, unknownSignerRoleMessage } from "../signer-membership/signer-membership-service";
 import { TSignerDALFactory } from "./signer-dal";
-import { CertKeySource, HsmKeyAlgorithm, SignerStatus, SigningOperationStatus } from "./signer-enums";
+import {
+  CertKeySource,
+  HsmKeyAlgorithm,
+  SIGNER_APPROVAL_REQUIRED_ERROR_NAME,
+  SignerStatus,
+  SigningOperationStatus
+} from "./signer-enums";
 import { formatSignerIssuanceErrorReason } from "./signer-issuance-errors";
 import {
+  assertHsmKeyMatchesCertificate,
   issueHsmBackedSignerCertificate,
   issueSignerCertificate,
   mapCertKeyAlgorithmToHsmKeyAlgorithm,
@@ -74,6 +100,7 @@ import {
 import { TSignerIssuanceServiceFactory } from "./signer-issuance-service";
 import {
   SignerExternalCaConfigSchema,
+  TCheckCertificateImportDTO,
   TCreateSignerDTO,
   TDeleteSignerDTO,
   TDisableSignerDTO,
@@ -81,17 +108,30 @@ import {
   TExportCertificateDTO,
   TGetPublicKeyDTO,
   TGetSignerDTO,
+  TGetSigningOperationDTO,
+  TImportCertificateDTO,
   TListSignersDTO,
   TListSigningOperationsDTO,
   TReissueCertificateDTO,
   TSignDataDTO,
+  TSignerCertificateInput,
   TSignerExternalCaConfig,
+  TSignerExternalConfigurationInput,
   TUpdateSignerDTO
 } from "./signer-types";
 import { TSigningOperationDALFactory } from "./signing-operation-dal";
 
 const MAX_DATA_BYTES = 128;
 const DEFAULT_CERTIFICATE_TTL_DAYS = 365;
+
+const IMPORTABLE_HSM_KEY_ALGORITHMS: readonly string[] = [
+  CertKeyAlgorithm.RSA_3072,
+  CertKeyAlgorithm.RSA_4096,
+  CertKeyAlgorithm.ECDSA_P256,
+  CertKeyAlgorithm.ECDSA_P384
+];
+
+const IMPORTED_CERTIFICATE_FALLBACK_COMMON_NAME = "Code signing certificate";
 
 const CODE_SIGNING_SUPPORTED_EXTERNAL_CA_TYPES = new Set<CaType>([
   CaType.AWS_PCA,
@@ -129,31 +169,38 @@ type TSignerServiceFactoryDep = {
   signingOperationDAL: TSigningOperationDALFactory;
   hsmConnectorService: Pick<
     THsmConnectorServiceFactory,
-    "sign" | "generateKeyPair" | "getPublicKey" | "assertAttachPermission"
+    "sign" | "signWithKeyId" | "generateKeyPair" | "getPublicKey" | "assertAttachPermission"
   >;
-  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "findByIdForUpdate">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   signerIssuanceService: Pick<
     TSignerIssuanceServiceFactory,
-    "requestIssuance" | "getLatestIssuanceKeyConfig" | "runPendingJobNow"
+    "requestIssuance" | "getLatestIssuanceKeyConfig" | "runPendingJobNow" | "cancelOpenJobs"
   >;
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
-  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "revokeCertificate" | "assertCodeSigningOrderReusable">;
+  digicertFns: Pick<
+    TDigiCertCertificateAuthorityFns,
+    | "revokeCertificate"
+    | "assertCodeSigningOrderReusable"
+    | "fetchIssuedCodeSigningCertificate"
+    | "prepareCodeSigningCertificateImport"
+  >;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   approvalPolicyDAL: TApprovalPolicyDALFactory;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "create">;
-  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "delete">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "delete" | "find">;
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   membershipDAL: Pick<
     TMembershipDALFactory,
     "create" | "find" | "delete" | "transaction" | "findResourceMembershipsForActor"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
+  orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -202,6 +249,37 @@ const validateSigningAlgorithmForKey = (signingAlgorithm: SigningAlgorithm, keyA
   }
 };
 
+enum SigningGrantVerdict {
+  NotApplicable = "not-applicable",
+  Expired = "expired",
+  ScopeMismatch = "scope-mismatch",
+  Usable = "usable"
+}
+
+const classifyGrantForSigning = (
+  grant: { expiresAt?: Date | null; attributes?: unknown },
+  signerId: string,
+  observedContext: TObservedSigningContext,
+  now: Date
+): { verdict: SigningGrantVerdict; mismatchedFields: CodeSigningScopeField[] } => {
+  const attributes = grant.attributes as TCodeSigningGrantAttributes | null;
+  if (!attributes || attributes.signerId !== signerId) {
+    return { verdict: SigningGrantVerdict.NotApplicable, mismatchedFields: [] };
+  }
+  if (attributes.windowStart && new Date(attributes.windowStart) > now) {
+    return { verdict: SigningGrantVerdict.NotApplicable, mismatchedFields: [] };
+  }
+  if (grant.expiresAt && new Date(grant.expiresAt) < now) {
+    return { verdict: SigningGrantVerdict.Expired, mismatchedFields: [] };
+  }
+
+  const mismatchedFields = getCodeSigningScopeMismatches(attributes.scope, observedContext);
+  if (mismatchedFields.length > 0) {
+    return { verdict: SigningGrantVerdict.ScopeMismatch, mismatchedFields };
+  }
+  return { verdict: SigningGrantVerdict.Usable, mismatchedFields: [] };
+};
+
 type TResolvedHsmReissue = {
   isHsm: true;
   switchingKeySource: boolean;
@@ -215,6 +293,17 @@ type TResolvedInfisicalReissue = {
   keyAlgorithm: CertKeyAlgorithm;
 };
 type TResolvedReissueTarget = TResolvedHsmReissue | TResolvedInfisicalReissue;
+
+export const assertExternalConfigurationMatchesCaType = (
+  externalConfiguration: TSignerExternalConfigurationInput | undefined,
+  caType: CaType | null
+) => {
+  if (externalConfiguration?.caType && externalConfiguration.caType !== caType) {
+    throw new BadRequestError({
+      message: `externalConfiguration.caType '${externalConfiguration.caType}' does not match the type of the selected certificate authority ('${caType ?? "none"}').`
+    });
+  }
+};
 
 export const resolveReissueTarget = ({
   dto,
@@ -245,6 +334,12 @@ export const resolveReissueTarget = ({
     const keyAlgorithm =
       dto.keyAlgorithm ?? (currentCert?.keyAlgorithm as CertKeyAlgorithm | undefined) ?? CertKeyAlgorithm.RSA_2048;
     const hsmKeyAlgorithm = mapCertKeyAlgorithmToHsmKeyAlgorithm(keyAlgorithm);
+    if (switchingKeySource && hsmKeyAlgorithm === HsmKeyAlgorithm.RSA_3072) {
+      throw new BadRequestError({
+        message:
+          "A new HSM key can't be RSA-3072. Choose RSA-2048, RSA-4096, ECDSA P-256, or ECDSA P-384, or keep the signer's current key."
+      });
+    }
     if (!hsmConnectorId) {
       throw new BadRequestError({
         message: "hsmConnectorId is required to (re)issue with an HSM key source."
@@ -278,7 +373,8 @@ export const signerServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   hsmConnectorService,
-  licenseService
+  licenseService,
+  orgDAL
 }: TSignerServiceFactoryDep) => {
   const hsmCertIssuanceDeps = {
     certificateAuthorityDAL,
@@ -354,6 +450,173 @@ export const signerServiceFactory = ({
     return certificateId;
   };
 
+  const $parseDigiCertOrderId = (
+    value: string | undefined,
+    caType: CaType | null,
+    field: "reissueFromExternalOrderId" | "importFromExternalOrderId" | "externalOrderId"
+  ): number | undefined => {
+    if (!value) return undefined;
+    if (caType !== CaType.DIGICERT) {
+      throw new BadRequestError({
+        message: `${field === "reissueFromExternalOrderId" ? "Reissuing from an existing order" : "Using the certificate from an existing order"} is only supported for DigiCert code signing certificate authorities.`
+      });
+    }
+    const orderId = Number(value);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      throw new BadRequestError({ message: `${field} must be a valid DigiCert order id.` });
+    }
+    return orderId;
+  };
+
+  const $verifyExistingDigiCertCertificate = async (input: {
+    caId: string;
+    projectId: string;
+    orderId: number;
+    certificate?: TSignerCertificateInput;
+    actor: Parameters<typeof hsmConnectorService.assertAttachPermission>[0];
+  }) => {
+    const { caId, projectId, orderId } = input;
+    const hsmConnectorId = input.certificate?.hsmConnectorId;
+    const hsmKeyLabel = input.certificate?.hsmKeyLabel;
+    const requestedHsmKeyId = input.certificate?.hsmKeyId;
+    if (input.certificate?.keySource !== CertKeySource.Hsm || !hsmConnectorId || !hsmKeyLabel) {
+      throw new BadRequestError({
+        message:
+          "Using an existing DigiCert certificate requires an HSM Connector and the label of the certificate's private key on that HSM."
+      });
+    }
+    const hsmConnector = await hsmConnectorService.assertAttachPermission(input.actor, hsmConnectorId, projectId);
+
+    const { pemBundle, certificate } = await digicertFns.fetchIssuedCodeSigningCertificate(caId, orderId);
+    const { keyAlgorithm } = extractCertificateAlgorithms(certificate);
+    if (!keyAlgorithm || !IMPORTABLE_HSM_KEY_ALGORITHMS.includes(keyAlgorithm)) {
+      throw new BadRequestError({
+        message: `The certificate in DigiCert order ${orderId} uses an unsupported key type (${keyAlgorithm ?? "unknown"}). Supported key types are RSA-3072, RSA-4096, ECDSA P-256, and ECDSA P-384.`
+      });
+    }
+
+    const { hsmKeyId } = await assertHsmKeyMatchesCertificate(
+      { hsmConnectorService },
+      { hsmConnectorId, projectId, hsmKeyLabel, hsmKeyId: requestedHsmKeyId, certificate }
+    );
+
+    const validityDays = Math.round(
+      (certificate.notAfter.getTime() - certificate.notBefore.getTime()) / (24 * 60 * 60 * 1000)
+    );
+    return {
+      orderId,
+      projectId,
+      pemBundle,
+      hsmConnectorName: hsmConnector.name,
+      hsm: {
+        keySource: CertKeySource.Hsm,
+        hsmConnectorId,
+        hsmKeyLabel,
+        hsmKeyId: hsmKeyId ?? requestedHsmKeyId ?? null,
+        hsmPublicKeySpki: Buffer.from(certificate.publicKey.rawData)
+      },
+      commonName: certificate.subjectName.getField("CN")[0] || IMPORTED_CERTIFICATE_FALLBACK_COMMON_NAME,
+      certificateTtlDays: Math.min(Math.max(validityDays, 1), MAX_CS_VALIDITY_DAYS),
+      keyAlgorithm: keyAlgorithm as CertKeyAlgorithm
+    };
+  };
+
+  const $importExistingDigiCertCertificate = async (
+    input: Parameters<typeof $verifyExistingDigiCertCertificate>[0]
+  ) => {
+    const { pemBundle, ...verified } = await $verifyExistingDigiCertCertificate(input);
+    const preparedCertificate = await digicertFns.prepareCodeSigningCertificateImport({
+      caId: input.caId,
+      orderId: input.orderId,
+      pemBundle
+    });
+    return { ...verified, preparedCertificate };
+  };
+
+  const checkCertificateImport = async (dto: TCheckCertificateImportDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: dto.actor,
+      actorId: dto.actorId,
+      projectId: dto.projectId,
+      actorAuthMethod: dto.actorAuthMethod,
+      actorOrgId: dto.actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCodeSigningActions.Create,
+      ProjectPermissionSub.CodeSigners
+    );
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
+    if (!ca || ca.projectId !== dto.projectId) {
+      throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
+    }
+    const caType: CaType = (ca.externalCa?.type as CaType | undefined) ?? CaType.INTERNAL;
+    const orderId = $parseDigiCertOrderId(dto.externalOrderId, caType, "externalOrderId") as number;
+    const verified = await $verifyExistingDigiCertCertificate({
+      caId: ca.id,
+      projectId: dto.projectId,
+      orderId,
+      certificate: { keySource: CertKeySource.Hsm, ...dto.certificate },
+      actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
+    });
+    return {
+      hsmKeyId: verified.hsm.hsmKeyId,
+      commonName: verified.commonName,
+      certificateTtlDays: verified.certificateTtlDays,
+      keyAlgorithm: verified.keyAlgorithm
+    };
+  };
+
+  const $attachImportedCertificate = async (
+    imported: Awaited<ReturnType<typeof $importExistingDigiCertCertificate>>,
+    signerId: string | undefined,
+    tx: Knex
+  ) => {
+    const { preparedCertificate } = imported;
+    const certificateId = preparedCertificate.insert
+      ? await preparedCertificate.insert(tx)
+      : preparedCertificate.existingCertificateId;
+    await certificateDAL.findByIdForUpdate(certificateId, tx);
+    const signerUsingCertificate = await signerDAL.findOne({ certificateId }, tx);
+    if (signerUsingCertificate && signerUsingCertificate.id !== signerId) {
+      throw new ConflictError({
+        message: `The certificate in DigiCert order ${imported.orderId} is already used by signer '${signerUsingCertificate.name}'.`
+      });
+    }
+    await tx.raw("SELECT pg_advisory_xact_lock(hashtext(?))", [
+      `signer-hsm-key:${imported.hsm.hsmPublicKeySpki.toString("hex")}`
+    ]);
+    const signerUsingKey = await signerDAL.findOneInOrgByCurrentHsmPublicKey(
+      imported.projectId,
+      imported.hsm.hsmPublicKeySpki,
+      signerId,
+      tx
+    );
+    if (signerUsingKey) {
+      throw new ConflictError({
+        message: `The private key of the certificate in DigiCert order ${imported.orderId} is already used by another signer. Each signer needs its own key.`
+      });
+    }
+    await certificateDAL.updateById(certificateId, imported.hsm, tx);
+    return certificateId;
+  };
+
+  const $rethrowConcurrentImport = async (
+    error: unknown,
+    imported: Awaited<ReturnType<typeof $importExistingDigiCertCertificate>> | null
+  ) => {
+    if (
+      imported?.preparedCertificate.insert &&
+      error instanceof DatabaseError &&
+      (error.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation &&
+      (await imported.preparedCertificate.findConcurrentInsert())
+    ) {
+      throw new ConflictError({
+        message: `The certificate in DigiCert order ${imported.orderId} was attached to a signer by another request at the same time. Refresh and try again.`
+      });
+    }
+  };
+
   const create = async (dto: TCreateSignerDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor: dto.actor,
@@ -369,10 +632,8 @@ export const signerServiceFactory = ({
       ProjectPermissionSub.CodeSigners
     );
 
-    // pkiCodeSigning is ignored when null (no restriction); only an explicit boolean gates the feature,
-    // blocking creation when it is explicitly false.
     const plan = await licenseService.getPlan(dto.actorOrgId);
-    if (typeof plan.pkiCodeSigning === "boolean" && !plan.pkiCodeSigning) {
+    if (!plan.pkiCodeSigning) {
       throw new BadRequestError({
         message: "Failed to create code signer due to plan restriction. Upgrade plan to access PKI code signing."
       });
@@ -402,7 +663,7 @@ export const signerServiceFactory = ({
         throw new NotFoundError({ message: `Certificate with ID '${dto.certificateId}' not found` });
       }
       if (certificate.projectId !== dto.projectId) {
-        throw new BadRequestError({ message: "Certificate must belong to the same project" });
+        throw new BadRequestError({ message: "Certificate must belong to the same organization" });
       }
       if (certificate.status === CertStatus.REVOKED) {
         throw new BadRequestError({ message: "Certificate has been revoked" });
@@ -423,12 +684,12 @@ export const signerServiceFactory = ({
     let resolvedCaId: string | null = null;
     let resolvedCaType: CaType | null = null;
     if (usingCa) {
-      if (!dto.commonName) {
+      if (!dto.commonName && !dto.externalConfiguration?.importFromExternalOrderId) {
         throw new BadRequestError({ message: "commonName is required when issuing a certificate from a CA." });
       }
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId as string);
       if (!ca || ca.projectId !== dto.projectId) {
-        throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this project.` });
+        throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
       }
       if (ca.status !== CaStatus.ACTIVE) {
         throw new BadRequestError({ message: "The selected certificate authority is not active." });
@@ -438,30 +699,28 @@ export const signerServiceFactory = ({
     }
 
     if (resolvedCaType) assertCaTypeSupportsCodeSigning(resolvedCaType);
+    assertExternalConfigurationMatchesCaType(dto.externalConfiguration, resolvedCaType);
 
     let createDigicertLifecycle: { mode: "reissue"; previousOrderId: number } | undefined;
     const createExternalConfig = dto.externalConfiguration;
-    const reissueFromExternalOrderId =
-      createExternalConfig?.caType === CaType.DIGICERT ? createExternalConfig.reissueFromExternalOrderId : undefined;
-    if (reissueFromExternalOrderId) {
-      if (resolvedCaType !== CaType.DIGICERT) {
-        throw new BadRequestError({
-          message:
-            "Reissuing from an existing order is only supported for DigiCert code signing certificate authorities."
-        });
-      }
-      const previousOrderId = Number(reissueFromExternalOrderId);
-      if (!Number.isInteger(previousOrderId) || previousOrderId <= 0) {
-        throw new BadRequestError({ message: "reissueFromExternalOrderId must be a valid DigiCert order id." });
-      }
-      await digicertFns.assertCodeSigningOrderReusable(resolvedCaId as string, previousOrderId);
-      createDigicertLifecycle = { mode: "reissue", previousOrderId };
+    const reissueOrderId = $parseDigiCertOrderId(
+      createExternalConfig?.reissueFromExternalOrderId,
+      resolvedCaType,
+      "reissueFromExternalOrderId"
+    );
+    const importOrderId = $parseDigiCertOrderId(
+      createExternalConfig?.importFromExternalOrderId,
+      resolvedCaType,
+      "importFromExternalOrderId"
+    );
+    if (reissueOrderId) {
+      await digicertFns.assertCodeSigningOrderReusable(resolvedCaId as string, reissueOrderId);
+      createDigicertLifecycle = { mode: "reissue", previousOrderId: reissueOrderId };
     }
 
     const isExternalCa = resolvedCaType !== null && resolvedCaType !== CaType.INTERNAL;
 
-    const adcsTemplate =
-      createExternalConfig?.caType === CaType.ADCS ? createExternalConfig.template?.trim() || undefined : undefined;
+    const adcsTemplate = createExternalConfig?.template?.trim() || undefined;
     if (adcsTemplate && resolvedCaType !== CaType.ADCS) {
       throw new BadRequestError({
         message:
@@ -487,7 +746,29 @@ export const signerServiceFactory = ({
       });
     }
 
-    const keyAlgorithm: CertKeyAlgorithm = (dto.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
+    const importedCertificate =
+      importOrderId && resolvedCaId
+        ? await $importExistingDigiCertCertificate({
+            caId: resolvedCaId,
+            projectId: dto.projectId,
+            orderId: importOrderId,
+            certificate: dto.certificate,
+            actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
+          })
+        : null;
+
+    if (
+      importedCertificate &&
+      dto.certificateRenewBeforeDays != null &&
+      dto.certificateRenewBeforeDays >= importedCertificate.certificateTtlDays
+    ) {
+      throw new BadRequestError({
+        message: `Renew before (${dto.certificateRenewBeforeDays}d) must be less than the validity of the certificate in DigiCert order ${importOrderId} (${importedCertificate.certificateTtlDays}d).`
+      });
+    }
+
+    const keyAlgorithm: CertKeyAlgorithm =
+      importedCertificate?.keyAlgorithm ?? (dto.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
 
     let issuedCertificateId: string | null = null;
     if (usingCa && resolvedCaId && !isExternalCa) {
@@ -503,13 +784,17 @@ export const signerServiceFactory = ({
     }
 
     const finalCertificateId = usingExistingCert ? (dto.certificateId as string) : issuedCertificateId;
-    const initialStatus: SignerStatus = isExternalCa ? SignerStatus.Pending : SignerStatus.Active;
+    const initialStatus: SignerStatus =
+      isExternalCa && !importedCertificate ? SignerStatus.Pending : SignerStatus.Active;
 
     try {
       const result = await signerDAL.transaction(async (tx) => {
+        const importedCertificateId = importedCertificate
+          ? await $attachImportedCertificate(importedCertificate, undefined, tx)
+          : null;
         const project = await projectDAL.findOne({ id: dto.projectId }, tx);
         if (!project) {
-          throw new NotFoundError({ message: `Project '${dto.projectId}' not found.` });
+          throw new NotFoundError({ message: "Certificate Manager has not been set up for this organization." });
         }
         const policy = await approvalPolicyDAL.create(
           {
@@ -530,10 +815,12 @@ export const signerServiceFactory = ({
             projectId: dto.projectId,
             name: dto.name,
             description: dto.description,
-            certificateId: finalCertificateId,
+            certificateId: importedCertificateId ?? finalCertificateId,
             caId: resolvedCaId,
-            commonName: usingCa ? dto.commonName : null,
-            certificateTtlDays: usingCa ? (dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS) : null,
+            commonName: usingCa ? (importedCertificate?.commonName ?? dto.commonName) : null,
+            certificateTtlDays: usingCa
+              ? (importedCertificate?.certificateTtlDays ?? dto.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS)
+              : null,
             certificateRenewBeforeDays: usingCa ? (dto.certificateRenewBeforeDays ?? null) : null,
             keyAlgorithm,
             status: initialStatus,
@@ -633,6 +920,11 @@ export const signerServiceFactory = ({
               });
             }
           }
+
+          await lockAndAssertActiveOrgAccess(
+            { orgDAL, orgId: dto.actorOrgId, userIds: pendingUserIds, identityIds: pendingIdentityIds },
+            tx
+          );
         }
 
         for (const member of pendingMembers) {
@@ -740,7 +1032,7 @@ export const signerServiceFactory = ({
         return { ...signer, approvalPolicyId: policy.id };
       });
 
-      if (usingCa && resolvedCaId && isExternalCa && resolvedCaType) {
+      if (usingCa && resolvedCaId && isExternalCa && resolvedCaType && !importedCertificate) {
         try {
           const certificateInput = dto.certificate;
           await signerIssuanceService.requestIssuance({
@@ -782,9 +1074,12 @@ export const signerServiceFactory = ({
 
       return result;
     } catch (error) {
+      await $rethrowConcurrentImport(error, importedCertificate);
       // 23505 = unique constraint violation
       if (error instanceof DatabaseError && (error.error as { code?: string })?.code === "23505") {
-        throw new BadRequestError({ message: `A signer with the name '${dto.name}' already exists in this project` });
+        throw new BadRequestError({
+          message: `A signer with the name '${dto.name}' already exists in this organization`
+        });
       }
       throw error;
     }
@@ -1096,6 +1391,7 @@ export const signerServiceFactory = ({
 
   const $reissueExternalSigner = async (ctx: TReissueExecutionContext) => {
     const { dto, signer, reissueCaType, target, currentCert, recoveredKeyConfig, commonName, certificateTtlDays } = ctx;
+    const reusedHsmKeyRow = currentCert?.hsmKeyLabel ? currentCert : recoveredKeyConfig;
     const reissueHsm = target.isHsm
       ? {
           hsmConnectorId: target.hsmConnectorId,
@@ -1103,6 +1399,7 @@ export const signerServiceFactory = ({
           hsmKeyLabel: target.switchingKeySource
             ? undefined
             : (currentCert?.hsmKeyLabel ?? recoveredKeyConfig?.hsmKeyLabel ?? undefined),
+          hsmKeyId: target.switchingKeySource ? undefined : reusedHsmKeyRow?.hsmKeyId,
           hsmPublicKeySpki: target.switchingKeySource
             ? undefined
             : (currentCert?.hsmPublicKeySpki ?? recoveredKeyConfig?.hsmPublicKeySpki ?? undefined),
@@ -1165,6 +1462,7 @@ export const signerServiceFactory = ({
             certificateTtlDays,
             hsmConnectorId: target.hsmConnectorId,
             hsmKeyLabel: currentCert.hsmKeyLabel,
+            hsmKeyId: currentCert.hsmKeyId,
             expectedPublicKeySpkiDer: currentCert.hsmPublicKeySpki ?? undefined,
             hsmKeyAlgorithm: target.hsmKeyAlgorithm
           });
@@ -1199,6 +1497,84 @@ export const signerServiceFactory = ({
     }
   };
 
+  const importCertificate = async (dto: TImportCertificateDTO) => {
+    const signer = await signerDAL.findById(dto.signerId);
+    if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
+
+    const { permission } = await $loadSignerResourcePermission(
+      signer.id,
+      signer.projectId,
+      dto.actor,
+      dto.actorId,
+      dto.actorAuthMethod,
+      dto.actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionSignerActions.ReissueCertificate,
+      ResourcePermissionSub.Signer
+    );
+
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
+    if (!ca || ca.projectId !== signer.projectId) {
+      throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
+    }
+    if (ca.status !== CaStatus.ACTIVE) {
+      throw new BadRequestError({ message: "The selected certificate authority is not active." });
+    }
+    const caType: CaType = (ca.externalCa?.type as CaType | undefined) ?? CaType.INTERNAL;
+    const importOrderId = $parseDigiCertOrderId(dto.externalOrderId, caType, "externalOrderId") as number;
+
+    const imported = await $importExistingDigiCertCertificate({
+      caId: ca.id,
+      projectId: signer.projectId,
+      orderId: importOrderId,
+      certificate: { keySource: CertKeySource.Hsm, ...dto.certificate },
+      actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
+    });
+    const assertRenewBeforeFitsImport = (renewBeforeDays?: number | null) => {
+      if (renewBeforeDays != null && renewBeforeDays >= imported.certificateTtlDays) {
+        throw new BadRequestError({
+          message: `Renew before (${renewBeforeDays}d) must be less than the validity of the certificate in DigiCert order ${importOrderId} (${imported.certificateTtlDays}d).`
+        });
+      }
+    };
+    assertRenewBeforeFitsImport(
+      dto.certificateRenewBeforeDays !== undefined ? dto.certificateRenewBeforeDays : signer.certificateRenewBeforeDays
+    );
+    const updatedSigner = await signerDAL
+      .transaction(async (tx) => {
+        await signerIssuanceService.cancelOpenJobs(signer.id, importOrderId, tx);
+        const importedCertificateId = await $attachImportedCertificate(imported, signer.id, tx);
+        const lockedSigner = await signerDAL.findByIdForUpdate(signer.id, tx);
+        if (!lockedSigner) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
+        if (dto.certificateRenewBeforeDays === undefined) {
+          assertRenewBeforeFitsImport(lockedSigner.certificateRenewBeforeDays);
+        }
+        return signerDAL.updateById(
+          signer.id,
+          {
+            caId: ca.id,
+            commonName: imported.commonName,
+            certificateTtlDays: imported.certificateTtlDays,
+            ...(dto.certificateRenewBeforeDays !== undefined
+              ? { certificateRenewBeforeDays: dto.certificateRenewBeforeDays }
+              : {}),
+            keyAlgorithm: imported.keyAlgorithm,
+            externalCaConfig: null,
+            certificateId: importedCertificateId,
+            status: SignerStatus.Active,
+            certificateFailureReason: null
+          },
+          tx
+        );
+      })
+      .catch(async (error: unknown) => {
+        await $rethrowConcurrentImport(error, imported);
+        throw error;
+      });
+    return { signer: updatedSigner, caName: ca.name, hsmConnectorName: imported.hsmConnectorName };
+  };
+
   const reissueCertificate = async (dto: TReissueCertificateDTO) => {
     const signer = await signerDAL.findById(dto.signerId);
     if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
@@ -1218,7 +1594,7 @@ export const signerServiceFactory = ({
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
     if (!ca || ca.projectId !== signer.projectId) {
-      throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this project.` });
+      throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
     }
     if (ca.status !== CaStatus.ACTIVE) {
       throw new BadRequestError({ message: "The selected certificate authority is not active." });
@@ -1226,28 +1602,20 @@ export const signerServiceFactory = ({
 
     const reissueCaType: CaType = (ca.externalCa?.type as CaType | undefined) ?? CaType.INTERNAL;
     assertCaTypeSupportsCodeSigning(reissueCaType);
+    assertExternalConfigurationMatchesCaType(dto.externalConfiguration, reissueCaType);
     const reissueIsExternal = reissueCaType !== CaType.INTERNAL;
 
     const reissueExternalConfig = dto.externalConfiguration;
-    const reissueFromExternalOrderId =
-      reissueExternalConfig?.caType === CaType.DIGICERT ? reissueExternalConfig.reissueFromExternalOrderId : undefined;
-    let explicitReissueOrderId: number | undefined;
-    if (reissueFromExternalOrderId) {
-      if (reissueCaType !== CaType.DIGICERT) {
-        throw new BadRequestError({
-          message:
-            "Reissuing from an existing order is only supported for DigiCert code signing certificate authorities."
-        });
-      }
-      explicitReissueOrderId = Number(reissueFromExternalOrderId);
-      if (!Number.isInteger(explicitReissueOrderId) || explicitReissueOrderId <= 0) {
-        throw new BadRequestError({ message: "reissueFromExternalOrderId must be a valid DigiCert order id." });
-      }
+    const explicitReissueOrderId = $parseDigiCertOrderId(
+      reissueExternalConfig?.reissueFromExternalOrderId,
+      reissueCaType,
+      "reissueFromExternalOrderId"
+    );
+    if (explicitReissueOrderId) {
       await digicertFns.assertCodeSigningOrderReusable(ca.id, explicitReissueOrderId);
     }
 
-    const providedAdcsTemplate =
-      reissueExternalConfig?.caType === CaType.ADCS ? reissueExternalConfig.template?.trim() || undefined : undefined;
+    const providedAdcsTemplate = reissueExternalConfig?.template?.trim() || undefined;
     if (providedAdcsTemplate && reissueCaType !== CaType.ADCS) {
       throw new BadRequestError({
         message:
@@ -1400,6 +1768,152 @@ export const signerServiceFactory = ({
     };
   };
 
+  type TSigningAccessResolution = {
+    grantId: string | null;
+    matchedGrantAttributes: TCodeSigningGrantAttributes | null;
+    pendingOperationId: string | null;
+    deniedReason?: string;
+  };
+
+  const $resolveSigningAccess = async ({
+    signer,
+    projectId,
+    dto,
+    dataHash,
+    observedContext,
+    operationClientMetadata
+  }: {
+    signer: { id: string; name: string };
+    projectId: string;
+    dto: TSignDataDTO;
+    dataHash: string;
+    observedContext: TObservedSigningContext;
+    operationClientMetadata: Record<string, unknown> | null;
+  }): Promise<TSigningAccessResolution> =>
+    projectDAL.transaction(async (tx) => {
+      const [userGrants, identityGrants] = await Promise.all([
+        approvalRequestGrantsDAL.find(
+          {
+            granteeUserId: dto.actorId,
+            type: ApprovalPolicyType.CertCodeSigning,
+            status: ApprovalRequestGrantStatus.Active,
+            projectId,
+            revokedAt: null
+          },
+          { tx }
+        ),
+        approvalRequestGrantsDAL.find(
+          {
+            granteeMachineIdentityId: dto.actorId,
+            type: ApprovalPolicyType.CertCodeSigning,
+            status: ApprovalRequestGrantStatus.Active,
+            projectId,
+            revokedAt: null
+          },
+          { tx }
+        )
+      ]);
+
+      const activeGrants = [...userGrants, ...identityGrants];
+
+      let matchingGrant: (typeof activeGrants)[number] | undefined;
+
+      const now = new Date();
+      const expiredGrantIds: string[] = [];
+      const mismatchedScopeFields = new Set<CodeSigningScopeField>();
+
+      for (const grant of activeGrants) {
+        const { verdict, mismatchedFields } = classifyGrantForSigning(grant, signer.id, observedContext, now);
+
+        if (verdict === SigningGrantVerdict.Expired) {
+          expiredGrantIds.push(grant.id);
+        } else if (verdict === SigningGrantVerdict.ScopeMismatch) {
+          mismatchedFields.forEach((field) => mismatchedScopeFields.add(field));
+        } else if (verdict === SigningGrantVerdict.Usable) {
+          matchingGrant ??= grant;
+        }
+      }
+
+      await Promise.all(
+        expiredGrantIds.map((id) =>
+          approvalRequestGrantsDAL.updateById(id, { status: ApprovalRequestGrantStatus.Expired }, tx)
+        )
+      );
+
+      let selectedGrantBecameUnusable = false;
+
+      if (matchingGrant) {
+        const lockedGrant = await approvalRequestGrantsDAL.findByIdForUpdate(matchingGrant.id, tx);
+        if (!lockedGrant || lockedGrant.status !== ApprovalRequestGrantStatus.Active) {
+          matchingGrant = undefined;
+          selectedGrantBecameUnusable = true;
+        } else {
+          const lockedAttributes = lockedGrant.attributes as TCodeSigningGrantAttributes | null;
+          if (lockedAttributes?.maxSignings) {
+            const signingsUsed = await signingOperationDAL.countByGrantId(matchingGrant.id, tx);
+            if (signingsUsed >= lockedAttributes.maxSignings) {
+              await approvalRequestGrantsDAL.updateById(
+                matchingGrant.id,
+                { status: ApprovalRequestGrantStatus.Expired },
+                tx
+              );
+              matchingGrant = undefined;
+              selectedGrantBecameUnusable = true;
+            }
+          }
+        }
+      }
+
+      if (!matchingGrant) {
+        if (mismatchedScopeFields.size > 0 && !selectedGrantBecameUnusable) {
+          const fieldLabels = Array.from(mismatchedScopeFields)
+            .map((field) => CODE_SIGNING_SCOPE_FIELD_LABELS[field])
+            .join(", ");
+          return {
+            grantId: null,
+            matchedGrantAttributes: null,
+            pendingOperationId: null,
+            deniedReason:
+              `Signing with signer '${signer.name}' was denied: your approved access is scoped to specific signing parameters, ` +
+              `and this request does not match the approved ${fieldLabels}. ` +
+              `Sign with the parameters you were approved for, or request new signing access for these parameters.`
+          };
+        }
+        return {
+          grantId: null,
+          matchedGrantAttributes: null,
+          pendingOperationId: null,
+          deniedReason:
+            `Signing with signer '${signer.name}' requires approved access, but none is currently active. ` +
+            `Access may not have been requested or approved yet, may have expired, or may have reached its signature limit. ` +
+            `Request signing access for this signer and try again once it's approved.`
+        };
+      }
+
+      const pendingOperation = await signingOperationDAL.create(
+        {
+          signerId: dto.signerId,
+          projectId,
+          status: SigningOperationStatus.Pending,
+          signingAlgorithm: dto.signingAlgorithm,
+          dataHash,
+          actorType: dto.actor,
+          actorId: dto.actorId,
+          actorName: dto.actorName ?? null,
+          approvalGrantId: matchingGrant.id,
+          clientMetadata: operationClientMetadata
+        },
+        tx
+      );
+
+      return {
+        grantId: matchingGrant.id,
+        matchedGrantAttributes: matchingGrant.attributes as TCodeSigningGrantAttributes | null,
+        pendingOperationId: pendingOperation.id,
+        deniedReason: undefined
+      };
+    });
+
   const $countPolicySteps = async (policyId: string): Promise<number> => {
     const steps = await approvalPolicyDAL.findStepsByPolicyId(policyId);
     return steps.length;
@@ -1484,114 +1998,65 @@ export const signerServiceFactory = ({
 
     const requiresApproval = signer.approvalPolicyId ? (await $countPolicySteps(signer.approvalPolicyId)) > 0 : false;
 
+    const clientMetadata = dto.clientMetadata
+      ? {
+          ...dto.clientMetadata,
+          tool: dto.clientMetadata.tool ?? dto.clientMetadata.signingApplication,
+          signingApplication: undefined
+        }
+      : undefined;
+
+    const observedContext = buildObservedSigningContext({
+      clientMetadata,
+      ipAddress: dto.ipAddress,
+      dataHash
+    });
+    const operationClientMetadata =
+      clientMetadata || dto.ipAddress
+        ? {
+            ...clientMetadata,
+            ...(clientMetadata?.command ? { command: redactCommandCredentials(clientMetadata.command) } : {}),
+            sourceIp: dto.ipAddress
+          }
+        : null;
+
     let grantId: string | null = null;
-    let matchedGrantAttrs: TCodeSigningGrantAttributes | null = null;
+    let matchedGrantAttributes: TCodeSigningGrantAttributes | null = null;
     let pendingOperationId: string | null = null;
 
     if (requiresApproval) {
-      ({ grantId, matchedGrantAttrs, pendingOperationId } = await projectDAL.transaction(async (tx) => {
-        const [userGrants, identityGrants] = await Promise.all([
-          approvalRequestGrantsDAL.find(
-            {
-              granteeUserId: dto.actorId,
-              type: ApprovalPolicyType.CertCodeSigning,
-              status: ApprovalRequestGrantStatus.Active,
-              projectId,
-              revokedAt: null
-            },
-            { tx }
-          ),
-          approvalRequestGrantsDAL.find(
-            {
-              granteeMachineIdentityId: dto.actorId,
-              type: ApprovalPolicyType.CertCodeSigning,
-              status: ApprovalRequestGrantStatus.Active,
-              projectId,
-              revokedAt: null
-            },
-            { tx }
-          )
-        ]);
+      const access = await $resolveSigningAccess({
+        signer,
+        projectId,
+        dto,
+        dataHash,
+        observedContext,
+        operationClientMetadata
+      });
 
-        const activeGrants = [...userGrants, ...identityGrants];
+      if (access.deniedReason) {
+        const pendingRequests = await approvalRequestDAL.find({
+          scopeType: ApprovalPolicyScope.Signer,
+          scopeId: signer.id,
+          status: ApprovalRequestStatus.Pending,
+          ...(dto.actor === ActorType.USER ? { requesterId: dto.actorId } : { machineIdentityId: dto.actorId })
+        });
+        const hasPendingRequest = pendingRequests.some((request) => {
+          const pendingScope = (request.requestData as { requestData?: TCodeSigningRequestData } | null)?.requestData
+            ?.scope;
+          return getCodeSigningScopeMismatches(pendingScope, observedContext).length === 0;
+        });
 
-        let matchingGrant: (typeof activeGrants)[number] | undefined;
+        throw new ForbiddenRequestError({
+          message: access.deniedReason,
+          name: SIGNER_APPROVAL_REQUIRED_ERROR_NAME,
+          details: { hasPendingRequest }
+        });
+      }
 
-        const now = new Date();
-        const expiredGrantIds: string[] = [];
-
-        for (const grant of activeGrants) {
-          const attrs = grant.attributes as TCodeSigningGrantAttributes | null;
-          if (attrs && attrs.signerId === signer.id) {
-            const windowNotStarted = attrs.windowStart && new Date(attrs.windowStart) > now;
-            if (!windowNotStarted) {
-              if (grant.expiresAt && new Date(grant.expiresAt) < now) {
-                expiredGrantIds.push(grant.id);
-              } else if (!matchingGrant) {
-                matchingGrant = grant;
-              }
-            }
-          }
-        }
-
-        await Promise.all(
-          expiredGrantIds.map((id) =>
-            approvalRequestGrantsDAL.updateById(id, { status: ApprovalRequestGrantStatus.Expired }, tx)
-          )
-        );
-
-        if (matchingGrant) {
-          const lockedGrant = await approvalRequestGrantsDAL.findByIdForUpdate(matchingGrant.id, tx);
-          if (!lockedGrant || lockedGrant.status !== ApprovalRequestGrantStatus.Active) {
-            matchingGrant = undefined;
-          } else {
-            const matchAttrs = lockedGrant.attributes as TCodeSigningGrantAttributes | null;
-            if (matchAttrs?.maxSignings) {
-              const usedCount = await signingOperationDAL.countByGrantId(matchingGrant.id, tx);
-              if (usedCount >= matchAttrs.maxSignings) {
-                await approvalRequestGrantsDAL.updateById(
-                  matchingGrant.id,
-                  { status: ApprovalRequestGrantStatus.Expired },
-                  tx
-                );
-                matchingGrant = undefined;
-              }
-            }
-          }
-        }
-
-        if (!matchingGrant) {
-          throw new ForbiddenRequestError({
-            message:
-              `Signing with signer '${signer.name}' requires approved access, but none is currently active. ` +
-              `Access may not have been requested or approved yet, may have expired, or may have reached its signature limit. ` +
-              `Request signing access for this signer and try again once it's approved.`,
-            name: "ApprovalRequired"
-          });
-        }
-
-        const pendingOp = await signingOperationDAL.create(
-          {
-            signerId: dto.signerId,
-            projectId,
-            status: SigningOperationStatus.Pending,
-            signingAlgorithm: dto.signingAlgorithm,
-            dataHash,
-            actorType: dto.actor,
-            actorId: dto.actorId,
-            actorName: dto.actorName ?? null,
-            approvalGrantId: matchingGrant.id,
-            clientMetadata: dto.clientMetadata ?? null
-          },
-          tx
-        );
-
-        return {
-          grantId: matchingGrant.id,
-          matchedGrantAttrs: matchingGrant.attributes as TCodeSigningGrantAttributes | null,
-          pendingOperationId: pendingOp.id
-        };
-      }));
+      grantId = access.grantId;
+      matchedGrantAttributes = access.matchedGrantAttributes;
+      pendingOperationId = access.pendingOperationId;
     }
 
     let signatureBuffer: Buffer;
@@ -1605,16 +2070,17 @@ export const signerServiceFactory = ({
           mech.mechanism === Pkcs11Mechanism.RsaPkcs
             ? wrapRsaPkcs1DigestInfo(dto.signingAlgorithm, dataBuffer)
             : dataBuffer;
-        let raw = await hsmConnectorService.sign({
+        const signature = await hsmConnectorService.sign({
           connectorId: certificate.hsmConnectorId as string,
           projectId,
           keyLabel: certificate.hsmKeyLabel as string,
+          keyId: certificate.hsmKeyId,
+          publicKeySpki: certificate.hsmPublicKeySpki ?? null,
           mechanism: mech.mechanism,
           data: hsmData,
           isDigest: dto.isDigest
         });
-        if (mech.isEcdsa) raw = ecdsaRawRsToDer(raw);
-        signatureBuffer = raw;
+        signatureBuffer = mech.isEcdsa ? ecdsaRawRsToDer(signature) : signature;
       } else {
         const privateKeyPem = certPrivateKey as Buffer;
         const svc = signingService(keyAlgorithm);
@@ -1640,7 +2106,7 @@ export const signerServiceFactory = ({
             actorId: dto.actorId,
             actorName: dto.actorName ?? null,
             approvalGrantId: grantId,
-            clientMetadata: dto.clientMetadata ?? null,
+            clientMetadata: operationClientMetadata,
             errorMessage: errorMessage.substring(0, 255)
           });
         }
@@ -1665,15 +2131,15 @@ export const signerServiceFactory = ({
             actorId: dto.actorId,
             actorName: dto.actorName ?? null,
             approvalGrantId: grantId,
-            clientMetadata: dto.clientMetadata ?? null
+            clientMetadata: operationClientMetadata
           },
           tx
         );
       }
 
-      if (grantId && matchedGrantAttrs?.maxSignings) {
+      if (grantId && matchedGrantAttributes?.maxSignings) {
         const newCount = await signingOperationDAL.countByGrantId(grantId, tx);
-        if (newCount >= matchedGrantAttrs.maxSignings) {
+        if (newCount >= matchedGrantAttributes.maxSignings) {
           await approvalRequestGrantsDAL.updateById(grantId, { status: ApprovalRequestGrantStatus.Expired }, tx);
         }
       }
@@ -1791,7 +2257,31 @@ export const signerServiceFactory = ({
 
     const totalCount = await signingOperationDAL.countBySignerId(dto.signerId, dto.status);
 
-    return { operations, totalCount, projectId: signer.projectId };
+    return { operations, totalCount, signerName: signer.name, projectId: signer.projectId };
+  };
+
+  const getOperationById = async (dto: TGetSigningOperationDTO) => {
+    const signer = await signerDAL.findById(dto.signerId);
+    if (!signer) {
+      throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
+    }
+
+    const { permission } = await $loadSignerResourcePermission(
+      signer.id,
+      signer.projectId,
+      dto.actor,
+      dto.actorId,
+      dto.actorAuthMethod,
+      dto.actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
+
+    const operation = await signingOperationDAL.findByIdWithActor(dto.operationId);
+    if (!operation || operation.signerId !== signer.id) {
+      throw new NotFoundError({ message: `Signing operation '${dto.operationId}' not found on this signer.` });
+    }
+
+    return { operation, signerName: signer.name, projectId: signer.projectId };
   };
 
   const attachIssuedCertificate = async (
@@ -1837,7 +2327,7 @@ export const signerServiceFactory = ({
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(signer.caId);
     if (!ca || ca.projectId !== signer.projectId) {
-      const reason = `Certificate authority '${signer.caId}' is no longer available in the project.`;
+      const reason = `Certificate authority '${signer.caId}' is no longer available in this organization.`;
       logger.warn(`signer auto-renewal: ${reason} [signerId=${signer.id}]`);
       await signerDAL.updateById(signer.id, {
         status: SignerStatus.Failed,
@@ -1879,6 +2369,7 @@ export const signerServiceFactory = ({
               hsmConnectorId: autoRenewCert.hsmConnectorId,
               hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(autoRenewCert.keyAlgorithm),
               hsmKeyLabel: autoRenewCert.hsmKeyLabel ?? undefined,
+              hsmKeyId: autoRenewCert.hsmKeyId,
               hsmPublicKeySpki: autoRenewCert.hsmPublicKeySpki ?? undefined
             }
           : undefined;
@@ -1928,6 +2419,7 @@ export const signerServiceFactory = ({
           certificateTtlDays: ttlDays,
           hsmConnectorId: existingCert.hsmConnectorId,
           hsmKeyLabel: existingCert.hsmKeyLabel,
+          hsmKeyId: existingCert.hsmKeyId,
           expectedPublicKeySpkiDer: existingCert.hsmPublicKeySpki ?? undefined,
           hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(existingCert.keyAlgorithm)
         });
@@ -1965,6 +2457,12 @@ export const signerServiceFactory = ({
     return signer.projectId;
   };
 
+  const getSignerAuditContext = async (signerId: string): Promise<{ projectId: string; name: string }> => {
+    const signer = await signerDAL.findById(signerId);
+    if (!signer) throw new NotFoundError({ message: `Signer '${signerId}' not found.` });
+    return { projectId: signer.projectId, name: signer.name };
+  };
+
   return {
     create,
     list,
@@ -1972,15 +2470,19 @@ export const signerServiceFactory = ({
     checkIssuanceNow,
     getMyPermissions,
     getProjectIdForSigner,
+    getSignerAuditContext,
     update,
     delete: deleteSigner,
     enable,
     disable,
     reissueCertificate,
+    importCertificate,
+    checkCertificateImport,
     exportCertificate,
     sign,
     getPublicKey,
     listOperations,
+    getOperationById,
     attachIssuedCertificate,
     markIssuanceFailed,
     autoRenewCertificate

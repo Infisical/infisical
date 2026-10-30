@@ -107,6 +107,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         ({ decodedToken, tokenVersion, isGraceHit } = await server.services.authToken.validateRefreshToken(
           req.cookies.jid
         ));
+        await server.services.authToken.validateRefreshTokenAccess(decodedToken);
       } catch (err) {
         // Clear the expired/invalid jid cookie so it doesn't cause login loops
         // when the browser keeps sending the stale cookie on subsequent requests.

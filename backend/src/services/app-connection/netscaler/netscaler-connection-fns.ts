@@ -1,27 +1,23 @@
 import { AxiosRequestConfig } from "axios";
 import https from "https";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
+import { getTlsServerNameOptions } from "@app/lib/tls";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { NetScalerConnectionMethod } from "./netscaler-connection-enums";
 import { TNetScalerConnectionConfig } from "./netscaler-connection-types";
 
-export const createNetScalerHttpsAgent = (credentials: {
-  sslRejectUnauthorized?: boolean;
-  sslCertificate?: string;
-}): https.Agent => {
-  return new https.Agent({
-    rejectUnauthorized: credentials.sslRejectUnauthorized,
-    ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
-  });
-};
+const getNetScalerTlsOptions = (credentials: { sslRejectUnauthorized?: boolean; sslCertificate?: string }) => ({
+  rejectUnauthorized: credentials.sslRejectUnauthorized,
+  ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
+});
 
 export const getNetScalerConnectionListItem = () => {
   return {
@@ -40,7 +36,7 @@ const requestWithNetScalerGateway = async <T>(
   const { hostname, port: credPort } = credentials;
   const port = credPort ?? 443;
 
-  if (gatewayId && gatewayV2Service) {
+  if (gatewayId) {
     await blockLocalAndPrivateIpAddresses(`https://${hostname}`, true);
 
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
@@ -56,7 +52,7 @@ const requestWithNetScalerGateway = async <T>(
     return withGatewayV2Proxy(
       async (proxyPort) => {
         const httpsAgent = new https.Agent({
-          servername: hostname,
+          ...getTlsServerNameOptions(hostname),
           rejectUnauthorized: credentials.sslRejectUnauthorized,
           ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
         });
@@ -77,26 +73,23 @@ const requestWithNetScalerGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayHost: platformConnectionDetails.relayHost,
-        gateway: platformConnectionDetails.gateway,
-        relay: platformConnectionDetails.relay
+        ...platformConnectionDetails
       }
     );
   }
 
   await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
 
-  const httpsAgent = createNetScalerHttpsAgent(credentials);
-  const resp = await request.request<T>({
+  const resp = await safeRequest.request<T>({
     ...requestConfig,
-    httpsAgent
+    url: requestConfig.url as string,
+    ...getNetScalerTlsOptions(credentials)
   });
   return resp.data;
 };
 
 export const validateNetScalerConnectionCredentials = async (
   config: TNetScalerConnectionConfig,
-  _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { hostname, port, username, password } = config.credentials;
@@ -160,7 +153,13 @@ export const executeNetScalerOperationWithGateway = async <T>(
   const { hostname, port: credPort } = credentials;
   const port = credPort ?? 443;
 
-  if (gatewayId && gatewayV2Service) {
+  if (gatewayId) {
+    // the service is optional on this overload, but a pinned gateway must never fall through to
+    // the direct-dial branch below, so a missing one is an error rather than a silent bypass
+    if (!gatewayV2Service) {
+      throw new BadRequestError({ message: getMissingGatewayMessage(gatewayId) });
+    }
+
     await blockLocalAndPrivateIpAddresses(`https://${hostname}`, true);
 
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
@@ -176,7 +175,7 @@ export const executeNetScalerOperationWithGateway = async <T>(
     return withGatewayV2Proxy(
       async (proxyPort) => {
         const httpsAgent = new https.Agent({
-          servername: hostname,
+          ...getTlsServerNameOptions(hostname),
           rejectUnauthorized: credentials.sslRejectUnauthorized,
           ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
         });
@@ -201,21 +200,18 @@ export const executeNetScalerOperationWithGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayHost: platformConnectionDetails.relayHost,
-        gateway: platformConnectionDetails.gateway,
-        relay: platformConnectionDetails.relay
+        ...platformConnectionDetails
       }
     );
   }
 
   await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
 
-  const httpsAgent = createNetScalerHttpsAgent(credentials);
-
   const makeRequest = async <R>(requestCfg: AxiosRequestConfig): Promise<R> => {
-    const resp = await request.request<R>({
+    const resp = await safeRequest.request<R>({
       ...requestCfg,
-      httpsAgent
+      url: requestCfg.url as string,
+      ...getNetScalerTlsOptions(credentials)
     });
     return resp.data;
   };

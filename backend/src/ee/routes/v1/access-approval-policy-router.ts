@@ -10,6 +10,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const maxTimePeriodSchema = z
@@ -70,6 +71,10 @@ const requestExpirationTimeSchema = z
     return val;
   });
 
+const accessApprovalPolicyPubSchema = sapPubSchema.extend({
+  delegatedApproval: DelegatedApprovalSchema.nullable().optional()
+});
+
 export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -78,6 +83,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createAccessApprovalPolicy",
       body: z
         .object({
           projectSlug: z.string().trim(),
@@ -105,12 +111,13 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             ])
             .array()
             .max(100, "Cannot have more than 100 approvers")
-            .min(1, { message: "At least one approver should be provided" })
             .refine(
               // @ts-expect-error this is ok
               (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
               "Must provide either username or id"
-            ),
+            )
+            .optional()
+            .describe("Required unless delegatedApproval is set, and must be omitted when it is."),
           bypassers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -132,28 +139,40 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             .optional(),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-          allowedSelfApprovals: z.boolean().default(true),
+          allowedSelfApprovals: z
+            .boolean()
+            .optional()
+            .describe("Defaults to true, or to false when delegatedApproval is set."),
           maxTimePeriod: maxTimePeriodSchema,
-          requestExpirationTime: requestExpirationTimeSchema
+          requestExpirationTime: requestExpirationTimeSchema,
+          delegatedApproval: DelegatedApprovalSchema.optional().describe(
+            "Hand requests made against this policy to a delegated approval system."
+          )
         })
         .refine(
           (val) => Boolean(val.environment) || Boolean(val.environments),
           "Must provide either environment or environments"
+        )
+        .refine(
+          (val) => Boolean(val.delegatedApproval) || Boolean(val.approvers?.length),
+          "At least one approver should be provided"
         ),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: accessApprovalPolicyPubSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const approval = await server.services.accessApprovalPolicy.createAccessApprovalPolicy({
+      const approval = await server.services.secretAccessApprovalGlobalPolicyBridge.createAccessApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        orgActor: req.permission,
         ...req.body,
+        approvers: req.body.approvers ?? [],
         projectSlug: req.body.projectSlug,
         name:
           req.body.name ?? `${req.body.environment || req.body.environments?.join("-").substring(0, 250)}-${nanoid(3)}`,
@@ -188,12 +207,13 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAccessApprovalPolicies",
       querystring: z.object({
         projectSlug: z.string().trim()
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema
+          approvals: accessApprovalPolicyPubSchema
             .extend({
               approvers: z
                 .object({
@@ -216,7 +236,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.accessApprovalPolicy.getAccessApprovalPolicyByProjectSlug({
         actor: req.permission.type,
@@ -234,6 +254,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     url: "/count",
     method: "GET",
     schema: {
+      operationId: "getAccessApprovalPolicyCount",
       querystring: z.object({
         projectSlug: z.string(),
         envSlug: z.string()
@@ -245,7 +266,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }
     },
 
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { count } = await server.services.accessApprovalPolicy.getAccessPolicyCountByEnvSlug({
         actor: req.permission.type,
@@ -266,6 +287,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateAccessApprovalPolicy",
       params: z.object({
         policyId: z.string()
       }),
@@ -292,12 +314,15 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             })
           ])
           .array()
-          .min(1, { message: "At least one approver should be provided" })
           .max(100, "Cannot have more than 100 approvers")
           .refine(
             // @ts-expect-error this is ok
             (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
             "Must provide either username or id"
+          )
+          .optional()
+          .describe(
+            "Required unless the policy is handled by a delegated approval system, and must be omitted when it is."
           ),
         bypassers: z
           .discriminatedUnion("type", [
@@ -309,7 +334,10 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .optional(),
         approvals: z.number().min(1).optional(),
         enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-        allowedSelfApprovals: z.boolean().default(true),
+        allowedSelfApprovals: z
+          .boolean()
+          .optional()
+          .describe("Defaults to true, or to false when the policy is handled by a delegated approval system."),
         environments: z.array(z.string()).optional(),
         approvalsRequired: z
           .object({
@@ -319,23 +347,30 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .array()
           .optional(),
         maxTimePeriod: maxTimePeriodSchema,
-        requestExpirationTime: requestExpirationTimeSchema
+        requestExpirationTime: requestExpirationTimeSchema,
+        delegatedApproval: DelegatedApprovalSchema.nullable()
+          .optional()
+          .describe(
+            "Hand requests made against this policy to a delegated approval system. Send null to stop using one."
+          )
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: accessApprovalPolicyPubSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
+      const approval = await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
         policyId: req.params.policyId,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        ...req.body
+        orgActor: req.permission,
+        ...req.body,
+        approvers: req.body.approvers ?? []
       });
 
       void server.services.telemetry
@@ -346,6 +381,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           properties: { policyId: req.params.policyId }
         })
         .catch(() => {});
+
+      return { approval };
     }
   });
 
@@ -356,12 +393,13 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteAccessApprovalPolicy",
       params: z.object({
         policyId: z.string()
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: accessApprovalPolicyPubSchema
         })
       }
     },
@@ -399,12 +437,13 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getAccessApprovalPolicy",
       params: z.object({
         policyId: z.string()
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema.extend({
+          approval: accessApprovalPolicyPubSchema.extend({
             approvers: z
               .object({
                 type: z.nativeEnum(ApproverType),
@@ -431,7 +470,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.accessApprovalPolicy.getAccessApprovalPolicyById({
         actor: req.permission.type,

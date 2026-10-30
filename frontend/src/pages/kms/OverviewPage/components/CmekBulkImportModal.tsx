@@ -51,6 +51,7 @@ type ParsedKey = {
   privateKey?: string;
   publicKey?: string;
   isExportable?: boolean;
+  hasDeleteProtection?: boolean;
 };
 
 const MIN_HMAC_KEY_BYTE_LENGTH = 16;
@@ -121,6 +122,9 @@ const validateEntry = (entry: unknown, index: number): ValidationError | null =>
   }
   if (e.isExportable !== undefined && typeof e.isExportable !== "boolean") {
     return { index, message: '"isExportable" must be a boolean' };
+  }
+  if (e.hasDeleteProtection !== undefined && typeof e.hasDeleteProtection !== "boolean") {
+    return { index, message: '"hasDeleteProtection" must be a boolean' };
   }
   if (e.keyType === KmsKeyUsage.ENCRYPT_DECRYPT) {
     const validSymmetric = Object.values(SymmetricKeyAlgorithm) as string[];
@@ -282,7 +286,8 @@ export const CmekBulkImportModal = ({ isOpen, onOpenChange, projectId }: Props) 
           algorithm: k.algorithm as never,
           keyMaterial:
             k.keyType === KmsKeyUsage.SIGN_VERIFY ? (k.privateKey ?? "") : (k.keyMaterial ?? ""),
-          isExportable: k.isExportable
+          isExportable: k.isExportable,
+          hasDeleteProtection: k.hasDeleteProtection
         }))
       });
       if (errors.length === 0) {

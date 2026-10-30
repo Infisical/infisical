@@ -1,11 +1,13 @@
 import * as React from "react";
-import { forwardRef } from "react";
+import { forwardRef, type JSX } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
-import { Lottie } from "@app/components/v2/Lottie";
 import { cn } from "@app/components/v3/utils";
+
+import { getButtonLoaderVariant } from "../Button/getButtonLoaderVariant";
+import { Loader } from "../Loader";
 
 const iconButtonVariants = cva(
   cn(
@@ -37,9 +39,12 @@ const iconButtonVariants = cva(
           "border-warning/25 bg-warning/10 text-foreground hover:bg-warning/15 hover:border-warning/30 data-[state=open]:bg-warning/15 data-[state=open]:border-warning/30",
         danger:
           "border-danger/25 bg-danger/10 text-foreground hover:bg-danger/15 hover:border-danger/30 data-[state=open]:bg-danger/15 data-[state=open]:border-danger/30",
-        pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35"
+        pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35",
+        av: "border-product-av/30 bg-product-av/25 text-foreground hover:bg-product-av/30 hover:border-product-av/35 data-[state=open]:bg-product-av/30 data-[state=open]:border-product-av/35",
+        ss: "border-product-ss/30 bg-product-ss/25 text-foreground hover:bg-product-ss/30 hover:border-product-ss/35 data-[state=open]:bg-product-ss/30 data-[state=open]:border-product-ss/35"
       },
       size: {
+        "2xs": "h-6 w-6 [&>svg]:size-3 rounded-sm [&>svg]:stroke-[1.75]",
         xs: "h-7 w-7 [&>svg]:size-4 rounded-sm [&>svg]:stroke-[1.75]",
         sm: "h-8 w-8 [&>svg]:size-4 [&>svg]:stroke-[1.5]",
         md: "h-9 w-9 [&>svg]:size-4 [&>svg]:stroke-[1.5]",
@@ -100,11 +105,13 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       <>
         {children}
         {isPending && (
-          <Lottie
-            icon={variant === "default" ? "infisical_loading_bw" : "infisical_loading_white"}
-            isAutoPlay
+          <Loader
+            aria-hidden
+            variant={getButtonLoaderVariant(variant)}
+            size="xs"
             className={twMerge(
               "absolute rounded-xl",
+              size === "2xs" && "w-5",
               size === "xs" && "w-6",
               size === "sm" && "w-7",
               size === "md" && "w-8",
@@ -118,11 +125,12 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
     return (
       <Comp
         ref={ref}
-        data-slot="icon-button"
         type={type}
         className={cn(iconButtonVariants({ variant, size, isPending }), className)}
+        aria-busy={isPending || undefined}
         disabled={isPending || disabled || isDisabled}
         {...props}
+        data-slot="icon-button"
       >
         {content}
       </Comp>

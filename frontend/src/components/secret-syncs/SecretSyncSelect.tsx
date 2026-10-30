@@ -2,6 +2,10 @@ import { useMemo, useState } from "react";
 import { Loader2Icon, Search } from "lucide-react";
 
 import {
+  EnterpriseSecretSyncsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
+import {
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -11,15 +15,14 @@ import {
   InputGroupAddon,
   InputGroupInput
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { useSubscription } from "@app/context";
 import { POPULAR_SECRET_SYNCS, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
-import { usePopUp } from "@app/hooks";
 import { SecretSync, useSecretSyncOptions } from "@app/hooks/api/secretSyncs";
-
-import { UpgradePlanModal } from "../license/UpgradePlanModal";
 
 type Props = {
   onSelect: (destination: SecretSync) => void;
+  onEnterpriseUpgrade?: (onGranted: () => void) => void;
 };
 
 type SyncOption = {
@@ -40,15 +43,11 @@ const ProviderCard = ({
     <button
       type="button"
       onClick={onClick}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover/50"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
-          <img
-            src={`/images/integrations/${image}`}
-            alt={`${name} logo`}
-            className="h-6 w-6 object-contain"
-          />
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
+          <ProviderIcon icon={image} alt={`${name} logo`} className="h-6 w-6 object-contain" />
         </div>
         <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
           {category}
@@ -66,17 +65,21 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <p className="mb-3 text-[11px] font-medium tracking-wider text-muted uppercase">{children}</p>
 );
 
-export const SecretSyncSelect = ({ onSelect }: Props) => {
+export const SecretSyncSelect = ({ onSelect, onEnterpriseUpgrade }: Props) => {
   const { subscription } = useSubscription();
   const { isPending, data: secretSyncOptions } = useSecretSyncOptions();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const [search, setSearch] = useState("");
 
   const handleSelect = (option: SyncOption) => {
     if (option.enterprise && !subscription.enterpriseSecretSyncs) {
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "All Secret Syncs can be unlocked if you switch to Infisical Enterprise plan."
+      if (onEnterpriseUpgrade) {
+        onEnterpriseUpgrade(() => onSelect(option.destination));
+        return;
+      }
+      openUpgradeGate({
+        intent: EnterpriseSecretSyncsUpgradeIntent,
+        paywallKey: "secret-manager.secret-sync-provider"
       });
       return;
     }
@@ -195,12 +198,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
         </>
       )}
 
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan.data?.text}
-      />
+      {upgradeGate}
     </div>
   );
 };

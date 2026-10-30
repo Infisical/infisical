@@ -30,7 +30,7 @@ const Content = ({ projectId, onComplete }: ContentProps) => {
     if (requestProjectAccess.isPending) return;
     requestProjectAccess.mutate(
       {
-        comment: note,
+        comment: note.trim() || undefined,
         projectId
       },
       {

@@ -50,7 +50,7 @@ export const registerUnixLinuxLocalAccountRotationRouter = async (server: Fastif
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { rotationId } = req.params;
 

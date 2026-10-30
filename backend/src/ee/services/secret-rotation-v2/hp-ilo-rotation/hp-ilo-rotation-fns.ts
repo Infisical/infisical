@@ -10,6 +10,7 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { BadRequestError } from "@app/lib/errors";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   executeWithPotentialGateway,
   getSshConnectionClient,
@@ -19,8 +20,10 @@ import {
 
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { generatePassword } from "../shared/utils";
+import { hpIloRedfishClientFactory } from "./hp-ilo-redfish-client";
 import { HpIloRotationMethod } from "./hp-ilo-rotation-schemas";
 import {
+  THpIloClient,
   THpIloRotationGeneratedCredentials,
   THpIloRotationInput,
   THpIloRotationWithConnection
@@ -38,7 +41,11 @@ const HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS = {
   allowedSymbols: ""
 };
 
-const ILO_PROMPT = "hpiLO->";
+// iLO 5/6 present the prompt as "hpiLO->", iLO 7 as "hpeiLO->"; match the common suffix
+const ILO_PROMPT = "iLO->";
+
+export const isIloPrompt = (output: string) => output.includes(ILO_PROMPT);
+
 const COMMAND_COMPLETED = "status_tag=COMMAND COMPLETED";
 const COMMAND_FAILED = "COMMAND PROCESSING FAILED";
 const CONNECTION_TIMEOUT = 45000;
@@ -77,7 +84,7 @@ const executeIloShell = (conn: Client, command: string): Promise<string> => {
           return;
         }
 
-        if (buffer.includes(ILO_PROMPT) && !commandSent) {
+        if (isIloPrompt(buffer) && !commandSent) {
           commandSent = true;
           stream.write(`${command}\n`);
         }
@@ -203,40 +210,58 @@ export const hpIloRotationFactory: TRotationFactory<
   THpIloRotationWithConnection,
   THpIloRotationGeneratedCredentials,
   THpIloRotationInput["temporaryParameters"]
-> = (secretRotation, appConnectionDAL, kmsService, _gatewayService, gatewayV2Service, gatewayPoolService) => {
+> = (secretRotation, appConnectionDAL, kmsService, gatewayV2Service, gatewayPoolService) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = HpIloRotationMethod.LoginAsRoot } = parameters;
 
-  const getRotationSshConfig = async (): Promise<TSshConnectionConfig> => {
-    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+  const $getIloClient = async (): Promise<THpIloClient> => {
+    const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: connection.gatewayId,
       gatewayPoolId: connection.gatewayPoolId
     });
-    return {
+
+    if (connection.app === AppConnection.HpeIloRedFish) {
+      if (rotationMethod === HpIloRotationMethod.LoginAsTarget)
+        throw new BadRequestError({
+          message:
+            "The Login as Target rotation method requires an SSH Connection. HPE iLO Connections always rotate the password with the connection's credentials."
+        });
+
+      return hpIloRedfishClientFactory({ credentials: connection.credentials, gatewayId }, gatewayV2Service);
+    }
+
+    const sshConfig = {
       method: connection.method,
       app: connection.app,
       orgId: connection.orgId,
-      gatewayId: effectiveGatewayId,
+      gatewayId,
       credentials: connection.credentials
     } as TSshConnectionConfig;
+
+    return {
+      changePassword: async (targetUsername, newPassword, currentPassword) => {
+        if (rotationMethod === HpIloRotationMethod.LoginAsTarget && currentPassword) {
+          await rotateIloPasswordAsTarget(sshConfig, gatewayV2Service, targetUsername, currentPassword, newPassword);
+        } else {
+          await rotateIloPasswordAsAdmin(sshConfig, gatewayV2Service, targetUsername, newPassword);
+        }
+        // We still verify if the password works by running a SSH login
+        return { isNewPasswordVerified: false };
+      },
+      verifyPassword: (targetUsername, password) =>
+        verifyIloPassword(sshConfig, gatewayV2Service, targetUsername, password)
+    };
   };
 
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
     const newPassword = generatePassword(passwordRequirements ?? HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS);
 
-    const isSelfRotation = rotationMethod === HpIloRotationMethod.LoginAsTarget;
     if (username === connection.credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
-    const sshConfig = await getRotationSshConfig();
-
-    if (isSelfRotation && currentPassword) {
-      await rotateIloPasswordAsTarget(sshConfig, gatewayV2Service, username, currentPassword, newPassword);
-    } else {
-      await rotateIloPasswordAsAdmin(sshConfig, gatewayV2Service, username, newPassword);
-    }
-
-    await verifyIloPassword(sshConfig, gatewayV2Service, username, newPassword);
+    const iloClient = await $getIloClient();
+    const { isNewPasswordVerified } = await iloClient.changePassword(username, newPassword, currentPassword);
+    if (!isNewPasswordVerified) await iloClient.verifyPassword(username, newPassword);
 
     return { username, password: newPassword };
   };
@@ -280,8 +305,8 @@ export const hpIloRotationFactory: TRotationFactory<
     username: activeUsername,
     password
   }) => {
-    const sshConfig = await getRotationSshConfig();
-    await verifyIloPassword(sshConfig, gatewayV2Service, activeUsername, password);
+    const iloClient = await $getIloClient();
+    await iloClient.verifyPassword(activeUsername, password);
   };
 
   return {

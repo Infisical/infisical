@@ -1,55 +1,28 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
 
-import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { PageTitle } from "@app/components/PageTitle";
+import { LookingForOrgPageLink } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
-
-const tabs = [
-  {
-    name: "General",
-    key: "tab-project-general",
-    Component: ProjectGeneralTab
-  }
-];
 
 export const SettingsPage = () => {
   const { t } = useTranslation();
 
-  const { currentOrg, isSubOrganization } = useOrganization();
-
   return (
-    <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
-      </Helmet>
+    <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
+      <PageTitle title={t("settings.project.title")} />
       <div className="w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.KMS}
           title="Project Settings"
           description="Configure general project settings"
         >
-          <Link
-            to="/organizations/$orgId/settings"
-            params={{
-              orgId: currentOrg.id
-            }}
-            className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
-          >
-            <InfoIcon size={12} /> Looking for {isSubOrganization ? "sub-" : ""}organization
-            settings?
-          </Link>
+          <LookingForOrgPageLink page="settings" />
         </PageHeader>
-        <Tabs orientation="vertical" defaultValue={tabs[0].key}>
-          {tabs.map(({ key, Component }) => (
-            <TabPanel value={key} key={key}>
-              <Component />
-            </TabPanel>
-          ))}
-        </Tabs>
+        <div className="grow rounded-br-md rounded-bl-md pb-5 outline-hidden xl:overflow-x-hidden xl:pb-0">
+          <ProjectGeneralTab />
+        </div>
       </div>
     </div>
   );

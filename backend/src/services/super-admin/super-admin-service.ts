@@ -1,5 +1,3 @@
-import { CronJob } from "cron";
-
 import {
   AccessScope,
   IdentityAuthMethod,
@@ -9,9 +7,15 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import {
@@ -21,8 +25,10 @@ import {
   overwriteSchema,
   validateOverrides
 } from "@app/lib/config/env";
+import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -31,30 +37,38 @@ import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/valida
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { IdentitiesMeter, PamIdentities, SecretIdentities, UserIdentities } from "@app/services/license-client";
+import {
+  AgentVaultIdentities,
+  IdentitiesMeter,
+  PamIdentities,
+  SecretIdentities,
+  UserIdentities
+} from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { AlertPrincipalType } from "../alert/alert-types";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
-import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
-import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { ActorType, AuthMethod } from "../auth/auth-type";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TIdentityTokenAuthDALFactory } from "../identity-token-auth/identity-token-auth-dal";
 import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
 import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { RootKeyEncryptionStrategy } from "../kms/kms-types";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
 import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
 import { TOrgDALFactory } from "../org/org-dal";
+import { deleteOrgMembershipsFn } from "../org/org-fns";
 import { TOrgServiceFactory } from "../org/org-service";
-import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
+import { TUserDALFactory } from "../user/user-dal";
 import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
@@ -78,7 +92,7 @@ import {
 type TSuperAdminServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
   identityTokenAuthDAL: TIdentityTokenAuthDALFactory;
-  identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
+  identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "issueIdentityAccessToken">;
   orgDAL: TOrgDALFactory;
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
@@ -86,14 +100,23 @@ type TSuperAdminServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
-  userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "delete">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
+  projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  eventEmitter: TEventEmitter;
   emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<
+    TLicenseServiceFactory,
+    "onPremFeatures" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount"
+  >;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -152,7 +175,7 @@ export const superAdminServiceFactory = ({
   kmsRootConfigDAL,
   kmsService,
   licenseService,
-  identityAccessTokenDAL,
+  identityAccessTokenService,
   identityTokenAuthDAL,
   microsoftTeamsService,
   invalidateCacheQueue,
@@ -162,7 +185,13 @@ export const superAdminServiceFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  pamSessionDAL,
+  gatewayV2Service,
+  userGroupMembershipDAL,
+  projectAccessRevokeService,
+  auditLogService,
+  eventEmitter
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -470,6 +499,13 @@ export const superAdminServiceFactory = ({
       envOverridesUpdated = true;
     }
 
+    if (!Object.values(updatedData).some((value) => value !== undefined)) {
+      throw new BadRequestError({
+        message:
+          "No recognized instance configuration fields were provided. Settings that have been removed are no longer accepted."
+      });
+    }
+
     const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
 
     try {
@@ -555,7 +591,6 @@ export const superAdminServiceFactory = ({
 
     const organization = await orgService.createOrganization({
       userId: userInfo.user.id,
-      userEmail: userInfo.user.email,
       orgName: initialOrganizationName
     });
 
@@ -620,7 +655,6 @@ export const superAdminServiceFactory = ({
 
     const organization = await orgService.createOrganization({
       userId: userInfo.user.id,
-      userEmail: userInfo.user.email,
       orgName: initialOrganizationName
     });
 
@@ -664,31 +698,26 @@ export const superAdminServiceFactory = ({
         tx
       );
 
-      const newToken = await identityAccessTokenDAL.create(
-        {
-          identityId: newIdentity.id,
-          isAccessTokenRevoked: false,
-          accessTokenTTL: tokenAuth.accessTokenTTL,
-          accessTokenMaxTTL: tokenAuth.accessTokenMaxTTL,
-          accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: tokenAuth.accessTokenNumUsesLimit,
-          name: "Instance Admin Token",
-          authMethod: IdentityAuthMethod.TOKEN_AUTH,
-          subOrganizationId: organization.id
-        },
-        tx
-      );
+      // Issue through the standard path so the JWT carries an exp claim; a
+      // hand-rolled no-exp token is rejected as over max age since the legacy
+      // token cutoff (LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT).
+      const { accessToken } = await identityAccessTokenService.issueIdentityAccessToken({
+        identityId: newIdentity.id,
+        identityName: newIdentity.name,
+        authMethod: IdentityAuthMethod.TOKEN_AUTH,
+        orgId: organization.id,
+        rootOrgId: organization.id,
+        parentOrgId: organization.id,
+        subOrganizationId: organization.id,
+        accessTokenTTL: Number(tokenAuth.accessTokenTTL),
+        accessTokenMaxTTL: Number(tokenAuth.accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(tokenAuth.accessTokenNumUsesLimit),
+        accessTokenPeriod: 0,
+        accessTokenTrustedIps: tokenAuth.accessTokenTrustedIps as TIp[],
+        persistToPg: { tx, name: "Instance Admin Token" }
+      });
 
-      const generatedAccessToken = crypto.jwt().sign(
-        {
-          identityId: newIdentity.id,
-          identityAccessTokenId: newToken.id,
-          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-        } as TIdentityAccessTokenJwtPayload,
-        appCfg.AUTH_SECRET
-      );
-
-      return { identity: newIdentity, auth: tokenAuth, credentials: { token: generatedAccessToken } };
+      return { identity: newIdentity, auth: tokenAuth, credentials: { token: accessToken } };
     });
 
     const shouldDisableSignUp = !appCfg.isCloud;
@@ -730,6 +759,7 @@ export const superAdminServiceFactory = ({
       usageMeteringService.emit(orgId, UserIdentities.key);
       usageMeteringService.emit(orgId, SecretIdentities.key);
       usageMeteringService.emit(orgId, PamIdentities.key);
+      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
     });
   };
 
@@ -749,7 +779,17 @@ export const superAdminServiceFactory = ({
       actorUserId: userId
     });
 
+    let sendPamCancellations = () => {};
+
     const user = await userDAL.transaction(async (tx) => {
+      sendPamCancellations = await terminatePamSessionsForUsers({
+        orgIds: orgMemberships.map((m) => m.scopeOrgId),
+        userIds: [userId],
+        pamSessionDAL,
+        gatewayV2Service,
+        tx
+      });
+
       const deletedUser = await userDAL.deleteById(userId, tx);
       // principalId carries no FK, so the user row going away leaves recipient rows behind.
       await alertChannelRecipientDAL.deleteByPrincipals(
@@ -758,6 +798,8 @@ export const superAdminServiceFactory = ({
       );
       return deletedUser;
     });
+
+    sendPamCancellations();
 
     emitUserDeletionMeterEvents(orgMemberships);
     return user;
@@ -779,7 +821,17 @@ export const superAdminServiceFactory = ({
       $in: { actorUserId: userIds }
     });
 
+    let sendPamCancellations = () => {};
+
     const users = await userDAL.transaction(async (tx) => {
+      sendPamCancellations = await terminatePamSessionsForUsers({
+        orgIds: orgMemberships.map((m) => m.scopeOrgId),
+        userIds,
+        pamSessionDAL,
+        gatewayV2Service,
+        tx
+      });
+
       const deletedUsers = await userDAL.delete(
         {
           $in: {
@@ -794,6 +846,8 @@ export const superAdminServiceFactory = ({
       );
       return deletedUsers;
     });
+
+    sendPamCancellations();
 
     emitUserDeletionMeterEvents(orgMemberships);
     return users;
@@ -860,7 +914,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
 
     const serverAdmin = await userDAL.findById(actor.id);
-    const plan = licenseService.onPremFeatures;
+    const identityLimit = getEnforcedIdentityLimit(licenseService.onPremFeatures);
 
     const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
@@ -886,13 +940,17 @@ export const superAdminServiceFactory = ({
     }
 
     const { organization, users: usersToEmail } = await orgDAL.transaction(async (tx) => {
-      const org = await orgService.createOrganization(
-        {
-          orgName: name,
-          userEmail: serverAdmin?.email ?? serverAdmin?.username // identities can be server admins so we can't require this
-        },
-        tx
-      );
+      const org = await orgService.createOrganization({ orgName: name }, tx);
+
+      if (identityLimit) {
+        const { identitiesUsed } = await licenseService.getOrgSeatUsage(org.id, tx);
+        if (identitiesUsed >= identityLimit) {
+          throw new BadRequestError({
+            name: "InviteUser",
+            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+          });
+        }
+      }
 
       const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username" | "isAccepted">[] = [];
 
@@ -927,15 +985,6 @@ export const superAdminServiceFactory = ({
             },
             tx
           );
-        }
-
-        const isEnterpriseBypass = plan?.slug === "enterprise" && !plan?.enforceIdentityLimit;
-        if (!isEnterpriseBypass && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-          // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-          throw new BadRequestError({
-            name: "InviteUser",
-            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
-          });
         }
 
         const membership = await orgDAL.createMembership(
@@ -1045,23 +1094,23 @@ export const superAdminServiceFactory = ({
     if (!membershipRole) {
       throw new NotFoundError({ name: "Membership Role", message: "Membership role not found" });
     }
-    const organizationMembership = await membershipUserDAL.transaction(async (tx) => {
-      const [deletedMembership] = await membershipUserDAL.delete(
-        {
-          scopeOrgId: organizationId,
-          scope: AccessScope.Organization,
-          id: membershipId
-        },
-        tx
-      );
-
-      if (deletedMembership?.actorUserId) {
-        await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [deletedMembership.actorUserId] }, tx);
-      }
-
-      return deletedMembership;
+    const [organizationMembership] = await deleteOrgMembershipsFn({
+      orgMembershipIds: [membershipId],
+      orgId: organizationId,
+      orgDAL,
+      userAliasDAL,
+      licenseService,
+      userId: actorType === ActorType.USER ? actorId : undefined,
+      membershipUserDAL,
+      userGroupMembershipDAL,
+      projectAccessRevokeService,
+      auditLogService,
+      eventEmitter
     });
 
+    usageMeteringService.emit(organizationId, SecretIdentities.key);
+    usageMeteringService.emit(organizationId, PamIdentities.key);
+    usageMeteringService.emit(organizationId, AgentVaultIdentities.key);
     return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 
@@ -1266,11 +1315,11 @@ export const superAdminServiceFactory = ({
     // initial sync upon startup
     await $syncAdminIntegrationConfig();
 
-    // sync admin integrations config every 5 minutes
-    const job = new CronJob("*/5 * * * *", $syncAdminIntegrationConfig);
-    job.start();
-
-    return job;
+    return startLocalRefresh({
+      name: "admin-integration-config-sync",
+      intervalMs: 5 * 60 * 1000,
+      task: $syncAdminIntegrationConfig
+    });
   };
 
   const initializeEnvConfigSync = async () => {
@@ -1278,11 +1327,11 @@ export const superAdminServiceFactory = ({
 
     await $syncEnvConfig();
 
-    // sync every 5 minutes
-    const job = new CronJob("*/5 * * * *", $syncEnvConfig);
-    job.start();
-
-    return job;
+    return startLocalRefresh({
+      name: "env-config-sync",
+      intervalMs: 5 * 60 * 1000,
+      task: $syncEnvConfig
+    });
   };
 
   const getEmailDomains = async ({ offset, limit, searchTerm }: TAdminGetEmailDomainsDTO) => {

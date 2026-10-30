@@ -71,7 +71,7 @@ export const RelayDeploySection = ({ relayId, relayName, authMethod }: Props) =>
           <CardDescription>Run this relay on a target host.</CardDescription>
           {canEditRelay && showDeploymentControls && (
             <CardAction>
-              <TabsList variant="filled">
+              <TabsList variant="filled" aria-label="Deployment method">
                 <TabsTrigger value="cli">CLI</TabsTrigger>
                 <TabsTrigger value="systemd">System service</TabsTrigger>
               </TabsList>

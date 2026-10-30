@@ -1,17 +1,26 @@
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import { CircleAlertIcon, PlusIcon, RefreshCwIcon, TrashIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, IconButton, PageLoader, SheetFooter } from "@app/components/v3";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  IconButton,
+  PageLoader,
+  SheetFooter
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useProject,
   useSubscription
 } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -31,10 +40,17 @@ type Props = {
 };
 
 export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClose }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { subscription } = useSubscription();
   const { projectId, currentProject } = useProject();
-  const { isRolesLoading, assignableRoleSlugs, getRolesForSelect, isEditDisabled } =
-    useMemberRoleGrant(projectMember);
+  const {
+    isRolesLoading,
+    isRolesError,
+    refetchRoles,
+    assignableRoleSlugs,
+    getRolesForSelect,
+    isEditDisabled
+  } = useMemberRoleGrant(projectMember);
   const updateMembershipRole = useUpdateUserWorkspaceRole();
 
   const roleForm = useForm<TRoleForm>({
@@ -66,6 +82,31 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClo
     createNotification({ text: "Successfully updated roles", type: "success" });
     onClose();
   };
+
+  if (isRolesError) {
+    return (
+      <div className="p-4">
+        <Alert variant="danger">
+          <CircleAlertIcon />
+          <AlertTitle>
+            Could not load{" "}
+            {currentProject?.type === ProjectType.CertificateManager ? "roles" : "project roles"}
+          </AlertTitle>
+          <AlertDescription>
+            <span>Retry to edit this user&apos;s roles.</span>
+            <Button
+              size="xs"
+              variant="danger"
+              onClick={() => refetchRoles().catch(() => undefined)}
+            >
+              <RefreshCwIcon />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   if (isRolesLoading) {
     return (
@@ -129,17 +170,17 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClo
           )}
         </ProjectPermissionCan>
       </div>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
           type="submit"
-          variant="project"
+          variant={scopeVariant}
           isDisabled={!roleForm.formState.isDirty || isEditDisabled}
           isPending={roleForm.formState.isSubmitting}
         >
           Save Roles
-        </Button>
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
         </Button>
       </SheetFooter>
     </form>

@@ -159,7 +159,11 @@ export type TInternalCertificateAuthority = {
     keyAlgorithm: CertKeyAlgorithm;
     keySource?: CertKeySource;
     hsmConnectorId?: string;
-    hsmKeyLabel?: string;
+    hsmConnectorName?: string;
+    appConnectionId?: string;
+    appConnectionName?: string;
+    region?: string;
+    externalKeyId?: string;
     notAfter?: string;
     notBefore?: string;
     dn?: string;
@@ -168,6 +172,7 @@ export type TInternalCertificateAuthority = {
     activeCaCertId?: string;
     crlDistributionPointUrls?: string[];
     disableManagedCrlDistributionPointUrl?: boolean;
+    isOcspEnabled?: boolean;
   };
 };
 
@@ -381,4 +386,9 @@ export type TRenewCaResponse = {
   certificateChain: string;
   serialNumber: string;
   projectId: string;
+};
+
+export type TCaQuota = {
+  certificateAuthorities: { used: number; limit: number | null };
+  internalCertificateAuthorities: { used: number; limit: number | null };
 };

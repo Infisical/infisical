@@ -7,7 +7,6 @@ import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
@@ -19,7 +18,11 @@ import { mapEnumsForValidation } from "@app/services/certificate-common/certific
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
-import { TCertificateIssuedResponse } from "@app/services/certificate-v3/certificate-v3-types";
+import {
+  CertificateRenewalKeySource,
+  TCertificateIssuedResponse
+} from "@app/services/certificate-v3/certificate-v3-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 
 import { booleanSchema } from "../sanitizedSchemas";
 
@@ -111,7 +114,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateRequestForService: CertificateRequestForService = {
         commonName: req.body.commonName,
@@ -134,6 +137,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateRequest: mappedCertificateRequest,
         removeRootsFromChain: req.body.removeRootsFromChain
@@ -180,8 +184,11 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           metadata: {
             certificateProfileId: req.body.profileId,
             certificateId: certificateData.certificateId,
+            certificateRequestId: certificateData.certificateRequestId,
             commonName: req.body.commonName || "",
-            profileName: certificateData.profileName
+            profileName: certificateData.profileName,
+            status: certificateData.status,
+            serialNumber: certificateData.serialNumber
           }
         }
       });
@@ -240,13 +247,14 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.certificateV3.signCertificateFromProfile({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         csr: req.body.csr,
         validity: {
@@ -302,8 +310,11 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           metadata: {
             certificateProfileId: req.body.profileId,
             certificateId: certificateData.certificateId,
+            certificateRequestId: certificateData.certificateRequestId,
             profileName: certificateData.profileName,
-            commonName: certificateRequestData.commonName || ""
+            commonName: certificateRequestData.commonName || "",
+            status: certificateData.status,
+            serialNumber: certificateData.serialNumber
           }
         }
       });
@@ -371,7 +382,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateOrderObject = {
         altNames: req.body.subjectAlternativeNames,
@@ -392,6 +403,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateOrder: certificateOrderObject,
         removeRootsFromChain: req.body.removeRootsFromChain
@@ -424,7 +436,11 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           type: EventType.ORDER_CERTIFICATE_FROM_PROFILE,
           metadata: {
             certificateProfileId: req.body.profileId,
-            profileName: data.profileName
+            certificateRequestId: data.certificateRequestId,
+            commonName: data.commonName || "",
+            profileName: data.profileName,
+            status: data.status,
+            ...(data.serialNumber && { serialNumber: data.serialNumber })
           }
         }
       });
@@ -465,7 +481,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const originalCertificate = await server.services.certificate.getCert({
         actor: req.permission.type,
@@ -483,6 +499,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         certificateId: req.params.certificateId,
         removeRootsFromChain: req.body?.removeRootsFromChain
       });
@@ -501,10 +518,16 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         event: {
           type: EventType.RENEW_CERTIFICATE,
           metadata: {
+            applicationId: certificateData.applicationId,
+            applicationName: certificateData.applicationName,
+            renewalKeySource: CertificateRenewalKeySource.New,
+            changedAttributes: certificateData.changedAttributes ?? [],
             originalCertificateId: req.params.certificateId,
             newCertificateId: certificateData.certificateId,
+            certificateRequestId: certificateData.certificateRequestId,
             profileName: certificateData.profileName,
-            commonName: certificateData.commonName ?? ""
+            commonName: certificateData.commonName ?? "",
+            serialNumber: certificateData.serialNumber
           }
         }
       });
@@ -540,7 +563,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       if (req.body.enableAutoRenewal === false) {
         const data = await server.services.certificateV3.disableRenewalConfig({
@@ -558,7 +581,9 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG,
             metadata: {
               certificateId: req.params.certificateId,
-              commonName: data.commonName
+              commonName: data.commonName,
+              applicationId: data.applicationId,
+              applicationName: data.applicationName
             }
           }
         });
@@ -586,7 +611,9 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             metadata: {
               certificateId: req.params.certificateId,
               renewBeforeDays: req.body.renewBeforeDays.toString(),
-              commonName: data.commonName
+              commonName: data.commonName,
+              applicationId: data.applicationId,
+              applicationName: data.applicationName
             }
           }
         });

@@ -1,13 +1,12 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckIcon, ClockAlertIcon, ClockIcon, EditIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { FormControl, Spinner } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -17,11 +16,16 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   IconButton,
   Input,
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Skeleton,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -34,7 +38,7 @@ import {
   useSubscription
 } from "@app/context";
 import { formatProjectRoleName, isCustomProjectRole } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
@@ -68,6 +72,7 @@ const IdentityTemporaryRoleForm = ({
   onSetTemporary,
   onRemoveTemporary
 }: TTemporaryRoleFormProps) => {
+  const validityInputId = useId();
   const { popUp, handlePopUpToggle } = usePopUp(["setTempRole"] as const);
   const { control, handleSubmit } = useForm<TTemporaryRoleFormSchema>({
     resolver: zodResolver(temporaryRoleFormSchema),
@@ -93,6 +98,7 @@ const IdentityTemporaryRoleForm = ({
               // eslint-disable-next-line no-nested-ternary
               variant={isExpired ? "danger" : isTemporaryFieldValue ? "warning" : "ghost"}
               size="xs"
+              aria-label={isExpired ? "Configure expired access" : "Configure temporary access"}
               onClick={(e) => e.stopPropagation()}
             >
               <ClockIcon />
@@ -114,33 +120,33 @@ const IdentityTemporaryRoleForm = ({
             control={control}
             name="temporaryRange"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Validity"
-                isError={Boolean(error?.message)}
-                errorText={error?.message}
-                helperText={
-                  <span>
-                    1m, 2h, 3d.{" "}
-                    <a
-                      href="https://github.com/vercel/ms?tab=readme-ov-file#examples"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline"
-                    >
-                      More
-                    </a>
-                  </span>
-                }
-              >
-                <Input {...field} isError={Boolean(error?.message)} />
-              </FormControl>
+              <Field data-invalid={Boolean(error?.message)}>
+                <FieldLabel htmlFor={validityInputId}>Validity</FieldLabel>
+                <Input
+                  {...field}
+                  id={validityInputId}
+                  isError={Boolean(error?.message)}
+                  aria-invalid={Boolean(error?.message)}
+                />
+                <FieldDescription>
+                  Use a duration such as 1m, 2h, or 3d.{" "}
+                  <a
+                    href="https://github.com/vercel/ms?tab=readme-ov-file#examples"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Examples
+                  </a>
+                </FieldDescription>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
           <div className="flex items-center gap-2">
             {isTemporaryFieldValue && (
               <Button
                 size="xs"
-                type="submit"
+                type="button"
                 onClick={() => {
                   handleSubmit(({ temporaryRange }) => {
                     onSetTemporary({
@@ -157,7 +163,7 @@ const IdentityTemporaryRoleForm = ({
             {!isTemporaryFieldValue ? (
               <Button
                 size="xs"
-                type="submit"
+                type="button"
                 onClick={() =>
                   handleSubmit(({ temporaryRange }) => {
                     onSetTemporary({
@@ -174,6 +180,7 @@ const IdentityTemporaryRoleForm = ({
             ) : (
               <Button
                 size="xs"
+                type="button"
                 variant="danger"
                 onClick={() => {
                   onRemoveTemporary();
@@ -224,6 +231,7 @@ type FormProps = {
 };
 
 const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) => {
+  const scopeVariant = useScopeVariant();
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
   const {
@@ -368,7 +376,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
           size="xs"
           type="submit"
           isFullWidth
-          variant="project"
+          variant={scopeVariant}
           form="role-update-form"
           isDisabled={!isDirty || isSubmitting}
           isPending={isSubmitting}
@@ -377,11 +385,14 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
           Save
         </Button>
       </div>
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="project.group-roles"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
-        text="Assigning custom roles to groups can be unlocked if you upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          isEnterpriseFeature: true
+        }}
       />
     </form>
   );
@@ -510,14 +521,25 @@ export const GroupRoles = ({
       {!isEditDisabled && (
         <Popover open={isEditOpen} onOpenChange={setIsEditOpen}>
           <PopoverTrigger asChild>
-            <IconButton variant="ghost" size="xs" onClick={(e) => e.stopPropagation()}>
+            <IconButton
+              variant="ghost"
+              size="xs"
+              aria-label={`Edit roles for ${groupName}`}
+              onClick={(e) => e.stopPropagation()}
+            >
               <EditIcon />
             </IconButton>
           </PopoverTrigger>
           <PopoverContent side="right" className="w-72 p-0" onClick={(e) => e.stopPropagation()}>
             {isRolesLoading ? (
-              <div className="flex h-8 w-full items-center justify-center">
-                <Spinner />
+              <div
+                className="flex flex-col gap-2 p-3"
+                role="status"
+                aria-label="Loading project roles"
+              >
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton key={`role-skeleton-${index + 1}`} className="h-8 w-full" />
+                ))}
               </div>
             ) : (
               <GroupRolesForm

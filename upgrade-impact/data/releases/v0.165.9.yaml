@@ -1,0 +1,20 @@
+version: v0.165.9
+releasedAt: 2026-09-09T21:28:28-03:00
+sourceTag: v0.165.9
+previousTag: v0.165.8
+impactLevel: none
+summary: No self-hosted upgrade actions required.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges: []
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-09-10T01:08:27.254Z
+  sourceRange:
+    from: v0.165.8
+    to: v0.165.9

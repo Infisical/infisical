@@ -67,7 +67,7 @@ export const ProxiedServiceHeaderFields = ({ projectId, environment, secretPath 
             <p className="text-sm font-medium">Header Rewrites</p>
             <p className="mt-1 text-xs text-muted">Sets these headers on every request.</p>
           </div>
-          <TabsList>
+          <TabsList aria-label="Header rewrite modes">
             <TabsTrigger value={HeaderRewritingMode.Headers}>Custom Headers</TabsTrigger>
             <TabsTrigger value={HeaderRewritingMode.BasicAuth}>Basic Auth</TabsTrigger>
           </TabsList>

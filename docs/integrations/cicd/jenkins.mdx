@@ -1,6 +1,7 @@
 ---
-title: "Jenkins Plugin"
-description: "How to effectively and securely manage secrets in Jenkins using Infisical"
+title: "Inject secrets into Jenkins pipelines"
+sidebarTitle: "Jenkins plugin"
+description: "Inject secrets from Infisical into Jenkins pipelines with the Infisical plugin."
 ---
 
 **Objective**: Fetch secrets from Infisical to Jenkins pipelines
@@ -14,13 +15,13 @@ Prerequisites:
 - Set up and add secrets to [Infisical](https://app.infisical.com).
 - Create a [machine identity](/documentation/platform/identities/machine-identities) (Recommended), or a service token in Infisical.
 - You have a working Jenkins installation with the [credentials plugin](https://plugins.jenkins.io/credentials/) installed.
-- You have the [Infisical CLI](/cli/overview) installed on your Jenkins executor nodes or container images.
+- You have the [Infisical CLI](/cli/install) installed on your Jenkins executor nodes or container images.
 
 <Tabs>
 
   <Tab title="Using Plugin with Machine Identities (Recommended)">
      
-    ## Jenkins Infisical Plugin
+    ## Jenkins Infisical plugin
 
     This plugin adds a build wrapper to set environment variables from [Infisical](https://infisical.com). Secrets are generally masked in the build log, so you can't accidentally print them.
 
@@ -30,17 +31,17 @@ Prerequisites:
 
     ![Install Plugin](../../images/integrations/jenkins/plugin/install-plugin.png)
 
-    ## Infisical Authentication
+    ## Infisical authentication
 
     Authenticating with Infisical is done through the use of [Machine Identities](https://infisical.com/docs/documentation/platform/identities/machine-identities).
     Currently the Jenkins plugin only supports [Universal Auth](https://infisical.com/docs/documentation/platform/identities/universal-auth) for authentication. More methods will be added soon.
 
-    ### How does Universal Auth work?
+    ### How does universal auth work?
     To use Universal Auth, you'll need to create a new Credential _(Infisical Universal Auth Credential)_. The credential should contain your Universal Auth client ID, and your Universal Auth client secret.
     Please [read more here](https://infisical.com/docs/documentation/platform/identities/universal-auth) on how to setup a Machine Identity to use universal auth.
 
 
-    ### Creating a Universal Auth credential
+    ### Creating a universal auth credential
 
     Creating a universal auth credential inside Jenkins is very straight forward.
 
@@ -55,7 +56,7 @@ Prerequisites:
 
 
 
-    ## Plugin Usage
+    ## Plugin usage
     ### Configuration
 
     Configuration takes place on a job-level basis.
@@ -80,7 +81,7 @@ Prerequisites:
     ![Add Infisical secret](../../images/integrations/jenkins/plugin/add-infisical-secret.png)
 
     You need to select which secrets that should be pulled into Jenkins.
-    You start by specifying a [folder path from Infisical](https://infisical.com/docs/documentation/platform/folder#comparing-folders). The root path is simply `/`. You also need to select wether or not you want to [include imports](https://infisical.com/docs/documentation/platform/secret-reference#secret-imports). Now you can add secrets the secret keys that you want to pull from Infisical into Jenkins. If you want to add multiple secrets, press the "Add key/value pair".
+    You start by specifying a [folder path from Infisical](https://infisical.com/docs/documentation/platform/folder#comparing-folders). The root path is simply `/`. You also need to select whether or not you want to [include imports](https://infisical.com/docs/documentation/platform/secret-reference#secret-imports). Now you can add secrets the secret keys that you want to pull from Infisical into Jenkins. If you want to add multiple secrets, press the "Add key/value pair".
 
     If you wish to pull secrets from multiple paths, you can press the "Add an Infisical secret" button at the bottom, and configure a new set of secrets to pull.
 
@@ -102,7 +103,7 @@ Prerequisites:
 
     ![Pipeline Configuration](../../images/integrations/jenkins/plugin/pipeline-configuration.png)
 
-    ### Using Infisical in a Pipeline
+    ### Using Infisical in a pipeline
 
     Using the generated block in a pipeline is very straight forward. There's a few approaches on how to implement the block in a Pipeline script.
     Here's an example of using the generated block in a pipeline script. Make sure to replace the placeholder values with your own values.
@@ -139,7 +140,7 @@ Prerequisites:
   </Tab>
 
   <Tab title="Using CLI with Service Tokens">
-    ## Add Infisical Service Token to Jenkins
+    ## Add Infisical service token to Jenkins
 
     After setting up your project in Infisical and installing the Infisical CLI to the environment where your Jenkins builds will run, you will need to add the Infisical Service Token to Jenkins.
 
@@ -173,7 +174,7 @@ Prerequisites:
     ![Jenkins step 5](../../images/integrations/jenkins/jenkins_5.png)
 
 
-    ## Use Infisical in a Freestyle Project
+    ## Use Infisical in a freestyle project
 
     To fetch secrets with Infisical in a Freestyle Project job, you'll need to expose the credential you created above as an environment variable to the Infisical CLI.
     To do so, first click **New Item** from the dashboard navigation sidebar:
@@ -201,7 +202,7 @@ Prerequisites:
     The example command below will print the secrets using the service token passed as a credential. When done, click  **Save**.
 
     ```
-    infisical secrets --env=dev --path=/
+    infisical sm secrets --env=dev --path=/
     ```
 
     ![Jenkins step 11](../../images/integrations/jenkins/jenkins_11.png)
@@ -209,12 +210,12 @@ Prerequisites:
     Finally, click **Build Now** from the navigation sidebar to run your new job.
 
     <Info>
-      Running into issues? Join Infisical's [community Slack](https://infisical.com/slack) for quick support.
+      Running into issues? Join the [Infisical community forum](https://community.infisical.com) for quick support.
     </Info>
 
 
 
-    ## Use Infisical in a Jenkins Pipeline
+    ## Use Infisical in a Jenkins pipeline
 
     To fetch secrets using Infisical in a Pipeline job, you'll need to expose the Jenkins credential you created above as an environment variable.
     To do so, click **New Item** from the dashboard navigation sidebar:
@@ -238,13 +239,13 @@ Prerequisites:
         stages {
             stage('Run Infisical') {
                 steps {
-                    sh("infisical secrets --env=dev --path=/")
+                    sh("infisical sm secrets --env=dev --path=/")
 
                     // doesn't work
-                    // sh("docker run --rm test-container infisical secrets")
+                    // sh("docker run --rm test-container infisical sm secrets")
 
                     // works
-                    // sh("docker run -e INFISICAL_TOKEN=${INFISICAL_TOKEN} --rm test-container infisical secrets --env=dev --path=/")
+                    // sh("docker run -e INFISICAL_TOKEN=${INFISICAL_TOKEN} --rm test-container infisical sm secrets --env=dev --path=/")
 
                     // doesn't work
                     // sh("docker-compose up -d")

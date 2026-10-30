@@ -6,6 +6,7 @@ export {
   useDeleteCert,
   useDownloadCertPkcs12,
   useImportCertificate,
+  useImportPkcs12Entries,
   useRenewCertificate,
   useRevokeCert,
   useTriggerCertificateRequestValidation,
@@ -19,6 +20,7 @@ export {
   useGetCertBundle,
   useGetCertDashboardStats,
   useGetCertificateById,
+  useGetCertificateRenewalPreview,
   useGetCertificateRequest,
   useGetCertPqcTrend,
   useListCertificateRequests

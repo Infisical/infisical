@@ -12,8 +12,8 @@ import {
 } from "@app/components/v3/generic/Dialog";
 import { cn } from "@app/components/v3/utils";
 
-import { useAsRef } from "./hooks/use-as-ref";
 import type { PasteDialogState } from "./data-grid-types";
+import { useAsRef } from "./hooks/use-as-ref";
 
 interface DataGridPasteDialogProps<TData> {
   tableMeta: TableMeta<TData>;
@@ -40,7 +40,8 @@ export function DataGridPasteDialog<TData>({
 }
 
 interface PasteDialogProps
-  extends Pick<TableMeta<unknown>, "onPasteDialogOpenChange" | "onCellsPaste">,
+  extends
+    Pick<TableMeta<unknown>, "onPasteDialogOpenChange" | "onCellsPaste">,
     Required<Pick<TableMeta<unknown>, "pasteDialog">> {}
 
 // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -119,16 +120,15 @@ function PasteDialogImpl({ pasteDialog, onPasteDialogOpenChange, onCellsPaste }:
   );
 }
 
-// eslint-disable-next-line react/prop-types
 function RadioItem({ className, ...props }: React.ComponentProps<"input">) {
   return (
     <input
       type="radio"
       className={cn(
         "border-input relative size-4 shrink-0 appearance-none rounded-full border bg-background shadow-xs transition-[color,box-shadow] outline-none",
-        "text-primary focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "text-project focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        "checked:before:absolute checked:before:start-1/2 checked:before:top-1/2 checked:before:size-2 checked:before:-translate-x-1/2 checked:before:-translate-y-1/2 checked:before:rounded-full checked:before:bg-primary checked:before:content-['']",
+        "checked:before:absolute checked:before:start-1/2 checked:before:top-1/2 checked:before:size-2 checked:before:-translate-x-1/2 checked:before:-translate-y-1/2 checked:before:rounded-full checked:before:bg-project checked:before:content-['']",
         "bg-input/30",
         className
       )}

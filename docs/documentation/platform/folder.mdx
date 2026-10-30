@@ -5,7 +5,7 @@ description: "Learn how to organize secrets with folders."
 
 Infisical Folders enable users to organize secrets using custom structures dependent on the intended use case (also known as **path-based secret storage**).
 
-It is great for organizing secrets around hierarchies with multiple services or types of secrets involved at large quantities.
+It's great for organizing secrets around hierarchies with multiple services or types of secrets involved at large quantities.
 Infisical Folders can be infinitely nested to mirror your application architecture – whether it's microservices, monorepos,
 or any logical grouping that best suits your needs.
 
@@ -28,44 +28,45 @@ By extending this example, you can see how path-based secret storage provides a 
 
 ## Managing folders
 
-To add a folder, press the downward chevron to the right of the **Add Secret** button; then press on the **Add Folder** button.
+To add a folder, select **Add New**, then select **New Folder**.
 
 <Info>
   Folder names can only contain alphabets, numbers, and dashes
 </Info>
 
-![add folder](../../images/platform/folder/folders-add.png)
+![Add Folder dialog with a name and description field](../../images/platform/folder/folders-add.png)
 
-To delete a folder, hover over it and press the **X** button that appears on the right side.
+To delete a folder, hover over it and select the trash icon on the right.
 
-![delete folder](../../images/platform/folder/folders-delete.png)
+![Folder row hovered, showing the trash icon on the right](../../images/platform/folder/folders-delete.png)
 
 ### Comparing folders
 
 It's possible to compare the contents of folders across environments in the **Secrets Overview** page.
-When you click on a folder, the table will display the items within it across environments.
+When you select a folder, the table shows the items inside it across environments.
 
-In the image below, you can see that the **Development** environment is the only one that contains items
-in the `/users` folder, being other folders `/user-a`, `/user-b`, ... `/user-f`.
+In the image below, `/backend` holds the same five secrets in Development, Staging, and Production. Where a check mark is missing, that secret isn't set for that environment.
 
-![comparing folders](../../images/platform/folder/folders-secrets-overview.png)
+![Contents of one folder compared across every environment](../../images/platform/folder/folders-secrets-overview.png)
 
-### Replicating Folder Contents
+### Replicating folder contents
 
-If you want to copy secrets or folders from one path to another, you can utilize the **Replicate Secrets** functionality located in the **Add Secret** dropdown.
+To copy secrets or folders from one location to another, select **Add New** > **More** > **Copy Secrets**.
 
-![replicate secrets](../../images/platform/folder/replicate-secrets.png)
+![Add New menu open, showing Copy Secrets under More](../../images/platform/folder/replicate-secrets.png)
 
-![replicate secrets modal](../../images/platform/folder/replicate-secrets-modal.png)
+The **Copy Secrets** panel starts from the folder you're looking at. Under **Source**, choose the environment and path to copy from. Under **Destination**, choose the environment and path to copy to.
 
-First, select the **Source Environment** and the **Source Root Path** you want to copy secrets *from*. In the example provided, we select `/dev-folder` as the source root path from the Development environment. This means any secrets within `/dev-folder` from Development will be replicated. By default, these secrets are copied into the *currently active* folder/path in your target environment (e.g., the root folder of your Staging environment in this scenario).
+In the source list, select individual secrets, or select a folder to copy the folder and its contents. The destination list previews the secrets the copy adds or changes.
 
-As a final step, you can select the specific secrets you wish to copy and then click **Replicate Secrets**.
+The source path also decides where the copies land. Infisical strips it from the path of each selected secret and recreates what's left under the destination path. Copying `/backend/API_KEY` into `/replicated` gives you `/replicated/backend/API_KEY` when the source path is `/`, and `/replicated/API_KEY` when it's `/backend`.
 
-![replicate secrets modal](../../images/platform/folder/replicate-secrets-result.png)
+Keys are always copied. To choose which other properties come with them, select **Properties** and check or clear **Secret value**, **Comment**, **Tags**, **Metadata**, and **Multi-line encoding**.
 
-The result shows two secrets successfully copied from the `/dev-folder` in the Development environment into the root folder of the Staging environment.
+![Copy Secrets panel with a source path and two secrets selected](../../images/platform/folder/replicate-secrets-modal.png)
 
-<Info>
-    If you do not select a **Source Root Path**, the replication will consider the contents of the *entire root* of the **Source Environment** (e.g., the Development environment). In this example that would mean copying the `/dev-folder` itself rather than just its contents.
-</Info>
+Select **Copy**. If any selected secrets already exist at the destination, select **Overwrite conflicts** or **Skip conflicts** in the dialog that follows. To overwrite them without the dialog, turn on **Overwrite existing secrets** before you select **Copy**.
+
+![The replicated secrets in the destination folder](../../images/platform/folder/replicate-secrets-result.png)
+
+Here `LOG_LEVEL` and `PORT` were copied from the root of Development into `/replicated` in Staging.

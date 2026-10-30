@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
@@ -24,6 +25,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { CreatePolicyModal } from "../PoliciesPage/components/CertificatePoliciesTab/CreatePolicyModal";
 import {
   PolicyAlgorithmsSection,
+  PolicyCustomExtensionsSection,
   PolicyDetailsSection,
   PolicyKeyUsagesSection,
   PolicyNoRulesSection,
@@ -33,7 +35,6 @@ import {
 } from "./components";
 
 const Page = () => {
-  const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const params = useParams({
@@ -61,17 +62,16 @@ const Page = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const projectId = currentProject?.id || "";
-
   const hasAnyEnforcement = Boolean(
     policy?.subject ||
-      policy?.sans ||
-      policy?.keyUsages ||
-      policy?.extendedKeyUsages ||
-      policy?.algorithms?.signature?.length ||
-      policy?.algorithms?.keyAlgorithm?.length ||
-      policy?.validity?.max ||
-      policy?.basicConstraints?.isCA
+    policy?.sans ||
+    policy?.keyUsages ||
+    policy?.extendedKeyUsages ||
+    policy?.algorithms?.signature?.length ||
+    policy?.algorithms?.keyAlgorithm?.length ||
+    policy?.validity?.max ||
+    policy?.basicConstraints?.isCA ||
+    policy?.customExtensions
   );
 
   const handleDeleteConfirm = async () => {
@@ -87,10 +87,9 @@ const Page = () => {
 
       setIsDeleteModalOpen(false);
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies",
+        to: "/organizations/$orgId/cert-manager/certificate-policies",
         params: {
-          orgId: currentOrg.id,
-          projectId
+          orgId: currentOrg.id
         }
       });
     } catch (error) {
@@ -102,46 +101,45 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {policy && (
         <ProjectPermissionCan
+          renderGuardBanner
           I={ProjectPermissionCertificatePolicyActions.Read}
           a={subject(ProjectPermissionSub.CertificatePolicies, { name: policy.name })}
         >
           {(isAllowed) =>
             isAllowed ? (
-              <div className="mx-auto mb-6 w-full max-w-8xl">
-                {cameFromProfile && search.profileId ? (
-                  <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId,
-                      profileId: search.profileId
-                    }}
-                    search={{
-                      from: search.profileFrom,
-                      applicationName: search.profileApplicationName
-                    }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                    {sourceProfile?.slug || "Certificate Profile"}
-                  </Link>
-                ) : (
-                  <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies"
-                    params={{
-                      orgId: currentOrg.id,
-                      projectId
-                    }}
-                    className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-                  >
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                    Certificate Policies
-                  </Link>
-                )}
+              <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
                 <PageHeader
+                  backLink={
+                    cameFromProfile && search.profileId ? (
+                      <Link
+                        to="/organizations/$orgId/cert-manager/certificate-profiles/$profileId"
+                        params={{
+                          orgId: currentOrg.id,
+                          profileId: search.profileId
+                        }}
+                        search={{
+                          from: search.profileFrom,
+                          applicationName: search.profileApplicationName
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        {sourceProfile?.slug || "Certificate Profile"}
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/organizations/$orgId/cert-manager/certificate-policies"
+                        params={{
+                          orgId: currentOrg.id
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        Certificate Policies
+                      </Link>
+                    )
+                  }
                   scope={ProjectType.CertificateManager}
                   description="Manage certificate policy"
                   title={policy.name}
@@ -162,6 +160,7 @@ const Page = () => {
                         <PolicySansRulesSection policy={policy} />
                         <PolicyKeyUsagesSection policy={policy} />
                         <PolicyAlgorithmsSection policy={policy} />
+                        <PolicyCustomExtensionsSection policy={policy} />
                       </>
                     ) : (
                       <PolicyNoRulesSection />
@@ -176,19 +175,16 @@ const Page = () => {
                   mode="edit"
                 />
 
-                <DeleteActionModal
+                <ConfirmationAlertDialog
                   isOpen={isDeleteModalOpen}
                   title={`Delete Certificate Policy ${policy.name}?`}
-                  onChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
-                  deleteKey={policy.name}
-                  onDeleteApproved={handleDeleteConfirm}
+                  description="This action is irreversible."
+                  onOpenChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
+                  confirmKey={policy.name}
+                  onConfirm={handleDeleteConfirm}
                 />
               </div>
-            ) : (
-              <div className="container mx-auto flex h-full items-center justify-center">
-                <AccessRestrictedBanner />
-              </div>
-            )
+            ) : null
           }
         </ProjectPermissionCan>
       )}
@@ -199,10 +195,8 @@ const Page = () => {
 export const CertificatePolicyDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Certificate Policy</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Certificate Policy" />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

@@ -1,4 +1,3 @@
-/* eslint-disable no-param-reassign */
 import { z } from "zod";
 
 import { OrgPermissionSubjects } from "@app/context";
@@ -17,8 +16,10 @@ import {
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
+  OrgPermissionMemberActions,
   OrgPermissionProjectActions,
   OrgPermissionSecretShareAction,
+  OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSsoActions,
   OrgPermissionSubOrgActions,
   OrgRelayPermissionActions
@@ -37,7 +38,12 @@ const generalPermissionSchema = z
   .optional();
 
 const auditLogsPermissionSchema = z
-  .array(z.object({ [OrgPermissionAuditLogsActions.Read]: z.boolean().optional() }))
+  .array(
+    z.object({
+      [OrgPermissionAuditLogsActions.Read]: z.boolean().optional(),
+      [OrgPermissionAuditLogsActions.Edit]: z.boolean().optional()
+    })
+  )
   .optional();
 
 const billingPermissionSchema = z
@@ -75,6 +81,18 @@ const appConnectionsPermissionSchema = z
 
 const kmipPermissionSchema = z
   .array(z.object({ [OrgPermissionKmipActions.Proxy]: z.boolean().optional() }))
+  .optional();
+
+const memberPermissionSchema = z
+  .array(
+    z.object({
+      [OrgPermissionMemberActions.Read]: z.boolean().optional(),
+      [OrgPermissionMemberActions.Create]: z.boolean().optional(),
+      [OrgPermissionMemberActions.Edit]: z.boolean().optional(),
+      [OrgPermissionMemberActions.Delete]: z.boolean().optional(),
+      [OrgPermissionMemberActions.GrantPrivileges]: z.boolean().optional()
+    })
+  )
   .optional();
 
 const identityPermissionSchema = z
@@ -194,6 +212,17 @@ const honeyTokenPermissionSchema = z
   .array(z.object({ [OrgPermissionHoneyTokenActions.Setup]: z.boolean().optional() }))
   .optional();
 
+const secretsManagementInsightsPermissionSchema = z
+  .array(
+    z.object({
+      [OrgPermissionSecretsManagementInsightsActions.Read]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.GenerateReport]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.DeleteReport]: z.boolean().optional(),
+      [OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues]: z.boolean().optional()
+    })
+  )
+  .optional();
+
 const projectPermissionSchema = z
   .array(
     z.object({
@@ -217,7 +246,7 @@ const ssoPermissionSchema = z
 
 export const formSchema = z.object({
   name: z.string().trim(),
-  description: z.string().trim().optional(),
+  description: z.string().trim().nullish(),
   slug: z
     .string()
     .trim()
@@ -226,7 +255,7 @@ export const formSchema = z.object({
     .object({
       project: projectPermissionSchema,
       "audit-logs": auditLogsPermissionSchema,
-      member: generalPermissionSchema,
+      member: memberPermissionSchema,
       groups: groupPermissionSchema,
       role: generalPermissionSchema,
       settings: generalPermissionSchema,
@@ -253,7 +282,8 @@ export const formSchema = z.object({
       "secret-share": secretSharingPermissionSchema,
       "sub-organization": subOrganizationPermissionSchema,
       "email-domains": emailDomainPermissionSchema,
-      "honey-tokens": honeyTokenPermissionSchema
+      "honey-tokens": honeyTokenPermissionSchema,
+      [OrgPermissionSubjects.SecretsManagementInsights]: secretsManagementInsightsPermissionSchema
     })
     .optional()
     .superRefine((permissions, ctx) => {
@@ -280,7 +310,6 @@ export type TFormSchema = z.infer<typeof formSchema>;
 export type TPermissionsKey = keyof NonNullable<TFormSchema["permissions"]>;
 
 export const rolePermission2Form = (permissions: TPermission[] = []) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formVal: Record<string, any> = {};
   permissions.forEach((permission) => {
     const actions = Array.isArray(permission.action) ? permission.action : [permission.action];
@@ -315,24 +344,29 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     description: "Manage organization member access and role assignments",
     actions: [
       {
-        value: OrgPermissionActions.Read,
+        value: OrgPermissionMemberActions.Read,
         label: "View all members",
         description: "View organization members and their roles"
       },
       {
-        value: OrgPermissionActions.Create,
+        value: OrgPermissionMemberActions.Create,
         label: "Invite members",
         description: "Invite new users to join the organization"
       },
       {
-        value: OrgPermissionActions.Edit,
+        value: OrgPermissionMemberActions.Edit,
         label: "Edit members",
-        description: "Modify member roles and access settings"
+        description: "Update member attributes and activation status"
       },
       {
-        value: OrgPermissionActions.Delete,
+        value: OrgPermissionMemberActions.Delete,
         label: "Remove members",
         description: "Remove members from the organization"
+      },
+      {
+        value: OrgPermissionMemberActions.GrantPrivileges,
+        label: "Grant privileges",
+        description: "Assign and change the roles held by organization members"
       }
     ]
   },
@@ -533,7 +567,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     ]
   },
   [OrgPermissionSubjects.ProjectTemplates]: {
-    title: "Project Templates",
+    title: "Secrets Management Project Templates",
     description: "Manage reusable templates applied when creating new projects",
     actions: [
       {
@@ -587,12 +621,17 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
   },
   [OrgPermissionSubjects.AuditLogs]: {
     title: "Audit Logs",
-    description: "View organization activity and audit trail",
+    description: "View organization activity and audit trail, and choose which events are recorded",
     actions: [
       {
         value: OrgPermissionAuditLogsActions.Read,
         label: "Read",
         description: "View organization activity and audit events"
+      },
+      {
+        value: OrgPermissionAuditLogsActions.Edit,
+        label: "Edit",
+        description: "Choose which audit log event classes the organization records"
       }
     ]
   },
@@ -902,7 +941,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
     ]
   },
   [OrgPermissionSubjects.SecretShare]: {
-    title: "Secret Share",
+    title: "Secrets Management Secret Sharing",
     description: "Configure settings for sharing secrets externally",
     actions: [
       {
@@ -912,8 +951,35 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       }
     ]
   },
+  [OrgPermissionSubjects.SecretsManagementInsights]: {
+    title: "Secrets Management Insights",
+    description: "View organization-wide secrets management insights and reports",
+    actions: [
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.Read,
+        label: "Read",
+        description: "View secrets management insights"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.GenerateReport,
+        label: "Generate Report",
+        description: "Generate new secrets management insight reports"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.DeleteReport,
+        label: "Delete Report",
+        description: "Delete secrets management insight reports"
+      },
+      {
+        value: OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+        label: "Search All Secret Values",
+        description:
+          "Locate secrets that share a value in any project, including projects the user isn't a member of"
+      }
+    ]
+  },
   [OrgPermissionSubjects.HoneyTokens]: {
-    title: "Honey Tokens",
+    title: "Secrets Management Honey Tokens",
     description: "Configure honey token setup for the organization",
     actions: [
       {

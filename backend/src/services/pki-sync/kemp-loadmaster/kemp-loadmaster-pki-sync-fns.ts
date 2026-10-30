@@ -16,10 +16,10 @@ import {
   TKempRequestFn
 } from "@app/services/app-connection/kemp-loadmaster/kemp-loadmaster-connection-fns";
 import { TKempLoadMasterConnection } from "@app/services/app-connection/kemp-loadmaster/kemp-loadmaster-connection-types";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { buildCertificateBundle, splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { buildCertificateBundle, splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
 import {
@@ -46,6 +46,8 @@ type TKempLoadMasterPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -395,8 +397,9 @@ export const kempLoadMasterPkiSyncFactory = ({
       let oldCertificateIdToRemove: string | undefined;
 
       if (typeof certificateId === "string") {
-        const syncRecordLookupId = certificate?.renewedFromCertificateId || certificateId;
-        const existingSyncRecord = syncRecordsByCertId.get(syncRecordLookupId);
+        const existingSyncRecord =
+          syncRecordsByCertId.get(certificate?.renewedFromCertificateId || certificateId) ??
+          (preserveItemOnRenewal ? syncRecordsByCertId.get(certificateId) : undefined);
 
         if (certificate?.renewedFromCertificateId && preserveItemOnRenewal && existingSyncRecord?.externalIdentifier) {
           targetIdentifier = existingSyncRecord.externalIdentifier;
@@ -497,6 +500,10 @@ export const kempLoadMasterPkiSyncFactory = ({
       oldCertificateIdToRemove
     } of certificatesToUpload) {
       try {
+        if (certificateId) {
+          await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, targetIdentifier);
+        }
+
         const bundle = buildCertificateBundle(cert, privateKey, certificateChain);
         await upsertCertificate(
           makeRequest,
@@ -616,6 +623,7 @@ export const kempLoadMasterPkiSyncFactory = ({
 
     const identifiersToRemove = new Set<string>();
     if (canRemoveCertificates) {
+      const removalCandidates = new Set<string>();
       for (const syncRecord of existingSyncRecords) {
         if (
           syncRecord.externalIdentifier &&
@@ -623,7 +631,7 @@ export const kempLoadMasterPkiSyncFactory = ({
           existingCertNames.has(syncRecord.externalIdentifier) &&
           !(syncRecord.certificateId && managedCertificateIds.has(syncRecord.certificateId))
         ) {
-          identifiersToRemove.add(syncRecord.externalIdentifier);
+          removalCandidates.add(syncRecord.externalIdentifier);
         }
       }
 
@@ -637,8 +645,18 @@ export const kempLoadMasterPkiSyncFactory = ({
             !activeIdentifiers.has(certName) &&
             !attemptedIdentifiers.has(certName)
           ) {
-            identifiersToRemove.add(certName);
+            removalCandidates.add(certName);
           }
+        }
+      }
+
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse([...removalCandidates], {
+        excludePkiSyncId: pkiSync.id,
+        destination: pkiSync.destination
+      });
+      for (const identifier of removalCandidates) {
+        if (!ownedByOtherSync.has(identifier)) {
+          identifiersToRemove.add(identifier);
         }
       }
 

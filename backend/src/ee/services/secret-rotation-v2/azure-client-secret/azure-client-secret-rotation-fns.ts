@@ -16,6 +16,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-client-secrets/azure-client-secrets-connection-fns";
 
 const GRAPH_API_BASE = "https://graph.microsoft.com/v1.0";
@@ -23,11 +24,39 @@ const GRAPH_API_BASE = "https://graph.microsoft.com/v1.0";
 type AzureErrorResponse = { error: { message: string } };
 
 const EXPIRY_PADDING_IN_DAYS = 3;
+const AZURE_CONCURRENT_REQUEST_MAX_RETRIES = 3;
+const AZURE_CONCURRENT_REQUEST_BASE_DELAY_MS = 2000;
 
-const sleep = async () =>
-  new Promise((resolve) => {
-    setTimeout(resolve, 1000);
+const sleep = async (ms = 1000) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
   });
+
+const getAzureErrorMessage = (error: AxiosError): string | undefined => {
+  const message = (error.response?.data as Partial<AzureErrorResponse> | undefined)?.error?.message;
+  return typeof message === "string" ? message : undefined;
+};
+
+const getErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : "Unknown error");
+
+// Graph rejects back-to-back writes to the same app registration with a transient "concurrent requests" error
+const isAzureConcurrentRequestError = (error: unknown): boolean =>
+  error instanceof AxiosError && (getAzureErrorMessage(error) ?? "").toLowerCase().includes("concurrent requests");
+
+const withAzureConcurrentRequestRetry = async <T>(fn: () => Promise<T>, context: string, attempt = 0): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error: unknown) {
+    if (!isAzureConcurrentRequestError(error) || attempt >= AZURE_CONCURRENT_REQUEST_MAX_RETRIES) throw error;
+
+    const delay = AZURE_CONCURRENT_REQUEST_BASE_DELAY_MS * 2 ** attempt;
+    logger.info(
+      `secretRotation: Azure concurrent request error on ${context}, retrying in ${delay}ms (attempt ${attempt + 1}/${AZURE_CONCURRENT_REQUEST_MAX_RETRIES})`
+    );
+    await sleep(delay);
+    return withAzureConcurrentRequestRetry(fn, context, attempt + 1);
+  }
+};
 
 export const azureClientSecretRotationFactory: TRotationFactory<
   TAzureClientSecretRotationWithConnection,
@@ -84,15 +113,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
       };
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
-        let message;
-        if (
-          error.response?.data &&
-          typeof error.response.data === "object" &&
-          "error" in error.response.data &&
-          typeof (error.response.data as AzureErrorResponse).error.message === "string"
-        ) {
-          message = (error.response.data as AzureErrorResponse).error.message;
-        }
+        const message = getAzureErrorMessage(error);
         throw new BadRequestError({
           message: `Failed to add client secret to Azure app ${objectId}: ${
             message || error.message || "Unknown error"
@@ -123,17 +144,43 @@ export const azureClientSecretRotationFactory: TRotationFactory<
       return data.value?.some((credential) => credential.keyId === keyId) || false;
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
-        let message;
-        if (
-          error.response?.data &&
-          typeof error.response.data === "object" &&
-          "error" in error.response.data &&
-          typeof (error.response.data as AzureErrorResponse).error.message === "string"
-        ) {
-          message = (error.response.data as AzureErrorResponse).error.message;
-        }
+        const message = getAzureErrorMessage(error);
         throw new BadRequestError({
           message: `Failed to check credential existence for app ${objectId}: ${
+            message || error.message || "Unknown error"
+          }`
+        });
+      }
+      throw new BadRequestError({
+        message: "Unable to validate connection: verify credentials"
+      });
+    }
+  };
+
+  const $removeClientSecret = async (keyId: string) => {
+    const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
+    const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/removePassword`;
+
+    try {
+      await withAzureConcurrentRequestRetry(
+        () =>
+          request.post(
+            endpoint,
+            { keyId },
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json"
+              }
+            }
+          ),
+        "remove credential"
+      );
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        const message = getAzureErrorMessage(error);
+        throw new BadRequestError({
+          message: `Failed to remove client secret with keyId ${keyId} from app ${objectId}: ${
             message || error.message || "Unknown error"
           }`
         });
@@ -149,47 +196,12 @@ export const azureClientSecretRotationFactory: TRotationFactory<
    * First checks if the credential exists before attempting revocation.
    */
   const revokeCredential = async (keyId: string) => {
-    // Check if credential exists before attempting revocation
     const exists = await credentialExists(keyId);
     if (!exists) {
       return; // Credential doesn't exist, nothing to revoke
     }
 
-    const accessToken = await getAzureConnectionAccessToken(connection.id, appConnectionDAL, kmsService);
-    const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/removePassword`;
-
-    try {
-      await request.post(
-        endpoint,
-        { keyId },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json"
-          }
-        }
-      );
-    } catch (error: unknown) {
-      if (error instanceof AxiosError) {
-        let message;
-        if (
-          error.response?.data &&
-          typeof error.response.data === "object" &&
-          "error" in error.response.data &&
-          typeof (error.response.data as AzureErrorResponse).error.message === "string"
-        ) {
-          message = (error.response.data as AzureErrorResponse).error.message;
-        }
-        throw new BadRequestError({
-          message: `Failed to remove client secret with keyId ${keyId} from app ${objectId}: ${
-            message || error.message || "Unknown error"
-          }`
-        });
-      }
-      throw new BadRequestError({
-        message: "Unable to validate connection: verify credentials"
-      });
-    }
+    await $removeClientSecret(keyId);
   };
 
   /**
@@ -233,7 +245,21 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   ) => {
     const newCredentials = await $rotateClientSecret();
     if (oldCredentials?.keyId) {
-      await revokeCredential(oldCredentials.keyId);
+      try {
+        await revokeCredential(oldCredentials.keyId);
+      } catch (revokeError: unknown) {
+        // only two credentials are tracked, so persisting the new secret now would drop the old keyId from tracking
+        try {
+          await sleep(AZURE_CONCURRENT_REQUEST_BASE_DELAY_MS);
+          await $removeClientSecret(newCredentials.keyId);
+        } catch (cleanupError: unknown) {
+          const cleanupMessage = `The newly created client secret with keyId ${newCredentials.keyId} could not be cleaned up from app ${objectId} and may need to be removed manually`;
+          throw new BadRequestError({
+            message: `${getErrorMessage(revokeError)} ${cleanupMessage}: ${getErrorMessage(cleanupError)}`
+          });
+        }
+        throw revokeError;
+      }
     }
 
     return callback(newCredentials);

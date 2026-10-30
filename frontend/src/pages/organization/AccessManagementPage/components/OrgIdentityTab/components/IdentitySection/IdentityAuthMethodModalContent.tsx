@@ -1,15 +1,9 @@
-import { type ReactNode, useCallback } from "react";
+import { type JSX, type ReactNode, useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
-import {
-  components as ReactSelectComponents,
-  type OptionProps,
-  type SingleValueProps
-} from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   BadgeCheckIcon,
   BracesIcon,
-  CheckIcon,
   FileKeyIcon,
   GlobeIcon,
   KeyIcon,
@@ -17,8 +11,7 @@ import {
 } from "lucide-react";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { Badge, Field, FieldError, FieldLabel, FilterableSelect } from "@app/components/v3";
+import { Badge, Combobox, Field, FieldError, FieldLabel, ProviderIcon } from "@app/components/v3";
 import { MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK } from "@app/helpers/identityAuthSchemas";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -39,7 +32,6 @@ import { IdentityTokenAuthForm } from "./IdentityTokenAuthForm";
 import { IdentityUniversalAuthForm } from "./IdentityUniversalAuthForm";
 
 type Props = {
-  popUp: UsePopUpState<["identityAuthMethod", "upgradePlan"]>;
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (
     popUpName: keyof UsePopUpState<["identityAuthMethod", "upgradePlan"]>,
@@ -73,12 +65,7 @@ type TIdentityAuthMethodSelectOption = TIdentityAuthMethodOption & {
 };
 
 const getProviderIcon = (fileName: string) => (
-  <img
-    src={`/images/integrations/${fileName}`}
-    alt=""
-    aria-hidden
-    className="size-4 object-contain"
-  />
+  <ProviderIcon icon={fileName} alt="" aria-hidden className="size-4 object-contain" />
 );
 
 const commonIdentityAuthMethods: TIdentityAuthMethodOption[] = [
@@ -157,41 +144,6 @@ export const identityAuthMethodOptions = [
   ...otherIdentityAuthMethods
 ];
 
-const AuthMethodOption = (props: OptionProps<TIdentityAuthMethodSelectOption>) => {
-  const { data, isDisabled, isSelected } = props;
-  const option = (
-    <ReactSelectComponents.Option {...props}>
-      <div
-        className={`flex items-center justify-between gap-2 ${
-          isDisabled ? "cursor-not-allowed opacity-50" : ""
-        }`}
-      >
-        <span className="flex min-w-0 items-center gap-2">
-          {data.icon}
-          <span className="truncate">{data.label}</span>
-          {data.showConfiguredBadge && <Badge variant="info">Configured</Badge>}
-        </span>
-        {isSelected && <CheckIcon className="size-4 shrink-0" />}
-      </div>
-    </ReactSelectComponents.Option>
-  );
-
-  return option;
-};
-
-const AuthMethodSingleValue = (props: SingleValueProps<TIdentityAuthMethodSelectOption>) => {
-  const { data } = props;
-
-  return (
-    <ReactSelectComponents.SingleValue {...props}>
-      <span className="flex min-w-0 items-center gap-2">
-        {data.icon}
-        <span className="truncate">{data.label}</span>
-      </span>
-    </ReactSelectComponents.SingleValue>
-  );
-};
-
 const schema = z
   .object({
     authMethod: z.nativeEnum(IdentityAuthMethod)
@@ -201,7 +153,6 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 export const IdentityAuthMethodModalContent = ({
-  popUp,
   handlePopUpOpen,
   handlePopUpToggle,
   identity,
@@ -452,28 +403,40 @@ export const IdentityAuthMethodModalContent = ({
           return (
             <Field className="mb-2">
               <FieldLabel htmlFor="auth-method">Auth Method</FieldLabel>
-              <FilterableSelect<TIdentityAuthMethodSelectOption>
-                inputId="auth-method"
+              <Combobox<TIdentityAuthMethodSelectOption>
+                id="auth-method"
                 value={selectedAuthMethod}
                 options={authMethodOptions}
                 isDisabled={isSelectedAuthAlreadyConfigured}
+                isClearable={false}
                 isError={Boolean(error)}
                 isOptionDisabled={({ isConfigured }) => isConfigured}
                 getOptionLabel={({ label }) => label}
                 getOptionValue={({ value: methodValue }) => methodValue}
-                components={{
-                  Option: AuthMethodOption,
-                  SingleValue: AuthMethodSingleValue
-                }}
-                placeholder="Select auth method"
-                onChange={(next) => {
-                  const nextAuthMethod = next as TIdentityAuthMethodSelectOption | null;
-
-                  if (nextAuthMethod && !nextAuthMethod.isConfigured) {
+                placeholder="Select auth method..."
+                searchPlaceholder="Search auth methods..."
+                searchAriaLabel="Search auth methods"
+                emptyMessage="No auth methods found."
+                modal
+                onValueChange={(nextAuthMethod) => {
+                  if (!nextAuthMethod.isConfigured) {
                     setSelectedAuthMethod(nextAuthMethod.value);
                     onChange(nextAuthMethod.value);
                   }
                 }}
+                renderOption={(option) => (
+                  <span className="flex min-w-0 items-center gap-2">
+                    {option.icon}
+                    <span className="truncate">{option.label}</span>
+                    {option.showConfiguredBadge && <Badge variant="info">Configured</Badge>}
+                  </span>
+                )}
+                renderValue={(option) => (
+                  <span className="flex min-w-0 items-center gap-2">
+                    {option.icon}
+                    <span className="truncate">{option.label}</span>
+                  </span>
+                )}
               />
               <FieldError>{error?.message}</FieldError>
             </Field>
@@ -481,12 +444,6 @@ export const IdentityAuthMethodModalContent = ({
         }}
       />
       {selectedMethodItem?.render ? selectedMethodItem.render() : <div />}
-      <UpgradePlanModal
-        isOpen={popUp?.upgradePlan?.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-      />
     </>
   );
 };

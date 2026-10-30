@@ -41,20 +41,25 @@ const createService = ({
   // Equal to actorOrgId means the identity lives here and the row itself is deleted. Different
   // means it was only invited in, so the delete just takes the membership away.
   identityOrgId = ORG_ID,
-  hasDeleteProtection = false
-}: { identityOrgId?: string; hasDeleteProtection?: boolean } = {}) => {
+  hasDeleteProtection = false,
+  identityName = "ident"
+}: { identityOrgId?: string; hasDeleteProtection?: boolean; identityName?: string } = {}) => {
   const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
   const deleteAlertsForDeletedResource = vi.fn().mockResolvedValue(0);
+  const emit = vi.fn().mockResolvedValue(undefined);
 
   const identityDAL = {
     transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
     deleteById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "ident" }),
-    findById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "ident" })
+    findById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: identityName, orgId: identityOrgId, projectId: null }),
+    updateById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "renamed", orgId: identityOrgId })
   };
 
   const membershipIdentityDAL = {
     getIdentityById: vi.fn().mockResolvedValue({
       scopeOrgId: ORG_ID,
+      // The real query inner-joins MembershipRole, so a membership always carries at least one role.
+      roles: [{ role: "member" }],
       identity: { id: IDENTITY_ID, orgId: identityOrgId, projectId: null, hasDeleteProtection }
     }),
     transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
@@ -73,12 +78,14 @@ const createService = ({
       getOrgPermission: vi
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getOrgPermissionByRoles: vi.fn()
+      getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: createMongoAbility([]) }])
     } as never,
-    licenseService: { getPlan: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
-    licenseDAL: { countOrgUsersAndIdentities: vi.fn() } as never,
-    keyStore: { getKeysByPattern: vi.fn(), getItem: vi.fn() } as never,
-    orgDAL: { findById: vi.fn(), findEffectiveOrgMembership: vi.fn() } as never,
+    licenseService: { getPlan: vi.fn(), getOrgSeatUsage: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
+    keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
+    orgDAL: {
+      findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
+      findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: "membership-1", scopeOrgId: ORG_ID })
+    } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
     usageMeteringService: { emit: vi.fn() } as never,
     alertService: { deleteAlertsForResource, deleteAlertsForDeletedResource } as never,
@@ -86,10 +93,11 @@ const createService = ({
       insertIdentityWideRevocationMarker: vi.fn().mockResolvedValue(undefined),
       insertOrgMembershipRevocationMarker: vi.fn().mockResolvedValue(undefined),
       bumpIdentityRevocationVersion: vi.fn().mockResolvedValue(undefined)
-    } as never
+    } as never,
+    eventEmitter: { emit }
   });
 
-  return { service, identityDAL, membershipIdentityDAL, deleteAlertsForResource, deleteAlertsForDeletedResource };
+  return { service, identityDAL, membershipIdentityDAL, deleteAlertsForResource, deleteAlertsForDeletedResource, emit };
 };
 
 describe("deleteIdentity alert cleanup", () => {
@@ -143,5 +151,82 @@ describe("deleteIdentity alert cleanup", () => {
 
     expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
     expect(deleteAlertsForResource).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteIdentity org access reconcile", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("removing an identity from an org it was invited into emits the removal in the same transaction", async () => {
+    const { service, emit } = createService({ identityOrgId: ROOT_ORG_ID });
+
+    await service.deleteIdentity(buildDto());
+
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(
+      [
+        {
+          id: expect.any(String) as string,
+          type: "com.infisical.organization.membership.removed.v1",
+          data: { orgId: ORG_ID, actorType: "identity", actorId: IDENTITY_ID }
+        }
+      ],
+      TX
+    );
+  });
+
+  test("deleting the identity row emits nothing, every membership goes with it", async () => {
+    const { service, emit } = createService();
+
+    await service.deleteIdentity(buildDto());
+
+    expect(emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateIdentity name check", () => {
+  const SOFT_HYPHEN = String.fromCharCode(0xad);
+  const LEGACY_NAME = `ci${SOFT_HYPHEN}bot`;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("an unchanged name is let through even if it predates the rule", async () => {
+    const { service, identityDAL } = createService({ identityName: LEGACY_NAME });
+
+    await service.updateIdentity({ ...buildDto(), name: LEGACY_NAME, hasDeleteProtection: true } as never);
+
+    expect(identityDAL.updateById).toHaveBeenCalledWith(
+      IDENTITY_ID,
+      { name: LEGACY_NAME, hasDeleteProtection: true },
+      TX
+    );
+  });
+
+  test("a rename to an unsafe name is refused", async () => {
+    const { service, identityDAL } = createService();
+
+    await expect(service.updateIdentity({ ...buildDto(), name: LEGACY_NAME } as never)).rejects.toThrow(
+      "Value cannot contain control, escape, bidirectional or zero-width characters"
+    );
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("an unchanged empty name is let through", async () => {
+    const { service, identityDAL } = createService({ identityName: "" });
+
+    await service.updateIdentity({ ...buildDto(), name: "", hasDeleteProtection: true } as never);
+
+    expect(identityDAL.updateById).toHaveBeenCalledWith(IDENTITY_ID, { name: "", hasDeleteProtection: true }, TX);
+  });
+
+  test("an empty name on its own is ignored, as before", async () => {
+    const { service, identityDAL } = createService();
+
+    await service.updateIdentity({ ...buildDto(), name: "" } as never);
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
   });
 });

@@ -14,6 +14,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listTrustedIps",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -23,7 +24,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const trustedIps = await server.services.trustedIp.listIpsByProjectId({
         actorAuthMethod: req.permission.authMethod,
@@ -43,6 +44,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "addTrustedIp",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -91,6 +93,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateTrustedIp",
       params: z.object({
         projectId: z.string().trim(),
         trustedIpId: z.string().trim()
@@ -140,6 +143,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteTrustedIp",
       params: z.object({
         projectId: z.string().trim(),
         trustedIpId: z.string().trim()

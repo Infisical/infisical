@@ -10,11 +10,13 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   validateAccountIds,
-  validatePrincipalArns
+  validateAccountIdsForUpdate,
+  validatePrincipalArns,
+  validatePrincipalArnsForUpdate
 } from "@app/services/identity-aws-auth/identity-aws-auth-validators";
+import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -259,8 +261,8 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
       body: z
         .object({
           stsEndpoint: z.string().trim().min(1).optional().describe(AWS_AUTH.UPDATE.stsEndpoint),
-          allowedPrincipalArns: validatePrincipalArns.describe(AWS_AUTH.UPDATE.allowedPrincipalArns),
-          allowedAccountIds: validateAccountIds.describe(AWS_AUTH.UPDATE.allowedAccountIds),
+          allowedPrincipalArns: validatePrincipalArnsForUpdate.describe(AWS_AUTH.UPDATE.allowedPrincipalArns),
+          allowedAccountIds: validateAccountIdsForUpdate.describe(AWS_AUTH.UPDATE.allowedAccountIds),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -343,7 +345,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       operationId: "getAwsAuth",

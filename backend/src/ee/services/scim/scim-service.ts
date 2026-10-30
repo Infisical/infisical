@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
-import { scimPatch } from "scim-patch";
 
 import {
   AccessScope,
@@ -11,16 +10,25 @@ import {
   TableName,
   TGroups,
   TMemberships,
+  TOrganizations,
   TUsers
 } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
+import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, NotFoundError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
+import { unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -28,30 +36,34 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordScimOperationMetric, ScimOperation } from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
+import { isUuidV4 } from "@app/lib/validator/validate-uuid";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
-import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
+import { assertWillRetainOrgAdmin } from "@app/services/membership-user/membership-user-fns";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TProjectAccessRevokeServiceFactory } from "@app/services/membership/project-access-revoke-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { deleteOrgMembershipsFn } from "@app/services/org/org-fns";
+import { emitGroupRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { OrgAuthMethod } from "@app/services/org/org-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { verifyEmailDomainOwnership as verifyEmailDomainOwnershipValidate } from "../email-domain/email-domain-fns";
@@ -59,7 +71,16 @@ import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TScimEventsDALFactory } from "./scim-events-dal";
-import { buildScimGroup, buildScimGroupList, buildScimUser, buildScimUserList, parseScimFilter } from "./scim-fns";
+import {
+  applyScimPatch,
+  assertParsableScimFilter,
+  buildScimGroup,
+  buildScimGroupList,
+  buildScimUser,
+  buildScimUserList,
+  isScimActive,
+  parseScimGroupFilter
+} from "./scim-fns";
 import { ScimEvent, TScimGroup, TScimServiceFactory } from "./scim-types";
 
 const verifyEmailDomainOwnership = async (args: {
@@ -86,15 +107,17 @@ type TScimServiceFactoryDep = {
     TUserDALFactory,
     "find" | "findOne" | "create" | "transaction" | "findUserEncKeyByUserIdsBatch" | "findById" | "updateById"
   >;
-  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "delete" | "update" | "find">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "delete" | "update" | "updateById" | "find">;
   orgDAL: Pick<
     TOrgDALFactory,
     | "createMembership"
+    | "lockActorsForOrgAccess"
     | "findById"
     | "find"
     | "findMembership"
     | "findEffectiveOrgMembership"
     | "findMembershipWithScimFilter"
+    | "countMembershipWithScimFilter"
     | "deleteMembershipById"
     | "transaction"
     | "updateMembershipById"
@@ -105,15 +128,19 @@ type TScimServiceFactoryDep = {
   groupDAL: Pick<
     TGroupDALFactory,
     | "create"
+    | "findGroupActorsAndOrgs"
+    | "findGroupOrgIds"
     | "findOne"
     | "findAllGroupPossibleUsers"
     | "delete"
     | "findGroups"
+    | "countGroups"
     | "transaction"
     | "updateById"
     | "update"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "filterProjectsByIdentityMembership">;
   membershipRoleDAL: TMembershipRoleDALFactory;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -132,12 +159,16 @@ type TScimServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
+  projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  eventEmitter: TEventEmitter;
 };
 
 export const scimServiceFactory = ({
@@ -155,15 +186,20 @@ export const scimServiceFactory = ({
   smtpService,
   externalGroupOrgRoleMappingDAL,
   membershipGroupDAL,
+  identityGroupMembershipDAL,
   membershipUserDAL,
   membershipRoleDAL,
   additionalPrivilegeDAL,
-  approvalPolicyDAL,
+  projectAccessRevokeService,
+  auditLogService,
   alertChannelRecipientDAL,
   scimEventsDAL,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService
+  usageMeteringService,
+  pamSessionDAL,
+  gatewayV2Service,
+  eventEmitter
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
@@ -226,12 +262,6 @@ export const scimServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
 
-    const plan = await licenseService.getPlan(orgId);
-    if (!plan.scim)
-      throw new BadRequestError({
-        message: "Failed to get SCIM tokens due to plan restriction. Upgrade plan to get SCIM tokens."
-      });
-
     const scimTokens = await scimDAL.find({ orgId });
     return scimTokens;
   };
@@ -243,8 +273,11 @@ export const scimServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }) => {
-    let scimToken = await scimDAL.findById(scimTokenId);
-    if (!scimToken) throw new NotFoundError({ message: `SCIM token with ID '${scimTokenId}' not found` });
+    let scimToken = isUuidV4(scimTokenId) ? await scimDAL.findById(scimTokenId) : undefined;
+    // Another organization's token reads as missing, so its id cannot be confirmed by probing.
+    if (!scimToken || scimToken.orgId !== actorOrgId) {
+      throw new NotFoundError({ message: `SCIM token with ID '${scimTokenId}' not found` });
+    }
 
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -255,12 +288,6 @@ export const scimServiceFactory = ({
       actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Scim);
-
-    const plan = await licenseService.getPlan(scimToken.orgId);
-    if (!plan.scim)
-      throw new BadRequestError({
-        message: "Failed to delete the SCIM token due to plan restriction. Upgrade plan to delete the SCIM token."
-      });
 
     scimToken = await scimDAL.deleteById(scimTokenId);
 
@@ -322,12 +349,17 @@ export const scimServiceFactory = ({
         status: 403
       });
 
+    assertParsableScimFilter(filter);
+
     const findOpts = {
       ...(startIndex && { offset: startIndex - 1 }),
       ...(limit && { limit })
     };
 
-    const users = await orgDAL.findMembershipWithScimFilter(orgId, filter, org.orgAuthMethod, findOpts);
+    const [users, totalResults] = await Promise.all([
+      orgDAL.findMembershipWithScimFilter(orgId, filter, org.orgAuthMethod, findOpts),
+      orgDAL.countMembershipWithScimFilter(orgId, filter, org.orgAuthMethod)
+    ]);
 
     const scimUsers = users.map(
       ({ id, externalId, username, firstName, lastName, email, isActive, createdAt, updatedAt }) =>
@@ -355,7 +387,7 @@ export const scimServiceFactory = ({
     return buildScimUserList({
       scimUsers,
       startIndex,
-      limit
+      totalResults
     });
   };
 
@@ -376,9 +408,11 @@ export const scimServiceFactory = ({
 
     // Use findMembershipWithScimFilter with the membershipId parameter
     // This ensures we use the same alias-type and latest-alias selection as listScimUsers
-    const [membership] = await orgDAL.findMembershipWithScimFilter(orgId, undefined, org.orgAuthMethod, {
-      membershipId: orgMembershipId
-    });
+    const [membership] = isUuidV4(orgMembershipId)
+      ? await orgDAL.findMembershipWithScimFilter(orgId, undefined, org.orgAuthMethod, {
+          membershipId: orgMembershipId
+        })
+      : [];
 
     if (!membership)
       throw new ScimRequestError({
@@ -415,6 +449,7 @@ export const scimServiceFactory = ({
     email,
     firstName,
     lastName,
+    active,
     orgId
   }) => {
     if (!email) throw new ScimRequestError({ detail: "Invalid request. Missing email.", status: 400 });
@@ -482,7 +517,7 @@ export const scimServiceFactory = ({
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
               status: OrgMembershipStatus.Invited,
-              isActive: true
+              isActive: active
             },
             tx
           );
@@ -546,7 +581,7 @@ export const scimServiceFactory = ({
               scopeOrgId: orgId,
               scope: AccessScope.Organization,
               status: OrgMembershipStatus.Invited,
-              isActive: true
+              isActive: active
             },
             tx
           );
@@ -593,7 +628,7 @@ export const scimServiceFactory = ({
       });
     }
 
-    if (email) {
+    if (email && createdOrgMembership.isActive) {
       await smtpService.sendMail({
         template: SmtpTemplates.ScimUserProvisioned,
         subjectLine: "Infisical organization invitation",
@@ -615,6 +650,94 @@ export const scimServiceFactory = ({
       createdAt: createdOrgMembership.createdAt,
       updatedAt: createdOrgMembership.updatedAt
     });
+  };
+
+  /**
+   * SCIM addresses people by the identifier the IdP asserts, but ours is users.username, which is
+   * the mailbox, so someone renamed at the IdP arrives here as a write to a field we treat as
+   * immutable. Refusing it leaves our copy stale and puts the provisioning job into a permanent
+   * error state. Where the org enforces SSO it has already made the IdP authoritative for identity,
+   * so the new address is taken; otherwise the mailbox is still ours and the refusal stands.
+   *
+   * Returns the address to write, or null when there is nothing to change.
+   */
+  const $resolveScimEmailChange = async ({
+    org,
+    user,
+    assertedEmail
+  }: {
+    org: Pick<TOrganizations, "id" | "authEnforced">;
+    user: Pick<TUsers, "id" | "email" | "username">;
+    assertedEmail?: string | null;
+  }): Promise<string | null> => {
+    if (!assertedEmail) return null;
+
+    const newEmail = sanitizeEmail(assertedEmail);
+    if (newEmail === user.email || newEmail === user.username) return null;
+
+    if (!org.authEnforced) {
+      throw new ScimRequestError({
+        detail:
+          "Email cannot be changed. Enable SSO enforcement for this organization to let your identity provider manage member email addresses.",
+        status: 400,
+        mutability: "immutable"
+      });
+    }
+
+    try {
+      validateEmail(newEmail);
+    } catch (err) {
+      throw new ScimRequestError({
+        detail: `'${assertedEmail}' is not a valid email address`,
+        status: 400,
+        scimType: "invalidValue",
+        error: err
+      });
+    }
+
+    try {
+      await verifyEmailDomainOwnership({ email: newEmail, orgId: org.id, emailDomainDAL });
+    } catch (err) {
+      throw new ScimRequestError({
+        detail: `'${newEmail}' is not on a verified email domain for this organization. Add and verify the domain in Infisical, then retry.`,
+        status: 400,
+        scimType: "invalidValue",
+        error: err
+      });
+    }
+
+    const conflictingUser = await userDAL.findOne({ username: newEmail });
+    if (conflictingUser && conflictingUser.id !== user.id) {
+      throw new ScimRequestError({
+        detail: `An Infisical account already exists for '${newEmail}'. Remove or merge that account before changing this user's email.`,
+        status: 409,
+        scimType: "uniqueness"
+      });
+    }
+
+    return newEmail;
+  };
+
+  /**
+   * The conflict check above is a read, not a lock, so a concurrent login or invite can take the
+   * address first. Report that as the conflict it is instead of a 500 carrying a constraint name.
+   * Only where a rename was actually attempted: the transaction writes other rows too, and calling
+   * an unrelated unique violation an email conflict would send the IdP chasing the wrong address.
+   */
+  const $toScimEmailConflictError = (err: unknown, newEmail: string | null) => {
+    if (
+      newEmail &&
+      err instanceof DatabaseError &&
+      (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
+    ) {
+      return new ScimRequestError({
+        detail: `An Infisical account already exists for '${newEmail}'. Remove or merge that account before changing this user's email.`,
+        status: 409,
+        scimType: "uniqueness",
+        error: err
+      });
+    }
+    return err;
   };
 
   // partial
@@ -681,55 +804,104 @@ export const scimServiceFactory = ({
       createdAt: membership.createdAt,
       updatedAt: membership.updatedAt
     });
-    scimPatch(scimUser, operations);
+    applyScimPatch(scimUser, operations);
 
-    // email is our identifier - changing that user must delete this user and provision a new one
-    if (scimUser.emails?.[0]?.value !== user?.email) {
-      throw new ScimRequestError({
-        detail: "Email cannot be changed",
-        status: 400,
-        mutability: "immutable"
-      });
-    }
+    const newEmail = await $resolveScimEmailChange({
+      org,
+      user,
+      assertedEmail: (scimUser.emails?.find((email) => email.primary) ?? scimUser.emails?.[0])?.value
+    });
 
     await verifyEmailDomainOwnership({
       email: user.username,
       orgId,
       emailDomainDAL
     });
-    await userDAL.transaction(async (tx) => {
-      await membershipUserDAL.updateById(
-        membership.id,
-        {
-          isActive: scimUser.active
-        },
-        tx
-      );
-      await userDAL.updateById(
-        membership.actorUserId as string,
-        {
-          firstName: scimUser.name.givenName,
-          lastName: scimUser.name.familyName
-        },
-        tx
-      );
 
-      await scimEventsDAL.create(
-        {
-          orgId,
-          eventType: ScimEvent.UPDATE_USER,
-          event: {
+    let sendPamCancellations = () => {};
+
+    try {
+      await userDAL.transaction(async (tx) => {
+        if (membership.isActive && !isScimActive(scimUser.active)) {
+          await assertWillRetainOrgAdmin({
+            scopeOrgId: orgId,
+            excludeMembershipIds: [membership.id],
+            dal: membershipUserDAL,
+            tx
+          });
+        }
+
+        await membershipUserDAL.updateById(
+          membership.id,
+          {
+            isActive: scimUser.active
+          },
+          tx
+        );
+
+        if (!scimUser.active) {
+          const childOrgs = await orgDAL.find({ rootOrgId: orgId }, { tx });
+          sendPamCancellations = await terminatePamSessionsForUsers({
+            orgIds: [orgId, ...childOrgs.map((el) => el.id)],
+            userIds: [membership.actorUserId as string],
+            pamSessionDAL,
+            gatewayV2Service,
+            tx
+          });
+        }
+        await userDAL.updateById(
+          membership.actorUserId as string,
+          {
             firstName: scimUser.name.givenName,
-            email: scimUser.userName,
             lastName: scimUser.name.familyName,
-            active: scimUser.active
-          }
-        },
-        tx
-      );
-    });
+            ...(newEmail ? { email: newEmail, username: newEmail, isEmailVerified: false } : {})
+          },
+          tx
+        );
 
-    return scimUser;
+        // The old address stays on the alias: it is what past assertions carried, and dropping it
+        // would make a login in flight from before the rename look stale.
+        if (newEmail) {
+          await Promise.all(
+            userAliases.map((alias) =>
+              userAliasDAL.updateById(alias.id, { emails: unique([...(alias.emails ?? []), newEmail]) }, tx)
+            )
+          );
+        }
+
+        await scimEventsDAL.create(
+          {
+            orgId,
+            eventType: ScimEvent.UPDATE_USER,
+            event: {
+              firstName: scimUser.name.givenName,
+              email: scimUser.userName,
+              lastName: scimUser.name.familyName,
+              active: scimUser.active,
+              ...(newEmail ? { previousEmail: user.username, newEmail } : {})
+            }
+          },
+          tx
+        );
+      });
+    } catch (err) {
+      throw $toScimEmailConflictError(err, newEmail);
+    }
+
+    sendPamCancellations();
+
+    // Answer with what was stored: the patch can add values this resource does not keep (a
+    // second email, a new userName), and echoing those would tell the IdP they were saved.
+    return buildScimUser({
+      orgMembershipId: membership.id,
+      username: userAliases?.[0]?.externalId ?? user.username,
+      email: newEmail ?? user.email,
+      firstName: scimUser.name.givenName,
+      lastName: scimUser.name.familyName,
+      active: scimUser.active,
+      createdAt: membership.createdAt,
+      updatedAt: new Date()
+    });
   };
 
   const replaceScimUser: TScimServiceFactory["replaceScimUser"] = async ({
@@ -790,14 +962,7 @@ export const scimServiceFactory = ({
 
     const user = await userDAL.findOne({ id: membership.actorUserId });
 
-    // email is our identifier - changing that user must delete this user and provision a new one
-    if (email && (user.email !== email || user.username !== email)) {
-      throw new ScimRequestError({
-        detail: "Email cannot be changed",
-        status: 400,
-        mutability: "immutable"
-      });
-    }
+    const newEmail = await $resolveScimEmailChange({ org, user, assertedEmail: email });
 
     await verifyEmailDomainOwnership({
       email: user.username,
@@ -805,46 +970,89 @@ export const scimServiceFactory = ({
       emailDomainDAL
     });
 
-    await userDAL.transaction(async (tx) => {
-      await membershipUserDAL.updateById(
-        membership.id,
-        {
-          isActive: active
-        },
-        tx
-      );
-      await userDAL.updateById(
-        membership.actorUserId!,
-        {
-          firstName,
-          lastName
-        },
-        tx
-      );
+    let sendPamCancellations = () => {};
 
-      // Update externalId on existing alias if provided and changed
-      await userAliasDAL.update({ orgId, aliasType, userId: membership.actorUserId as string }, { externalId }, tx);
+    try {
+      await userDAL.transaction(async (tx) => {
+        if (membership.isActive && !active) {
+          await assertWillRetainOrgAdmin({
+            scopeOrgId: orgId,
+            excludeMembershipIds: [membership.id],
+            dal: membershipUserDAL,
+            tx
+          });
+        }
 
-      await scimEventsDAL.create(
-        {
-          orgId,
-          eventType: ScimEvent.REPLACE_USER,
-          event: {
-            username: externalId,
+        await membershipUserDAL.updateById(
+          membership.id,
+          {
+            isActive: active
+          },
+          tx
+        );
+
+        if (!active) {
+          const childOrgs = await orgDAL.find({ rootOrgId: orgId }, { tx });
+          sendPamCancellations = await terminatePamSessionsForUsers({
+            orgIds: [orgId, ...childOrgs.map((el) => el.id)],
+            userIds: [membership.actorUserId as string],
+            pamSessionDAL,
+            gatewayV2Service,
+            tx
+          });
+        }
+        await userDAL.updateById(
+          membership.actorUserId!,
+          {
             firstName,
-            email: email?.toLowerCase(),
             lastName,
-            active
-          }
-        },
-        tx
-      );
-    });
+            ...(newEmail ? { email: newEmail, username: newEmail, isEmailVerified: false } : {})
+          },
+          tx
+        );
+
+        // Update externalId on existing alias if provided and changed. The old address stays on the
+        // alias: it is what past assertions carried, and dropping it would make a login in flight
+        // from before the rename look stale.
+        await Promise.all(
+          userAliases.map((alias) =>
+            userAliasDAL.updateById(
+              alias.id,
+              {
+                externalId,
+                ...(newEmail ? { emails: unique([...(alias.emails ?? []), newEmail]) } : {})
+              },
+              tx
+            )
+          )
+        );
+
+        await scimEventsDAL.create(
+          {
+            orgId,
+            eventType: ScimEvent.REPLACE_USER,
+            event: {
+              username: externalId,
+              firstName,
+              email: email?.toLowerCase(),
+              lastName,
+              active,
+              ...(newEmail ? { previousEmail: user.username, newEmail } : {})
+            }
+          },
+          tx
+        );
+      });
+    } catch (err) {
+      throw $toScimEmailConflictError(err, newEmail);
+    }
+
+    sendPamCancellations();
 
     return buildScimUser({
       orgMembershipId: membership.id,
       username: externalId || user.username,
-      email: user.email,
+      email: newEmail ?? user.email,
       firstName: firstName || user.firstName,
       lastName: lastName || user.lastName,
       active,
@@ -854,14 +1062,25 @@ export const scimServiceFactory = ({
   };
 
   const deleteScimUser: TScimServiceFactory["deleteScimUser"] = async ({ orgMembershipId, orgId }) => {
-    const [membership] = await orgDAL.findMembership({
-      [`${TableName.Membership}.id` as "id"]: orgMembershipId,
-      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
-      [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
-    });
+    const [membership] = isUuidV4(orgMembershipId)
+      ? await orgDAL.findMembership({
+          [`${TableName.Membership}.id` as "id"]: orgMembershipId,
+          [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+          [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
+        })
+      : [];
 
-    // Return success even if user not found (idempotent delete per SCIM RFC 7644)
     if (!membership) {
+      await scimEventsDAL.create({
+        orgId,
+        eventType: ScimEvent.DELETE_USER,
+        event: {
+          deleted: false,
+          orgMembershipId,
+          detail: "No matching organization membership; nothing was deleted"
+        }
+      });
+
       return {};
     }
 
@@ -876,25 +1095,25 @@ export const scimServiceFactory = ({
       orgMembershipIds: [membership.id],
       orgId: membership.scopeOrgId,
       orgDAL,
-      projectKeyDAL,
       userAliasDAL,
       licenseService,
       membershipUserDAL,
-      membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL,
-      approvalPolicyDAL,
-      alertChannelRecipientDAL
+      projectAccessRevokeService,
+      auditLogService,
+      eventEmitter
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
     usageMeteringService.emit(membership.scopeOrgId, SecretIdentities.key);
     usageMeteringService.emit(membership.scopeOrgId, PamIdentities.key);
+    usageMeteringService.emit(membership.scopeOrgId, AgentVaultIdentities.key);
 
     await scimEventsDAL.create({
       orgId,
       eventType: ScimEvent.DELETE_USER,
       event: {
+        deleted: true,
         firstName: membership.firstName,
         email: membership.email,
         lastName: membership.lastName,
@@ -912,12 +1131,6 @@ export const scimServiceFactory = ({
     filter,
     isMembersExcluded
   }) => {
-    const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
-      throw new BadRequestError({
-        message: "Failed to list SCIM groups due to plan restriction. Upgrade plan to list SCIM groups."
-      });
-
     const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!org) {
       throw new ScimRequestError({
@@ -932,16 +1145,25 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const groups = await groupDAL.findGroups(
-      {
-        ...(filter && parseScimFilter(filter)),
-        orgId
-      },
-      {
+    const parsedFilter = parseScimGroupFilter(filter);
+    if (!parsedFilter) {
+      return buildScimGroupList({ scimGroups: [], startIndex, totalResults: 0 });
+    }
+
+    const groupFilter = {
+      ...parsedFilter,
+      orgId
+    };
+
+    const [groups, totalResults] = await Promise.all([
+      groupDAL.findGroups(groupFilter, {
         offset: startIndex - 1,
-        limit
-      }
-    );
+        limit,
+        // Unordered paging can skip or repeat groups between pages.
+        sort: [["id", "asc"]]
+      }),
+      groupDAL.countGroups(groupFilter)
+    ]);
 
     const scimGroups: TScimGroup[] = [];
     if (isMembersExcluded) {
@@ -956,7 +1178,7 @@ export const scimServiceFactory = ({
           })
         ),
         startIndex,
-        limit
+        totalResults
       });
     }
 
@@ -987,7 +1209,7 @@ export const scimServiceFactory = ({
     return buildScimGroupList({
       scimGroups,
       startIndex,
-      limit
+      totalResults
     });
   };
 
@@ -1167,16 +1389,26 @@ export const scimServiceFactory = ({
   };
 
   const getScimGroup: TScimServiceFactory["getScimGroup"] = async ({ groupId, orgId, isMembersExcluded }) => {
-    const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
-      throw new BadRequestError({
-        message: "Failed to get SCIM group due to plan restriction. Upgrade plan to get SCIM group."
+    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
+    if (!org) {
+      throw new ScimRequestError({
+        detail: "Organization Not Found",
+        status: 404
+      });
+    }
+
+    if (!org.scimEnabled)
+      throw new ScimRequestError({
+        detail: "SCIM is disabled for the organization",
+        status: 403
       });
 
-    const group = await groupDAL.findOne({
-      id: groupId,
-      orgId
-    });
+    const group = isUuidV4(groupId)
+      ? await groupDAL.findOne({
+          id: groupId,
+          orgId
+        })
+      : undefined;
 
     if (!group) {
       throw new ScimRequestError({
@@ -1254,45 +1486,21 @@ export const scimServiceFactory = ({
     }: { displayName: string; members: { value: string }[]; shouldFailOnMissingMembers?: boolean; tx?: Knex }
   ) => {
     const processReplacement = async (tx: Knex) => {
-      let group = await groupDAL.findOne(
-        {
-          id: groupId,
-          orgId
-        },
-        tx
-      );
+      let group = isUuidV4(groupId)
+        ? await groupDAL.findOne(
+            {
+              id: groupId,
+              orgId
+            },
+            tx
+          )
+        : undefined;
 
       if (!group) {
         throw new ScimRequestError({
           detail: "Group Not Found",
           status: 404
         });
-      }
-
-      if (group.name !== displayName) {
-        await externalGroupOrgRoleMappingDAL.update(
-          {
-            groupName: group.name,
-            orgId
-          },
-          {
-            groupName: displayName
-          },
-          tx
-        );
-
-        const [modifiedGroup] = await groupDAL.update(
-          {
-            id: groupId,
-            orgId
-          },
-          {
-            name: displayName
-          },
-          tx
-        );
-
-        group = modifiedGroup;
       }
 
       const orgMemberships = members.length
@@ -1354,11 +1562,56 @@ export const scimServiceFactory = ({
           userDAL,
           userGroupMembershipDAL,
           membershipGroupDAL,
+          groupDAL,
           projectKeyDAL,
+          additionalPrivilegeDAL,
           alertChannelRecipientDAL,
+          eventEmitter,
           tx,
           shouldFailOnMissingMembers
         });
+      }
+
+      if (group.name !== displayName) {
+        const previousName = group.name;
+        const [modifiedGroup] = await groupDAL
+          .update(
+            {
+              id: groupId,
+              orgId
+            },
+            {
+              name: displayName
+            },
+            tx
+          )
+          .catch((err: unknown) => {
+            if (
+              err instanceof DatabaseError &&
+              (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
+            ) {
+              throw new ScimRequestError({
+                detail: `Group with name '${displayName}' already exists in the organization`,
+                status: 409,
+                scimType: "uniqueness",
+                error: err
+              });
+            }
+            throw err;
+          });
+
+        await externalGroupOrgRoleMappingDAL.update(
+          {
+            groupName: previousName,
+            orgId
+          },
+          {
+            groupName: displayName
+          },
+          tx
+        );
+
+        group = modifiedGroup;
       }
 
       return group;
@@ -1405,16 +1658,18 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const updatedGroup = await groupDAL.transaction(async (tx) => {
+    const { updatedGroup, appliedMembers } = await groupDAL.transaction(async (tx) => {
       // Acquire advisory lock to serialize concurrent SCIM PUT requests for the same group
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ScimGroupUpdate(groupId)]);
 
-      return $replaceGroupDAL(groupId, orgId, {
+      const group = await $replaceGroupDAL(groupId, orgId, {
         displayName,
         members,
         shouldFailOnMissingMembers: false,
         tx
       });
+      const groupMembers = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId, tx);
+      return { updatedGroup: group, appliedMembers: groupMembers };
     });
 
     await scimEventsDAL.create({
@@ -1422,14 +1677,19 @@ export const scimServiceFactory = ({
       eventType: ScimEvent.REPLACE_GROUP,
       event: {
         groupName: updatedGroup.name,
-        numberOfMembers: members.length
+        numberOfMembers: appliedMembers.length
       }
     });
 
+    // Answer with the members that were applied: ids outside the org are dropped, and echoing
+    // the request would tell the IdP they were added.
     return buildScimGroup({
       groupId: updatedGroup.id,
       name: updatedGroup.name,
-      members,
+      members: appliedMembers.map((member) => ({
+        value: member.orgMembershipId,
+        display: `${member.firstName ?? ""} ${member.lastName ?? ""}`
+      })),
       updatedAt: updatedGroup.updatedAt,
       createdAt: updatedGroup.createdAt
     });
@@ -1461,13 +1721,15 @@ export const scimServiceFactory = ({
       // Acquire advisory lock to serialize concurrent SCIM PATCH requests for the same group
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ScimGroupUpdate(groupId)]);
 
-      const group = await groupDAL.findOne(
-        {
-          id: groupId,
-          orgId
-        },
-        tx
-      );
+      const group = isUuidV4(groupId)
+        ? await groupDAL.findOne(
+            {
+              id: groupId,
+              orgId
+            },
+            tx
+          )
+        : undefined;
 
       if (!group) {
         throw new ScimRequestError({
@@ -1486,7 +1748,7 @@ export const scimServiceFactory = ({
         createdAt: group.createdAt,
         updatedAt: group.updatedAt
       });
-      scimPatch(patchedScimGroup, operations);
+      applyScimPatch(patchedScimGroup, operations);
 
       // Apply the patched state with idempotent operations
       await $replaceGroupDAL(groupId, orgId, {
@@ -1519,13 +1781,9 @@ export const scimServiceFactory = ({
     };
   };
 
+  // SCIM can delete a group that's still linked into sub-orgs, so read its orgs and members before the
+  // cascade drops the links.
   const deleteScimGroup: TScimServiceFactory["deleteScimGroup"] = async ({ groupId, orgId }) => {
-    const plan = await licenseService.getPlan(orgId);
-    if (!plan.groups)
-      throw new BadRequestError({
-        message: "Failed to delete SCIM group due to plan restriction. Upgrade plan to delete SCIM group."
-      });
-
     const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!org) {
       throw new ScimRequestError({
@@ -1541,9 +1799,24 @@ export const scimServiceFactory = ({
       });
 
     const [group] = await groupDAL.transaction(async (tx) => {
+      if (!isUuidV4(groupId)) return [];
+      if (!(await groupDAL.findOne({ id: groupId, orgId }, tx))) return [];
+
       const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
         { userGroupMembershipDAL, alertChannelRecipientDAL },
         groupId,
+        tx
+      );
+
+      await reapDeletedGroupFolderGrants(
+        { userGroupMembershipDAL, identityGroupMembershipDAL, membershipGroupDAL, additionalPrivilegeDAL },
+        groupId,
+        tx
+      );
+      const { orgIds, userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId, tx);
+      await emitGroupRemoved(
+        eventEmitter,
+        { groupId, orgIds, members: toOrgMembershipActors({ userIds, identityIds }) },
         tx
       );
 
@@ -1555,8 +1828,17 @@ export const scimServiceFactory = ({
       return deleted;
     });
 
-    // Return success even if group not found (idempotent delete per SCIM RFC 7644)
     if (!group) {
+      await scimEventsDAL.create({
+        orgId,
+        eventType: ScimEvent.DELETE_GROUP,
+        event: {
+          deleted: false,
+          groupId,
+          detail: "No matching group; nothing was deleted"
+        }
+      });
+
       return {};
     }
 
@@ -1564,6 +1846,7 @@ export const scimServiceFactory = ({
       orgId,
       eventType: ScimEvent.DELETE_GROUP,
       event: {
+        deleted: true,
         groupName: group.name
       }
     });

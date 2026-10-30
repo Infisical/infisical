@@ -7,7 +7,6 @@ export type TBitbucketDataSource = TSecretScanningDataSourceBase & {
   type: SecretScanningDataSource.Bitbucket;
   config: {
     workspaceSlug: string;
-    includeRepos: string[];
   };
 };
 

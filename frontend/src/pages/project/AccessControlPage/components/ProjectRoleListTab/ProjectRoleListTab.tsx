@@ -7,5 +7,9 @@ export const ProjectRoleListTab = withProjectPermission(
   () => {
     return <ProjectRoleList />;
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Role }
+  {
+    action: ProjectPermissionActions.Read,
+    subject: ProjectPermissionSub.Role,
+    accessRestrictedMode: "dialog"
+  }
 );

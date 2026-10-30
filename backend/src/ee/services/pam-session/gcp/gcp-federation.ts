@@ -13,7 +13,9 @@ const tokenError = (serviceAccountEmail: string, err: unknown) =>
   new BadRequestError({
     message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${
       err instanceof Error ? err.message : String(err)
-    }`
+    }`,
+    // The cause carries the response status, which callers use to tell a refused credential from an outage.
+    error: err
   });
 
 // mints a short-lived access token for the target service account
@@ -21,11 +23,13 @@ export const mintGcpAccessToken = async ({
   serviceAccountEmail,
   authMethod,
   serviceAccountKeyJson,
+  orgId,
   ttlSeconds = 3600
 }: {
   serviceAccountEmail: string;
   authMethod: string;
   serviceAccountKeyJson?: string;
+  orgId: string;
   ttlSeconds?: number;
 }): Promise<string> => {
   let tokenResponse;
@@ -52,6 +56,12 @@ export const mintGcpAccessToken = async ({
       throw tokenError(serviceAccountEmail, err);
     }
   } else {
+    const expectedAccountIdSuffix = orgId.split("-").slice(0, 2).join("-");
+    if (!serviceAccountEmail.split("@")[0].endsWith(expectedAccountIdSuffix)) {
+      throw new BadRequestError({
+        message: `GCP service account '${serviceAccountEmail}' can't be impersonated because its ID doesn't end with "${expectedAccountIdSuffix}", e.g. service-account-${expectedAccountIdSuffix}@my-project.iam.gserviceaccount.com`
+      });
+    }
     const appCfg = getConfig();
     if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
       throw new InternalServerError({

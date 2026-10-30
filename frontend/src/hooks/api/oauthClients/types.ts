@@ -1,3 +1,9 @@
+export enum OauthGrantType {
+  AuthorizationCode = "authorization_code",
+  RefreshToken = "refresh_token",
+  TokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
+}
+
 export type TOauthClient = {
   id: string;
   orgId: string;
@@ -5,8 +11,12 @@ export type TOauthClient = {
   description?: string | null;
   clientId: string;
   clientSecretPrefix: string;
+  grantTypes: OauthGrantType[];
   redirectUris: string[];
   requirePkce: boolean;
+  accessTokenTTL: number;
+  tokenExchangeAudience?: string | null;
+  tokenExchangeIdpSatisfiesMfa: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -14,16 +24,24 @@ export type TOauthClient = {
 export type TCreateOauthClientDTO = {
   name: string;
   description?: string;
+  grantTypes: OauthGrantType[];
   redirectUris: string[];
   requirePkce?: boolean;
+  accessTokenTTL?: number;
+  tokenExchangeAudience?: string;
+  tokenExchangeIdpSatisfiesMfa?: boolean;
 };
 
 export type TUpdateOauthClientDTO = {
   clientDbId: string;
   name?: string;
   description?: string | null;
+  grantTypes?: OauthGrantType[];
   redirectUris?: string[];
   requirePkce?: boolean;
+  accessTokenTTL?: number;
+  tokenExchangeAudience?: string | null;
+  tokenExchangeIdpSatisfiesMfa?: boolean;
 };
 
 export type TDeleteOauthClientDTO = {

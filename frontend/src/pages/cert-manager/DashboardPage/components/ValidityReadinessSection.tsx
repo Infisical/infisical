@@ -23,7 +23,7 @@ import {
 } from "@app/components/v3";
 import type { TDashboardStats } from "@app/hooks/api/certificates";
 
-import { CHART_COLORS, CHART_COLORS_HEX } from "./chart-theme";
+import { CHART_COLORS, CHART_COLORS_HEX, formatShare } from "./chart-theme";
 
 type Props = {
   stats: TDashboardStats;
@@ -82,7 +82,7 @@ const MandateCountdown = () => {
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">CA/B Forum Mandate Deadlines</CardTitle>
+        <CardTitle className="text-base font-normal">CA/B Forum Mandate Deadlines</CardTitle>
         <p className="mt-0.5 text-xs text-muted">
           Upcoming reductions in maximum TLS certificate validity
         </p>
@@ -156,7 +156,7 @@ const ProjectedRenewals = ({ activeCerts }: { activeCerts: number }) => {
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="pb-0">
-        <CardTitle className="text-base font-semibold">Projected Annual Renewals</CardTitle>
+        <CardTitle className="text-base font-normal">Projected Annual Renewals</CardTitle>
         <p className="mt-0.5 text-xs text-muted">
           Estimated yearly renewal volume under each validity regime
         </p>
@@ -238,7 +238,7 @@ const ValidityDistribution = ({ buckets }: { buckets: TDashboardStats["validityB
   return (
     <Card className="flex h-full flex-col">
       <CardHeader className="pb-0">
-        <CardTitle className="text-base font-semibold">Certificates by Validity Period</CardTitle>
+        <CardTitle className="text-base font-normal">Certificates by Validity Period</CardTitle>
         <p className="mt-0.5 text-xs text-muted">
           Active certificates grouped by issuance-to-expiry duration
         </p>
@@ -292,7 +292,7 @@ const ValidityDistribution = ({ buckets }: { buckets: TDashboardStats["validityB
           <div className="min-w-0 flex-1">
             <div className="space-y-1.5">
               {chartData.map((item) => {
-                const pct = total > 0 ? Math.round((item.count / total) * 100) : 0;
+                const pct = formatShare(item.count, total);
                 return (
                   <div
                     key={item.bucket}
@@ -310,7 +310,7 @@ const ValidityDistribution = ({ buckets }: { buckets: TDashboardStats["validityB
                       </TooltipTrigger>
                       <TooltipContent side="top">{item.compliance}</TooltipContent>
                     </Tooltip>
-                    <span className="shrink-0 text-right text-muted">{pct}%</span>
+                    <span className="shrink-0 text-right text-muted">{pct}</span>
                     <span className="shrink-0 text-right font-medium text-foreground">
                       {item.count}
                     </span>
@@ -339,7 +339,7 @@ export const ValidityReadinessSection = ({ stats }: Props) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-lg font-semibold text-foreground">47-Day Validity Readiness</h2>
+      <h2 className="text-lg font-normal text-foreground">47-Day Validity Readiness</h2>
       <div className="grid auto-rows-[1fr] grid-cols-1 gap-4 xl:grid-cols-3">
         <MandateCountdown />
         <ProjectedRenewals activeCerts={tlsActiveCerts} />

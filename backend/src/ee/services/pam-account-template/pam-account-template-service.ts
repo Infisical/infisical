@@ -2,7 +2,13 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { PamAccountType, PamProductRole } from "../pam/pam-enums";
+import { isRotatableAccountType, ROTATABLE_ACCOUNT_TYPES } from "../pam-account-rotation/pam-rotation-fns";
+import { ORACLE_MAX_PASSWORD_LENGTH } from "../pam-account/pam-account-connection-test";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
+import { accountTypeSupportsSessionLogMasking, PamAccountType, PamProductRole } from "../pam/pam-enums";
 import { TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { validatePolicyValues } from "../pam/pam-policies";
 import {
@@ -12,16 +18,13 @@ import {
   validateRecordingConnection,
   validateRecordingS3Config
 } from "../pam/pam-validators";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
-import { isRotatableAccountType, ROTATABLE_ACCOUNT_TYPES } from "../pam-account-rotation/pam-rotation-fns";
-import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
-import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { TPamAccountTemplateDALFactory } from "./pam-account-template-dal";
 import {
+  DEFAULT_HEARTBEAT_CONFIG,
   PamRecordingS3ConfigSchema,
   PamTemplateSettingsSchema,
-  TPamTemplateSettings
+  TPamTemplateSettings,
+  TPamTemplateSettingsInput
 } from "./pam-account-template-schemas";
 import {
   TCreatePamAccountTemplateDTO,
@@ -39,7 +42,10 @@ const SAFE_PASSWORD_SYMBOLS = "!@#$%^&*()-_=+[]{}|:,.<>/~";
 
 type TPamAccountTemplateServiceFactoryDep = TPamValidatorDeps & {
   pamAccountTemplateDAL: TPamAccountTemplateDALFactory;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "reconcileRotationScheduleForTemplate">;
+  pamAccountDAL: Pick<
+    TPamAccountDALFactory,
+    "reconcileRotationScheduleForTemplate" | "reconcileHeartbeatScheduleForTemplate"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
 };
 
@@ -60,7 +66,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
   // Reject rotation config on non-rotatable template types (the settings schema can't, since the type is a sibling
   // field). The supported-type list is derived from the registry so it never goes stale as types are added.
-  const validateTemplateRotationConfig = (accountType: string, settings: TPamTemplateSettings | undefined) => {
+  const validateTemplateRotationConfig = (accountType: string, settings: TPamTemplateSettingsInput | undefined) => {
     if (!settings) return;
     const hasRotationConfig = settings.rotation !== undefined || settings.passwordRequirements !== undefined;
     if (hasRotationConfig && !isRotatableAccountType(accountType)) {
@@ -77,6 +83,16 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
         throw new BadRequestError({ message: `Allowed symbols may only include: ${SAFE_PASSWORD_SYMBOLS}` });
       }
     }
+    const requestedLength = settings.passwordRequirements?.length;
+    if (
+      accountType === PamAccountType.OracleDB &&
+      requestedLength !== undefined &&
+      requestedLength > ORACLE_MAX_PASSWORD_LENGTH
+    ) {
+      throw new BadRequestError({
+        message: `Oracle passwords are limited to ${ORACLE_MAX_PASSWORD_LENGTH} characters, so a template cannot request a longer one`
+      });
+    }
   };
 
   const verifyProductAdmin = async (projectId: string, ctx: TActorContext) => {
@@ -88,7 +104,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
   const validateTemplateRecordingS3Config = async (
     recordingConnectionId: string | null | undefined,
-    settings: TPamTemplateSettings | undefined,
+    settings: TPamTemplateSettingsInput | undefined,
     ctx: TActorContext
   ): Promise<TPamRecordingResolvedConfig | null> => {
     const isS3Backend = settings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3;
@@ -103,7 +119,8 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
     if (isS3Backend && (!recordingConnectionId || !resolvedS3Config)) {
       throw new BadRequestError({
-        message: "S3 storage backend requires an AWS connection and valid S3 bucket configuration"
+        message:
+          "S3 storage backend requires an AWS or S3-Compatible Storage connection and valid S3 bucket configuration"
       });
     }
 
@@ -150,6 +167,17 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
 
     const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
 
+    // Credential health checking and built-in masking are on for a new template unless the caller
+    // says otherwise.
+    // Partial on purpose: the schema's defaults are applied on read, exactly as they were when create stored
+    // no settings at all.
+    const seededSettings: Partial<TPamTemplateSettings> = {
+      ...(settings ?? {}),
+      heartbeat: settings?.heartbeat ?? DEFAULT_HEARTBEAT_CONFIG,
+      sessionLogMaskingBuiltInDetection:
+        settings?.sessionLogMaskingBuiltInDetection ?? accountTypeSupportsSessionLogMasking(type)
+    };
+
     try {
       const template = await pamAccountTemplateDAL.create({
         projectId,
@@ -157,7 +185,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
         description,
         type,
         policies: validatedPolicies,
-        settings: settings ?? undefined,
+        settings: seededSettings,
         gatewayId,
         gatewayPoolId,
         recordingConnectionId
@@ -188,13 +216,16 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     ...ctx
   }: TUpdatePamAccountTemplateDTO & TActorContext) => {
     await verifyProductAdmin(projectId, ctx);
-    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
-    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const existing = await pamAccountTemplateDAL.findById(templateId);
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundError({ message: `Account template with ID '${templateId}' not found` });
     }
+
+    await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx, {
+      previousGatewayId: existing.gatewayId
+    });
+    await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const validatedPolicies = validateTemplatePolicies(existing.type, policies);
     validateTemplateRotationConfig(existing.type, settings);
@@ -224,6 +255,14 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
           await pamAccountDAL.reconcileRotationScheduleForTemplate(
             templateId,
             { rescheduleReady: newInterval !== undefined && oldInterval !== newInterval },
+            tx
+          );
+
+          const oldHeartbeat = PamTemplateSettingsSchema.safeParse(existing.settings).data?.heartbeat;
+          const newHeartbeat = PamTemplateSettingsSchema.safeParse(settings).data?.heartbeat;
+          await pamAccountDAL.reconcileHeartbeatScheduleForTemplate(
+            templateId,
+            { rescheduleAll: oldHeartbeat?.intervalSeconds !== newHeartbeat?.intervalSeconds },
             tx
           );
         }

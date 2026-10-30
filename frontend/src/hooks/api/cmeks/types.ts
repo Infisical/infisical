@@ -12,12 +12,13 @@ export type TCmek = {
   id: string;
   keyUsage: KmsKeyUsage;
   name: string;
-  description?: string;
+  description?: string | null;
   algorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm;
   projectId: string;
   isDisabled: boolean;
   isReserved: boolean;
   isExportable: boolean;
+  hasDeleteProtection: boolean;
   orgId: string;
   version: number;
   createdAt: string;
@@ -28,10 +29,10 @@ type ProjectRef = { projectId: string };
 type KeyRef = { keyId: string };
 
 export type TCreateCmek = Pick<TCmek, "name" | "description" | "algorithm" | "keyUsage"> &
-  Partial<Pick<TCmek, "isExportable">> &
+  Partial<Pick<TCmek, "isExportable" | "hasDeleteProtection">> &
   ProjectRef;
 export type TUpdateCmek = KeyRef &
-  Partial<Pick<TCmek, "name" | "description" | "isDisabled">> &
+  Partial<Pick<TCmek, "name" | "description" | "isDisabled" | "hasDeleteProtection">> &
   ProjectRef;
 export type TDeleteCmek = KeyRef & ProjectRef;
 export type TRotateCmek = KeyRef & ProjectRef;
@@ -134,6 +135,7 @@ export type TCmekBulkImportKeyEntry = {
   algorithm: AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm;
   keyMaterial: string;
   isExportable?: boolean;
+  hasDeleteProtection?: boolean;
 };
 
 export type TCmekBulkImportKeysDTO = {
@@ -153,6 +155,7 @@ export enum CmekOrderBy {
 export enum AsymmetricKeyAlgorithm {
   RSA_4096 = "RSA_4096",
   ECC_NIST_P256 = "ECC_NIST_P256",
+  ED25519 = "ED25519",
   ML_DSA_44 = "ML_DSA_44",
   ML_DSA_65 = "ML_DSA_65",
   ML_DSA_87 = "ML_DSA_87"
@@ -193,6 +196,8 @@ export enum SigningAlgorithm {
   ECDSA_SHA_256 = "ECDSA_SHA_256",
   ECDSA_SHA_384 = "ECDSA_SHA_384",
   ECDSA_SHA_512 = "ECDSA_SHA_512",
+
+  ED25519 = "ED25519",
 
   // ML-DSA (post-quantum) — signing algorithm equals key algorithm
   ML_DSA_44 = "ML_DSA_44",

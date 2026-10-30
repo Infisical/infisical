@@ -1,47 +1,65 @@
-import { useMemo } from "react";
+import { useId, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Clock,
   GitBranch,
+  KeyRound,
   ListChecks,
+  Rocket,
   Send,
+  ShieldAlert,
   User as UserIcon,
   Users as UsersIcon
 } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  TextArea
+  TextArea,
+  Toggle
 } from "@app/components/v3";
 import {
   PamAccessStatus,
+  PamAccessType,
   PamAccountType,
   PamApproverType,
   TAccessiblePamAccount,
   TPamApprovalWorkflowStep,
+  useBreakGlassPamAccessRequest,
+  useCancelPamAccessRequest,
   useCreatePamAccessRequest,
   useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
 
+import { AccessTypeBadge } from "./AccessTypeBadge";
 import { useAccountSheetDetails } from "./accountSheetDetails";
+import {
+  AutoApprovalRequestInputs,
+  toAutoApprovalInputValues
+} from "./auto-approval/AutoApprovalRequestInputs";
 import { PamDetailSheet } from "./PamDetailSheet";
 
 // Mirrors the membership expiry picker options, capped at the default 7d policy maximum and
@@ -56,13 +74,19 @@ const DURATION_OPTIONS = [
 ];
 
 // Reason requiredness follows the template's Require Reason policy, same as the API and CLI
-const makeSchema = (requireReason: boolean) =>
-  z.object({
+const makeSchema = (requireReason: boolean, breakGlass: boolean) => {
+  const { minLength, message } = (() => {
+    if (breakGlass)
+      return { minLength: 10, message: "At least 10 characters for a break-glass request" };
+    if (requireReason) return { minLength: 1, message: "Required" };
+    return { minLength: 0, message: "Required" };
+  })();
+
+  return z.object({
     duration: z.string().min(1, "Required"),
-    reason: requireReason
-      ? z.string().trim().min(1, "Required").max(500)
-      : z.string().trim().max(500)
+    reason: z.string().trim().min(minLength, message).max(500)
   });
+};
 
 type FormData = z.infer<ReturnType<typeof makeSchema>>;
 
@@ -70,6 +94,8 @@ type Props = {
   account: TAccessiblePamAccount | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  accessType?: PamAccessType;
+  onGranted?: (account: TAccessiblePamAccount, accessType: PamAccessType) => void;
 };
 
 const ApproverChip = ({
@@ -89,8 +115,17 @@ const ApproverChip = ({
   );
 };
 
-const ApprovalWorkflow = ({ accountId, isPending }: { accountId?: string; isPending: boolean }) => {
-  const { data: steps } = useGetPamAccountApprovers(accountId);
+const ApprovalWorkflow = ({
+  accountId,
+  isPending,
+  accessType
+}: {
+  accountId?: string;
+  isPending: boolean;
+  accessType: PamAccessType;
+}) => {
+  const { data } = useGetPamAccountApprovers(accountId, accessType);
+  const steps = data?.steps;
   if (!steps?.length) return null;
 
   return (
@@ -141,12 +176,46 @@ const ApprovalWorkflow = ({ accountId, isPending }: { accountId?: string; isPend
   );
 };
 
-export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => {
+export const RequestAccessSheet = ({
+  account,
+  isOpen,
+  onOpenChange,
+  accessType = PamAccessType.Session,
+  onGranted
+}: Props) => {
   const { typeName, subtitle, metadata } = useAccountSheetDetails(account, isOpen);
   const createRequest = useCreatePamAccessRequest();
-  const isPending = account?.accessStatus === PamAccessStatus.Pending;
+  const formId = useId();
+  const breakGlass = useBreakGlassPamAccessRequest();
+  const cancelRequest = useCancelPamAccessRequest();
+  const [bypassReason, setBypassReason] = useState("");
+  const [autoApprovalValues, setAutoApprovalValues] = useState<Record<string, string>>({});
+  const isCredentialRequest = accessType === PamAccessType.Credential;
+  const isPending =
+    (isCredentialRequest ? account?.credentialAccessStatus : account?.accessStatus) ===
+    PamAccessStatus.Pending;
+  // Session and credential requests are separate rows, so break glass on the one this sheet is for.
+  const pendingRequestId = isCredentialRequest
+    ? account?.credentialPendingRequestId
+    : account?.pendingRequestId;
+  const canBreakGlass = Boolean(account?.canBreakGlass && pendingRequestId);
   const requireReason = Boolean(account?.requireReason);
-  const schema = useMemo(() => makeSchema(requireReason), [requireReason]);
+  const { data: approverData } = useGetPamAccountApprovers(account?.id, accessType);
+  // With no approvers and no auto-approval rules that apply, break glass is the only way in
+  const isBreakGlassOnly = Boolean(
+    account?.canBreakGlass &&
+    approverData &&
+    !approverData.autoApprovalOnly &&
+    !approverData.steps.some((step) => step.approvers.length > 0)
+  );
+  const [breakGlassChosen, setBreakGlassChosen] = useState(false);
+  const breakGlassOnSubmit = breakGlassChosen || isBreakGlassOnly;
+  const requestLabel = isCredentialRequest ? "Request credentials" : "Request session access";
+  const submitLabel = breakGlassOnSubmit ? "Break glass" : requestLabel;
+  const schema = useMemo(
+    () => makeSchema(requireReason, breakGlassOnSubmit),
+    [requireReason, breakGlassOnSubmit]
+  );
 
   const {
     control,
@@ -158,24 +227,104 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
     defaultValues: { duration: "1h", reason: "" }
   });
 
+  const autoApprovalInputDetails = approverData?.autoApprovalInputs ?? [];
+  const hasAutoApprovalValues = Object.values(autoApprovalValues).some((value) => value.trim());
+
   const handleOpenChange = (open: boolean) => {
-    if (!open) reset();
+    if (!open) {
+      reset();
+      setBypassReason("");
+      setBreakGlassChosen(false);
+      setAutoApprovalValues({});
+    }
     onOpenChange(open);
+  };
+
+  const onCancelRequest = () => {
+    if (!pendingRequestId) return;
+    cancelRequest.mutate(
+      { requestId: pendingRequestId },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: isCredentialRequest ? "Credential request canceled" : "Access request canceled",
+            type: "success"
+          });
+          handleOpenChange(false);
+        }
+      }
+    );
+  };
+
+  const onBreakGlass = () => {
+    if (!pendingRequestId) return;
+    breakGlass.mutate(
+      { requestId: pendingRequestId, bypassReason: bypassReason.trim() },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: "Access granted. The approvers you skipped have been notified.",
+            type: "success"
+          });
+          setBypassReason("");
+          onOpenChange(false);
+          if (account) onGranted?.(account, accessType);
+        }
+      }
+    );
   };
 
   const onSubmit = (data: FormData) => {
     if (!account) return;
+    const autoApprovalInputs = breakGlassOnSubmit
+      ? []
+      : toAutoApprovalInputValues(autoApprovalInputDetails, autoApprovalValues);
+
     createRequest.mutate(
       {
         accountId: account.id,
         duration: data.duration,
-        reason: data.reason || undefined
+        reason: data.reason || undefined,
+        accessType,
+        breakGlass: breakGlassOnSubmit || undefined,
+        autoApprovalInputs: autoApprovalInputs.length ? autoApprovalInputs : undefined
       },
       {
-        onSuccess: () => {
-          createNotification({ text: "Access request submitted", type: "success" });
+        onSuccess: ({ request }) => {
+          const outcome = request?.autoApproval;
+          const approvingRule = outcome?.rules.find((rule) => rule.id === outcome.approvedByRuleId);
+          // The rule that came closest to passing best reflects what the requester was going for
+          const closestRule = outcome?.rules
+            .map((rule) => ({
+              rule,
+              failed: rule.conditions.filter((condition) => !condition.passed).length,
+              passed: rule.conditions.filter((condition) => condition.passed).length
+            }))
+            .sort((a, b) => a.failed - b.failed || b.passed - a.passed)[0]?.rule;
+          const firstFailure = closestRule?.conditions.find(
+            (condition) => !condition.passed
+          )?.reason;
+
+          let text = isCredentialRequest
+            ? "Credential access request submitted"
+            : "Access request submitted";
+          let type: "success" | "info" = "success";
+          if (breakGlassOnSubmit) {
+            text = "Access granted. The approvers you skipped have been notified.";
+          } else if (request?.autoApprovedAt) {
+            text = `Access approved by the auto-approval rule "${approvingRule?.name ?? "auto-approval"}"`;
+          } else if (outcome && firstFailure) {
+            text = `${text}. It wasn't auto-approved: ${firstFailure}`;
+            type = "info";
+          }
+
+          createNotification({ text, type });
           reset();
+          setAutoApprovalValues({});
           onOpenChange(false);
+          if ((breakGlassOnSubmit || request?.autoApprovedAt) && account) {
+            onGranted?.(account, accessType);
+          }
         }
       }
     );
@@ -190,89 +339,224 @@ export const RequestAccessSheet = ({ account, isOpen, onOpenChange }: Props) => 
       title={account?.name}
       subtitle={subtitle}
       typeBadge={typeName}
+      badges={<AccessTypeBadge accessType={accessType} />}
       metadata={metadata}
-      isDirty={isDirty && !isPending}
+      isDirty={(isDirty || hasAutoApprovalValues) && !isPending}
+      contentFooter={
+        isPending ? (
+          pendingRequestId && (
+            <Button
+              type="button"
+              variant="danger"
+              isPending={cancelRequest.isPending}
+              onClick={onCancelRequest}
+            >
+              Cancel Request
+            </Button>
+          )
+        ) : (
+          <>
+            <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form={formId}
+              variant={breakGlassOnSubmit ? "danger" : "pam"}
+              isPending={createRequest.isPending}
+            >
+              {!breakGlassOnSubmit && <Send className="mr-1.5 size-4" />}
+              {submitLabel}
+            </Button>
+          </>
+        )
+      }
     >
-      <Tabs defaultValue="request" className="flex h-full flex-col">
-        <TabsList variant="pam" className="shrink-0 bg-popover">
-          <TabsTrigger value="request">
-            <Send className="size-4" />
-            Request Access
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="request" className="m-0 flex flex-1 flex-col p-6">
-          {isPending ? (
-            <div className="flex flex-1 flex-col gap-6">
-              <div className="flex items-center gap-2.5 rounded-md border border-border bg-container px-4 py-3">
-                <Clock className="size-4 shrink-0 text-warning" />
-                <p className="text-sm text-foreground">Your access request is awaiting approval.</p>
-              </div>
-              <ApprovalWorkflow accountId={account?.id} isPending />
+      <div className="flex h-full flex-1 flex-col p-6">
+        {isPending ? (
+          <div className="flex flex-1 flex-col gap-6">
+            <div className="flex items-center gap-2.5 rounded-md border border-border bg-container px-4 py-3">
+              <Clock className="size-4 shrink-0 text-warning" />
+              <p className="text-sm text-foreground">
+                {isCredentialRequest
+                  ? "Your credential request is awaiting approval."
+                  : "Your access request is awaiting approval."}
+              </p>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">
-              <div className="flex flex-1 flex-col gap-6">
-                <Controller
-                  control={control}
-                  name="reason"
-                  render={({ field, fieldState }) => (
-                    <Field>
-                      <FieldLabel>
-                        Reason {requireReason && <span className="text-danger">*</span>}
-                      </FieldLabel>
-                      <FieldContent>
-                        <TextArea
-                          {...field}
-                          rows={4}
-                          placeholder="What are you working on?"
-                          isError={!!fieldState.error}
-                        />
-                        <FieldDescription>
-                          Will be visible to approvers and recorded in audit logs.
-                        </FieldDescription>
-                        <FieldError>{fieldState.error?.message}</FieldError>
-                      </FieldContent>
-                    </Field>
-                  )}
+            <ApprovalWorkflow accountId={account?.id} isPending accessType={accessType} />
+            {canBreakGlass && (
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle className="text-base">
+                    <ShieldAlert className="size-4 shrink-0 text-danger" />
+                    Break glass
+                  </CardTitle>
+                  <CardDescription>
+                    Grant yourself access now without waiting for an approver. Use this only in an
+                    emergency: the approvers above are notified immediately and the reason you give
+                    is recorded in the audit log.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <Field>
+                    <FieldLabel>
+                      Reason <span className="text-danger">*</span>
+                    </FieldLabel>
+                    <FieldContent>
+                      <TextArea
+                        rows={3}
+                        value={bypassReason}
+                        onChange={(e) => setBypassReason(e.target.value)}
+                        placeholder="Why can this not wait for an approver?"
+                      />
+                      <FieldDescription>At least 10 characters.</FieldDescription>
+                    </FieldContent>
+                  </Field>
+                  <Button
+                    variant="danger"
+                    className="self-end"
+                    isDisabled={bypassReason.trim().length < 10}
+                    isPending={breakGlass.isPending}
+                    onClick={onBreakGlass}
+                  >
+                    Break glass
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ) : (
+          <form id={formId} onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">
+            <div className="flex flex-1 flex-col gap-6">
+              {isCredentialRequest ? (
+                <Alert variant="warning">
+                  <KeyRound />
+                  <AlertTitle>You are requesting the stored credential</AlertTitle>
+                  <AlertDescription>
+                    Once approved you can read this account&apos;s password or key directly. That
+                    happens outside a session, so nothing is recorded, and a credential you copy
+                    stays valid until the account is rotated.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert variant="info">
+                  <Rocket />
+                  <AlertTitle>You are requesting session access</AlertTitle>
+                  <AlertDescription>
+                    Once approved you can launch sessions on this account. The credential is
+                    injected for you and never shown, and the session is recorded.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <Controller
+                control={control}
+                name="reason"
+                render={({ field, fieldState }) => (
+                  <Field>
+                    <FieldLabel>
+                      Reason{" "}
+                      {(requireReason || breakGlassOnSubmit) && (
+                        <span className="text-danger">*</span>
+                      )}
+                    </FieldLabel>
+                    <FieldContent>
+                      <TextArea
+                        {...field}
+                        rows={4}
+                        placeholder={
+                          isCredentialRequest
+                            ? "Why do you need this account's credentials?"
+                            : "What are you working on?"
+                        }
+                        isError={!!fieldState.error}
+                      />
+                      <FieldDescription>
+                        {breakGlassOnSubmit
+                          ? "Sent to the approvers you skip and recorded in audit logs."
+                          : "Will be visible to approvers and recorded in audit logs."}
+                      </FieldDescription>
+                      <FieldError>{fieldState.error?.message}</FieldError>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="duration"
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>
+                      {isCredentialRequest ? "How long you need it" : "Requested duration"}
+                    </FieldLabel>
+                    <FieldContent>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {DURATION_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldDescription>
+                        {isCredentialRequest
+                          ? "How long you can reveal the credential for."
+                          : "How long you can launch sessions for once approved."}
+                      </FieldDescription>
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+              {!breakGlassOnSubmit && approverData?.autoApprovalOnly && (
+                <Alert variant="warning">
+                  <ShieldAlert />
+                  <AlertTitle>No one will review this request</AlertTitle>
+                  <AlertDescription>
+                    This folder has no approvers. Your request is approved only if it passes an
+                    auto-approval rule when you submit it. Otherwise it&apos;s rejected immediately.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {!breakGlassOnSubmit && autoApprovalInputDetails.length > 0 && (
+                <AutoApprovalRequestInputs
+                  inputs={autoApprovalInputDetails}
+                  values={autoApprovalValues}
+                  onChange={setAutoApprovalValues}
                 />
-                <Controller
-                  control={control}
-                  name="duration"
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>Requested duration</FieldLabel>
-                      <FieldContent>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent position="popper">
-                            {DURATION_OPTIONS.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-                <ApprovalWorkflow accountId={account?.id} isPending={false} />
-              </div>
-              <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-                <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" variant="pam" isPending={createRequest.isPending}>
-                  <Send className="mr-1.5 size-4" />
-                  Submit request
-                </Button>
-              </div>
-            </form>
-          )}
-        </TabsContent>
-      </Tabs>
+              )}
+              <ApprovalWorkflow accountId={account?.id} isPending={false} accessType={accessType} />
+              {account?.canBreakGlass && (
+                <Card
+                  className={twMerge("p-4", breakGlassOnSubmit && "border-danger/40 bg-danger/5")}
+                >
+                  <Field orientation="horizontal" className="items-center!">
+                    <FieldContent>
+                      <FieldTitle className="flex items-center gap-2">
+                        <ShieldAlert className="size-4 shrink-0 text-danger" />
+                        Break glass
+                      </FieldTitle>
+                      <FieldDescription>
+                        {isBreakGlassOnly
+                          ? "Required here. The folder has no approvers. Auto-approval is off for this account. Every use is audited."
+                          : "Grant now, skipping the approvers. Every use is audited."}
+                      </FieldDescription>
+                    </FieldContent>
+                    <Toggle
+                      checked={breakGlassOnSubmit}
+                      variant="danger"
+                      disabled={isBreakGlassOnly}
+                      onCheckedChange={setBreakGlassChosen}
+                    />
+                  </Field>
+                </Card>
+              )}
+            </div>
+          </form>
+        )}
+      </div>
     </PamDetailSheet>
   );
 };

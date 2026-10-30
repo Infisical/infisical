@@ -48,7 +48,12 @@ const formSchema = z.discriminatedUnion("method", [
       serverUrl: z.string().trim().url("Valid Chef Server URL required").optional(),
       orgName: z.string().trim().min(1, "Organization name required"),
       userName: z.string().trim().min(1, "User name required"),
-      privateKey: z.string().trim().min(1, "Private key required")
+      privateKey: z.string().trim().min(1, "Private key required"),
+      dataBagSecret: z
+        .string()
+        .trim()
+        .optional()
+        .transform((value) => value || undefined)
     })
   })
 ]);
@@ -237,8 +242,44 @@ export const ChefConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-              <FieldError errors={[error]} />
+              <SecretInput
+                aria-describedby={error ? "private-key-error" : undefined}
+                id="private-key"
+                isError={Boolean(error)}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              <FieldError id="private-key-error" errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.dataBagSecret"
+          control={control}
+          shouldUnregister
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="data-bag-secret">
+                Data Bag Secret (optional)
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The contents of your encrypted_data_bag_secret file. Needed for syncs that
+                    encrypt secrets or read an encrypted data bag item. Enter it again whenever you
+                    update these credentials.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <SecretInput
+                aria-describedby={error ? "data-bag-secret-error" : undefined}
+                id="data-bag-secret"
+                isError={Boolean(error)}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+              <FieldError id="data-bag-secret-error" errors={[error]} />
             </Field>
           )}
         />

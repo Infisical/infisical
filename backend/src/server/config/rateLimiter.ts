@@ -4,6 +4,33 @@ import { getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
 import { RateLimitError } from "@app/lib/errors";
 
+export type RateLimitConfiguration = {
+  readLimit: number;
+  publicEndpointLimit: number;
+  writeLimit: number;
+  secretsLimit: number;
+  authRateLimit: number;
+  inviteUserRateLimit: number;
+  mfaRateLimit: number;
+  identityCreationLimit: number;
+  projectCreationLimit: number;
+};
+
+// Requests without an org, and the limits the license server does not set per plan, use these.
+// Read, write and secrets limits come from the org's plan (see inject-rate-limits.ts).
+// Mirrored in backend-go/internal/ee/services/ratelimit/types.go.
+export const DEFAULT_RATE_LIMITS: Readonly<RateLimitConfiguration> = Object.freeze({
+  readLimit: 60,
+  publicEndpointLimit: 30,
+  writeLimit: 200,
+  secretsLimit: 60,
+  authRateLimit: 60,
+  inviteUserRateLimit: 30,
+  mfaRateLimit: 20,
+  identityCreationLimit: 30,
+  projectCreationLimit: 30
+});
+
 export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
   const appCfg = getConfig();
   const redis = appCfg.isRedisConfigured ? buildRedisFromConfig(appCfg, "rate-limiter") : null;
@@ -36,6 +63,112 @@ export const writeLimit: RateLimitOptions = {
   hook: "preValidation",
   max: (req) => req.rateLimits.writeLimit,
   keyGenerator: (req) => req.realIp
+};
+
+// OCSP is per-handshake traffic, so readLimit is the wrong budget: a mutual TLS fleet behind one NAT
+// address would spend it on revocation checks alone and read the resulting tryLater as the responder
+// being down. The endpoint is unauthenticated, so the IP is all there is to key on, and
+// OCSP_MAX_CONCURRENT_SIGNATURES is what caps the expensive work; this only has to stop one address
+// flooding us with cache hits.
+export const ocspLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 600,
+  keyGenerator: (req) => req.realIp
+};
+
+// For callbacks an external system sends us without an Infisical identity (delegated approvals), so
+// the IP is all there is to key on. Each resource accepts a bounded number of callbacks before it is
+// closed, so one integration never needs more than this per address.
+export const externalInboundCallbackLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 60,
+  keyGenerator: (req) => req.realIp
+};
+
+// Cloud providers fetch the OIDC issuer's discovery document and JWKS from egress addresses shared by all of
+// their tenants, so readLimit would let one org's token exchanges throttle another's. Responses are small and
+// cacheable; this only has to stop one address flooding us.
+export const oidcIssuerLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 600,
+  keyGenerator: (req) => req.realIp
+};
+
+// Gateways report load every 10s (6/min each), so 10 leaves room for tick drift and a restart
+// landing in the same window without leaving headroom for a flood. Keyed by the reporting gateway
+// rather than by IP, because the write limiter's IP key is shared: ~100 gateways behind one NAT
+// address would exhaust a 200/min quota on load reports alone, start getting 429s, and their
+// entries would go stale.
+export const gatewayMetricsReportLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 10,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `gateway-metrics:${actorId}` : req.realIp;
+  }
+};
+
+// Keyed on the proxy identity, not the source IP, so many proxies behind one NAT do not share a bucket.
+// One resolve per live session per poll, so this covers 4,200 sessions at the default 60s poll and 700 at
+// the 10s floor. Deliberate: a proxy serving that many agents is far past what we expect, and a runaway
+// one blows through any budget. A throttled proxy reads a 429 as "Infisical unreachable" and drops its
+// sessions after five polls, so raise this rather than the poll floor if a real deployment ever nears it.
+export const agentVaultResolveLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 4200,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-resolve:${actorId}` : req.realIp;
+  }
+};
+
+// Its own bucket, so a proxy retrying refreshes against a failing provider can't eat into resolve. A refresh
+// follows an upstream 401 or 403, so steady traffic needs few; this leaves room for many sessions at once.
+export const agentVaultCredentialRefreshLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 600,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-credential-refresh:${actorId}` : req.realIp;
+  }
+};
+
+export const agentVaultSessionLogChunkLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 600,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-session-log:${actorId}` : req.realIp;
+  }
+};
+
+// Called once per proxy start, and per-sandbox sidecars start often from egress addresses shared with other
+// tenants, so this keys on the proxy like the other proxy routes rather than on the IP writeLimit uses.
+export const agentVaultBootstrapLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.writeLimit,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-bootstrap:${actorId}` : req.realIp;
+  }
+};
+
+export const agentVaultHeartbeatLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 30,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-heartbeat:${actorId}` : req.realIp;
+  }
 };
 
 // special endpoints

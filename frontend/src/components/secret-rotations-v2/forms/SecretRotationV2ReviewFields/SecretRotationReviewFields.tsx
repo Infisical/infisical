@@ -2,7 +2,8 @@ import { useFormContext } from "react-hook-form";
 import { format } from "date-fns";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { GenericFieldLabel } from "@app/components/v2";
+import { ReviewField } from "@app/components/secret-rotations-v2/forms/shared";
+import { DetailGroup, DetailGroupHeader } from "@app/components/v3";
 import { getRotateAtLocal } from "@app/helpers/secretRotationsV2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
@@ -17,6 +18,7 @@ import { DatadogApiKeyRotationReviewFields } from "./DatadogApiKeyRotationReview
 import { DatadogApplicationKeySecretRotationReviewFields } from "./DatadogApplicationKeySecretRotationReviewFields";
 import { DbtServiceTokenRotationReviewFields } from "./DbtServiceTokenRotationReviewFields";
 import { FireworksApiKeyRotationReviewFields } from "./FireworksApiKeyRotationReviewFields";
+import { GcpServiceAccountKeyRotationReviewFields } from "./GcpServiceAccountKeyRotationReviewFields";
 import { HpIloRotationReviewFields } from "./HpIloRotationReviewFields";
 import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFields";
 import { LiteLLMApiKeyRotationReviewFields } from "./LiteLLMApiKeyRotationReviewFields";
@@ -27,6 +29,7 @@ import { RedisCredentialsRotationReviewFields } from "./RedisCredentialsRotation
 import { SalesforceOauthCredentialsRotationReviewFields } from "./SalesforceOauthCredentialsRotationReviewFields";
 import { SqlCredentialsRotationReviewFields } from "./shared";
 import { SnowflakeUserKeyPairRotationReviewFields } from "./SnowflakeUserKeyPairRotationReviewFields";
+import { StripeApiKeyRotationReviewFields } from "./StripeApiKeyRotationReviewFields";
 import { SupabaseApiKeyRotationReviewFields } from "./SupabaseApiKeyRotationReviewFields";
 import { UnixLinuxLocalAccountRotationReviewFields } from "./UnixLinuxLocalAccountRotationReviewFields";
 import { WindowsLocalAccountRotationReviewFields } from "./WindowsLocalAccountRotationReviewFields";
@@ -60,7 +63,9 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationReviewFields,
   [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationReviewFields,
   [SecretRotation.CloudflareApiToken]: CloudflareApiTokenRotationReviewFields,
-  [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationReviewFields
+  [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationReviewFields,
+  [SecretRotation.StripeApiKey]: StripeApiKeyRotationReviewFields,
+  [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {
@@ -81,32 +86,28 @@ export const SecretRotationV2ReviewFields = () => {
 
   return (
     <div className="mb-4 flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Configuration</span>
-        </div>
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-1">Configuration</DetailGroupHeader>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <GenericFieldLabel label="Connection">{connection.name}</GenericFieldLabel>
-          <GenericFieldLabel label="Environment">{environment.name}</GenericFieldLabel>
-          <GenericFieldLabel label="Secret Path">{secretPath}</GenericFieldLabel>
-          <GenericFieldLabel label="Rotation Interval">
+          <ReviewField label="Connection">{connection.name}</ReviewField>
+          <ReviewField label="Environment">{environment.name}</ReviewField>
+          <ReviewField label="Secret Path">{secretPath}</ReviewField>
+          <ReviewField label="Rotation Interval">
             {rotationInterval} Day{rotationInterval > 1 ? "s" : ""}
-          </GenericFieldLabel>
-          <GenericFieldLabel label="Rotate At">
+          </ReviewField>
+          <ReviewField label="Rotate At">
             {format(getRotateAtLocal(rotateAtUtc), "h:mm aa")}
-          </GenericFieldLabel>
+          </ReviewField>
         </div>
-      </div>
+      </DetailGroup>
       <Component />
-      <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Details</span>
-        </div>
+      <DetailGroup>
+        <DetailGroupHeader className="border-b border-border pb-1">Details</DetailGroupHeader>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <GenericFieldLabel label="Name">{name}</GenericFieldLabel>
-          <GenericFieldLabel label="Description">{description}</GenericFieldLabel>
+          <ReviewField label="Name">{name}</ReviewField>
+          <ReviewField label="Description">{description}</ReviewField>
         </div>
-      </div>
+      </DetailGroup>
     </div>
   );
 };

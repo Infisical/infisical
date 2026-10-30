@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "none",
+  "sortPackageJson": false,
+  "ignorePatterns": ["src/routeTree.gen.ts", "src/lib/ironrdp-decoder/**"],
+  "sortTailwindcss": {
+    "stylesheet": "./src/index.css",
+    "functions": ["clsx", "twMerge"]
+  },
+  "sortImports": {
+    "customGroups": [
+      { "groupName": "react", "elementNamePattern": ["react", "react/**", "react-*", "react-*/**"] },
+      { "groupName": "app", "elementNamePattern": ["@app/**"] }
+    ],
+    "groups": [
+      "builtin",
+      { "newlinesBetween": false },
+      "react",
+      { "newlinesBetween": false },
+      "external",
+      "app",
+      ["internal", "unknown"],
+      ["parent", "sibling", "index"],
+      ["style", "side_effect_style"],
+      "side_effect"
+    ]
+  }
+}

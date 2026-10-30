@@ -1,3 +1,4 @@
+import { ProviderIcon } from "@app/components/v3";
 import { PamAccountType, usePamAccountTypeMap } from "@app/hooks/api/pam";
 
 type Props = {
@@ -12,8 +13,8 @@ export const AccountPlatformIcon = ({ accountType, size = 28 }: Props) => {
   if (!meta) return null;
 
   return (
-    <img
-      src={`/images/integrations/${meta.icon}`}
+    <ProviderIcon
+      icon={meta.icon}
       alt={meta.name}
       className="shrink-0 rounded-sm"
       style={{ width: size, height: size }}

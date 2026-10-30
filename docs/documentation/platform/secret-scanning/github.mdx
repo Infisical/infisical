@@ -1,96 +1,58 @@
 ---
-title: "GitHub Secret Scanning"
+title: "GitHub secret scanning"
 sidebarTitle: "GitHub"
-description: "Learn how to configure secret scanning for GitHub."
+icon: "/images/platform/secret-scanning/icons/github.svg"
+description: "Scan the repositories a GitHub Radar connection can access."
 ---
+
+To scan your GitHub repositories for leaked secrets, create a GitHub [data source](/documentation/platform/secret-scanning/scan-repositories) in Infisical.
 
 ## Prerequisites
 
-- Create a [GitHub Radar Connection](/integrations/app-connections/github-radar)
+- A [GitHub Radar Connection](/integrations/app-connections/github-radar)
 
-## Create a GitHub Data Source in Infisical
+## Create a GitHub data source in Infisical
 
-<Tabs>
-    <Tab title="Infisical UI">
-        1. Navigate to your Secret Scanning Project's Dashboard and click the **Add Data Source** button.
-        ![Secret Scanning Dashboard](/images/platform/secret-scanning/github/github-data-source-step-1.png)
+<Steps>
+  <Step>
+    Go to **Secret Scanning** > **Data Sources** and select **Add Data Source**.
+    ![Secret Scanning Dashboard](/images/platform/secret-scanning/github/github-data-source-step-1.png)
+  </Step>
+  <Step>
+    Select **GitHub**.
+    ![Select GitHub Option](/images/platform/secret-scanning/github/github-data-source-step-2.png)
+  </Step>
+  <Step>
+    Select the connection to use and the repositories to scan, then select **Next**.
+    ![Data Source Configuration](/images/platform/secret-scanning/github/github-data-source-step-3.png)
 
-        2. Select the **GitHub** option.
-        ![Select GitHub Option](/images/platform/secret-scanning/github/github-data-source-step-2.png)
+    - **GitHub Radar Connection**: The connection that can access the repositories you want to scan
+    - **Scan Repositories**: Which repositories Infisical scans
+        - **All Repositories**: Every repository the connection can access
+        - **Select Repositories**: Only the repositories you select in **Include Repositories**
+    - **Auto-Scan Enabled**: Whether Infisical scans each new push to the repositories
+  </Step>
+  <Step>
+    Enter a name and, optionally, a description for the data source, then select **Next**.
+    ![Data Source Details](/images/platform/secret-scanning/github/github-data-source-step-4.png)
 
-        3. Select the **GitHub Radar Connection** to use and configure which repositories you would like to scan. Then click **Next**.
-        ![Data Source Configuration](/images/platform/secret-scanning/github/github-data-source-step-3.png)
-
-            - **GitHub Radar Connection** - the connection that has access to the repositories you want to scan.
-            - **Scan Repositories** - select which repositories you would like to scan.
-                - **All Repositories** - Infisical will scan all repositories associated with your connection.
-                - **Select Repositories** - Infisical will scan the selected repositories.
-            - **Auto-Scan Enabled** - whether Infisical should automatically perform a scan when a push is made to configured repositories.
-
-        4. Give your data source a name and description (optional). Then click **Next**.
-        ![Data Source Details](/images/platform/secret-scanning/github/github-data-source-step-4.png)
-
-            - **Name** - the name of the data source. Must be slug-friendly.
-            - **Description** (optional) - a description of this data source.
-
-        5. Review your data source, then click **Create Data Source**.
-        ![Data Source Review](/images/platform/secret-scanning/github/github-data-source-step-5.png)
-
-        6. Your **GitHub Data Source** is now available and will begin a full scan if **Auto-Scan** is enabled.
-        ![Data Source Created](/images/platform/secret-scanning/github/github-data-source-step-6.png)
-
-        7. You can view repositories and scan results by clicking on your data source.
-        ![Data Source Page](/images/platform/secret-scanning/github/github-data-source-step-7.png)
-
-        8. In addition, you can review any findings from the **Findings Page**.
-        ![Findings Page](/images/platform/secret-scanning/github/github-data-source-step-8.png)
-    </Tab>
-    <Tab title="API">
-        To create a GitHub Data Source, make an API request to the [Create GitHub Data Source](/api-reference/endpoints/secret-scanning/data-sources/github/create) API endpoint.
-
-        ### Sample request
-
-        ```bash Request
-        curl --request POST \
-        --url https://us.infisical.com/api/v2/secret-scanning/data-sources/github \
-        --header 'Content-Type: application/json' \
-        --data '{
-            "name": "my-github-source",
-            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "description": "my github data source",
-            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "isAutoScanEnabled": true,
-            "config": {
-                "includeRepos": ["*"]
-            }
-        }'
-        ```
-
-        ### Sample response
-
-        ```bash Response
-        {
-            "dataSource": {
-                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "externalId": "1234567890",
-                "name": "my-github-source",
-                "description": "my github data source",
-                "isAutoScanEnabled": true,
-                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "createdAt": "2023-11-07T05:31:56Z",
-                "updatedAt": "2023-11-07T05:31:56Z",
-                "type": "github",
-                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "connection": {
-                    "app": "github-radar",
-                    "name": "my-radar-app",
-                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
-                },
-                "config": {
-                    "includeRepos": ["*"]
-                }
-            }
-        }
-        ```
-    </Tab>
-</Tabs>
+    - **Name**: A name that contains only lowercase letters, numbers, and hyphens
+    - **Description** (optional): A description of the data source
+  </Step>
+  <Step>
+    Review the data source, then select **Create Data Source**.
+    ![Data Source Review](/images/platform/secret-scanning/github/github-data-source-step-5.png)
+  </Step>
+  <Step>
+    The data source appears in **Data Sources**. If auto-scan is enabled, Infisical starts a [historical scan](/documentation/platform/secret-scanning/scan-repositories#scans) of every repository.
+    ![Data Source Created](/images/platform/secret-scanning/github/github-data-source-step-6.png)
+  </Step>
+  <Step>
+    To see the data source's repositories and scan history, select the data source.
+    ![Data Source Page](/images/platform/secret-scanning/github/github-data-source-step-7.png)
+  </Step>
+  <Step>
+    To review the secrets the scans found, go to **Findings**. To learn what each finding contains and how to change its status, see [Findings](/documentation/platform/secret-scanning/findings).
+    ![Findings Page](/images/platform/secret-scanning/github/github-data-source-step-8.png)
+  </Step>
+</Steps>

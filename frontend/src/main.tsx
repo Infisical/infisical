@@ -2,10 +2,13 @@ import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { setWasmUrl } from "@lottiefiles/dotlottie-react";
 import lottieWasmUrl from "@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm?url";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import NProgress from "nprogress";
 
-import { Lottie } from "./components/v2";
+import { PageTitle } from "./components/PageTitle";
+import { Loader } from "./components/v3/generic/Loader";
+import { initializeTheme } from "./components/v3/platform/ThemeProvider";
 import { queryClient } from "./hooks/api/reactQuery";
 import { initializePlatform } from "./lib/fn/platform";
 import { ErrorPage } from "./pages/public/ErrorPage/ErrorPage";
@@ -13,11 +16,15 @@ import { NotFoundPage } from "./pages/public/NotFoundPage/NotFoundPage";
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 
-import "@fontsource/inter/400.css";
-import "@fontsource/inter/500.css";
-import "@fontsource/inter/600.css";
+import "@fontsource/ibm-plex-sans/400.css";
+import "@fontsource/ibm-plex-sans/400-italic.css";
+import "@fontsource/ibm-plex-sans/500.css";
+import "@fontsource/ibm-plex-sans/600.css";
+import "@fontsource/ibm-plex-sans/700.css";
 import "@fontsource/jetbrains-mono/400.css";
+import "@fontsource/jetbrains-mono/400-italic.css";
 import "@fontsource/jetbrains-mono/500.css";
+import "@fontsource/jetbrains-mono/600.css";
 import "@xyflow/react/dist/style.css";
 import "nprogress/nprogress.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
@@ -29,6 +36,7 @@ import "./translation";
 // for passing in lng and translations on init/
 
 initializePlatform();
+initializeTheme();
 
 // Configure Lottie player to use local WASM file
 setWasmUrl(lottieWasmUrl);
@@ -68,8 +76,9 @@ const router = createRouter({
   routeTree,
   context: { serverConfig: null, queryClient },
   defaultPendingComponent: () => (
-    <div className="flex h-full w-full items-center justify-center bg-bunker-800 [#root>&]:h-screen">
-      <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
+    <div className="flex h-full w-full items-center justify-center bg-page [#root>&]:h-screen">
+      <PageTitle title="Loading" />
+      <Loader variant="brand" className="h-32 w-32" label="Loading page" />
     </div>
   ),
   defaultNotFoundComponent: NotFoundPage,
@@ -97,9 +106,12 @@ declare module "@tanstack/react-router" {
 const rootElement = document.getElementById("root")!;
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
+  document.getElementById("initial-document-title")?.remove();
   root.render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
     </StrictMode>
   );
 }

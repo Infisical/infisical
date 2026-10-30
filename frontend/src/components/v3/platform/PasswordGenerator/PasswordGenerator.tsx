@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { components, OptionProps } from "react-select";
+import { cloneElement, type ReactElement, useEffect, useId, useMemo, useState } from "react";
 import {
   CheckIcon,
   CopyIcon,
@@ -8,27 +7,27 @@ import {
   ShieldCheckIcon,
   TriangleAlertIcon
 } from "lucide-react";
-import picomatch from "picomatch";
-import RandExp from "randexp";
+import type RandExp from "randexp";
 import { twMerge } from "tailwind-merge";
 
 import { useTimedReset } from "@app/hooks";
 import {
-  ConstraintTarget,
-  ConstraintType,
-  TConstraint,
+  doesRuleCoverScope,
+  SecretValidationRuleType,
   TSecretValidationRule,
+  TValueConstraints,
   useListSecretValidationRules
 } from "@app/hooks/api/secretValidationRules";
 
 import { Badge } from "../../generic/Badge";
 import { Button } from "../../generic/Button";
 import { Checkbox } from "../../generic/Checkbox";
+import { Combobox } from "../../generic/Combobox";
 import { IconButton } from "../../generic/IconButton";
 import { Label } from "../../generic/Label";
 import { Popover, PopoverContent, PopoverTrigger } from "../../generic/Popover";
-import { FilterableSelect } from "../../generic/ReactSelect";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
+import { buildSecureRandExp } from "./secure-randexp";
 
 type PasswordOptionsType = {
   length: number;
@@ -50,53 +49,32 @@ const NONE_RULE_OPTION: RuleOption = {
   matchesCurrentScope: false
 };
 
-const getValueConstraints = (rule: TSecretValidationRule): TConstraint[] =>
-  rule.constraints.filter((c) => c.appliesTo === ConstraintTarget.SecretValue);
+// Only a static-secret rule constrains a value a person types; the other two shape a credential the
+// platform generates for itself.
+const getValueConstraints = (rule: TSecretValidationRule): TValueConstraints | undefined =>
+  rule.type === SecretValidationRuleType.StaticSecrets ? rule.valueConstraints : undefined;
 
 const hasValueConstraints = (rule: TSecretValidationRule): boolean =>
-  getValueConstraints(rule).length > 0;
+  Object.values(getValueConstraints(rule) ?? {}).some((value) => value !== undefined);
 
-const doesRuleMatchScope = (
-  rule: TSecretValidationRule,
-  secretPath?: string,
-  selectedEnvironments?: { slug: string }[],
-  environments?: { id: string; slug: string }[]
-): boolean => {
-  if (!secretPath) return false;
-
-  if (!picomatch.isMatch(secretPath, rule.secretPath, { strictSlashes: false })) {
-    return false;
-  }
-
-  if (rule.envId && environments && selectedEnvironments?.length) {
-    const ruleEnvSlug = environments.find((e) => e.id === rule.envId)?.slug;
-    if (!ruleEnvSlug) return false;
-    return selectedEnvironments.some((se) => se.slug === ruleEnvSlug);
-  }
-
-  // Rule applies to all environments (envId is null) and path matches
-  return true;
-};
-
-const generateFromConstraints = (constraints: TConstraint[]): string => {
-  const prefix = constraints.find((c) => c.type === ConstraintType.RequiredPrefix)?.value || "";
-  const suffix = constraints.find((c) => c.type === ConstraintType.RequiredSuffix)?.value || "";
-  const regexValue = constraints.find((c) => c.type === ConstraintType.RegexPattern)?.value;
-  const minLengthStr = constraints.find((c) => c.type === ConstraintType.MinLength)?.value;
-  const maxLengthStr = constraints.find((c) => c.type === ConstraintType.MaxLength)?.value;
-
-  const minLength = minLengthStr ? parseInt(minLengthStr, 10) : 16;
-  const maxLength = maxLengthStr ? parseInt(maxLengthStr, 10) : 64;
+const generateFromConstraints = (constraints: TValueConstraints): string => {
+  const prefix = constraints.requiredPrefix ?? "";
+  const suffix = constraints.requiredSuffix ?? "";
+  const regexValue = constraints.regexPattern;
+  const minLength = constraints.minLength ?? 16;
+  const maxLength = constraints.maxLength ?? 64;
 
   let middle: string | undefined;
 
   if (regexValue) {
     // Regex takes full precedence over min/max length constraints
+    let generator: RandExp | undefined;
     try {
-      middle = new RandExp(new RegExp(regexValue)).gen();
+      generator = buildSecureRandExp(new RegExp(regexValue));
     } catch {
       // Fall through to manual generation if regex is invalid
     }
+    middle = generator?.gen();
   }
 
   if (middle === undefined) {
@@ -122,37 +100,47 @@ const generateFromConstraints = (constraints: TConstraint[]): string => {
   return prefix + middle + suffix;
 };
 
-const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
-  [ConstraintType.RequiredPrefix]: "Prefix",
-  [ConstraintType.RequiredSuffix]: "Suffix",
-  [ConstraintType.RegexPattern]: "Pattern",
-  [ConstraintType.MinLength]: "Min length",
-  [ConstraintType.MaxLength]: "Max length",
-  [ConstraintType.PreventValueReuse]: "Prevent reuse of previous values"
+// The rule's constraints as chips. Reuse prevention carries no value of its own to show, so it
+// reads as a statement rather than a "label: value" pair.
+const describeConstraints = (constraints: TValueConstraints) => {
+  const chips: { key: string; label: string; value?: string }[] = [];
+  const add = (key: string, label: string, value?: string | number) => {
+    if (value !== undefined) chips.push({ key, label, value: String(value) });
+  };
+
+  add("requiredPrefix", "Prefix", constraints.requiredPrefix);
+  add("requiredSuffix", "Suffix", constraints.requiredSuffix);
+  add("regexPattern", "Pattern", constraints.regexPattern);
+  add("minLength", "Min length", constraints.minLength);
+  add("maxLength", "Max length", constraints.maxLength);
+
+  if (constraints.uniqueAcrossLastVersions !== undefined) {
+    chips.push({
+      key: "uniqueAcrossLastVersions",
+      label: "Prevent reuse of previous secret values"
+    });
+  }
+
+  return chips;
 };
 
-const RuleOptionComponent = ({ isSelected, children, ...props }: OptionProps<RuleOption>) => (
-  <components.Option isSelected={isSelected} {...props}>
-    <div className="flex cursor-pointer flex-row items-center justify-between">
-      <div className="flex items-center gap-2 truncate">
-        <p className="truncate">{children}</p>
-        {props.data.matchesCurrentScope && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="project">
-                <ShieldCheckIcon className="size-3" />
-                Current scope
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              This validation rule applies to the current environment and folder
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-      {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
-    </div>
-  </components.Option>
+const RuleOptionContent = ({ option }: { option: RuleOption }) => (
+  <div className="flex items-center gap-2 truncate">
+    <p className="truncate">{option.label}</p>
+    {option.matchesCurrentScope && (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="project">
+            <ShieldCheckIcon className="size-3" />
+            Current scope
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          This validation rule applies to the current environment and folder
+        </TooltipContent>
+      </Tooltip>
+    )}
+  </div>
 );
 
 export type PasswordGeneratorProps = {
@@ -162,8 +150,8 @@ export type PasswordGeneratorProps = {
   maxLength?: number;
   projectId?: string;
   secretPath?: string;
-  environments?: { id: string; slug: string }[];
   selectedEnvironments?: { slug: string }[];
+  trigger?: ReactElement<{ disabled?: boolean }>;
 };
 
 export const PasswordGenerator = ({
@@ -173,9 +161,10 @@ export const PasswordGenerator = ({
   maxLength = 64,
   projectId,
   secretPath,
-  environments,
-  selectedEnvironments
+  selectedEnvironments,
+  trigger
 }: PasswordGeneratorProps) => {
+  const ruleSelectId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [, isCopying, setCopyText] = useTimedReset<string>({
     initialState: "Copy"
@@ -208,10 +197,13 @@ export const PasswordGenerator = ({
         value: r.id,
         matchesCurrentScope:
           selectedEnvironments?.length === 1 &&
-          doesRuleMatchScope(r, secretPath, selectedEnvironments, environments)
+          doesRuleCoverScope(r, {
+            secretPath,
+            environmentSlugs: selectedEnvironments?.map((e) => e.slug)
+          })
       }))
     ],
-    [applicableRules, secretPath, selectedEnvironments, environments]
+    [applicableRules, secretPath, selectedEnvironments]
   );
 
   const selectedRule = useMemo(
@@ -225,17 +217,14 @@ export const PasswordGenerator = ({
   );
 
   const valueConstraints = useMemo(
-    () => (selectedRule ? getValueConstraints(selectedRule) : []),
+    () => (selectedRule ? getValueConstraints(selectedRule) : undefined),
     [selectedRule]
   );
 
-  const hasRegexLengthConflict = useMemo(() => {
-    const hasRegex = valueConstraints.some((c) => c.type === ConstraintType.RegexPattern);
-    const hasLength = valueConstraints.some(
-      (c) => c.type === ConstraintType.MinLength || c.type === ConstraintType.MaxLength
-    );
-    return hasRegex && hasLength;
-  }, [valueConstraints]);
+  const hasRegexLengthConflict = Boolean(
+    valueConstraints?.regexPattern &&
+    (valueConstraints.minLength !== undefined || valueConstraints.maxLength !== undefined)
+  );
 
   // Auto-select matching rule only when exactly one environment is selected
   useEffect(() => {
@@ -251,13 +240,16 @@ export const PasswordGenerator = ({
     }
 
     const match = applicableRules.find((rule) =>
-      doesRuleMatchScope(rule, secretPath, selectedEnvironments, environments)
+      doesRuleCoverScope(rule, {
+        secretPath,
+        environmentSlugs: selectedEnvironments?.map((e) => e.slug)
+      })
     );
     setSelectedRuleId(match?.id || "");
-  }, [applicableRules, selectedEnvironments, secretPath, environments]);
+  }, [applicableRules, selectedEnvironments, secretPath]);
 
   const password = useMemo(() => {
-    if (selectedRule && valueConstraints.length > 0) {
+    if (selectedRule && valueConstraints) {
       return generateFromConstraints(valueConstraints);
     }
 
@@ -284,7 +276,6 @@ export const PasswordGenerator = ({
     }
 
     return newPassword;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passwordOptions, refresh, selectedRule, valueConstraints]);
 
   const copyToClipboard = () => {
@@ -308,9 +299,18 @@ export const PasswordGenerator = ({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <IconButton variant="outline" size="md" isDisabled={isDisabled}>
-          <KeyRoundIcon />
-        </IconButton>
+        {trigger ? (
+          cloneElement(trigger, { disabled: isDisabled })
+        ) : (
+          <IconButton
+            aria-label="Generate random value"
+            variant="outline"
+            size="md"
+            isDisabled={isDisabled}
+          >
+            <KeyRoundIcon />
+          </IconButton>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-[30rem]" align="end">
         <div className="flex flex-col gap-4">
@@ -321,22 +321,25 @@ export const PasswordGenerator = ({
 
           {showRuleSelector && (
             <div>
-              <Label className="mb-1.5 flex items-center gap-1.5 text-xs text-accent">
+              <Label
+                htmlFor={ruleSelectId}
+                className="mb-1.5 flex items-center gap-1.5 text-xs text-accent"
+              >
                 <ShieldCheckIcon className="size-3" />
                 Conform to Validation Rule
               </Label>
-              <FilterableSelect<RuleOption>
+              <Combobox
+                id={ruleSelectId}
                 options={ruleOptions}
                 value={selectedRuleOption}
-                onChange={(option) => {
-                  setSelectedRuleId((option as RuleOption | null)?.value || "");
+                onValueChange={(option) => {
+                  setSelectedRuleId(option.value);
                   setRefresh((prev) => !prev);
                 }}
                 getOptionLabel={(o) => o.label}
                 getOptionValue={(o) => o.value}
                 isClearable={false}
-                isSearchable={false}
-                components={{ Option: RuleOptionComponent }}
+                renderOption={(option) => <RuleOptionContent option={option} />}
               />
             </div>
           )}
@@ -345,10 +348,20 @@ export const PasswordGenerator = ({
             <div className="flex items-center justify-between gap-2">
               <p className="flex-1 font-mono text-sm break-all select-all">{password}</p>
               <div className="flex shrink-0 gap-1">
-                <IconButton variant="ghost" size="xs" onClick={() => setRefresh((prev) => !prev)}>
+                <IconButton
+                  aria-label="Generate another value"
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => setRefresh((prev) => !prev)}
+                >
                   <RefreshCwIcon />
                 </IconButton>
-                <IconButton variant="ghost" size="xs" onClick={copyToClipboard}>
+                <IconButton
+                  aria-label="Copy generated value"
+                  variant="ghost"
+                  size="xs"
+                  onClick={copyToClipboard}
+                >
                   {isCopying ? <CheckIcon /> : <CopyIcon />}
                 </IconButton>
               </div>
@@ -374,19 +387,19 @@ export const PasswordGenerator = ({
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1">
-                {valueConstraints.map((constraint) => (
-                  <span key={constraint.type} className="text-xs">
+                {describeConstraints(valueConstraints ?? {}).map(({ key, label, value }) => (
+                  <span key={key} className="text-xs">
                     <span
                       className={twMerge(
                         "font-medium text-muted",
-                        constraint.type === ConstraintType.PreventValueReuse && "text-label"
+                        value === undefined && "text-label"
                       )}
                     >
-                      {CONSTRAINT_LABELS[constraint.type]}
+                      {label}
                     </span>
-                    {constraint.type !== ConstraintType.PreventValueReuse && (
+                    {value !== undefined && (
                       <>
-                        : <span className="font-mono text-label">{constraint.value}</span>
+                        : <span className="font-mono text-label">{value}</span>
                       </>
                     )}
                   </span>

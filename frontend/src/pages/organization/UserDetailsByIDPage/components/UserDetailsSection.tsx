@@ -11,7 +11,6 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -26,10 +25,13 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
-  IconButton
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useUser
@@ -102,13 +104,13 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   const status = membership ? getStatus(membership) : null;
 
   return membership ? (
-    <Card className="w-full lg:max-w-[24rem]">
+    <Card className="w-full @4xl:max-w-[24rem] @4xl:shrink-0">
       <CardHeader className="border-b">
         <CardTitle>Details</CardTitle>
         <CardDescription>User membership details</CardDescription>
         {userId !== membership.user.id && (
           <CardAction>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
+            <OrgPermissionCan I={OrgPermissionMemberActions.Edit} a={OrgPermissionSubjects.Member}>
               {(isAllowed) => (
                 <IconButton
                   isDisabled={!isAllowed}
@@ -140,17 +142,20 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
             <DetailLabel>ID</DetailLabel>
             <DetailValue className="flex items-center gap-x-1">
               {membership.user.id}
-              <Tooltip content="Copy user ID to clipboard">
-                <IconButton
-                  onClick={() => {
-                    navigator.clipboard.writeText(membership.user.id);
-                    setCopyTextId("Copied");
-                  }}
-                  variant="ghost"
-                  size="xs"
-                >
-                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </IconButton>
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    onClick={() => {
+                      navigator.clipboard.writeText(membership.user.id);
+                      setCopyTextId("Copied");
+                    }}
+                    variant="ghost"
+                    size="xs"
+                  >
+                    {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Copy user ID to clipboard</TooltipContent>
               </Tooltip>
             </DetailValue>
           </Detail>
@@ -160,34 +165,38 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
               {membership.user.email ? (
                 <>
                   {membership.user.email}
-                  <Tooltip
-                    content={
-                      membership.user.isEmailVerified
-                        ? "Email has been verified"
-                        : "Email has not been verified"
-                    }
-                  >
-                    {membership.user.isEmailVerified ? (
-                      <CheckIcon size={14} className="ml-0.5 shrink-0 text-success" />
-                    ) : (
-                      <XIcon size={14} className="ml-0.5 shrink-0 text-danger" />
-                    )}
-                  </Tooltip>
-                  <Tooltip content="Copy user email to clipboard">
-                    <IconButton
-                      onClick={() => {
-                        navigator.clipboard.writeText(membership.user.email!);
-                        setCopyEmail("Copied");
-                      }}
-                      variant="ghost"
-                      size="xs"
-                    >
-                      {isCopyingEmail ? (
-                        <CheckIcon />
+                  <Tooltip hoverable delayDuration={50}>
+                    <TooltipTrigger asChild>
+                      {membership.user.isEmailVerified ? (
+                        <CheckIcon size={14} className="ml-0.5 shrink-0 text-success" />
                       ) : (
-                        <ClipboardListIcon className="text-label" />
+                        <XIcon size={14} className="ml-0.5 shrink-0 text-danger" />
                       )}
-                    </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {membership.user.isEmailVerified
+                        ? "Email has been verified"
+                        : "Email has not been verified"}
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip hoverable delayDuration={50}>
+                    <TooltipTrigger asChild>
+                      <IconButton
+                        onClick={() => {
+                          navigator.clipboard.writeText(membership.user.email!);
+                          setCopyEmail("Copied");
+                        }}
+                        variant="ghost"
+                        size="xs"
+                      >
+                        {isCopyingEmail ? (
+                          <CheckIcon />
+                        ) : (
+                          <ClipboardListIcon className="text-label" />
+                        )}
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>Copy user email to clipboard</TooltipContent>
                   </Tooltip>
                 </>
               ) : (
@@ -259,7 +268,10 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           (membership.status === "invited" || membership.status === "verified") &&
           membership.user.email &&
           serverDetails?.emailConfigured && (
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
+            <OrgPermissionCan
+              I={OrgPermissionMemberActions.Create}
+              a={OrgPermissionSubjects.Member}
+            >
               {(isAllowed) => (
                 <Button
                   isDisabled={!isAllowed}

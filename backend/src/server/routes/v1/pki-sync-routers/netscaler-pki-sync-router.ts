@@ -17,7 +17,8 @@ export const registerNetScalerPkiSyncRouter = async (server: FastifyZodProvider,
     updateSchema: UpdateNetScalerPkiSyncSchema,
     syncOptions: {
       canImportCertificates: NETSCALER_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: NETSCALER_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: NETSCALER_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: NETSCALER_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });

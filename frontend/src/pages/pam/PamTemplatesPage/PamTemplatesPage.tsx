@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { ClipboardList, Layers, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { PageHeader } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { PageTitle } from "@app/components/PageTitle";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Button,
   Card,
@@ -28,6 +26,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Select,
   SelectContent,
   SelectItem,
@@ -41,6 +40,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   TPamAccountTemplateWithCount,
   useDeletePamAccountTemplate,
@@ -56,6 +56,7 @@ import { PAM_TEMPLATE_TABS } from "../components/pamResourceTabs";
 import { PamDocsUrls } from "../pam-docs-urls";
 import { CreateTemplateModal } from "./components/CreateTemplateModal";
 import { DeleteTemplateModal } from "./components/DeleteTemplateModal";
+import { MissingTemplatesCallout } from "./components/MissingTemplatesCallout";
 import { TemplateDetailSheet } from "./components/TemplateDetailSheet";
 
 const TemplateRow = ({
@@ -87,7 +88,7 @@ const TemplateRow = ({
       <TableCell className="w-32 text-muted">
         {template.accountCount} account{template.accountCount === 1 ? "" : "s"}
       </TableCell>
-      <TableCell className="w-12">
+      <TableCell variant="action">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
@@ -132,8 +133,6 @@ const TemplateRow = ({
 };
 
 export const PamTemplatesPage = () => {
-  const { t } = useTranslation();
-
   const [searchInput, setSearchInput] = useState("");
   const [selectedType, setSelectedType] = useState<string>("");
 
@@ -176,9 +175,7 @@ export const PamTemplatesPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "Account Templates" })}</title>
-      </Helmet>
+      <PageTitle title="Account Templates" />
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.PAM}
@@ -186,6 +183,8 @@ export const PamTemplatesPage = () => {
           title="Account Templates"
           description="Define the rules that apply when users connect to accounts."
         />
+
+        <MissingTemplatesCallout templates={templates} accountTypes={accountTypes} />
 
         <Card className="mt-4">
           <CardHeader>
@@ -229,8 +228,8 @@ export const PamTemplatesPage = () => {
                 <SelectItem value="all">All types</SelectItem>
                 {accountTypes.map((meta) => (
                   <SelectItem key={meta.type} value={meta.type}>
-                    <img
-                      src={`/images/integrations/${meta.icon}`}
+                    <ProviderIcon
+                      icon={meta.icon}
                       alt={meta.name}
                       className="mr-1.5 inline-block size-4 rounded-sm"
                     />
@@ -274,7 +273,7 @@ export const PamTemplatesPage = () => {
                 <TableRow>
                   <TableHead>Template</TableHead>
                   <TableHead className="w-32">Accounts</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>

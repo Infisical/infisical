@@ -149,7 +149,10 @@ var (
 )
 
 // AuditLogs actions (ProjectPermissionAuditLogsActions)
-var AuditLogsActionRead = gocasl.DefineAction[AuditLogsSubject]("read")
+var (
+	AuditLogsActionRead = gocasl.DefineAction[AuditLogsSubject]("read")
+	AuditLogsActionEdit = gocasl.DefineAction[AuditLogsSubject]("edit")
+)
 
 // Member actions (ProjectPermissionMemberActions)
 var (

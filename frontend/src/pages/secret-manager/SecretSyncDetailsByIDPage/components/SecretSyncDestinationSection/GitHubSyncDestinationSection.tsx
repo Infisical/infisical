@@ -10,6 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { getGitHubSyncSecretTypeName } from "@app/helpers/secretSyncs";
 import {
   GitHubSyncScope,
   GitHubSyncVisibility,
@@ -43,7 +44,7 @@ export const GitHubSyncDestinationSection = ({ secretSync }: Props) => {
                 {destinationConfig.selectedRepositoryIds?.length ?? 0} Repositories
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <InfoIcon className="ml-1 inline size-3 text-bunker-300" />
+                    <InfoIcon className="ml-1 inline size-3 text-label-secondary" />
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <GitHubSyncSelectedRepositoriesTooltipContent secretSync={secretSync} />
@@ -89,6 +90,10 @@ export const GitHubSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
+      <Detail>
+        <DetailLabel>Secret Type</DetailLabel>
+        <DetailValue>{getGitHubSyncSecretTypeName(destinationConfig.secretType)}</DetailValue>
+      </Detail>
       <Detail className="capitalize">
         <DetailLabel>Scope</DetailLabel>
         <DetailValue>{destinationConfig.scope.replace("-", " ")}</DetailValue>

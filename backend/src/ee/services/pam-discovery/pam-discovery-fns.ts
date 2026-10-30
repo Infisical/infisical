@@ -1,10 +1,12 @@
 import ldapjs from "@infisical/ldapjs";
 
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { callPortSweep, callSshExec, SshExecCredentials } from "@app/lib/gateway-v2/ssh-rpc";
+import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { callWinRmEndpoint, WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -44,9 +46,7 @@ export const sshExecWithGateway = async (
     },
     {
       protocol: GatewayProxyProtocol.Discovery,
-      relayHost: platform.relayHost,
-      gateway: platform.gateway,
-      relay: platform.relay
+      ...platform
     }
   );
 };
@@ -69,9 +69,7 @@ export const executeWithGateway = async <T>(
 
   return withGatewayV2Proxy((proxyPort) => operation(proxyPort), {
     protocol: GatewayProxyProtocol.Tcp,
-    relayHost: platform.relayHost,
-    gateway: platform.gateway,
-    relay: platform.relay
+    ...platform
   });
 };
 
@@ -143,7 +141,7 @@ export const ldapBindCheckViaGateway = async (
           ...(useLdaps && {
             tlsOptions: {
               rejectUnauthorized,
-              servername: tlsServerName || dcAddress,
+              ...getTlsServerNameOptions(tlsServerName || dcAddress),
               ...(caCert && { ca: [caCert] })
             }
           })
@@ -228,14 +226,16 @@ export const winrmRpcWithGateway = async <T>({
       }),
     {
       protocol: GatewayProxyProtocol.WinRm,
-      relayHost: platform.relayHost,
-      gateway: platform.gateway,
-      relay: platform.relay
+      ...platform
     }
   );
 
   if (!response.ok) {
-    throw new BadRequestError({ message: `WinRM gateway operation failed: ${response.errorMessage ?? ""}` });
+    const err = new BadRequestError({
+      message: `WinRM gateway operation failed: ${response.errorMessage ?? ""}`
+    }) as BadRequestError & { gatewayFailureKind?: GatewayFailureKind | null };
+    err.gatewayFailureKind = response.kind ?? null;
+    throw err;
   }
   return response.result;
 };
@@ -272,9 +272,7 @@ export const sweepReachableTargets = async (
       }),
     {
       protocol: GatewayProxyProtocol.Discovery,
-      relayHost: platform.relayHost,
-      gateway: platform.gateway,
-      relay: platform.relay,
+      ...platform,
       longLived: true
     }
   );

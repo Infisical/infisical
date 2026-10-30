@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { AxiosError, isAxiosError } from "axios";
+
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { VercelEnvironmentType, VercelSyncScope } from "./vercel-sync-enums";
@@ -18,11 +21,44 @@ function isVercelDefaultEnvType(value: string): value is DefaultVercelEnvType {
 }
 
 const MAX_RETRIES = 5;
+const RATE_LIMIT_DELAY_MS = 60000;
+const MIN_RATE_LIMIT_DELAY_MS = 3000;
 
-const sleep = async () =>
+// Vercel answers with these codes when a request can never succeed as sent, so retrying only repeats the
+// failure. The message shown to the user is the one Vercel returned.
+// the env_size_too_large is a new set of errors that we are seeing, but are not documented yet but it happening in some cases
+const NON_RETRYABLE_VERCEL_ERRORS = new Set(["bad_request", "env_key_invalid_characters", "envs_size_too_large"]);
+
+const sleep = async (ms: number) =>
   new Promise((resolve) => {
-    setTimeout(resolve, 60000);
+    setTimeout(resolve, ms);
   });
+
+// Retry-After is either seconds or an HTTP date. It can only shorten the wait, never extend it,
+// and never drop below the floor: 0 (or an already elapsed date) would otherwise retry every in-flight request at once.
+const getRateLimitDelayMs = (error: AxiosError) => {
+  const retryAfter = String(error.response?.headers?.["retry-after"] ?? "").trim();
+  if (!retryAfter) return RATE_LIMIT_DELAY_MS;
+
+  const seconds = Number(retryAfter);
+  const delayMs = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter) - Date.now();
+  if (Number.isNaN(delayMs)) return RATE_LIMIT_DELAY_MS;
+
+  return Math.min(Math.max(delayMs, MIN_RATE_LIMIT_DELAY_MS), RATE_LIMIT_DELAY_MS);
+};
+
+// Vercel isn't consistent about casing, e.g. BAD_REQUEST alongside envs_size_too_large.
+const toVercelSyncError = (error: unknown, secretKey?: string) => {
+  const vercelError = isAxiosError(error)
+    ? (error.response?.data as { error?: { code?: unknown; message?: unknown } } | undefined)?.error
+    : undefined;
+  const code = String(vercelError?.code ?? "").toLowerCase();
+  const isNonRetryable = NON_RETRYABLE_VERCEL_ERRORS.has(code);
+  const message =
+    isNonRetryable && typeof vercelError?.message === "string" && vercelError.message ? vercelError.message : undefined;
+
+  return new SecretSyncError({ error, secretKey, shouldRetry: !isNonRetryable, message });
+};
 
 const getVercelSecretsWithRetries = async (
   secretSync: TVercelSyncWithCredentials,
@@ -59,11 +95,12 @@ const getVercelSecretsWithRetries = async (
     );
     return data.envs;
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-      await sleep();
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(getRateLimitDelayMs(error));
       return await getVercelSecretsWithRetries(secretSync, attempt + 1);
     }
-    throw error;
+    const syncError = toVercelSyncError(error);
+    throw syncError.shouldRetry ? error : syncError;
   }
 };
 
@@ -105,11 +142,12 @@ const getDecryptedVercelSecret = async (
 
     return decryptedSecret as VercelApiSecret;
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-      await sleep();
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(getRateLimitDelayMs(error));
       return await getDecryptedVercelSecret(secretSync, secret, attempt + 1);
     }
-    throw error;
+    const syncError = toVercelSyncError(error, secret.key);
+    throw syncError.shouldRetry ? error : syncError;
   }
 };
 
@@ -191,14 +229,11 @@ const deleteSecret = async (
       }
     );
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-      await sleep();
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(getRateLimitDelayMs(error));
       return await deleteSecret(secretSync, vercelSecret, attempt + 1);
     }
-    throw new SecretSyncError({
-      error,
-      secretKey: vercelSecret.key
-    });
+    throw toVercelSyncError(error, vercelSecret.key);
   }
 };
 
@@ -243,14 +278,11 @@ const createSecret = async (
       }
     );
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-      await sleep();
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(getRateLimitDelayMs(error));
       return await createSecret(secretSync, secretMap, key, attempt + 1);
     }
-    throw new SecretSyncError({
-      error,
-      secretKey: key
-    });
+    throw toVercelSyncError(error, key);
   }
 };
 
@@ -307,14 +339,11 @@ const updateSecret = async (
       }
     );
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-      await sleep();
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(getRateLimitDelayMs(error));
       return await updateSecret(secretSync, secretMap, vercelSecret, attempt + 1);
     }
-    throw new SecretSyncError({
-      error,
-      secretKey: vercelSecret.key
-    });
+    throw toVercelSyncError(error, vercelSecret.key);
   }
 };
 
@@ -404,14 +433,11 @@ const detachEnvFromProjectSecret = async (
       }
     );
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-      await sleep();
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(getRateLimitDelayMs(error));
       return detachEnvFromProjectSecret(secretSync, vercelSecret, attempt + 1);
     }
-    throw new SecretSyncError({
-      error,
-      secretKey: vercelSecret.key
-    });
+    throw toVercelSyncError(error, vercelSecret.key);
   }
 };
 
@@ -500,12 +526,13 @@ const listTeamSharedEnvVarsWithRetries = async (
         hasMore = false;
       }
     } catch (error) {
-      if ((error as { response: { status: number } }).response.status === 429 && totalRetries < MAX_RETRIES) {
+      if (isAxiosError(error) && error.response?.status === 429 && totalRetries < MAX_RETRIES) {
         totalRetries += 1;
         // eslint-disable-next-line no-await-in-loop
-        await sleep();
+        await sleep(getRateLimitDelayMs(error));
       } else {
-        throw error;
+        const syncError = toVercelSyncError(error);
+        throw syncError.shouldRetry ? error : syncError;
       }
     }
   }
@@ -544,11 +571,12 @@ const getDecryptedTeamSharedEnvVar = async (
     );
     return decryptedEnvVar;
   } catch (error) {
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-      await sleep();
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(getRateLimitDelayMs(error));
       return getDecryptedTeamSharedEnvVar(secretSync, envVar, attempt + 1);
     }
-    throw error;
+    const syncError = toVercelSyncError(error, envVar.key);
+    throw syncError.shouldRetry ? error : syncError;
   }
 };
 
@@ -648,11 +676,11 @@ const createTeamSharedEnvVar = async (
     }
   } catch (error) {
     if (error instanceof SecretSyncError) throw error;
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-      await sleep();
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(getRateLimitDelayMs(error));
       return createTeamSharedEnvVar(secretSync, key, value, attempt + 1);
     }
-    throw new SecretSyncError({ error, secretKey: key });
+    throw toVercelSyncError(error, key);
   }
 };
 
@@ -729,11 +757,11 @@ const updateTeamSharedEnvVar = async (
     }
   } catch (error) {
     if (error instanceof SecretSyncError) throw error;
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-      await sleep();
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(getRateLimitDelayMs(error));
       return updateTeamSharedEnvVar(secretSync, envVar, value, attempt + 1);
     }
-    throw new SecretSyncError({ error, secretKey: envVar.key });
+    throw toVercelSyncError(error, envVar.key);
   }
 };
 
@@ -777,11 +805,11 @@ const deleteTeamSharedEnvVar = async (
     }
   } catch (error) {
     if (error instanceof SecretSyncError) throw error;
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-      await sleep();
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(getRateLimitDelayMs(error));
       return deleteTeamSharedEnvVar(secretSync, envVar, attempt + 1);
     }
-    throw new SecretSyncError({ error, secretKey: envVar.key });
+    throw toVercelSyncError(error, envVar.key);
   }
 };
 
@@ -861,16 +889,17 @@ const detachTeamSharedEnvVar = async (
     }
   } catch (error) {
     if (error instanceof SecretSyncError) throw error;
-    if ((error as { response: { status: number } }).response.status === 429 && attempt < MAX_RETRIES) {
-      await sleep();
+    if (isAxiosError(error) && error.response?.status === 429 && attempt < MAX_RETRIES) {
+      await sleep(getRateLimitDelayMs(error));
       return detachTeamSharedEnvVar(secretSync, envVar, attempt + 1);
     }
-    throw new SecretSyncError({ error, secretKey: envVar.key });
+    throw toVercelSyncError(error, envVar.key);
   }
 };
 
 export const VercelSyncFns = {
-  syncSecrets: async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TVercelSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
       const teamDestinationConfig = secretSync.destinationConfig;
       const allSharedEnvVars = await getTeamSharedEnvVars(secretSync);
@@ -1031,7 +1060,8 @@ export const VercelSyncFns = {
     return Object.fromEntries(vercelSecrets.map((s) => [s.key, { value: s.value ?? "" }]));
   },
 
-  removeSecrets: async (secretSync: TVercelSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TVercelSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
       const sharedEnvVars = await getOwnedTeamSharedEnvVars(secretSync);
 

@@ -43,7 +43,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -71,12 +71,41 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
       const scripts = await server.services.appConnection.cloudflare.listWorkersScripts(connectionId, req.permission);
       return scripts;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/cloudflare-secrets-stores`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listCloudflareSecretsStores",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            name: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const stores = await server.services.appConnection.cloudflare.listSecretsStores(connectionId, req.permission);
+      return stores;
     }
   });
 
@@ -100,7 +129,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -130,7 +159,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -162,7 +191,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 

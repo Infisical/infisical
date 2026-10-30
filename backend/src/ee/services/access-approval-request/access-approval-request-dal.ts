@@ -11,7 +11,7 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols, sqlNestRelationships, TFindFilter, TOrmify } from "@app/lib/knex";
+import { ormify, rowWithSameIdIn, selectAllTableCols, sqlNestRelationships, TFindFilter, TOrmify } from "@app/lib/knex";
 
 import { ApprovalStatus } from "./access-approval-request-types";
 
@@ -105,6 +105,8 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
         note?: string | null | undefined;
         privilegeDeletedAt?: Date | null | undefined;
         expiresAt?: Date | null | undefined;
+        approvedAt?: Date | null | undefined;
+        revokedAt?: Date | null | undefined;
         reviewers: {
           userId: string;
           status: string;
@@ -276,6 +278,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         const docs = await db
           .replicaNode()(TableName.AccessApprovalRequest)
           .whereIn(`${TableName.AccessApprovalRequest}.policyId`, policyIds)
+          .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.AccessApprovalRequest))
           .leftJoin(
             TableName.AdditionalPrivilege,
             `${TableName.AccessApprovalRequest}.privilegeId`,
@@ -902,6 +905,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
           `${TableName.AccessApprovalRequestReviewer}.requestId`
         )
         .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.AccessApprovalRequest))
         .where((qb) => {
           if (policyId) {
             void qb.where(`${TableName.AccessApprovalPolicy}.id`, policyId);

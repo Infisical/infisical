@@ -20,7 +20,8 @@ export const registerAzureKeyVaultPkiSyncRouter = async (
     updateSchema: UpdateAzureKeyVaultPkiSyncSchema,
     syncOptions: {
       canImportCertificates: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });

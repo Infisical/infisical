@@ -1,0 +1,21 @@
+version: v0.165.5
+releasedAt: 2026-09-04T12:28:55-07:00
+sourceTag: v0.165.5
+previousTag: v0.165.4
+impactLevel: none
+summary: No self-hosted upgrade action. Changes are limited to cloud
+  license-server region metadata and docs/UI fixes.
+requiresDbMigration: false
+breakingChanges: []
+dbSchemaChanges: []
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-09-04T20:31:50.129Z
+  sourceRange:
+    from: v0.165.4
+    to: v0.165.5

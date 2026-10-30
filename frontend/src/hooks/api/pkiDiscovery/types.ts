@@ -1,9 +1,49 @@
 export enum PkiDiscoveryType {
-  Network = "network"
+  Network = "network",
+  LinuxServer = "linux-server",
+  WindowsServer = "windows-server"
 }
 
-export const PkiDiscoveryTypeLabels: Record<PkiDiscoveryType, string> = {
-  [PkiDiscoveryType.Network]: "Network"
+export enum WindowsCertificateStore {
+  Personal = "My",
+  WebHosting = "WebHosting",
+  RemoteDesktop = "Remote Desktop",
+  IntermediateCertificationAuthorities = "CA",
+  TrustedRootCertificationAuthorities = "Root"
+}
+
+export const WindowsCertificateStoreLabels: Record<WindowsCertificateStore, string> = {
+  [WindowsCertificateStore.Personal]: "Personal",
+  [WindowsCertificateStore.WebHosting]: "Web Hosting",
+  [WindowsCertificateStore.RemoteDesktop]: "Remote Desktop",
+  [WindowsCertificateStore.IntermediateCertificationAuthorities]:
+    "Intermediate Certification Authorities",
+  [WindowsCertificateStore.TrustedRootCertificationAuthorities]:
+    "Trusted Root Certification Authorities"
+};
+
+export enum PkiKeystoreStatus {
+  Locked = "locked",
+  Readable = "readable",
+  PasswordFailed = "password_failed"
+}
+
+export enum PkiCertificateFileFormat {
+  Pem = "pem",
+  Der = "der",
+  Pkcs7 = "pkcs7",
+  Pkcs12 = "pkcs12",
+  Jks = "jks",
+  Jceks = "jceks"
+}
+
+export const PkiCertificateFileFormatLabels: Record<PkiCertificateFileFormat, string> = {
+  [PkiCertificateFileFormat.Pem]: "PEM",
+  [PkiCertificateFileFormat.Der]: "DER",
+  [PkiCertificateFileFormat.Pkcs7]: "PKCS#7",
+  [PkiCertificateFileFormat.Pkcs12]: "PKCS#12",
+  [PkiCertificateFileFormat.Jks]: "JKS",
+  [PkiCertificateFileFormat.Jceks]: "JCEKS"
 };
 
 export enum PkiDiscoveryScanStatus {
@@ -34,6 +74,13 @@ export type TPkiDiscoveryTargetConfig = {
   ipRanges?: string[];
   domains?: string[];
   ports?: string; // Port specification: "443", "443, 8443", "8000-8100", or empty for auto-detect
+  connectionIds?: string[];
+  searchFolderPaths?: string[];
+  skipFolderPaths?: string[];
+  maxFolderDepth?: number;
+  maxFileSizeKb?: number;
+  certificateStores?: WindowsCertificateStore[];
+  importStandaloneCaCertificates?: boolean;
 };
 
 export type TPkiDiscovery = {
@@ -59,6 +106,7 @@ export type TPkiDiscovery = {
   createdAt: string;
   updatedAt: string;
   linkedInstallationsCount?: number;
+  connections?: { id: string; name: string }[];
 };
 
 export type TPkiInstallation = {
@@ -75,11 +123,23 @@ export type TPkiInstallation = {
     cloudProvider?: string;
     cloudResource?: string;
     gatewayName?: string;
+    hostname?: string;
+    format?: PkiCertificateFileFormat;
+    storeLocation?: string;
+    storeName?: WindowsCertificateStore;
+    thumbprint?: string;
+    hasPrivateKey?: boolean;
   };
   locationFingerprint: string;
   name: string | null;
   type: PkiInstallationType;
-  metadata: Record<string, unknown> | null;
+  metadata: {
+    keystoreStatus?: PkiKeystoreStatus;
+    lastCheckedAt?: string;
+    lastError?: string;
+  } | null;
+  hasKeystorePassword?: boolean;
+  connection?: { id: string; name: string } | null;
   lastSeenAt: string;
   createdAt: string;
   updatedAt: string;
@@ -210,6 +270,7 @@ export type TGetPkiInstallationDTO = {
 export type TUpdatePkiInstallationDTO = {
   installationId: string;
   name?: string;
+  keystorePassword?: string;
 };
 
 export type TDeletePkiInstallationDTO = {

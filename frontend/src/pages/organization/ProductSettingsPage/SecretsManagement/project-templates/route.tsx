@@ -1,5 +1,6 @@
 import { createFileRoute, linkOptions, useParams } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 
@@ -13,14 +14,20 @@ const RouteComponent = withPermission(
   },
   {
     action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.ProjectTemplates
+    subject: OrgPermissionSubjects.ProjectTemplates,
+    accessRestrictedMode: "dialog"
   }
 );
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/project-templates/$templateId"
 )({
-  component: RouteComponent,
+  component: () => (
+    <>
+      <PageTitle title="Project Template" />
+      <RouteComponent />
+    </>
+  ),
   context: ({ params }) => ({
     breadcrumbs: [
       {
@@ -31,7 +38,7 @@ export const Route = createFileRoute(
         })
       },
       {
-        label: "Project Templates"
+        label: "Project Template"
       }
     ]
   })

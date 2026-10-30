@@ -22,6 +22,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createUserProjectAdditionalPrivilege",
       body: z.object({
         projectMembershipId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.projectMembershipId),
         slug: slugSchema({ min: 1, max: 60 }).optional().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
@@ -91,6 +92,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateUserProjectAdditionalPrivilege",
       params: z.object({
         privilegeId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.privilegeId)
       }),
@@ -131,6 +133,12 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       const data = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.privilegeId);
       if (!data.privilege.actorUserId)
         throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
+
+      if (data.privilege.grantId) {
+        throw new BadRequestError({
+          message: "Cannot update a privilege that was granted through an access approval request"
+        });
+      }
 
       const isLinkedToAccessApproval = await server.services.additionalPrivilege.isPrivilegeLinkedToAccessApproval(
         req.params.privilegeId
@@ -183,6 +191,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteUserProjectAdditionalPrivilege",
       params: z.object({
         privilegeId: z.string().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.DELETE.privilegeId)
       }),
@@ -239,6 +248,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listUserProjectAdditionalPrivileges",
       querystring: z.object({
         projectMembershipId: z.string().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.LIST.projectMembershipId)
       }),
@@ -254,7 +264,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { userId, membership } = await server.services.convertor.userMembershipIdToUserId(
         req.query.projectMembershipId,
@@ -294,6 +304,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getUserProjectAdditionalPrivilege",
       params: z.object({
         privilegeId: z.string().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.GET_BY_PRIVILEGE_ID.privilegeId)
       }),
@@ -303,7 +314,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.privilegeId);
       if (!data.privilege.actorUserId)

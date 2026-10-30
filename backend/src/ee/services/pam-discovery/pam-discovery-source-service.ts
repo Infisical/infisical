@@ -16,12 +16,13 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { PamAccountType, PamProductRole, PamSshAuthMethod } from "../pam/pam-enums";
-import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
-import { validateGatewayAttachment } from "../pam/pam-validators";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamAccountServiceFactory } from "../pam-account/pam-account-service";
+import { PamAccountType, PamPostgresAuthMethod, PamProductRole, PamSshAuthMethod } from "../pam/pam-enums";
+import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import { validateGatewayAttachment } from "../pam/pam-validators";
 import { TPamAccountDependencyDALFactory } from "./pam-account-dependency-dal";
 import { TPamDiscoveredAccountDALFactory } from "./pam-discovered-account-dal";
 import {
@@ -70,6 +71,7 @@ type TPamDiscoverySourceServiceFactoryDep = {
     TGatewayPoolServiceFactory,
     "resolveEffectiveGatewayId" | "resolveAttachableGatewayFromPool"
   >;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -222,12 +224,33 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       throw new BadRequestError({ message: `Credential account must be of type '${expectedType}'` });
     }
 
-    // discovery transmits an SSH password to every scanned host, so a password account may only be used by an actor
+    // discovery transmits a password to every scanned host, so a password account may only be used by an actor
     // allowed to view its secret
-    if (account.accountType === PamAccountType.SSH) {
+    if (
+      account.accountType === PamAccountType.SSH ||
+      account.accountType === PamAccountType.Postgres ||
+      account.accountType === PamAccountType.MsSQL
+    ) {
       const { decryptor } = await getProjectCipher(projectId);
       const { authMethod } = decryptToObject(account.encryptedCredentials, decryptor) as { authMethod?: string };
-      if (authMethod === PamSshAuthMethod.Password) {
+
+      if (account.accountType === PamAccountType.Postgres && authMethod === PamPostgresAuthMethod.AwsIam) {
+        throw new BadRequestError({
+          message: `PostgreSQL account '${account.name}' uses AWS IAM authentication, which cannot scan. Its login token is minted for one host, port, and user, so it cannot be reused across the instances a source scans. Select an account that authenticates with a password.`
+        });
+      }
+
+      if (account.accountType === PamAccountType.MsSQL && authMethod !== "sql-login") {
+        throw new BadRequestError({
+          message: `SQL Server account '${account.name}' uses Windows authentication, which cannot scan. Select an account that uses SQL Server authentication.`
+        });
+      }
+
+      const sendsPassword =
+        account.accountType === PamAccountType.Postgres
+          ? authMethod !== PamPostgresAuthMethod.AwsIam
+          : authMethod === PamSshAuthMethod.Password || authMethod === "sql-login";
+      if (sendsPassword) {
         await checkAccountAccess(
           permissionService,
           credentialAccountId,
@@ -364,7 +387,9 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     }
 
     if (gatewayId !== undefined || gatewayPoolId !== undefined) {
-      await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
+      await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx, {
+        previousGatewayId: source.gatewayId
+      });
     }
 
     const discoveryConfiguration =
@@ -471,9 +496,13 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       const goneAccounts = storedAccounts.filter((a) => {
         if (seenFingerprints.has(a.fingerprint)) return false;
         if (a.accountType === PamAccountType.WindowsAd) return true;
-        if (a.accountType === PamAccountType.Windows) {
-          // local-account fingerprint is `${domain}:${computerObjectGUID}:${username}`; the machine key is the
-          // first two segments, matching what the provider reports as re-checked
+        if (
+          a.accountType === PamAccountType.Windows ||
+          a.accountType === PamAccountType.Postgres ||
+          a.accountType === PamAccountType.MsSQL
+        ) {
+          // fingerprints are `${domain}:${computerObjectGUID}:${username}` and `${host}:${port}:${login}`; in
+          // both the machine key is the first two segments, matching what the provider reports as re-checked
           const machineKey = a.fingerprint.split(":").slice(0, 2).join(":");
           return scannedMachines.has(machineKey);
         }

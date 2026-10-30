@@ -1,9 +1,8 @@
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { GroupsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -12,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge
 } from "@app/components/v3";
 import {
@@ -20,20 +20,22 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { GroupModal } from "./GroupModal";
 import { GroupTable } from "./GroupsTable";
 
 export const GroupsSection = () => {
+  const scopeVariant = useScopeVariant();
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
 
-  const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();
+  const { mutateAsync: deleteMutateAsync, isPending: isRemovingGroup } =
+    useDeleteGroupFromWorkspace();
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "group",
@@ -53,11 +55,15 @@ export const GroupsSection = () => {
   };
 
   const onRemoveGroupSubmit = async (groupId: string) => {
-    await deleteMutateAsync({
-      groupId,
-      projectId: currentProject?.id || "",
-      projectType: currentProject?.type
-    });
+    try {
+      await deleteMutateAsync({
+        groupId,
+        projectId: currentProject?.id || "",
+        projectType: currentProject?.type
+      });
+    } catch {
+      return;
+    }
 
     createNotification({
       text: `Successfully removed group from ${productLabel.toLowerCase()}`,
@@ -67,12 +73,14 @@ export const GroupsSection = () => {
     handlePopUpClose("deleteGroup");
   };
 
+  const groupToRemove = popUp.deleteGroup.data as { id?: string; name?: string } | undefined;
+
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager ? "Groups" : `${productLabel} Groups`}
+            {projectsHidden ? "Groups" : `${productLabel} Groups`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups#user-groups" />
           </CardTitle>
           <CardDescription>{`Add and manage ${productLabel.toLowerCase()} groups`}</CardDescription>
@@ -83,12 +91,12 @@ export const GroupsSection = () => {
             >
               {(isAllowed) => (
                 <Button
-                  variant="project"
+                  variant={scopeVariant}
                   onClick={() => handleAddGroupModal()}
                   isDisabled={!isAllowed}
                 >
                   <PlusIcon />
-                  {isCertManager ? "Add Group" : `Add Group to ${productLabel}`}
+                  {projectsHidden ? "Add Group" : `Add Group to ${productLabel}`}
                 </Button>
               )}
             </ProjectPermissionCan>
@@ -99,22 +107,28 @@ export const GroupsSection = () => {
           <GroupTable handlePopUpOpen={handlePopUpOpen} />
         </CardContent>
       </Card>
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteGroup.isOpen}
-        title={`Are you sure you want to remove the group ${
-          (popUp?.deleteGroup?.data as { name: string })?.name || ""
-        } from the ${productLabel.toLowerCase()}?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
-          onRemoveGroupSubmit((popUp?.deleteGroup?.data as { id: string })?.id)
-        }
+        onOpenChange={(isOpen) => {
+          if (!isRemovingGroup) handlePopUpToggle("deleteGroup", isOpen);
+        }}
+        title={`Remove "${groupToRemove?.name}" from ${productLabel}?`}
+        description={`This removes the group's access to this ${productLabel.toLowerCase()}. You can add the group again later.`}
+        confirmKey={groupToRemove?.name ?? ""}
+        confirmLabel="Remove Group"
+        isPending={isRemovingGroup}
+        onConfirm={async () => {
+          if (groupToRemove?.id) await onRemoveGroupSubmit(groupToRemove.id);
+        }}
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="project.groups"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan?.data?.text}
-        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
+        intent={{
+          ...GroupsUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan?.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

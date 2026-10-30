@@ -9,6 +9,7 @@ export const MembersTab = withProjectPermission(
   },
   {
     action: ProjectPermissionActions.Read,
-    subject: ProjectPermissionSub.Member
+    subject: ProjectPermissionSub.Member,
+    accessRestrictedMode: "dialog"
   }
 );

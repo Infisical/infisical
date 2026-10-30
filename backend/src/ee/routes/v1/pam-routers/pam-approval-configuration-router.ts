@@ -5,6 +5,10 @@ import { PamNotificationEvent } from "@app/ee/services/pam/pam-enums";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  AutoApprovalConfigResponseSchema,
+  AutoApprovalConfigSchema
+} from "@app/services/approval-policy/auto-approval/auto-approval-schemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const ApproverSchema = z.object({
@@ -54,11 +58,13 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
               approvers: z.array(ApproverSchema)
             })
           ),
-          notificationConfigs: z.array(NotificationConfigResponseSchema)
+          notificationConfigs: z.array(NotificationConfigResponseSchema),
+          breakGlassUsers: z.array(ApproverSchema),
+          autoApproval: AutoApprovalConfigResponseSchema
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.getApprovalConfiguration({
         folderId: req.params.folderId,
@@ -82,7 +88,15 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
       }),
       body: z.object({
         steps: z.array(StepSchema).max(1),
-        notificationConfigs: z.array(NotificationConfigSchema).max(10).optional()
+        notificationConfigs: z.array(NotificationConfigSchema).max(10).optional(),
+        breakGlassUsers: z
+          .array(ApproverSchema)
+          .max(20)
+          .optional()
+          .describe(
+            "Users and groups allowed to grant themselves access without an approver. Omitted leaves the stored list unchanged; an empty array clears it."
+          ),
+        autoApproval: AutoApprovalConfigSchema.optional()
       }),
       response: {
         200: z.object({
@@ -90,13 +104,15 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.setApprovalConfiguration({
         folderId: req.params.folderId,
         projectId: req.internalPamProjectId,
         steps: req.body.steps,
         notificationConfigs: req.body.notificationConfigs,
+        breakGlassUsers: req.body.breakGlassUsers,
+        autoApproval: req.body.autoApproval,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -113,7 +129,9 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
             folderId: req.params.folderId,
             policyId: result.policyId,
             stepCount: result.stepCount,
-            notificationConfigCount: result.notificationConfigCount
+            notificationConfigCount: result.notificationConfigCount,
+            breakGlassUserCount: result.breakGlassUserCount,
+            autoApprovalRuleCount: result.autoApprovalRuleCount
           }
         }
       });

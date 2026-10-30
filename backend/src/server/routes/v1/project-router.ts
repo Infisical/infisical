@@ -2,7 +2,6 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
-  CertificatesSchema,
   IntegrationsSchema,
   PkiAlertsSchema,
   PkiCollectionsSchema,
@@ -15,9 +14,14 @@ import {
   SortDirection
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
+import { MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS } from "@app/ee/services/audit-log/audit-log-retention-fns";
+import {
+  AuditLogSettingsResponseSchema,
+  updateAuditLogSettingsBodySchema
+} from "@app/ee/services/audit-log/audit-log-settings-schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
-import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, AUDIT_LOG_SETTINGS, FOLDERS, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { JobState } from "@app/queue/queue-service";
@@ -28,6 +32,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
@@ -42,6 +47,7 @@ import {
   SanitizedUserSchema
 } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
+import { ProjectAccessRequestCommentSchema } from "./project-access-request-schema";
 
 const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
@@ -79,6 +85,31 @@ const projectWithEnv = SanitizedProjectSchema.merge(
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/accessible-with-sub-orgs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "listAccessibleProjectsWithSubOrgs",
+      response: {
+        200: z.object({
+          projects: SanitizedProjectSchema.pick({ id: true, orgId: true, name: true, slug: true, type: true }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const projects = await server.services.project.getAccessibleProjectsWithSubOrgs({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId
+      });
+      return { projects };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/me/project-access-requests",
     config: {
       rateLimit: readLimit
@@ -96,7 +127,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.project.getMyPendingProjectAccessRequests({
         permission: req.permission
@@ -167,7 +198,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const roles = (req.query.roles?.split(",") || []).filter(Boolean);
       const users = await server.services.projectMembership.getProjectMemberships({
@@ -228,7 +259,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const project = await server.services.project.createProject({
         actorId: req.permission.id,
@@ -307,7 +338,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projects = await server.services.project.getProjects({
         includeRoles: req.query.includeRoles,
@@ -346,7 +377,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const project = await server.services.project.getAProject({
         filter: {
@@ -385,7 +416,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: projectWithEnv
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const project = await server.services.project.getAProject({
         filter: {
@@ -515,7 +546,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .array(z.string())
           .optional()
           .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues),
-        pitVersionLimit: z.number().min(1).max(100).optional()
+        pitVersionLimit: z.number().min(1).max(100).optional(),
+        auditLogsRetentionDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(365)
+          .optional()
+          .describe(PROJECTS.UPDATE.auditLogsRetentionDays)
       }),
       response: {
         200: z.object({
@@ -540,7 +578,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           showSnapshotsLegacy: req.body.showSnapshotsLegacy,
           secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues,
           pitVersionLimit: req.body.pitVersionLimit,
-          enforceEncryptedSecretManagerSecretMetadata: req.body.enforceEncryptedSecretManagerSecretMetadata
+          enforceEncryptedSecretManagerSecretMetadata: req.body.enforceEncryptedSecretManagerSecretMetadata,
+          auditLogsRetentionDays: req.body.auditLogsRetentionDays
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
@@ -557,6 +596,21 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           metadata: req.body
         }
       });
+
+      if (req.body.auditLogsRetentionDays !== undefined) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId,
+          event: {
+            type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+            metadata: {
+              scope: "project",
+              auditLogsRetentionDays: req.body.auditLogsRetentionDays
+            }
+          }
+        });
+      }
 
       return {
         project
@@ -629,7 +683,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.project.getSecretBlindIndexMigrationStatus({
         projectId: req.params.projectId,
@@ -653,7 +707,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim()
       }),
       body: z.object({
-        auditLogsRetentionDays: z.number().min(0)
+        auditLogsRetentionDays: z.number().int().min(0).max(MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS)
       }),
       response: {
         200: z.object({
@@ -681,8 +735,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId,
         projectId: project.id,
         event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "project",
+            auditLogsRetentionDays: req.body.auditLogsRetentionDays
+          }
         }
       });
 
@@ -690,6 +747,84 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         message: "Successfully updated project's audit logs retention period",
         project
       };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/audit-log-settings",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getProjectAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Get which audit log event classes the project records",
+      params: z.object({
+        projectId: z.string().uuid().describe(AUDIT_LOG_SETTINGS.GET_PROJECT.projectId)
+      }),
+      response: {
+        200: AuditLogSettingsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.getProjectSettings({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId
+      });
+      return { auditLogSettings };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:projectId/audit-log-settings",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "updateProjectAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Update which audit log event classes the project records. Requires the project admin role.",
+      params: z.object({
+        projectId: z.string().uuid().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.projectId)
+      }),
+      body: updateAuditLogSettingsBodySchema(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.isEnabled),
+      response: {
+        200: AuditLogSettingsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.updateProjectSettings({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        eventClasses: req.body.eventClasses
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "project",
+            eventClasses: req.body.eventClasses
+          }
+        }
+      });
+
+      return { auditLogSettings };
     }
   });
 
@@ -726,7 +861,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integrations = await server.services.integration.listIntegrationByProject({
         actorId: req.permission.id,
@@ -764,7 +899,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const authorizations = await server.services.integrationAuth.listIntegrationAuthByProjectId({
         actorId: req.permission.id,
@@ -794,7 +929,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const serviceTokenData = await server.services.serviceToken.getProjectServiceTokens({
         actorId: req.permission.id,
@@ -850,7 +985,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         ])
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const config = await server.services.project.getProjectWorkflowIntegrationConfig({
         actorId: req.permission.id,
@@ -1021,17 +1156,21 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         projectId: z.string().trim()
       }),
+      querystring: z.object({
+        environment: slugSchema({ field: "Environment slug" }).optional().describe(FOLDERS.LIST.environment)
+      }),
       response: {
         200: z.record(
           ProjectEnvironmentsSchema.extend({ folders: SecretFoldersSchema.extend({ path: z.string() }).array() })
         )
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const environmentsFolders = await server.services.folder.getProjectEnvironmentsFolders(
         req.params.projectId,
-        req.permission
+        req.permission,
+        req.query.environment
       );
 
       return environmentsFolders;
@@ -1071,7 +1210,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { docs: projects, totalCount } = await server.services.project.searchProjects({
         permission: req.permission,
@@ -1094,25 +1233,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim()
       }),
       body: z.object({
-        comment: z
-          .string()
-          .trim()
-          .max(2500)
-          .refine(
-            (val) =>
-              characterValidator([
-                CharacterType.AlphaNumeric,
-                CharacterType.Hyphen,
-                CharacterType.Comma,
-                CharacterType.Fullstop,
-                CharacterType.Spaces,
-                CharacterType.Exclamation
-              ])(val),
-            {
-              message: "Invalid pattern: only alphanumeric characters, spaces, -.!, are allowed."
-            }
-          )
-          .optional()
+        comment: ProjectAccessRequestCommentSchema
       }),
       response: {
         200: z.object({
@@ -1120,7 +1241,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       await server.services.project.requestProjectAccess({
         permission: req.permission,
@@ -1197,7 +1318,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const status = await server.services.project.getProjectUpgradeStatus({
         actorAuthMethod: req.permission.authMethod,
@@ -1237,7 +1358,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const cas = await server.services.project.listProjectCas({
         filter: {
@@ -1280,7 +1401,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe("Retrieve only certificates available for PKI sync"),
         search: z.string().trim().optional().describe("Search by SAN, CN, certificate ID, or serial number"),
-        status: z.string().optional().describe("Filter by certificate status"),
+        status: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
         profileIds: z
           .union([z.string().uuid(), z.array(z.string().uuid())])
           .transform((val) => (Array.isArray(val) ? val : [val]))
@@ -1291,12 +1412,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificates: z.array(CertificatesSchema.extend({ hasPrivateKey: z.boolean() })),
+          certificates: z.array(SanitizedCertificateSchema.extend({ hasPrivateKey: z.boolean() })),
           totalCount: z.number()
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { certificates, totalCount } = await server.services.project.listProjectCertificates({
         filter: {
@@ -1382,7 +1503,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificates: z.array(
-            CertificatesSchema.extend({
+            SanitizedCertificateSchema.extend({
               hasPrivateKey: z.boolean(),
               caName: z.string().nullable().optional(),
               profileName: z.string().nullable().optional(),
@@ -1394,7 +1515,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { metadata, sortBy, sortOrder, ...filters } = req.body;
       const { certificates, totalCount } = await server.services.project.listProjectCertificates({
@@ -1434,6 +1555,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           totals: z.object({
             total: z.number(),
             active: z.number(),
+            renewed: z.number(),
             expiringSoon: z.number(),
             expired: z.number(),
             revoked: z.number()
@@ -1443,7 +1565,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           distributions: z.object({
             byEnrollmentMethod: z.array(z.object({ label: z.string(), count: z.number() })),
             byAlgorithm: z.array(z.object({ label: z.string(), count: z.number() })),
-            byCA: z.array(z.object({ id: z.string(), label: z.string(), count: z.number() })),
+            byCA: z.array(z.object({ id: z.string().optional(), label: z.string(), count: z.number() })),
             byStatus: z.array(z.object({ label: z.string(), count: z.number() }))
           }),
           expirationBuckets: z.array(z.object({ bucket: z.string(), count: z.number() })),
@@ -1451,7 +1573,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.project.getDashboardStats({
         filter: {
@@ -1497,7 +1619,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.project.getActivityTrend({
         filter: {
@@ -1542,7 +1664,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.project.getPqcTrend({
         filter: {
@@ -1577,7 +1699,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { alerts } = await server.services.project.listProjectAlerts({
         projectId: req.params.projectId,
@@ -1610,7 +1732,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { pkiCollections } = await server.services.project.listProjectPkiCollections({
         projectId: req.params.projectId,
@@ -1643,7 +1765,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscribers = await server.services.project.listProjectPkiSubscribers({
         actorId: req.permission.id,
@@ -1676,7 +1798,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { certificateTemplates } = await server.services.project.listProjectCertificateTemplates({
         projectId: req.params.projectId,

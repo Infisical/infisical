@@ -2,13 +2,13 @@ import { useMemo } from "react";
 import { ChevronDownIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { Lottie } from "@app/components/v2";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   Input,
+  Loader,
   Pagination,
   Table,
   TableBody,
@@ -84,7 +84,7 @@ export const UserGroupsTable = ({ handlePopUpOpen, orgMembership }: Props) => {
   if (isPending) {
     return (
       <div className="flex h-40 w-full items-center justify-center">
-        <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+        <Loader />
       </div>
     );
   }

@@ -39,6 +39,7 @@ export {
   useGetCaCertTemplates,
   useGetCaCrls,
   useGetCaCsr,
+  useGetCaQuota,
   useGetCaSigningConfig,
   useGetInternalCaById,
   useListCasByProjectId,
@@ -46,6 +47,7 @@ export {
   useListExternalCasByProjectId
 } from "./queries";
 export type {
+  TCaQuota,
   TInternalCertificateAuthority,
   TOrderCertificateDTO,
   TOrderCertificateResponse

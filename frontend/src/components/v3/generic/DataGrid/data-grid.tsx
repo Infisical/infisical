@@ -3,7 +3,6 @@ import { Plus } from "lucide-react";
 
 import { cn } from "@app/components/v3/utils";
 
-import { useAsRef } from "./hooks/use-as-ref";
 import { DataGridColumnHeader } from "./data-grid-column-header";
 import { DataGridContextMenu } from "./data-grid-context-menu";
 import { DataGridPasteDialog } from "./data-grid-paste-dialog";
@@ -16,12 +15,14 @@ import {
   getColumnPinningStyle,
   sanitizeCssId
 } from "./data-grid-utils";
+import { useAsRef } from "./hooks/use-as-ref";
 import type { useDataGrid } from "./use-data-grid";
 
 const EMPTY_CELL_SELECTION_SET = new Set<string>();
 
 interface DataGridProps<TData>
-  extends Omit<ReturnType<typeof useDataGrid<TData>>, "dir">,
+  extends
+    Omit<ReturnType<typeof useDataGrid<TData>>, "dir">,
     Omit<React.ComponentProps<"div">, "contextMenu"> {
   dir?: Direction;
   height?: number;
@@ -116,7 +117,7 @@ export function DataGrid<TData>({
           role="rowgroup"
           data-slot="grid-header"
           ref={headerRef}
-          className="sticky top-0 z-10 grid border-b border-border bg-container"
+          className="sticky top-0 z-[var(--z-index-sticky)] grid border-b border-border bg-container"
         >
           {table.getHeaderGroups().map((headerGroup, rowIndex) => (
             <div
@@ -152,7 +153,7 @@ export function DataGrid<TData>({
                         ? "ascending"
                         : currentSort?.desc === true // eslint-disable-line no-nested-ternary
                           ? "descending"
-                          : isSortable // eslint-disable-line no-nested-ternary
+                          : isSortable
                             ? "none"
                             : undefined
                     }
@@ -231,7 +232,7 @@ export function DataGrid<TData>({
             role="rowgroup"
             data-slot="grid-footer"
             ref={footerRef}
-            className="sticky bottom-0 z-10 grid border-t border-border bg-container"
+            className="sticky bottom-0 z-[var(--z-index-sticky)] grid border-t border-border bg-container"
           >
             <div
               role="row"

@@ -43,7 +43,7 @@ export const registerCircleCIConnectionRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
       const organizations = await server.services.appConnection.circleci.listOrganizations(

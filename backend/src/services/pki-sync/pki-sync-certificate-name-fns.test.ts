@@ -256,3 +256,12 @@ describe("certificateNameSchemaHasFreeTextPlaceholder", () => {
     expect(certificateNameSchemaHasFreeTextPlaceholder(undefined)).toBe(false);
   });
 });
+
+describe("sanitizeCertificateNameValue for GCP Certificate Manager", () => {
+  // GCP requires lowercase, but stripping letters here would destroy them instead of the
+  // destination lowercasing them, turning "API.Example.com" into hyphens.
+  test("keeps letters and replaces only disallowed characters", () => {
+    expect(sanitizeCertificateNameValue("API.Example.com", PkiSync.GcpCertificateManager)).toBe("API-Example-com");
+    expect(sanitizeCertificateNameValue("web_app", PkiSync.GcpCertificateManager)).toBe("web-app");
+  });
+});

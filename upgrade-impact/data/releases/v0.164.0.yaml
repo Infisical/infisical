@@ -1,0 +1,57 @@
+version: v0.164.0
+releasedAt: 2026-08-26T11:46:27-07:00
+sourceTag: v0.164.0
+previousTag: v0.163.0
+impactLevel: low
+summary: Adds root encryption key rotation support with startup migrations and a
+  new retention setting. Upgrading is low risk unless you plan to rotate
+  ENCRYPTION_KEY after upgrade.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Root encryption key tables
+    description: Startup adds key-rotation columns to kms_root_config and creates
+      history tables for retained and legacy encryption keys.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260819120000_kek-rotation.ts
+        path: backend/src/db/migrations/20260819120000_kek-rotation.ts
+        description: Adds kms_root_config columns
+configChanges:
+  - title: Encryption key retention setting
+    description: A new KMS_ROOT_KEY_RETENTION_DAYS setting controls how long the old
+      ENCRYPTION_KEY stays valid after rotation. Default is 7 days.
+    action: Set KMS_ROOT_KEY_RETENTION_DAYS only if you need a retention window
+      other than 7 days.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/lib/config/env.ts
+        path: backend/src/lib/config/env.ts
+        description: Defines KMS_ROOT_KEY_RETENTION_DAYS default 7
+deploymentNotes:
+  - title: Encryption key rotation workflow
+    description: You can now rotate ENCRYPTION_KEY from Admin > Encryption. Rotation
+      applies when the first instance starts with the new key, and rolling
+      restarts are supported.
+    action: If you rotate ENCRYPTION_KEY, store both keys, deploy the new key to all
+      instances, then remove the old key after every instance has restarted.
+    confidence: high
+    evidence:
+      - type: file
+        ref: docs/self-hosting/guides/rotating-the-encryption-key.mdx
+        path: docs/self-hosting/guides/rotating-the-encryption-key.mdx
+        description: Rotation applies on first restart
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-08-26T20:20:16.881Z
+  sourceRange:
+    from: v0.163.0
+    to: v0.164.0

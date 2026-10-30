@@ -2,7 +2,6 @@ import { format } from "date-fns";
 import { CheckIcon, ClipboardListIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   Card,
   CardContent,
@@ -13,12 +12,15 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
-  IconButton
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { getProjectLabel } from "@app/helpers/project";
 import { useTimedReset } from "@app/hooks";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { GroupRoles } from "@app/pages/project/AccessControlPage/components/GroupsTab/components/GroupsSection/GroupRoles";
 
 type Props = {
@@ -28,15 +30,15 @@ type Props = {
 export const GroupDetailsSection = ({ groupMembership }: Props) => {
   const { group } = groupMembership;
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const projectLabel = getProjectLabel(currentProject?.type);
 
-  // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
 
   return (
-    <Card className="w-full lg:max-w-[24rem]">
+    <Card className="w-full @4xl:max-w-[24rem] @4xl:shrink-0">
       <CardHeader className="border-b">
         <CardTitle>Details</CardTitle>
         <CardDescription>Group details</CardDescription>
@@ -49,25 +51,28 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
           </Detail>
           <Detail>
             <DetailLabel>ID</DetailLabel>
-            <DetailValue className="flex items-center gap-x-1">
+            <DetailValue className="flex items-center gap-x-1 font-mono">
               {group.id}
-              <Tooltip content="Copy group ID to clipboard">
-                <IconButton
-                  onClick={() => {
-                    navigator.clipboard.writeText(group.id);
-                    setCopyTextId("Copied");
-                  }}
-                  variant="ghost"
-                  size="xs"
-                >
-                  {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
-                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </IconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    onClick={() => {
+                      navigator.clipboard.writeText(group.id);
+                      setCopyTextId("Copied");
+                    }}
+                    variant="ghost"
+                    size="xs"
+                    aria-label="Copy group ID"
+                  >
+                    {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>{isCopyingId ? "Group ID copied" : "Copy group ID"}</TooltipContent>
               </Tooltip>
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>{isCertManager ? "Certificate Manager Role" : "Project Role"}</DetailLabel>
+            <DetailLabel>{`${projectLabel} Role`}</DetailLabel>
             <DetailValue>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
@@ -85,9 +90,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>
-              {isCertManager ? "Joined certificate manager" : "Joined project"}
-            </DetailLabel>
+            <DetailLabel>{`Joined ${projectLabel.toLowerCase()}`}</DetailLabel>
             <DetailValue>{format(groupMembership.createdAt, "PPpp")}</DetailValue>
           </Detail>
         </DetailGroup>

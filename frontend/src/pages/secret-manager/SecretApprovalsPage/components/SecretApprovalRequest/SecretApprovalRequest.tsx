@@ -1,21 +1,24 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
   CheckIcon,
-  ChevronsUpDownIcon,
-  ClipboardCheckIcon,
+  ChevronDownIcon,
+  CircleAlertIcon,
   EllipsisIcon,
   EyeIcon,
   GitMergeIcon,
   GitPullRequestIcon,
   HourglassIcon,
   LucideIcon,
-  SearchIcon
+  PlusIcon,
+  SearchIcon,
+  TriangleAlertIcon
 } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
@@ -24,19 +27,15 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
+  Checkbox,
+  Combobox,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -45,9 +44,8 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+  RowLink,
+  SelectedActionBar,
   Skeleton,
   Table,
   TableBody,
@@ -55,6 +53,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  type TableSortDirection,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -65,6 +64,7 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
+  ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProject,
@@ -78,116 +78,40 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
+  useGetSecretApprovalPolicies,
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
+import {
+  SecretApprovalRequestOrderBy,
+  TBulkChangeRequestResult,
+  TSecretApprovalRequest
+} from "@app/hooks/api/secretApprovalRequest/types";
 import { ApprovalStatus } from "@app/hooks/api/types";
+import { formatReservedPaths, parsePathFromReplicatedPath } from "@app/lib/fn/string";
 
+import { BulkReviewChangeRequestsSheet } from "./components/BulkReviewChangeRequestsSheet";
 import {
   generateCommitText,
   SecretApprovalRequestChanges
 } from "./components/SecretApprovalRequestChanges";
 
-type FilterMenuProps = {
-  className?: string;
-  searchPlaceholder: string;
-  allLabel: string;
-  options: { value: string; label: string }[];
-  value?: string;
-  onChange: (value?: string) => void;
+enum ChangeRequestOrderBy {
+  Environment = SecretApprovalRequestOrderBy.Environment,
+  Author = SecretApprovalRequestOrderBy.Author,
+  OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
+}
+
+const MAX_BULK_SELECTION = 25;
+
+type Props = {
+  onConfigurePolicies: () => void;
 };
 
-const FilterMenu = ({
-  className,
-  searchPlaceholder,
-  allLabel,
-  options,
-  value,
-  onChange
-}: FilterMenuProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState("");
-
-  const selectedOption = options.find((option) => option.value === value);
-
-  return (
-    <Popover
-      open={isOpen}
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) setInputValue("");
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={isOpen}
-          className={cn("justify-between", className)}
-        >
-          <span className="truncate">{selectedOption ? selectedOption.label : allLabel}</span>
-          <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[220px] p-0">
-        <Command>
-          <CommandInput
-            aria-label={searchPlaceholder}
-            value={inputValue}
-            onValueChange={setInputValue}
-            placeholder={searchPlaceholder}
-          />
-          <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            {!inputValue && (
-              <>
-                <CommandGroup>
-                  <CommandItem
-                    forceMount
-                    keywords={[]}
-                    onSelect={() => {
-                      onChange(undefined);
-                      setIsOpen(false);
-                    }}
-                  >
-                    <CheckIcon className={cn("size-4", !value ? "opacity-100" : "opacity-0")} />
-                    {allLabel}
-                  </CommandItem>
-                </CommandGroup>
-                <CommandSeparator />
-              </>
-            )}
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  keywords={[option.label]}
-                  onSelect={() => {
-                    onChange(value === option.value ? undefined : option.value);
-                    setIsOpen(false);
-                  }}
-                >
-                  <CheckIcon
-                    className={cn(
-                      "size-4 shrink-0",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <span className="truncate">{option.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
-
-export const SecretApprovalRequest = () => {
+export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const { currentProject, projectId } = useProject();
   const queryClient = useQueryClient();
 
@@ -199,6 +123,15 @@ export const SecretApprovalRequest = () => {
   const [statusFilter, setStatusFilter] = useState<"open" | "close">("open");
   const [envFilter, setEnvFilter] = useState<string>();
   const [committerFilter, setCommitterFilter] = useState<string>();
+  const [sort, setSort] = useState<{
+    column: ChangeRequestOrderBy;
+    direction: Exclude<TableSortDirection, "none">;
+  } | null>(null);
+  const [selectedRequests, setSelectedRequests] = useState<Record<string, TSecretApprovalRequest>>(
+    {}
+  );
+  const [failedRequestErrors, setFailedRequestErrors] = useState<Record<string, string>>({});
+  const [isBulkReviewOpen, setIsBulkReviewOpen] = useState(false);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -230,7 +163,9 @@ export const SecretApprovalRequest = () => {
     committer: committerFilter,
     search: debouncedSearchFilter,
     limit,
-    offset
+    offset,
+    orderBy: sort?.column as SecretApprovalRequestOrderBy | undefined,
+    orderDirection: sort?.direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
   });
 
   const totalApprovalCount = data?.totalCount ?? 0;
@@ -249,19 +184,159 @@ export const SecretApprovalRequest = () => {
   });
 
   const { permission } = useProjectPermission();
-  const { data: members } = useGetWorkspaceUsers(projectId, true);
+  const { data: members, isPending: areMembersPending } = useGetWorkspaceUsers(projectId, true);
+
+  // Change requests are only ever created by change policies. When the project
+  // has none, point users at the Policies tab so the empty state is actionable.
+  // Listing policies requires Read, so a role with Create but not Read cannot
+  // check whether any exist; it can still create one, so always show the CTA.
+  const canReadPolicies = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.SecretApproval
+  );
+  const canCreatePolicies = permission.can(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.SecretApproval
+  );
+  const { data: secretPolicies, isSuccess: arePoliciesLoaded } = useGetSecretApprovalPolicies({
+    projectId,
+    options: { enabled: canCreatePolicies && canReadPolicies }
+  });
+  const showConfigurePoliciesCta =
+    canCreatePolicies && (!canReadPolicies || (arePoliciesLoaded && secretPolicies?.length === 0));
+
   const { requestId } = search;
   const handleCloseRequestDetail = () => {
     navigate({ search: (prev) => ({ ...prev, requestId: "" }) });
     refetch();
   };
 
+  const isOpenTab = statusFilter === "open";
+  const selectedRequestList = Object.values(selectedRequests).map(
+    (request) => secretApprovalRequests.find(({ id }) => id === request.id) ?? request
+  );
+  const selectedCount = selectedRequestList.length;
+  const isPageSelected =
+    secretApprovalRequests.length > 0 &&
+    secretApprovalRequests.every(({ id }) => selectedRequests[id]);
+  const isPageIndeterminate =
+    !isPageSelected && secretApprovalRequests.some(({ id }) => selectedRequests[id]);
+
+  const clearSelection = () => {
+    setSelectedRequests({});
+    setFailedRequestErrors({});
+  };
+
+  const toggleRequestSelection = (request: TSecretApprovalRequest) => {
+    if (selectedRequests[request.id]) {
+      setSelectedRequests(({ [request.id]: _, ...rest }) => rest);
+      setFailedRequestErrors(({ [request.id]: _, ...rest }) => rest);
+      return;
+    }
+    if (selectedCount >= MAX_BULK_SELECTION) {
+      createNotification({
+        type: "error",
+        text: `You can select up to ${MAX_BULK_SELECTION} change requests at once`
+      });
+      return;
+    }
+    setSelectedRequests((prev) => ({ ...prev, [request.id]: request }));
+  };
+
+  const togglePageSelection = () => {
+    if (isPageSelected || isPageIndeterminate) {
+      const pageIds = new Set(secretApprovalRequests.map(({ id }) => id));
+      setSelectedRequests((prev) =>
+        Object.fromEntries(Object.entries(prev).filter(([id]) => !pageIds.has(id)))
+      );
+      return;
+    }
+    const unselected = secretApprovalRequests.filter(({ id }) => !selectedRequests[id]);
+    const available = MAX_BULK_SELECTION - selectedCount;
+    if (unselected.length > available) {
+      createNotification({
+        type: "error",
+        text: `You can select up to ${MAX_BULK_SELECTION} change requests at once`
+      });
+    }
+    setSelectedRequests((prev) => ({
+      ...prev,
+      ...Object.fromEntries(unselected.slice(0, available).map((request) => [request.id, request]))
+    }));
+  };
+
+  const handleBulkComplete = (results: TBulkChangeRequestResult[]) => {
+    const succeededIds = new Set(results.filter(({ isSuccess }) => isSuccess).map(({ id }) => id));
+    setSelectedRequests((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([id]) => !succeededIds.has(id)))
+    );
+    setFailedRequestErrors(
+      Object.fromEntries(
+        results
+          .filter(({ isSuccess }) => !isSuccess)
+          .map(({ id, errorMessage }) => [id, errorMessage ?? "This request could not be updated"])
+      )
+    );
+  };
+
   const isRequestListEmpty = !isApprovalRequestLoading && secretApprovalRequests?.length === 0;
   const isFiltered = Boolean(searchFilter || envFilter || committerFilter);
 
-  const environmentNamesBySlug = (currentProject?.environments ?? []).reduce<
-    Record<string, string>
-  >((prev, curr) => ({ ...prev, [curr.slug]: curr.name }), {});
+  const environmentNamesBySlug = useMemo(
+    () =>
+      (currentProject?.environments ?? []).reduce<Record<string, string>>(
+        (prev, curr) => ({ ...prev, [curr.slug]: curr.name }),
+        {}
+      ),
+    [currentProject?.environments]
+  );
+  const environmentOptions = (currentProject?.environments ?? []).map((environment) => ({
+    value: environment.slug,
+    label: environment.name
+  }));
+  const authorOptions = (members ?? []).map(({ user }) => ({
+    value: user.id,
+    label: user.username
+  }));
+
+  const getSortDirection = (column: ChangeRequestOrderBy): TableSortDirection =>
+    sort?.column === column ? sort.direction : "none";
+
+  const handleSort = (column: ChangeRequestOrderBy, direction: TableSortDirection) => {
+    setSort(direction === "none" ? null : { column, direction });
+    setPage(1);
+  };
+
+  const getSortIconClassName = (column: ChangeRequestOrderBy) => {
+    const direction = getSortDirection(column);
+
+    return cn(
+      "transition-transform",
+      direction === "descending" && "rotate-180",
+      direction === "none" && "opacity-30"
+    );
+  };
+
+  useEffect(() => {
+    if (
+      envFilter &&
+      currentProject?.environments &&
+      !currentProject.environments.some(({ slug }) => slug === envFilter)
+    ) {
+      setEnvFilter(undefined);
+    }
+  }, [currentProject?.environments, envFilter]);
+
+  useEffect(() => {
+    if (
+      committerFilter &&
+      !areMembersPending &&
+      members &&
+      !members.some(({ user }) => user.id === committerFilter)
+    ) {
+      setCommitterFilter(undefined);
+    }
+  }, [areMembersPending, committerFilter, members]);
 
   return (
     <>
@@ -273,12 +348,23 @@ export const SecretApprovalRequest = () => {
           </CardTitle>
           <CardDescription>Review pending and closed change requests</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col">
-          <div className="mb-4 flex flex-wrap items-center gap-2 2xl:flex-nowrap">
+        <CardContent className="@container flex flex-col">
+          <div className="mb-4 flex flex-wrap items-center gap-2 @4xl:flex-nowrap">
+            <InputGroup className="min-w-48 flex-1">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                placeholder="Search by author, environment, path or secret..."
+              />
+            </InputGroup>
             <Tabs
               value={statusFilter}
               onValueChange={(value) => {
                 setStatusFilter(value as "open" | "close");
+                clearSelection();
                 // Refetch both the lists and the open/closed counts on toggle so
                 // the table rows and the tab-label counts reflect changes made
                 // elsewhere. The target list is inactive here and the count query
@@ -295,50 +381,48 @@ export const SecretApprovalRequest = () => {
             >
               <TabsList variant="filled">
                 <TabsTrigger value="open">
-                  <GitPullRequestIcon className="mr-1.5 size-3.5" />
-                  {secretApprovalRequestCount?.open ?? 0} Open
+                  <GitPullRequestIcon className="size-3.5" />
+                  Open {secretApprovalRequestCount?.open ?? 0}
                 </TabsTrigger>
                 <TabsTrigger value="close">
-                  <CheckIcon className="mr-1.5 size-3.5" />
-                  {secretApprovalRequestCount?.closed ?? 0} Closed
+                  <CheckIcon className="size-3.5" />
+                  Closed {secretApprovalRequestCount?.closed ?? 0}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <div className="flex flex-wrap items-center gap-2 2xl:mr-auto 2xl:flex-nowrap">
-              <InputGroup className="xl:w-[26rem]">
-                <InputGroupAddon>
-                  <SearchIcon />
-                </InputGroupAddon>
-                <InputGroupInput
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  placeholder="Search by author, environment, path or secret..."
-                />
-              </InputGroup>
-            </div>
-            <FilterMenu
-              className="w-[200px]"
-              searchPlaceholder="Filter environments"
-              allLabel="All Environments"
-              value={envFilter}
-              onChange={setEnvFilter}
-              options={(currentProject?.environments ?? []).map((env) => ({
-                value: env.slug,
-                label: env.name
-              }))}
-            />
-            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
-              <FilterMenu
-                className="w-[220px]"
-                searchPlaceholder="Filter authors"
-                allLabel="All Authors"
-                value={committerFilter}
-                onChange={setCommitterFilter}
-                options={(members ?? []).map(({ user }) => ({
-                  value: user.id,
-                  label: user.username
-                }))}
+            <div className="w-42 shrink-0">
+              <Combobox
+                aria-label="Filter environments"
+                className="w-full"
+                options={environmentOptions}
+                value={environmentOptions.find((option) => option.value === envFilter) ?? null}
+                onValueChange={(option) => setEnvFilter(option.value)}
+                onClear={() => setEnvFilter(undefined)}
+                getOptionValue={(option) => option.value}
+                getOptionLabel={(option) => option.label}
+                clearAriaLabel="Clear environment filter"
+                searchPlaceholder="Filter environments"
+                searchAriaLabel="Filter environments"
+                placeholder="All Environments"
               />
+            </div>
+            {permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) && (
+              <div className="w-42 shrink-0">
+                <Combobox
+                  aria-label="Filter authors"
+                  className="w-full"
+                  options={authorOptions}
+                  value={authorOptions.find((option) => option.value === committerFilter) ?? null}
+                  onValueChange={(option) => setCommitterFilter(option.value)}
+                  onClear={() => setCommitterFilter(undefined)}
+                  getOptionValue={(option) => option.value}
+                  getOptionLabel={(option) => option.label}
+                  clearAriaLabel="Clear author filter"
+                  searchPlaceholder="Filter authors"
+                  searchAriaLabel="Filter authors"
+                  placeholder="All Authors"
+                />
+              </div>
             )}
           </div>
           {isRequestListEmpty && !isFiltered && (
@@ -353,6 +437,14 @@ export const SecretApprovalRequest = () => {
                     : "Merged and rejected change requests will appear here."}
                 </EmptyDescription>
               </EmptyHeader>
+              {showConfigurePoliciesCta && (
+                <EmptyContent>
+                  <Button variant="project" size="sm" onClick={onConfigurePolicies}>
+                    <PlusIcon />
+                    Configure Policy
+                  </Button>
+                </EmptyContent>
+              )}
             </Empty>
           )}
           {Boolean(!secretApprovalRequests.length && isFiltered && !isApprovalRequestLoading) && (
@@ -369,13 +461,54 @@ export const SecretApprovalRequest = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isOpenTab && (
+                    <TableHead className="w-5">
+                      <Checkbox
+                        id="change-requests-page-select"
+                        aria-label="Select all change requests on this page"
+                        isChecked={isPageSelected || isPageIndeterminate}
+                        isIndeterminate={isPageIndeterminate}
+                        isDisabled={!secretApprovalRequests.length}
+                        variant="project"
+                        onCheckedChange={togglePageSelection}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>Change</TableHead>
-                  <TableHead>Environment</TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.Environment)}
+                    onSortChange={(direction) =>
+                      handleSort(ChangeRequestOrderBy.Environment, direction)
+                    }
+                  >
+                    Environment
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.Environment)}
+                    />
+                  </TableHead>
                   <TableHead>Secret Path</TableHead>
-                  <TableHead>Author</TableHead>
-                  <TableHead>Opened</TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.Author)}
+                    onSortChange={(direction) => handleSort(ChangeRequestOrderBy.Author, direction)}
+                  >
+                    Author
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.Author)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    sortDirection={getSortDirection(ChangeRequestOrderBy.OpenedAt)}
+                    onSortChange={(direction) =>
+                      handleSort(ChangeRequestOrderBy.OpenedAt, direction)
+                    }
+                  >
+                    Opened
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ChangeRequestOrderBy.OpenedAt)}
+                    />
+                  </TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-5" />
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -383,6 +516,11 @@ export const SecretApprovalRequest = () => {
                   Array.from({ length: 3 }).map((_, idx) => (
                     // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={`change-request-skeleton-${idx}`}>
+                      {isOpenTab && (
+                        <TableCell>
+                          <Skeleton className="size-4" />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
@@ -401,7 +539,7 @@ export const SecretApprovalRequest = () => {
                       <TableCell>
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
-                      <TableCell>
+                      <TableCell variant="action">
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
                     </TableRow>
@@ -415,11 +553,12 @@ export const SecretApprovalRequest = () => {
                     status,
                     committerUser,
                     committerUserId,
+                    committerIdentity,
                     hasMerged,
                     updatedAt,
                     policy,
                     environment,
-                    slug,
+                    secretPath,
                     isReplicated
                   } = secretApproval;
 
@@ -433,10 +572,13 @@ export const SecretApprovalRequest = () => {
                     !reviewers.find(({ userId }) => userId === userSession.id);
 
                   const environmentDisplayName = environmentNamesBySlug[environment] ?? environment;
+                  const secretPathDisplay = isReplicated
+                    ? parsePathFromReplicatedPath(secretPath)
+                    : formatReservedPaths(secretPath);
                   const committerName = committerUser
                     ? [committerUser.firstName, committerUser.lastName].filter(Boolean).join(" ") ||
                       committerUser.email
-                    : null;
+                    : (committerIdentity?.name ?? null);
 
                   let statusDisplay: {
                     label: string;
@@ -464,9 +606,9 @@ export const SecretApprovalRequest = () => {
                         };
                   } else if (requiresUserReview) {
                     statusDisplay = {
-                      label: "Review Required",
+                      label: "Needs Review",
                       type: "warning",
-                      icon: ClipboardCheckIcon
+                      icon: TriangleAlertIcon
                     };
                   } else if (isMergable) {
                     statusDisplay = { label: "Pending Merge", type: "info", icon: GitMergeIcon };
@@ -479,41 +621,43 @@ export const SecretApprovalRequest = () => {
                   }
 
                   const StatusIcon = statusDisplay.icon;
+                  const isSelected = Boolean(selectedRequests[reqId]);
+                  const failedRequestError = failedRequestErrors[reqId];
 
                   return (
-                    <TableRow
-                      key={reqId}
-                      tabIndex={0}
-                      onClick={() =>
-                        navigate({ search: (prev) => ({ ...prev, requestId: reqId }) })
-                      }
-                      onKeyDown={(evt) => {
-                        if (evt.key === "Enter")
-                          navigate({ search: (prev) => ({ ...prev, requestId: reqId }) });
-                      }}
-                    >
+                    <TableRow key={reqId} linked data-state={isSelected ? "selected" : undefined}>
+                      {isOpenTab && (
+                        <TableCell data-row-interactive>
+                          <Checkbox
+                            id={`select-change-request-${reqId}`}
+                            aria-label="Select change request"
+                            isChecked={isSelected}
+                            variant="project"
+                            onCheckedChange={() => toggleRequestSelection(secretApproval)}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <GitPullRequestIcon className="size-3.5 shrink-0 text-muted" />
-                          <span className="text-foreground">
-                            {generateCommitText(commits, isReplicated)}
-                          </span>
-                          <span className="text-xs text-muted">#{slug}</span>
-                        </div>
+                        <RowLink
+                          from={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                          to="."
+                          search={(prev) => ({ ...prev, requestId: reqId })}
+                        >
+                          {generateCommitText(commits, isReplicated, true)}
+                        </RowLink>
                       </TableCell>
-                      <TableCell isTruncatable className="w-1/2">
-                        {environmentDisplayName}
-                      </TableCell>
-                      <TableCell isTruncatable className="w-1/2">
-                        <p className="truncate text-foreground">{policy.secretPath}</p>
+                      <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
+                      <TableCell title={secretPathDisplay}>
+                        <span className="text-muted">{secretPathDisplay}</span>
                       </TableCell>
                       <TableCell>
-                        {committerUser ? (
+                        {committerUser || committerIdentity ? (
                           <div className="flex items-center gap-2">
                             <span className="text-foreground">{committerName}</span>
-                            {committerUserId === userSession.id && (
+                            {committerUser && committerUserId === userSession.id && (
                               <Badge variant="neutral">You</Badge>
                             )}
+                            {committerIdentity && <Badge variant="neutral">Machine</Badge>}
                           </div>
                         ) : (
                           <span className="text-muted">Deleted User</span>
@@ -522,7 +666,9 @@ export const SecretApprovalRequest = () => {
                       <TableCell>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span>{formatDistance(new Date(createdAt), new Date())} ago</span>
+                            <span className="text-muted">
+                              {formatDistance(new Date(createdAt), new Date())} ago
+                            </span>
                           </TooltipTrigger>
                           <TooltipContent>
                             {format(new Date(createdAt), "M/d/yyyy h:mm aa")}
@@ -530,27 +676,42 @@ export const SecretApprovalRequest = () => {
                         </Tooltip>
                       </TableCell>
                       <TableCell>
-                        {statusDisplay.tooltipContent ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant={statusDisplay.type}>
-                                <StatusIcon />
-                                <span className="whitespace-nowrap">{statusDisplay.label}</span>
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>{statusDisplay.tooltipContent}</TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <Badge variant={statusDisplay.type}>
-                            <StatusIcon />
-                            <span className="whitespace-nowrap">{statusDisplay.label}</span>
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {statusDisplay.tooltipContent ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant={statusDisplay.type}>
+                                  <StatusIcon />
+                                  <span className="whitespace-nowrap">{statusDisplay.label}</span>
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>{statusDisplay.tooltipContent}</TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <Badge variant={statusDisplay.type}>
+                              <StatusIcon />
+                              <span className="whitespace-nowrap">{statusDisplay.label}</span>
+                            </Badge>
+                          )}
+                          {failedRequestError && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  role="img"
+                                  aria-label="Bulk action failed"
+                                  className="inline-flex shrink-0 text-danger"
+                                >
+                                  <CircleAlertIcon className="size-4" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                {failedRequestError}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       </TableCell>
-                      <TableCell
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                      >
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton variant="ghost" size="xs" aria-label="Request actions">
@@ -558,13 +719,15 @@ export const SecretApprovalRequest = () => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                navigate({ search: (prev) => ({ ...prev, requestId: reqId }) })
-                              }
-                            >
-                              <EyeIcon />
-                              View Request
+                            <DropdownMenuItem asChild>
+                              <Link
+                                from={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                                to="."
+                                search={(prev) => ({ ...prev, requestId: reqId })}
+                              >
+                                <EyeIcon />
+                                View Request
+                              </Link>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -586,6 +749,20 @@ export const SecretApprovalRequest = () => {
           )}
         </CardContent>
       </Card>
+      <SelectedActionBar selectedCount={selectedCount} onClearSelection={clearSelection}>
+        <Button variant="project" size="xs" onClick={() => setIsBulkReviewOpen(true)}>
+          <GitMergeIcon />
+          Review & Merge
+        </Button>
+      </SelectedActionBar>
+      <BulkReviewChangeRequestsSheet
+        isOpen={isBulkReviewOpen}
+        onOpenChange={setIsBulkReviewOpen}
+        projectId={projectId}
+        requests={selectedRequestList}
+        environmentNamesBySlug={environmentNamesBySlug}
+        onComplete={handleBulkComplete}
+      />
       <SecretApprovalRequestChanges
         approvalRequestId={requestId || ""}
         isOpen={Boolean(requestId)}

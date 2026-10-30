@@ -1,3 +1,4 @@
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -6,8 +7,9 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamSessionEndReason } from "../pam/pam-enums";
+import { resolveSessionActor } from "./pam-session-access-fns";
 import { TPamSessionDALFactory } from "./pam-session-dal";
-import { reportPamSessionEnded } from "./pam-session-fns";
+import { reportPamSessionEnded, sendPamSessionCancellationSignal } from "./pam-session-fns";
 
 type TPamSessionExpirationServiceFactoryDep = {
   queueService: TQueueServiceFactory;
@@ -15,6 +17,7 @@ type TPamSessionExpirationServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export type TPamSessionExpirationServiceFactory = ReturnType<typeof pamSessionExpirationServiceFactory>;
@@ -24,7 +27,8 @@ export const pamSessionExpirationServiceFactory = ({
   pamSessionDAL,
   projectDAL,
   telemetryService,
-  userDAL
+  userDAL,
+  gatewayV2Service
 }: TPamSessionExpirationServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -40,6 +44,21 @@ export const pamSessionExpirationServiceFactory = ({
         const updated = await pamSessionDAL.endSessionById(sessionId);
         if (updated) {
           logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: session expired [sessionId=${sessionId}]`);
+
+          // endSessionById is status-filtered, so reaching here means nothing else has signalled the gateway
+          if (updated.gatewayId) {
+            const sessionActor = resolveSessionActor(updated);
+            sendPamSessionCancellationSignal({
+              sessionId,
+              gatewayId: updated.gatewayId,
+              accountType: updated.accountType,
+              actorId: sessionActor?.id ?? "",
+              actorType: sessionActor?.type,
+              // Machine identity sessions carry no email
+              actorEmail: updated.actorEmail || updated.actorName,
+              gatewayV2Service
+            });
+          }
 
           const project = await projectDAL.findById(updated.projectId);
           if (project?.orgId) {

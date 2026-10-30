@@ -1,6 +1,7 @@
 ---
-title: "GitLab"
-description: "How to sync secrets from Infisical to GitLab"
+title: "Inject secrets into GitLab CI/CD pipelines"
+sidebarTitle: "GitLab"
+description: "Fetch secrets from Infisical in GitLab CI/CD pipelines."
 ---
 
 
@@ -19,7 +20,7 @@ description: "How to sync secrets from Infisical to GitLab"
             Next, create a new variable called `INFISICAL_TOKEN` with the value set to the token from the previous step in Settings > CI/CD > Variables of your GitLab repository.
           </Step>
           <Step title="Configure Infisical in your pipeline">
-            Edit your `.gitlab-ci.yml` to include the Infisical CLI installation. This will allow you to use the CLI for fetching and injecting secrets into any script or command within your Gitlab CI/CD process.
+            Edit your `.gitlab-ci.yml` to include the Infisical CLI installation. This will allow you to use the CLI for fetching and injecting secrets into any script or command within your GitLab CI/CD process.
 
             #### Example
 
@@ -37,7 +38,7 @@ description: "How to sync secrets from Infisical to GitLab"
                 - apt update && apt install -y curl
                 - curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
                 - apt-get update && apt-get install -y infisical
-                - infisical run -- npm run build
+                - infisical sm run -- npm run build
             ```
           </Step>
         </Steps>

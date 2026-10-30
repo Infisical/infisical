@@ -1,5 +1,6 @@
 ---
-title: "OpenRouter API Key"
+title: "OpenRouter API key rotation"
+sidebarTitle: "OpenRouter API key"
 description: "Learn how to automatically rotate OpenRouter API keys."
 ---
 
@@ -13,13 +14,13 @@ description: "Learn how to automatically rotate OpenRouter API keys."
 
 - Create an [OpenRouter Connection](/integrations/app-connections/openrouter) using a **Provisioning API key**. That connection is used to create and delete API keys on your behalf during rotation.
 
-## Create an OpenRouter API Key Rotation in Infisical
+## Create an OpenRouter API key rotation in Infisical
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
+        1. Navigate to your Secrets Management Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
 
-        ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
+        ![Secrets Management Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
 
         2. Select the **OpenRouter API Key** option.
 
@@ -38,6 +39,7 @@ description: "Learn how to automatically rotate OpenRouter API keys."
 
         ![Rotation Parameters](/images/secret-rotations-v2/openrouter-api-key/parameters.png)
 
+        - **Workspace** (optional) – The OpenRouter workspace to create keys in, which you can't change after you create the rotation (if you leave this blank, OpenRouter uses your Default workspace)
         - **Key name** – Display name for the key in OpenRouter (required).
         - **Limit** (optional) – Spending limit in USD for this key.
         - **Limit reset** (optional) – How often the limit resets: daily, weekly, or monthly.
@@ -88,6 +90,7 @@ description: "Learn how to automatically rotate OpenRouter API keys."
             },
             "parameters": {
               "name": "my-app-key",
+              "workspaceId": "<openrouter-workspace-id>",
               "limit": 100,
               "limitReset": "monthly",
               "includeByokInLimit": false
@@ -117,6 +120,7 @@ description: "Learn how to automatically rotate OpenRouter API keys."
             "type": "openrouter-api-key",
             "parameters": {
               "name": "my-app-key",
+              "workspaceId": "<openrouter-workspace-id>",
               "limit": 100,
               "limitReset": "monthly",
               "includeByokInLimit": false
@@ -132,6 +136,6 @@ description: "Learn how to automatically rotate OpenRouter API keys."
 **BYOK** (Bring Your Own Key) on OpenRouter lets you use your own provider API keys (e.g. OpenAI, Anthropic) so you pay providers directly; OpenRouter charges a small fee on those requests. The **Include BYOK in limit** option controls whether that BYOK usage counts toward this key's spending limit:
 
 - **Enabled (Yes)** – Usage from your own provider keys is included in the limit. Once the limit is reached, the key is subject to OpenRouter's rate limits until the next reset.
-- **Disabled (No)** – Only OpenRouter credit usage counts toward the limit. BYOK usage is tracked separately and does not consume the limit.
+- **Disabled (No)** – Only OpenRouter credit usage counts toward the limit. BYOK usage is tracked separately and doesn't consume the limit.
 
 This is optional; if you don't use BYOK or don't set a limit, you can leave it off. For more details, see [OpenRouter BYOK](https://openrouter.ai/docs/guides/overview/auth/byok) and [OpenRouter limits](https://openrouter.ai/docs/api/reference/limits).

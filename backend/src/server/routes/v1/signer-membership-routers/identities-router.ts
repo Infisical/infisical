@@ -31,7 +31,7 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
       params: SignerIdParamsSchema,
       response: { 200: z.object({ memberships: z.array(SignerMemberSchema) }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.signerMembership.listMembers({
         actor: req.permission.type,
@@ -224,7 +224,7 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
       params: SignerIdParamsSchema,
       response: { 200: z.object({ members: z.array(EffectiveSignerMemberSchema) }) }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const members = await server.services.signerMembership.listEffectiveMembers({
         actor: req.permission.type,

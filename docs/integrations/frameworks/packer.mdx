@@ -1,6 +1,7 @@
 ---
-title: "Packer"
-description: "Learn how to fetch secrets from Infisical with Packer using a data source"
+title: "Fetch secrets in Packer"
+sidebarTitle: "Packer"
+description: "Learn how to fetch secrets from Infisical with Packer using a data source."
 ---
 
 This guide demonstrates how to use the Infisical Packer plugin to fetch secret data using a data source. The Packer plugin supports both [Infisical Cloud](https://app.infisical.com) and [self-hosted instances of Infisical](https://infisical.com/docs/self-hosting/overview).
@@ -13,9 +14,9 @@ Before you begin, make sure you have:
 - An Infisical account with access to a project
 - Basic understanding of Packer
 
-## Project Setup
+## Project setup
 
-### Configure Provider
+### Configure provider
 
 First, specify the Infisical provider in your Packer configuration:
 
@@ -50,7 +51,7 @@ data "infisical-secrets" "dev-secrets" {
 
 Learn more about [machine identities](/documentation/platform/identities/machine-identities).
 
-## Using Secrets in Packer
+## Using secrets in Packer
 
 You're able to fetch secrets from Infisical using the `infisical-secrets` Data Source:
 

@@ -40,7 +40,7 @@ kubectl apply -f infisical-connection.yaml
 <Accordion title="address">
   The URL of the Infisical API to connect to.
 
-  When `address` is not defined, the operator connects to the address defined by the Helm value `hostAPI`.
+  When `address` isn't defined, the operator connects to the address defined by the Helm value `hostAPI`.
 
   For self-hosted instances, set this to `https://your-self-hosted-instance.com`.
 </Accordion>
@@ -77,4 +77,4 @@ When the connection is healthy, the `secrets.infisical.com/IsReady` condition wi
 
 If the connection is unhealthy, `Reason` will be set to `Error` and `Message` will contain details about what went wrong.
 
-The `ObservedGeneration` field indicates which generation of the resource spec the operator has last processed. If `ObservedGeneration` is less than `metadata.generation`, the operator has not yet reconciled the latest changes to the resource.
+The `ObservedGeneration` field indicates which generation of the resource spec the operator has last processed. If `ObservedGeneration` is less than `metadata.generation`, the operator hasn't yet reconciled the latest changes to the resource.

@@ -9,7 +9,7 @@ import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
-import { TSecretMap } from "../secret-sync-types";
+import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TSupabaseSyncWithCredentials } from "./supabase-sync-types";
 
 const SUPABASE_INTERNAL_SECRETS = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_DB_URL"];
@@ -19,7 +19,8 @@ export const SupabaseSyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  async syncSecrets(secretSync: TSupabaseSyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(secretSync: TSupabaseSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
@@ -73,7 +74,8 @@ export const SupabaseSyncFns = {
     }
   },
 
-  async removeSecrets(secretSync: TSupabaseSyncWithCredentials, secretMap: TSecretMap) {
+  async removeSecrets(secretSync: TSupabaseSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const config = secretSync.destinationConfig;
 
     const variables = await SupabasePublicAPI.getVariables(secretSync.connection, config.projectId);

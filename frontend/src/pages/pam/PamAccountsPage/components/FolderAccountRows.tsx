@@ -1,13 +1,13 @@
-import { ChevronRight, Folder, FolderOpen } from "lucide-react";
+import { Folder } from "lucide-react";
 
-import { TableCell, TableRow } from "@app/components/v3";
-import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { Badge, RowLink, TableCell, TableRow } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import {
   PamAccountType,
+  PamFolderCallerAccess,
   TAccessiblePamAccount,
   TPamAccountListItem,
-  TPamFolderWithCount,
-  useListPamAccounts
+  TPamFolderWithCount
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
@@ -16,68 +16,70 @@ import { FolderActionsMenu } from "./FolderActionsMenu";
 
 type Props = {
   folder: TPamFolderWithCount;
-  isOpen: boolean;
-  onToggle: () => void;
   search: string;
-  /**
-   * Pre-filtered accounts for this folder, supplied by the page's single server-side filter query.
-   * When omitted (no active filter) the folder fetches its own accounts lazily on open.
-   */
+  // Matching accounts, supplied by the page's filter query. Undefined when nothing is filtered.
   accounts?: TPamAccountListItem[];
   onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
   onLaunchAccount: (account: TAccessiblePamAccount) => void;
   onRequestAccess: (account: TAccessiblePamAccount) => void;
+  onViewCredentials: (account: TAccessiblePamAccount) => void;
+  onRequestCredentialAccess: (account: TAccessiblePamAccount) => void;
   onDeleteAccount: (accountId: string, accountName: string, accountType: PamAccountType) => void;
   onOpenFolder: (tab?: PamSheetTab) => void;
   onFolderAddAccount: () => void;
   onFolderDelete: () => void;
+  onFolderJoinAsAdmin: () => void;
 };
 
 export const FolderAccountRows = ({
   folder,
-  isOpen,
-  onToggle,
   search,
-  accounts: providedAccounts,
+  accounts,
   onOpenAccount,
   onLaunchAccount,
   onRequestAccess,
+  onViewCredentials,
+  onRequestCredentialAccess,
   onDeleteAccount,
   onOpenFolder,
   onFolderAddAccount,
-  onFolderDelete
+  onFolderDelete,
+  onFolderJoinAsAdmin
 }: Props) => {
-  const isFiltering = providedAccounts !== undefined;
-
-  // Only fetch this folder's accounts once it's open (lazy load per folder), and never while the
-  // page is filtering — the matches already arrived in the page's single filtered request.
-  const { data, isLoading: isFetching } = useListPamAccounts(
-    { folderId: folder.id },
-    { enabled: isOpen && !isFiltering }
-  );
-
-  const accountsToShow = providedAccounts ?? data ?? [];
-  const isLoading = !isFiltering && isFetching;
-
-  const count = isOpen && !isLoading ? accountsToShow.length : folder.accountCount;
+  const { currentOrg } = useOrganization();
+  const count = accounts ? accounts.length : folder.accountCount;
+  // Only org admins are sent folders they hold no membership on; opening one means joining it.
+  const isNotMember = folder.callerAccess === PamFolderCallerAccess.None;
 
   return (
     <>
-      <TableRow className="cursor-pointer select-none" onClick={onToggle}>
+      <TableRow
+        linked={!isNotMember}
+        className={isNotMember ? "cursor-pointer select-none" : undefined}
+        onClick={isNotMember ? onFolderJoinAsAdmin : undefined}
+      >
         <TableCell>
           <div className="flex items-center gap-2.5">
-            <ChevronRight
-              className={`size-4 shrink-0 text-muted transition-transform ${isOpen ? "rotate-90" : ""}`}
-            />
-            {isOpen ? (
-              <FolderOpen className="size-5 shrink-0 text-product-pam" />
+            <Folder className="size-5 shrink-0 text-product-pam" />
+            {isNotMember ? (
+              <>
+                <span className="shrink-0 font-medium text-foreground">{folder.name}</span>
+                <Badge variant="neutral">Not a Member</Badge>
+              </>
             ) : (
-              <Folder className="size-5 shrink-0 text-product-pam" />
-            )}
-            <span className="shrink-0 font-medium text-foreground">{folder.name}</span>
-            <span className="shrink-0 text-xs text-muted">({count})</span>
-            {folder.description && (
-              <span className="max-w-md truncate text-muted">{folder.description}</span>
+              <>
+                <RowLink
+                  to="/organizations/$orgId/pam/accounts/$folderId"
+                  params={{ orgId: currentOrg.id, folderId: folder.id }}
+                  className="shrink-0 font-medium text-foreground"
+                >
+                  {folder.name}
+                </RowLink>
+                <span className="shrink-0 text-xs text-muted">({count})</span>
+                {folder.description && (
+                  <span className="max-w-md truncate text-muted">{folder.description}</span>
+                )}
+              </>
             )}
           </div>
         </TableCell>
@@ -88,36 +90,26 @@ export const FolderAccountRows = ({
               onOpenTab={(tab) => onOpenFolder(tab)}
               onAddAccount={onFolderAddAccount}
               onDelete={onFolderDelete}
+              onJoinAsAdmin={onFolderJoinAsAdmin}
             />
           </div>
         </TableCell>
       </TableRow>
 
-      {isOpen && isLoading && folder.accountCount > 0 && (
-        <TableRow>
-          <TableCell colSpan={2}>
-            <div className="flex flex-col gap-2 pl-[26px]">
-              {Array.from({ length: folder.accountCount }).map((_, i) => (
-                <Skeleton key={`skeleton-${i + 1}`} className="h-8 w-full rounded-md" />
-              ))}
-            </div>
-          </TableCell>
-        </TableRow>
-      )}
-
-      {isOpen &&
-        !isLoading &&
-        accountsToShow.map((account) => (
-          <FolderAccountRow
-            key={account.id}
-            account={account}
-            search={search}
-            onOpenAccount={onOpenAccount}
-            onLaunchAccount={onLaunchAccount}
-            onRequestAccess={onRequestAccess}
-            onDeleteAccount={onDeleteAccount}
-          />
-        ))}
+      {accounts?.map((account) => (
+        <FolderAccountRow
+          key={account.id}
+          account={account}
+          search={search}
+          indented
+          onOpenAccount={onOpenAccount}
+          onLaunchAccount={onLaunchAccount}
+          onRequestAccess={onRequestAccess}
+          onViewCredentials={onViewCredentials}
+          onRequestCredentialAccess={onRequestCredentialAccess}
+          onDeleteAccount={onDeleteAccount}
+        />
+      ))}
     </>
   );
 };

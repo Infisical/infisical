@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
-import { ActivityIcon, Check, ClipboardCopy } from "lucide-react";
+import { ActivityIcon, AlertCircleIcon } from "lucide-react";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
+  Button,
+  CopyButton,
   Empty,
   EmptyHeader,
   EmptyTitle,
-  IconButton,
   PageLoader,
   Pagination,
   Table,
@@ -20,7 +24,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useTimedReset } from "@app/hooks";
 import { useGetHoneyTokenEvents } from "@app/hooks/api/honeyTokens/queries";
 
 type Props = {
@@ -31,26 +34,18 @@ type Props = {
 const DEFAULT_PER_PAGE = 25;
 
 const UserAgentCell = ({ userAgent }: { userAgent?: string }) => {
-  const [, isCopied, setCopied] = useTimedReset<string>({ initialState: "" });
-
   if (!userAgent) return <TableCell>—</TableCell>;
 
   return (
     <TableCell className="max-w-[150px]" isTruncatable>
       <div className="flex items-center gap-1">
         <span className="block truncate">{userAgent}</span>
-        <IconButton
-          variant="ghost"
-          size="xs"
-          className="shrink-0"
-          onClick={() => {
-            setCopied(userAgent);
-            navigator.clipboard.writeText(userAgent);
-          }}
-          aria-label="Copy user agent"
-        >
-          {isCopied ? <Check className="size-3" /> : <ClipboardCopy className="size-3" />}
-        </IconButton>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <CopyButton value={userAgent} ariaLabel="Copy user agent" className="shrink-0" />
+          </TooltipTrigger>
+          <TooltipContent>Copy user agent</TooltipContent>
+        </Tooltip>
       </div>
     </TableCell>
   );
@@ -60,7 +55,7 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(DEFAULT_PER_PAGE);
 
-  const { data, isPending } = useGetHoneyTokenEvents({
+  const { data, isError, isPending, refetch } = useGetHoneyTokenEvents({
     honeyTokenId,
     projectId,
     offset: (page - 1) * perPage,
@@ -82,9 +77,27 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
         )}
       </div>
 
-      {isPending && <PageLoader />}
+      {isPending && (
+        <div className="flex min-h-24 items-center justify-center" role="status">
+          <PageLoader />
+          <span className="sr-only">Loading honey token events</span>
+        </div>
+      )}
 
-      {!isPending && (!events || events.length === 0) && (
+      {!isPending && isError && (
+        <Alert variant="danger">
+          <AlertCircleIcon />
+          <AlertTitle>Honey token events could not be loaded</AlertTitle>
+          <AlertDescription>
+            <p>Check your connection and try again.</p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!isPending && !isError && (!events || events.length === 0) && (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>No events recorded yet</EmptyTitle>
@@ -92,7 +105,7 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
         </Empty>
       )}
 
-      {events && events.length > 0 && (
+      {!isPending && !isError && events && events.length > 0 && (
         <Table>
           <TableHeader>
             <TableRow>
@@ -135,18 +148,20 @@ export const HoneyTokenEventsSection = ({ honeyTokenId, projectId }: Props) => {
         </Table>
       )}
 
-      <Pagination
-        count={totalCount}
-        page={page}
-        perPage={perPage}
-        onChangePage={setPage}
-        onChangePerPage={(newPerPage) => {
-          const totalPages = Math.ceil(totalCount / newPerPage);
-          if (page > totalPages) setPage(totalPages);
-          setPerPage(newPerPage);
-        }}
-        perPageList={[25, 50, 100]}
-      />
+      {!isPending && !isError && totalCount > 0 && (
+        <Pagination
+          count={totalCount}
+          page={page}
+          perPage={perPage}
+          onChangePage={setPage}
+          onChangePerPage={(newPerPage) => {
+            const totalPages = Math.ceil(totalCount / newPerPage);
+            if (page > totalPages) setPage(totalPages);
+            setPerPage(newPerPage);
+          }}
+          perPageList={[25, 50, 100]}
+        />
+      )}
     </div>
   );
 };

@@ -2,6 +2,7 @@ import { Controller, useFieldArray, UseFormReturn } from "react-hook-form";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 
 import {
+  Badge,
   Button,
   Field,
   FieldContent,
@@ -11,8 +12,12 @@ import {
   FieldLabel,
   IconButton,
   Input,
-  Switch
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
+import { useSubscription } from "@app/context";
 import { MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS } from "@app/hooks/api/ca";
 
 import { CaWizardForm } from "./schemas";
@@ -23,9 +28,48 @@ type Props = {
 
 export const DistributionStep = ({ form }: Props) => {
   const crlUrls = useFieldArray({ control: form.control, name: "crlDistributionPointUrls" });
+  const { subscription } = useSubscription();
+  // Creating a CA with any custom URL is refused by the plan gate, so the control is disabled
+  // up front rather than failing at the end of the wizard.
+  const canAddCrlUrls = subscription.caCrl;
+  const canUseOcsp = Boolean(subscription.pkiOcsp);
 
   return (
     <FieldGroup>
+      <Controller
+        name="isOcspEnabled"
+        control={form.control}
+        render={({ field: { value, onChange } }) => (
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldLabel>
+                Enable OCSP
+                {!canUseOcsp && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="info">Enterprise</Badge>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      OCSP is available on Infisical&apos;s Enterprise plan.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </FieldLabel>
+              <FieldDescription>
+                Certificates issued by this CA carry an OCSP responder URL, and that responder
+                answers revocation status checks for them.
+              </FieldDescription>
+            </FieldContent>
+            <Toggle
+              variant="project"
+              checked={value}
+              onCheckedChange={onChange}
+              disabled={!canUseOcsp}
+            />
+          </Field>
+        )}
+      />
+
       <Controller
         name="disableManagedCrlDistributionPointUrl"
         control={form.control}
@@ -38,7 +82,7 @@ export const DistributionStep = ({ form }: Props) => {
                 certificates. Only the custom URLs below are included.
               </FieldDescription>
             </FieldContent>
-            <Switch variant="project" checked={value} onCheckedChange={onChange} />
+            <Toggle variant="project" checked={value} onCheckedChange={onChange} />
           </Field>
         )}
       />
@@ -77,7 +121,9 @@ export const DistributionStep = ({ form }: Props) => {
               variant="outline"
               size="sm"
               className="self-start"
-              isDisabled={crlUrls.fields.length >= MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS}
+              isDisabled={
+                !canAddCrlUrls || crlUrls.fields.length >= MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS
+              }
               onClick={() => crlUrls.append({ value: "" })}
             >
               <PlusIcon className="h-4 w-4" />
@@ -85,8 +131,9 @@ export const DistributionStep = ({ form }: Props) => {
             </Button>
           </div>
           <FieldDescription>
-            Backup CRL URLs embedded in issued certificates. Up to{" "}
-            {MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS}.
+            {canAddCrlUrls
+              ? `Backup CRL URLs embedded in issued certificates. Up to ${MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS}.`
+              : "Custom CRL distribution points are available on Infisical's Enterprise plan."}
           </FieldDescription>
         </FieldContent>
       </Field>

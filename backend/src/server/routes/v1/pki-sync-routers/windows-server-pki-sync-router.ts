@@ -3,6 +3,7 @@ import {
   CreateWindowsServerPkiSyncSchema,
   UpdateWindowsServerPkiSyncSchema,
   WINDOWS_SERVER_PKI_SYNC_LIST_OPTION,
+  WindowsServerPkiSyncHealthCheckTestSchema,
   WindowsServerPkiSyncSchema
 } from "@app/services/pki-sync/windows-server";
 
@@ -18,9 +19,11 @@ export const registerWindowsServerPkiSyncRouter = async (
     responseSchema: WindowsServerPkiSyncSchema,
     createSchema: CreateWindowsServerPkiSyncSchema,
     updateSchema: UpdateWindowsServerPkiSyncSchema,
+    healthCheckTestSchema: WindowsServerPkiSyncHealthCheckTestSchema,
     syncOptions: {
       canImportCertificates: WINDOWS_SERVER_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: WINDOWS_SERVER_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: WINDOWS_SERVER_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: WINDOWS_SERVER_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });

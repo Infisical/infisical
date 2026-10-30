@@ -55,7 +55,7 @@ export const registerHumanitecConnectionRouter = async (server: FastifyZodProvid
           .array()
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 

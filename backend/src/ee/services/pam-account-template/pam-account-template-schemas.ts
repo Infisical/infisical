@@ -3,17 +3,26 @@ import { z } from "zod";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general/password-requirements-schema";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { patternsStringSchema } from "../pam/pam-policies";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { patternsStringSchema } from "../pam/pam-policies";
 
 export const PamRotationConfigSchema = z.object({
   enabled: z.boolean(),
   intervalSeconds: z.number().int().min(3600).max(31_536_000).nullable() // 1 hour .. 1 year, or null for manual
 });
 
+export const PamHeartbeatConfigSchema = z.object({
+  enabled: z.boolean(),
+  intervalSeconds: z.number().int().min(3600).max(31_536_000).nullable() // 1 hour .. 1 year, or null for manual
+});
+
+// Daily, matching the interval the template form offers by default.
+export const DEFAULT_HEARTBEAT_CONFIG: TPamHeartbeatConfig = { enabled: true, intervalSeconds: 86_400 };
+
 export const PamRecordingS3ConfigSchema = z.object({
   bucket: z.string().trim().min(1),
-  region: z.nativeEnum(AWSRegion),
+  // S3-compatible connections take the region from their endpoint
+  region: z.nativeEnum(AWSRegion).optional(),
   keyPrefix: z.string().trim().optional()
 });
 
@@ -27,13 +36,18 @@ export const PamTemplateSettingsSchema = z.object({
   recordingS3Config: PamRecordingS3ConfigSchema.optional(),
   passwordRequirements: PasswordRequirementsSchema.optional(),
   rotation: PamRotationConfigSchema.optional(),
-  sessionLogMaskingPatterns: z.string().optional()
+  heartbeat: PamHeartbeatConfigSchema.optional(),
+  sessionLogMaskingPatterns: z.string().optional(),
+  sessionLogMaskingBuiltInDetection: z.boolean().default(false)
 });
 
 export const PamTemplateSettingsInputSchema = PamTemplateSettingsSchema.extend({
-  sessionLogMaskingPatterns: patternsStringSchema().optional()
+  sessionLogMaskingPatterns: patternsStringSchema().optional(),
+  sessionLogMaskingBuiltInDetection: z.boolean().optional()
 });
 
 export type TPamTemplateSettings = z.infer<typeof PamTemplateSettingsSchema>;
+export type TPamTemplateSettingsInput = z.infer<typeof PamTemplateSettingsInputSchema>;
 export type TPamAccountSettingsOverrides = z.infer<typeof PamAccountSettingsOverridesSchema>;
 export type TPamRotationConfig = z.infer<typeof PamRotationConfigSchema>;
+export type TPamHeartbeatConfig = z.infer<typeof PamHeartbeatConfigSchema>;

@@ -1,10 +1,8 @@
-import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { BanIcon, CopyIcon, EllipsisIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -12,7 +10,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -22,10 +19,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-  Field,
-  Input
+  DropdownMenuTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
@@ -48,7 +44,6 @@ export const RelayPageHeader = ({
     "deleteRelay",
     "revokeRelay"
   ] as const);
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   const onDelete = async () => {
     try {
@@ -137,11 +132,10 @@ export const RelayPageHeader = ({
       </PageHeader>
 
       <AlertDialog
+        isPending={isDeleting}
         open={popUp.deleteRelay.isOpen}
-        onOpenChange={(open) => {
-          if (!open) setDeleteConfirmation("");
-          handlePopUpToggle("deleteRelay", open);
-        }}
+        confirmationValue={relay.name}
+        onOpenChange={(open) => handlePopUpToggle("deleteRelay", open)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -150,31 +144,14 @@ export const RelayPageHeader = ({
               This permanently removes the relay from your organization.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogConfirmationField>
-            <Field>
-              <AlertDialogConfirmationLabel
-                htmlFor="delete-relay-confirmation"
-                confirmationValue={relay.name}
-              />
-              <Input
-                id="delete-relay-confirmation"
-                value={deleteConfirmation}
-                onChange={(event) => setDeleteConfirmation(event.target.value)}
-                placeholder={relay.name}
-                autoComplete="off"
-                autoFocus
-              />
-            </Field>
-          </AlertDialogConfirmationField>
+          <AlertDialogConfirmationField inputProps={{ placeholder: relay.name }} />
           <Alert variant="danger" appearance="borderless">
             <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
           </Alert>
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isDeleting}
-              isDisabled={deleteConfirmation !== relay.name}
               onClick={(event) => {
                 event.preventDefault();
                 onDelete();
@@ -186,7 +163,9 @@ export const RelayPageHeader = ({
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog
+        isPending={isRevoking}
         open={popUp.revokeRelay.isOpen}
+        confirmationValue={relay.name}
         onOpenChange={(open) => handlePopUpToggle("revokeRelay", open)}
       >
         <AlertDialogContent>
@@ -197,11 +176,11 @@ export const RelayPageHeader = ({
               to reconnect.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <AlertDialogConfirmationField inputProps={{ placeholder: relay.name }} />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isRevoking}
               onClick={(event) => {
                 event.preventDefault();
                 onRevoke();

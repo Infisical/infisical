@@ -1,0 +1,10 @@
+extends: existence
+message: "Drop the '$' prompt so the command stays copy-pasteable."
+level: error
+link: https://github.com/Infisical/infisical/blob/main/docs/STYLE_GUIDE.md#code-examples
+# Code blocks are skipped by every other scope, and this rule is only about
+# what is inside them.
+scope: raw
+nonword: true
+raw:
+  - '(?m)^[ \t]*\$ [^\s]'

@@ -4,6 +4,8 @@ import { SecretScanningDataSource } from "../enums";
 import { TSecretScanningDataSourceBase } from "./shared";
 
 export enum GitLabDataSourceScope {
+  Account = "account",
+  // Only existing data sources use project scope; new ones pick a group or none.
   Project = "project",
   Group = "group"
 }
@@ -14,8 +16,10 @@ export type TGitLabDataSource = TSecretScanningDataSourceBase & {
     | {
         groupId: number;
         groupName?: string;
-        includeProjects: string[];
         scope: GitLabDataSourceScope.Group;
+      }
+    | {
+        scope: GitLabDataSourceScope.Account;
       }
     | {
         projectName?: string;

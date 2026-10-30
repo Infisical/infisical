@@ -1,6 +1,7 @@
+import type { JSX } from "react";
 import { AlertTriangle, ArrowLeftRight, Info, MoreHorizontal, Pencil } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { OidcSsoUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -26,15 +27,16 @@ import {
   HoverCardContent,
   HoverCardTrigger,
   IconButton,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useSubscription
 } from "@app/context";
-import { useGetOIDCConfig } from "@app/hooks/api";
+import { OauthGrantType, useGetOauthClients, useGetOIDCConfig } from "@app/hooks/api";
 import { useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -44,9 +46,33 @@ type Props = {
   onSwitchProvider?: () => void;
 };
 
+const TokenExchangeDependentsAlert = () => {
+  const { currentOrg } = useOrganization();
+  const { data: oauthClients } = useGetOauthClients(currentOrg?.id ?? "");
+
+  const hasTokenExchangeClient = (oauthClients ?? []).some((client) =>
+    client.grantTypes.includes(OauthGrantType.TokenExchange)
+  );
+
+  if (!hasTokenExchangeClient) return null;
+
+  return (
+    <Alert>
+      <Info />
+      <AlertDescription className="text-xs">
+        <p>
+          OAuth application depends on this configuration. Disabling OIDC will stop the application
+          from exchanging tokens.
+        </p>
+      </AlertDescription>
+    </Alert>
+  );
+};
+
 export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
+  const { permission } = useOrgPermission();
 
   const { data, isPending } = useGetOIDCConfig(currentOrg?.id ?? "");
   const { mutateAsync } = useUpdateOIDCConfig();
@@ -103,6 +129,10 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
   };
 
   const isGoogleOAuthEnabled = currentOrg.googleSsoAuthEnforced;
+  const canReadOauthClients = permission.can(
+    OrgPermissionActions.Read,
+    OrgPermissionSubjects.OauthClients
+  );
 
   return (
     <>
@@ -140,6 +170,7 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
         </CardHeader>
         <CardContent>
           <FieldGroup>
+            {canReadOauthClients && <TokenExchangeDependentsAlert />}
             {data && (
               <Field orientation="horizontal">
                 <FieldContent>
@@ -165,7 +196,7 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
                   >
                     {(isAllowed) => (
                       <div>
-                        <Switch
+                        <Toggle
                           id="enable-oidc-sso"
                           variant="org"
                           checked={data.isActive}
@@ -221,7 +252,7 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
-                  <Switch
+                  <Toggle
                     id="enforce-org-auth"
                     variant="org"
                     checked={data?.manageGroupMemberships ?? false}
@@ -239,11 +270,14 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="organization.org-oidc.section"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to OIDC SSO. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        intent={{
+          ...OidcSsoUpgradeIntent,
+          isEnterpriseFeature: true
+        }}
       />
     </>
   );

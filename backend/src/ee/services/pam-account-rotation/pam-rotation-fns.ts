@@ -1,7 +1,6 @@
 import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-import { PamAccountType } from "../pam/pam-enums";
 import type { TRotatableType, TSqlRotatableType, TWindowsRotatableType } from "../pam-account/pam-account-schemas";
 import {
   isRotatableAccountType,
@@ -11,6 +10,7 @@ import {
   SQL_ROTATABLE_ACCOUNT_TYPES,
   WINDOWS_ROTATABLE_ACCOUNT_TYPES
 } from "../pam-account/pam-account-schemas";
+import { PamAccountType } from "../pam/pam-enums";
 
 // Rotatable-account-type sets and guards live with the central account-type config; re-exported here so the
 // rotation module's existing consumers keep importing them from one place.
@@ -59,6 +59,8 @@ export const withGatewayRetry = async (
           err instanceof Error ? err.message : String(err)
         }]`
       );
+      // Each retry of a rejected credential is another failed logon counting toward lockout.
+      if ((err as { gatewayFailureKind?: string }).gatewayFailureKind === "auth") throw err;
       // eslint-disable-next-line no-await-in-loop
       if (attempt < maxAttempts) await sleep(baseDelayMs * attempt);
     }
@@ -69,11 +71,12 @@ export const withGatewayRetry = async (
 // PamAccountType -> AppConnection, so we can reuse the per-dialect ALTER statement map keyed by AppConnection.
 export const PAM_ROTATION_APP_MAP: Record<
   TSqlRotatableType,
-  AppConnection.Postgres | AppConnection.MySql | AppConnection.MsSql
+  AppConnection.Postgres | AppConnection.MySql | AppConnection.MsSql | AppConnection.OracleDB
 > = {
   [PamAccountType.Postgres]: AppConnection.Postgres,
   [PamAccountType.MySQL]: AppConnection.MySql,
-  [PamAccountType.MsSQL]: AppConnection.MsSql
+  [PamAccountType.MsSQL]: AppConnection.MsSql,
+  [PamAccountType.OracleDB]: AppConnection.OracleDB
 };
 
 export enum PamRotationReadinessIssue {

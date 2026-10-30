@@ -1,6 +1,7 @@
 ---
-title: Backstage Infisical Plugin
-description: A powerful plugin that integrates Infisical secrets management into your Backstage developer portal.
+title: "Fetch secrets in Backstage"
+sidebarTitle: "Backstage plugin"
+description: "Fetch secrets from Infisical in your Backstage developer portal."
 ---
 
 Integrate secrets management into your developer portal with the Backstage Infisical plugin suite. This plugin provides a seamless interface to manage your [Infisical](https://infisical.com) secrets directly within Backstage, including full support for environments and folder structure.
@@ -15,14 +16,14 @@ Integrate secrets management into your developer portal with the Backstage Infis
 ---
 ## Installation
 
-### Frontend Plugin
+### Frontend plugin
 
 ```bash
 # From your Backstage root directory
 yarn --cwd packages/app add @infisical/backstage-plugin-infisical
 ```
 
-### Backend Plugin
+### Backend plugin
 
 ```bash
 # From your Backstage root directory
@@ -51,7 +52,7 @@ infisical:
 ```
 
 <Tip>
-    If you have not created a machine identity yet, you can do so in [Identities](/documentation/platform/identities/machine-identities)
+    If you haven't created a machine identity yet, you can do so in [Identities](/documentation/platform/identities/machine-identities)
 </Tip>
 
 Register the plugin in `packages/backend/src/index.ts`:
@@ -96,7 +97,7 @@ const serviceEntityPage = (
 );
 ```
 
-### Entity Annotation
+### Entity annotation
 
 Add the Infisical project ID to your entity yaml settings:
 

@@ -1,10 +1,15 @@
-import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { BanIcon, CopyIcon, EllipsisIcon, HeartPulseIcon, TrashIcon } from "lucide-react";
+import {
+  BanIcon,
+  CopyIcon,
+  EllipsisIcon,
+  HeartPulseIcon,
+  PencilIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -12,7 +17,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -22,10 +26,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-  Field,
-  Input
+  DropdownMenuTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -38,6 +41,8 @@ import {
 } from "@app/hooks/api/gateways-v2";
 import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 
+import { RenameGatewayModal } from "../../../components/RenameGatewayModal";
+
 export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; orgId: string }) => {
   const navigate = useNavigate();
   const { mutateAsync: deleteGateway, isPending: isDeleting } = useDeleteGatewayV2ById();
@@ -46,9 +51,9 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
     useTriggerGatewayV2Heartbeat();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "deleteGateway",
-    "revokeGateway"
+    "revokeGateway",
+    "renameGateway"
   ] as const);
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   const onDelete = async () => {
     try {
@@ -79,7 +84,9 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
     }
   };
 
-  const isRegistered = Boolean(gateway.heartbeat || gateway.heartbeatTTL);
+  const isRegistered = Boolean(
+    gateway.directAddress || gateway.relayId || gateway.heartbeat || gateway.heartbeatTTL !== null
+  );
   const { canRevoke } = gateway;
 
   return (
@@ -106,6 +113,20 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
               <CopyIcon />
               Copy Gateway ID
             </DropdownMenuItem>
+            <OrgPermissionCan
+              I={OrgGatewayPermissionActions.EditGateways}
+              a={OrgPermissionSubjects.Gateway}
+            >
+              {(isAllowed) => (
+                <DropdownMenuItem
+                  isDisabled={!isAllowed}
+                  onClick={() => handlePopUpOpen("renameGateway")}
+                >
+                  <PencilIcon />
+                  Rename Gateway
+                </DropdownMenuItem>
+              )}
+            </OrgPermissionCan>
             {isRegistered && (
               <DropdownMenuItem isDisabled={isHeartbeating} onClick={onHeartbeat}>
                 <HeartPulseIcon />
@@ -148,12 +169,17 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
         </DropdownMenu>
       </PageHeader>
 
+      <RenameGatewayModal
+        isOpen={popUp.renameGateway.isOpen}
+        onToggle={(isOpen) => handlePopUpToggle("renameGateway", isOpen)}
+        gateway={gateway}
+      />
+
       <AlertDialog
+        isPending={isDeleting}
         open={popUp.deleteGateway.isOpen}
-        onOpenChange={(open) => {
-          if (!open) setDeleteConfirmation("");
-          handlePopUpToggle("deleteGateway", open);
-        }}
+        confirmationValue={gateway.name}
+        onOpenChange={(open) => handlePopUpToggle("deleteGateway", open)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -162,31 +188,14 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
               This permanently removes the gateway from your organization.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogConfirmationField>
-            <Field>
-              <AlertDialogConfirmationLabel
-                htmlFor="delete-gateway-confirmation"
-                confirmationValue={gateway.name}
-              />
-              <Input
-                id="delete-gateway-confirmation"
-                value={deleteConfirmation}
-                onChange={(event) => setDeleteConfirmation(event.target.value)}
-                placeholder={gateway.name}
-                autoComplete="off"
-                autoFocus
-              />
-            </Field>
-          </AlertDialogConfirmationField>
+          <AlertDialogConfirmationField inputProps={{ placeholder: gateway.name }} />
           <Alert variant="danger" appearance="borderless">
             <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
           </Alert>
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isDeleting}
-              isDisabled={deleteConfirmation !== gateway.name}
               onClick={(event) => {
                 event.preventDefault();
                 onDelete();
@@ -198,7 +207,9 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog
+        isPending={isRevoking}
         open={popUp.revokeGateway.isOpen}
+        confirmationValue={gateway.name}
         onOpenChange={(open) => handlePopUpToggle("revokeGateway", open)}
       >
         <AlertDialogContent>
@@ -209,11 +220,11 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
               re-authenticate to reconnect.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <AlertDialogConfirmationField inputProps={{ placeholder: gateway.name }} />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isRevoking}
               onClick={(event) => {
                 event.preventDefault();
                 onRevoke();

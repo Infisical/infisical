@@ -12,3 +12,19 @@ export type TGcpLocation = {
   displayName: string;
   locationId: string;
 };
+
+export type TListCertificateManagerResources = {
+  connectionId: string;
+  gcpProjectId: string;
+};
+
+export type TGcpCertificateMap = {
+  name: string;
+  description?: string;
+};
+
+export type TGcpCloudDnsZone = {
+  id: string;
+  name: string;
+  dnsName: string;
+};

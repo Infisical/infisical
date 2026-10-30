@@ -9,6 +9,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
@@ -56,7 +57,11 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
             .optional(),
           approvals: z.number().min(1).default(1),
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-          allowedSelfApprovals: z.boolean().default(true)
+          allowedSelfApprovals: z.boolean().default(true),
+          bypassForMachineIdentities: z.boolean().default(false),
+          delegatedApproval: DelegatedApprovalSchema.optional().describe(
+            "Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error."
+          )
         })
         .refine((data) => data.environment || data.environments, "At least one environment should be provided"),
       response: {
@@ -136,7 +141,11 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z.boolean().default(true),
-        environments: z.array(z.string()).optional()
+        bypassForMachineIdentities: z.boolean().optional(),
+        environments: z.array(z.string()).optional(),
+        delegatedApproval: DelegatedApprovalSchema.optional().describe(
+          "Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error."
+        )
       }),
       response: {
         200: z.object({
@@ -244,7 +253,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
         actor: req.permission.type,
@@ -289,7 +298,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretApprovalPolicy.getSecretApprovalPolicyById({
         actor: req.permission.type,
@@ -326,7 +335,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
         actor: req.permission.type,

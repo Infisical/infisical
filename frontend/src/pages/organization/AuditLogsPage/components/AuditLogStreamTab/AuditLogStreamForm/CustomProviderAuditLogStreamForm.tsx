@@ -11,7 +11,7 @@ import {
   FieldLabel,
   IconButton,
   Input,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -198,7 +198,7 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                         </TooltipContent>
                       </Tooltip>
                     </FieldLabel>
-                    <Switch
+                    <Toggle
                       id="stream-batch-mode"
                       variant={scopeVariant}
                       checked={isBatch}

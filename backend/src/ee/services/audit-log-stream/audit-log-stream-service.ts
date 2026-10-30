@@ -19,6 +19,7 @@ import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "./audit-log-
 import { LOG_STREAM_FACTORY_MAP } from "./audit-log-stream-factory";
 import { TAuditLogStream, TCreateAuditLogStreamDTO, TUpdateAuditLogStreamDTO } from "./audit-log-stream-types";
 import { TCustomProviderCredentials } from "./custom/custom-provider-types";
+import { TSplunkProviderCredentials } from "./splunk/splunk-provider-types";
 import { TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-types";
 
 export type TAuditLogStreamServiceFactoryDep = {
@@ -56,7 +57,7 @@ export const auditLogStreamServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
-    if (totalStreams.length >= plan.auditLogStreamLimit) {
+    if (plan.auditLogStreamLimit !== null && totalStreams.length >= plan.auditLogStreamLimit) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan limit reached. Contact Infisical to increase quota."
       });
@@ -175,6 +176,18 @@ export const auditLogStreamServiceFactory = ({
       (finalCredentials as TSumoLogicProviderCredentials).token = decryptedOldCredentials.token;
     }
 
+    // Splunk's port is optional, so an update that leaves it out has to keep the port the stream was
+    // configured with rather than silently falling back to the default HEC port.
+    if (provider === LogProvider.Splunk && (finalCredentials as TSplunkProviderCredentials).port === undefined) {
+      const decryptedOldCredentials = (await decryptLogStreamCredentials({
+        encryptedCredentials: logStream.encryptedCredentials,
+        orgId: logStream.orgId,
+        kmsService
+      })) as TSplunkProviderCredentials;
+
+      (finalCredentials as TSplunkProviderCredentials).port = decryptedOldCredentials.port;
+    }
+
     const factory = LOG_STREAM_FACTORY_MAP[provider]();
     const validatedCredentials = await factory.validateCredentials({ credentials: finalCredentials });
 
@@ -186,6 +199,10 @@ export const auditLogStreamServiceFactory = ({
 
     const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
       encryptedCredentials,
+      // The credentials just passed validateCredentials, so start health tracking over. A stream that
+      // is still broken then alerts again instead of staying silent behind its old failingSince.
+      failingSince: null,
+      lastDeliveryError: null,
       // Only persist a mode change when provided (the validated single -> batch upgrade).
       ...(streamMode ? { streamMode } : {}),
       // `undefined` leaves the existing filter untouched; `null`/empty clears it (stream all).

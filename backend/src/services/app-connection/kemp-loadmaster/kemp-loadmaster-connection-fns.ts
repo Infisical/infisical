@@ -2,13 +2,13 @@ import { AxiosError, AxiosRequestConfig } from "axios";
 import { XMLParser } from "fast-xml-parser";
 import https from "https";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -88,7 +88,7 @@ export const executeKempLoadMasterOperationWithGateway = async <T>(
     return withGatewayV2Proxy(
       async (proxyPort) => {
         const httpsAgent = new https.Agent({
-          servername: hostname,
+          ...getTlsServerNameOptions(hostname),
           rejectUnauthorized: credentials.sslRejectUnauthorized,
           ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
         });
@@ -116,9 +116,7 @@ export const executeKempLoadMasterOperationWithGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayHost: platformConnectionDetails.relayHost,
-        gateway: platformConnectionDetails.gateway,
-        relay: platformConnectionDetails.relay
+        ...platformConnectionDetails
       }
     );
   }
@@ -195,7 +193,6 @@ export const listKempVirtualServices = async (
 
 export const validateKempLoadMasterConnectionCredentials = async (
   config: TKempLoadMasterConnectionConfig,
-  _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { credentials } = config;

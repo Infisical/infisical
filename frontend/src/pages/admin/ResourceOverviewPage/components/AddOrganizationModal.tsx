@@ -1,12 +1,12 @@
 import { useId, useState } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  CreatableSelect,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -18,9 +18,9 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
+import { isValidEmail } from "@app/helpers/email";
 import { useDebounce } from "@app/hooks";
 import { useAdminGetUsers, useServerAdminCreateOrganization } from "@app/hooks/api";
-import { User } from "@app/hooks/api/users/types";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 type Props = {
@@ -32,20 +32,19 @@ type ContentProps = {
   onClose: () => void;
 };
 
-type Invitee = Pick<User, "email" | "firstName" | "lastName" | "username" | "id">;
-type NewOption = { label: string; value: string };
+type Invitee = {
+  id: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  username?: string | null;
+};
 
-const getUserLabel = (user: Invitee | NewOption) => {
-  if (Object.prototype.hasOwnProperty.call(user, "value")) {
-    return (user as NewOption).label;
-  }
-
-  const { firstName, lastName, username, email } = user as Invitee;
-
+const getUserLabel = ({ firstName, lastName, username, email }: Invitee) => {
   const name = `${firstName ?? ""} ${lastName ?? ""}`.trim();
   const userEmail = email || username;
 
-  if (!name) return userEmail;
+  if (!name) return userEmail ?? "Unnamed user";
 
   return `${name}${userEmail ? ` (${userEmail})` : ""}`;
 };
@@ -74,7 +73,7 @@ const Content = ({ onClose }: ContentProps) => {
     handleSubmit,
     control,
     formState: { isSubmitting }
-  } = useForm({
+  } = useForm<FormData>({
     defaultValues: {
       name: "",
       invitees: []
@@ -108,8 +107,6 @@ const Content = ({ onClose }: ContentProps) => {
     onClose();
   };
 
-  const { append } = useFieldArray<FormData>({ control, name: "invitees" });
-
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
       <Controller
@@ -123,6 +120,8 @@ const Content = ({ onClose }: ContentProps) => {
               onChange={onChange}
               placeholder="My Organization"
               isError={Boolean(error)}
+              autoComplete="off"
+              name="new-organization-name"
             />
             <FieldError>{error?.message}</FieldError>
           </Field>
@@ -131,59 +130,54 @@ const Content = ({ onClose }: ContentProps) => {
         name="name"
       />
       <Controller
-        render={({ field, fieldState: { error } }) => (
-          <Field>
-            <FieldLabel htmlFor={adminSelectId}>Assign organization admins</FieldLabel>
-            <CreatableSelect
-              inputId={adminSelectId}
-              /* eslint-disable-next-line react/no-unstable-nested-components */
-              noOptionsMessage={() => (
-                <p>Invite new users to this organization by typing out their email address.</p>
-              )}
-              onCreateOption={(inputValue) =>
-                append({
-                  id: `${inputValue}_${Math.random()}`,
-                  email: inputValue
-                })
-              }
-              formatCreateLabel={(inputValue) => `Invite "${inputValue}"`}
-              isValidNewOption={(input) =>
-                Boolean(input) &&
-                z.string().email().safeParse(input).success &&
-                !users
-                  ?.flatMap((user) => {
-                    const emails: string[] = [];
+        render={({ field, fieldState: { error } }) => {
+          const isKnownEmail = (email: string, user: Invitee) =>
+            (user.email || user.username)?.toLowerCase() === email.toLowerCase();
+          const isSearching = searchUserFilter !== debouncedSearchTerm || isPending;
+          // Results for an earlier query would sit above the Invite row and take Enter.
+          const isStaleForEmail = isSearching && isValidEmail(searchUserFilter.trim());
 
-                    if (user.email) {
-                      emails.push(user.email);
-                    }
-
-                    if (user.username) {
-                      emails.push(user.username);
-                    }
-
-                    return emails;
-                  })
-                  .includes(input)
-              }
-              isLoading={searchUserFilter !== debouncedSearchTerm || isPending}
-              className="w-full"
-              placeholder="Search users or invite new ones..."
-              isMulti
-              name="members"
-              options={users}
-              getOptionLabel={(user) => getUserLabel(user)}
-              getOptionValue={(user) => user.id}
-              value={field.value}
-              onChange={field.onChange}
-              onInputChange={(value) => {
-                setSearchUserFilter(value);
-                if (!value) setDebouncedSearchTerm("");
-              }}
-            />
-            <FieldError>{error?.message}</FieldError>
-          </Field>
-        )}
+          return (
+            <Field>
+              <FieldLabel htmlFor={adminSelectId}>Assign Organization Admins</FieldLabel>
+              <Combobox<Invitee>
+                id={adminSelectId}
+                multiple
+                options={isStaleForEmail ? [] : users}
+                value={field.value}
+                onValueChange={field.onChange}
+                onClear={() => field.onChange([])}
+                getOptionLabel={getUserLabel}
+                getOptionValue={(user) => user.id}
+                creation={{
+                  isValid: (email) => isValidEmail(email),
+                  isDuplicate: isKnownEmail,
+                  formatLabel: (email) => `Invite "${email}"`,
+                  emptyLabel: "Type an email to invite",
+                  onCreate: (email) =>
+                    field.onChange([
+                      ...field.value,
+                      { id: `invite:${email.toLowerCase()}`, email: email.toLowerCase() }
+                    ])
+                }}
+                placeholder="Search users or invite by email..."
+                searchPlaceholder="Search users or enter an email..."
+                searchAriaLabel="Search users or enter an email to invite"
+                emptyMessage="No users found. Enter a valid email address to invite a new user."
+                isLoading={isSearching}
+                isError={Boolean(error)}
+                shouldFilter={false}
+                includeMissingSelectedOptions={false}
+                modal
+                onInputValueChange={(value) => {
+                  setSearchUserFilter(value);
+                  if (!value) setDebouncedSearchTerm("");
+                }}
+              />
+              <FieldError>{error?.message}</FieldError>
+            </Field>
+          );
+        }}
         control={control}
         name="invitees"
       />

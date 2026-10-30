@@ -1,7 +1,6 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable no-nested-ternary */
 import crypto from "crypto";
-
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,7 +40,7 @@ import {
 } from "@app/hooks/api/appConnections/types/gitlab-connection";
 
 import { GitLabFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
-import { useAppConnectionForm } from "./AppConnectionFormContext";
+import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -126,6 +125,8 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
     setValue,
     formState: { isSubmitting, isDirty }
   } = form;
+
+  useAppConnectionFormDirtyState(isDirty);
 
   const selectedMethod = watch("method");
   const gitLabURL = watch("credentials.instanceUrl");
@@ -339,8 +340,14 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
                       <TooltipContent className="max-w-sm">Your GitLab Access Token</TooltipContent>
                     </Tooltip>
                   </FieldLabel>
-                  <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                  <FieldError errors={[error]} />
+                  <SecretInput
+                    aria-describedby={error ? "gitlab-access-token-error" : undefined}
+                    id="gitlab-access-token"
+                    isError={Boolean(error)}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                  <FieldError id="gitlab-access-token-error" errors={[error]} />
                 </Field>
               )}
             />

@@ -1,18 +1,21 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
+import { TemporaryPermissionMode } from "@app/db/schemas";
+import { ms } from "@app/lib/ms";
+import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 
 interface SlugSchemaInputs {
   min?: number;
   max?: number;
   field?: string;
+  trim?: boolean;
 }
 
-export const slugSchema = ({ min = 1, max = 64, field = "Slug" }: SlugSchemaInputs = {}) => {
-  return z
-    .string()
-    .trim()
+export const slugSchema = ({ min = 1, max = 64, field = "Slug", trim = true }: SlugSchemaInputs = {}) => {
+  const base = trim ? z.string().trim() : z.string();
+  return base
     .min(min, {
       message: `${field} field must be at least ${min} lowercase character${min === 1 ? "" : "s"}`
     })
@@ -40,6 +43,13 @@ export const GenericResourceNameSchema = z
     "Name can only contain alphanumeric characters, dashes, underscores, and spaces"
   );
 
+// For free text that lands in audit events (names, reasons). An allowlist would break existing values,
+// so this only blocks non-printing chars. The audit sink strips the same set.
+export const auditSafeText = (schema: z.ZodString, { allowMultiline = false } = {}) =>
+  schema.refine((val) => !containsLogUnsafeCharacters(val, { allowMultiline }), {
+    message: LOG_UNSAFE_TEXT_MESSAGE
+  });
+
 export const BaseSecretNameSchema = z.string().trim().min(1);
 
 export const SecretNameSchema = BaseSecretNameSchema.refine(
@@ -52,3 +62,29 @@ export const SecretNameSchema = BaseSecretNameSchema.refine(
  * Usage: z.string().describe(openApiHidden())
  */
 export const openApiHidden = () => JSON.stringify({ "x-hidden": true });
+
+// The shared `type` body field for temporary vs permanent access grants (additional privileges,
+// folder access). Parameterized by the endpoint's api-docs strings so every route documents its
+// own vocabulary while accepting the exact same shape.
+export const temporaryPermissionTypeSchema = (docs: {
+  isTemporary: string;
+  temporaryMode: string;
+  temporaryRange: string;
+  temporaryAccessStartTime: string;
+}) =>
+  z.discriminatedUnion("isTemporary", [
+    z.object({
+      isTemporary: z.literal(false).describe(docs.isTemporary)
+    }),
+    z.object({
+      isTemporary: z.literal(true).describe(docs.isTemporary),
+      temporaryMode: z.nativeEnum(TemporaryPermissionMode).describe(docs.temporaryMode),
+      temporaryRange: z
+        .string()
+        .trim()
+        .max(32)
+        .refine((val) => ms(val) > 0, "Temporary range must be a positive duration such as 30m, 4h or 1d")
+        .describe(docs.temporaryRange),
+      temporaryAccessStartTime: z.string().datetime().describe(docs.temporaryAccessStartTime)
+    })
+  ]);

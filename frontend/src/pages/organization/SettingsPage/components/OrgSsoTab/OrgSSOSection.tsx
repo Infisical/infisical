@@ -1,6 +1,7 @@
+import type { JSX } from "react";
 import { AlertTriangle, ArrowLeftRight, Info, MoreHorizontal, Pencil } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { SamlSsoUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -20,7 +21,7 @@ import {
   FieldGroup,
   FieldTitle,
   IconButton,
-  Switch,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -185,7 +186,7 @@ export const OrgSSOSection = ({ onSwitchProvider }: Props): JSX.Element => {
                 >
                   {(isAllowed) => (
                     <div>
-                      <Switch
+                      <Toggle
                         id="enable-saml-sso"
                         variant="org"
                         checked={data ? data.isActive : false}
@@ -242,7 +243,7 @@ export const OrgSSOSection = ({ onSwitchProvider }: Props): JSX.Element => {
                 </FieldContent>
                 <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                   {(isAllowed) => (
-                    <Switch
+                    <Toggle
                       id="enable-saml-group-sync"
                       variant="org"
                       checked={data?.enableGroupSync ?? false}
@@ -261,11 +262,14 @@ export const OrgSSOSection = ({ onSwitchProvider }: Props): JSX.Element => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="organization.org-sso.section"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan.data?.text}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...SamlSsoUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

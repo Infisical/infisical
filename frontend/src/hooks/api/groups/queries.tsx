@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { useOrganization } from "@app/context";
 
 import { OrderByDirection } from "../generic/types";
 import {
@@ -18,6 +19,8 @@ import {
 
 export const groupKeys = {
   getGroupById: (groupId: string) => [{ groupId }, "group"] as const,
+  getGroupByIdForOrg: (orgId: string, groupId: string) =>
+    [...groupKeys.getGroupById(groupId), orgId] as const,
   allGroupUserMemberships: () => ["group-user-memberships"] as const,
   forGroupUserMemberships: (slug: string) =>
     [...groupKeys.allGroupUserMemberships(), slug] as const,
@@ -77,6 +80,7 @@ export const groupKeys = {
   allGroupProjects: () => ["group-projects"] as const,
   forGroupProjects: (groupId: string) => [...groupKeys.allGroupProjects(), groupId] as const,
   specificGroupProjects: ({
+    orgId,
     groupId,
     offset,
     limit,
@@ -85,6 +89,7 @@ export const groupKeys = {
     orderBy,
     orderDirection
   }: {
+    orgId: string;
     groupId: string;
     offset: number;
     limit: number;
@@ -95,14 +100,18 @@ export const groupKeys = {
   }) =>
     [
       ...groupKeys.forGroupProjects(groupId),
+      orgId,
       { offset, limit, search, filter, orderBy, orderDirection }
     ] as const
 };
 
 export const useGetGroupById = (groupId: string) => {
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg?.id || "";
+
   return useQuery({
     enabled: Boolean(groupId),
-    queryKey: groupKeys.getGroupById(groupId),
+    queryKey: groupKeys.getGroupByIdForOrg(orgId, groupId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TGroup>(`/api/v1/groups/${groupId}`);
 
@@ -276,8 +285,12 @@ export const useListGroupProjects = ({
   orderDirection?: OrderByDirection;
   filter?: FilterReturnedProjects;
 }) => {
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg?.id || "";
+
   return useQuery({
     queryKey: groupKeys.specificGroupProjects({
+      orgId,
       groupId: id,
       offset,
       limit,

@@ -1,5 +1,5 @@
-import { PamAccountType } from "../pam/pam-enums";
 import { TPamAccountSettingsOverrides } from "../pam-account-template/pam-account-template-schemas";
+import { PamAccountType } from "../pam/pam-enums";
 
 export type TCreatePamAccountDTO = {
   projectId: string;
@@ -41,6 +41,15 @@ export type TDeletePamAccountDTO = {
 export type TGetPamAccountDTO = {
   accountId: string;
   projectId: string;
+};
+
+export type TGetPamAccountCredentialsDTO = {
+  accountId: string;
+  projectId: string;
+  actorEmail: string;
+  reason?: string;
+  mfaSessionId?: string;
+  tokenVersionId?: string;
 };
 
 export type TListPamAccountsDTO = {

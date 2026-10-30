@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Checkbox } from "../Checkbox";
 import { Input } from "../Input";
-import { Switch } from "../Switch";
+import { Toggle } from "../Toggle";
 import {
   Field,
   FieldContent,
@@ -119,7 +119,7 @@ export const Horizontal: Story = {
           Require a second factor when signing in from a new device.
         </FieldDescription>
       </FieldContent>
-      <Switch defaultChecked />
+      <Toggle defaultChecked />
     </Field>
   )
 };

@@ -181,7 +181,8 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
           db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
           db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
         )
-        .orderBy(`${TableName.DynamicSecret}.${orderBy}`, orderDirection);
+        .orderBy(`${TableName.DynamicSecret}.${orderBy}`, orderDirection)
+        .orderBy(`${TableName.DynamicSecret}.id`, OrderByDirection.ASC);
 
       let queryWithLimit;
       if (limit) {
@@ -191,7 +192,12 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
           .select("*")
           .from<Awaited<typeof query>[number]>("w")
           .where("w.rank", ">=", rankOffset)
-          .andWhere("w.rank", "<", rankOffset + limit);
+          .andWhere("w.rank", "<", rankOffset + limit)
+          // a CTE does not carry its inner ordering, so re-state it: this result is paged by offset
+          // across separate requests, and same-named rows across environments need the id tiebreak
+          .orderBy(orderBy, orderDirection)
+          .orderBy("id", OrderByDirection.ASC)
+          .orderBy("metadataId", OrderByDirection.ASC);
       }
 
       const dynamicSecrets = sqlNestRelationships({

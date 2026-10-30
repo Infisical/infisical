@@ -1,14 +1,18 @@
 import { SecretKeyEncoding } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 
 import { TProjectDALFactory } from "../project/project-dal";
 import { TGetPrivateKeyDTO } from "./project-bot-types";
 
 export const getBotPrivateKey = ({ bot }: TGetPrivateKeyDTO) => {
+  recordLegacyRootKeyUsageMetric({ operation: "decrypt", surface: "project_bot" });
+  logger.info(`Legacy root key used to read a project bot key [projectId=${bot.projectId}]`);
   return crypto
     .encryption()
     .symmetric()
@@ -60,6 +64,8 @@ export const getBotKeyFnFactory = (
         projectV1Keys.serverEncryptedPrivateKeyTag &&
         projectV1Keys.serverEncryptedPrivateKeyEncoding
       ) {
+        recordLegacyRootKeyUsageMetric({ operation: "decrypt", surface: "user_private_key" });
+        logger.info(`Legacy root key used to read a server-held user private key [projectId=${projectId}]`);
         userPrivateKey = crypto
           .encryption()
           .symmetric()
@@ -77,6 +83,8 @@ export const getBotKeyFnFactory = (
         privateKey: userPrivateKey
       });
       const botKey = await crypto.encryption().asymmetric().generateKeyPair();
+      recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "project_bot" });
+      logger.info(`Legacy root key used to create a project bot [projectId=${projectId}]`);
       const { iv, tag, ciphertext, encoding, algorithm } = crypto
         .encryption()
         .symmetric()

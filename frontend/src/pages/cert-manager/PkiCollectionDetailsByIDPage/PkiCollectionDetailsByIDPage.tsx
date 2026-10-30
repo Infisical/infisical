@@ -1,22 +1,19 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteActionModal,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PageHeader,
-  Tooltip
-} from "@app/components/v2";
+  PageHeader
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -63,58 +60,50 @@ export const PkiCollectionPage = () => {
     });
     handlePopUpClose("deletePkiCollection");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/policies",
+      to: "/organizations/$orgId/cert-manager/policies",
       params: {
-        orgId: currentOrg.id,
-        projectId: params.projectId
+        orgId: currentOrg.id
       }
     });
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-8xl">
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/policies"
-            params={{
-              orgId: currentOrg.id,
-              projectId: params.projectId
-            }}
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-          >
-            <FontAwesomeIcon icon={faChevronLeft} />
-            Certificates
-          </Link>
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
+            backLink={
+              <Link
+                to="/organizations/$orgId/cert-manager/policies"
+                params={{
+                  orgId: currentOrg.id
+                }}
+              >
+                <FontAwesomeIcon icon={faChevronLeft} />
+                Certificates
+              </Link>
+            }
             scope={ProjectType.CertificateManager}
             title={data.name}
             description="Manage certificate collection"
           >
             <DropdownMenu>
-              <DropdownMenuTrigger asChild className="rounded-lg">
-                <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                  <Tooltip content="More options">
-                    <Button variant="outline_bg">More</Button>
-                  </Tooltip>
-                </div>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">More</Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="p-1">
+              <DropdownMenuContent align="end">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
                   a={ProjectPermissionSub.PkiCollections}
                 >
                   {(isAllowed) => (
                     <DropdownMenuItem
-                      className={twMerge(
-                        !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                      )}
                       onClick={() => {
                         handlePopUpOpen("pkiCollection", {
                           collectionId
                         });
                       }}
-                      disabled={!isAllowed}
+                      isDisabled={!isAllowed}
                     >
                       Edit PKI Collection
                     </DropdownMenuItem>
@@ -126,18 +115,14 @@ export const PkiCollectionPage = () => {
                 >
                   {(isAllowed) => (
                     <DropdownMenuItem
-                      className={twMerge(
-                        isAllowed
-                          ? "hover:bg-red-500! hover:text-white!"
-                          : "pointer-events-none cursor-not-allowed opacity-50"
-                      )}
                       onClick={() =>
                         handlePopUpOpen("deletePkiCollection", {
                           collectionId: data.id,
                           name: data.name
                         })
                       }
-                      disabled={!isAllowed}
+                      isDisabled={!isAllowed}
+                      variant="danger"
                     >
                       Delete PKI Collection
                     </DropdownMenuItem>
@@ -166,12 +151,13 @@ export const PkiCollectionPage = () => {
         </div>
       )}
       <PkiCollectionModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiCollection.isOpen}
+        description="This action is irreversible."
         title={`Are you sure you want to delete the PKI collection ${data?.name ?? ""}?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePkiCollection", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeletePkiCollectionSubmit(
             (popUp.deletePkiCollection.data as { collectionId: string })?.collectionId
           )
@@ -182,13 +168,10 @@ export const PkiCollectionPage = () => {
 };
 
 export const PkiCollectionDetailsByIDPage = () => {
-  const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "PKI Collection" })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="PKI Collection" />
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         renderGuardBanner
         passThrough={false}

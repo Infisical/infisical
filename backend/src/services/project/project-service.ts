@@ -7,6 +7,7 @@ import {
   ActionProjectType,
   OrganizationActionScope,
   OrgMembershipRole,
+  OrgMembershipStatus,
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
@@ -15,9 +16,11 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
+import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionProjectActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
@@ -25,6 +28,7 @@ import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/servi
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionMemberActions,
@@ -53,23 +57,24 @@ import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
-import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { validateMicrosoftTeamsChannelsSchema } from "../microsoft-teams/microsoft-teams-fns";
 import { TMicrosoftTeamsIntegrationDALFactory } from "../microsoft-teams/microsoft-teams-integration-dal";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
@@ -83,6 +88,7 @@ import { TProjectMembershipDALFactory } from "../project-membership/project-memb
 import { getPredefinedRoles } from "../project-role/project-role-fns";
 import { TRoleDALFactory } from "../role/role-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretValueTrackingServiceFactory } from "../secret-value-tracking/secret-value-tracking-service";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
 import { validateSlackChannelsField } from "../slack/slack-auth-validators";
 import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
@@ -132,6 +138,7 @@ export const DEFAULT_PROJECT_ENVS = [
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   projectQueue: TProjectQueueFactory;
+  secretValueTrackingService: Pick<TSecretValueTrackingServiceFactory, "enableForProject" | "getProjectStatus">;
   userDAL: TUserDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "insertMany" | "findByProjectId">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
@@ -174,7 +181,7 @@ type TProjectServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
@@ -200,18 +207,20 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
 // Cosmetic overrides for requestProjectAccess; unlisted types fall back to the raw type/name.
 const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
-  [ProjectType.SecretManager]: "secret-management",
-  [ProjectType.CertificateManager]: "cert-manager"
+  [ProjectType.SecretManager]: "secret-management"
 };
 
 const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
   [ProjectType.CertificateManager]: "Certificate Manager",
-  [ProjectType.PAM]: "Privileged Access Manager"
+  [ProjectType.SecretScanning]: "Secret Scanning",
+  [ProjectType.PAM]: "Privileged Access Manager",
+  [ProjectType.AgentVault]: "Agent Vault"
 };
 
 export const projectServiceFactory = ({
   projectDAL,
   projectQueue,
+  secretValueTrackingService,
   permissionService,
   orgDAL,
   userDAL,
@@ -262,6 +271,12 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager,
     hasDeleteProtection
   }: TCreateProjectDTO) => {
+    if (type === ProjectType.AgentVault) {
+      throw new BadRequestError({
+        message: "Agent Vault projects cannot be created directly. One is created for your organization automatically."
+      });
+    }
+
     const organization = await orgDAL.findOne({ id: actorOrgId });
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -279,12 +294,14 @@ export const projectServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
     }
 
+    // Read before the transaction: a plan cache miss queries on its own connection.
+    const plan = await licenseService.getPlan(organization.id);
+
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
       // Check workspace limit inside the transaction after acquiring the lock
       // We count directly from the database to get the accurate count, not the cached plan value
-      const plan = await licenseService.getPlan(organization.id);
       if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
         const currentProjectCount = await projectDAL.countOfBillableOrgProjects(organization.id, tx);
         if (currentProjectCount >= plan.workspaceLimit) {
@@ -294,12 +311,36 @@ export const projectServiceFactory = ({
         }
       }
 
+      if (type === ProjectType.SecretScanning) {
+        const [existingSecretScanningProject] = await projectDAL.find(
+          { orgId: organization.id, type: ProjectType.SecretScanning },
+          { limit: 1, tx }
+        );
+
+        if (existingSecretScanningProject) {
+          throw new BadRequestError({
+            message: "Secret Scanning is limited to one project per organization at this time."
+          });
+        }
+      }
+
       if (kmsKeyId) {
+        if (permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)) {
+          throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
+        }
+
         const kms = await kmsService.getKmsById(kmsKeyId, tx);
 
         if (kms.orgId !== organization.id) {
           throw new ForbiddenRequestError({
             message: "KMS does not belong in the organization"
+          });
+        }
+
+        // an internal key here belongs to another project or to the org
+        if (!kms.isExternal) {
+          throw new BadRequestError({
+            message: "Only an external KMS key can be assigned to a project"
           });
         }
       }
@@ -654,7 +695,7 @@ export const projectServiceFactory = ({
       // Skip this if the creator was already added via template with their configured roles
       if (actor === ActorType.USER && !creatorAddedViaTemplate) {
         // Find public key of user
-        const user = await userDAL.findUserEncKeyByUserId(actorId);
+        const user = await userDAL.findUserEncKeyByUserId(actorId, tx);
 
         if (!user) {
           throw new Error("User not found");
@@ -745,6 +786,7 @@ export const projectServiceFactory = ({
     // the just-committed row; the counter filters by project type.
     usageMeteringService.emit(results.orgId, SecretIdentities.key);
     usageMeteringService.emit(results.orgId, PamIdentities.key);
+    usageMeteringService.emit(results.orgId, AgentVaultIdentities.key);
     return results;
   };
 
@@ -771,6 +813,12 @@ export const projectServiceFactory = ({
     if (project.type === ProjectType.PAM) {
       throw new BadRequestError({
         message: "Privileged Access Manager projects cannot be deleted."
+      });
+    }
+
+    if (project.type === ProjectType.AgentVault) {
+      throw new BadRequestError({
+        message: "Agent Vault projects cannot be deleted."
       });
     }
 
@@ -829,6 +877,7 @@ export const projectServiceFactory = ({
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
       usageMeteringService.emit(project.orgId, SecretIdentities.key);
       usageMeteringService.emit(project.orgId, PamIdentities.key);
+      usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
       return { ...softDeletedProject, slug: project.slug };
     } finally {
       await lock.release();
@@ -873,7 +922,7 @@ export const projectServiceFactory = ({
       });
 
       // `includeRoles` is specifically used by organization admins when inviting new users to the organizations to avoid looping redundant api calls.
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
       const customRoles = await roleDAL.find({
         $in: {
           projectId: workspaces.map((workspace) => workspace.id)
@@ -900,6 +949,28 @@ export const projectServiceFactory = ({
     return workspaces;
   };
 
+  const getAccessibleProjectsWithSubOrgs = async ({
+    actorId,
+    actorOrgId
+  }: Pick<TListProjectsDTO, "actorId" | "actorOrgId">) => {
+    const organizations = await orgDAL.listOrganizationsWithSubOrgs({ actorId });
+    const currentOrganization = organizations.find((organization) => organization.id === actorOrgId);
+    const organizationIds = [actorOrgId];
+    for (const organization of currentOrganization?.subOrganizations ?? []) {
+      // eslint-disable-next-line no-await-in-loop -- Keep membership reads bounded to one database connection.
+      const membership = await orgDAL.findEffectiveOrgMembership({
+        actorType: ActorType.USER,
+        actorId,
+        orgId: organization.id,
+        status: OrgMembershipStatus.Accepted
+      });
+      if (membership?.isActive) organizationIds.push(organization.id);
+    }
+
+    const projects = await projectDAL.findUserProjects(actorId, organizationIds);
+    return projects.map(({ id, orgId, name, slug, type }) => ({ id, orgId, name, slug, type }));
+  };
+
   const getAProject = async ({ actorId, actorOrgId, actorAuthMethod, filter, actor }: TGetProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
@@ -919,6 +990,7 @@ export const projectServiceFactory = ({
 
   const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
+    const appCfg = getConfig();
 
     const { permission, hasRole } = await permissionService.getProjectPermission({
       actor,
@@ -930,6 +1002,14 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
+    // The org-scoped products own one implicit project each, so its name, slug and delete protection are
+    // not the caller's to change. Create and delete are already guarded; this route was not.
+    if (project.type === ProjectType.AgentVault || project.type === ProjectType.PAM) {
+      throw new BadRequestError({
+        message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type]} is managed for your organization and cannot be renamed or reconfigured here.`
+      });
+    }
+
     if (update.secretDetectionIgnoreValues && !hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({
         message: "Only admins can update secret detection ignore values"
@@ -940,6 +1020,34 @@ export const projectServiceFactory = ({
       throw new ForbiddenRequestError({
         message: "Only admins can update Certificate Manager project settings"
       });
+    }
+
+    if (update.auditLogsRetentionDays !== undefined) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAuditLogsActions.Edit,
+        ProjectPermissionSub.AuditLogs
+      );
+
+      if (appCfg.isCloud) {
+        throw new BadRequestError({
+          message: "The audit logs retention period can not be updated on Infisical Cloud instances."
+        });
+      }
+
+      const plan = await licenseService.getPlan(project.orgId);
+
+      if (!plan.auditLogs) {
+        throw new BadRequestError({
+          message:
+            "Failed to update the audit logs retention period because audit logs are not included in your current plan. Upgrade your plan to configure retention."
+        });
+      }
+
+      if (!isWithinPlanAuditLogRetention(update.auditLogsRetentionDays, plan)) {
+        throw new BadRequestError({
+          message: `Failed to update the audit logs retention period because your current plan allows a maximum of ${plan.auditLogsRetentionDays} days. Upgrade your plan to increase this limit.`
+        });
+      }
     }
 
     try {
@@ -955,7 +1063,8 @@ export const projectServiceFactory = ({
         showSnapshotsLegacy: update.showSnapshotsLegacy,
         secretDetectionIgnoreValues: update.secretDetectionIgnoreValues,
         pitVersionLimit: update.pitVersionLimit,
-        enforceEncryptedSecretManagerSecretMetadata: update.enforceEncryptedSecretManagerSecretMetadata
+        enforceEncryptedSecretManagerSecretMetadata: update.enforceEncryptedSecretManagerSecretMetadata,
+        auditLogsRetentionDays: update.auditLogsRetentionDays
       });
 
       return updatedProject;
@@ -1075,7 +1184,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1083,15 +1192,13 @@ export const projectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-
-    if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({
-        message: "Insufficient privileges, only admins are allowed to take this action"
-      });
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAuditLogsActions.Edit,
+      ProjectPermissionSub.AuditLogs
+    );
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.auditLogs || auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+    if (!plan.auditLogs || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
       throw new BadRequestError({
         message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
       });
@@ -1147,6 +1254,7 @@ export const projectServiceFactory = ({
       });
     }
 
+    recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "user_private_key" });
     const encryptedPrivateKey = crypto.encryption().symmetric().encryptWithRootEncryptionKey(userPrivateKey);
 
     await projectQueue.upgradeProject({
@@ -1392,8 +1500,10 @@ export const projectServiceFactory = ({
     const validatedSortBy = sortBy && ALLOWED_SORT_COLUMNS.has(sortBy) ? sortBy : "notAfter";
     const validatedSortOrder = sortOrder === "asc" ? "asc" : "desc";
 
+    const { status: ignoredSyncStatus, ...syncEligibilityFilters } = regularFilters;
+
     const certificates = forPkiSync
-      ? await certificateDAL.findActiveCertificatesForSync(regularFilters, { offset, limit }, permissionFilters)
+      ? await certificateDAL.findActiveCertificatesForSync(syncEligibilityFilters, { offset, limit }, permissionFilters)
       : await certificateDAL.findWithPrivateKeyInfo(
           regularFilters,
           {
@@ -1404,34 +1514,9 @@ export const projectServiceFactory = ({
           permissionFilters
         );
 
-    const countFilter = {
-      projectId,
-      ...(regularFilters.friendlyName && { friendlyName: String(regularFilters.friendlyName) }),
-      ...(regularFilters.commonName && { commonName: String(regularFilters.commonName) }),
-      ...(regularFilters.search && { search: String(regularFilters.search) }),
-      ...(regularFilters.status && { status: regularFilters.status }),
-      ...(regularFilters.profileIds && { profileIds: regularFilters.profileIds }),
-      ...(regularFilters.fromDate && { fromDate: regularFilters.fromDate }),
-      ...(regularFilters.toDate && { toDate: regularFilters.toDate }),
-      ...(regularFilters.metadataFilter && { metadataFilter: regularFilters.metadataFilter }),
-      ...(regularFilters.extendedKeyUsage && { extendedKeyUsage: String(regularFilters.extendedKeyUsage) }),
-      ...(regularFilters.keyAlgorithm && { keyAlgorithm: regularFilters.keyAlgorithm }),
-      ...(regularFilters.signatureAlgorithm && { signatureAlgorithm: String(regularFilters.signatureAlgorithm) }),
-      ...(regularFilters.keySizes && { keySizes: regularFilters.keySizes }),
-      ...(regularFilters.caIds && { caIds: regularFilters.caIds }),
-      ...(regularFilters.enrollmentTypes && { enrollmentTypes: regularFilters.enrollmentTypes }),
-      ...(regularFilters.source && { source: regularFilters.source }),
-      ...(regularFilters.notAfterFrom && { notAfterFrom: regularFilters.notAfterFrom }),
-      ...(regularFilters.notAfterTo && { notAfterTo: regularFilters.notAfterTo }),
-      ...(regularFilters.notBeforeFrom && { notBeforeFrom: regularFilters.notBeforeFrom }),
-      ...(regularFilters.notBeforeTo && { notBeforeTo: regularFilters.notBeforeTo }),
-      ...(regularFilters.applicationId && { applicationId: regularFilters.applicationId }),
-      ...(regularFilters.applicationIds && { applicationIds: regularFilters.applicationIds })
-    };
-
     const count = forPkiSync
-      ? await certificateDAL.countActiveCertificatesForSync(countFilter)
-      : await certificateDAL.countCertificatesInProject(countFilter, permissionFilters);
+      ? await certificateDAL.countActiveCertificatesForSync(syncEligibilityFilters, permissionFilters)
+      : await certificateDAL.countCertificatesInProject(regularFilters, permissionFilters);
 
     return {
       certificates,
@@ -2218,11 +2303,16 @@ export const projectServiceFactory = ({
     const projectTypeUrl = PROJECT_ACCESS_REQUEST_URL_SLUGS[project.type as ProjectType] ?? project.type;
     const encodedRequesterEmail = encodeURIComponent(userDetails.email ?? "");
 
-    // PAM is a per-org singleton with no project-scoped route, unlike other product types
-    const callbackPath =
-      project.type === ProjectType.PAM
-        ? `/organizations/${project.orgId}/pam/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`
-        : `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`;
+    const orgScopedProductPath: Partial<Record<ProjectType, string>> = {
+      [ProjectType.CertificateManager]: "cert-manager",
+      [ProjectType.PAM]: "pam",
+      [ProjectType.AgentVault]: "agent-vault"
+    };
+    const orgScopedPath = orgScopedProductPath[project.type as ProjectType];
+
+    const callbackPath = orgScopedPath
+      ? `/organizations/${project.orgId}/${orgScopedPath}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`
+      : `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`;
 
     const productLabel = PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type as ProjectType] ?? null;
     const notificationTitle = productLabel ? `${productLabel} Access Request` : "Project Access Request";
@@ -2233,7 +2323,7 @@ export const projectServiceFactory = ({
     await projectAccessRequestDAL.upsertPendingRequest({
       projectId,
       requesterUserId: permission.id,
-      comment: comment ?? null
+      comment: comment || null
     });
 
     await notificationService.createUserNotifications(
@@ -2273,60 +2363,17 @@ export const projectServiceFactory = ({
     return { requests };
   };
 
-  const enableSecretBlindIndex = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TEnableSecretBlindIndexDTO) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+  const enableSecretBlindIndex = async (dto: TEnableSecretBlindIndexDTO) =>
+    secretValueTrackingService.enableForProject(dto);
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
-
-    if (project.secretBlindIndexEnabled) {
-      throw new BadRequestError({ message: "Secret blind indexing is already enabled for this project" });
-    }
-
-    await projectQueue.startSecretBlindIndexMigration(project.id);
-  };
-
-  const getSecretBlindIndexMigrationStatus = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TEnableSecretBlindIndexDTO) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
-
-    return projectQueue.getJobState(project.id);
-  };
+  const getSecretBlindIndexMigrationStatus = async (dto: TEnableSecretBlindIndexDTO) =>
+    secretValueTrackingService.getProjectStatus(dto);
 
   return {
     createProject,
     deleteProject,
     getProjects,
+    getAccessibleProjectsWithSubOrgs,
     updateProject,
     getProjectUpgradeStatus,
     getAProject,

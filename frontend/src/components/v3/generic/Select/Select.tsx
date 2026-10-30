@@ -1,13 +1,49 @@
 import * as React from "react";
-import * as SelectPrimitive from "@radix-ui/react-select";
 import { cva, type VariantProps } from "cva";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { Select as SelectPrimitive } from "radix-ui";
 import { twMerge } from "tailwind-merge";
 
 import { cn } from "../../utils";
+import { useOverlayPopupRegistration } from "../../utils/overlay-layer";
 
-function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />;
+const SelectPopupContext = React.createContext<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  escapeEvents: WeakSet<KeyboardEvent>;
+} | null>(null);
+
+function Select({
+  open: controlledOpen,
+  defaultOpen = false,
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const escapeEvents = React.useRef(new WeakSet<KeyboardEvent>());
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (controlledOpen === undefined) setUncontrolledOpen(nextOpen);
+      onOpenChange?.(nextOpen);
+    },
+    [controlledOpen, onOpenChange]
+  );
+  const contextValue = React.useMemo(
+    () => ({ open, onOpenChange: handleOpenChange, escapeEvents: escapeEvents.current }),
+    [open, handleOpenChange]
+  );
+
+  return (
+    <SelectPopupContext.Provider value={contextValue}>
+      <SelectPrimitive.Root
+        data-slot="select"
+        {...props}
+        open={open}
+        onOpenChange={handleOpenChange}
+      />
+    </SelectPopupContext.Provider>
+  );
 }
 
 function SelectScrollUpButton({
@@ -60,7 +96,7 @@ function SelectValue({ ...props }: React.ComponentProps<typeof SelectPrimitive.V
 }
 
 const selectTriggerVariants = cva(
-  "flex w-fit !cursor-pointer items-center justify-between gap-1.5 rounded-md border border-border bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap text-foreground select-none disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-muted data-[size=default]:h-9 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 *:data-[slot=select-value]:truncate [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&>span]:truncate",
+  "flex w-fit !cursor-pointer items-center justify-between gap-1.5 rounded-md border border-border bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap text-foreground select-none disabled:!cursor-not-allowed disabled:opacity-50 data-placeholder:text-muted data-[size=default]:h-9 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 *:data-[slot=select-value]:truncate [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&>span]:truncate",
   {
     variants: {
       variant: {
@@ -82,16 +118,13 @@ type SelectTriggerProps = React.ComponentProps<typeof SelectPrimitive.Trigger> &
     isError?: boolean;
   };
 
-function SelectTrigger({
-  className,
-  size = "default",
-  variant = "default",
-  isError,
-  children,
-  ...props
-}: SelectTriggerProps) {
+const SelectTrigger = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Trigger>,
+  SelectTriggerProps
+>(({ className, size = "default", variant = "default", isError, children, ...props }, ref) => {
   return (
     <SelectPrimitive.Trigger
+      ref={ref}
       data-slot="select-trigger"
       data-size={size}
       data-variant={variant}
@@ -105,35 +138,66 @@ function SelectTrigger({
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
-}
+});
+SelectTrigger.displayName = "SelectTrigger";
 
 function SelectContent({
   className,
   children,
   position = "item-aligned",
   align = "center",
+  collisionPadding = 8,
+  portalContainer,
+  onEscapeKeyDown,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Content>) {
+}: React.ComponentProps<typeof SelectPrimitive.Content> & {
+  portalContainer?: React.ComponentProps<typeof SelectPrimitive.Portal>["container"];
+}) {
+  const select = React.useContext(SelectPopupContext);
+  const handleEscapeKeyDown = React.useCallback(
+    (event: KeyboardEvent) => {
+      if (select?.escapeEvents.has(event)) return false;
+      select?.escapeEvents.add(event);
+      onEscapeKeyDown?.(event);
+      return !event.defaultPrevented;
+    },
+    [select, onEscapeKeyDown]
+  );
+  const handleRegisteredEscape = React.useCallback(
+    (event: KeyboardEvent) => {
+      if (handleEscapeKeyDown(event)) select?.onOpenChange(false);
+    },
+    [select, handleEscapeKeyDown]
+  );
+  const markPopupDismissEvent = useOverlayPopupRegistration(
+    select?.open ?? false,
+    handleRegisteredEscape
+  );
+
   return (
-    <SelectPrimitive.Portal>
+    <SelectPrimitive.Portal container={portalContainer}>
       <SelectPrimitive.Content
         data-slot="select-content"
         data-align-trigger={position === "item-aligned"}
         className={cn(
-          "relative z-50 max-h-(--radix-select-content-available-height) min-w-36 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border border-border bg-popover text-foreground shadow-md duration-100 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+          "relative z-[var(--z-index-dropdown)] max-h-(--radix-select-content-available-height) min-w-36 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border border-border bg-popover text-foreground shadow-md duration-100 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className
         )}
         position={position}
         align={align}
+        collisionPadding={collisionPadding}
+        onEscapeKeyDown={(event) => {
+          if (handleEscapeKeyDown(event)) markPopupDismissEvent(event);
+        }}
         {...props}
       >
         <SelectScrollUpButton />
         <SelectPrimitive.Viewport
           data-position={position}
           className={cn(
-            "p-1 data-[position=popper]:h-(--radix-select-trigger-height) data-[position=popper]:w-full data-[position=popper]:min-w-(--radix-select-trigger-width)",
+            "p-1 data-[position=popper]:min-h-(--radix-select-trigger-height) data-[position=popper]:w-full data-[position=popper]:min-w-(--radix-select-trigger-width)",
             position === "popper" && ""
           )}
         >

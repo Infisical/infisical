@@ -1,14 +1,21 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -28,6 +35,7 @@ import {
   InputGroupInput,
   OrgIcon,
   ProjectIcon,
+  RowLink,
   Skeleton,
   SubOrgIcon,
   Table,
@@ -59,7 +67,6 @@ import { IdentityRoleModal } from "./IdentityRoleModal";
 export const IdentitiesTab = () => {
   const { currentProject } = useProject();
   const { currentOrg, isSubOrganization } = useOrganization();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [isAddIdentityOpen, setIsAddIdentityOpen] = useState(false);
@@ -70,6 +77,7 @@ export const IdentitiesTab = () => {
 
   const removeIdentity = useRemovePamProductIdentityMember();
   const deleteIdentity = useDeleteProjectIdentity();
+  const isRemoving = removeIdentity.isPending || deleteIdentity.isPending;
 
   const filteredIdentities = useMemo(
     () => identities.filter((member) => member.name.toLowerCase().includes(search.toLowerCase())),
@@ -80,6 +88,7 @@ export const IdentitiesTab = () => {
   // orphan them, so they are deleted outright. Org-level identities just lose their membership.
   const isPamManaged = (member: TPamIdentityMember) =>
     member.identityProjectId === currentProject.id;
+  const isRemovingManagedIdentity = identityToRemove ? isPamManaged(identityToRemove) : false;
 
   const renderManagedByBadge = (member: TPamIdentityMember) => {
     if (isPamManaged(member)) {
@@ -106,7 +115,7 @@ export const IdentitiesTab = () => {
     );
   };
 
-  // Rejections propagate to DeleteActionModal, which keeps itself open; the global mutation
+  // Rejections keep the confirm dialog open (callers swallow them); the global mutation
   // error handler owns the toast.
   const handleDeleteIdentity = async () => {
     if (!identityToRemove?.identityId) return;
@@ -206,18 +215,14 @@ export const IdentitiesTab = () => {
                   </TableRow>
                 ))}
               {filteredIdentities.map((member) => (
-                <TableRow
-                  key={member.membershipId}
-                  className="cursor-pointer"
-                  onClick={() =>
-                    navigate({
-                      to: "/organizations/$orgId/pam/identities/$identityId",
-                      params: { orgId: currentOrg.id, identityId: member.identityId! }
-                    })
-                  }
-                >
+                <TableRow key={member.membershipId} linked>
                   <TableCell className="font-medium">
-                    <HighlightText text={member.name} highlight={search} />
+                    <RowLink
+                      to="/organizations/$orgId/pam/identities/$identityId"
+                      params={{ orgId: currentOrg.id, identityId: member.identityId! }}
+                    >
+                      <HighlightText text={member.name} highlight={search} />
+                    </RowLink>
                   </TableCell>
                   <TableCell>
                     <button
@@ -238,7 +243,7 @@ export const IdentitiesTab = () => {
                   <TableCell className="text-sm text-muted">
                     {member.createdAt ? format(new Date(member.createdAt), "MMM d, yyyy") : "—"}
                   </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                  <TableCell data-row-interactive>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <IconButton
@@ -301,31 +306,55 @@ export const IdentitiesTab = () => {
         }}
       />
 
-      {identityToRemove && isPamManaged(identityToRemove) ? (
-        <DeleteActionModal
-          isOpen
-          onChange={(isOpen) => {
-            if (!isOpen) setIdentityToRemove(null);
-          }}
-          title={`Delete ${identityToRemove.name}?`}
-          subTitle="This identity is managed by PAM and will be permanently deleted."
-          deleteKey="delete"
-          buttonText="Delete"
-          onDeleteApproved={handleDeleteIdentity}
-        />
-      ) : (
-        <DeleteActionModal
-          isOpen={!!identityToRemove}
-          onChange={(isOpen) => {
-            if (!isOpen) setIdentityToRemove(null);
-          }}
-          title={`Remove ${identityToRemove?.name ?? "identity"} from PAM?`}
-          subTitle="The identity will lose its PAM access but remain available in your organization."
-          deleteKey="remove"
-          buttonText="Remove"
-          onDeleteApproved={handleDeleteIdentity}
-        />
-      )}
+      <AlertDialog
+        isPending={isRemoving}
+        open={!!identityToRemove}
+        confirmationValue={isRemovingManagedIdentity ? "delete" : "remove"}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setIdentityToRemove(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isRemovingManagedIdentity ? "Delete Identity" : "Remove Identity From PAM"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isRemovingManagedIdentity ? (
+                <>
+                  Permanently delete{" "}
+                  <span className="font-medium text-foreground">{identityToRemove?.name}</span>.
+                  This identity is managed by PAM and cannot be recovered.
+                </>
+              ) : (
+                <>
+                  Remove{" "}
+                  <span className="font-medium text-foreground">
+                    {identityToRemove?.name ?? "this identity"}
+                  </span>{" "}
+                  from PAM. The identity loses its PAM access but remains available in your
+                  organization.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            onConfirm={() => handleDeleteIdentity().catch(() => undefined)}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={(event) => {
+                event.preventDefault();
+                handleDeleteIdentity().catch(() => undefined);
+              }}
+            >
+              {isRemovingManagedIdentity ? "Delete Identity" : "Remove From PAM"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

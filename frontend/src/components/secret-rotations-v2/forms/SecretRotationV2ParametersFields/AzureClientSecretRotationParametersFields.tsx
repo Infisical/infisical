@@ -1,12 +1,17 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
-import { FilterableSelect, FormControl, Tooltip } from "@app/components/v2";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
+import {
+  Combobox,
+  Field,
+  FieldFeedback,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useAzureConnectionListClients } from "@app/hooks/api/appConnections/azure";
-import { TAzureClient } from "@app/hooks/api/appConnections/azure/types";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 export const AzureClientSecretRotationParametersFields = () => {
@@ -27,48 +32,52 @@ export const AzureClientSecretRotationParametersFields = () => {
     <Controller
       name="parameters.objectId"
       control={control}
-      render={({ field: { value, onChange }, fieldState: { error } }) => (
-        <FormControl
-          isError={Boolean(error)}
-          errorText={error?.message}
-          label="Application"
-          helperText={
-            <Tooltip
-              className="max-w-md"
-              content={
-                <>
+      render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+        <Field data-invalid={Boolean(error)}>
+          <FieldLabelWithTooltip htmlFor="azure-application">Application</FieldLabelWithTooltip>
+          <Combobox
+            id="azure-application"
+            isLoading={isClientsPending && Boolean(connectionId)}
+            isDisabled={!connectionId}
+            value={clients?.find((client) => client.id === value) ?? null}
+            onBlur={onBlur}
+            onValueChange={(option) => {
+              onChange(option.id);
+              setValue("parameters.appName", option.name);
+              setValue("parameters.clientId", option.appId);
+            }}
+            isClearable={false}
+            options={clients}
+            placeholder="Select an application..."
+            getOptionLabel={(option) => option.name}
+            getOptionValue={(option) => option.id}
+            getOptionKeywords={(option) => [option.id]}
+            isError={Boolean(error)}
+            aria-describedby="azure-application-feedback"
+          />
+          <FieldFeedback
+            id="azure-application-feedback"
+            description={
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="inline-flex items-center gap-1 text-left">
+                    <span>Don&#39;t see the application you&#39;re looking for?</span>
+                    <InfoIcon className="size-3 shrink-0 text-muted" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
                   Ensure that your connection has the{" "}
                   <span className="font-medium">
                     Application.ReadWrite.All, Directory.ReadWrite.All,
                     Application.ReadWrite.OwnedBy, user_impersonation and User.Read
                   </span>{" "}
                   permissions and the application exists in Azure.
-                </>
-              }
-            >
-              <div>
-                <span>Don&#39;t see the application you&#39;re looking for?</span>{" "}
-                <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-              </div>
-            </Tooltip>
-          }
-        >
-          <FilterableSelect
-            menuPlacement="top"
-            isLoading={isClientsPending && Boolean(connectionId)}
-            isDisabled={!connectionId}
-            value={clients?.find((client) => client.id === value) ?? null}
-            onChange={(option) => {
-              onChange((option as SingleValue<TAzureClient>)?.id ?? null);
-              setValue("parameters.appName", (option as SingleValue<TAzureClient>)?.name ?? "");
-              setValue("parameters.clientId", (option as SingleValue<TAzureClient>)?.appId ?? "");
-            }}
-            options={clients}
-            placeholder="Select an application..."
-            getOptionLabel={(option) => option.name}
-            getOptionValue={(option) => option.id}
+                </TooltipContent>
+              </Tooltip>
+            }
+            error={error?.message}
           />
-        </FormControl>
+        </Field>
       )}
     />
   );

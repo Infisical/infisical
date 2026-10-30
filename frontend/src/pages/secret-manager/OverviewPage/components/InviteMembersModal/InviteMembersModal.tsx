@@ -1,48 +1,41 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InfoIcon, SendHorizontalIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
-import Telemetry from "@app/components/utilities/telemetry/Telemetry";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  EmailInput,
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
-  TextArea,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject, useProjectPermission } from "@app/context";
-import { emailListSchema, parseEmailList } from "@app/helpers/email";
+import { emailListSchema, MAX_INVITE_EMAILS } from "@app/helpers/email";
 import { useAddUserToWsNonE2EE, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
+import { SecretsActivationProperties } from "@app/lib/analytics/events";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
-
-// PostHog event names for the secrets activation nudge, so we can measure the
-// shown -> invited/dismissed conversion funnel of this modal.
-const ACTIVATION_EVENTS = {
-  Viewed: "Secrets Activation Modal Viewed",
-  Invited: "Secrets Activation Modal Members Invited",
-  Dismissed: "Secrets Activation Modal Dismissed"
-} as const;
 
 const DEFAULT_PROJECT_ROLE = { slug: "member", name: "Member" };
 
 const inviteMembersFormSchema = z.object({
-  emails: emailListSchema,
+  emails: emailListSchema({ max: MAX_INVITE_EMAILS, isRequired: true }),
   projectRole: z
     .object({
       slug: z.string().min(1),
@@ -54,11 +47,12 @@ const inviteMembersFormSchema = z.object({
 type TInviteMembersForm = z.infer<typeof inviteMembersFormSchema>;
 
 type Props = {
+  experimentVariant: "control" | null;
   popUp: UsePopUpState<["inviteMembers"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["inviteMembers"]>, state?: boolean) => void;
 };
 
-export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission: projectPermission } = useProjectPermission();
@@ -93,20 +87,30 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
     formState: { isSubmitting }
   } = useForm<TInviteMembersForm>({
     resolver: zodResolver(inviteMembersFormSchema),
-    defaultValues: { emails: "", projectRole: DEFAULT_PROJECT_ROLE }
+    defaultValues: { emails: [], projectRole: DEFAULT_PROJECT_ROLE }
   });
 
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
-  const telemetry = new Telemetry().getInstance();
-  const baseEventProps = { orgId, projectId, projectType: currentProject?.type };
+  const baseEventProps: SecretsActivationProperties = {
+    projectId,
+    projectType: currentProject?.type,
+    presentation: "modal",
+    experiment_variant: experimentVariant,
+    "$feature/secrets-activation-presentation": experimentVariant
+  };
+  const hasViewedRef = useRef(false);
 
   const isOpen = popUp?.inviteMembers?.isOpen;
-  // Fire once each time the nudge surfaces. The modal opens at most once per session
-  // (see useSecretsActivationNudge), so guarding on the open state is sufficient.
   useEffect(() => {
-    if (isOpen) telemetry.capture(ACTIVATION_EVENTS.Viewed, baseEventProps);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (isOpen && !hasViewedRef.current) {
+      hasViewedRef.current = true;
+      analytics.captureForOrganization(
+        AnalyticsEvent.SecretsActivationModalViewed,
+        orgId,
+        baseEventProps
+      );
+    }
   }, [isOpen]);
 
   const onInvite = async ({ emails, projectRole }: TInviteMembersForm) => {
@@ -121,11 +125,9 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
       return;
     }
 
-    // emails is already trimmed + lowercased by the schema; parseEmailList splits the entries.
-    const usernames = parseEmailList(emails);
-    if (usernames.length) {
+    if (emails.length) {
       await addUserToProject({
-        usernames,
+        usernames: emails,
         orgId: currentOrg.id,
         projectId: currentProject.id,
         projectType: currentProject.type,
@@ -133,9 +135,9 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
       });
     }
 
-    telemetry.capture(ACTIVATION_EVENTS.Invited, {
+    analytics.captureForOrganization(AnalyticsEvent.SecretsActivationModalMembersInvited, orgId, {
       ...baseEventProps,
-      invitedCount: usernames.length
+      invitedCount: emails.length
     });
 
     createNotification({
@@ -171,16 +173,16 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
           <Controller
             control={control}
             name="emails"
-            render={({ field, fieldState: { error } }) => (
+            render={({ field: { value, onChange, ref }, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="invite-members-emails">Emails</FieldLabel>
-                <TextArea
+                <EmailInput
+                  ref={ref}
                   id="invite-members-emails"
-                  rows={1}
-                  className="min-h-8"
+                  value={value}
+                  onValueChange={onChange}
                   isError={Boolean(error)}
                   placeholder="email@example.com, email2@example.com..."
-                  {...field}
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>
@@ -207,17 +209,21 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
                     </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
-                <FilterableSelect
-                  inputId="invite-members-project-role"
+                <Combobox
+                  id="invite-members-project-role"
                   isLoading={Boolean(projectId) && isProjectRolesLoading}
-                  value={value}
-                  onChange={onChange}
+                  value={filteredRoles.find((role) => role.slug === value?.slug) ?? value}
+                  isClearable={false}
+                  onValueChange={onChange}
                   options={filteredRoles}
+                  includeMissingSelectedOptions={false}
                   getOptionValue={(option) => option.slug}
+                  getOptionKeywords={(option) => [option.slug]}
                   getOptionLabel={(option) => option.name}
                   placeholder="Select role..."
+                  searchAriaLabel="Search roles"
                   isError={Boolean(error)}
-                  components={{ Option: RoleOption }}
+                  renderOption={(option) => <RoleOptionContent role={option} />}
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>
@@ -228,7 +234,11 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
               variant="ghost"
               type="button"
               onClick={() => {
-                telemetry.capture(ACTIVATION_EVENTS.Dismissed, baseEventProps);
+                analytics.captureForOrganization(
+                  AnalyticsEvent.SecretsActivationModalDismissed,
+                  orgId,
+                  baseEventProps
+                );
                 handlePopUpToggle("inviteMembers", false);
                 reset();
               }}

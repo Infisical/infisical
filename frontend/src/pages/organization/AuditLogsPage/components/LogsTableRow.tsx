@@ -67,7 +67,12 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone, onClick }: Props) 
           <Tag label="event" value={auditLog.event.type} />
           <Tag label="actor" value={auditLog.actor.type} />
           {auditLog.actor.type === ActorType.USER && (
-            <Tag label="user_email" value={auditLog.actor.metadata.email} />
+            <>
+              <Tag label="user_email" value={auditLog.actor.metadata.email} />
+              {auditLog.actor.metadata.oauthClientId && (
+                <Tag label="oauth_application" value={auditLog.actor.metadata.oauthClientId} />
+              )}
+            </>
           )}
           {auditLog.actor.type === ActorType.IDENTITY && (
             <Tag label="identity_name" value={auditLog.actor.metadata.name} />
@@ -81,9 +86,12 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone, onClick }: Props) 
           {auditLog.actor.type === ActorType.EST_ACCOUNT && (
             <Tag label="est_profile_id" value={auditLog.actor.metadata.profileId} />
           )}
+          {auditLog.actor.type === ActorType.AGENT_VAULT_PROXY && (
+            <Tag label="proxy_id" value={auditLog.actor.metadata.agentVaultProxyId} />
+          )}
         </div>
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell variant="action">
         <ChevronRight className="inline-block size-4 text-muted" />
       </TableCell>
     </TableRow>

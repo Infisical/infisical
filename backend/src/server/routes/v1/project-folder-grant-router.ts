@@ -12,6 +12,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     url: "/",
     config: { rateLimit: readLimit },
     schema: {
+      operationId: "listProjectFolderGrants",
       querystring: z.object({
         sourceProjectId: z.string()
       }),
@@ -28,7 +29,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const grants = await server.services.projectFolderGrant.listGrantsByProject({
         actorId: req.permission.id,
@@ -46,6 +47,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     url: "/received",
     config: { rateLimit: readLimit },
     schema: {
+      operationId: "listReceivedProjectFolderGrants",
       querystring: z.object({
         targetProjectId: z.string()
       }),
@@ -63,7 +65,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const grants = await server.services.projectFolderGrant.listGrantsForTargetProject({
         actorId: req.permission.id,
@@ -81,6 +83,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "createProjectFolderGrant",
       body: z.object({
         sourceProjectId: z.string(),
         environment: z.string(),
@@ -125,6 +128,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     url: "/:grantId/usage",
     config: { rateLimit: readLimit },
     schema: {
+      operationId: "getProjectFolderGrantUsage",
       params: z.object({
         grantId: z.string().uuid()
       }),
@@ -138,7 +142,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.projectFolderGrant.getGrantUsage({
         actorId: req.permission.id,
@@ -156,6 +160,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     url: "/:grantId",
     config: { rateLimit: writeLimit },
     schema: {
+      operationId: "deleteProjectFolderGrant",
       params: z.object({
         grantId: z.string().uuid()
       }),

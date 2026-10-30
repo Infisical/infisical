@@ -15,10 +15,11 @@ import {
   IconButton,
   Input,
   Label,
-  Switch
+  Toggle
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { TProjectIdentity, useUpdateProjectIdentity } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
@@ -41,6 +42,9 @@ type ContentProps = {
 
 export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
   const { currentProject } = useProject();
+  let accentVariant: "av" | "ss" | "project" = "project";
+  if (currentProject.type === ProjectType.AgentVault) accentVariant = "av";
+  else if (currentProject.type === ProjectType.SecretScanning) accentVariant = "ss";
 
   const { mutateAsync: updateMutateAsync } = useUpdateProjectIdentity();
 
@@ -81,15 +85,8 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
       });
 
       reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to update machine identity";
-
-      createNotification({
-        text,
-        type: "error"
-      });
+    } catch {
+      // Error is handled by the mutation's onError handler
     }
   };
 
@@ -103,7 +100,14 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
           <Field>
             <FieldLabel>Name</FieldLabel>
             <FieldContent>
-              <Input {...field} autoFocus placeholder="Machine 1" isError={Boolean(error)} />
+              <Input
+                {...field}
+                autoFocus
+                placeholder="Machine 1"
+                isError={Boolean(error)}
+                autoComplete="off"
+                name="project-identity-name"
+              />
             </FieldContent>
             {error && <FieldError>{error.message}</FieldError>}
           </Field>
@@ -114,9 +118,9 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
         name="hasDeleteProtection"
         render={({ field: { onChange, value } }) => (
           <Field orientation="horizontal">
-            <Switch
+            <Toggle
               id="delete-protection-enabled"
-              variant="project"
+              variant={accentVariant}
               checked={value}
               onCheckedChange={onChange}
             />
@@ -203,7 +207,12 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          type="submit"
+          variant={accentVariant}
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           Update
         </Button>
       </div>

@@ -8,12 +8,12 @@ It eliminates the need to modify application logic by enabling clients to decide
 
 ![agent diagram](/images/agent/infisical-agent-diagram.png)
 
-## Key Features
+## Key features
 
 - **Token lifecycle management**: Automatically authenticates with Infisical and deposits renewed access tokens at specified path for applications to consume
 - **Templating**: Renders secrets and dynamic secret leases via user provided templates to desired formats for applications to consume
 
-## Token Renewal
+## Token renewal
 
 The Infisical agent can help manage the life cycle of access tokens. The token renewal process is split into two main components: a `Method`, which is the authentication process suitable for your current setup, and `Sinks`, which are the places where the agent deposits the new access token whenever it receives updates.
 
@@ -43,7 +43,7 @@ It then formats these secrets using the user provided templates and writes the f
 
 ### Available secret template functions
 
-The secret template functions is what you will use to fetch resources such as static secrets and dynamic secret leases from Infisical. Below is a list of the available secret template functions that you can use in your templates.
+The secret template functions is what you'll use to fetch resources such as static secrets and dynamic secret leases from Infisical. Below is a list of the available secret template functions that you can use in your templates.
 
 
 <AccordionGroup>
@@ -180,7 +180,7 @@ The secret template functions is what you will use to fetch resources such as st
 
 The Infisical Agent supports clientside caching of Dynamic Secret leases. If the cache is enabled, the agent will persist the dynamic secret leases to the cache across restarts of the agent.
 
-### Persistent Caching
+### Persistent caching
 
 The Agent currently only supports persistent caching. To utilize persistent caching, you must be within a Kubernetes environment. We recommend using the [Infisical Agent Injector](/integrations/platforms/kubernetes-injector) to inject the agent into pods within your Kubernetes cluster on demand.
 
@@ -192,7 +192,7 @@ The cache will also automatically evict cached data that has gone stale or is ab
 If a stale dynamic secret lease is detected, it will be automatically evicted from the cache and replaced with a new up-to-date lease.
 
 
-### Cache Configuration
+### Cache configuration
 
 Configuring the cache is done through the agent configuration file. The following fields are available to configure the cache:
 
@@ -483,9 +483,9 @@ The Infisical agent supports multiple authentication methods. Below are the avai
 
 ## Quick start Infisical Agent
 
-To install the Infisical agent, you must first install the [Infisical CLI](/cli/overview) in the desired environment where you'd like the agent to run. This is because the Infisical agent is a sub-command of the Infisical CLI.
+To install the Infisical agent, you must first install the [Infisical CLI](/cli/install) in the desired environment where you'd like the agent to run. This is because the Infisical agent is a sub-command of the Infisical CLI.
 
-Once you have the CLI installed, you will need to provision programmatic access for the agent via [Universal Auth](/documentation/platform/identities/universal-auth). To obtain a **Client ID** and a **Client Secret**, follow the step by step guide outlined [here](/documentation/platform/identities/universal-auth).
+Once you have the CLI installed, you'll need to provision programmatic access for the agent via [Universal Auth](/documentation/platform/identities/universal-auth). To obtain a **Client ID** and a **Client Secret**, follow the step by step guide outlined [here](/documentation/platform/identities/universal-auth).
 
 Next, create agent config file as shown below. The example agent configuration file defines the token authentication method, one sink location, and a secret template.
 
@@ -528,3 +528,34 @@ After defining the agent configuration file, run the command below pointing to t
 ```bash
 infisical agent --config example-agent-config-file.yaml
 ```
+
+## Run the agent as a service
+
+To keep the agent running after you close the terminal, and start it again when the machine boots, install it as a service with [infisical agent service install](/cli/reference#agent-service-install). On Linux, the agent runs as a systemd service. On Windows, it runs as a Windows service.
+
+<Tabs>
+  <Tab title="Linux">
+    The service can't read `/home`, and it doesn't share `/tmp` or `/var/tmp` with the rest of the machine. Keep the config, and the files the agent reads and writes, in another directory, such as `/etc/infisical/agents`.
+
+    ```bash
+    sudo infisical agent service install my-agent --config=/etc/infisical/agents/my-agent.yaml
+    sudo infisical agent service start my-agent
+    ```
+
+    To read the agent's logs, run `sudo journalctl -u my-agent`.
+  </Tab>
+  <Tab title="Windows">
+    Open PowerShell with **Run as administrator**, then run:
+
+    ```powershell
+    infisical agent service install my-agent --config=C:\infisical\agent-config.yaml
+    infisical agent service start my-agent
+    ```
+
+    The agent logs to `C:\ProgramData\Infisical\Agent\my-agent.log` and also writes errors to the Windows Event Log. To upgrade the service, uninstall it and install it again with the new `infisical.exe`.
+  </Tab>
+</Tabs>
+
+The service runs its own copy of your config that only administrators can change, and `install` prints where the copy is. Relative paths in the copy still resolve from the directory of the original config. To change the config, edit the original, then uninstall and install the service again. If you edit the copy instead, stop and start the service to apply the change, and also make the change in the original, because uninstalling the service deletes the copy.
+
+To stop the service or remove it, use [infisical agent service stop](/cli/reference#agent-service-stop) or [infisical agent service uninstall](/cli/reference#agent-service-uninstall).

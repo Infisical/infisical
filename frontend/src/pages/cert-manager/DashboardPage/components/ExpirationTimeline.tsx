@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "@tanstack/react-router";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 import {
@@ -16,11 +17,13 @@ import {
 } from "@app/components/v3";
 import type { TExpirationBucket } from "@app/hooks/api/certificates";
 
-import { CHART_COLORS, CHART_COLORS_HEX } from "./chart-theme";
+import { CHART_COLORS_HEX, formatShare } from "./chart-theme";
+import type { InventoryFilters, InventoryLink } from "./inventory-link";
 
 type Props = {
   buckets: TExpirationBucket[];
-  onNavigate: (filters: Record<string, string | undefined>) => void;
+  getLink: (filters: InventoryFilters) => InventoryLink;
+  onNavigate: (filters: InventoryFilters) => void;
 };
 
 const DONUT_SEGMENTS = [
@@ -41,7 +44,7 @@ const DONUT_SEGMENTS = [
   }
 ];
 
-export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
+export const ExpirationTimeline = ({ buckets, getLink, onNavigate }: Props) => {
   const bucketMap = useMemo(() => {
     const map = new Map<string, number>();
     buckets.forEach((b) => map.set(b.bucket, b.count));
@@ -53,7 +56,6 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
       DONUT_SEGMENTS.map((seg, idx) => ({
         label: seg.label,
         count: seg.sourceBuckets.reduce((sum, key) => sum + (bucketMap.get(key) || 0), 0),
-        color: CHART_COLORS[idx % CHART_COLORS.length],
         segIdx: idx,
         filter: seg.filter
       })),
@@ -64,9 +66,9 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
   const total = chartData.reduce((sum, d) => sum + d.count, 0);
 
   return (
-    <Card className="flex h-auto min-w-[250px] flex-1 flex-col">
+    <Card className="flex h-auto min-w-0 flex-col">
       <CardHeader className="pb-0">
-        <CardTitle className="text-base font-semibold">Expiration Timeline</CardTitle>
+        <CardTitle className="text-base font-normal">Expiration Timeline</CardTitle>
         <CardDescription className="text-xs">Certificates by time to expiry</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 items-center pt-2">
@@ -132,20 +134,19 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
             </div>
             <div className="min-w-0 flex-1">
               <div className="space-y-1.5">
-                {chartData.map((item, idx) => {
-                  const pct = total > 0 ? Math.round((item.count / total) * 100) : 0;
+                {chartData.map((item) => {
+                  const pct = formatShare(item.count, total);
                   return (
-                    <button
+                    <Link
                       key={item.label}
-                      type="button"
+                      {...getLink(item.filter)}
                       className="flex w-full cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs transition-colors hover:bg-foreground/5"
-                      onClick={() => {
-                        if (item.filter) onNavigate(item.filter);
-                      }}
                     >
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                        style={{
+                          backgroundColor: CHART_COLORS_HEX[item.segIdx % CHART_COLORS_HEX.length]
+                        }}
                       />
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -155,11 +156,11 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
                         </TooltipTrigger>
                         <TooltipContent side="top">{item.label}</TooltipContent>
                       </Tooltip>
-                      <span className="shrink-0 text-right text-muted">{pct}%</span>
+                      <span className="shrink-0 text-right text-muted">{pct}</span>
                       <span className="shrink-0 text-right font-medium text-foreground">
                         {item.count}
                       </span>
-                    </button>
+                    </Link>
                   );
                 })}
               </div>

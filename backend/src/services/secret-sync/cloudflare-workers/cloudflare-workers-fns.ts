@@ -1,21 +1,29 @@
 import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
-import { applyJitter } from "@app/lib/dates";
-import { delay as delayMs } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { CloudflareWorkersVariableType } from "./cloudflare-workers-constants";
 import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-types";
 
 const CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE = 10215;
 const CLOUDFLARE_SECRET_TYPE = "secret_text";
+const VARIABLE_BINDING_TYPES = new Set<string>(Object.values(CloudflareWorkersVariableType));
+// Cloudflare rejects secrets-bulk requests carrying more than 100 secrets (error code 100160).
+const CLOUDFLARE_BULK_SECRETS_LIMIT = 100;
 
-type TCloudflareErrorResponse = {
+type TCloudflareApiResponse = {
+  result?: unknown;
+  success?: boolean;
   errors?: Array<{ code: number; message: string }>;
+  messages?: string[];
 };
 
 type TCloudflareSecretMetadata = {
@@ -44,20 +52,53 @@ const $validateJsonBindings = (
   }
 };
 
-const throwOnUndeployedVersionError = (err: unknown) => {
-  if (
-    err instanceof AxiosError &&
-    (err.response?.data as TCloudflareErrorResponse)?.errors?.some(
-      (e) => e.code === CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE
-    )
-  ) {
-    throw new BadRequestError({
-      message:
-        "Cloudflare rejected the secret update because the latest Worker version is not deployed; deploy the latest Worker version, then retry the secret sync."
-    });
+const $getCloudflareErrors = (data: unknown): Array<{ code: number; message: string }> => {
+  if (typeof data !== "object" || data === null) return [];
+  const { errors } = data as TCloudflareApiResponse;
+  if (!Array.isArray(errors)) return [];
+  return errors.filter((error) => typeof error?.message === "string");
+};
+
+const $throwCloudflareError = (
+  errors: Array<{ code: number; message: string }>,
+  cause: unknown,
+  secretKey?: string
+): never => {
+  const message = errors.some((e) => e.code === CLOUDFLARE_UNDEPLOYED_VERSION_ERROR_CODE)
+    ? "Cloudflare rejected the secret update because the latest Worker version is not deployed; deploy the latest Worker version, then retry the secret sync."
+    : errors.map((e) => e.message).join(". ");
+
+  throw new SecretSyncError({
+    message,
+    error: cause,
+    secretKey,
+    shouldRetry: false
+  });
+};
+
+const throwOnCloudflareRequestError = (err: unknown, secretKey?: string): never => {
+  if (err instanceof AxiosError) {
+    const errors = $getCloudflareErrors(err.response?.data);
+    if (errors.length > 0) {
+      $throwCloudflareError(errors, err, secretKey);
+    }
   }
 
   throw err;
+};
+
+const $validateCloudflareResponse = (data: unknown) => {
+  if (typeof data !== "object" || data === null) return;
+  if ((data as TCloudflareApiResponse).success === false) {
+    const errors = $getCloudflareErrors(data);
+    if (errors.length > 0) {
+      $throwCloudflareError(errors, undefined);
+    }
+    throw new SecretSyncError({
+      message: "Cloudflare returned an unsuccessful response without error details.",
+      shouldRetry: false
+    });
+  }
 };
 
 type TCloudflareBindings = {
@@ -109,30 +150,167 @@ const getCloudflareBindings = async (
   return { secrets, nonSecretBindings };
 };
 
+const VARIABLE_TYPE_LABELS: Record<string, string> = {
+  [CloudflareWorkersVariableType.Secret]: "secret",
+  [CloudflareWorkersVariableType.Text]: "text",
+  [CloudflareWorkersVariableType.Json]: "JSON"
+};
+
+// Changing a variable's type can break the Worker, since a JSON variable reaches it as a parsed object, or
+// expose a secret's value in the dashboard. A sync never changes one; it fails before writing anything.
+const $throwOnTypeConflicts = (conflicts: Array<{ name: string; type: string }>, fix: string) => {
+  if (conflicts.length === 0) return;
+
+  throw new SecretSyncError({
+    message: `The following secrets already exist on the Cloudflare Worker as a different type: ${conflicts
+      .map(({ name, type }) => `${name} (${VARIABLE_TYPE_LABELS[type]})`)
+      .join(", ")}. Infisical doesn't change a variable's type, so nothing was synced. ${fix}`,
+    shouldRetry: false
+  });
+};
+
+// A text or JSON sync only owns variables of its type, so syncs of different types can share a Worker.
+const $getManagedBindings = (
+  secretSync: TCloudflareWorkersSyncWithCredentials,
+  { secrets, nonSecretBindings }: TCloudflareBindings
+) => {
+  const { variableType = CloudflareWorkersVariableType.Secret } = secretSync.destinationConfig;
+
+  if (variableType !== CloudflareWorkersVariableType.Secret) {
+    return nonSecretBindings.filter((binding) => binding.type === variableType);
+  }
+
+  return secretSync.syncOptions.syncNonSecretBindings ? [...secrets, ...nonSecretBindings] : secrets;
+};
+
+// Text and JSON variables are bindings in the Worker's settings, which take the full binding list. One
+// PATCH therefore creates and updates them and deletes the ones no longer in Infisical.
+const $syncVariableBindings = async (
+  secretSync: TCloudflareWorkersSyncWithCredentials,
+  secretMap: TSecretMap,
+  variableType: CloudflareWorkersVariableType.Text | CloudflareWorkersVariableType.Json
+) => {
+  const {
+    connection: {
+      credentials: { apiToken, accountId }
+    },
+    destinationConfig: { scriptId },
+    syncOptions: { disableSecretDeletion, keySchema }
+  } = secretSync;
+
+  const variableBindings: Array<{ type: string; name: string; text?: string; json?: unknown }> = [];
+  const invalidJsonKeys: string[] = [];
+
+  for (const [name, { value }] of Object.entries(secretMap)) {
+    if (variableType === CloudflareWorkersVariableType.Text) {
+      variableBindings.push({ type: variableType, name, text: value });
+    } else {
+      try {
+        variableBindings.push({ type: variableType, name, json: JSON.parse(value) as unknown });
+      } catch {
+        invalidJsonKeys.push(name);
+      }
+    }
+  }
+
+  if (invalidJsonKeys.length > 0) {
+    throw new SecretSyncError({
+      message: `The following secrets are not valid JSON, so they cannot be synced as Cloudflare Workers JSON variables: ${invalidJsonKeys.join(", ")}. Fix their values in Infisical or change the sync's variable type.`,
+      shouldRetry: false
+    });
+  }
+
+  const secretMapKeys = new Set(Object.keys(secretMap));
+  const isDeleted = (binding: { type: string; name: string }) =>
+    !disableSecretDeletion &&
+    binding.type === variableType &&
+    matchesSchema(binding.name, secretSync.environment?.slug || "", keySchema);
+
+  const settingsUrl = `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`;
+
+  try {
+    const { data: settingsData } = await request.get<{
+      result: { bindings: Array<{ type: string; name: string; text?: string; json?: string }> };
+    }>(settingsUrl, {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        Accept: "application/json"
+      }
+    });
+
+    const existingBindings = settingsData.result.bindings ?? [];
+
+    const conflictingKeys = existingBindings
+      .filter((binding) => secretMapKeys.has(binding.name) && !VARIABLE_BINDING_TYPES.has(binding.type))
+      .map((binding) => binding.name);
+
+    if (conflictingKeys.length > 0) {
+      throw new SecretSyncError({
+        message: `The following secrets have the same name as another binding on the Cloudflare Worker, such as a KV namespace or a service: ${conflictingKeys.join(", ")}. Rename the secrets in Infisical, or use a key schema to change their names in Cloudflare.`,
+        shouldRetry: false
+      });
+    }
+
+    $throwOnTypeConflicts(
+      existingBindings.filter((binding) => secretMapKeys.has(binding.name) && binding.type !== variableType),
+      "Delete them in Cloudflare or change the sync's variable type, then sync again."
+    );
+
+    const bindings = [
+      ...existingBindings.filter((binding) => !secretMapKeys.has(binding.name) && !isDeleted(binding)),
+      ...variableBindings
+    ];
+
+    const formData = new FormData();
+    formData.append("settings", new Blob([JSON.stringify({ bindings })], { type: "application/json" }));
+
+    const { data: settingsPatchData } = await request.patch<TCloudflareApiResponse>(settingsUrl, formData, {
+      headers: {
+        Authorization: `Bearer ${apiToken}`
+      }
+    });
+    $validateCloudflareResponse(settingsPatchData);
+  } catch (err) {
+    throwOnCloudflareRequestError(err);
+  }
+};
+
 export const CloudflareWorkersSyncFns = {
-  syncSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection: {
         credentials: { apiToken, accountId }
       },
-      destinationConfig: { scriptId }
+      destinationConfig: { scriptId, variableType }
     } = secretSync;
 
+    if (variableType === CloudflareWorkersVariableType.Text || variableType === CloudflareWorkersVariableType.Json) {
+      await $syncVariableBindings(secretSync, secretMap, variableType);
+      return;
+    }
+
     const shouldSyncNonSecretBindings = Boolean(secretSync.syncOptions.syncNonSecretBindings);
-    const { secrets: existingSecretBindings, nonSecretBindings } = await getCloudflareBindings(secretSync);
+    const cloudflareBindings = await getCloudflareBindings(secretSync);
 
-    const existingSecrets = shouldSyncNonSecretBindings
-      ? [...existingSecretBindings, ...nonSecretBindings]
-      : existingSecretBindings;
+    const existingSecrets = $getManagedBindings(secretSync, cloudflareBindings);
 
-    const nonSecretBindingKeys = new Set(nonSecretBindings.map((b) => b.key));
+    const nonSecretBindingKeys = new Set(cloudflareBindings.nonSecretBindings.map((b) => b.key));
     const existingSecretsMap = Object.fromEntries(existingSecrets.map(({ key, type }) => [key, type]));
     const secretMapKeys = new Set(Object.keys(secretMap));
 
-    // We cannot sync secrets that have the same name as a non-secret
-    // if shouldSyncNonSecretBindings = false. This happens because
-    // Cloudflare will reject the request due to name conflicts. A secret
-    // cannot have the same name as a non-secret variable.
+    // With shouldSyncNonSecretBindings on, same-name plaintext and JSON variables are updated as they are.
+    // Otherwise the sync fails rather than change their type, except a sync created before the type could be
+    // chosen (no variableType), which keeps skipping them as it always has.
+    if (!shouldSyncNonSecretBindings && variableType) {
+      $throwOnTypeConflicts(
+        cloudflareBindings.nonSecretBindings
+          .filter((binding) => secretMapKeys.has(binding.key))
+          .map(({ key, type }) => ({ name: key, type })),
+        'Delete them in Cloudflare, change the sync\'s variable type, or turn on "Sync plaintext and JSON variables" to update them as they are.'
+      );
+    }
+
     const syncableEntries = Object.entries(secretMap).filter(
       ([key]) => shouldSyncNonSecretBindings || !nonSecretBindingKeys.has(key)
     );
@@ -185,7 +363,7 @@ export const CloudflareWorkersSyncFns = {
           new Blob([JSON.stringify({ bindings: updatedBindings })], { type: "application/json" })
         );
 
-        await request.patch(
+        const { data: settingsPatchData } = await request.patch<TCloudflareApiResponse>(
           `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`,
           formData,
           {
@@ -194,57 +372,78 @@ export const CloudflareWorkersSyncFns = {
             }
           }
         );
+        $validateCloudflareResponse(settingsPatchData);
       }
 
-      /* eslint-disable no-await-in-loop */
+      // Build the bulk secrets payload using JSON Merge Patch (RFC 7396):
+      // - present keys with an object value are created/updated
+      // - keys set to null are deleted
+      // - omitted keys are left unchanged
+      // Null-prototype object so secret names like "__proto__" are stored as regular properties.
+      const bulkSecrets: Record<string, { name: string; text: string; type: string } | null> = Object.create(
+        null
+      ) as Record<string, { name: string; text: string; type: string } | null>;
+
       for (const [key, val] of secretEntries) {
-        await delayMs(Math.max(0, applyJitter(100, 200)));
-        await request.put(
-          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets`,
-          { name: key, text: val.value, type: CLOUDFLARE_SECRET_TYPE },
-          {
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json"
-            }
-          }
-        );
+        bulkSecrets[key] = { name: key, text: val.value, type: CLOUDFLARE_SECRET_TYPE };
       }
-      /* eslint-enable no-await-in-loop */
+
+      if (!secretSync.syncOptions.disableSecretDeletion) {
+        const secretTypeToDelete = existingSecrets.filter((existingSecret) => {
+          if (existingSecret.type !== CLOUDFLARE_SECRET_TYPE) return false;
+          const isManagedBySchema = matchesSchema(
+            existingSecret.key,
+            secretSync.environment?.slug || "",
+            secretSync.syncOptions.keySchema
+          );
+          return !secretMapKeys.has(existingSecret.key) && isManagedBySchema;
+        });
+
+        for (const secret of secretTypeToDelete) {
+          bulkSecrets[secret.key] = null;
+        }
+      }
+
+      for await (const batch of chunkArray(Object.entries(bulkSecrets), CLOUDFLARE_BULK_SECRETS_LIMIT)) {
+        const batchSecrets = Object.create(null) as typeof bulkSecrets;
+        for (const [key, val] of batch) {
+          batchSecrets[key] = val;
+        }
+
+        const [firstSecretKey] = batch[0];
+        try {
+          const { data } = await request.patch<TCloudflareApiResponse>(
+            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets-bulk`,
+            { secrets: batchSecrets },
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                "Content-Type": "application/json"
+              }
+            }
+          );
+          $validateCloudflareResponse(data);
+        } catch (err) {
+          throwOnCloudflareRequestError(err, firstSecretKey);
+        }
+      }
     } catch (err) {
-      throwOnUndeployedVersionError(err);
+      throwOnCloudflareRequestError(err);
     }
 
     if (!secretSync.syncOptions.disableSecretDeletion) {
-      const secretsToDelete = existingSecrets.filter((existingSecret) => {
+      const bindingTypeToDelete = existingSecrets.filter((existingSecret) => {
+        if (existingSecret.type === CLOUDFLARE_SECRET_TYPE) return false;
         const isManagedBySchema = matchesSchema(
           existingSecret.key,
           secretSync.environment?.slug || "",
           secretSync.syncOptions.keySchema
         );
-        const isInNewSecretMap = secretMapKeys.has(existingSecret.key);
-        return !isInNewSecretMap && isManagedBySchema;
+        return !secretMapKeys.has(existingSecret.key) && isManagedBySchema;
       });
 
-      const secretTypeToDelete = secretsToDelete.filter((s) => s.type === CLOUDFLARE_SECRET_TYPE);
-      const bindingTypeToDelete = secretsToDelete.filter((s) => s.type !== CLOUDFLARE_SECRET_TYPE);
-
-      try {
-        /* eslint-disable no-await-in-loop */
-        for (const secret of secretTypeToDelete) {
-          await delayMs(Math.max(0, applyJitter(100, 200)));
-          await request.delete(
-            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${secret.key}`,
-            {
-              headers: {
-                Authorization: `Bearer ${apiToken}`
-              }
-            }
-          );
-        }
-        /* eslint-enable no-await-in-loop */
-
-        if (bindingTypeToDelete.length > 0) {
+      if (bindingTypeToDelete.length > 0) {
+        try {
           const bindingKeysToDelete = new Set(bindingTypeToDelete.map((b) => b.key));
 
           const { data: settingsData } = await request.get<{
@@ -278,9 +477,9 @@ export const CloudflareWorkersSyncFns = {
               }
             }
           );
+        } catch (err) {
+          throwOnCloudflareRequestError(err);
         }
-      } catch (err) {
-        throwOnUndeployedVersionError(err);
       }
     }
   },
@@ -289,7 +488,8 @@ export const CloudflareWorkersSyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  removeSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection: {
         credentials: { apiToken, accountId }
@@ -297,12 +497,7 @@ export const CloudflareWorkersSyncFns = {
       destinationConfig: { scriptId }
     } = secretSync;
 
-    const shouldSyncNonSecretBindings = Boolean(secretSync.syncOptions.syncNonSecretBindings);
-    const { secrets: existingSecretBindings, nonSecretBindings } = await getCloudflareBindings(secretSync);
-
-    const existingSecretNames = shouldSyncNonSecretBindings
-      ? [...existingSecretBindings, ...nonSecretBindings]
-      : existingSecretBindings;
+    const existingSecretNames = $getManagedBindings(secretSync, await getCloudflareBindings(secretSync));
 
     const secretMapToRemoveKeys = new Set(Object.keys(secretMap));
 
@@ -319,19 +514,30 @@ export const CloudflareWorkersSyncFns = {
     const bindingTypeToRemove = secretsToRemove.filter((s) => s.type !== CLOUDFLARE_SECRET_TYPE);
 
     try {
-      /* eslint-disable no-await-in-loop */
-      for (const secret of secretTypeToRemove) {
-        await delayMs(Math.max(0, applyJitter(100, 200)));
-        await request.delete(
-          `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets/${secret.key}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiToken}`
+      for await (const batch of chunkArray(secretTypeToRemove, CLOUDFLARE_BULK_SECRETS_LIMIT)) {
+        // Null-prototype object so secret names like "__proto__" are stored as regular properties.
+        const bulkSecrets: Record<string, null> = Object.create(null) as Record<string, null>;
+        for (const secret of batch) {
+          bulkSecrets[secret.key] = null;
+        }
+
+        const firstSecretKey = batch[0].key;
+        try {
+          const { data } = await request.patch<TCloudflareApiResponse>(
+            `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/secrets-bulk`,
+            { secrets: bulkSecrets },
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                "Content-Type": "application/json"
+              }
             }
-          }
-        );
+          );
+          $validateCloudflareResponse(data);
+        } catch (err) {
+          throwOnCloudflareRequestError(err, firstSecretKey);
+        }
       }
-      /* eslint-enable no-await-in-loop */
 
       if (bindingTypeToRemove.length > 0) {
         const bindingKeysToRemove = new Set(bindingTypeToRemove.map((b) => b.key));
@@ -358,7 +564,7 @@ export const CloudflareWorkersSyncFns = {
           new Blob([JSON.stringify({ bindings: filteredBindings })], { type: "application/json" })
         );
 
-        await request.patch(
+        const { data: settingsPatchData } = await request.patch<TCloudflareApiResponse>(
           `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/scripts/${scriptId}/settings`,
           formData,
           {
@@ -367,9 +573,10 @@ export const CloudflareWorkersSyncFns = {
             }
           }
         );
+        $validateCloudflareResponse(settingsPatchData);
       }
     } catch (err) {
-      throwOnUndeployedVersionError(err);
+      throwOnCloudflareRequestError(err);
     }
   }
 };

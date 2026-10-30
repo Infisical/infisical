@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { FolderOpen, SearchIcon, ShieldCheck } from "lucide-react";
 
-import { PageHeader } from "@app/components/v2";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Card,
@@ -31,6 +29,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -40,6 +39,7 @@ import { useListPamPendingMyApproval } from "@app/hooks/api/pam";
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { AccessTypeBadge } from "../components/AccessTypeBadge";
 import { AccountPlatformIcon } from "../components/AccountPlatformIcon";
 import { getRequestStatusInfo } from "../components/approvalRequestStatus";
 import { formatDuration } from "../components/formatDuration";
@@ -71,6 +71,9 @@ const RequestRow = ({
           )}
           {request.accountName ?? "-"}
         </div>
+      </TableCell>
+      <TableCell>
+        <AccessTypeBadge accessType={request.accessType} />
       </TableCell>
       <TableCell className="text-sm">{request.folderName ?? "-"}</TableCell>
       <TableCell className="text-sm">{formatDuration(duration)}</TableCell>
@@ -129,6 +132,7 @@ const RequestTable = ({
         <TableRow>
           <TableHead>Requester</TableHead>
           <TableHead>Account</TableHead>
+          <TableHead>Requesting</TableHead>
           <TableHead>Folder</TableHead>
           <TableHead>Duration</TableHead>
           <TableHead>Requested</TableHead>
@@ -139,7 +143,7 @@ const RequestTable = ({
         {isPending &&
           Array.from({ length: 5 }).map((_, i) => (
             <TableRow key={`skeleton-${i + 1}`}>
-              {Array.from({ length: 6 }).map((__, j) => (
+              {Array.from({ length: 7 }).map((__, j) => (
                 <TableCell key={`cell-${j + 1}`}>
                   <Skeleton className="h-4 w-full" />
                 </TableCell>
@@ -155,7 +159,6 @@ const RequestTable = ({
 };
 
 export const PamApprovalRequestsPage = () => {
-  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
   const [selectedRequest, setSelectedRequest] = useState<TPamAccessRequest | null>(null);
@@ -182,7 +185,6 @@ export const PamApprovalRequestsPage = () => {
     const rest = Object.fromEntries(
       Object.entries(searchParams).filter(([k]) => k !== "requestId")
     );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     navigate({ search: rest as any, replace: true });
   };
 
@@ -209,9 +211,7 @@ export const PamApprovalRequestsPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Approval Requests" })}</title>
-      </Helmet>
+      <PageTitle title="Approval Requests" />
       <PageHeader
         scope={ProjectType.PAM}
         icon={ShieldCheck}

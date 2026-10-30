@@ -15,8 +15,10 @@ import { TChefSync } from "./chef-sync";
 import { TCircleCISync } from "./circleci-sync";
 import { TCloud66Sync } from "./cloud-66-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
+import { TCloudflareSecretsStoreSync } from "./cloudflare-secrets-store-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
+import { TDaytonaSync } from "./daytona-sync";
 import { TDevinSync } from "./devin-sync";
 import { TDigitalOceanAppPlatformSync } from "./digital-ocean-app-platform-sync";
 import { TExternalInfisicalSync } from "./external-infisical-sync";
@@ -28,6 +30,7 @@ import { THasuraCloudSync } from "./hasura-cloud-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
+import { TKeeperSync } from "./keeper-sync";
 import { TLaravelForgeSync } from "./laravel-forge-sync";
 import { TNetlifySync } from "./netlify-sync";
 import { TNorthflankSync } from "./northflank-sync";
@@ -35,6 +38,7 @@ import { TOCIVaultSync } from "./oci-vault-sync";
 import { TOctopusDeploySync } from "./octopus-deploy-sync";
 import { TOnaSync } from "./ona-sync";
 import { TOvhSync } from "./ovh-sync";
+import { TPortainerSync } from "./portainer-sync";
 import { TQoverySync } from "./qovery-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
@@ -84,11 +88,13 @@ export type TSecretSync =
   | TGitLabSync
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
+  | TCloudflareSecretsStoreSync
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
   | TRundeckSync
+  | TPortainerSync
   | TDigitalOceanAppPlatformSync
   | TNetlifySync
   | TNorthflankSync
@@ -108,7 +114,9 @@ export type TSecretSync =
   | THasuraCloudSync
   | TQoverySync
   | TCloud66Sync
-  | TSpaceliftSync;
+  | TSpaceliftSync
+  | TDaytonaSync
+  | TKeeperSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

@@ -1,0 +1,25 @@
+---
+title: "Services"
+description: "Anything an AI agent talks to during a session, such as an API or an MCP server."
+---
+
+A service is something your agent talks to during a [session](/documentation/platform/agent-vault/sessions), such as an API or an MCP server, that Agent Vault brokers credentials for. You store the real credential on the service, and the [proxy](/documentation/platform/agent-vault/proxies) adds it to the agent's requests to that service. The agent can authenticate to the service without ever holding the credential.
+
+You can configure services within an [access bundle](/documentation/platform/agent-vault/access-bundles). For example, you might create a **code-review** access bundle and add services for Slack, GitHub, and Anthropic:
+
+<Frame>
+  <img src="/images/platform/agent-vault/access-bundle-services.png" alt="The code-review access bundle's Services table listing its GitHub, Slack, and Anthropic services with their credentials and hosts" />
+</Frame>
+
+## Service types
+
+You choose a service's type when you pick its template:
+
+<CardGroup cols={2}>
+  <Card title="HTTP APIs" icon="globe" href="/documentation/platform/agent-vault/http-apis">
+    Web APIs that the agent calls directly, such as GitHub, Slack, and Anthropic.
+  </Card>
+  <Card title="MCP servers" icon="server" href="/documentation/platform/agent-vault/mcp-servers">
+    Remote MCP servers whose tools the agent calls, such as Linear and Notion.
+  </Card>
+</CardGroup>

@@ -3,8 +3,9 @@ import { NtlmClient } from "axios-ntlm";
 import https from "https";
 import RE2 from "re2";
 
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -105,18 +106,15 @@ const normalizeAdcsUrl = (url: string): string => {
 };
 
 // NTLM request wrapper
-const createHttpsAgent = (sslRejectUnauthorized: boolean, sslCertificate?: string): https.Agent => {
-  const agentOptions: https.AgentOptions = {
+const createHttpsAgent = async (url: string, sslRejectUnauthorized: boolean, sslCertificate?: string) =>
+  (await buildSsrfSafeAgent(url, {
     rejectUnauthorized: sslRejectUnauthorized,
     keepAlive: true, // axios-ntlm needs keepAlive for NTLM handshake
     ca: sslCertificate ? [sslCertificate.trim()] : undefined,
     // Disable hostname verification as Microsoft servers by default use local IPs for certificates
     // which may not match the hostname used to connect
     checkServerIdentity: () => undefined
-  };
-
-  return new https.Agent(agentOptions);
-};
+  })) as https.Agent;
 
 const axiosNtlmRequest = async (config: AxiosNtlmConfig): Promise<AxiosNtlmResponse> => {
   const method = config.method || "GET";
@@ -130,6 +128,8 @@ const axiosNtlmRequest = async (config: AxiosNtlmConfig): Promise<AxiosNtlmRespo
 
   const axiosConfig = {
     httpsAgent: config.httpsAgent,
+    maxRedirects: 0,
+    ...(getConfig().SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
     timeout: 60000
   };
 
@@ -179,7 +179,7 @@ const testAdcsConnection = async (
 
       const shouldRejectUnauthorized = sslRejectUnauthorized;
 
-      const httpsAgent = createHttpsAgent(shouldRejectUnauthorized, sslCertificate);
+      const httpsAgent = await createHttpsAgent(testUrl, shouldRejectUnauthorized, sslCertificate);
 
       const response = await axiosNtlmRequest({
         url: testUrl,
@@ -293,7 +293,11 @@ const createNtlmClient = (
     get: async (endpoint: string, additionalHeaders: Record<string, string> = {}) => {
       const shouldRejectUnauthorized = sslRejectUnauthorized;
 
-      const httpsAgent = createHttpsAgent(shouldRejectUnauthorized, sslCertificate);
+      const httpsAgent = await createHttpsAgent(
+        `${normalizedUrl}${endpoint}`,
+        shouldRejectUnauthorized,
+        sslCertificate
+      );
 
       return axiosNtlmRequest({
         url: `${normalizedUrl}${endpoint}`,
@@ -310,7 +314,11 @@ const createNtlmClient = (
     post: async (endpoint: string, body: string, additionalHeaders: Record<string, string> = {}) => {
       const shouldRejectUnauthorized = sslRejectUnauthorized;
 
-      const httpsAgent = createHttpsAgent(shouldRejectUnauthorized, sslCertificate);
+      const httpsAgent = await createHttpsAgent(
+        `${normalizedUrl}${endpoint}`,
+        shouldRejectUnauthorized,
+        sslCertificate
+      );
 
       return axiosNtlmRequest({
         url: `${normalizedUrl}${endpoint}`,

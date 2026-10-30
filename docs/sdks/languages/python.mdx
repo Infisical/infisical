@@ -1,6 +1,7 @@
 ---
 title: "Infisical Python SDK"
 sidebarTitle: "Python"
+description: "Fetch and manage secrets in a Python application with the official Infisical Python SDK."
 icon: "/images/sdks/languages/python.svg"
 ---
 
@@ -11,7 +12,7 @@ If you're working with Python, the official Infisical Python SDK package is the 
 We have recently rolled out our first stable version of the SDK, version `1.0.3` and above.
 
 The 1.0.3 version comes with a few key changes that may change how you're using the SDK.
-1. **Removal of `rest`**: The SDK no longer exposes the entire Infisical API. This was nessecary as we have moved away from using an OpenAPI generator approach. We aim to add support for more API resources in the near future. If you have any specific requests, please [open an issue](https://github.com/Infisical/python-sdk-official/issues).
+1. **Removal of `rest`**: The SDK no longer exposes the entire Infisical API. This was necessary as we have moved away from using an OpenAPI generator approach. We aim to add support for more API resources in the near future. If you have any specific requests, please [open an issue](https://github.com/Infisical/python-sdk-official/issues).
 
 2. **New response types**: The 1.0.3 release uses return types that differ from the older versions. The new return types such as `BaseSecret`, are all exported from the Infisical SDK.
 
@@ -31,7 +32,7 @@ Python 3.7+
 pip install infisicalsdk
 ```
 
-## Getting Started
+## Getting started
 
 ```python
 from infisical_sdk import InfisicalSDKClient
@@ -49,12 +50,12 @@ client.auth.universal_auth.login(
 secrets = client.secrets.list_secrets(project_id="<project-id>", environment_slug="dev", secret_path="/")
 ```
 
-## InfisicalSDKClient Parameters
+## InfisicalSDKClient parameters
 
 The `InfisicalSDKClient` takes the following parameters, which are used as a global configuration for the lifetime of the SDK instance.
 
 - **host** (`str`, _Optional_): The host URL for your Infisical instance. Defaults to `https://app.infisical.com`.
-- **token** (`str`, _Optional_): Specify an authentication token to use for all requests. If provided, you will not need to call any of the `auth` methods. Defaults to `None`
+- **token** (`str`, _Optional_): Specify an authentication token to use for all requests. If provided, you won't need to call any of the `auth` methods. Defaults to `None`
 - **cache_ttl** (`int`, _Optional_): The SDK has built-in client-side caching for secrets, greatly improving response times. By default, secrets are cached for 1 minute (60 seconds). You can disable caching by setting `cache_ttl` to `None`, or adjust the duration in seconds as needed.
 
 ```python
@@ -65,7 +66,7 @@ client = InfisicalSDKClient(
 )
 ```
 
-## Core Methods
+## Core methods
 
 The SDK methods are organized into the following high-level categories:
 
@@ -74,12 +75,13 @@ The SDK methods are organized into the following high-level categories:
 3. `dynamic_secrets`: Manages dynamic secrets and leases.
 4. `kms`: Perform cryptographic operations with Infisical KMS.
 5. `folders`: Manages folder-related operations.
+6. `agent_vault`: Manages [Agent Vault](/documentation/platform/agent-vault/overview) sessions and proxies.
 
 ### `auth`
 
 The `Auth` component provides methods for authentication:
 
-#### Universal Auth
+#### Universal auth
 
 ```python
 response = client.auth.universal_auth.login(
@@ -88,13 +90,13 @@ response = client.auth.universal_auth.login(
 )
 ```
 
-#### AWS Auth
+#### AWS auth
 
 ```python
 response = client.auth.aws_auth.login(identity_id="<machine-identity-id>")
 ```
 
-#### OIDC Auth
+#### OIDC auth
 
 ```python
 response = client.auth.oidc_auth.login(
@@ -109,7 +111,7 @@ response = client.auth.oidc_auth.login(
 
 This authentication method is useful when integrating with OIDC-compliant identity providers like Okta, Auth0, or any service that issues OIDC tokens.
 
-#### LDAP Auth
+#### LDAP auth
 
 ```python
 response = client.auth.ldap_auth.login(
@@ -130,7 +132,7 @@ response = client.auth.ldap_auth.login(
   authentication method.
 </Info>
 
-#### Token Auth
+#### Token auth
 
 ```python
 response = client.auth.token_auth.login(token="<your-token>")
@@ -143,7 +145,7 @@ response = client.auth.token_auth.login(token="<your-token>")
 
 This sub-class handles operations related to secrets:
 
-#### List Secrets
+#### List secrets
 
 ```python
 secrets = client.secrets.list_secrets(
@@ -174,7 +176,7 @@ secrets = client.secrets.list_secrets(
 **Returns:**
 - `ListSecretsResponse`: The response containing the list of secrets.
 
-#### Create Secret
+#### Create secret
 
 ```python
 new_secret = client.secrets.create_secret_by_name(
@@ -211,7 +213,7 @@ new_secret = client.secrets.create_secret_by_name(
 **Returns:**
 - `BaseSecret`: The response after creating the secret.
 
-#### Update Secret
+#### Update secret
 
 ```python
 updated_secret = client.secrets.update_secret_by_name(
@@ -251,7 +253,7 @@ updated_secret = client.secrets.update_secret_by_name(
 **Returns:**
 - `BaseSecret`: The response after updating the secret.
 
-#### Get Secret by Name
+#### Get secret by name
 
 ```python
 secret = client.secrets.get_secret_by_name(
@@ -282,7 +284,7 @@ secret = client.secrets.get_secret_by_name(
 **Returns:**
 - `BaseSecret`: The response containing the secret.
 
-#### Delete Secret by Name
+#### Delete secret by name
 
 ```python
 deleted_secret = client.secrets.delete_secret_by_name(
@@ -309,7 +311,7 @@ deleted_secret = client.secrets.delete_secret_by_name(
 
 This sub-class handles operations related to dynamic secrets. Dynamic secrets generate credentials on-demand with automatic expiration. For more information, see the [Dynamic Secrets documentation](/documentation/platform/dynamic-secrets/overview).
 
-#### Create Dynamic Secret
+#### Create dynamic secret
 
 ```python
 from infisical_sdk import DynamicSecretProviders
@@ -350,7 +352,7 @@ dynamic_secret = client.dynamic_secrets.create(
 **Returns:**
 - `DynamicSecret`: The created dynamic secret.
 
-#### Supported Provider Types
+#### Supported provider types
 
 The `DynamicSecretProviders` enum includes the following providers:
 
@@ -378,7 +380,7 @@ The `DynamicSecretProviders` enum includes the following providers:
 | TOTP | `DynamicSecretProviders.TOTP` |
 | Vertica | `DynamicSecretProviders.VERTICA` |
 
-#### Get Dynamic Secret by Name
+#### Get dynamic secret by name
 
 ```python
 dynamic_secret = client.dynamic_secrets.get_by_name(
@@ -398,7 +400,7 @@ dynamic_secret = client.dynamic_secrets.get_by_name(
 **Returns:**
 - `DynamicSecret`: The dynamic secret.
 
-#### Update Dynamic Secret
+#### Update dynamic secret
 
 ```python
 updated_secret = client.dynamic_secrets.update(
@@ -430,7 +432,7 @@ updated_secret = client.dynamic_secrets.update(
 **Returns:**
 - `DynamicSecret`: The updated dynamic secret.
 
-#### Delete Dynamic Secret
+#### Delete dynamic secret
 
 ```python
 deleted_secret = client.dynamic_secrets.delete(
@@ -456,7 +458,7 @@ deleted_secret = client.dynamic_secrets.delete(
 
 This sub-class handles operations related to dynamic secret leases. A lease represents a set of generated credentials with a specific TTL.
 
-#### Create Lease
+#### Create lease
 
 Create a lease to generate credentials from a dynamic secret:
 
@@ -488,7 +490,7 @@ lease_id = lease_response.lease.id
   - `dynamicSecret`: The associated dynamic secret.
   - `data`: The generated credentials. The structure depends on the dynamic secret provider.
 
-#### Get Lease
+#### Get lease
 
 ```python
 lease = client.dynamic_secrets.leases.get(
@@ -508,7 +510,7 @@ lease = client.dynamic_secrets.leases.get(
 **Returns:**
 - `DynamicSecretLease`: The lease with dynamicSecret included.
 
-#### Renew Lease
+#### Renew lease
 
 Extend the TTL of an existing lease:
 
@@ -532,7 +534,7 @@ renewed_lease = client.dynamic_secrets.leases.renew(
 **Returns:**
 - `DynamicSecretLease`: The renewed lease.
 
-#### Revoke Lease
+#### Revoke lease
 
 Revoke a lease and its associated credentials:
 
@@ -560,7 +562,7 @@ revoked_lease = client.dynamic_secrets.leases.revoke(
 
 This sub-class handles KMS related operations:
 
-#### List KMS Keys
+#### List KMS keys
 
 ```python
 kms_keys = client.kms.list_keys(
@@ -584,7 +586,7 @@ kms_keys = client.kms.list_keys(
 **Returns:**
 - `ListKmsKeysResponse`: The response containing the list of KMS keys.
 
-#### Get KMS Key by ID
+#### Get KMS key by ID
 
 ```python
 kms_key = client.kms.get_key_by_id(
@@ -598,7 +600,7 @@ kms_key = client.kms.get_key_by_id(
 **Returns:**
 - `KmsKey`: The specified key.
 
-#### Get KMS Key by Name
+#### Get KMS key by name
 
 ```python
 kms_key = client.kms.get_key_by_name(
@@ -614,7 +616,7 @@ kms_key = client.kms.get_key_by_name(
 **Returns:**
 - `KmsKey`: The specified key.
 
-#### Create KMS Key
+#### Create KMS key
 
 ```python
 kms_key = client.kms.create_key(
@@ -634,7 +636,7 @@ kms_key = client.kms.create_key(
 **Returns:**
 - `KmsKey`: The newly created key.
 
-#### Update KMS Key
+#### Update KMS key
 
 ```python
 updated_key = client.kms.update_key(
@@ -654,7 +656,7 @@ updated_key = client.kms.update_key(
 **Returns:**
 - `KmsKey`: The updated key.
 
-#### Delete KMS Key
+#### Delete KMS key
 
 ```python
 deleted_key = client.kms.delete_key(
@@ -668,7 +670,7 @@ deleted_key = client.kms.delete_key(
 **Returns:**
 - `KmsKey`: The deleted key.
 
-#### Encrypt Data with KMS Key
+#### Encrypt data with KMS key
 
 ```python
 encrypted_data = client.kms.encrypt_data(
@@ -684,7 +686,7 @@ encrypted_data = client.kms.encrypt_data(
 **Returns:**
 - `str`: The encrypted ciphertext.
 
-#### Decrypt Data with KMS Key
+#### Decrypt data with KMS key
 
 ```python
 decrypted_data = client.kms.decrypt_data(
@@ -702,9 +704,13 @@ decrypted_data = client.kms.decrypt_data(
 
 ### `folders`
 
-This sub-class handles operations related to folders:
+This sub-class handles operations related to [folders](/documentation/platform/folder):
 
-#### List Folders
+<Note>
+  `update_folder` and `delete_folder` require `infisicalsdk` version 1.0.17 or newer.
+</Note>
+
+#### List folders
 
 ```python
 folders = client.folders.list_folders(
@@ -726,7 +732,7 @@ folders = client.folders.list_folders(
 **Returns:**
 - `ListFoldersResponse`: The response containing the list of folders.
 
-#### Create Folder
+#### Create folder
 
 ```python
 new_folder = client.folders.create_folder(
@@ -748,7 +754,7 @@ new_folder = client.folders.create_folder(
 **Returns:**
 - `CreateFolderResponseItem`: The response containing the created folder.
 
-#### Get Folder by ID
+#### Get folder by ID
 
 ```python
 folder = client.folders.get_folder_by_id(
@@ -761,3 +767,298 @@ folder = client.folders.get_folder_by_id(
 
 **Returns:**
 - `SingleFolderResponseItem`: The response containing the folder details.
+#### Update folder
+
+```python
+updated_folder = client.folders.update_folder(
+    folder_id="<folder-id>",
+    name="backend-api",
+    project_id="<project-id>",
+    environment_slug="dev",
+    path="/", # Optional
+    description="Secrets for the backend service" # Optional
+)
+```
+
+**Parameters:**
+- `folder_id` (str): The ID of the folder to update. Folders can only be updated by ID, so use `list_folders` to look the ID up if you only know the name.
+- `name` (str): The new name of the folder. This is required, so pass the folder's current name to leave it unchanged.
+- `project_id` (str): The ID of your project.
+- `environment_slug` (str): The slug of the environment the folder is in.
+- `path` (str, optional): The parent path the folder is in. Defaults to `/`.
+- `description` (str, optional): A new description for the folder. Omitting it leaves the existing description unchanged, so it can't be used to clear one.
+
+**Returns:**
+- `UpdateFolderResponseItem`: The response containing the updated folder.
+
+#### Delete folder
+
+```python
+deleted_folder = client.folders.delete_folder(
+    folder_id_or_name="backend",
+    project_id="<project-id>",
+    environment_slug="dev",
+    path="/", # Optional
+    force_delete=False # Optional
+)
+```
+
+**Parameters:**
+- `folder_id_or_name` (str): The ID or the name of the folder to delete.
+- `project_id` (str): The ID of your project.
+- `environment_slug` (str): The slug of the environment the folder is in.
+- `path` (str, optional): The parent path the folder is in. Defaults to `/`.
+- `force_delete` (bool, optional): Whether to delete the folder even when it still contains secrets or subfolders. Defaults to `False`.
+
+<Warning>
+  Setting `force_delete` to `True` removes every secret and subfolder inside the folder along with it.
+</Warning>
+
+**Returns:**
+- `DeleteFolderResponseItem`: The response containing the deleted folder. Unlike the other folder responses, it doesn't include a `path` field.
+
+### `agent_vault.sessions`
+
+This sub-class manages [Agent Vault sessions](/documentation/platform/agent-vault/sessions). A session lets an AI agent use the [services](/documentation/platform/agent-vault/services) in one [access bundle](/documentation/platform/agent-vault/access-bundles) until the session expires or someone revokes it.
+
+What the client can do with sessions depends on the [Agent Vault role](/documentation/platform/agent-vault/access-control#product-membership) of the user or machine identity that the client logs in as:
+
+| Role | Can create sessions with | Can list, get, label, and revoke |
+| --- | --- | --- |
+| **Admin** | Any access bundle | Every session |
+| **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to the identity | The identity's own sessions |
+
+<Note>
+  `agent_vault` requires `infisicalsdk` version 1.0.19 or newer.
+</Note>
+
+#### List sessions
+
+```python
+from infisical_sdk import AgentVaultSessionScope, AgentVaultSessionStatus
+
+sessions = client.agent_vault.sessions.list(
+    scope=AgentVaultSessionScope.MINE, # Optional
+    statuses=[AgentVaultSessionStatus.ACTIVE], # Optional
+    search="nightly deploy", # Optional
+    limit=20, # Optional
+    offset=0 # Optional
+)
+```
+
+**Parameters:**
+- `scope` (Union[AgentVaultSessionScope, str], optional): whose sessions to list, either `AgentVaultSessionScope.MINE` (`"mine"`) for the identity's own sessions or `AgentVaultSessionScope.ALL` (`"all"`) for every session if the identity is an admin (defaults to `AgentVaultSessionScope.MINE`)
+- `statuses` (List[Union[AgentVaultSessionStatus, str]], optional): the statuses to include, from `AgentVaultSessionStatus.ACTIVE` (`"active"`), `AgentVaultSessionStatus.REVOKED` (`"revoked"`), and `AgentVaultSessionStatus.EXPIRED` (`"expired"`) (defaults to all three)
+- `search` (str, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session), owner name, owner email, or access bundle name
+- `limit` (int, optional): the maximum number of sessions to return, from 1 to 100 (defaults to `20`)
+- `offset` (int, optional): the number of sessions to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultSessionsResponse`: the sessions in `sessions`, and the total number of matching sessions in `totalCount`
+
+#### Get session
+
+```python
+session = client.agent_vault.sessions.get(
+    session_id="<session-id>"
+)
+```
+
+**Parameters:**
+- `session_id` (str): the ID of the session
+
+**Returns:**
+- `AgentVaultSession`: the session
+
+#### Create session
+
+```python
+session = client.agent_vault.sessions.create(
+    access_bundle="<access-bundle-name>",
+    ttl="1h", # Optional
+    label="nightly deploy" # Optional
+)
+```
+
+**Parameters:**
+- `access_bundle` (str): the name of the access bundle that the agent can use during the session
+- `ttl` (str, optional): how long the session lasts, as a duration of at least one minute such as `30m`, `8h`, or `7d`, or as `never` for a session that doesn't expire (defaults to `7d`)
+- `label` (str, optional): a short description of what the session is for, such as `nightly deploy` (up to 128 characters, without line breaks, tabs, or invisible characters)
+
+**Returns:**
+- `CreatedAgentVaultSession`: the new session, with the session token in `token` (Infisical returns the token only once)
+
+To pass `session.token` to the agent, follow the steps in [Start the agent with the session token](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token).
+
+#### Update session label
+
+Add, change, or remove a session's label, for example to record what the agent is working on. You can also change the label after the session expires or is revoked, unless the user or machine identity that owns the session was deleted.
+
+```python
+session = client.agent_vault.sessions.update(
+    session_id="<session-id>",
+    label="support ticket triage"
+)
+```
+
+**Parameters:**
+- `session_id` (str): the ID of the session
+- `label` (Optional[str]): the new label, or `None` to remove the label (up to 128 characters, without line breaks, tabs, or invisible characters)
+
+**Returns:**
+- `AgentVaultSession`: the updated session
+
+#### Revoke session
+
+Revoke a session when its agent finishes, even if the agent fails. The proxy stops attaching credentials for the session within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+
+If the agent can run longer than the client's access token lasts, log in again before you revoke the session, because the SDK doesn't renew the access token. A `ttl` close to how long the agent runs limits how long the session stays active if the revoke fails.
+
+```python
+session = client.agent_vault.sessions.create(access_bundle="<access-bundle-name>", ttl="1h")
+try:
+    run_agent(session.token) # Your code that starts the agent with the session token
+finally:
+    client.agent_vault.sessions.revoke(session_id=session.id)
+```
+
+**Parameters:**
+- `session_id` (str): the ID of the session
+
+**Returns:**
+- `AgentVaultSession`: the revoked session, with `accessBundles` set to `None` (call `get` for the access bundle)
+
+### `agent_vault.proxies`
+
+This sub-class manages [Agent Vault proxies](/documentation/platform/agent-vault/proxies). A proxy attaches API credentials to the requests that agents send through it.
+
+To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
+
+<Note>
+  `agent_vault` requires `infisicalsdk` version 1.0.19 or newer.
+</Note>
+
+#### List proxies
+
+```python
+proxies = client.agent_vault.proxies.list(
+    search="edge", # Optional
+    order_by="name", # Optional
+    order_direction="asc", # Optional
+    limit=20, # Optional
+    offset=0 # Optional
+)
+```
+
+**Parameters:**
+- `search` (str, optional): text to find in proxy names
+- `order_by` (str, optional): what to sort the proxies by, `name` or `createdAt` (defaults to `createdAt`)
+- `order_direction` (str, optional): the direction to sort in, `asc` or `desc` (defaults to `desc`)
+- `limit` (int, optional): the maximum number of proxies to return, from 1 to 100 (defaults to `20`)
+- `offset` (int, optional): the number of proxies to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultProxiesResponse`: the proxies in `proxies`, and the total number of matching proxies in `totalCount`
+
+If the client logs in as a member, each proxy's `trafficPolicy`, `allowedHosts`, `pollInterval`, and `createdAt` fields are `None`.
+
+#### Create proxy
+
+```python
+from infisical_sdk import AgentVaultTrafficPolicy
+
+response = client.agent_vault.proxies.create(
+    name="edge-proxy",
+    traffic_policy=AgentVaultTrafficPolicy.BUNDLE_HOSTS, # Optional
+    allowed_hosts=["registry.npmjs.org", "pypi.org"], # Optional
+    poll_interval=60 # Optional
+)
+```
+
+**Parameters:**
+- `name` (str): the name of the proxy, in lowercase letters, numbers, and hyphens (up to 64 characters)
+- `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `AgentVaultTrafficPolicy.ANY_HOST` (`"any-host"`) to forward requests to any host or `AgentVaultTrafficPolicy.BUNDLE_HOSTS` (`"bundle-hosts"`) to refuse requests to hosts that no service in the session's access bundle covers (defaults to `AgentVaultTrafficPolicy.ANY_HOST`)
+- `allowed_hosts` (Union[List[str], str], optional): hosts that agents can reach under `AgentVaultTrafficPolicy.BUNDLE_HOSTS` even if no service covers them, as a list or a comma-separated string (see [Exceptions](/documentation/platform/agent-vault/proxies#exceptions))
+- `poll_interval` (int, optional): how often, in seconds, the proxy checks its sessions and settings with Infisical, from 10 to 300 (defaults to `60`)
+
+**Returns:**
+- `AgentVaultProxyWithTokenResponse`: the proxy in `proxy`, and its proxy token in `proxyToken` (Infisical returns the token only once)
+
+To start the proxy with the proxy token, run one of the commands in [Create a proxy and start it](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it).
+
+#### Update proxy
+
+The proxy's name and settings that you don't pass stay as they are. If the proxy is running, it applies the changes within one poll interval.
+
+```python
+from infisical_sdk import AgentVaultTrafficPolicy
+
+proxy = client.agent_vault.proxies.update(
+    proxy_id="<proxy-id>",
+    name="edge-proxy", # Optional
+    traffic_policy=AgentVaultTrafficPolicy.BUNDLE_HOSTS, # Optional
+    allowed_hosts=["pypi.org"], # Optional
+    poll_interval=30 # Optional
+)
+```
+
+**Parameters:**
+- `proxy_id` (str): the ID of the proxy
+- `name` (str, optional): the new name of the proxy
+- `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the new traffic policy
+- `allowed_hosts` (Union[List[str], str], optional): the new exceptions, which replace the current ones
+- `poll_interval` (int, optional): the new poll interval in seconds, from 10 to 300
+- `clear_allowed_hosts` (bool, optional): set to `True` to remove every exception (raises a `ValueError` if you also pass `allowed_hosts`)
+
+**Returns:**
+- `AgentVaultProxy`: the updated proxy
+
+#### Delete proxy
+
+```python
+proxy = client.agent_vault.proxies.delete(
+    proxy_id="<proxy-id>"
+)
+```
+
+**Parameters:**
+- `proxy_id` (str): the ID of the proxy
+
+<Warning>
+  You can't undo deleting a proxy. To stop a proxy temporarily, [revoke its access](#revoke-proxy) instead.
+</Warning>
+
+**Returns:**
+- `AgentVaultProxy`: the deleted proxy, with values only in `id` and `name`
+
+#### Rotate proxy token
+
+Issue a new proxy token if the current one leaked, or to restore a proxy whose access you revoked. The old token stops working right away. To restart the proxy and its agents, follow the steps in [Rotate a proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxy’s-token).
+
+```python
+response = client.agent_vault.proxies.rotate_token(
+    proxy_id="<proxy-id>"
+)
+```
+
+**Parameters:**
+- `proxy_id` (str): the ID of the proxy
+
+**Returns:**
+- `AgentVaultProxyWithTokenResponse`: the proxy in `proxy`, and the new proxy token in `proxyToken` (Infisical returns the token only once)
+
+#### Revoke proxy
+
+Revoke a proxy's access if you think a machine that runs the proxy is compromised. The proxy stops attaching credentials to requests until you [rotate its token](#rotate-proxy-token).
+
+```python
+proxy = client.agent_vault.proxies.revoke(
+    proxy_id="<proxy-id>"
+)
+```
+
+**Parameters:**
+- `proxy_id` (str): the ID of the proxy
+
+**Returns:**
+- `AgentVaultProxy`: the revoked proxy

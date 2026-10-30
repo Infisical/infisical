@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
+import { useRef, useState } from "react";
 
+import { IdentityAuthUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import {
   Button,
   Sheet,
@@ -9,7 +9,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -28,12 +28,10 @@ type Props = {
 export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<IdentityAuthMethod | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const sheetTriggerRef = useRef<HTMLElement | null>(null);
+  const upgradeTriggerRef = useRef<HTMLElement | null>(null);
 
-  const { projectId } = useParams({ strict: false });
-  const { isSubOrganization } = useOrganization();
-
-  // eslint-disable-next-line no-nested-ternary
-  const primaryVariant = projectId ? "project" : isSubOrganization ? "sub-org" : "org";
+  const primaryVariant = useScopeVariant();
 
   const initialAuthMethod = popUp?.identityAuthMethod?.data?.authMethod;
 
@@ -50,13 +48,22 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
         if (!isOpen) setIsSubmitting(false);
       }}
     >
-      <SheetContent side="right" className="flex flex-col gap-0 sm:max-w-lg">
+      <SheetContent
+        side="right"
+        className="flex flex-col gap-0 sm:max-w-lg"
+        aria-hidden={popUp.upgradePlan.isOpen || undefined}
+        onOpenAutoFocus={() => {
+          sheetTriggerRef.current = document.activeElement as HTMLElement | null;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (popUp.upgradePlan.isOpen) event.preventDefault();
+        }}
+      >
         <SheetHeader className="border-b">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
         <div className="thin-scrollbar flex-1 overflow-y-auto p-4">
           <IdentityAuthMethodModalContent
-            popUp={popUp}
             handlePopUpOpen={handlePopUpOpen}
             handlePopUpToggle={handlePopUpToggle}
             identity={{
@@ -70,7 +77,15 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
             onSubmittingChange={setIsSubmitting}
           />
         </div>
-        <SheetFooter className="border-t">
+        <SheetFooter className="justify-end border-t">
+          <Button
+            type="button"
+            variant="ghost"
+            isDisabled={isSubmitting}
+            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
+          >
+            Cancel
+          </Button>
           <Button
             type="submit"
             form={IDENTITY_AUTH_FORM_ID}
@@ -80,16 +95,34 @@ export const IdentityAuthMethodModal = ({ popUp, handlePopUpOpen, handlePopUpTog
           >
             {isSelectedAuthAlreadyConfigured ? "Update" : "Add"}
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            isDisabled={isSubmitting}
-            onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-          >
-            Cancel
-          </Button>
         </SheetFooter>
       </SheetContent>
+      <UpgradeGate
+        paywallKey="organization.identity-auth-method-modal"
+        isOpen={popUp?.upgradePlan?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        onOpenAutoFocus={() => {
+          upgradeTriggerRef.current = document.activeElement as HTMLElement | null;
+        }}
+        onCloseAutoFocus={(event) => {
+          const target =
+            upgradeTriggerRef.current?.isConnected && upgradeTriggerRef.current !== document.body
+              ? upgradeTriggerRef.current
+              : sheetTriggerRef.current;
+          if (target?.isConnected) {
+            event.preventDefault();
+            target.focus({ preventScroll: true });
+          }
+        }}
+        intent={{
+          ...IdentityAuthUpgradeIntent,
+          description:
+            popUp.upgradePlan.data?.featureName === "LDAP authentication"
+              ? "Authenticate machine identities with LDAP."
+              : "Restrict machine identity access to trusted IP addresses.",
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
+      />
     </Sheet>
   );
 };

@@ -50,10 +50,10 @@ const INFO_BODY = "# Server\r\nloading:0\r\n";
 
 const startFakeRedis = async (replyBytes: () => number) => {
   const server = net.createServer((socket) => {
-    let pending = Buffer.alloc(0);
+    let pending: Buffer = Buffer.alloc(0);
 
     socket.on("data", (chunk) => {
-      pending = Buffer.concat([pending, chunk]);
+      pending = Buffer.concat([pending, Buffer.from(chunk)]);
       const { names, rest } = takeCommands(pending);
       pending = rest;
 

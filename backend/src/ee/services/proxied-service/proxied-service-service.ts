@@ -12,9 +12,9 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrgServiceActor, TDynamicSecretWithMetadata } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { PersonalOverridesBehavior, SecretImportReferencesBehavior } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
+import { PersonalOverridesBehavior, SecretImportReferencesBehavior } from "@app/services/secret/secret-types";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretProviders } from "../dynamic-secret/providers/models";

@@ -1,0 +1,40 @@
+<CodeGroup>
+
+```bash macOS
+brew install infisical/get-cli/infisical
+```
+
+```bash Windows (winget)
+winget install infisical
+```
+
+```bash Windows (Scoop)
+scoop bucket add org https://github.com/Infisical/scoop-infisical.git
+scoop install infisical
+```
+
+```bash npm
+npm install -g @infisical/cli
+```
+
+```bash Debian/Ubuntu
+curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+sudo apt-get update && sudo apt-get install -y infisical
+```
+
+```bash RedHat/CentOS/Amazon Linux
+curl -1sLf 'https://artifacts-cli.infisical.com/setup.rpm.sh' | sudo -E bash
+sudo yum install infisical
+```
+
+```bash Alpine
+apk add --no-cache bash sudo wget
+wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sudo sh
+apk update && sudo apk add infisical
+```
+
+```bash Arch Linux
+yay -S infisical-bin
+```
+
+</CodeGroup>

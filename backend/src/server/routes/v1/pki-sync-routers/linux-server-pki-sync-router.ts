@@ -1,6 +1,7 @@
 import {
   CreateLinuxServerPkiSyncSchema,
   LINUX_SERVER_PKI_SYNC_LIST_OPTION,
+  LinuxServerPkiSyncHealthCheckTestSchema,
   LinuxServerPkiSyncSchema,
   UpdateLinuxServerPkiSyncSchema
 } from "@app/services/pki-sync/linux-server";
@@ -15,9 +16,11 @@ export const registerLinuxServerPkiSyncRouter = async (server: FastifyZodProvide
     responseSchema: LinuxServerPkiSyncSchema,
     createSchema: CreateLinuxServerPkiSyncSchema,
     updateSchema: UpdateLinuxServerPkiSyncSchema,
+    healthCheckTestSchema: LinuxServerPkiSyncHealthCheckTestSchema,
     syncOptions: {
       canImportCertificates: LINUX_SERVER_PKI_SYNC_LIST_OPTION.canImportCertificates,
-      canRemoveCertificates: LINUX_SERVER_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+      canRemoveCertificates: LINUX_SERVER_PKI_SYNC_LIST_OPTION.canRemoveCertificates,
+      canRunHealthCheckCommand: LINUX_SERVER_PKI_SYNC_LIST_OPTION.canRunHealthCheckCommand
     },
     enableOperationId
   });

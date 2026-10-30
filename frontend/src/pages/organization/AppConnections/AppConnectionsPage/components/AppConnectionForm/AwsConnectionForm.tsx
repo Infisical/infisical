@@ -4,9 +4,15 @@ import { Info } from "lucide-react";
 import { z } from "zod";
 
 import {
+  Code,
+  CopyButton,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
   Input,
   SecretInput,
   Select,
@@ -18,9 +24,11 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AwsConnectionMethod, TAwsConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
@@ -31,6 +39,7 @@ import {
 type Props = {
   appConnection?: TAwsConnection;
   onSubmit: (formData: FormData) => Promise<void>;
+  projectType?: ProjectType;
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
@@ -63,7 +72,36 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
-export const AwsConnectionForm = ({ appConnection, onSubmit }: Props) => {
+const OrgExternalIdHint = () => {
+  const { currentOrg } = useOrganization();
+
+  return (
+    <FieldDescription>
+      Infisical sends your{" "}
+      <HoverCard openDelay={150} closeDelay={150}>
+        <HoverCardTrigger asChild>
+          <span className="cursor-help text-foreground underline decoration-muted decoration-dotted underline-offset-4">
+            organization ID
+          </span>
+        </HoverCardTrigger>
+        <HoverCardContent align="start" className="w-auto max-w-sm">
+          <p className="text-xs font-medium text-foreground">External ID</p>
+          <div className="mt-1 flex items-center gap-1">
+            <span className="font-mono text-xs">{currentOrg.id}</span>
+            <CopyButton value={currentOrg.id} ariaLabel="Copy organization ID" />
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            Require it in the role&apos;s trust policy with the <Code>sts:ExternalId</Code>{" "}
+            condition.
+          </p>
+        </HoverCardContent>
+      </HoverCard>{" "}
+      as the External ID when it assumes this role.
+    </FieldDescription>
+  );
+};
+
+export const AwsConnectionForm = ({ appConnection, onSubmit, projectType }: Props) => {
   const isUpdate = Boolean(appConnection);
 
   const form = useForm<FormData>({
@@ -125,9 +163,16 @@ export const AwsConnectionForm = ({ appConnection, onSubmit }: Props) => {
               shouldUnregister
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field className="mb-4">
-                  <FieldLabel>Role ARN</FieldLabel>
-                  <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                  <FieldError errors={[error]} />
+                  <FieldLabel htmlFor="app-connection-aws-role-arn">Role ARN</FieldLabel>
+                  <SecretInput
+                    aria-describedby={error ? "app-connection-aws-role-arn-error" : undefined}
+                    id="app-connection-aws-role-arn"
+                    isError={Boolean(error)}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                  {projectType === ProjectType.AgentVault && <OrgExternalIdHint />}
+                  <FieldError id="app-connection-aws-role-arn-error" errors={[error]} />
                 </Field>
               )}
             />
@@ -186,9 +231,19 @@ export const AwsConnectionForm = ({ appConnection, onSubmit }: Props) => {
               shouldUnregister
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field className="mb-4">
-                  <FieldLabel>Secret Access Key</FieldLabel>
-                  <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
-                  <FieldError errors={[error]} />
+                  <FieldLabel htmlFor="app-connection-aws-secret-access-key">
+                    Secret Access Key
+                  </FieldLabel>
+                  <SecretInput
+                    aria-describedby={
+                      error ? "app-connection-aws-secret-access-key-error" : undefined
+                    }
+                    id="app-connection-aws-secret-access-key"
+                    isError={Boolean(error)}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                  <FieldError id="app-connection-aws-secret-access-key-error" errors={[error]} />
                 </Field>
               )}
             />

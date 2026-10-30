@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
-  OrgPermissionActions,
+  OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
   useOrgPermission,
@@ -38,7 +38,7 @@ export const useSecretsActivationNudge = () => {
   );
 
   const canInviteMembers = permission.can(
-    OrgPermissionActions.Create,
+    OrgPermissionMemberActions.Create,
     OrgPermissionSubjects.Member
   );
 

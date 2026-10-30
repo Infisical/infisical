@@ -7,29 +7,23 @@ import {
   MAX_DOMAINS,
   MAX_IPS,
   MAX_PORTS,
-  MIN_CIDR_PREFIX,
-  validateTargetConfig
+  MIN_CIDR_PREFIX
 } from "@app/ee/services/pki-discovery/pki-discovery-fns";
+import { DiscoveryTargetConfigInputSchema } from "@app/ee/services/pki-discovery/pki-discovery-schemas";
 import { PkiDiscoveryType, TPkiDiscoveryTargetConfig } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const NetworkTargetConfigSchema = z
-  .object({
-    ipRanges: z.array(z.string().max(64)).optional(),
-    domains: z.array(z.string().max(253)).optional(),
-    ports: z.string().default(DEFAULT_TLS_PORTS)
-  })
-  .refine((data) => (data.ipRanges && data.ipRanges.length > 0) || (data.domains && data.domains.length > 0), {
-    message: "At least one IP range or domain is required"
-  });
+const DiscoveryConnectionsSchema = z
+  .array(z.object({ id: z.string().uuid(), name: z.string(), app: z.nativeEnum(AppConnection) }))
+  .optional();
 
 export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -38,7 +32,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiDiscovery],
@@ -71,7 +65,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiDiscovery],
@@ -87,7 +81,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
             .optional()
             .default(PkiDiscoveryType.Network)
             .describe("Type of discovery scan"),
-          targetConfig: NetworkTargetConfigSchema.describe("Target configuration for discovery scans"),
+          targetConfig: DiscoveryTargetConfigInputSchema,
           isAutoScanEnabled: z.boolean().optional().default(false).describe("Enable automatic scheduled scans"),
           scanIntervalDays: z.number().min(1).max(365).optional().describe("Interval in days between automatic scans"),
           gatewayId: z.string().uuid().optional().describe("Gateway ID for scanning private networks"),
@@ -107,16 +101,6 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      const validation = validateTargetConfig(
-        req.body.targetConfig.ipRanges,
-        req.body.targetConfig.ports,
-        req.body.targetConfig.domains,
-        !!req.body.gatewayId || !!req.body.gatewayPoolId
-      );
-      if (!validation.valid) {
-        throw new BadRequestError({ message: validation.error || "Invalid target configuration" });
-      }
-
       const projectId = req.internalCertManagerProjectId;
       const discovery = await server.services.pkiDiscovery.createDiscovery({
         projectId,
@@ -128,6 +112,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         scanIntervalDays: req.body.scanIntervalDays,
         gatewayId: req.body.gatewayId,
         gatewayPoolId: req.body.gatewayPoolId,
+        orgActor: req.permission,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -167,12 +152,12 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiDiscovery],
       operationId: "listPkiDiscoveries",
-      description: "List PKI discovery configurations for a project",
+      description: "List PKI discovery configurations",
       querystring: z.object({
         projectId: z.string().optional().describe(openApiHidden()),
         offset: z.coerce.number().min(0).optional().default(0).describe("Pagination offset"),
@@ -184,7 +169,8 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
           discoveries: z.array(
             PkiDiscoveryConfigsSchema.extend({
               certificatesFound: z.number(),
-              installationsFound: z.number()
+              installationsFound: z.number(),
+              connections: DiscoveryConnectionsSchema
             })
           ),
           totalCount: z.number()
@@ -225,7 +211,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiDiscovery],
@@ -238,7 +224,8 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         200: PkiDiscoveryConfigsSchema.extend({
           linkedInstallationsCount: z.number().optional(),
           gatewayName: z.string().nullable().optional(),
-          gatewayPoolName: z.string().nullable().optional()
+          gatewayPoolName: z.string().nullable().optional(),
+          connections: DiscoveryConnectionsSchema
         })
       }
     },
@@ -273,7 +260,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiDiscovery],
@@ -289,7 +276,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
             .optional()
             .nullable()
             .describe("Description of the discovery configuration"),
-          targetConfig: NetworkTargetConfigSchema.optional().describe("Target configuration for discovery scans"),
+          targetConfig: DiscoveryTargetConfigInputSchema.optional(),
           isAutoScanEnabled: z.boolean().optional().describe("Enable automatic scheduled scans"),
           scanIntervalDays: z
             .number()
@@ -321,31 +308,6 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      if (req.body.targetConfig) {
-        let hasGateway =
-          (req.body.gatewayId !== null && req.body.gatewayId !== undefined) ||
-          (req.body.gatewayPoolId !== null && req.body.gatewayPoolId !== undefined);
-        if (!hasGateway && req.body.gatewayId === undefined && req.body.gatewayPoolId === undefined) {
-          const existing = await server.services.pkiDiscovery.getDiscovery({
-            discoveryId: req.params.discoveryId,
-            actor: req.permission.type,
-            actorId: req.permission.id,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId
-          });
-          hasGateway = !!existing.gatewayId || !!existing.gatewayPoolId;
-        }
-        const validation = validateTargetConfig(
-          req.body.targetConfig.ipRanges,
-          req.body.targetConfig.ports,
-          req.body.targetConfig.domains,
-          hasGateway
-        );
-        if (!validation.valid) {
-          throw new BadRequestError({ message: validation.error || "Invalid target configuration" });
-        }
-      }
-
       const discovery = await server.services.pkiDiscovery.updateDiscovery({
         discoveryId: req.params.discoveryId,
         name: req.body.name,
@@ -356,6 +318,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         gatewayId: req.body.gatewayId,
         gatewayPoolId: req.body.gatewayPoolId,
         isActive: req.body.isActive,
+        orgActor: req.permission,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -394,7 +357,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiDiscovery],
@@ -448,7 +411,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiDiscovery],
@@ -504,7 +467,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiDiscovery],
@@ -535,7 +498,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiDiscovery],

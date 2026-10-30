@@ -1,24 +1,27 @@
-import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import {
-  AccessRestrictedBanner,
-  DeleteActionModal,
-  EmptyState,
-  PageHeader
-} from "@app/components/v2";
-import {
+  AccessRestrictedDialog,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PageLoader
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  PageHeader,
+  PageLoader,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionCertificateActions,
@@ -45,6 +48,7 @@ import {
 } from "@app/hooks/api/pkiApplications/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
 import { CertificateCertModal } from "../CertificatesPage/components/CertificateCertModal";
 import {
@@ -55,7 +59,12 @@ import { CertificateManagePkiSyncsModal } from "../CertificatesPage/components/C
 import { CertificateManageRenewalModal } from "../CertificatesPage/components/CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "../CertificatesPage/components/CertificateRenewalModal";
 import { CertificateRevocationModal } from "../CertificatesPage/components/CertificateRevocationModal";
-import { isExpiringWithinOneDay } from "../CertificatesPage/components/CertificatesTable.utils";
+import {
+  getCertificateDeletionBlockReason,
+  isExpiringWithinOneDay,
+  isManagedCertificate,
+  RENEWAL_UNAVAILABLE_NO_PROFILE
+} from "../CertificatesPage/components/CertificatesTable.utils";
 import {
   CertificateDetailsSection,
   CertificateInstallationsSection,
@@ -76,9 +85,8 @@ const Page = () => {
   };
   const { data: certificateData, isLoading } = useGetCertificateById(certificateId);
   const certificate = certificateData?.certificate;
-  const isInventoryView = !fromApplication;
-
-  const projectId = currentProject?.id || "";
+  const parentApplication = certificate?.applicationName ?? fromApplication;
+  const isInventoryView = !parentApplication;
 
   const { mutateAsync: deleteCert } = useDeleteCert();
   const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
@@ -119,20 +127,18 @@ const Page = () => {
     handlePopUpClose("deleteCertificate");
     if (fromApplication) {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+        to: "/organizations/$orgId/cert-manager/applications/$applicationName",
         params: {
           orgId: currentOrg.id,
-          projectId,
           applicationName: fromApplication
         },
-        search: { selectedTab: "certificates" }
+        search: { selectedTab: ApplicationTab.Certificates }
       });
     } else {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
+        to: "/organizations/$orgId/cert-manager/inventory",
         params: {
-          orgId: currentOrg.id,
-          projectId
+          orgId: currentOrg.id
         }
       });
     }
@@ -197,7 +203,8 @@ const Page = () => {
   // CA capability check for revocation
   const caType = caData?.find((ca) => ca.id === certificate?.caId)?.type;
   const supportsRevocation =
-    !caType || caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
+    Boolean(certificate?.caId) &&
+    (!caType || caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES));
 
   const handleDisableAutoRenewal = async () => {
     if (!certificate) return;
@@ -225,27 +232,27 @@ const Page = () => {
 
   const canReadCertificate = Boolean(
     certSubject &&
-      (permission.can(ProjectPermissionCertificateActions.Read, certSubject) ||
-        appPermissionData?.permission?.can(
-          PkiApplicationResourceActions.Read,
-          PkiApplicationResourceSub.Certificates
-        ))
+    (permission.can(ProjectPermissionCertificateActions.Read, certSubject) ||
+      appPermissionData?.permission?.can(
+        PkiApplicationResourceActions.Read,
+        PkiApplicationResourceSub.Certificates
+      ))
   );
   const canEditCertificate = Boolean(
     certSubject &&
-      (permission.can(ProjectPermissionCertificateActions.Edit, certSubject) ||
-        appPermissionData?.permission?.can(
-          PkiApplicationResourceActions.Edit,
-          PkiApplicationResourceSub.Certificates
-        ))
+    (permission.can(ProjectPermissionCertificateActions.Edit, certSubject) ||
+      appPermissionData?.permission?.can(
+        PkiApplicationResourceActions.Edit,
+        PkiApplicationResourceSub.Certificates
+      ))
   );
   const canDeleteCertificate = Boolean(
     certSubject &&
-      (permission.can(ProjectPermissionCertificateActions.Delete, certSubject) ||
-        appPermissionData?.permission?.can(
-          PkiApplicationResourceActions.Delete,
-          PkiApplicationResourceSub.Certificates
-        ))
+    (permission.can(ProjectPermissionCertificateActions.Delete, certSubject) ||
+      appPermissionData?.permission?.can(
+        PkiApplicationResourceActions.Delete,
+        PkiApplicationResourceSub.Certificates
+      ))
   );
   const canEditPkiSyncs =
     permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs) ||
@@ -256,61 +263,70 @@ const Page = () => {
       )
     );
 
+  let certificateBackLink = (
+    <Link
+      to="/organizations/$orgId/cert-manager/inventory"
+      params={{
+        orgId: currentOrg.id
+      }}
+    >
+      <ChevronLeftIcon size={16} />
+      Certificates
+    </Link>
+  );
+
+  if (parentApplication) {
+    certificateBackLink = (
+      <Link
+        to="/organizations/$orgId/cert-manager/applications/$applicationName"
+        params={{
+          orgId: currentOrg.id,
+          applicationName: parentApplication
+        }}
+        search={{ selectedTab: ApplicationTab.Certificates }}
+      >
+        <ChevronLeftIcon size={16} />
+        Go back to Application
+      </Link>
+    );
+  } else if (fromHsmConnector) {
+    certificateBackLink = (
+      <Link
+        to="/organizations/$orgId/cert-manager/hsm-connectors/$connectorId"
+        params={{
+          orgId: currentOrg.id,
+          connectorId: fromHsmConnector
+        }}
+      >
+        <ChevronLeftIcon size={16} />
+        HSM Connector
+      </Link>
+    );
+  }
+
   let pageBody: React.ReactNode = null;
   if (!certificate) {
-    pageBody = <EmptyState title="Error: Unable to find the certificate." className="py-12" />;
+    pageBody = (
+      <Empty className="border border-dashed">
+        <EmptyHeader>
+          <EmptyTitle>Error: Unable to find the certificate.</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
   } else if (!canReadCertificate) {
     pageBody = (
-      <div className="container mx-auto flex h-full items-center justify-center">
-        <AccessRestrictedBanner />
-      </div>
+      <AccessRestrictedDialog
+        requirement={{
+          action: ProjectPermissionCertificateActions.Read,
+          subject: ProjectPermissionSub.Certificates
+        }}
+      />
     );
   } else {
     pageBody = (
-      <div className="mx-auto mb-6 w-full max-w-8xl">
-        {fromApplication && (
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
-            params={{
-              orgId: currentOrg.id,
-              projectId,
-              applicationName: fromApplication
-            }}
-            search={{ selectedTab: "certificates" }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-          >
-            <ChevronLeftIcon size={16} />
-            Go back to Application
-          </Link>
-        )}
-        {!fromApplication && fromHsmConnector && (
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId"
-            params={{
-              orgId: currentOrg.id,
-              projectId,
-              connectorId: fromHsmConnector
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-          >
-            <ChevronLeftIcon size={16} />
-            HSM Connector
-          </Link>
-        )}
-        {!fromApplication && !fromHsmConnector && (
-          <Link
-            to="/organizations/$orgId/projects/cert-manager/$projectId/inventory"
-            params={{
-              orgId: currentOrg.id,
-              projectId
-            }}
-            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
-          >
-            <ChevronLeftIcon size={16} />
-            Certificates
-          </Link>
-        )}
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
+          backLink={certificateBackLink}
           scope={ProjectType.CertificateManager}
           description="View certificate details"
           title={displayName}
@@ -386,14 +402,21 @@ const Page = () => {
                     Disable Auto-Renewal
                   </DropdownMenuItem>
                 )}
-              {!isInventoryView &&
-                (certificate.profileId || certificate.caId) &&
-                certificate.hasPrivateKey !== false &&
-                !certificate.renewedByCertificateId &&
-                !isRevoked &&
-                !isExpired && (
+              {(() => {
+                const isRenewable =
+                  !isInventoryView &&
+                  !certificate.renewedByCertificateId &&
+                  !isRevoked &&
+                  !isExpired;
+
+                if (!isRenewable) return null;
+
+                const profileMissing = !certificate.profileId;
+                if (profileMissing && !isManagedCertificate(certificate)) return null;
+
+                const item = (
                   <DropdownMenuItem
-                    isDisabled={!canEditCertificate}
+                    isDisabled={!canEditCertificate || profileMissing}
                     onClick={() =>
                       handlePopUpOpen("renewCertificate", {
                         certificateId: certificate.id,
@@ -403,7 +426,21 @@ const Page = () => {
                   >
                     Renew Now
                   </DropdownMenuItem>
-                )}
+                );
+
+                if (!profileMissing) return item;
+
+                return (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>{item}</div>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" sideOffset={20} className="max-w-72">
+                      {RENEWAL_UNAVAILABLE_NO_PROFILE}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })()}
               {!isInventoryView &&
                 certificate.status === CertStatus.ACTIVE &&
                 !certificate.renewedByCertificateId &&
@@ -422,7 +459,6 @@ const Page = () => {
                 )}
               {supportsRevocation &&
                 !isRevoked &&
-                certificate.source === CertSource.Issued &&
                 !(isInventoryView && certificate.applicationId) && (
                   <DropdownMenuItem
                     isDisabled={!canDeleteCertificate}
@@ -435,21 +471,42 @@ const Page = () => {
                     Revoke Certificate
                   </DropdownMenuItem>
                 )}
-              {!(isInventoryView && certificate.applicationId) && (
-                <DropdownMenuItem
-                  variant="danger"
-                  isDisabled={!canDeleteCertificate}
-                  onClick={() => handlePopUpOpen("deleteCertificate")}
-                >
-                  Delete Certificate
-                </DropdownMenuItem>
-              )}
+              {!(isInventoryView && certificate.applicationId) &&
+                (() => {
+                  const deletionBlockReason = getCertificateDeletionBlockReason(
+                    certificate,
+                    supportsRevocation
+                  );
+
+                  const item = (
+                    <DropdownMenuItem
+                      variant="danger"
+                      isDisabled={!canDeleteCertificate || Boolean(deletionBlockReason)}
+                      onClick={() => handlePopUpOpen("deleteCertificate")}
+                    >
+                      Delete Certificate
+                    </DropdownMenuItem>
+                  );
+
+                  if (!deletionBlockReason) return item;
+
+                  return (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>{item}</div>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" sideOffset={20} className="max-w-72">
+                        {deletionBlockReason}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })()}
             </DropdownMenuContent>
           </DropdownMenu>
         </PageHeader>
         <div className="flex flex-col gap-5 lg:flex-row">
           <CertificateOverviewSection certificateId={certificate.id} />
-          <div className="flex flex-1 flex-col gap-y-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-y-5">
             <CertificateDetailsSection certificateId={certificate.id} />
             <CertificateInstallationsSection certificateId={certificate.id} />
           </div>
@@ -459,7 +516,7 @@ const Page = () => {
   }
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {pageBody}
       <CertificateCertModal
         popUp={popUp}
@@ -473,19 +530,23 @@ const Page = () => {
       />
       <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateRenewalModal
+        popUp={popUp}
+        applicationName={parentApplication}
+        handlePopUpToggle={handlePopUpToggle}
+      />
       <CertificateManagePkiSyncsModal
         popUp={popUp.managePkiSyncs}
         handlePopUpToggle={handlePopUpToggle}
         applicationName={fromApplication}
       />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteCertificate.isOpen}
         title="Are you sure you want to delete this certificate?"
-        subTitle="This action cannot be undone. The certificate will be permanently deleted."
-        onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={onDeleteCertificateSubmit}
+        description="This action cannot be undone. The certificate will be permanently deleted."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
+        confirmKey="confirm"
+        onConfirm={onDeleteCertificateSubmit}
       />
     </div>
   );
@@ -494,10 +555,8 @@ const Page = () => {
 export const CertificateDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Certificate Details</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Certificate Details" />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

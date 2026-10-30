@@ -1,8 +1,8 @@
 import { createMongoAbility } from "@casl/ability";
-import { Knex } from "knex";
+import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, ProjectType } from "@app/db/schemas";
 
 import { identityV2ServiceFactory } from "./identity-service";
 import { TDeleteIdentityV2DTO } from "./identity-types";
@@ -13,6 +13,14 @@ vi.mock("@app/lib/config/env", () => ({
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+}));
+
+// `vi.mock` factories are hoisted above imports — the spy they reference must come from `vi.hoisted`.
+// Stubbing the config read rather than the guard itself keeps the real instance-admin check under test.
+const { getServerCfgMock } = vi.hoisted(() => ({ getServerCfgMock: vi.fn() }));
+
+vi.mock("@app/services/super-admin/super-admin-service", () => ({
+  getServerCfg: getServerCfgMock
 }));
 
 const ORG_ID = "org-1";
@@ -32,14 +40,17 @@ const buildDto = (): TDeleteIdentityV2DTO =>
   }) as unknown as TDeleteIdentityV2DTO;
 
 const createService = ({
-  existingIdentity = { id: IDENTITY_ID, name: "ident", hasDeleteProtection: false }
-}: { existingIdentity?: Record<string, unknown> | null } = {}) => {
+  existingIdentity = { id: IDENTITY_ID, name: "ident", hasDeleteProtection: false },
+  projectType,
+  tx = TX
+}: { existingIdentity?: Record<string, unknown> | null; projectType?: ProjectType; tx?: Knex } = {}) => {
   const deleteAlertsForDeletedResource = vi.fn().mockResolvedValue(0);
 
   const identityDAL = {
     findOne: vi.fn().mockResolvedValue(existingIdentity),
-    transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
-    deleteById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "ident" })
+    transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(tx)),
+    deleteById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "ident" }),
+    updateById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "renamed" })
   };
 
   const service = identityV2ServiceFactory({
@@ -51,23 +62,29 @@ const createService = ({
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
       getProjectPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
+      getOrgPermissionByRoles: vi.fn().mockResolvedValue([]),
+      getProjectPermissionByRoles: vi.fn().mockResolvedValue([])
     } as never,
     licenseService: { getPlan: vi.fn(), updateSubscriptionOrgMemberCount: vi.fn() } as never,
-    membershipIdentityDAL: {} as never,
+    // The delete guards bound the removal against the roles the target identity holds.
+    membershipIdentityDAL: {
+      getIdentityById: vi.fn().mockResolvedValue({ roles: [] }),
+      find: vi.fn().mockResolvedValue([{ id: "identity-membership" }])
+    } as never,
     membershipRoleDAL: {} as never,
     identityMetadataDAL: { delete: vi.fn(), insertMany: vi.fn() } as never,
     identityAccessTokenService: {
       insertIdentityWideRevocationMarker: vi.fn().mockResolvedValue(undefined),
       bumpIdentityRevocationVersion: vi.fn().mockResolvedValue(undefined)
     } as never,
-    keyStore: { getKeysByPattern: vi.fn(), getItem: vi.fn() } as never,
+    keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     projectDAL: {
       findActorAccessibleProjectIds: vi.fn(),
       findOrgProjectIds: vi.fn(),
-      findById: vi.fn()
+      findById: vi.fn().mockResolvedValue(projectType ? { id: PROJECT_ID, type: projectType } : undefined)
     } as never,
-    orgDAL: { findById: vi.fn() } as never,
+    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: true }) } as never,
     roleDAL: { find: vi.fn() } as never,
     usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
     alertService: { deleteAlertsForDeletedResource } as never
@@ -77,7 +94,10 @@ const createService = ({
 };
 
 describe("deleteIdentity alert cleanup", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] });
+  });
 
   test("reaps the identity's alerts in every org, in the same transaction as the row delete", async () => {
     const { service, identityDAL, deleteAlertsForDeletedResource } = createService();
@@ -109,6 +129,28 @@ describe("deleteIdentity alert cleanup", () => {
     );
   });
 
+  test.each([ProjectType.CertificateManager, ProjectType.PAM, ProjectType.AgentVault])(
+    "refuses deleting the last project admin identity in %s",
+    async (projectType) => {
+      const query = knex({ client: "pg" }).queryBuilder();
+      vi.spyOn(query, "first").mockResolvedValueOnce({ count: "0" }).mockResolvedValue({ count: "1" });
+      const tx = Object.assign(
+        vi.fn(() => query),
+        { raw: vi.fn().mockResolvedValue(undefined) }
+      ) as unknown as Knex;
+      const { service, identityDAL, deleteAlertsForDeletedResource } = createService({ projectType, tx });
+      await expect(
+        service.deleteIdentity({
+          ...buildDto(),
+          scopeData: { scope: AccessScope.Project, orgId: ORG_ID, projectId: PROJECT_ID }
+        })
+      ).rejects.toThrow("must keep at least one admin");
+      expect(identityDAL.deleteById).not.toHaveBeenCalled();
+      expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
+      expect(query.toSQL().bindings).toContain("identity-membership");
+    }
+  );
+
   test("delete protection stops the delete before anything is reaped", async () => {
     const { service, deleteAlertsForDeletedResource } = createService({
       existingIdentity: { id: IDENTITY_ID, name: "ident", hasDeleteProtection: true }
@@ -127,5 +169,115 @@ describe("deleteIdentity alert cleanup", () => {
     await expect(service.deleteIdentity(buildDto())).rejects.toThrow(`Identity with id ${IDENTITY_ID} not found`);
 
     expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
+  });
+});
+
+describe("instance admin identities are protected on the v2 surface", () => {
+  const INSTANCE_ADMIN_ERROR =
+    "You are attempting to modify an instance admin identity. This requires elevated instance admin privileges";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [IDENTITY_ID] });
+  });
+
+  test("delete is refused for a non instance admin actor, and nothing is reaped", async () => {
+    const { service, identityDAL, deleteAlertsForDeletedResource } = createService();
+
+    await expect(service.deleteIdentity(buildDto())).rejects.toThrow(INSTANCE_ADMIN_ERROR);
+
+    expect(identityDAL.deleteById).not.toHaveBeenCalled();
+    expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
+  });
+
+  test("update is refused for a non instance admin actor", async () => {
+    const { service, identityDAL } = createService();
+
+    await expect(service.updateIdentity({ ...buildDto(), data: { name: "renamed" } } as never)).rejects.toThrow(
+      INSTANCE_ADMIN_ERROR
+    );
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("an instance admin actor is allowed through", async () => {
+    const { service, identityDAL } = createService();
+
+    await service.deleteIdentity({ ...buildDto(), isActorSuperAdmin: true });
+
+    expect(identityDAL.deleteById).toHaveBeenCalledWith(IDENTITY_ID, TX);
+  });
+
+  test("the guard is inert when no instance admin identities are configured", async () => {
+    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] });
+    const { service, identityDAL } = createService();
+
+    await service.deleteIdentity(buildDto());
+
+    expect(identityDAL.deleteById).toHaveBeenCalledWith(IDENTITY_ID, TX);
+  });
+
+  test("an out-of-scope instance admin identity is not found, not refused as privileged", async () => {
+    const { service, identityDAL, deleteAlertsForDeletedResource } = createService({ existingIdentity: null });
+
+    await expect(service.deleteIdentity(buildDto())).rejects.toThrow(`Identity with id ${IDENTITY_ID} not found`);
+
+    expect(identityDAL.deleteById).not.toHaveBeenCalled();
+    expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
+  });
+
+  test("an out-of-scope instance admin identity is not found on update either", async () => {
+    const { service, identityDAL } = createService({ existingIdentity: null });
+
+    await expect(service.updateIdentity({ ...buildDto(), data: { name: "renamed" } } as never)).rejects.toThrow(
+      `Identity with id ${IDENTITY_ID} not found`
+    );
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateIdentity name check", () => {
+  const SOFT_HYPHEN = String.fromCharCode(0xad);
+  const LEGACY_NAME = `ci${SOFT_HYPHEN}bot`;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] });
+  });
+
+  const update = (service: ReturnType<typeof createService>["service"], data: Record<string, unknown>) =>
+    service.updateIdentity({ ...buildDto(), data } as never);
+
+  test("an unchanged name is let through even if it predates the rule", async () => {
+    const { service, identityDAL } = createService({
+      existingIdentity: { id: IDENTITY_ID, name: LEGACY_NAME, hasDeleteProtection: false }
+    });
+
+    await update(service, { name: LEGACY_NAME, hasDeleteProtection: true });
+
+    expect(identityDAL.updateById).toHaveBeenCalledWith(
+      IDENTITY_ID,
+      { name: LEGACY_NAME, hasDeleteProtection: true },
+      TX
+    );
+  });
+
+  test("a rename to an unsafe name is refused", async () => {
+    const { service, identityDAL } = createService();
+
+    await expect(update(service, { name: LEGACY_NAME })).rejects.toThrow(
+      "Value cannot contain control, escape, bidirectional or zero-width characters"
+    );
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("a rename to a safe name goes through", async () => {
+    const { service, identityDAL } = createService();
+
+    await update(service, { name: "ci-bot" });
+
+    expect(identityDAL.updateById).toHaveBeenCalledWith(IDENTITY_ID, { name: "ci-bot" }, TX);
   });
 });

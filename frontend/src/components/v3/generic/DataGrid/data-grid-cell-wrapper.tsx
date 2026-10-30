@@ -7,8 +7,7 @@ import type { DataGridCellProps } from "./data-grid-types";
 import { getCellKey } from "./data-grid-utils";
 
 interface DataGridCellWrapperProps<TData>
-  extends DataGridCellProps<TData>,
-    React.ComponentProps<"div"> {}
+  extends DataGridCellProps<TData>, React.ComponentProps<"div"> {}
 
 export function DataGridCellWrapper<TData>({
   tableMeta,
@@ -156,11 +155,11 @@ export function DataGridCellWrapper<TData>({
       {...props}
       ref={composedRef}
       className={cn(
-        "flex size-full items-center px-3 py-1.5 text-start text-sm text-mineshaft-200 outline-none **:data-[slot=grid-cell-content]:h-auto",
+        "flex size-full items-center px-3 py-1.5 text-start text-sm text-foreground-secondary outline-none **:data-[slot=grid-cell-content]:h-auto",
         {
           "ring-1 ring-ring ring-inset": isFocused,
-          "bg-yellow-900/30": isSearchMatch && !isActiveSearchMatch,
-          "bg-orange-900/50": isActiveSearchMatch,
+          "bg-warning/30": isSearchMatch && !isActiveSearchMatch,
+          "bg-warning/50": isActiveSearchMatch,
           "bg-warning/10": isDirty && !isSelected && !isSearchMatch && !isActiveSearchMatch,
           "bg-foreground/[0.07]": isSelected && !isEditing,
           "cursor-default": !isEditing,

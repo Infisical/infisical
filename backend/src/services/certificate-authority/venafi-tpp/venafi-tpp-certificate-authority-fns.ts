@@ -21,9 +21,16 @@ import {
   requestWithVenafiTppGateway,
   revokeVenafiTppToken
 } from "@app/services/app-connection/venafi-tpp/venafi-tpp-connection-fns";
+import { calculateRenewalThreshold, parseTtlToDays } from "@app/services/certificate-common/certificate-issuance-utils";
+import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { splitPemChain } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate,
+  splitPemChain
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -33,9 +40,6 @@ import {
   CertSubjectAlternativeNameType,
   mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
-import { calculateRenewalThreshold, parseTtlToDays } from "@app/services/certificate-common/certificate-issuance-utils";
-import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
-import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -344,7 +348,7 @@ type TVenafiTppCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
@@ -841,23 +845,23 @@ export const VenafiTppCertificateAuthorityFns = ({
 
       let certificateId: string;
 
+      const parsedFields = extractExternallyIssuedCertificateFields(certObj);
+
       await certificateDAL.transaction(async (tx) => {
         const cert = await certificateDAL.create(
           {
+            ...parsedFields,
             caId: ca.id,
             profileId,
             status: CertStatus.ACTIVE,
-            friendlyName: commonName,
-            commonName,
-            altNames: altNames.map((san) => san.value).join(","),
-            serialNumber: certObj.serialNumber,
-            notBefore: certObj.notBefore,
-            notAfter: certObj.notAfter,
-            keyUsages,
-            extendedKeyUsages,
-            keyAlgorithm,
-            signatureAlgorithm,
             projectId: ca.projectId,
+            friendlyName: parsedFields.commonName ?? commonName,
+            commonName: parsedFields.commonName ?? commonName,
+            altNames: parsedFields.altNames ?? altNames.map((san) => san.value).join(","),
+            keyUsages: parsedFields.keyUsages ?? keyUsages,
+            extendedKeyUsages: parsedFields.extendedKeyUsages ?? extendedKeyUsages,
+            keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+            signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
             renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
           },
           tx
@@ -866,7 +870,7 @@ export const VenafiTppCertificateAuthorityFns = ({
         certificateId = cert.id;
 
         if (isRenewal && originalCertificateId) {
-          await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, tx);
+          await linkRenewedCertificate(certificateDAL, originalCertificateId, cert.id, tx);
         }
 
         await certificateBodyDAL.create(

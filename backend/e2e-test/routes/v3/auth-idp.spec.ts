@@ -472,4 +472,114 @@ describe("Auth IdP Service-Level Tests", () => {
       expect(result2.user.id).toBe(result1.user.id);
     });
   });
+
+  // syncSsoUserProfile is unit-tested in isolation; these cover the wiring, that each provider's
+  // login actually calls it, after the alias has been promoted to verified, with the assertion's
+  // values rather than the stored ones.
+  describe("SSO profile sync", () => {
+    type TIdpLoginArgs = { externalId: string; email: string; firstName: string; lastName: string };
+
+    const idpLogins: { name: string; slug: string; login: (args: TIdpLoginArgs) => Promise<unknown> }[] = [
+      {
+        name: "SAML",
+        slug: "saml",
+        login: (args) =>
+          getServices().saml.samlLogin({
+            ...args,
+            authProvider: "okta-saml",
+            orgId: TEST_ORG_ID,
+            ip: "127.0.0.1",
+            userAgent: "test-agent"
+          })
+      },
+      {
+        name: "LDAP",
+        slug: "ldap",
+        login: (args) =>
+          getServices().ldap.ldapLogin({
+            ...args,
+            username: args.email,
+            ldapConfigId,
+            orgId: TEST_ORG_ID,
+            ip: "127.0.0.1",
+            userAgent: "test-agent"
+          })
+      },
+      {
+        name: "OIDC",
+        slug: "oidc",
+        login: (args) =>
+          getServices().oidc.oidcLogin({
+            ...args,
+            orgId: TEST_ORG_ID,
+            ip: "127.0.0.1",
+            userAgent: "test-agent"
+          })
+      }
+    ];
+
+    const setAuthEnforced = async (authEnforced: boolean) => {
+      await getDb()(TableName.Organization).where({ id: TEST_ORG_ID }).update({ authEnforced });
+    };
+
+    afterEach(async () => {
+      await setAuthEnforced(false);
+    });
+
+    describe.each(idpLogins)("$name Login", ({ slug, login }) => {
+      // Enforcement is on for the first login of both tests so the alias is created verified,
+      // which is what syncSsoUserProfile requires before it will trust the assertion.
+      const seedVerifiedAlias = async (externalId: string, email: string) => {
+        await setAuthEnforced(true);
+        await login({ externalId, email, firstName: "Original", lastName: "Name" });
+
+        const alias = await getDb()(TableName.UserAliases).where({ externalId, orgId: TEST_ORG_ID }).first();
+        if (!alias) throw new Error(`No alias created for external id '${externalId}'`);
+        expect(alias.isEmailVerified).toBe(true);
+        createdUserIds.push(alias.userId);
+
+        return alias;
+      };
+
+      test("Carries a renamed mailbox and name onto the account when the org enforces SSO", async () => {
+        const externalId = `${slug}-sync-${crypto.randomUUID()}`;
+        const email = `${slug}sync-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+        const renamedEmail = `${slug}renamed-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+
+        const alias = await seedVerifiedAlias(externalId, email);
+
+        // Same externalId, new mailbox and surname: the person was renamed at the IdP.
+        await login({ externalId, email: renamedEmail, firstName: "Original", lastName: "Renamed" });
+
+        const db = getDb();
+        const user = await db(TableName.Users).where({ id: alias.userId }).first();
+        expect(user?.username).toBe(renamedEmail);
+        expect(user?.email).toBe(renamedEmail);
+        expect(user?.lastName).toBe("Renamed");
+
+        // The old address stays on the alias so a login in flight from before the rename
+        // does not read as stale.
+        const updatedAlias = await db(TableName.UserAliases).where({ id: alias.id }).first();
+        expect(updatedAlias?.emails).toEqual(expect.arrayContaining([email, renamedEmail]));
+      });
+
+      test("Leaves the account alone when the org does not enforce SSO", async () => {
+        const externalId = `${slug}-nosync-${crypto.randomUUID()}`;
+        const email = `${slug}nosync-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+        const renamedEmail = `${slug}nosyncrenamed-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+
+        const alias = await seedVerifiedAlias(externalId, email);
+
+        // Enforcement dropped, so the IdP is no longer authoritative for identity. The alias
+        // stays verified, which isolates the enforcement gate from the stale-alias guard.
+        await setAuthEnforced(false);
+        await login({ externalId, email: renamedEmail, firstName: "Original", lastName: "Renamed" });
+
+        const user = await getDb()(TableName.Users).where({ id: alias.userId }).first();
+        expect(user?.username).toBe(email);
+        expect(user?.email).toBe(email);
+        expect(user?.lastName).toBe("Name");
+      });
+    });
+  });
 });

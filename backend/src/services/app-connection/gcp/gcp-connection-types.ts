@@ -59,3 +59,29 @@ export type GCPGetServiceRes = {
   parent: string;
   state: "ENABLED" | "DISABLED" | "STATE_UNSPECIFIED";
 };
+
+export type GCPCertificateMap = {
+  name: string;
+  description?: string;
+};
+
+export type GCPGetCertificateMapsRes = {
+  certificateMaps?: GCPCertificateMap[];
+  nextPageToken?: string;
+};
+
+export type TGcpCertificateManagerProjectScopedDTO = {
+  connectionId: string;
+  gcpProjectId: string;
+};
+
+export type GCPCloudDnsManagedZone = {
+  name: string;
+  dnsName: string;
+  visibility?: "public" | "private";
+};
+
+export type GCPGetCloudDnsManagedZonesRes = {
+  managedZones?: GCPCloudDnsManagedZone[];
+  nextPageToken?: string;
+};

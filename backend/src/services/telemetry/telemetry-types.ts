@@ -1,7 +1,14 @@
-import { IdentityAuthMethod, ProjectType } from "@app/db/schemas";
+import { IdentityAuthMethod, ProjectType, SecretFolderRole } from "@app/db/schemas";
+import {
+  AgentVaultCredentialType,
+  AgentVaultMemberType,
+  AgentVaultServiceType,
+  AgentVaultTrafficPolicy
+} from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
+  AgentVaultProxyActor,
   EstAccountActor,
   GatewayActor,
   IdentityActor,
@@ -17,12 +24,18 @@ import {
 } from "@app/ee/services/audit-log/audit-log-types";
 import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
 import { ProxiedServiceSubstitutionSurface } from "@app/ee/services/proxied-service/proxied-service-enums";
+import { TSettableAuthMethod } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
-import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningFindingStatus,
+  SecretScanningScanType
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { AuthMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
 export type HubSpotSignupMethod = AuthMethod | "invite";
@@ -101,8 +114,6 @@ export enum PostHogEventTypes {
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
   GatewayCertExchanged = "Gateway Cert Exchanged",
-  GatewayUpdated = "Gateway Updated",
-  GatewayDeleted = "Gateway Deleted",
   PamAccountTemplateCreated = "PAM Account Template Created",
   PamAccountTemplateUpdated = "PAM Account Template Updated",
   PamAccountTemplateDeleted = "PAM Account Template Deleted",
@@ -134,6 +145,7 @@ export enum PostHogEventTypes {
   PamAccountRotated = "PAM Account Rotated",
   PamAccessRequestCreated = "PAM Access Request Created",
   PamAccessRequestReviewed = "PAM Access Request Reviewed",
+  PamAccessRequestBrokeGlass = "PAM Access Request Broke Glass",
   PamAccessGrantRevoked = "PAM Access Grant Revoked",
 
   ResourceAuthMethodLogin = "Resource Auth Method Login",
@@ -214,6 +226,9 @@ export enum PostHogEventTypes {
   ProjectMembershipCreated = "Project Membership Created",
   ProjectMembershipRoleUpdated = "Project Membership Role Updated",
   ProjectMembershipDeleted = "Project Membership Deleted",
+  FolderAccessGrantCreated = "Folder Access Grant Created",
+  FolderAccessGrantUpdated = "Folder Access Grant Updated",
+  FolderAccessGrantDeleted = "Folder Access Grant Deleted",
   OrganizationCreated = "Organization Created",
   SubOrganizationCreated = "Sub Organization Created",
 
@@ -224,8 +239,9 @@ export enum PostHogEventTypes {
 
   // Secret Scanning v2
   SecretScanningDataSourceCreated = "Secret Scanning Data Source Created",
+  SecretScanningResourcesAdded = "Secret Scanning Resources Added",
   SecretScanningScanCompleted = "Secret Scanning Scan Completed",
-  SecretScanningFindingResolved = "Secret Scanning Finding Resolved",
+  SecretScanningFindingClosed = "Secret Scanning Finding Closed",
 
   // Groups
   GroupCreated = "Group Created",
@@ -296,8 +312,50 @@ export enum PostHogEventTypes {
   AccessApprovalPolicyUpdated = "Access Approval Policy Updated",
   SecretRotationV2Failed = "Secret Rotation V2 Failed",
 
+  // Billing
+  BillingCheckoutSessionCreated = "Billing Checkout Session Created",
+  BillingProductActivated = "Billing Product Activated",
+  BillingPlanUpgraded = "Billing Plan Upgraded",
+
   // Agent Proxy
-  ProxiedServiceCreated = "Proxied Service Created"
+  ProxiedServiceCreated = "Proxied Service Created",
+
+  // Agent Vault
+  AgentVaultAccessBundleCreated = "Agent Vault Access Bundle Created",
+  AgentVaultAccessBundleUpdated = "Agent Vault Access Bundle Updated",
+  AgentVaultAccessBundleDeleted = "Agent Vault Access Bundle Deleted",
+  AgentVaultServiceCreated = "Agent Vault Service Created",
+  AgentVaultServiceUpdated = "Agent Vault Service Updated",
+  AgentVaultServiceDeleted = "Agent Vault Service Deleted",
+  AgentVaultVariableCreated = "Agent Vault Variable Created",
+  AgentVaultVariableUpdated = "Agent Vault Variable Updated",
+  AgentVaultVariableDeleted = "Agent Vault Variable Deleted",
+  AgentVaultSkillCreated = "Agent Vault Skill Created",
+  AgentVaultSkillVersionPublished = "Agent Vault Skill Version Published",
+  AgentVaultSkillDeleted = "Agent Vault Skill Deleted",
+  AgentVaultAccessBundleSkillAdded = "Agent Vault Access Bundle Skill Added",
+  AgentVaultAccessBundleSkillRemoved = "Agent Vault Access Bundle Skill Removed",
+  AgentVaultSkillsDelivered = "Agent Vault Skills Delivered",
+  AgentVaultAccessBundleMemberAdded = "Agent Vault Access Bundle Member Added",
+  AgentVaultAccessBundleMemberRemoved = "Agent Vault Access Bundle Member Removed",
+  AgentVaultSessionCreated = "Agent Vault Session Created",
+  AgentVaultSessionRevoked = "Agent Vault Session Revoked",
+  AgentVaultSessionLogSettingsUpdated = "Agent Vault Session Log Settings Updated",
+  AgentVaultProxyRegistered = "Agent Vault Proxy Registered",
+  AgentVaultProxyUpdated = "Agent Vault Proxy Updated",
+  AgentVaultProxyDeleted = "Agent Vault Proxy Deleted",
+  AgentVaultProxyAccessRevoked = "Agent Vault Proxy Access Revoked",
+  AgentVaultProxyTokenRotated = "Agent Vault Proxy Token Rotated",
+  AgentVaultSessionLogChunkAccepted = "Agent Vault Session Log Chunk Accepted",
+  AgentVaultProductMemberAdded = "Agent Vault Product Member Added",
+  AgentVaultProductMemberUpdated = "Agent Vault Product Member Updated",
+  AgentVaultProductMemberRemoved = "Agent Vault Product Member Removed",
+
+  // Billing trials. Cloud-only: the self-hosted license backend rejects startTrial outright.
+  // "awaiting_card" gets its own event rather than an outcome property on TrialStarted, because it
+  // does NOT grant a trial; a "Trial Started" that never started would poison every funnel built on it.
+  TrialStarted = "Trial Started",
+  TrialCardRequired = "Trial Card Required"
 }
 
 export type TSecretModifiedEvent = {
@@ -330,7 +388,8 @@ export type TSecretModifiedEvent = {
       | ScepAccountActor
       | GatewayActor
       | RelayActor
-      | KmipServerActor;
+      | KmipServerActor
+      | AgentVaultProxyActor;
   };
 };
 
@@ -344,12 +403,33 @@ export type TAdminInitEvent = {
   };
 };
 
+/**
+ * Where a signup came from, as a value the analytics layer can group on. `attributionSource` stays
+ * as-is for the historical queries built on it, including its `"Team Invite"` sentinel.
+ */
+export enum SignupSource {
+  TeamInvite = "team_invite",
+  SelfServe = "self_serve"
+}
+
+/**
+ * How we know the attribution: `UserProvided` is an answer the person typed, `SystemDerived` is one
+ * the signup flow already knew. Without it the two are only separable by matching the sentinel, so
+ * every attribution measure has to exclude invites instead of counting them.
+ */
+export enum SignupAttributionType {
+  UserProvided = "user_provided",
+  SystemDerived = "system_derived"
+}
+
 export type TUserSignedUpEvent = {
   event: PostHogEventTypes.UserSignedUp;
   properties: {
     username: string;
     email: string;
     attributionSource?: string;
+    attributionType?: SignupAttributionType;
+    signupSource?: SignupSource;
     signupMethod?: string;
   };
 };
@@ -390,6 +470,7 @@ export type TSignupAttributionProvidedEvent = {
   event: PostHogEventTypes.SignupAttributionProvided;
   properties: {
     attributionSource: string;
+    attributionType?: SignupAttributionType;
   };
 };
 
@@ -616,6 +697,10 @@ export type TTelemetryInstanceStatsEvent = {
     honeyTokens: number;
     proxiedServices: number;
     proxiedServicesUsedLast7Days: number;
+    agentVaultProxies: number;
+    activeAgentVaultProxies: number;
+    agentVaultAccessBundles: number;
+    agentVaultServices: number;
     integrationBreakdown: Record<string, number>;
     projectTypeBreakdown: Record<string, number>;
     secretSyncBreakdown: Record<string, number>;
@@ -627,7 +712,6 @@ export type TTelemetryInstanceStatsEvent = {
 export type TSecretRequestCreatedEvent = {
   event: PostHogEventTypes.SecretRequestCreated;
   properties: {
-    secretRequestId: string;
     organizationId: string;
     secretRequestName?: string;
   };
@@ -636,7 +720,6 @@ export type TSecretRequestCreatedEvent = {
 export type TSecretRequestDeletedEvent = {
   event: PostHogEventTypes.SecretRequestDeleted;
   properties: {
-    secretRequestId: string;
     organizationId: string;
   };
 };
@@ -718,7 +801,6 @@ export type TSecretSharedEvent = {
 export type TSharedSecretViewedEvent = {
   event: PostHogEventTypes.SharedSecretViewed;
   properties: {
-    sharedSecretIdHash: string;
     accessType: SecretSharingAccessType;
   };
 };
@@ -726,7 +808,6 @@ export type TSharedSecretViewedEvent = {
 export type TSharedSecretLinkOpenedEvent = {
   event: PostHogEventTypes.SharedSecretLinkOpened;
   properties: {
-    sharedSecretIdHash: string;
     accessType: SecretSharingAccessType;
     expiresAt: string;
     hasPassword: boolean;
@@ -812,6 +893,7 @@ export type TSecretApprovalRequestSubmittedEvent = {
     environment: string;
     secretPath: string;
     numberOfCommits: number;
+    actorType: string;
   };
 };
 
@@ -1050,20 +1132,6 @@ export type TGatewayCertExchangedEvent = {
   };
 };
 
-export type TGatewayUpdatedEvent = {
-  event: PostHogEventTypes.GatewayUpdated;
-  properties: {
-    gatewayId: string;
-  };
-};
-
-export type TGatewayDeletedEvent = {
-  event: PostHogEventTypes.GatewayDeleted;
-  properties: {
-    gatewayId: string;
-  };
-};
-
 export type TPamAccountTemplateEvent = {
   event:
     | PostHogEventTypes.PamAccountTemplateCreated
@@ -1214,6 +1282,14 @@ export type TPamAccessRequestReviewedEvent = {
   };
 };
 
+export type TPamAccessRequestBrokeGlassEvent = {
+  event: PostHogEventTypes.PamAccessRequestBrokeGlass;
+  properties: {
+    orgId: string;
+    accountType: string;
+  };
+};
+
 export type TPamAccessGrantRevokedEvent = {
   event: PostHogEventTypes.PamAccessGrantRevoked;
   properties: {
@@ -1227,7 +1303,7 @@ export type TResourceAuthMethodEvent = {
     resourceType: "gateway";
     resourceId: string;
     orgId: string;
-    method: "aws" | "token";
+    method: TSettableAuthMethod;
   };
 };
 
@@ -1571,12 +1647,18 @@ export type TPkiSyncExecutedEvent = {
   };
 };
 
+export enum PkiAlertScope {
+  CertificateManager = "certificate-manager",
+  Application = "application"
+}
+
 export type TPkiAlertCreatedEvent = {
   event: PostHogEventTypes.PkiAlertCreated;
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
     alertType?: string;
   };
 };
@@ -1586,7 +1668,8 @@ export type TPkiAlertUpdatedEvent = {
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
   };
 };
 
@@ -1595,7 +1678,8 @@ export type TPkiAlertDeletedEvent = {
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
   };
 };
 
@@ -1674,6 +1758,7 @@ export type TPkiDiscoveryScanCompletedEvent = {
   properties: {
     orgId: string;
     projectId: string;
+    discoveryType: string;
     status: string;
     certificatesFound: number;
     installationsFound: number;
@@ -1842,6 +1927,19 @@ export type TProjectMembershipDeletedEvent = {
   };
 };
 
+export type TFolderAccessGrantEvent = {
+  event:
+    | PostHogEventTypes.FolderAccessGrantCreated
+    | PostHogEventTypes.FolderAccessGrantUpdated
+    | PostHogEventTypes.FolderAccessGrantDeleted;
+  properties: {
+    projectId: string;
+    actorType: ActorType.USER | ActorType.IDENTITY;
+    permission: SecretFolderRole;
+    isTemporary: boolean;
+  };
+};
+
 // CMEK events
 export type TCmekCreatedEvent = {
   event: PostHogEventTypes.CmekCreated;
@@ -1879,21 +1977,31 @@ export type TSecretScanningDataSourceCreatedEvent = {
   };
 };
 
+export type TSecretScanningResourcesAddedEvent = {
+  event: PostHogEventTypes.SecretScanningResourcesAdded;
+  properties: {
+    type: SecretScanningDataSource;
+    resourceCount: number;
+    // "discovery" is the automatic add when discovery is turned on for a data source
+    source: "manual" | "all" | "discovery";
+  };
+};
+
 export type TSecretScanningScanCompletedEvent = {
   event: PostHogEventTypes.SecretScanningScanCompleted;
   properties: {
-    dataSourceId: string;
-    projectId: string;
     type: SecretScanningDataSource;
+    scanType: SecretScanningScanType;
+    // findings this scan detected for the first time; ones an earlier scan found are not counted again
     findingCount: number;
   };
 };
 
-export type TSecretScanningFindingResolvedEvent = {
-  event: PostHogEventTypes.SecretScanningFindingResolved;
+export type TSecretScanningFindingClosedEvent = {
+  event: PostHogEventTypes.SecretScanningFindingClosed;
   properties: {
-    findingId: string;
-    projectId: string;
+    // how it was closed out: resolved, false-positive or ignore
+    status: SecretScanningFindingStatus;
   };
 };
 
@@ -2150,6 +2258,7 @@ export type TSecretValidationRuleCreatedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
@@ -2158,6 +2267,7 @@ export type TSecretValidationRuleUpdatedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
@@ -2166,6 +2276,7 @@ export type TSecretValidationRuleDeletedEvent = {
   properties: {
     ruleId: string;
     projectId: string;
+    type: string;
   };
 };
 
@@ -2313,6 +2424,308 @@ export type TProxiedServiceCreatedEvent = {
   };
 };
 
+export type TBillingCheckoutSessionCreatedEvent = {
+  event: PostHogEventTypes.BillingCheckoutSessionCreated;
+  properties: {
+    productId: string;
+    plan?: string;
+    cadence?: "monthly" | "annual";
+  };
+};
+
+export type TBillingProductActivatedEvent = {
+  event: PostHogEventTypes.BillingProductActivated;
+  properties: {
+    productId: string;
+    plan?: string;
+    cadence?: "monthly" | "annual";
+    subscriptionId?: string;
+  };
+};
+
+export type TBillingPlanUpgradedEvent = {
+  event: PostHogEventTypes.BillingPlanUpgraded;
+  properties: {
+    productId: string;
+    fromPlan?: string;
+    toPlan: string;
+    subscriptionId?: string;
+  };
+};
+
+type TAgentVaultEventBase = {
+  orgId: string;
+  channel: string;
+  actorType: string;
+};
+
+export type TAgentVaultAccessBundleCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleCreated;
+  properties: TAgentVaultEventBase & { accessBundleId: string };
+};
+
+export type TAgentVaultAccessBundleUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleUpdated;
+  properties: TAgentVaultEventBase & { accessBundleId: string };
+};
+
+export type TAgentVaultAccessBundleDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleDeleted;
+  properties: TAgentVaultEventBase & { accessBundleId: string };
+};
+
+export type TAgentVaultServiceCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultServiceCreated;
+  properties: TAgentVaultEventBase & {
+    accessBundleId: string;
+    serviceId: string;
+    serviceType: AgentVaultServiceType;
+    credentialType: AgentVaultCredentialType;
+    hostPatternCount: number;
+    allowedMethodCount: number;
+    allowedPathPrefixCount: number;
+    customHeaderCount: number;
+    substitutionCount: number;
+    variableReferenceCount: number;
+  };
+};
+
+export type TAgentVaultServiceUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultServiceUpdated;
+  properties: TAgentVaultEventBase & {
+    accessBundleId: string;
+    serviceId: string;
+    serviceType: AgentVaultServiceType;
+    credentialType: AgentVaultCredentialType;
+    hostPatternCount: number;
+    allowedMethodCount: number;
+    allowedPathPrefixCount: number;
+    customHeaderCount: number;
+    substitutionCount: number;
+    variableReferenceCount: number;
+  };
+};
+
+export type TAgentVaultServiceDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultServiceDeleted;
+  properties: TAgentVaultEventBase & { accessBundleId: string; serviceId: string };
+};
+
+export type TAgentVaultVariableCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultVariableCreated;
+  properties: TAgentVaultEventBase & { variableId: string; scope: string };
+};
+
+export type TAgentVaultVariableUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultVariableUpdated;
+  properties: TAgentVaultEventBase & {
+    variableId: string;
+    scope: string;
+    keyChanged: boolean;
+    valueReplaced: boolean;
+    usedByServiceCount: number;
+  };
+};
+
+export type TAgentVaultVariableDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultVariableDeleted;
+  properties: TAgentVaultEventBase & { variableId: string; scope: string };
+};
+
+// sizeBucket keeps the size a breakdown.
+type TAgentVaultSkillContentProperties = {
+  skillId: string;
+  fileCount: number;
+  sizeBucket: string;
+};
+
+export type TAgentVaultSkillCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultSkillCreated;
+  properties: TAgentVaultEventBase & TAgentVaultSkillContentProperties;
+};
+
+export type TAgentVaultSkillVersionPublishedEvent = {
+  event: PostHogEventTypes.AgentVaultSkillVersionPublished;
+  properties: TAgentVaultEventBase & TAgentVaultSkillContentProperties & { version: number; isRestore: boolean };
+};
+
+export type TAgentVaultSkillDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultSkillDeleted;
+  properties: TAgentVaultEventBase & { skillId: string; removedBundleCount: number };
+};
+
+export type TAgentVaultAccessBundleSkillAddedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleSkillAdded;
+  properties: TAgentVaultEventBase & { skillId: string; accessBundleId: string };
+};
+
+export type TAgentVaultAccessBundleSkillRemovedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleSkillRemoved;
+  properties: TAgentVaultEventBase & { skillId: string; accessBundleId: string };
+};
+
+// Fired once per agent start by the route the CLI calls with a session token, which has no request actor.
+export type TAgentVaultSkillsDeliveredEvent = {
+  event: PostHogEventTypes.AgentVaultSkillsDelivered;
+  properties: {
+    orgId: string;
+    channel: string;
+    actorType: string;
+    skillCount: number;
+  };
+};
+
+export type TAgentVaultAccessBundleMemberAddedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleMemberAdded;
+  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: AgentVaultMemberType };
+};
+
+export type TAgentVaultAccessBundleMemberRemovedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleMemberRemoved;
+  properties: TAgentVaultEventBase & { accessBundleId: string; memberType: AgentVaultMemberType };
+};
+
+export type TAgentVaultSessionCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultSessionCreated;
+  properties: TAgentVaultEventBase & {
+    sessionId: string;
+    accessBundleId: string;
+    ttlSeconds: number | null;
+  };
+};
+
+export type TAgentVaultSessionRevokedEvent = {
+  event: PostHogEventTypes.AgentVaultSessionRevoked;
+  properties: TAgentVaultEventBase & { sessionId: string };
+};
+
+export type TAgentVaultSessionLogSettingsUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultSessionLogSettingsUpdated;
+  properties: TAgentVaultEventBase & {
+    enabled: boolean;
+    // Null when session logs are turned off.
+    storageType: ObjectStorageType | null;
+  };
+};
+
+export type TAgentVaultProxyRegisteredEvent = {
+  event: PostHogEventTypes.AgentVaultProxyRegistered;
+  properties: TAgentVaultEventBase & {
+    proxyId: string;
+    trafficPolicy: AgentVaultTrafficPolicy;
+    allowedHostCount: number;
+  };
+};
+
+export type TAgentVaultProxyUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyUpdated;
+  properties: TAgentVaultEventBase & {
+    proxyId: string;
+    trafficPolicy: AgentVaultTrafficPolicy;
+    allowedHostCount: number;
+  };
+};
+
+export type TAgentVaultProxyDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyDeleted;
+  properties: TAgentVaultEventBase & { proxyId: string };
+};
+
+export type TAgentVaultProxyAccessRevokedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyAccessRevoked;
+  properties: TAgentVaultEventBase & { proxyId: string };
+};
+
+export type TAgentVaultProxyTokenRotatedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyTokenRotated;
+  properties: TAgentVaultEventBase & { proxyId: string };
+};
+
+// Sent per upload link a proxy is given, and aggregated (POSTHOG_AGGREGATED_EVENTS), so bytes and records sum per org.
+// records is the proxy's own count, unchecked, and missing from CLIs that don't send it.
+export type TAgentVaultSessionLogChunkAcceptedEvent = {
+  event: PostHogEventTypes.AgentVaultSessionLogChunkAccepted;
+  properties: {
+    orgId: string;
+    storageType: ObjectStorageType;
+    bytes: number;
+    records?: number;
+  };
+};
+
+export type TAgentVaultProductMemberAddedEvent = {
+  event: PostHogEventTypes.AgentVaultProductMemberAdded;
+  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType; role: string };
+};
+
+export type TAgentVaultProductMemberUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultProductMemberUpdated;
+  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType; role: string };
+};
+
+export type TAgentVaultProductMemberRemovedEvent = {
+  event: PostHogEventTypes.AgentVaultProductMemberRemoved;
+  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType };
+};
+
+export type TAgentVaultPostHogEvent =
+  | TAgentVaultAccessBundleCreatedEvent
+  | TAgentVaultAccessBundleUpdatedEvent
+  | TAgentVaultAccessBundleDeletedEvent
+  | TAgentVaultServiceCreatedEvent
+  | TAgentVaultServiceUpdatedEvent
+  | TAgentVaultServiceDeletedEvent
+  | TAgentVaultVariableCreatedEvent
+  | TAgentVaultVariableUpdatedEvent
+  | TAgentVaultVariableDeletedEvent
+  | TAgentVaultSkillCreatedEvent
+  | TAgentVaultSkillVersionPublishedEvent
+  | TAgentVaultSkillDeletedEvent
+  | TAgentVaultAccessBundleSkillAddedEvent
+  | TAgentVaultAccessBundleSkillRemovedEvent
+  | TAgentVaultSkillsDeliveredEvent
+  | TAgentVaultAccessBundleMemberAddedEvent
+  | TAgentVaultAccessBundleMemberRemovedEvent
+  | TAgentVaultSessionCreatedEvent
+  | TAgentVaultSessionRevokedEvent
+  | TAgentVaultSessionLogSettingsUpdatedEvent
+  | TAgentVaultProxyRegisteredEvent
+  | TAgentVaultProxyUpdatedEvent
+  | TAgentVaultProxyDeletedEvent
+  | TAgentVaultProxyAccessRevokedEvent
+  | TAgentVaultProxyTokenRotatedEvent
+  | TAgentVaultSessionLogChunkAcceptedEvent
+  | TAgentVaultProductMemberAddedEvent
+  | TAgentVaultProductMemberUpdatedEvent
+  | TAgentVaultProductMemberRemovedEvent;
+
+export type TAgentVaultActorPostHogEvent = Exclude<
+  TAgentVaultPostHogEvent,
+  TAgentVaultSessionLogChunkAcceptedEvent | TAgentVaultSkillsDeliveredEvent
+>;
+
+// A trial is burned per PRODUCT, not per (product, plan): the trial-history gate discards plan_key
+// (see licenseV2Service.getOverview), and the license server 409s a repeat. So TrialStarted fires at
+// most once per (org, product) for the lifetime of the org. TrialCardRequired carries no such
+// guarantee: abandoning the card-setup checkout grants nothing and retrying is safe, so the same org
+// can emit it repeatedly for one product. Anything consuming these downstream must account for that.
+// `plan` is recorded on both anyway. It doesn't gate, but it says which tier they actually wanted.
+export type TTrialStartedEvent = {
+  event: PostHogEventTypes.TrialStarted;
+  properties: {
+    productId: string;
+    plan: string;
+  };
+};
+
+export type TTrialCardRequiredEvent = {
+  event: PostHogEventTypes.TrialCardRequired;
+  properties: {
+    productId: string;
+    plan: string;
+  };
+};
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -2401,8 +2814,6 @@ export type TPostHogEvent = {
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
   | TGatewayCertExchangedEvent
-  | TGatewayUpdatedEvent
-  | TGatewayDeletedEvent
   | TPamAccountTemplateEvent
   | TPamFolderEvent
   | TPamAccountEvent
@@ -2419,6 +2830,7 @@ export type TPostHogEvent = {
   | TPamAccountRotatedEvent
   | TPamAccessRequestCreatedEvent
   | TPamAccessRequestReviewedEvent
+  | TPamAccessRequestBrokeGlassEvent
   | TPamAccessGrantRevokedEvent
   | TResourceAuthMethodEvent
   | THoneyTokenCreatedEvent
@@ -2486,14 +2898,16 @@ export type TPostHogEvent = {
   | TProjectMembershipCreatedEvent
   | TProjectMembershipRoleUpdatedEvent
   | TProjectMembershipDeletedEvent
+  | TFolderAccessGrantEvent
   | TOrganizationCreatedEvent
   | TSubOrganizationCreatedEvent
   | TCmekCreatedEvent
   | TCmekEncryptEvent
   | TCmekDecryptEvent
   | TSecretScanningDataSourceCreatedEvent
+  | TSecretScanningResourcesAddedEvent
   | TSecretScanningScanCompletedEvent
-  | TSecretScanningFindingResolvedEvent
+  | TSecretScanningFindingClosedEvent
   | TGroupCreatedEvent
   | TGroupUpdatedEvent
   | TGroupDeletedEvent
@@ -2542,4 +2956,10 @@ export type TPostHogEvent = {
   | TAccessApprovalPolicyUpdatedEvent
   | TSecretRotationV2FailedEvent
   | TProxiedServiceCreatedEvent
+  | TBillingCheckoutSessionCreatedEvent
+  | TBillingProductActivatedEvent
+  | TBillingPlanUpgradedEvent
+  | TAgentVaultPostHogEvent
+  | TTrialStartedEvent
+  | TTrialCardRequiredEvent
 );

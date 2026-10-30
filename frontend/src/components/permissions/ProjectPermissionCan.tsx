@@ -2,16 +2,28 @@ import { FunctionComponent, ReactNode } from "react";
 import { AbilityTuple, MongoAbility } from "@casl/ability";
 import { Can } from "@casl/react";
 
-import { AccessRestrictedBanner } from "@app/components/v2";
+import {
+  AccessRestrictedDialog,
+  AccessRestrictedNotice,
+  TAccessRestrictedRequirement,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  toPermissionRequirement
+} from "@app/components/v3";
 import { ProjectPermissionSet, useProjectPermission } from "@app/context/ProjectPermissionContext";
 
-import { Tooltip } from "../v2/Tooltip";
-
-export const ProjectPermissionGuardBanner = () => {
-  return (
-    <div className="container mx-auto flex h-full items-center justify-center">
-      <AccessRestrictedBanner />
-    </div>
+export const ProjectPermissionGuardBanner = ({
+  requirement,
+  accessRestrictedMode = "notice"
+}: {
+  requirement?: TAccessRestrictedRequirement;
+  accessRestrictedMode?: "dialog" | "notice";
+}) => {
+  return accessRestrictedMode === "dialog" ? (
+    <AccessRestrictedDialog requirement={requirement} />
+  ) : (
+    <AccessRestrictedNotice />
   );
 };
 
@@ -22,6 +34,7 @@ type Props<T extends AbilityTuple> = {
   renderTooltip?: boolean;
   allowedLabel?: string;
   children: ReactNode | ((isAllowed: boolean, ability: T) => ReactNode);
+  accessRestrictedMode?: "dialog" | "notice";
   passThrough?: boolean;
   I: T[0];
   a: T[1];
@@ -35,6 +48,7 @@ export const ProjectPermissionCan: FunctionComponent<Props<ProjectPermissionSet>
   passThrough = true,
   renderTooltip,
   allowedLabel,
+  accessRestrictedMode = "dialog",
   renderGuardBanner,
   ...props
 }) => {
@@ -47,15 +61,30 @@ export const ProjectPermissionCan: FunctionComponent<Props<ProjectPermissionSet>
           typeof children === "function" ? children(isAllowed, ability as any) : children;
 
         if (!isAllowed && renderGuardBanner) {
-          return <ProjectPermissionGuardBanner />;
+          return (
+            <ProjectPermissionGuardBanner
+              accessRestrictedMode={accessRestrictedMode}
+              requirement={toPermissionRequirement(props.I, props.a)}
+            />
+          );
         }
 
         if (!isAllowed && passThrough) {
-          return <Tooltip content={label}>{finalChild}</Tooltip>;
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>{finalChild}</TooltipTrigger>
+              <TooltipContent>{label}</TooltipContent>
+            </Tooltip>
+          );
         }
 
         if (isAllowed && renderTooltip && allowedLabel) {
-          return <Tooltip content={allowedLabel}>{finalChild}</Tooltip>;
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>{finalChild}</TooltipTrigger>
+              <TooltipContent>{allowedLabel}</TooltipContent>
+            </Tooltip>
+          );
         }
 
         if (!isAllowed) return null;

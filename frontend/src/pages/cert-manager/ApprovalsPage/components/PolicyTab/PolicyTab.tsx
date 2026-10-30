@@ -1,6 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { PermissionDeniedBanner } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
+import { AccessRestrictedDialog, ConfirmationAlertDialog } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType, useDeleteApprovalPolicy } from "@app/hooks/api/approvalPolicies";
@@ -25,7 +24,9 @@ export const PolicyTab = () => {
   ] as const);
 
   if (!isAdmin) {
-    return <PermissionDeniedBanner />;
+    return (
+      <AccessRestrictedDialog description="Only Certificate Manager admins can view and manage certificate approval policies." />
+    );
   }
 
   const handleDeletePolicy = async () => {
@@ -45,27 +46,28 @@ export const PolicyTab = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
       <div className="mb-4 flex items-start">
         <div className="flex-1">
           <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Certificate Approval Policies</p>
+            <p className="text-xl font-medium text-foreground">Certificate Approval Policies</p>
           </div>
-          <p className="text-sm text-bunker-300">
-            Existing project-level policies remain editable. Create new approval policies inside an
-            Application.
+          <p className="text-sm text-label-secondary">
+            Existing policies created outside an Application remain editable. Create new approval
+            policies inside an Application.
           </p>
         </div>
       </div>
 
       <PoliciesTable handlePopUpOpen={handlePopUpOpen} />
       <PolicyModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePolicy.isOpen}
-        deleteKey="delete"
+        description="This action is irreversible."
+        confirmKey="delete"
         title="Are you sure you want to delete this policy?"
-        onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
-        onDeleteApproved={handleDeletePolicy}
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
+        onConfirm={handleDeletePolicy}
       />
     </div>
   );

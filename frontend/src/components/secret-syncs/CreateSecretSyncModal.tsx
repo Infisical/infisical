@@ -1,17 +1,8 @@
 import { useEffect, useState } from "react";
-import { AlertTriangleIcon } from "lucide-react";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
+  DiscardChangesAlertDialog,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -19,6 +10,7 @@ import {
   SheetTitle
 } from "@app/components/v3";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 import { CreateSecretSyncForm } from "./forms";
 import { SecretSyncModalHeader } from "./SecretSyncModalHeader";
@@ -29,6 +21,9 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   selectSync?: SecretSync | null;
   initialFormData?: Partial<TSecretSyncForm>;
+  initialFormDataIsDirty?: boolean;
+  startOnDestination?: boolean;
+  onEnterpriseUpgrade?: (onGranted: () => void) => void;
 };
 
 type ContentProps = {
@@ -36,31 +31,50 @@ type ContentProps = {
   selectedSync: SecretSync | null;
   setSelectedSync: (selectedSync: SecretSync | null) => void;
   initialFormData?: Partial<TSecretSyncForm>;
+  initialFormDataIsDirty?: boolean;
+  startOnDestination?: boolean;
+  onDirtyChange: (isDirty: boolean) => void;
+  onEnterpriseUpgrade?: (onGranted: () => void) => void;
 };
 
-const Content = ({ onComplete, setSelectedSync, selectedSync, initialFormData }: ContentProps) => {
+const Content = ({
+  onComplete,
+  setSelectedSync,
+  selectedSync,
+  initialFormData,
+  initialFormDataIsDirty,
+  startOnDestination,
+  onDirtyChange,
+  onEnterpriseUpgrade
+}: ContentProps) => {
   if (selectedSync) {
     return (
       <CreateSecretSyncForm
         initialFormData={initialFormData}
+        initialFormDataIsDirty={initialFormDataIsDirty}
+        startOnDestination={startOnDestination}
         onComplete={onComplete}
         onCancel={() => setSelectedSync(null)}
+        onDirtyChange={onDirtyChange}
         destination={selectedSync}
       />
     );
   }
 
-  return <SecretSyncSelect onSelect={setSelectedSync} />;
+  return <SecretSyncSelect onSelect={setSelectedSync} onEnterpriseUpgrade={onEnterpriseUpgrade} />;
 };
 
 export const CreateSecretSyncModal = ({
   isOpen,
   onOpenChange,
   selectSync = null,
-  initialFormData
+  initialFormData,
+  initialFormDataIsDirty,
+  startOnDestination,
+  onEnterpriseUpgrade
 }: Props) => {
   const [selectedSync, setSelectedSync] = useState<SecretSync | null>(selectSync);
-  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     setSelectedSync(selectSync);
@@ -68,40 +82,43 @@ export const CreateSecretSyncModal = ({
 
   const closeSheet = () => {
     setSelectedSync(null);
+    setIsDirty(false);
     onOpenChange(false);
   };
 
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: closeSheet });
+
   const handleSheetOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && selectedSync) {
-      // User has started filling out the form — confirm before discarding.
-      setConfirmDiscardOpen(true);
+    if (!nextOpen) {
+      requestDiscard();
       return;
     }
-    if (!nextOpen) setSelectedSync(null);
-    onOpenChange(nextOpen);
+    onOpenChange(true);
   };
 
   return (
     <>
       <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1500px]">
+        <SheetContent size="workspace" className="flex h-full max-h-full flex-col gap-y-0">
           <SheetHeader className="border-b">
-            <SheetTitle>
-              {selectedSync ? (
+            {selectedSync ? (
+              <>
+                <SheetTitle className="sr-only">Configure secret sync</SheetTitle>
                 <SecretSyncModalHeader
                   isConfigured={false}
                   destination={selectedSync}
                   showDocLink={false}
                 />
-              ) : (
-                "Choose a destination"
-              )}
-            </SheetTitle>
-            {!selectedSync && (
-              <SheetDescription>
-                Where should Infisical write these secrets? You can change this later only by
-                creating a new sync.
-              </SheetDescription>
+              </>
+            ) : (
+              <>
+                <SheetTitle>Choose a destination</SheetTitle>
+                <SheetDescription>
+                  Where should Infisical write these secrets? You can change this later only by
+                  creating a new sync.
+                </SheetDescription>
+              </>
             )}
           </SheetHeader>
           {selectedSync ? (
@@ -111,6 +128,10 @@ export const CreateSecretSyncModal = ({
                 selectedSync={selectedSync}
                 setSelectedSync={setSelectedSync}
                 initialFormData={initialFormData}
+                initialFormDataIsDirty={initialFormDataIsDirty}
+                startOnDestination={startOnDestination}
+                onDirtyChange={setIsDirty}
+                onEnterpriseUpgrade={onEnterpriseUpgrade}
               />
             </div>
           ) : (
@@ -120,31 +141,23 @@ export const CreateSecretSyncModal = ({
                 selectedSync={selectedSync}
                 setSelectedSync={setSelectedSync}
                 initialFormData={initialFormData}
+                initialFormDataIsDirty={initialFormDataIsDirty}
+                startOnDestination={startOnDestination}
+                onDirtyChange={setIsDirty}
+                onEnterpriseUpgrade={onEnterpriseUpgrade}
               />
             </div>
           )}
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <AlertTriangleIcon />
-            </AlertDialogMedia>
-            <AlertDialogTitle>Discard Sync Setup?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your progress configuring this sync will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={closeSheet}>
-              Discard
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Sync Setup?"
+        description="Your progress configuring this sync will be lost."
+      />
     </>
   );
 };

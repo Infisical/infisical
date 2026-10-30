@@ -34,6 +34,9 @@ type TProjectEnvQueueFactoryDep = {
     | "transaction"
     | "closePositionGap"
     | "hardDeleteEnvironmentSecretVersionsInBatches"
+    | "hardDeleteEnvironmentSecretReferencesInBatches"
+    | "hardDeleteEnvironmentApprovalSecretLinksInBatches"
+    | "hardDeleteEnvironmentSecretsInBatches"
   >;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -71,6 +74,11 @@ export const projectEnvQueueFactory = ({
   });
 
   const processEnvHardDelete = async (envId: string, projectId: string) => {
+    let deletedVersions = 0;
+    let deletedReferences = 0;
+    let nulledApprovalLinks = 0;
+    let deletedSecrets = 0;
+
     const lock = await keyStore
       .acquireLock([KeyStorePrefixes.ProjectEnvironmentLock(projectId)], ENV_DELETE_LOCK_TTL_MS)
       .catch((err: unknown) => {
@@ -96,11 +104,42 @@ export const projectEnvQueueFactory = ({
 
       // secret_versions_v2 has no FK back to the folder/env tree, so the cascade below would orphan it.
       // must be deleted first, while its folders still exist to identify the rows.
-      const deletedVersions = await projectEnvDAL.hardDeleteEnvironmentSecretVersionsInBatches(
+      await projectEnvDAL.hardDeleteEnvironmentSecretVersionsInBatches(
         envId,
         SECRET_VERSION_DELETE_BATCH,
         BATCH_STATEMENT_TIMEOUT_MS,
-        INTER_BATCH_SLEEP_MS
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedVersions += deleted;
+        }
+      );
+
+      await projectEnvDAL.hardDeleteEnvironmentSecretReferencesInBatches(
+        envId,
+        SECRET_VERSION_DELETE_BATCH,
+        BATCH_STATEMENT_TIMEOUT_MS,
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedReferences += deleted;
+        }
+      );
+      await projectEnvDAL.hardDeleteEnvironmentApprovalSecretLinksInBatches(
+        envId,
+        SECRET_VERSION_DELETE_BATCH,
+        BATCH_STATEMENT_TIMEOUT_MS,
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          nulledApprovalLinks += deleted;
+        }
+      );
+      await projectEnvDAL.hardDeleteEnvironmentSecretsInBatches(
+        envId,
+        SECRET_VERSION_DELETE_BATCH,
+        BATCH_STATEMENT_TIMEOUT_MS,
+        INTER_BATCH_SLEEP_MS,
+        (deleted) => {
+          deletedSecrets += deleted;
+        }
       );
 
       const deleted = await projectEnvDAL.transaction(async (tx) => {
@@ -132,13 +171,13 @@ export const projectEnvQueueFactory = ({
       });
 
       logger.info(
-        { envId, projectId, deletedVersions },
-        `project-env-hard-delete: hard-deleted environment [envId=${envId}] [projectId=${projectId}] [versionsPruned=${deletedVersions}]`
+        { envId, projectId, deletedVersions, deletedReferences, nulledApprovalLinks, deletedSecrets },
+        `project-env-hard-delete: hard-deleted environment [envId=${envId}] [projectId=${projectId}] [versionsPruned=${deletedVersions}] [referencesPruned=${deletedReferences}] [approvalLinksNulled=${nulledApprovalLinks}] [secretsPruned=${deletedSecrets}]`
       );
     } catch (err) {
       logger.error(
-        { err, envId, projectId },
-        `project-env-hard-delete: failed [envId=${envId}] [projectId=${projectId}]`
+        { err, envId, projectId, deletedVersions, deletedReferences, nulledApprovalLinks, deletedSecrets },
+        `project-env-hard-delete: failed [envId=${envId}] [projectId=${projectId}] [versionsPruned=${deletedVersions}] [referencesPruned=${deletedReferences}] [approvalLinksNulled=${nulledApprovalLinks}] [secretsPruned=${deletedSecrets}]`
       );
       throw err; // surface to BullMQ so it retries
     } finally {

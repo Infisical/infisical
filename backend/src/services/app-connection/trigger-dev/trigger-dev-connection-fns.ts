@@ -1,9 +1,8 @@
 import { AxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -58,7 +57,7 @@ export const validateTriggerDevConnectionCredentials = async (config: TTriggerDe
   const { apiKey } = config.credentials;
 
   try {
-    await request.get(`${instanceUrl}/api/v1/projects`, {
+    await safeRequest.get(`${instanceUrl}/api/v1/projects`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         Accept: "application/json"
@@ -82,7 +81,7 @@ export const listTriggerDevProjects = async (appConnection: TTriggerDevConnectio
   const instanceUrl = await getTriggerDevInstanceUrl(appConnection);
   const { apiKey } = appConnection.credentials;
 
-  const { data } = await request.get<TTriggerDevApiProject[]>(`${instanceUrl}/api/v1/projects`, {
+  const { data } = await safeRequest.get<TTriggerDevApiProject[]>(`${instanceUrl}/api/v1/projects`, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
       Accept: "application/json"
@@ -112,7 +111,7 @@ export const listTriggerDevEnvironments = async (
 
   // Returns only the parent environments the token can access (dev is scoped to the
   // token owner); preview branch children are excluded since syncs target the parent.
-  const { data } = await request.get<TTriggerDevApiEnvironment[]>(
+  const { data } = await safeRequest.get<TTriggerDevApiEnvironment[]>(
     `${instanceUrl}/api/v1/projects/${encodeURIComponent(projectRef)}/environments`,
     {
       headers: {

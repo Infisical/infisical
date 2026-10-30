@@ -1,5 +1,4 @@
-/* eslint-disable no-param-reassign */
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { TReactQueryOptions } from "@app/types/reactQuery";
@@ -20,10 +19,22 @@ export const secretApprovalRequestKeys = {
     committer,
     offset,
     limit,
-    search
+    search,
+    orderBy,
+    orderDirection
   }: TGetSecretApprovalRequestList) =>
     [
-      { projectId, environment, status, committer, offset, limit, search },
+      {
+        projectId,
+        environment,
+        status,
+        committer,
+        offset,
+        limit,
+        search,
+        orderBy,
+        orderDirection
+      },
       "secret-approval-requests"
     ] as const,
   listAllForProject: ({ projectId }: { projectId: string }) =>
@@ -44,7 +55,9 @@ const fetchSecretApprovalRequestList = async ({
   status = "open",
   limit = 20,
   offset = 0,
-  search = ""
+  search = "",
+  orderBy,
+  orderDirection
 }: TGetSecretApprovalRequestList) => {
   const { data } = await apiRequest.get<{
     approvals: TSecretApprovalRequest[];
@@ -57,7 +70,9 @@ const fetchSecretApprovalRequestList = async ({
       status,
       limit,
       offset,
-      search
+      search,
+      orderBy,
+      orderDirection
     }
   });
 
@@ -72,7 +87,9 @@ export const useGetSecretApprovalRequests = ({
   limit = 20,
   offset = 0,
   search,
-  committer
+  committer,
+  orderBy,
+  orderDirection
 }: TGetSecretApprovalRequestList & TReactQueryOptions) =>
   useQuery({
     queryKey: secretApprovalRequestKeys.list({
@@ -82,7 +99,9 @@ export const useGetSecretApprovalRequests = ({
       status,
       limit,
       search,
-      offset
+      offset,
+      orderBy,
+      orderDirection
     }),
     queryFn: () =>
       fetchSecretApprovalRequestList({
@@ -92,7 +111,9 @@ export const useGetSecretApprovalRequests = ({
         committer,
         limit,
         offset,
-        search
+        search,
+        orderBy,
+        orderDirection
       }),
     enabled: Boolean(projectId) && (options?.enabled ?? true),
     placeholderData: (previousData) => previousData,
@@ -127,6 +148,21 @@ export const useGetSecretApprovalRequestDetails = ({
     queryKey: secretApprovalRequestKeys.detail({ id }),
     queryFn: () => fetchSecretApprovalRequestDetails({ id }),
     enabled: Boolean(id) && (options?.enabled ?? true)
+  });
+
+export const useGetSecretApprovalRequestDetailsList = ({
+  ids,
+  enabled = true
+}: {
+  ids: string[];
+  enabled?: boolean;
+}) =>
+  useQueries({
+    queries: ids.map((id) => ({
+      queryKey: secretApprovalRequestKeys.detail({ id }),
+      queryFn: () => fetchSecretApprovalRequestDetails({ id }),
+      enabled
+    }))
   });
 
 const fetchSecretApprovalRequestCount = async ({

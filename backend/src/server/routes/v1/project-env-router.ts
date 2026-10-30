@@ -39,7 +39,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const environment = await server.services.projectEnv.getEnvironmentById({
         actorId: req.permission.id,
@@ -81,7 +81,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        projectId: z.string().trim().uuid().describe(ENVIRONMENTS.GET_BY_SLUG.projectId),
+        projectId: z.string().trim().describe(ENVIRONMENTS.GET_BY_SLUG.projectId),
         envSlug: slugSchema({ max: 64 }).describe(ENVIRONMENTS.GET_BY_SLUG.slug)
       }),
       response: {
@@ -90,7 +90,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const environment = await server.services.projectEnv.getEnvironmentBySlug({
         actorId: req.permission.id,

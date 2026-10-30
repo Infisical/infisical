@@ -1,6 +1,16 @@
-import { FileKeyIcon, KeyIcon, LockIcon, LucideIcon, RadarIcon, UsersIcon } from "lucide-react";
+import {
+  FileKeyIcon,
+  KeyIcon,
+  LockIcon,
+  LucideIcon,
+  RadarIcon,
+  UsersIcon,
+  VaultIcon
+} from "lucide-react";
 
 import { apiRequest } from "@app/config/request";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
 import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
@@ -88,7 +98,8 @@ const VALID_PROJECT_SLUGS = new Set<string>([
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.AgentVault
 ]);
 
 export const urlSlugToProjectType = (slug: string): ProjectType | null => {
@@ -97,32 +108,107 @@ export const urlSlugToProjectType = (slug: string): ProjectType | null => {
   return slug as ProjectType;
 };
 
-// Org-wide resource pages (KMIP servers, Secret Sharing) live at literal
-// /projects/<slug>/<resource> paths with no $type route param. Parse the product slug out of the
-// pathname so the sidebar can resolve the active product when the route param is absent.
+// Org-wide resource pages (KMIP servers, Secret Sharing, Product Settings, Insights) live at
+// literal /projects/<slug>/<resource> paths with no $type route param. Parse the product slug out
+// of the pathname so the sidebar can resolve the active product when the route param is absent.
 const ORG_RESOURCE_PROJECT_SLUG_RE =
-  /\/projects\/([^/]+)\/(?:kmip-servers|secret-sharing|product-settings)/;
+  /\/projects\/([^/]+)\/(?:kmip-servers|secret-sharing|product-settings|insights)/;
 
 export const parseProjectSlugFromPath = (pathname: string): string | undefined =>
   pathname.match(ORG_RESOURCE_PROJECT_SLUG_RE)?.[1];
 
 const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
   ProjectType.SecretManager,
-  ProjectType.KMS,
-  ProjectType.SecretScanning
+  ProjectType.KMS
 ]);
 
 export const hasIntermediateProjectsView = (type: ProjectType) =>
   PROJECT_TYPES_WITH_INTERMEDIATE_VIEW.has(type);
+
+const PROJECT_TYPES_WITH_PROJECT_TEMPLATES = new Set<ProjectType>([
+  ProjectType.SecretManager,
+  ProjectType.KMS
+]);
+
+export const hasProjectTemplates = (type: ProjectType) =>
+  PROJECT_TYPES_WITH_PROJECT_TEMPLATES.has(type);
+
+// Products that live at /organizations/$orgId/<slug> over a single implicit project, with no $projectId
+// in the URL.
+const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([
+  ProjectType.CertificateManager,
+  ProjectType.SecretScanning,
+  ProjectType.PAM,
+  ProjectType.AgentVault
+]);
+
+export const isOrgScopedProduct = (type: ProjectType) => ORG_SCOPED_PRODUCT_TYPES.has(type);
+
+// This does not include PAM and Agent Vault because they use different
+// components for each type of project. They don't reuse the shared components
+const PROJECTLESS_PRODUCT_NAMES: Partial<Record<ProjectType, string>> = {
+  [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.SecretScanning]: "Secret Scanning"
+};
+
+export const hidesProjects = (type?: ProjectType) =>
+  Boolean(type && PROJECTLESS_PRODUCT_NAMES[type]);
+
+export const getProjectLabel = (type?: ProjectType) =>
+  (type && PROJECTLESS_PRODUCT_NAMES[type]) || "Project";
+
+const PRODUCTS_WITHOUT_ASSUME_PRIVILEGES = new Set<ProjectType>([ProjectType.AgentVault]);
+
+export const supportsAssumePrivileges = (type: ProjectType) =>
+  !PRODUCTS_WITHOUT_ASSUME_PRIVILEGES.has(type);
+
+const ORG_SCOPED_PRODUCT_PATH_RE =
+  /^\/organizations\/[^/]+\/(cert-manager|secret-scanning|pam|agent-vault)(?:\/|$)/;
+
+export const getOrgScopedProductFromPath = (pathname: string): ProjectType | null => {
+  const slug = pathname.match(ORG_SCOPED_PRODUCT_PATH_RE)?.[1];
+  return slug ? urlSlugToProjectType(slug) : null;
+};
+
+// Certificate Manager and Secret Scanning URLs name no project, so a link into one specific project
+// (an earlier one, in legacy orgs that have several) pins it for their layout to open.
+export const pinProjectForNavigation = (orgId: string, project: Pick<Project, "id" | "type">) => {
+  if (project.type === ProjectType.CertificateManager) {
+    setCertManagerActiveProjectCookie(orgId, project.id);
+  } else if (project.type === ProjectType.SecretScanning) {
+    setSecretScanningActiveProjectCookie(orgId, project.id);
+  }
+};
+
+// Certificate Manager and Secret Scanning URLs carry no project id, so a link that may open in a
+// new tab goes through the legacy project URL, whose redirect pins the instance in that tab.
+export const getInstancePinningLink = (
+  orgId: string,
+  project: Pick<Project, "id" | "type">,
+  path: string
+) => {
+  const params = { orgId, projectId: project.id, _splat: path };
+  if (project.type === ProjectType.CertificateManager) {
+    return { to: "/organizations/$orgId/projects/cert-manager/$projectId/$", params } as const;
+  }
+  if (project.type === ProjectType.SecretScanning) {
+    return { to: "/organizations/$orgId/projects/secret-scanning/$projectId/$", params } as const;
+  }
+  return null;
+};
 
 export const getProjectBaseURL = (type: ProjectType) => {
   switch (type) {
     case ProjectType.SecretManager:
       return "/organizations/$orgId/projects/secret-management/$projectId";
     case ProjectType.CertificateManager:
-      return "/organizations/$orgId/projects/cert-manager/$projectId";
+      return "/organizations/$orgId/cert-manager" as const;
+    case ProjectType.SecretScanning:
+      return "/organizations/$orgId/secret-scanning" as const;
     case ProjectType.PAM:
       return "/organizations/$orgId/pam" as const;
+    case ProjectType.AgentVault:
+      return "/organizations/$orgId/agent-vault" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId` as const;
   }
@@ -135,11 +221,13 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
     case ProjectType.SecretManager:
       return "/organizations/$orgId/projects/secret-management/$projectId/overview" as const;
     case ProjectType.CertificateManager:
-      return "/organizations/$orgId/projects/cert-manager/$projectId/overview" as const;
+      return "/organizations/$orgId/cert-manager/overview" as const;
     case ProjectType.SecretScanning:
-      return `/organizations/$orgId/projects/${type}/$projectId/data-sources` as const;
+      return "/organizations/$orgId/secret-scanning/data-sources" as const;
     case ProjectType.PAM:
       return "/organizations/$orgId/pam/access" as const;
+    case ProjectType.AgentVault:
+      return "/organizations/$orgId/agent-vault" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
   }
@@ -151,10 +239,21 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.KMS]: "KMS",
     [ProjectType.CertificateManager]: "Certificate Manager",
     [ProjectType.SecretScanning]: "Secret Scanning",
-    [ProjectType.PAM]: "Privileged Access Manager"
+    [ProjectType.PAM]: "Privileged Access Manager",
+    [ProjectType.AgentVault]: "Agent Vault"
   };
   return titleConvert[type] || type;
 };
+
+// Certificate Manager is named after the product, except in legacy orgs that still have several
+// instances, where the instance name is the only thing telling them apart.
+export const getProjectDisplayName = (
+  project: Pick<Project, "name" | "type">,
+  isCertManagerMultiInstance: boolean
+) =>
+  project.type === ProjectType.CertificateManager && !isCertManagerMultiInstance
+    ? getProjectTitle(project.type)
+    : project.name;
 
 export const getProjectDescription = (type: ProjectType) => {
   const descriptions: Partial<Record<ProjectType, string>> = {
@@ -167,7 +266,9 @@ export const getProjectDescription = (type: ProjectType) => {
     [ProjectType.SecretScanning]:
       "Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.",
     [ProjectType.PAM]:
-      "Connect to databases and servers securely with session brokering, recording, and credential vaulting."
+      "Connect to databases and servers securely with session brokering, recording, and credential vaulting.",
+    [ProjectType.AgentVault]:
+      "Run AI agents with the access, context, and capabilities they need to do work, wherever they operate."
   };
   return descriptions[type] ?? "";
 };
@@ -203,7 +304,8 @@ export const getProjectLucideIcon = (type: ProjectType): LucideIcon => {
     [ProjectType.KMS]: LockIcon,
     [ProjectType.CertificateManager]: FileKeyIcon,
     [ProjectType.SecretScanning]: RadarIcon,
-    [ProjectType.PAM]: UsersIcon
+    [ProjectType.PAM]: UsersIcon,
+    [ProjectType.AgentVault]: VaultIcon
   };
   return iconConvert[type] || KeyIcon;
 };
