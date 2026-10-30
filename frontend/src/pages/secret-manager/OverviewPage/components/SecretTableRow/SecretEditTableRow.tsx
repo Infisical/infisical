@@ -1,5 +1,13 @@
 /* eslint-disable no-nested-ternary */
-import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  CSSProperties,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState
+} from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
@@ -102,6 +110,7 @@ import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/
 import { OverviewFlowHandle, useOverviewTelemetry } from "../../OverviewTelemetry";
 import { CreateSecretForm, TSecretEditChanges } from "../CreateSecretForm/CreateSecretForm";
 import {
+  TABLE_CELL_ACTION_BAR_VISIBILITY_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME
@@ -187,6 +196,10 @@ type Props = {
   lastEdited?: Pick<SecretV3RawSanitized, "createdAt" | "updatedAt" | "version">;
   timestampField?: "createdAt" | "updatedAt";
   nameCellContent?: ReactNode;
+  variant?: "row" | "cell";
+  onRequestEditValue?: () => void;
+  autoFocusValue?: boolean;
+  onValueAutoFocused?: () => void;
 };
 
 export const SecretEditTableRow = ({
@@ -231,8 +244,13 @@ export const SecretEditTableRow = ({
   onCopySecret,
   onAccessInsightsUpgrade,
   onExpandedChange,
-  nameCellContent
+  nameCellContent,
+  variant = "row",
+  onRequestEditValue,
+  autoFocusValue,
+  onValueAutoFocused
 }: Props) => {
+  const isCellVariant = variant === "cell";
   const telemetry = useOverviewTelemetry();
   const valueSheetFlow = useRef<OverviewFlowHandle>(undefined);
   const valueSheetOwner = useRef({});
@@ -372,6 +390,11 @@ export const SecretEditTableRow = ({
   useEffect(() => {
     onExpandedChange?.(isFieldActive || isAnnotating);
   }, [isFieldActive, isAnnotating, onExpandedChange]);
+  const onExpandedChangeRef = useRef(onExpandedChange);
+  useLayoutEffect(() => {
+    onExpandedChangeRef.current = onExpandedChange;
+  });
+  useEffect(() => () => onExpandedChangeRef.current?.(false), []);
   const [pendingAnnotation, setPendingAnnotation] = useState<
     "comment" | "tags" | "reminder" | "metadata" | null
   >(null);
@@ -1056,6 +1079,12 @@ export const SecretEditTableRow = ({
       secretTags: ["*"]
     })
   );
+  useEffect(() => {
+    if (!autoFocusValue) return;
+    setFocus("value", { shouldSelect: true });
+    onValueAutoFocused?.();
+  }, [autoFocusValue, onValueAutoFocused, setFocus]);
+
   const handleEditShortcut = useSecretInputActionShortcuts({
     isActive: isBatchMode ? isPendingBatchChange || isDirty : isDirtyState,
     isDisabled: isSubmitting || isSavingPendingChange,
@@ -1295,6 +1324,86 @@ export const SecretEditTableRow = ({
   const hasReminder = Boolean(reminder) && !isImportedSecret;
   const metadataCount = isImportedSecret ? 0 : (secretMetadata?.length ?? 0);
 
+  const annotateMenu = canAnnotate && (
+    <DropdownMenu open={isAnnotateMenuOpen} onOpenChange={setIsAnnotateMenuOpen}>
+      <Tooltip open={isAnnotateMenuOpen ? false : undefined}>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <IconButton
+              aria-label="Annotate secret"
+              variant={isSingleEnvView ? "ghost-muted" : "ghost"}
+              size={isSingleEnvView ? "2xs" : "xs"}
+              className={
+                isSingleEnvView
+                  ? twMerge(
+                      "transition-opacity duration-150 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100",
+                      isAnnotating && "[@media(hover:hover)]:opacity-100"
+                    )
+                  : "size-7 border-0"
+              }
+            >
+              <PencilLineIcon className={isSingleEnvView ? undefined : "size-3.5"} />
+            </IconButton>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Annotate</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent
+        align={isSingleEnvView ? "start" : "end"}
+        className="min-w-[185px] [&_[data-variant=default]]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          if (pendingAnnotation === "comment") setIsCommentOpen(true);
+          else if (pendingAnnotation === "tags") setIsTagOpen(true);
+          else if (pendingAnnotation === "reminder") setIsReminderOpen(true);
+          else if (pendingAnnotation === "metadata") setIsMetadataOpen(true);
+          setPendingAnnotation(null);
+        }}
+      >
+        <DropdownMenuLabel>
+          {isSingleEnvView ? "Annotate" : <>Annotate in {environmentName}</>}
+        </DropdownMenuLabel>
+        <DropdownMenuItem className="px-2.5 py-1.5" onClick={() => setPendingAnnotation("comment")}>
+          <MessageSquareIcon className={twMerge(comment && "text-project")} />
+          {comment ? "Edit Comment" : "Add Comment"}
+        </DropdownMenuItem>
+        <Tooltip open={!canReadTags ? undefined : false}>
+          <TooltipTrigger className="block w-full">
+            <DropdownMenuItem
+              className="px-2.5 py-1.5"
+              isDisabled={!canReadTags}
+              onClick={() => setPendingAnnotation("tags")}
+            >
+              <TagsIcon className={twMerge(visibleTags.length > 0 && "text-project")} />
+              {visibleTags.length > 0 ? "Edit Tags" : "Add Tags"}
+            </DropdownMenuItem>
+          </TooltipTrigger>
+          <TooltipContent side="right">Access Denied</TooltipContent>
+        </Tooltip>
+        <Tooltip open={!secretId || isPendingCreate ? undefined : false}>
+          <TooltipTrigger className="block w-full">
+            <DropdownMenuItem
+              className="px-2.5 py-1.5"
+              isDisabled={!secretId || isPendingCreate}
+              onClick={() => setPendingAnnotation("reminder")}
+            >
+              <BellIcon className={twMerge(reminder && "text-project")} />
+              {reminder ? "Edit Reminder" : "Add Reminder"}
+            </DropdownMenuItem>
+          </TooltipTrigger>
+          <TooltipContent side="right">Create Secret to Add Reminder</TooltipContent>
+        </Tooltip>
+        <DropdownMenuItem
+          className="px-2.5 py-1.5"
+          onClick={() => setPendingAnnotation("metadata")}
+        >
+          <CodeXmlIcon className={twMerge(metadataCount > 0 && "text-project")} />
+          {metadataCount > 0 ? "Edit Metadata" : "Add Metadata"}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   const annotationSlot = (
     <div className="relative flex shrink-0 items-center gap-0.5">
       <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
@@ -1450,84 +1559,7 @@ export const SecretEditTableRow = ({
           </TooltipContent>
         </Tooltip>
       )}
-      {canAnnotate && (
-        <DropdownMenu open={isAnnotateMenuOpen} onOpenChange={setIsAnnotateMenuOpen}>
-          <Tooltip open={isAnnotateMenuOpen ? false : undefined}>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  aria-label="Annotate secret"
-                  variant="ghost-muted"
-                  size="2xs"
-                  className={twMerge(
-                    "transition-opacity duration-150 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100",
-                    isAnnotating && "[@media(hover:hover)]:opacity-100"
-                  )}
-                >
-                  <PencilLineIcon />
-                </IconButton>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent>Annotate</TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent
-            align="start"
-            className="min-w-[185px] [&_[data-variant=default]]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
-            onCloseAutoFocus={(e) => {
-              e.preventDefault();
-              if (pendingAnnotation === "comment") setIsCommentOpen(true);
-              else if (pendingAnnotation === "tags") setIsTagOpen(true);
-              else if (pendingAnnotation === "reminder") setIsReminderOpen(true);
-              else if (pendingAnnotation === "metadata") setIsMetadataOpen(true);
-              setPendingAnnotation(null);
-            }}
-          >
-            <DropdownMenuLabel>
-              {isSingleEnvView ? "Annotate" : <>Annotate in {environmentName}</>}
-            </DropdownMenuLabel>
-            <DropdownMenuItem
-              className="px-2.5 py-1.5"
-              onClick={() => setPendingAnnotation("comment")}
-            >
-              <MessageSquareIcon className={twMerge(comment && "text-project")} />
-              {comment ? "Edit Comment" : "Add Comment"}
-            </DropdownMenuItem>
-            <Tooltip open={!canReadTags ? undefined : false}>
-              <TooltipTrigger className="block w-full">
-                <DropdownMenuItem
-                  className="px-2.5 py-1.5"
-                  isDisabled={!canReadTags}
-                  onClick={() => setPendingAnnotation("tags")}
-                >
-                  <TagsIcon className={twMerge(visibleTags.length > 0 && "text-project")} />
-                  {visibleTags.length > 0 ? "Edit Tags" : "Add Tags"}
-                </DropdownMenuItem>
-              </TooltipTrigger>
-              <TooltipContent side="right">Access Denied</TooltipContent>
-            </Tooltip>
-            <Tooltip open={!secretId || isPendingCreate ? undefined : false}>
-              <TooltipTrigger className="block w-full">
-                <DropdownMenuItem
-                  className="px-2.5 py-1.5"
-                  isDisabled={!secretId || isPendingCreate}
-                  onClick={() => setPendingAnnotation("reminder")}
-                >
-                  <BellIcon className={twMerge(reminder && "text-project")} />
-                  {reminder ? "Edit Reminder" : "Add Reminder"}
-                </DropdownMenuItem>
-              </TooltipTrigger>
-              <TooltipContent side="right">Create Secret to Add Reminder</TooltipContent>
-            </Tooltip>
-            <DropdownMenuItem
-              className="px-2.5 py-1.5"
-              onClick={() => setPendingAnnotation("metadata")}
-            >
-              <CodeXmlIcon className={twMerge(metadataCount > 0 && "text-project")} />
-              {metadataCount > 0 ? "Edit Metadata" : "Add Metadata"}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+      {isSingleEnvView && annotateMenu}
     </div>
   );
 
@@ -1544,125 +1576,129 @@ export const SecretEditTableRow = ({
         onConfirm={handleDeleteSecret}
       />
 
-      <div className="flex w-full cursor-text items-center space-x-2">
-        {secretValueHidden && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <EyeOffIcon className="size-4 text-secret" />
-            </TooltipTrigger>
-            <TooltipContent>
-              You do not have access to view the current value
-              {canEditSecretValue && !isManagedSecret ? ", but you can set a new one" : "."}
-            </TooltipContent>
-          </Tooltip>
-        )}
-        <div
-          className={twMerge(
-            "relative grow pr-2",
-            isFieldActive && !isBatchMode && "pr-16",
-            isFieldActive && isBatchMode && "pr-6"
-          )}
-          style={isFieldActive && actionBarWidth ? { paddingRight: actionBarWidth } : undefined}
-        >
-          {isFieldActive && !secretValueHidden && !isCreatable && secretHasReference && (
-            <ResolvedSecretValuePopover
-              environment={environment}
-              secretPath={secretPath}
-              secretKey={secretName}
-              open={isResolvedValueOpen}
-              onOpenChange={setIsResolvedValueOpen.toggle}
-              isDisabled={isDirtyState || hasPendingValueChange}
-            />
-          )}
-          <Controller
-            control={control}
-            name="value"
-            render={({ field }) => (
-              <InfisicalSecretInput
-                {...field}
-                variant="plain"
-                isReadOnly={isReadOnly}
-                value={
-                  secretValueHidden
-                    ? ((field.value as string) ?? "")
-                    : isFetchingSharedValue
-                      ? HIDDEN_SECRET_VALUE
-                      : isErrorFetchingSharedValue
-                        ? "Error fetching secret value..."
-                        : (field.value as string)
-                }
-                key="secret-input-shared"
-                isVisible={isVisible || isResolvedValueOpen}
-                secretPath={secretPath}
-                environment={environment}
-                isImport={isImportedSecret}
-                canEditButNotView={secretValueHidden && !isManagedSecret}
-                onFocus={() => setIsFieldFocused.on()}
-                containerClassName={secretHasReference && isFieldActive ? "pl-6" : ""}
-                onBlur={() => {
-                  field.onBlur();
-                  setIsFieldFocused.off();
-                }}
-                onKeyDown={handleEditShortcut}
-              />
+      {!isCellVariant && (
+        <>
+          <div className="flex w-full cursor-text items-center space-x-2">
+            {secretValueHidden && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <EyeOffIcon className="size-4 text-secret" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  You do not have access to view the current value
+                  {canEditSecretValue && !isManagedSecret ? ", but you can set a new one" : "."}
+                </TooltipContent>
+              </Tooltip>
             )}
-          />
-        </div>
-        {!isDirtyState && !isFieldActive && (
-          <div className="pointer-events-none flex w-fit items-start justify-end self-start pl-2 opacity-0 transition-opacity duration-300 motion-reduce:transition-none [@media(hover:hover)]:pointer-events-auto [@media(hover:hover)]:opacity-100 [@media(hover:hover)]:group-focus-within:pointer-events-none [@media(hover:hover)]:group-focus-within:opacity-0 [@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0">
-            <div className="flex items-center gap-1">
-              {skipMultilineEncoding && !isImportedSecret && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex size-5 items-center justify-center text-muted">
-                      <WrapTextIcon className="size-3.5" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Multi-line encoding disabled</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          </div>
-        )}
-        {revokedProjectFolderGrant && !isDirtyState && (
-          <div
-            className={twMerge(
-              "ml-auto flex shrink-0 items-center",
-              isSingleEnvView &&
-                "mr-16 transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16",
-              isSingleEnvView && isFieldActive && "mr-8"
-            )}
-          >
-            <Badge variant="danger">
-              <BanIcon className="size-3.5" />
-              Secret share revoked
-            </Badge>
-          </div>
-        )}
-      </div>
-      {isDirtyState && (
-        <ProjectPermissionCan
-          I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
-          a={subject(ProjectPermissionSub.Secrets, {
-            environment,
-            secretPath,
-            secretName,
-            secretTags: ["*"]
-          })}
-        >
-          {(isAllowed) => (
-            <SecretInputActions
+            <div
               className={twMerge(
-                "absolute z-20 px-0.5 py-0.5",
-                isSingleEnvView ? "top-1 right-1" : "top-[0.25px] -right-1.5"
+                "relative grow pr-2",
+                isFieldActive && !isBatchMode && "pr-16",
+                isFieldActive && isBatchMode && "pr-6"
               )}
-              isSaveDisabled={isSubmitting || !isAllowed}
-              isUndoDisabled={isSubmitting}
-              onSave={submitForm}
-              onUndo={handleFormReset}
-            />
+              style={isFieldActive && actionBarWidth ? { paddingRight: actionBarWidth } : undefined}
+            >
+              {isFieldActive && !secretValueHidden && !isCreatable && secretHasReference && (
+                <ResolvedSecretValuePopover
+                  environment={environment}
+                  secretPath={secretPath}
+                  secretKey={secretName}
+                  open={isResolvedValueOpen}
+                  onOpenChange={setIsResolvedValueOpen.toggle}
+                  isDisabled={isDirtyState || hasPendingValueChange}
+                />
+              )}
+              <Controller
+                control={control}
+                name="value"
+                render={({ field }) => (
+                  <InfisicalSecretInput
+                    {...field}
+                    variant="plain"
+                    isReadOnly={isReadOnly}
+                    value={
+                      secretValueHidden
+                        ? ((field.value as string) ?? "")
+                        : isFetchingSharedValue
+                          ? HIDDEN_SECRET_VALUE
+                          : isErrorFetchingSharedValue
+                            ? "Error fetching secret value..."
+                            : (field.value as string)
+                    }
+                    key="secret-input-shared"
+                    isVisible={isVisible || isResolvedValueOpen}
+                    secretPath={secretPath}
+                    environment={environment}
+                    isImport={isImportedSecret}
+                    canEditButNotView={secretValueHidden && !isManagedSecret}
+                    onFocus={() => setIsFieldFocused.on()}
+                    containerClassName={secretHasReference && isFieldActive ? "pl-6" : ""}
+                    onBlur={() => {
+                      field.onBlur();
+                      setIsFieldFocused.off();
+                    }}
+                    onKeyDown={handleEditShortcut}
+                  />
+                )}
+              />
+            </div>
+            {!isDirtyState && !isFieldActive && (
+              <div className="pointer-events-none flex w-fit items-start justify-end self-start pl-2 opacity-0 transition-opacity duration-300 motion-reduce:transition-none [@media(hover:hover)]:pointer-events-auto [@media(hover:hover)]:opacity-100 [@media(hover:hover)]:group-focus-within:pointer-events-none [@media(hover:hover)]:group-focus-within:opacity-0 [@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0">
+                <div className="flex items-center gap-1">
+                  {skipMultilineEncoding && !isImportedSecret && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex size-5 items-center justify-center text-muted">
+                          <WrapTextIcon className="size-3.5" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Multi-line encoding disabled</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </div>
+            )}
+            {revokedProjectFolderGrant && !isDirtyState && (
+              <div
+                className={twMerge(
+                  "ml-auto flex shrink-0 items-center",
+                  isSingleEnvView &&
+                    "mr-16 transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16",
+                  isSingleEnvView && isFieldActive && "mr-8"
+                )}
+              >
+                <Badge variant="danger">
+                  <BanIcon className="size-3.5" />
+                  Secret share revoked
+                </Badge>
+              </div>
+            )}
+          </div>
+          {isDirtyState && (
+            <ProjectPermissionCan
+              I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
+              a={subject(ProjectPermissionSub.Secrets, {
+                environment,
+                secretPath,
+                secretName,
+                secretTags: ["*"]
+              })}
+            >
+              {(isAllowed) => (
+                <SecretInputActions
+                  className={twMerge(
+                    "absolute z-20 px-0.5 py-0.5",
+                    isSingleEnvView ? "top-1 right-1" : "top-[0.25px] -right-1.5"
+                  )}
+                  isSaveDisabled={isSubmitting || !isAllowed}
+                  isUndoDisabled={isSubmitting}
+                  onSave={submitForm}
+                  onUndo={handleFormReset}
+                />
+              )}
+            </ProjectPermissionCan>
           )}
-        </ProjectPermissionCan>
+        </>
       )}
       {!(
         isDirty &&
@@ -1676,9 +1712,15 @@ export const SecretEditTableRow = ({
           className={twMerge(
             "absolute z-20",
             "flex items-center gap-0.5 rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-            TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
-            isDropdownOpen && TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
-            isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
+            isCellVariant
+              ? TABLE_CELL_ACTION_BAR_VISIBILITY_CLASS_NAME
+              : TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
+            (isDropdownOpen || isAnnotateMenuOpen) && TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
+            isCellVariant
+              ? "top-1/2 right-1 -translate-y-1/2"
+              : isSingleEnvView
+                ? "top-[3px] right-0.5"
+                : "-top-px -right-1.5"
           )}
         >
           {isPendingBatchChange && onPendingSave && (
@@ -1750,6 +1792,10 @@ export const SecretEditTableRow = ({
                   className="size-7 border-0"
                   isDisabled={isEditValueDisabled}
                   onClick={() => {
+                    if (onRequestEditValue) {
+                      onRequestEditValue();
+                      return;
+                    }
                     if (isSingleEnvView && !isCreatable && !isOverride) {
                       handleOpenValueSheet();
                       return;
@@ -1806,6 +1852,7 @@ export const SecretEditTableRow = ({
                   : "Copy Secret"}
             </TooltipContent>
           </Tooltip>
+          {!isSingleEnvView && annotateMenu}
           <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -2295,6 +2342,24 @@ export const SecretEditTableRow = ({
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </>
   );
+
+  if (isCellVariant) {
+    const isActionBarForced = isDropdownOpen || isAnnotateMenuOpen;
+    return (
+      <>
+        <div
+          className={twMerge(
+            "flex items-center pr-(--action-bar-width) transition-[padding] duration-300 motion-reduce:transition-none [@media(hover:hover)]:pr-0 [@media(hover:hover)]:group-focus-within/cell:pr-(--action-bar-width) [@media(hover:hover)]:group-hover/cell:pr-(--action-bar-width)",
+            isActionBarForced && "[@media(hover:hover)]:pr-(--action-bar-width)"
+          )}
+          style={{ "--action-bar-width": `${actionBarWidth}px` } as CSSProperties}
+        >
+          {annotationSlot}
+        </div>
+        {valueContent}
+      </>
+    );
+  }
 
   if (isSingleEnvView) {
     return (

@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { MouseEventHandler, ReactNode } from "react";
 import {
   BanIcon,
   CheckIcon,
@@ -18,9 +18,17 @@ type Props = {
   status: EnvironmentStatus;
   hasOverride?: boolean;
   children?: ReactNode;
+  className?: string;
+  onClick?: MouseEventHandler<HTMLTableCellElement>;
 };
 
-export const ResourceEnvironmentStatusCell = ({ status, hasOverride, children }: Props) => {
+export const ResourceEnvironmentStatusCell = ({
+  status,
+  hasOverride,
+  children,
+  className,
+  onClick
+}: Props) => {
   let tooltipContent: string;
   let Icon: LucideIcon;
   let iconClassName: string;
@@ -63,8 +71,10 @@ export const ResourceEnvironmentStatusCell = ({ status, hasOverride, children }:
         status === "empty" && "text-warning",
         status === "missing" && "text-danger",
         status === "no-access" && "text-accent",
-        status === "imported" && "text-import"
+        status === "imported" && "text-import",
+        className
       )}
+      onClick={onClick}
     >
       {hasOverride && (
         <Tooltip>
