@@ -9,12 +9,18 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
-import { DatabricksConnectionMethod } from "./databricks-connection-enums";
+import { DatabricksConnectionMethod, DatabricksConnectionScope } from "./databricks-connection-enums";
 
 export const DatabricksConnectionServicePrincipalInputCredentialsSchema = z.object({
   clientId: z.string().trim().min(1, "Client ID required"),
   clientSecret: z.string().trim().min(1, "Client Secret required"),
-  workspaceUrl: z.string().trim().url().min(1, "Workspace URL required")
+  workspaceUrl: z.string().trim().url().min(1, "Workspace URL required"),
+  scopes: z
+    .nativeEnum(DatabricksConnectionScope)
+    .array()
+    .max(Object.values(DatabricksConnectionScope).length)
+    .optional()
+    .describe(AppConnections.CREDENTIALS.DATABRICKS.scopes)
 });
 
 const DatabricksConnectionServicePrincipalOutputCredentialsSchema = z
@@ -41,7 +47,8 @@ export const SanitizedDatabricksConnectionSchema = z.discriminatedUnion("method"
     method: z.literal(DatabricksConnectionMethod.ServicePrincipal),
     credentials: DatabricksConnectionServicePrincipalOutputCredentialsSchema.pick({
       clientId: true,
-      workspaceUrl: true
+      workspaceUrl: true,
+      scopes: true
     })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Databricks]} (Service Principal)` }))
 ]);

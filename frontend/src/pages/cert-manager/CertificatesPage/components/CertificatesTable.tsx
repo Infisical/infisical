@@ -1,4 +1,3 @@
-/* eslint-disable no-nested-ternary */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import { format } from "date-fns";
@@ -934,12 +933,12 @@ export const CertificatesTable = ({
                     ) || canEditPkiSyncsAtApplication;
                   const canShowAutoRenewalIcon = Boolean(
                     !isInventoryView &&
-                      certificate.profileId &&
-                      certificate.hasPrivateKey !== false &&
-                      !certificate.renewedByCertificateId &&
-                      !isRevoked &&
-                      !isExpired &&
-                      !isExpiringWithinDay
+                    certificate.profileId &&
+                    certificate.hasPrivateKey !== false &&
+                    !certificate.renewedByCertificateId &&
+                    !isRevoked &&
+                    !isExpired &&
+                    !isExpiringWithinDay
                   );
                   const { originalDisplayName, isTruncated } = getCertificateDisplayName(
                     certificate,

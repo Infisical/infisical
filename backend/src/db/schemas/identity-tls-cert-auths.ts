@@ -21,7 +21,8 @@ export const IdentityTlsCertAuthsSchema = z.object({
   allowedCommonNames: z.string().nullable().optional(),
   encryptedCaCertificate: zodBuffer,
   allowedSubjectAltNames: z.string().nullable().optional(),
-  verifyClientCertificateChain: z.boolean().default(false)
+  verifyClientCertificateChain: z.boolean().default(false),
+  bindAccessTokenToCertificate: z.boolean().default(false)
 });
 
 export type TIdentityTlsCertAuths = z.infer<typeof IdentityTlsCertAuthsSchema>;

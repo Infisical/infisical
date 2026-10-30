@@ -1,4 +1,3 @@
-/* eslint-disable react/no-danger */
 import { forwardRef, ReactNode, TextareaHTMLAttributes, useEffect, useMemo, useState } from "react";
 import { TriangleAlertIcon } from "lucide-react";
 

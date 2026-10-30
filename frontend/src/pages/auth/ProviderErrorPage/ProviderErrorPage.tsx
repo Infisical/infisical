@@ -1,17 +1,44 @@
-import { useEffect } from "react";
+import { Link } from "@tanstack/react-router";
+import { ArrowLeftIcon, LogInIcon, UserXIcon } from "lucide-react";
 
-import { PageTitle } from "@app/components/PageTitle";
+import { Button } from "@app/components/v3";
+import { ErrorPageFrame, useErrorPageTimestamp } from "@app/pages/public/ErrorPage/components";
 
 export const LoginProviderErrorPage = () => {
-  useEffect(() => {
-    window.localStorage.setItem("PROVIDER_AUTH_ERROR", "err");
-    window.close();
-  }, []);
+  const occurredAt = useErrorPageTimestamp();
 
   return (
-    <>
-      <PageTitle title="Login Failed" />
-      <div />
-    </>
+    <ErrorPageFrame
+      pageTitle="Login Failed"
+      badgeIcon={<UserXIcon />}
+      badgeText="Login Failed"
+      heading="We couldn't sign you in."
+      description="Your sign-in provider didn't complete the login. Go back to the login page and try again."
+      actions={
+        <Button variant="project" asChild>
+          <Link to="/login">
+            <ArrowLeftIcon />
+            Back to Login
+          </Link>
+        </Button>
+      }
+      statusRows={[
+        {
+          icon: <LogInIcon />,
+          label: "Sign-in provider",
+          state: "Not completed",
+          tone: "warning"
+        }
+      ]}
+      monoRows={[
+        ["route", window.location.pathname],
+        ["time", occurredAt]
+      ]}
+      report={[
+        `route: ${window.location.pathname}`,
+        "error: Sign-in provider did not complete the login",
+        `time: ${occurredAt}`
+      ].join("\n")}
+    />
   );
 };

@@ -2,6 +2,13 @@ import { IdentityAuthMethod } from "@app/db/schemas";
 
 export type TRenewAccessTokenDTO = {
   accessToken: string;
+  clientCertificate?: string;
+};
+
+export const CERTIFICATE_THUMBPRINT_CLAIM = "x5t#S256";
+
+export type TCertificateConfirmation = {
+  [CERTIFICATE_THUMBPRINT_CLAIM]: string;
 };
 
 export type TOidcAuthDetails = {
@@ -61,6 +68,7 @@ export type TIdentityAccessTokenJwtPayload = {
     kubernetes?: TKubernetesAuthDetails;
     aws?: TAWSAuthDetails;
   };
+  cnf?: TCertificateConfirmation;
 };
 
 // Claims present on every JWT we accept (legacy + new format). Pre-redesign
@@ -137,6 +145,7 @@ export type TSignIdentityAccessTokenInput = {
     kubernetes?: TKubernetesAuthDetails;
     aws?: TAWSAuthDetails;
   };
+  cnf?: TCertificateConfirmation;
 };
 
 export type TSignIdentityAccessTokenOutput = {

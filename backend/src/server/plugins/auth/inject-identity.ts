@@ -21,6 +21,7 @@ import {
   TKmipServerAccessTokenJwtPayload,
   TRelayAccessTokenJwtPayload
 } from "@app/services/auth/auth-type";
+import { readClientCertificateHeader } from "@app/services/identity-access-token/identity-access-token-fns";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -297,6 +298,11 @@ export const injectIdentity = fp(
         return;
       }
 
+      // Authenticated on the route by an Agent Vault session token, which is not a JWT.
+      if (pathname === "/api/v1/agent-vault/session/skills") {
+        return;
+      }
+
       // Authentication is handled on a route-level here.
       if (pathname.startsWith("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
         return;
@@ -368,7 +374,8 @@ export const injectIdentity = fp(
         case AuthMode.IDENTITY_ACCESS_TOKEN: {
           const identity = await server.services.identityAccessToken.fnValidateIdentityAccessTokenFast(
             token,
-            req.realIp
+            req.realIp,
+            readClientCertificateHeader(req.headers)
           );
           const serverCfg = await getServerCfg();
           requestContext.set(RequestContextKey.OrgId, identity.orgId);

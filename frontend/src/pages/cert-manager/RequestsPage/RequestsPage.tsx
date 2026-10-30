@@ -94,11 +94,11 @@ const formatRelative = (iso: string): string => {
 const isCertRequestData = (data: unknown): data is { requestData: CertRequestRequestData } => {
   return Boolean(
     data &&
-      typeof data === "object" &&
-      "requestData" in data &&
-      data.requestData &&
-      typeof data.requestData === "object" &&
-      "profileName" in (data.requestData as object)
+    typeof data === "object" &&
+    "requestData" in data &&
+    data.requestData &&
+    typeof data.requestData === "object" &&
+    "profileName" in (data.requestData as object)
   );
 };
 

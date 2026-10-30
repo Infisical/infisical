@@ -285,6 +285,7 @@ Auth extraction happens in `src/server/plugins/auth/`:
 **Auth modes** (defined in `AuthMode` enum):
 - **JWT** — user browser sessions (decoded from `Authorization: Bearer` header)
 - **IDENTITY_ACCESS_TOKEN** — machine-to-machine identity tokens
+  A TLS Certificate Auth token may carry an RFC 8705 `cnf` (`x5t#S256`) claim. `fnValidateIdentityAccessTokenFast` and renewal then reject it unless the proxy-forwarded client certificate matches (`assertCertificateBinding`).
 - **SCIM_TOKEN** — SCIM provisioning tokens
 - **OAUTH** — delegated user tokens from the `oauth-client` module. Same JWT shape and session binding as
   `JWT`, told apart by an `oauthClientId` claim. See [Delegated OAuth tokens](#delegated-oauth-tokens).

@@ -7,8 +7,7 @@ import type { DataGridCellProps } from "./data-grid-types";
 import { getCellKey } from "./data-grid-utils";
 
 interface DataGridCellWrapperProps<TData>
-  extends DataGridCellProps<TData>,
-    React.ComponentProps<"div"> {}
+  extends DataGridCellProps<TData>, React.ComponentProps<"div"> {}
 
 export function DataGridCellWrapper<TData>({
   tableMeta,
