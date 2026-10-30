@@ -30,7 +30,7 @@ const MAX_RETAINED_OUTPUT_CHARS = 4_000;
 // careful about logging `output`.
 const UrlCredentialsRegex = new RE2(/([a-z][a-z0-9+.-]*:\/\/)[^/\s@]+@/gi);
 
-const redactUrlCredentials = (value: string) => value.replace(UrlCredentialsRegex, "$1[REDACTED]@");
+export const redactUrlCredentials = (value: string) => value.replace(UrlCredentialsRegex, "$1[REDACTED]@");
 
 type TSecretScanningExecErrorParams = {
   failure: SecretScanningExecFailure;
