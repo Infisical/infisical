@@ -7,15 +7,13 @@ import { OIDCConfigurationType } from "./oidc-config-types";
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({
     isDevelopmentMode: false,
-    ALLOW_INTERNAL_IP_CONNECTIONS: false,
-    SITE_URL: "https://8.8.4.4"
+    ALLOW_INTERNAL_IP_CONNECTIONS: false
   })
 }));
 
 // literal IPs keep the suite hermetic: blockLocalAndPrivateIpAddresses skips the DNS lookup
 const publicMetadata: IssuerMetadata = {
   issuer: "https://8.8.8.8",
-  authorization_endpoint: "https://8.8.8.8/authorize",
   jwks_uri: "https://8.8.8.8/jwks",
   token_endpoint: "https://8.8.8.8/token"
 };
@@ -24,17 +22,13 @@ const getOrgAuthStrategy = (metadata: IssuerMetadata) => {
   vi.spyOn(Issuer, "discover").mockResolvedValue(new Issuer(metadata));
 
   return oidcConfigServiceFactory({
-    orgDAL: { findOne: vi.fn().mockResolvedValue({ id: "org-id", name: "org" }) },
+    orgDAL: { findOne: vi.fn().mockResolvedValue({ id: "org-id" }) },
     oidcConfigDAL: {
       findOne: vi.fn().mockResolvedValue({
-        id: "oidc-id",
-        orgId: "org-id",
         isActive: true,
         configurationType: OIDCConfigurationType.DISCOVERY_URL,
         discoveryURL: "https://8.8.8.8/.well-known/openid-configuration",
-        encryptedOidcClientId: Buffer.from("client-id"),
-        encryptedOidcClientSecret: Buffer.from("client-secret"),
-        jwtSignatureAlgorithm: "RS256"
+        encryptedOidcClientId: Buffer.from("client-id")
       })
     },
     kmsService: {
