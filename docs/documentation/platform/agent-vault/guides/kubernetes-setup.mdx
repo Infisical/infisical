@@ -406,7 +406,7 @@ While an agent runs, check its traffic as a cluster admin. Replace `<run-id>` wi
 kubectl -n agents exec agent-<run-id> -- infisical agent-vault run -- \
   curl -s -o /dev/null -w '%{http_code}\n' https://<api-host>
 
-# Not in the access bundle: the proxy refuses it with 403
+# Not in the access bundle: returns 200 without a credential, or 403 under Access bundle hosts only
 kubectl -n agents exec agent-<run-id> -- infisical agent-vault run -- \
   curl -s -o /dev/null -w '%{http_code}\n' https://example.com
 
