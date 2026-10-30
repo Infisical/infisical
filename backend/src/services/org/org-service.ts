@@ -589,6 +589,10 @@ export const orgServiceFactory = ({
       }
     }
 
+    if (ssoMfaTrust !== undefined) {
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+    }
+
     if (ssoMfaTrust !== undefined && ssoMfaTrust !== SsoMfaTrust.None) {
       if (!plan.enforceMfa) {
         throw new BadRequestError({

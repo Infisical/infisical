@@ -321,7 +321,8 @@ the only reader of the setting. Rules that must hold:
   honoring it would make the trust dead for anyone who ever logged in before it was enabled. Personal MFA in an
   org that does not enforce it is still prompted. The
   setting can be stored before enforcement is turned on; `updateOrg` refuses any value but `none` only while
-  the org has no active SAML or OIDC config.
+  the org has no active SAML or OIDC config, and like `authEnforced` it needs `Sso.Edit`, not just
+  `Settings.Edit`.
 - `isMfaVerified` is never set from the IdP. It still means "proved a factor to Infisical", so step-up
   (`mfa-step-up-fns.ts`) and PAM MFA are unaffected. OAuth consent (`authorizeConsent`) re-derives the MFA
   requirement for the client's org and applies the same `isIdpMfaTrusted` waiver, so a session that skipped

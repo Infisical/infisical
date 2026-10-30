@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 
+import { packRules } from "@casl/ability/extra";
 import jwt, { decode } from "jsonwebtoken";
 
 import { OrgMembershipRole, TableName } from "@app/db/schemas";
@@ -9,7 +10,7 @@ import { AuthMethod, AuthTokenType, MfaMethod, SsoMfaTrust } from "@app/services
 import { TTestSmtpService } from "../../mocks/smtp";
 import { loginUser, selectOrg } from "../../testUtils/auth";
 import { overrideLicenseFeatures } from "../../testUtils/license";
-import { addUserMembership } from "../../testUtils/users";
+import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "../../testUtils/users";
 
 describe("Auth MFA V3", () => {
   const smtp = () => (globalThis as unknown as { testSmtp: TTestSmtpService }).testSmtp;
@@ -275,6 +276,39 @@ describe("Auth MFA V3", () => {
         expect(res.statusCode).toBe(401);
         expect(res.json().message).toMatch(/Multi-factor authentication is required/);
       });
+    });
+
+    // Written straight to the table because the e2e license mock reports `rbac: false`, so the custom-role
+    // routes refuse to create one.
+    test("changing the setting needs the SSO edit permission, not just settings edit", async () => {
+      const { userId } = await createUser("sso-mfa-trust");
+      const [role] = await db()(TableName.Role)
+        .insert({
+          name: `settings-only-${crypto.randomUUID()}`,
+          slug: `settings-only-${crypto.randomUUID()}`,
+          orgId: rootOrgId,
+          permissions: JSON.stringify(packRules([{ subject: "settings", action: ["read", "edit"] }]))
+        })
+        .returning("id");
+      try {
+        const membershipId = await addUserMembership({ userId, orgId: rootOrgId, role: OrgMembershipRole.Member });
+        await db()(TableName.MembershipRole).where({ membershipId }).delete();
+        await db()(TableName.MembershipRole).insert({ membershipId, role: "custom", customRoleId: role.id });
+        const token = await createUserAccessToken({ userId, orgId: rootOrgId });
+        const patch = (body: Record<string, unknown>) =>
+          testServer.inject({
+            method: "PATCH",
+            url: `/api/v1/organization/${rootOrgId}`,
+            headers: { authorization: `Bearer ${token}` },
+            body
+          });
+
+        expect((await patch({ name: seedData1.organization.name })).statusCode).toBe(200);
+        expect((await patch({ ssoMfaTrust: SsoMfaTrust.None })).statusCode).toBe(403);
+      } finally {
+        await deleteUsers([userId]);
+        await db()(TableName.Role).where({ id: role.id }).del();
+      }
     });
 
     test("the setting cannot be turned on without an active SSO configuration", async () => {

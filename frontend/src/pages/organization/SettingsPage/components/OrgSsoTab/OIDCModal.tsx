@@ -235,12 +235,14 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       mfaAmrValues: mfaAmrValues && mfaAmrValues.length > 0 ? mfaAmrValues : null
     };
 
+    // Switching providers keeps the row but blanks its secret, so an existing row is not proof one is stored.
+    if (!hasStoredSecret && !clientSecret) {
+      setError("clientSecret", { message: "Client Secret is required" });
+      return;
+    }
+
     if (!data) {
-      if (!clientSecret) {
-        setError("clientSecret", { message: "Client Secret is required" });
-        return;
-      }
-      await createMutateAsync({ ...payload, clientSecret });
+      await createMutateAsync({ ...payload, clientSecret: clientSecret as string });
     } else {
       await updateMutateAsync({ ...payload, ...(clientSecret ? { clientSecret } : {}) });
     }
