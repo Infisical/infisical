@@ -47,12 +47,12 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { PkiApplicationModal } from "../ApplicationsPage/components/PkiApplicationModal";
 import { PkiDocsUrls } from "../pki-docs-urls";
+import { ApplicationTab } from "./application-tabs";
 import { ApplicationCertificatesTab } from "./components/ApplicationCertificatesTab";
 import { ApplicationMembersTab } from "./components/ApplicationMembersTab";
 import { ApplicationRequestsTab } from "./components/ApplicationRequestsTab";
 import { ApplicationSettingsTab } from "./components/ApplicationSettingsTab";
 import { ApplicationSyncsTab } from "./components/ApplicationSyncsTab";
-import { ApplicationTab } from "./application-tabs";
 
 type PermissionedTabProps = {
   value: string;

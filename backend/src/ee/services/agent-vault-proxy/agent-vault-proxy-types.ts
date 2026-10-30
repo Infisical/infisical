@@ -54,10 +54,17 @@ export type THeartbeatDTO = {
   proxyId: string;
 };
 
-export type TResolveSessionDTO = {
+export type TAuthorizeSessionDTO = {
   proxyId: string;
   orgId: string;
   sessionToken: string;
+};
+
+export type TGetSessionSkillsDTO = {
+  sessionToken: string;
+};
+
+export type TResolveSessionDTO = TAuthorizeSessionDTO & {
   hasSessionLogKey: boolean;
 };
 

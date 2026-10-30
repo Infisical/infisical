@@ -729,7 +729,6 @@ export const SecretEditTableRow = ({
         clearTimeout(batchAutoApplyTimer.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBatchMode, watchedValue, watchedKey, watchedComment, watchedTags, serializedMetadata]);
 
   const findPendingChangeId = () =>

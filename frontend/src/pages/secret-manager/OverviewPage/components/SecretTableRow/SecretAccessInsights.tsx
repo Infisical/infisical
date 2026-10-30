@@ -613,7 +613,6 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
       trackedSince: readActivity?.readsTrackedSince
     };
     // readStatusOf only reads readActivity and readActors, which are both listed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     secretAccessList,
     readActors,
@@ -721,19 +720,17 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
           inheritedActions: identityInheritedActions
         };
       }),
-      ...secretAccessList.groups.map(
-        (group): AccessRow => ({
-          type: "group",
-          entry: group,
-          linkTo: `${baseUrl}/groups/$groupId`,
-          linkParams: {
-            orgId: currentOrg.id,
-            projectId: currentProject.id,
-            groupId: group.id
-          },
-          canEdit: false
-        })
-      )
+      ...secretAccessList.groups.map((group): AccessRow => ({
+        type: "group",
+        entry: group,
+        linkTo: `${baseUrl}/groups/$groupId`,
+        linkParams: {
+          orgId: currentOrg.id,
+          projectId: currentProject.id,
+          groupId: group.id
+        },
+        canEdit: false
+      }))
     ];
   }, [secretAccessList, permission, currentOrg.id, currentProject, setEditingPrivilege]);
 

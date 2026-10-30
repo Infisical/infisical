@@ -36,6 +36,20 @@ func (cp *ControlPlane) OrgSecrets(tt *testing.T, org string) *Store {
 	return cp.State(tt).Stores["orgs/"+org]
 }
 
+// RepoOfType is a repository's secrets of a type GitHub keeps apart from Actions
+// secrets, such as Dependabot.
+func (cp *ControlPlane) RepoOfType(tt *testing.T, full, secretType string) *Store {
+	tt.Helper()
+	return cp.State(tt).Stores["repos/"+full+"/"+secretType]
+}
+
+// OrgSecretsOfType is an organization's secrets of a type GitHub keeps apart from
+// Actions secrets, such as Codespaces.
+func (cp *ControlPlane) OrgSecretsOfType(tt *testing.T, org, secretType string) *Store {
+	tt.Helper()
+	return cp.State(tt).Stores["orgs/"+org+"/"+secretType]
+}
+
 // Env is a repository environment's secrets.
 func (cp *ControlPlane) Env(tt *testing.T, full, env string) *Store {
 	tt.Helper()

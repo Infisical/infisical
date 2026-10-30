@@ -70,7 +70,6 @@ export const CreateProxiedServiceForm = ({
   const defaultValues = useMemo(
     () => (template ? buildTemplateFormValues(template, existingNames) : emptyFormValues()),
     // seed once on mount; regenerating would churn the placeholder values
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 

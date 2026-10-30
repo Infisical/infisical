@@ -102,7 +102,6 @@ export const PoliciesPage = () => {
   const handleViewCertificateFromRequest = (certificateId: string) => {
     setCertificateFilter({ search: certificateId });
     navigate({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       search: { selectedTab: TabSections.Certificates } as any
     });
   };
