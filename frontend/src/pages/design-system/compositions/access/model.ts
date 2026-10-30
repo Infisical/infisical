@@ -1,3 +1,5 @@
+import { type RolePermissions, seedRolePermissions } from "./roles/permissions-model";
+
 export const LOCAL_ONLY = "Saved to local demo data only. No request was sent.";
 
 export type Scope = "org" | "project";
@@ -58,7 +60,7 @@ export const orgRoles: Role[] = [
     slug: "release-manager",
     name: "Release manager",
     builtIn: false,
-    description: "Manages projects and app connections for releases"
+    description: "Creates projects and manages machine identities for deploys"
   }
 ];
 export const DEFAULT_ORG_ROLE = "member";
@@ -74,7 +76,7 @@ export const projectRoles: Role[] = [
   {
     id: "p-member",
     slug: "member",
-    name: "Developer",
+    name: "Member",
     builtIn: true,
     description: "Limited read/write role in a project"
   },
@@ -97,7 +99,7 @@ export const projectRoles: Role[] = [
     slug: "deploy-bot-reviewer",
     name: "Deploy bot reviewer",
     builtIn: false,
-    description: "Reads production secrets under /api for deploy reviews"
+    description: "Reviews production API secrets used by the deploy bot"
   }
 ];
 
@@ -732,6 +734,7 @@ export type AccessData = {
   defaultOrgRole: string;
   identityAuthTemplates: AuthTemplate[];
   otherProjectMemberships: OtherProjectMembership[];
+  rolePermissions: Record<string, RolePermissions>;
 };
 
 export const createData = (scenario: Scenario): AccessData => {
@@ -748,7 +751,8 @@ export const createData = (scenario: Scenario): AccessData => {
       projectRoles: projectRoles.filter((r) => r.builtIn),
       defaultOrgRole: DEFAULT_ORG_ROLE,
       identityAuthTemplates: [],
-      otherProjectMemberships: []
+      otherProjectMemberships: [],
+      rolePermissions: seedRolePermissions()
     };
   return {
     orgMembers,
@@ -762,7 +766,8 @@ export const createData = (scenario: Scenario): AccessData => {
     projectRoles,
     defaultOrgRole: DEFAULT_ORG_ROLE,
     identityAuthTemplates,
-    otherProjectMemberships
+    otherProjectMemberships,
+    rolePermissions: seedRolePermissions()
   };
 };
 

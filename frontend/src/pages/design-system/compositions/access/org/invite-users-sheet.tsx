@@ -44,7 +44,7 @@ export const productProjects: Record<string, { value: string; label: string }[]>
 const singleton = ["pam"];
 const builtInProjectRoles = [
   { value: "admin", label: "Admin", description: "Full administrative access over a project" },
-  { value: "member", label: "Developer", description: "Limited read/write role in a project" },
+  { value: "member", label: "Member", description: "Limited read/write role in a project" },
   { value: "viewer", label: "Viewer", description: "Only read role in a project" },
   {
     value: "no-access",
