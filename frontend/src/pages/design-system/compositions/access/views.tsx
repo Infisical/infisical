@@ -179,9 +179,19 @@ export const accessViews: AccessView[] = [
     start: { nav: { scope: "project", projectTab: "identities" } }
   },
   {
+    value: "proj-identities-row-menu",
+    label: "Project: Machine identities, row actions",
+    start: { nav: { scope: "project", projectTab: "identities" }, overlay: "row-menu" }
+  },
+  {
     value: "proj-identity-add",
     label: "Project: Add machine identity",
     start: { nav: { scope: "project", projectTab: "identities" }, overlay: "add" }
+  },
+  {
+    value: "proj-identity-add-create-new",
+    label: "Project: Create project machine identity",
+    start: { nav: { scope: "project", projectTab: "identities" }, overlay: "add-create-new" }
   },
   {
     value: "proj-groups",

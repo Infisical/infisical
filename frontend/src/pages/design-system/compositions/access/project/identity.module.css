@@ -1,0 +1,81 @@
+.detailGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 384px) minmax(0, 1fr);
+  gap: var(--v4-space-24);
+  align-items: start;
+}
+@media (max-width: 1024px) {
+  .detailGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.helper {
+  color: var(--v4-muted);
+}
+.idValue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+  min-width: 0;
+}
+.pairs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--v4-space-8);
+}
+.pair {
+  display: inline-flex;
+  min-width: 0;
+}
+.lock {
+  display: inline-flex;
+}
+.roleRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--v4-space-8);
+}
+.roleField {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.durationField {
+  flex: 0 0 176px;
+  width: 176px;
+}
+.durationField [data-slot="button"] {
+  width: 100%;
+}
+.metadataBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-12);
+  max-height: 30vh;
+  overflow-y: auto;
+  padding: var(--v4-space-16);
+  border: var(--v4-size-control-border) solid var(--v4-line);
+}
+.metadataBox[data-empty] {
+  border-style: dashed;
+  color: var(--v4-muted);
+  text-align: center;
+}
+.metadataRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--v4-space-8);
+}
+.metadataField {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.metadataRemove {
+  padding-block-start: var(--v4-space-24);
+}
+.metadataRow + .metadataRow .metadataRemove {
+  padding-block-start: 0;
+}
+.sectionLabel {
+  color: var(--v4-muted);
+}
