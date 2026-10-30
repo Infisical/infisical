@@ -375,13 +375,16 @@ export const SecretEditTableRow = ({
   const tagPopover = useDraggablePopover(isTagOpen);
   const metadataPopover = useDraggablePopover(isMetadataOpen);
 
-  useEffect(() => {
-    onExpandedChange?.(isFieldActive || isAnnotating);
-  }, [isFieldActive, isAnnotating, onExpandedChange]);
+  // Multi-env rows pass a fresh callback every render; reading it through a ref keeps the
+  // activity effect from re-firing (and re-setting parent state) on each render.
   const onExpandedChangeRef = useRef(onExpandedChange);
   useLayoutEffect(() => {
     onExpandedChangeRef.current = onExpandedChange;
   });
+  const isRowActive = isFieldActive || isAnnotating;
+  useEffect(() => {
+    onExpandedChangeRef.current?.(isRowActive);
+  }, [isRowActive]);
   useEffect(() => () => onExpandedChangeRef.current?.(false), []);
   const [pendingAnnotation, setPendingAnnotation] = useState<
     "comment" | "tags" | "reminder" | "metadata" | null
@@ -1774,7 +1777,7 @@ export const SecretEditTableRow = ({
                   className="size-7 border-0"
                   isDisabled={isEditValueDisabled}
                   onClick={() => {
-                    if (isSingleEnvView && !isCreatable && !isOverride) {
+                    if (!isCreatable && !isOverride) {
                       handleOpenValueSheet();
                       return;
                     }
