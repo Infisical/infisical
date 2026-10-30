@@ -447,3 +447,34 @@ it("disables the header when every row is absent", async () => {
   );
   expect(box("Edit for every row in Matrix").disabled).toBe(true);
 });
+
+it("explains a row that cannot be selected and leaves it out of select-all", async () => {
+  const onSelectionChange = vi.fn();
+  await React.act(async () =>
+    root.render(
+      <V4Scope>
+        <TooltipProvider>
+          <DataTable
+            label="Members"
+            rows={rows}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+            selectable
+            onSelectionChange={onSelectionChange}
+            selectionDisabledReason={(row) =>
+              row.id === "b" ? "Owners cannot be removed" : undefined
+            }
+          />
+        </TooltipProvider>
+      </V4Scope>
+    )
+  );
+  const locked = box("Select beta");
+  expect(locked.disabled).toBe(true);
+  expect(locked.getAttribute("aria-description")).toBe("Owners cannot be removed");
+  expect(box("Select alpha").disabled).toBe(false);
+  await React.act(async () => box("Select all available rows in Members").click());
+  expect(onSelectionChange).toHaveBeenLastCalledWith(["a"]);
+  expect(box("Select all available rows in Members").getAttribute("aria-checked")).toBe("true");
+});

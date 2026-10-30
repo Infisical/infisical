@@ -26,7 +26,7 @@ function Tooltip({
   shortcut,
   side = "top",
   align = "center",
-  wrap = false,
+  wrap: _wrap,
   children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root> & {
@@ -34,6 +34,7 @@ function Tooltip({
   shortcut?: string;
   side?: "top" | "right" | "bottom" | "left";
   align?: "start" | "center" | "end";
+  /** @deprecated Tooltips always wrap at size-tooltip-max; this has no effect. */
   wrap?: boolean;
 }) {
   return (
@@ -41,11 +42,7 @@ function Tooltip({
       {content ? (
         <>
           <TooltipTrigger asChild>{children}</TooltipTrigger>
-          <TooltipContent
-            side={side}
-            align={align}
-            className={wrap ? "whitespace-normal" : "whitespace-nowrap"}
-          >
+          <TooltipContent side={side} align={align}>
             <span className={menu.tooltipText}>{content}</span>
             {shortcut && <Kbd>{shortcut}</Kbd>}
           </TooltipContent>

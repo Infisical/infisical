@@ -519,10 +519,7 @@ export function SecretDiffView({
       nextEmptyMessage="Secret will be deleted."
       newPaneBadge={
         newVersion?.isRedacted && (
-          <Tooltip
-            wrap
-            content="This secret version has been redacted. Rolling back to this version will result in an empty secret value."
-          >
+          <Tooltip content="This secret version has been redacted. Rolling back to this version will result in an empty secret value.">
             <Badge tone="bad">
               <Icon name="alert" size={12} />
               Redacted version

@@ -13,6 +13,7 @@
   box-sizing: border-box;
   background-color: var(--v4-pop);
   color: var(--v4-ink);
+  white-space: normal;
   box-shadow:
     0 0 0 var(--v4-size-control-border) var(--v4-pop-line),
     var(--v4-shadow-pop);

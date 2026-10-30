@@ -167,6 +167,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 ## Accessibility
 
 - Native table/header/cell semantics, labelled selection and aria-sort buttons.
+- selectionDisabledReason(row) disables that row's selection Checkbox, shows the reason in a tooltip and sets it as the Checkbox's accessible description. Header select-all skips and does not count those rows; isSelectable remains for rows that need no explanation.
 - With virtual rows, screen readers still hear the total row count and each row's real position.
 - Focus remains on native controls; loading and selected totals announced politely.
 - After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived.
@@ -181,6 +182,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 ## Limits
 
 - The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.
+- There is no muted row state. Lowered opacity drops text below contrast and carries the state by color alone; mark an inactive row with a Badge in its name cell (for example Deactivated) and, when it cannot be acted on, a selectionDisabledReason.
 - Virtual tables use one uniform effective row height. rowHeight defaults to the size-row token (40px) as a requested minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.
 - Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.
 - Use text(row) for full hover text when render returns truncated complex content.
@@ -296,19 +298,27 @@ export default function Variants() {
 
 Save this example at `src/pages/design-system/examples/table/states.tsx`; its relative imports are generated for that exact path. States: empty, controlled, disabled, keyboard, loading.
 
-Registry items used: @infisical/data-table, @infisical/empty. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/badge, @infisical/data-table, @infisical/empty. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
+import { Badge } from "../../../../components/v4/ui/badge";
 import { DataTable } from "../../../../components/v4/ui/data-table";
 import { EmptyState } from "../../../../components/v4/ui/empty";
 const initial = [
-    { id: "owner", name: "Production owner", locked: true },
-    { id: "worker", name: "Rotation worker", locked: false },
-    { id: "expired", name: "Expired integration", locked: false }
+    { id: "owner", name: "Production owner", locked: true, deactivated: false },
+    { id: "worker", name: "Rotation worker", locked: false, deactivated: false },
+    { id: "expired", name: "Expired integration", locked: false, deactivated: true }
 ];
 const columns = [
-    { id: "name", header: "Identity", render: (row: (typeof initial)[number]) => row.name },
+    {
+        id: "name",
+        header: "Identity",
+        render: (row: (typeof initial)[number]) => (<span className="inline-flex items-center gap-2">
+        {row.name}
+        {row.deactivated && <Badge size="sm">Deactivated</Badge>}
+      </span>)
+    },
     {
         id: "access",
         header: "Access",
@@ -322,7 +332,7 @@ export default function States() {
         <DataTable label="Empty identities" rows={[]} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} empty={<EmptyState size="sm" media="bare" icon="user" title="No identities in this environment"/>}/>
       </div><figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <DataTable label="Protected identities" rows={initial} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} selectable isSelectable={(row) => !row.locked} selectedIds={selected} onSelectionChange={setSelected} footer={`${selected.length} eligible loaded identities selected`}/>
+        <DataTable label="Protected identities" rows={initial} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} selectable selectionDisabledReason={(row) => row.locked ? "Owner identities are protected from bulk removal." : undefined} selectedIds={selected} onSelectionChange={setSelected} footer={`${selected.length} eligible loaded identities selected`}/>
       </div><figcaption className="text-muted-foreground text-xs">{"Protected selection"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
         <DataTable label="Loading identities" rows={initial} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} loadMore={{ label: "Load more identities", loading: true, onClick: () => undefined }}/>

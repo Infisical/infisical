@@ -674,10 +674,7 @@ function CopySecretsSession({
                   checked={shouldOverwrite}
                   onCheckedChange={setShouldOverwrite}
                 />
-                <Tooltip
-                  content="Overwrite matching destination keys, including keys hidden by your access."
-                  wrap
-                >
+                <Tooltip content="Overwrite matching destination keys, including keys hidden by your access.">
                   <Button type="button" variant="ghost" size="icon-xs" icon="info" iconOnly>
                     About overwriting existing secrets
                   </Button>

@@ -125,7 +125,7 @@ function MatrixRow({
           {label}
         </Badge>
         {hint && (
-          <Tooltip wrap content={hint}>
+          <Tooltip content={hint}>
             <span className={flowStyles.hint}>
               <Icon name="info" size={14} label={`About ${label.toLowerCase()}`} />
             </span>
@@ -645,7 +645,7 @@ function ImportSecretsContent({
           >
             <span className={flowStyles.labelRow}>
               <FieldLabel htmlFor="import-paste-secrets">Secret values</FieldLabel>
-              <Tooltip wrap content={<PasteExamples />}>
+              <Tooltip content={<PasteExamples />}>
                 <span className={flowStyles.hint}>
                   <Icon name="info" size={14} label="Example formats" />
                 </span>
@@ -847,7 +847,6 @@ function ImportSecretsContent({
                           )}
                           {secretData.comments.some(Boolean) && (
                             <Tooltip
-                              wrap
                               content={
                                 <span className={styles.preWrap}>
                                   {secretData.comments.join("\n")}
@@ -861,7 +860,6 @@ function ImportSecretsContent({
                           )}
                           {Boolean(secretData.tagSlugs?.length) && (
                             <Tooltip
-                              wrap
                               content={
                                 <span className={`${styles.tooltipList} ${styles.mono}`}>
                                   {secretData.tagSlugs?.map((slug) => (
@@ -877,7 +875,6 @@ function ImportSecretsContent({
                           )}
                           {Boolean(secretData.secretMetadata?.length) && (
                             <Tooltip
-                              wrap
                               content={
                                 <span className={`${styles.tooltipList} ${styles.mono}`}>
                                   {secretData.secretMetadata?.map((entry) => (
@@ -947,10 +944,7 @@ function ImportSecretsContent({
           </div>
           <span className={flowStyles.labelRow}>
             <FieldLabel htmlFor="import-overwrite-existing">Overwrite existing secrets</FieldLabel>
-            <Tooltip
-              wrap
-              content="When enabled, secrets that already exist in the target environment will be updated with the imported values. When disabled, existing secrets will be skipped and only new secrets will be created."
-            >
+            <Tooltip content="When enabled, secrets that already exist in the target environment will be updated with the imported values. When disabled, existing secrets will be skipped and only new secrets will be created.">
               <span className={flowStyles.hint}>
                 <Icon name="info" size={14} label="About overwriting existing secrets" />
               </span>
@@ -967,7 +961,6 @@ function ImportSecretsContent({
                 Import nested objects as folders
               </FieldLabel>
               <Tooltip
-                wrap
                 content={`Each nested object becomes a folder relative to ${scope.path}, and its values become secrets in that folder. Arrays are stored as JSON strings, null as an empty value, and numbers and booleans as text.`}
               >
                 <span className={flowStyles.hint}>
