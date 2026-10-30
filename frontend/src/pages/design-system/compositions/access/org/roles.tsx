@@ -216,7 +216,7 @@ export const OrgRolesTab = () => {
       render: (role) => {
         const isDefault = role.slug === data.defaultOrgRole;
         return (
-          <DropdownMenu>
+          <DropdownMenu defaultOpen={startsWith("row-menu") && role.slug === "release-manager"}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-row" icon="more" iconOnly>
                 {`Actions for ${role.name}`}

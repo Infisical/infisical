@@ -107,7 +107,7 @@ export const OrgGroupsTab = () => {
       header: "Actions",
       actions: true,
       render: (group) => (
-        <DropdownMenu>
+        <DropdownMenu defaultOpen={startsWith("row-menu") && group.id === "g-platform"}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon-row" icon="more" iconOnly>
               {`Actions for ${group.name}`}

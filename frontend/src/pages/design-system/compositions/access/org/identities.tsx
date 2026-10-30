@@ -165,7 +165,7 @@ export const OrgIdentitiesTab = () => {
                 label={`Locked out: ${locked.map((m) => authMethodNames[m]).join(", ")}`}
               />
             )}
-            <DropdownMenu>
+            <DropdownMenu defaultOpen={startsWith("row-menu") && identity.name === "ci-deployer"}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon-row" icon="more" iconOnly>
                   {`Actions for ${identity.name}`}

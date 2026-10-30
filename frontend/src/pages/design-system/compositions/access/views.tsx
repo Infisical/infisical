@@ -15,6 +15,12 @@ export type AccessView = {
 
 export const accessViews: AccessView[] = [
   { value: "org-users", label: "Organization: Users", start: {} },
+  { value: "org-users-search", label: "Organization: Users, search", start: { overlay: "search" } },
+  {
+    value: "org-users-edit-role",
+    label: "Organization: Users, edit role",
+    start: { overlay: "edit-role" }
+  },
   {
     value: "org-users-filter",
     label: "Organization: Users, role filter",
@@ -43,6 +49,17 @@ export const accessViews: AccessView[] = [
     start: { nav: { orgTab: "identities" } }
   },
   {
+    value: "org-identity-row-menu",
+    label: "Organization: Machine identities, row actions",
+    start: { nav: { orgTab: "identities" }, overlay: "row-menu" }
+  },
+  {
+    value: "org-loading",
+    label: "Organization: Machine identities, loading",
+    start: { nav: { orgTab: "identities" } },
+    scenario: "loading"
+  },
+  {
     value: "org-identity-create",
     label: "Organization: Create machine identity",
     start: { nav: { orgTab: "identities" }, overlay: "create" }
@@ -63,6 +80,17 @@ export const accessViews: AccessView[] = [
   },
   { value: "org-groups", label: "Organization: Groups", start: { nav: { orgTab: "groups" } } },
   {
+    value: "org-group-row-menu",
+    label: "Organization: Groups, row actions",
+    start: { nav: { orgTab: "groups" }, overlay: "row-menu" }
+  },
+  {
+    value: "org-empty-groups",
+    label: "Organization: Groups, empty",
+    start: { nav: { orgTab: "groups" } },
+    scenario: "empty"
+  },
+  {
     value: "org-group-create",
     label: "Organization: Create group",
     start: { nav: { orgTab: "groups" }, overlay: "create" }
@@ -73,6 +101,11 @@ export const accessViews: AccessView[] = [
     start: { nav: { detail: { kind: "org-group", id: "g-platform", label: "platform-eng" } } }
   },
   { value: "org-roles", label: "Organization: Roles", start: { nav: { orgTab: "roles" } } },
+  {
+    value: "org-role-row-menu",
+    label: "Organization: Roles, row actions",
+    start: { nav: { orgTab: "roles" }, overlay: "row-menu" }
+  },
   {
     value: "org-role-create",
     label: "Organization: Create role",
@@ -92,6 +125,12 @@ export const accessViews: AccessView[] = [
     }
   },
   { value: "org-denied", label: "Organization: No access", start: {}, scenario: "denied" },
+  {
+    value: "org-denied-tab",
+    label: "Organization: Roles, no access to the tab",
+    start: { nav: { orgTab: "roles" } },
+    scenario: "restricted"
+  },
   { value: "proj-members", label: "Project: Users", start: { nav: { scope: "project" } } },
   {
     value: "proj-members-filter",

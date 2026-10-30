@@ -119,15 +119,17 @@ export const usePagedList = <Row,>({
   matches,
   compare,
   initialSort,
+  initialSearch = "",
   perPage: initialPerPage = 20
 }: {
   rows: readonly Row[];
   matches: (row: Row, needle: string) => boolean;
   compare: (a: Row, b: Row, columnId: string) => number;
   initialSort: Sort;
+  initialSearch?: string;
   perPage?: number;
 }) => {
-  const [search, setSearchValue] = useState("");
+  const [search, setSearchValue] = useState(initialSearch);
   const [sort, setSort] = useState<Sort>(initialSort);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(initialPerPage);

@@ -130,6 +130,7 @@ export const OrgMembersTab = () => {
   const list = usePagedList({
     rows,
     initialSort: { columnId: "name", direction: "asc" },
+    initialSearch: startsWith("search") ? "mar" : "",
     matches: (member, needle) =>
       [member.user.firstName, member.user.lastName, member.user.username, member.user.email].some(
         (value) => value?.toLowerCase().includes(needle)
@@ -230,6 +231,7 @@ export const OrgMembersTab = () => {
                 size="sm"
                 label={`Organization role for ${usernameOf(member)}`}
                 value={member.membership.role}
+                defaultOpen={startsWith("edit-role") && member.user.id === "u-tom"}
                 disabled={member.user.id === SELF_USER_ID || !can("member", "edit")}
                 options={roles.map((role) => ({ value: role.slug, label: role.name }))}
                 onChange={(role) => {
@@ -402,7 +404,7 @@ export const OrgMembersTab = () => {
             disabled={!can("member", "create")}
             onClick={() => setInviting(true)}
           >
-            Invite users
+            Invite
           </Button>
         </Gate>
       </div>
