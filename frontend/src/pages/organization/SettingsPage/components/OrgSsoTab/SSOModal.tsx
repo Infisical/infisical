@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash2 } from "lucide-react";
@@ -43,7 +43,7 @@ import { useCreateSSOConfig, useGetSSOConfig, useUpdateSSOConfig } from "@app/ho
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { FormSection } from "./SsoFormSection";
+import { FormSection, rejectDuplicateTag } from "./SsoFormSection";
 
 enum AuthProvider {
   OKTA_SAML = "okta-saml",
@@ -197,6 +197,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
   const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateSSOConfig();
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateSSOConfig();
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle();
+  const [authnContextTagError, setAuthnContextTagError] = useState<string | null>(null);
   const { data } = useGetSSOConfig(currentOrg?.id ?? "");
 
   const { control, handleSubmit, reset, watch, setValue, getValues } = useForm<AddSSOFormData>({
@@ -350,7 +351,10 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                     label={withHint(labels.acsUrl, labels.acsHint)}
                     value={`${window.origin}/api/v1/sso/saml2/${data.id}`}
                   />
-                  <CodeBlock label={withHint(labels.entityId, labels.entityHint)} value={window.origin} />
+                  <CodeBlock
+                    label={withHint(labels.entityId, labels.entityHint)}
+                    value={window.origin}
+                  />
                 </FormSection>
               )}
 
@@ -458,13 +462,15 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                         placeholder="urn:oasis:names:tc:SAML:2.0:ac:classes:..."
                         value={value}
                         onValueChange={onChange}
-                        isError={Boolean(error)}
+                        validateTag={rejectDuplicateTag}
+                        onValidationError={setAuthnContextTagError}
+                        isError={Boolean(authnContextTagError || error)}
                       />
                       <FieldDescription>
                         AuthnContextClassRef values counted as MFA, in addition to the standard
                         two-factor classes. Press Enter to add.
                       </FieldDescription>
-                      <FieldError>{error?.message}</FieldError>
+                      <FieldError>{authnContextTagError ?? error?.message}</FieldError>
                     </Field>
                   )}
                 />

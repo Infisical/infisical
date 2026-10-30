@@ -2,6 +2,12 @@ import { ReactNode } from "react";
 
 import { FieldDescription, FieldGroup, FieldLegend, FieldSet } from "@app/components/v3";
 
+// The backend matches signal values case-insensitively, so two casings of one value are the same entry.
+export const rejectDuplicateTag = (tag: string, existing: string[]) =>
+  existing.some((item) => item.toLowerCase() === tag.toLowerCase())
+    ? `${tag} is already listed`
+    : null;
+
 export const FormSection = ({
   title,
   description,

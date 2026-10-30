@@ -51,7 +51,7 @@ import { OIDCJWTSignatureAlgorithm } from "@app/hooks/api/oidcConfig/types";
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { FormSection } from "./SsoFormSection";
+import { FormSection, rejectDuplicateTag } from "./SsoFormSection";
 
 enum ConfigurationType {
   CUSTOM = "custom",
@@ -144,6 +144,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateOIDCConfig();
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle(false);
   const [isClientSecretRevealed, setIsClientSecretRevealed] = useState(false);
+  const [amrValueTagError, setAmrValueTagError] = useState<string | null>(null);
 
   const { data } = useGetOIDCConfig(currentOrg?.id ?? "");
 
@@ -517,12 +518,14 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                         placeholder="Type a value, press Enter"
                         value={value ?? []}
                         onValueChange={onChange}
-                        isError={Boolean(error)}
+                        validateTag={rejectDuplicateTag}
+                        onValidationError={setAmrValueTagError}
+                        isError={Boolean(amrValueTagError || error)}
                       />
                       <FieldDescription>
                         Counted as MFA in addition to the standard <Code>mfa</Code> value.
                       </FieldDescription>
-                      <FieldError>{error?.message}</FieldError>
+                      <FieldError>{amrValueTagError ?? error?.message}</FieldError>
                     </Field>
                   )}
                 />
