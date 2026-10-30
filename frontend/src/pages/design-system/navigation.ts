@@ -40,7 +40,8 @@ export const comparisonPages = [
     id: "compare-access",
     screen: "access",
     title: "Access control",
-    description: "The 7 organization users and their roles, with the section tabs in PageHeader."
+    description:
+      "Organization and project access control ported from main: users, machine identities, groups, service tokens, roles and the role editor, with every flow on local demo data. Pick a page or flow to compare."
   },
   {
     id: "compare-settings",
