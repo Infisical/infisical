@@ -111,6 +111,8 @@ The access bundle is chosen when you create the session and can't be changed aft
 - If you delete an access bundle, every session scoped to it stops getting credentials (the session still lists the bundle's name, so you can see what it was)
 - If you remove someone from Agent Vault, the proxy refuses every request on their sessions
 
+None of these changes removes the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, [delete the installed copies](/documentation/platform/agent-vault/skills#remove-installed-skills).
+
 <Note>
 If a session stops getting credentials because of a lost grant or a deleted bundle, the proxy still forwards the agent's requests, without credentials. Whether those requests reach the upstream host depends on the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
 </Note>

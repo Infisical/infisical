@@ -21,6 +21,7 @@ import {
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
+import { AGENT_VAULT_MAX_SKILLS } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
@@ -48,6 +49,7 @@ import { projectDALFactory } from "@app/services/project/project-dal";
 import { roleDALFactory } from "@app/services/role/role-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
 
 declare const testKeyStore: TKeyStoreFactory;
@@ -263,6 +265,38 @@ const createAccessBundle = async (name: string) => {
   const res = await inject("POST", "/api/v1/agent-vault/access-bundles", { name });
   expect(res.statusCode).toBe(200);
   return (JSON.parse(res.payload) as { accessBundle: { id: string; name: string } }).accessBundle;
+};
+
+// The project's own key, loaded the way the server loads it, so a test can read and write sealed text directly.
+// The spec runs in its own module graph, which is why the env config is initialized again here.
+let kmsService: TKmsServiceFactory | undefined;
+const projectCipher = async (projectId: string) => {
+  if (!kmsService) {
+    await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+    kmsService = kmsServiceFactory({
+      kmsRootConfigDAL: testKmsRootConfigDAL,
+      kmsLegacyEncryptionKeyDAL: kmsLegacyEncryptionKeyDALFactory(testDb),
+      kmsKekHistoryDAL: kmsKekHistoryDALFactory(testDb),
+      kmsDAL: kmskeyDALFactory(testDb),
+      internalKmsDAL: internalKmsDALFactory(testDb),
+      internalKmsKeyVersionDAL: internalKmsKeyVersionDALFactory(testDb),
+      orgDAL: orgDALFactory(testDb),
+      projectDAL: projectDALFactory(testDb),
+      hsmService: testHsmService,
+      keyStore: {
+        getItem: async () => null,
+        setItemWithExpiry: async () => "OK" as const,
+        deleteItem: async () => 0
+      },
+      envConfig: getConfig()
+    });
+    const hsmStatus = await isHsmActiveAndEnabled({
+      hsmService: testHsmService,
+      kmsRootConfigDAL: testKmsRootConfigDAL
+    });
+    await kmsService.startService(hsmStatus, { skipRotationState: true });
+  }
+  return kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 };
 
 describe("Agent Vault V1 Router", async () => {
@@ -1303,39 +1337,11 @@ describe("Agent Vault V1 Router", async () => {
       };
     };
 
-    // The project's own key, loaded the way the server loads it, so a test can read and write sealed text directly.
-    // The spec runs in its own module graph, which is why the env config is initialized again here.
-    let kmsService: TKmsServiceFactory | undefined;
     const cipherFor = async (accessBundleId: string) => {
-      if (!kmsService) {
-        await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
-        kmsService = kmsServiceFactory({
-          kmsRootConfigDAL: testKmsRootConfigDAL,
-          kmsLegacyEncryptionKeyDAL: kmsLegacyEncryptionKeyDALFactory(testDb),
-          kmsKekHistoryDAL: kmsKekHistoryDALFactory(testDb),
-          kmsDAL: kmskeyDALFactory(testDb),
-          internalKmsDAL: internalKmsDALFactory(testDb),
-          internalKmsKeyVersionDAL: internalKmsKeyVersionDALFactory(testDb),
-          orgDAL: orgDALFactory(testDb),
-          projectDAL: projectDALFactory(testDb),
-          hsmService: testHsmService,
-          keyStore: {
-            getItem: async () => null,
-            setItemWithExpiry: async () => "OK" as const,
-            deleteItem: async () => 0
-          },
-          envConfig: getConfig()
-        });
-        const hsmStatus = await isHsmActiveAndEnabled({
-          hsmService: testHsmService,
-          kmsRootConfigDAL: testKmsRootConfigDAL
-        });
-        await kmsService.startService(hsmStatus, { skipRotationState: true });
-      }
       const { projectId } = (await testDb("agent_vault_access_bundles").where({ id: accessBundleId }).first()) as {
         projectId: string;
       };
-      return kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+      return projectCipher(projectId);
     };
 
     const STORED_REFERENCE = /\{\{([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}\}/g;
@@ -4528,6 +4534,8 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
+        projectDAL: projectDALFactory(testDb),
+        userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
         kmsService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
@@ -4663,6 +4671,8 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
+        projectDAL: projectDALFactory(testDb),
+        userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
         kmsService: {
           createCipherPairWithDataKey: () =>
@@ -4836,6 +4846,8 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
+        projectDAL: projectDALFactory(testDb),
+        userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
         kmsService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
@@ -4877,6 +4889,913 @@ describe("Agent Vault V1 Router", async () => {
       }
 
       expect((await resolve()).services).toHaveLength(1);
+    });
+  });
+
+  describe("skills", async () => {
+    const skillsUrl = "/api/v1/agent-vault/skills";
+    const bundleSkillsUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/skills`;
+
+    // Names are unique across the org's Agent Vault and every test here shares it.
+    beforeEach(async () => {
+      const project = await testDb("projects")
+        .where({ orgId: seedData1.organization.id, type: ProjectType.AgentVault })
+        .first();
+      if (project) await testDb("agent_vault_skills").where({ projectId: project.id }).del();
+    });
+
+    type TSkill = { id: string; name: string; description: string; latestVersion: number };
+    type TListedSkill = TSkill & { accessBundles: { id: string; name: string }[] };
+    type TSkillVersion = { id: string; version: number; sha256: string; sizeBytes: number; fileCount: number };
+    type TFile = { path: string; mode: string; contentBase64: string };
+
+    const skillFiles = (name: string, body = "Do the thing.", extra: TFile[] = []): TFile[] => [
+      {
+        path: "SKILL.md",
+        mode: "0644",
+        contentBase64: Buffer.from(`---\nname: ${name}\ndescription: ${body}\n---\n${body}\n`).toString("base64")
+      },
+      ...extra
+    ];
+
+    const createSkill = async (name: string, body?: string) => {
+      const res = await inject("POST", skillsUrl, { files: skillFiles(name, body) });
+      expect(res.statusCode).toBe(200);
+      return JSON.parse(res.payload) as { skill: TSkill; version: TSkillVersion };
+    };
+
+    const publish = (skillId: string, files: TFile[]) => inject("PATCH", `${skillsUrl}/${skillId}`, { files });
+
+    const sessionSkillsUrl = "/api/v1/agent-vault/session/skills";
+
+    const mintFor = async (bundles: { name: string }[], mintAs = inject) => {
+      const mint = await mintAs("POST", "/api/v1/agent-vault/sessions", {
+        accessBundles: bundles.map((bundle) => bundle.name),
+        ttl: "1h"
+      });
+      expect(mint.statusCode).toBe(200);
+      return (JSON.parse(mint.payload) as { session: { id: string; token: string } }).session;
+    };
+
+    type TCreateAuditLog = (dto: { actor: unknown; orgId?: string; event: unknown }) => Promise<void>;
+    // The route's audit calls, recorded as they are made: the e2e plan has no audit log retention, so none
+    // reach the audit_logs table.
+    const recordAuditLogs = () => {
+      const { auditLog } = (
+        globalThis as unknown as { testServices: { auditLog: { createAuditLog: TCreateAuditLog } } }
+      ).testServices;
+      return vi.spyOn(auditLog, "createAuditLog");
+    };
+
+    const fetchSessionSkills = (authorization?: string) =>
+      testServer.inject({
+        method: "GET",
+        url: sessionSkillsUrl,
+        headers: authorization === undefined ? {} : { authorization }
+      });
+
+    test("an admin creates, reads, lists and deletes a skill", async () => {
+      const { skill, version } = await createSkill("crud-skill", "Reviews code");
+      expect(skill).toMatchObject({
+        name: "crud-skill",
+        description: "Reviews code",
+        latestVersion: 1
+      });
+      expect(skill).not.toHaveProperty("bundleCount");
+      expect(version).toMatchObject({ version: 1, fileCount: 1 });
+      expect(version.sha256).toMatch(/^[0-9a-f]{64}$/);
+
+      const list = await inject("GET", skillsUrl);
+      expect(list.statusCode).toBe(200);
+      expect(JSON.parse(list.payload)).toMatchObject({
+        skills: [{ name: "crud-skill", accessBundles: [] }],
+        totalCount: 1
+      });
+
+      const bundle = await createAccessBundle("skills-crud-bundle");
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
+
+      const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
+      expect(JSON.parse(detail.payload).skill).toMatchObject({
+        accessBundles: [{ id: bundle.id, name: bundle.name }],
+        files: skillFiles("crud-skill", "Reviews code")
+      });
+
+      const files = await inject("GET", `${skillsUrl}/${skill.id}/versions/1`);
+      expect(files.statusCode).toBe(200);
+      const { version: withFiles } = JSON.parse(files.payload) as { version: TSkillVersion & { files: TFile[] } };
+      expect(withFiles.files).toEqual(skillFiles("crud-skill", "Reviews code"));
+      expect(withFiles.sha256).toBe(crypto.createHash("sha256").update(JSON.stringify(withFiles.files)).digest("hex"));
+
+      const removed = await inject("DELETE", `${skillsUrl}/${skill.id}`);
+      expect(removed.statusCode).toBe(200);
+      expect(JSON.parse(removed.payload).skill).toMatchObject({ id: skill.id, name: "crud-skill" });
+
+      expect((await inject("GET", `${skillsUrl}/${skill.id}`)).statusCode).toBe(404);
+      const bundleSkills = await inject("GET", bundleSkillsUrl(bundle.id));
+      expect(JSON.parse(bundleSkills.payload).skills).toEqual([]);
+    });
+
+    test("a duplicate name is a 409", async () => {
+      await createSkill("dup-skill");
+      const again = await inject("POST", skillsUrl, { files: skillFiles("dup-skill") });
+      expect(again.statusCode).toBe(409);
+      expect(JSON.parse(again.payload).message).toBe("A skill named 'dup-skill' already exists.");
+    });
+
+    test("lists page, search and filter by exact name", async () => {
+      await createSkill("list-alpha", "Reviews code");
+      await createSkill("list-beta", "Writes docs");
+      await createSkill("list-gamma", "Reviews tests");
+
+      const page = await inject("GET", `${skillsUrl}?limit=2&offset=1`);
+      expect(page.statusCode).toBe(200);
+      const paged = JSON.parse(page.payload) as { skills: TSkill[]; totalCount: number };
+      expect(paged.skills.map((row) => row.name)).toEqual(["list-beta", "list-gamma"]);
+      expect(paged.totalCount).toBe(3);
+
+      const searched = JSON.parse((await inject("GET", `${skillsUrl}?search=reviews`)).payload) as {
+        skills: TSkill[];
+        totalCount: number;
+      };
+      expect(searched.skills.map((row) => row.name)).toEqual(["list-alpha", "list-gamma"]);
+      expect(searched.totalCount).toBe(2);
+
+      const named = JSON.parse((await inject("GET", `${skillsUrl}?name=list-beta`)).payload) as {
+        skills: TSkill[];
+        totalCount: number;
+      };
+      expect(named).toMatchObject({ skills: [{ name: "list-beta" }], totalCount: 1 });
+
+      const none = JSON.parse((await inject("GET", `${skillsUrl}?name=list`)).payload) as { totalCount: number };
+      expect(none.totalCount).toBe(0);
+    });
+
+    test("the list names each skill's access bundles, ordered by name", async () => {
+      const { skill: shared } = await createSkill("bundles-shared");
+      const { skill: single } = await createSkill("bundles-single");
+      await createSkill("bundles-unused");
+      const zeta = await createAccessBundle("skills-list-zeta");
+      const alpha = await createAccessBundle("skills-list-alpha");
+      for (const [bundle, skill] of [
+        [zeta, shared],
+        [alpha, shared],
+        [zeta, single]
+      ] as const) {
+        // eslint-disable-next-line no-await-in-loop
+        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
+      }
+
+      const list = await inject("GET", `${skillsUrl}?search=bundles-`);
+      expect(list.statusCode).toBe(200);
+      const { skills } = JSON.parse(list.payload) as { skills: TListedSkill[] };
+      expect(skills.map(({ name, accessBundles }) => ({ name, accessBundles }))).toEqual([
+        {
+          name: "bundles-shared",
+          accessBundles: [
+            { id: alpha.id, name: alpha.name },
+            { id: zeta.id, name: zeta.name }
+          ]
+        },
+        { name: "bundles-single", accessBundles: [{ id: zeta.id, name: zeta.name }] },
+        { name: "bundles-unused", accessBundles: [] }
+      ]);
+    });
+
+    test("a member reads only the latest version of skills on bundles it holds, and is refused every write", async () => {
+      const { skill } = await createSkill("member-reader");
+      expect((await publish(skill.id, skillFiles("member-reader", "Second."))).statusCode).toBe(200);
+      const { skill: hidden } = await createSkill("member-hidden");
+      await createSkill("member-no-bundle");
+      const granted = await createAccessBundle("skills-member-granted");
+      const other = await createAccessBundle("skills-member-other");
+      for (const [bundle, bundleSkill] of [
+        [granted, skill],
+        [other, skill],
+        [other, hidden]
+      ] as const) {
+        // eslint-disable-next-line no-await-in-loop
+        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: bundleSkill.id })).statusCode).toBe(200);
+      }
+      const member = await createMemberIdentity("skills-member");
+      try {
+        expect(
+          (
+            await inject("POST", `/api/v1/agent-vault/access-bundles/${granted.id}/members`, {
+              machineIdentityIds: [member.id]
+            })
+          ).statusCode
+        ).toBe(200);
+
+        const calls: [string, "GET" | "POST" | "PATCH" | "DELETE", string, number, Record<string, unknown>?][] = [
+          ["list", "GET", skillsUrl, 200],
+          ["get", "GET", `${skillsUrl}/${skill.id}`, 200],
+          ["get unreachable", "GET", `${skillsUrl}/${hidden.id}`, 404],
+          ["list versions", "GET", `${skillsUrl}/${skill.id}/versions`, 403],
+          ["get latest version", "GET", `${skillsUrl}/${skill.id}/versions/2`, 200],
+          ["get old version", "GET", `${skillsUrl}/${skill.id}/versions/1`, 404],
+          ["get unreachable version", "GET", `${skillsUrl}/${hidden.id}/versions/1`, 404],
+          ["bundle skills", "GET", bundleSkillsUrl(granted.id), 200],
+          ["unreachable bundle skills", "GET", bundleSkillsUrl(other.id), 404],
+          ["create", "POST", skillsUrl, 403, { files: skillFiles("member-made") }],
+          ["delete", "DELETE", `${skillsUrl}/${skill.id}`, 403],
+          ["update", "PATCH", `${skillsUrl}/${skill.id}`, 403, { files: skillFiles("member-reader", "x") }],
+          ["restore", "POST", `${skillsUrl}/${skill.id}/versions/1/restore`, 403],
+          ["add", "POST", bundleSkillsUrl(granted.id), 403, { skillId: skill.id }],
+          ["remove", "DELETE", `${bundleSkillsUrl(granted.id)}/${skill.id}`, 403]
+        ];
+        const statuses = await Promise.all(
+          calls.map(async ([label, method, url, , body]) => [label, (await member.as(method, url, body)).statusCode])
+        );
+        expect(statuses).toEqual(calls.map(([label, , , status]) => [label, status]));
+
+        const listed = JSON.parse((await member.as("GET", skillsUrl)).payload) as {
+          skills: TListedSkill[];
+          totalCount: number;
+        };
+        expect(listed).toMatchObject({
+          skills: [{ id: skill.id, accessBundles: [{ id: granted.id, name: granted.name }] }],
+          totalCount: 1
+        });
+        expect(listed.skills).toHaveLength(1);
+        expect(listed.skills[0].accessBundles).toHaveLength(1);
+
+        const detail = JSON.parse((await member.as("GET", `${skillsUrl}/${skill.id}`)).payload) as {
+          skill: TListedSkill & { files: TFile[] };
+        };
+        expect(detail.skill.accessBundles).toEqual([{ id: granted.id, name: granted.name }]);
+        expect(detail.skill).toMatchObject({ latestVersion: 2, files: skillFiles("member-reader", "Second.") });
+
+        const unreachable = await member.as("GET", bundleSkillsUrl(other.id));
+        expect(JSON.parse(unreachable.payload).message).toBe(`Access bundle with ID '${other.id}' not found`);
+
+        const files = JSON.parse((await member.as("GET", `${skillsUrl}/${skill.id}/versions/2`)).payload) as {
+          version: { files: TFile[] };
+        };
+        expect(files.version.files).toEqual(skillFiles("member-reader", "Second."));
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("file paths and header values are refused with a message naming the file or field", async () => {
+      const refused = async (files: TFile[]) => {
+        const res = await inject("POST", skillsUrl, { files });
+        expect(res.statusCode).toBe(400);
+        return JSON.parse(res.payload).message as string;
+      };
+      const extra = (path: string): TFile => ({ path, mode: "0644", contentBase64: "" });
+
+      expect(await refused(skillFiles("p", "x", [extra("docs"), extra("docs/a.md")]))).toBe(
+        "'docs' is a file, but 'docs/a.md' puts it inside a folder of the same name. Rename one of them."
+      );
+      expect(await refused(skillFiles("p", "x", [extra("SKILL.md/x")]))).toMatch(/^'SKILL.md' is a file/);
+      expect(await refused(skillFiles("p", "x", [extra("Notes.md"), extra("notes.md")]))).toBe(
+        "Files 'Notes.md' and 'notes.md' would be the same file on disk. File paths must be unique ignoring case."
+      );
+      expect(await refused(skillFiles("p", "x", [extra("caf\u00e9.md"), extra("cafe\u0301.md")]))).toMatch(
+        /would be the same file on disk/
+      );
+      expect(await refused(skillFiles("p", "x", [extra("a?.md")]))).toMatch(
+        /^File path 'a\?\.md' can't contain any of/
+      );
+      expect(await refused(skillFiles("p", "x", [extra("docs./a.md")]))).toMatch(/part ending in a dot or a space/);
+      expect(await refused(skillFiles("p", "x", [extra("aux.md")]))).toMatch(/which is a reserved name/);
+
+      const numeric = await refused([
+        {
+          path: "SKILL.md",
+          mode: "0644",
+          contentBase64: Buffer.from("---\nname: 12\ndescription: d\n---\n").toString("base64")
+        }
+      ]);
+      expect(numeric).toBe("The 'name' in SKILL.md must be text. Put it in quotes.");
+      expect(await refused(skillFiles("code--review"))).toBe(
+        "The 'name' in SKILL.md is 'code--review'. A skill name can only use lowercase letters, numbers and single hyphens, and can't start or end with a hyphen."
+      );
+    });
+
+    test("a single file over 1 MB gets the 400 that names it, not a body or schema error", async () => {
+      const res = await inject("POST", skillsUrl, {
+        files: skillFiles("big-file", "x", [
+          {
+            path: "data/big.bin",
+            mode: "0644",
+            contentBase64: Buffer.alloc(Math.round(1.05 * 1024 * 1024)).toString("base64")
+          }
+        ])
+      });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.payload).message).toBe("File 'data/big.bin' is larger than 256 KB.");
+    });
+
+    test("the limits are refused with a message naming the problem", async () => {
+      const missing = await inject("POST", skillsUrl, {
+        files: [{ path: "README.md", mode: "0644", contentBase64: Buffer.from("hi").toString("base64") }]
+      });
+      expect(missing.statusCode).toBe(400);
+      expect(JSON.parse(missing.payload).message).toBe("SKILL.md is missing.");
+
+      const oversize = await inject("POST", skillsUrl, {
+        files: skillFiles("too-big", "x", [
+          { path: "scripts/x.sh", mode: "0755", contentBase64: Buffer.alloc(256 * 1024 + 1).toString("base64") }
+        ])
+      });
+      expect(oversize.statusCode).toBe(400);
+      expect(JSON.parse(oversize.payload).message).toBe("File 'scripts/x.sh' is larger than 256 KB.");
+
+      const traversal = await inject("POST", skillsUrl, {
+        files: skillFiles("escape", "x", [{ path: "../evil.sh", mode: "0755", contentBase64: "" }])
+      });
+      expect(traversal.statusCode).toBe(400);
+
+      const badYaml = await inject("POST", skillsUrl, {
+        files: [
+          {
+            path: "SKILL.md",
+            mode: "0644",
+            contentBase64: Buffer.from("---\nname: [oops\n---\n").toString("base64")
+          }
+        ]
+      });
+      expect(badYaml.statusCode).toBe(400);
+      expect(JSON.parse(badYaml.payload).message).toBe(
+        "Line 2 of SKILL.md: the 'name' value opens a '[' that never closes."
+      );
+
+      const unquotedColon = await inject("POST", skillsUrl, {
+        files: [
+          {
+            path: "SKILL.md",
+            mode: "0644",
+            contentBase64: Buffer.from("---\nname: colon\ndescription: Review: then fix\n---\n").toString("base64")
+          }
+        ]
+      });
+      expect(unquotedColon.statusCode).toBe(400);
+      expect(JSON.parse(unquotedColon.payload).message).toBe(
+        "Line 3 of SKILL.md: the 'description' value contains ': '. Put the value in double quotes."
+      );
+
+      const controlCharacter = await inject("POST", skillsUrl, {
+        files: [
+          {
+            path: "SKILL.md",
+            mode: "0644",
+            contentBase64: Buffer.from('---\nname: ctrl\ndescription: "x\\0y"\n---\n').toString("base64")
+          }
+        ]
+      });
+      expect(controlCharacter.statusCode).toBe(400);
+      expect(JSON.parse(controlCharacter.payload).message).toBe(
+        "The 'description' in SKILL.md contains a control character."
+      );
+    });
+
+    test("getting a skill returns its latest files and records a version view, and the old publish route is gone", async () => {
+      const { skill } = await createSkill("latest-files-skill", "First.");
+      const second = skillFiles("latest-files-skill", "Second.", [
+        { path: "scripts/run.sh", mode: "0755", contentBase64: Buffer.from("echo hi\n").toString("base64") }
+      ]);
+      expect((await publish(skill.id, second)).statusCode).toBe(200);
+
+      const auditLogs = recordAuditLogs();
+      try {
+        const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
+        expect(detail.statusCode).toBe(200);
+        const { skill: got } = JSON.parse(detail.payload) as { skill: TListedSkill & { files: TFile[] } };
+        expect(got).toMatchObject({ latestVersion: 2, description: "Second." });
+        expect(got.files).toEqual(second);
+        expect(auditLogs).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: {
+              type: "agent-vault-skill-version-view",
+              metadata: { skillId: skill.id, skillName: "latest-files-skill", version: 2 }
+            }
+          })
+        );
+      } finally {
+        auditLogs.mockRestore();
+      }
+
+      const listed = JSON.parse((await inject("GET", skillsUrl)).payload) as { skills: Record<string, unknown>[] };
+      expect(listed.skills[0]).not.toHaveProperty("files");
+
+      expect((await inject("POST", `${skillsUrl}/${skill.id}/versions`, { files: second })).statusCode).toBe(404);
+    });
+
+    test("updating with the same content is a no-op, and a new name in SKILL.md renames the skill", async () => {
+      const { skill, version } = await createSkill("publish-skill");
+
+      const same = await publish(skill.id, skillFiles("publish-skill"));
+      expect(same.statusCode).toBe(200);
+      expect(JSON.parse(same.payload)).toMatchObject({
+        unchanged: true,
+        version: { version: 1, sha256: version.sha256 }
+      });
+
+      const changed = await publish(skill.id, skillFiles("publish-skill", "Now different."));
+      expect(changed.statusCode).toBe(200);
+      expect(JSON.parse(changed.payload)).toMatchObject({ unchanged: false, version: { version: 2 } });
+
+      const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
+      expect(JSON.parse(detail.payload).skill).toMatchObject({ latestVersion: 2, description: "Now different." });
+
+      const renamed = await publish(skill.id, skillFiles("publish-renamed", "Now different."));
+      expect(renamed.statusCode).toBe(200);
+      expect(JSON.parse(renamed.payload)).toMatchObject({ unchanged: false, version: { version: 3 } });
+      const afterRename = await inject("GET", `${skillsUrl}/${skill.id}`);
+      expect(JSON.parse(afterRename.payload).skill).toMatchObject({ name: "publish-renamed", latestVersion: 3 });
+
+      await createSkill("publish-taken");
+      const taken = await publish(skill.id, skillFiles("publish-taken"));
+      expect(taken.statusCode).toBe(409);
+      expect(JSON.parse(taken.payload).message).toBe("A skill named 'publish-taken' already exists.");
+      const unchanged = await inject("GET", `${skillsUrl}/${skill.id}`);
+      expect(JSON.parse(unchanged.payload).skill).toMatchObject({ name: "publish-renamed", latestVersion: 3 });
+
+      // A rollback past the rename keeps the current name, in the skill row and in the restored SKILL.md.
+      const restored = await inject("POST", `${skillsUrl}/${skill.id}/versions/1/restore`);
+      expect(restored.statusCode).toBe(200);
+      expect(JSON.parse(restored.payload)).toMatchObject({ unchanged: false, version: { version: 4 } });
+      const afterRestore = await inject("GET", `${skillsUrl}/${skill.id}`);
+      expect(JSON.parse(afterRestore.payload).skill).toMatchObject({
+        name: "publish-renamed",
+        description: "Do the thing.",
+        latestVersion: 4
+      });
+      const files = JSON.parse((await inject("GET", `${skillsUrl}/${skill.id}/versions/4`)).payload) as {
+        version: { files: TFile[] };
+      };
+      expect(files.version.files).toEqual(skillFiles("publish-renamed"));
+    });
+
+    test("restore copies an old version forward as a new one", async () => {
+      const { skill, version: first } = await createSkill("restore-skill", "First.");
+      expect((await publish(skill.id, skillFiles("restore-skill", "Second."))).statusCode).toBe(200);
+
+      const restored = await inject("POST", `${skillsUrl}/${skill.id}/versions/1/restore`);
+      expect(restored.statusCode).toBe(200);
+      expect(JSON.parse(restored.payload).version).toMatchObject({ version: 3, sha256: first.sha256 });
+
+      const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
+      expect(JSON.parse(detail.payload).skill).toMatchObject({ latestVersion: 3, description: "First." });
+
+      expect((await inject("POST", `${skillsUrl}/${skill.id}/versions/99/restore`)).statusCode).toBe(404);
+    });
+
+    test("restoring a version with the latest version's files publishes nothing", async () => {
+      const { skill } = await createSkill("restore-same-skill", "First.");
+      expect((await publish(skill.id, skillFiles("restore-same-skill", "Second."))).statusCode).toBe(200);
+      expect((await inject("POST", `${skillsUrl}/${skill.id}/versions/1/restore`)).statusCode).toBe(200);
+
+      const again = await inject("POST", `${skillsUrl}/${skill.id}/versions/1/restore`);
+      expect(again.statusCode).toBe(200);
+      expect(JSON.parse(again.payload)).toMatchObject({ unchanged: true, version: { version: 3 } });
+
+      const fresh = await inject("POST", `${skillsUrl}/${skill.id}/versions/2/restore`);
+      expect(JSON.parse(fresh.payload)).toMatchObject({ unchanged: false, version: { version: 4 } });
+    });
+
+    test("restoring a version whose SKILL.md no longer parses keeps the current description", async () => {
+      const { skill } = await createSkill("legacy-skill", "Old.");
+      expect((await publish(skill.id, skillFiles("legacy-skill", "Current."))).statusCode).toBe(200);
+
+      // The API refuses a SKILL.md that does not parse, so a version saved under older header rules can only be
+      // stood in for by sealing one directly over version 1.
+      const files = skillFiles("legacy-skill", "d".repeat(1100));
+      const serialized = Buffer.from(JSON.stringify(files));
+      const { encryptor } = await projectCipher(
+        (await testDb("agent_vault_skills").where({ id: skill.id }).first()).projectId
+      );
+      await testDb("agent_vault_skill_versions")
+        .where({ skillId: skill.id, version: 1 })
+        .update({
+          encryptedFiles: encryptor({ plainText: serialized }).cipherTextBlob,
+          sha256: crypto.createHash("sha256").update(serialized).digest("hex"),
+          sizeBytes: Buffer.from(files[0].contentBase64, "base64").length
+        });
+
+      const restored = await inject("POST", `${skillsUrl}/${skill.id}/versions/1/restore`);
+      expect(restored.statusCode).toBe(200);
+      expect(JSON.parse(restored.payload)).toMatchObject({ unchanged: false, version: { version: 3 } });
+
+      const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
+      expect(JSON.parse(detail.payload).skill).toMatchObject({ latestVersion: 3, description: "Current." });
+    });
+
+    test("restoring a version whose name line can't be rewritten to the current name is a 400", async () => {
+      const { skill } = await createSkill("block-old");
+      expect((await publish(skill.id, skillFiles("block-new"))).statusCode).toBe(200);
+
+      // The API now refuses a name it could not rewrite, so a version saved before that rule can only be stood in
+      // for by sealing one directly over version 1.
+      const files = skillFiles("block-old");
+      files[0].contentBase64 = Buffer.from(
+        "---\nname: >-\n  block-old\ndescription: Do the thing.\n---\nDo the thing.\n"
+      ).toString("base64");
+      const serialized = Buffer.from(JSON.stringify(files));
+      const { encryptor } = await projectCipher(
+        (await testDb("agent_vault_skills").where({ id: skill.id }).first()).projectId
+      );
+      await testDb("agent_vault_skill_versions")
+        .where({ skillId: skill.id, version: 1 })
+        .update({
+          encryptedFiles: encryptor({ plainText: serialized }).cipherTextBlob,
+          sha256: crypto.createHash("sha256").update(serialized).digest("hex"),
+          sizeBytes: Buffer.from(files[0].contentBase64, "base64").length
+        });
+
+      const restored = await inject("POST", `${skillsUrl}/${skill.id}/versions/1/restore`);
+      expect(restored.statusCode).toBe(400);
+      expect(JSON.parse(restored.payload).message).toBe(
+        "Version 1 of skill 'block-new' names 'block-old' in SKILL.md, and its 'name' line could not be changed to 'block-new'. Publish a new version instead."
+      );
+      const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
+      expect(JSON.parse(detail.payload).skill).toMatchObject({ name: "block-new", latestVersion: 2 });
+    });
+
+    test("a restore that meets a rename made after it read the name is a 409, not a rename back", async () => {
+      const { skill } = await createSkill("race-skill", "First.");
+      expect((await publish(skill.id, skillFiles("race-skill", "Second."))).statusCode).toBe(200);
+
+      // Holding the skill row queues the restore on it after it has read the name. The rename is written under the
+      // same hold, standing in for a publish that renames, which would otherwise queue on the row too.
+      const trx = await testDb.transaction();
+      let restore: ReturnType<typeof inject> | undefined;
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_skills").where({ id: skill.id }).forUpdate().first();
+
+        restore = inject("POST", `${skillsUrl}/${skill.id}/versions/1/restore`);
+        await waitUntilBlockedBy(rows[0].pid);
+        await trx("agent_vault_skills").where({ id: skill.id }).update({ name: "race-renamed" });
+        await trx.commit();
+
+        const res = await restore;
+        expect(res.statusCode).toBe(409);
+        expect(JSON.parse(res.payload).message).toBe(
+          "Skill 'race-skill' was renamed to 'race-renamed' while this version was being restored. Try again."
+        );
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        await restore?.catch(() => undefined);
+        throw err;
+      }
+
+      const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
+      expect(JSON.parse(detail.payload).skill).toMatchObject({ name: "race-renamed", latestVersion: 2 });
+    });
+
+    test("a skill with more than 50 files is refused with a message saying so", async () => {
+      const extra = Array.from({ length: 50 }, (_, i) => ({
+        path: `docs/${i}.md`,
+        mode: "0644",
+        contentBase64: ""
+      }));
+      const res = await inject("POST", skillsUrl, { files: skillFiles("too-many-files", "x", extra) });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.payload).message).toBe("A skill can have at most 50 files.");
+    });
+
+    test("only the newest 20 versions are kept", async () => {
+      const { skill } = await createSkill("prune-skill", "v1");
+      for (let i = 2; i <= 21; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        expect((await publish(skill.id, skillFiles("prune-skill", `v${i}`))).statusCode).toBe(200);
+      }
+
+      const list = await inject("GET", `${skillsUrl}/${skill.id}/versions`);
+      const { versions } = JSON.parse(list.payload) as { versions: TSkillVersion[] };
+      expect(versions).toHaveLength(20);
+      expect(versions[0].version).toBe(21);
+      expect(versions[19].version).toBe(2);
+      expect((await inject("GET", `${skillsUrl}/${skill.id}/versions/1`)).statusCode).toBe(404);
+    });
+
+    test("add and remove, and a second add is a 409", async () => {
+      const { skill } = await createSkill("add-skill");
+      const bundle = await createAccessBundle("skills-add-bundle");
+
+      const added = await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id });
+      expect(added.statusCode).toBe(200);
+      expect(JSON.parse(added.payload).skill).toMatchObject({
+        id: skill.id,
+        name: "add-skill",
+        latestVersion: 1
+      });
+
+      const again = await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id });
+      expect(again.statusCode).toBe(409);
+      expect(JSON.parse(again.payload).message).toBe(
+        "The skill 'add-skill' is already in the access bundle 'skills-add-bundle'."
+      );
+
+      const listed = await inject("GET", bundleSkillsUrl(bundle.id));
+      expect((JSON.parse(listed.payload) as { skills: TSkill[] }).skills.map((row) => row.id)).toEqual([skill.id]);
+
+      expect((await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${skill.id}`)).statusCode).toBe(200);
+      const missing = await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${skill.id}`);
+      expect(missing.statusCode).toBe(404);
+      expect(JSON.parse(missing.payload).message).toBe(
+        "The skill 'add-skill' isn't in the access bundle 'skills-add-bundle'."
+      );
+    });
+
+    test("an access bundle holds at most 25 skills", async () => {
+      const bundle = await createAccessBundle("skills-cap-bundle");
+      const created = await Promise.all(
+        Array.from({ length: 26 }, (_, i) => createSkill(`cap-skill-${String(i).padStart(2, "0")}`))
+      );
+      for (const { skill } of created.slice(0, 25)) {
+        // eslint-disable-next-line no-await-in-loop
+        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
+      }
+
+      const over = await inject("POST", bundleSkillsUrl(bundle.id), { skillId: created[25].skill.id });
+      expect(over.statusCode).toBe(400);
+      expect(JSON.parse(over.payload).message).toBe(
+        "This access bundle already has 25 skills, the maximum. Remove one to add another."
+      );
+
+      const other = await createAccessBundle("skills-cap-other-bundle");
+      expect((await inject("POST", bundleSkillsUrl(other.id), { skillId: created[25].skill.id })).statusCode).toBe(200);
+
+      expect((await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${created[0].skill.id}`)).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: created[25].skill.id })).statusCode).toBe(
+        200
+      );
+    });
+
+    test("a session token gets every skill of the session's bundles in one call, and nothing from other bundles", async () => {
+      const bundle = await createAccessBundle("skills-deliver-bundle");
+      const otherBundle = await createAccessBundle("skills-deliver-other");
+      const session = await mintFor([bundle]);
+      const asSession = () => fetchSessionSkills(`Bearer ${session.token}`);
+
+      const emptyAuditLogs = recordAuditLogs();
+      try {
+        const empty = await asSession();
+        expect(empty.statusCode).toBe(200);
+        expect(JSON.parse(empty.payload)).toEqual({ skills: [] });
+        expect(emptyAuditLogs).not.toHaveBeenCalled();
+      } finally {
+        emptyAuditLogs.mockRestore();
+      }
+
+      const { skill: zeta, version: zetaV1 } = await createSkill("zeta-skill");
+      const { skill: alpha } = await createSkill("alpha-skill");
+      const { skill: foreign } = await createSkill("foreign-skill");
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: zeta.id })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: alpha.id })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(otherBundle.id), { skillId: foreign.id })).statusCode).toBe(200);
+      const republished = await publish(
+        alpha.id,
+        skillFiles("alpha-skill", "Second.", [
+          { path: "scripts/run.sh", mode: "0755", contentBase64: Buffer.from("echo hi\n").toString("base64") }
+        ])
+      );
+      const { version: alphaV2 } = JSON.parse(republished.payload) as { version: TSkillVersion };
+
+      const auditLogs = recordAuditLogs();
+      let delivered: Awaited<ReturnType<typeof asSession>>;
+      try {
+        delivered = await asSession();
+        expect(auditLogs).toHaveBeenCalledTimes(1);
+        expect(auditLogs).toHaveBeenCalledWith(
+          expect.objectContaining({
+            orgId: seedData1.organization.id,
+            actor: expect.objectContaining({
+              type: ActorType.USER,
+              metadata: expect.objectContaining({ userId: seedData1.id })
+            }),
+            event: {
+              type: "agent-vault-skills-delivered",
+              metadata: {
+                sessionId: session.id,
+                accessBundleId: bundle.id,
+                accessBundleName: bundle.name,
+                skills: [
+                  { skillId: alpha.id, skillName: "alpha-skill", version: 2, sha256: alphaV2.sha256 },
+                  { skillId: zeta.id, skillName: "zeta-skill", version: 1, sha256: zetaV1.sha256 }
+                ]
+              }
+            }
+          })
+        );
+      } finally {
+        auditLogs.mockRestore();
+      }
+      expect(delivered.statusCode).toBe(200);
+      const { skills } = JSON.parse(delivered.payload) as {
+        skills: { id: string; name: string; version: number; sha256: string; files: TFile[] }[];
+      };
+      expect(skills.map((row) => row.name)).toEqual(["alpha-skill", "zeta-skill"]);
+      expect(skills[0]).toEqual({
+        id: alpha.id,
+        name: "alpha-skill",
+        version: 2,
+        sha256: alphaV2.sha256,
+        files: [
+          ...skillFiles("alpha-skill", "Second."),
+          { path: "scripts/run.sh", mode: "0755", contentBase64: Buffer.from("echo hi\n").toString("base64") }
+        ]
+      });
+      expect(skills[0].sha256).toBe(crypto.createHash("sha256").update(JSON.stringify(skills[0].files)).digest("hex"));
+      expect(skills.some((row) => row.id === foreign.id)).toBe(false);
+
+      expect((await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${alpha.id}`)).statusCode).toBe(200);
+      const afterRemove = JSON.parse((await asSession()).payload) as { skills: { id: string }[] };
+      expect(afterRemove.skills.map((row) => row.id)).toEqual([zeta.id]);
+
+      const revoked = await inject("POST", `/api/v1/agent-vault/sessions/${session.id}/revoke`);
+      expect(revoked.statusCode).toBe(200);
+      const afterRevoke = await asSession();
+      expect(afterRevoke.statusCode).toBe(401);
+      expect(JSON.parse(afterRevoke.payload).message).toBe("This session has been revoked");
+    });
+
+    test("the skills route refuses an expired, unknown or malformed session token with a 401", async () => {
+      const bundle = await createAccessBundle("skills-refused-bundle");
+      const session = await mintFor([bundle]);
+      await testDb("agent_vault_sessions")
+        .where({ id: session.id })
+        .update({ expiresAt: new Date(Date.now() - 1000) });
+      const expired = await fetchSessionSkills(`Bearer ${session.token}`);
+      expect(expired.statusCode).toBe(401);
+      expect(JSON.parse(expired.payload).message).toBe("This session has expired");
+
+      const unknown = await fetchSessionSkills(`Bearer agv_${crypto.randomBytes(32).toString("base64url")}`);
+      expect(unknown.statusCode).toBe(401);
+      expect(JSON.parse(unknown.payload).message).toBe("This Agent Vault session token is not valid");
+
+      const malformedMessage = "Send an Agent Vault session token in the Authorization header, as 'Bearer agv_...'.";
+      const refused = await Promise.all(
+        [
+          undefined,
+          "",
+          session.token,
+          `Basic ${session.token}`,
+          `Bearer ${jwtAuthToken}`,
+          "Bearer agv_",
+          `Bearer agv_${"a".repeat(200)}`
+        ].map((authorization) => fetchSessionSkills(authorization))
+      );
+      refused.forEach((res) => {
+        expect(res.statusCode).toBe(401);
+        expect(JSON.parse(res.payload).message).toBe(malformedMessage);
+      });
+    });
+
+    test("a member's session gets only the skills its owner still reaches", async () => {
+      const bundle = await createAccessBundle("skills-lost-grant-bundle");
+      const otherBundle = await createAccessBundle("skills-lost-grant-other");
+      const { skill } = await createSkill("lost-grant-skill");
+      const { skill: unreachable } = await createSkill("unreachable-skill");
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(otherBundle.id), { skillId: unreachable.id })).statusCode).toBe(200);
+      const member = await createMemberIdentity("skills-lost-grant");
+      try {
+        const bundleMembersUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members`;
+        expect((await inject("POST", bundleMembersUrl, { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+        const session = await mintFor([bundle], member.as);
+        const asSession = () => fetchSessionSkills(`Bearer ${session.token}`);
+
+        const auditLogs = recordAuditLogs();
+        let before: Awaited<ReturnType<typeof asSession>>;
+        try {
+          before = await asSession();
+          expect(auditLogs).toHaveBeenCalledWith(
+            expect.objectContaining({
+              actor: expect.objectContaining({
+                type: ActorType.IDENTITY,
+                metadata: expect.objectContaining({ identityId: member.id, name: "skills-lost-grant" })
+              })
+            })
+          );
+        } finally {
+          auditLogs.mockRestore();
+        }
+        expect(before.statusCode).toBe(200);
+        expect((JSON.parse(before.payload) as { skills: { id: string }[] }).skills.map((row) => row.id)).toEqual([
+          skill.id
+        ]);
+
+        expect((await inject("DELETE", bundleMembersUrl, { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+
+        const after = await asSession();
+        expect(after.statusCode).toBe(200);
+        expect(JSON.parse(after.payload)).toEqual({ skills: [] });
+      } finally {
+        await member.cleanup();
+      }
+    });
+    test("Agent Vault holds at most 250 skills", async () => {
+      const projectId = await getProjectId();
+      // Seeded directly: 250 creates through the API would be slow, and the cap counts skill rows only.
+      await testDb("agent_vault_skills").insert(
+        Array.from({ length: AGENT_VAULT_MAX_SKILLS }, (_, i) => ({
+          projectId,
+          name: `seeded-skill-${String(i).padStart(3, "0")}`,
+          description: "Seeded."
+        }))
+      );
+      try {
+        const over = await inject("POST", skillsUrl, { files: skillFiles("over-cap-skill") });
+        expect(over.statusCode).toBe(400);
+        expect(JSON.parse(over.payload).message).toBe(
+          "This organization already has 250 skills, the most allowed. Delete an unused one first."
+        );
+        expect(await testDb("agent_vault_skills").where({ projectId, name: "over-cap-skill" })).toHaveLength(0);
+
+        await testDb("agent_vault_skills").where({ projectId, name: "seeded-skill-000" }).del();
+        await createSkill("over-cap-skill");
+      } finally {
+        await testDb("agent_vault_skills").where({ projectId }).del();
+      }
+    });
+
+    test("publish and restore reply with the skill as it now stands", async () => {
+      const { skill } = await createSkill("summary-skill");
+
+      const renamed = await publish(skill.id, skillFiles("summary-renamed", "Renamed."));
+      expect(renamed.statusCode).toBe(200);
+      expect(JSON.parse(renamed.payload)).toMatchObject({
+        unchanged: false,
+        skill: { id: skill.id, name: "summary-renamed", description: "Renamed.", latestVersion: 2 },
+        version: { version: 2 }
+      });
+
+      const restored = await inject("POST", `${skillsUrl}/${skill.id}/versions/1/restore`);
+      expect(restored.statusCode).toBe(200);
+      expect(JSON.parse(restored.payload)).toMatchObject({
+        unchanged: false,
+        skill: { id: skill.id, name: "summary-renamed", description: "Do the thing.", latestVersion: 3 },
+        version: { version: 3 }
+      });
+    });
+
+    test("an update with a stale baseVersion is refused, and one with the latest or none goes through", async () => {
+      const { skill } = await createSkill("base-version-skill");
+      const skillUrl = `${skillsUrl}/${skill.id}`;
+      expect((await publish(skill.id, skillFiles("base-version-skill", "Second."))).statusCode).toBe(200);
+
+      const stale = await inject("PATCH", skillUrl, {
+        files: skillFiles("base-version-skill", "Stale."),
+        baseVersion: 1
+      });
+      expect(stale.statusCode).toBe(409);
+      expect(JSON.parse(stale.payload).message).toBe(
+        "Version 2 was published after you opened this skill. Review it, then save again."
+      );
+      expect(await testDb("agent_vault_skill_versions").where({ skillId: skill.id })).toHaveLength(2);
+
+      const current = await inject("PATCH", skillUrl, {
+        files: skillFiles("base-version-skill", "Third."),
+        baseVersion: 2
+      });
+      expect(current.statusCode).toBe(200);
+      expect(JSON.parse(current.payload)).toMatchObject({ unchanged: false, version: { version: 3 } });
+
+      const omitted = await publish(skill.id, skillFiles("base-version-skill", "Fourth."));
+      expect(omitted.statusCode).toBe(200);
+      expect(JSON.parse(omitted.payload)).toMatchObject({ unchanged: false, version: { version: 4 } });
+    });
+
+    test("the Skills Delivered event is sent only when a session gets at least one skill", async () => {
+      const { telemetry } = (
+        globalThis as unknown as {
+          testServices: { telemetry: { sendPostHogEvents: (event: unknown) => Promise<void> } };
+        }
+      ).testServices;
+      const emptyBundle = await createAccessBundle("skills-event-empty-bundle");
+      const bundle = await createAccessBundle("skills-event-bundle");
+      const { skill } = await createSkill("event-skill");
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
+      const emptySession = await mintFor([emptyBundle]);
+      const session = await mintFor([bundle]);
+
+      const isSkillsDelivered = (call: unknown[]) =>
+        (call[0] as { event: string }).event === PostHogEventTypes.AgentVaultSkillsDelivered;
+      const sent = vi.spyOn(telemetry, "sendPostHogEvents").mockResolvedValue(undefined);
+      try {
+        const empty = await fetchSessionSkills(`Bearer ${emptySession.token}`);
+        expect(empty.statusCode).toBe(200);
+        expect(JSON.parse(empty.payload)).toEqual({ skills: [] });
+        expect(sent.mock.calls.filter(isSkillsDelivered)).toHaveLength(0);
+
+        const delivered = await fetchSessionSkills(`Bearer ${session.token}`);
+        expect(delivered.statusCode).toBe(200);
+        const events = sent.mock.calls.filter(isSkillsDelivered);
+        expect(events).toHaveLength(1);
+        expect(events[0][0]).toMatchObject({
+          distinctId: `agent-vault-session-${session.id}`,
+          organizationId: seedData1.organization.id,
+          properties: { orgId: seedData1.organization.id, actorType: ActorType.USER, skillCount: 1 }
+        });
+      } finally {
+        sent.mockRestore();
+      }
     });
   });
 
@@ -5796,6 +6715,8 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
+          projectDAL: projectDALFactory(testDb),
+          userDAL: userDALFactory(testDb),
           permissionService: buildPermissionService(),
           kmsService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
@@ -5898,6 +6819,8 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
+          projectDAL: projectDALFactory(testDb),
+          userDAL: userDALFactory(testDb),
           permissionService: buildPermissionService(),
           kmsService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
