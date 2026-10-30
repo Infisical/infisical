@@ -154,6 +154,12 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
     expect(blockedRes.statusCode).toBe(400);
     expect(JSON.parse(blockedRes.payload).message).toContain("pending-deletion");
 
+    const other = await createProject("e2e-slug-reserved-other");
+    const renameRes = await updateProject(other.id, { slug });
+    expect(renameRes.statusCode).toBe(400);
+    expect(JSON.parse(renameRes.payload).message).toContain("pending-deletion");
+    await deleteProject(other.id, true);
+
     expect((await permanentlyDeleteProject(first.id)).statusCode).toBe(200);
     expect((await listDeletedProjects()).some((p) => p.id === first.id)).toBe(false);
 

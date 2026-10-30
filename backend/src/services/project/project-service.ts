@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { PackRule, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
+import { Knex } from "knex";
 
 import {
   AccessScope,
@@ -268,6 +269,17 @@ export const projectServiceFactory = ({
   dynamicSecretLeaseDAL,
   dynamicSecretQueueService
 }: TProjectServiceFactoryDep) => {
+  // The (orgId, slug) unique index already refuses a taken slug; this only names the cause when the holder is
+  // a project pending deletion.
+  const $throwIfSlugHeldByDeletedProject = async (orgId: string, slug: string, tx?: Knex) => {
+    const [slugHolder] = await projectDAL.findIncludingExpired({ orgId, slug }, { tx });
+    if (slugHolder?.deleteAfter) {
+      throw new BadRequestError({
+        message: `Project slug '${slug}' is held by a pending-deletion project. Permanently delete that project first, then retry.`
+      });
+    }
+  };
+
   /*
    * Create workspace. Make user the admin
    * */
@@ -377,12 +389,9 @@ export const projectServiceFactory = ({
 
       const slug = projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`);
 
-      const [slugHolder] = await projectDAL.findIncludingExpired({ orgId: organization.id, slug }, { tx });
-      if (slugHolder?.deleteAfter) {
-        throw new BadRequestError({
-          message: `Project slug '${slug}' is held by a pending-deletion project. Permanently delete that project first, then retry.`
-        });
-      }
+      // Checked up front because a failed insert aborts this transaction. Generated slugs carry a random suffix,
+      // so only a chosen one is worth the lookup.
+      if (projectSlug) await $throwIfSlugHeldByDeletedProject(organization.id, slug, tx);
 
       let project: TProjects;
       try {
@@ -1237,15 +1246,6 @@ export const projectServiceFactory = ({
       }
     }
 
-    if (update.slug) {
-      const [slugHolder] = await projectDAL.findIncludingExpired({ orgId: project.orgId, slug: update.slug });
-      if (slugHolder?.deleteAfter) {
-        throw new BadRequestError({
-          message: `Project slug '${update.slug}' is held by a pending-deletion project. Permanently delete that project first, then retry.`
-        });
-      }
-    }
-
     try {
       const updatedProject = await projectDAL.updateById(project.id, {
         name: update.name,
@@ -1268,6 +1268,7 @@ export const projectServiceFactory = ({
       if (err instanceof DatabaseError) {
         const code = (err.error as { code?: string })?.code;
         if (code === DatabaseErrorCode.UniqueViolation) {
+          if (update.slug) await $throwIfSlugHeldByDeletedProject(project.orgId, update.slug);
           throw new BadRequestError({
             message: `Failed to update project. A project with the slug "${update.slug}" already exists in your organization. Please choose a different slug.`
           });
