@@ -305,6 +305,9 @@ spec:
       env:
         - name: INFISICAL_AGENT_VAULT_PROXY_ADDRESS
           value: agent-vault-proxy.agent-vault.svc.cluster.local:17323
+        # Claude Code won't start without a key; the proxy replaces this one.
+        - name: ANTHROPIC_API_KEY
+          value: agent-vault
         # Node.js 24 or later: make the built-in fetch read HTTPS_PROXY.
         - name: NODE_USE_ENV_PROXY
           value: "1"
@@ -352,6 +355,8 @@ cleanup() {
   kubectl -n agents delete "pod/agent-$RUN_ID" "secret/agent-$RUN_ID" --ignore-not-found
 }
 trap cleanup EXIT
+# Bash skips the EXIT trap when it's killed, such as when CI cancels a job.
+trap 'exit 143' TERM INT
 
 # The token goes through stdin, so it doesn't appear in the process list.
 echo "$SESSION" | jq -r '"INFISICAL_AGENT_VAULT_SESSION_TOKEN=" + .session.token' \
@@ -402,7 +407,7 @@ In Agent Vault, find the session under **Sessions** > **All Sessions** by its la
 
 ## Security considerations
 
-- **Hosts through the proxy:** agent pods can only connect to the proxy and DNS. With **Access bundle hosts only**, the agent can reach the hosts that services in the session's access bundle cover, and the proxy's exceptions
+- **Hosts through the proxy:** agent pods can only connect to the proxy and DNS, and with **Access bundle hosts only**, the proxy forwards requests only to hosts that services in the session's access bundle cover and to the proxy's exceptions
 - **DNS:** agent pods still need DNS to find the proxy, and DNS lookups can carry data out of the pod, so a network policy doesn't close every channel
 - **APIs that echo requests:** if an endpoint returns the request's headers in its response, such as an echo or debug endpoint, the response exposes the credential that the proxy attached, so limit each service to the [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths) the agent needs
 - **Revoking a session:** the proxy stops attaching credentials for a revoked session within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval)
