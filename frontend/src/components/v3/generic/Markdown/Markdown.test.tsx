@@ -44,7 +44,8 @@ describe("Markdown links", () => {
         [guide](references/guide.md) and [docs](https://infisical.com/docs)
       </Markdown>
     );
-    assert.match(markup, /<a(?![^>]*target=)[^>]*href="references\/guide.md"/);
+    assert.match(markup, /<a(?![^>]*target=)[^>]*href="#"/);
+    assert.ok(!markup.includes("references/guide.md"));
     assert.match(markup, /<a[^>]*target="_blank"[^>]*href="https:\/\/infisical.com\/docs"/);
   });
 });

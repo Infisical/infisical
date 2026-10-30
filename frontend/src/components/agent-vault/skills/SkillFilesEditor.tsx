@@ -201,7 +201,12 @@ export const SkillFilesEditor = ({
   const selected = files.find((file) => file.path === selectedPath) ?? files[0];
 
   const openLinkedFile = (href: string) => {
-    if (!selected || href.startsWith("#")) return;
+    if (href.startsWith("#")) {
+      // Footnotes link to an element id in the same preview; a heading link has no id to land on.
+      document.getElementById(href.slice(1))?.scrollIntoView({ block: "start" });
+      return;
+    }
+    if (!selected) return;
     const target = resolveSkillLinkPath(selected.path, href);
     if (target && files.some((file) => file.path === target)) {
       onSelect(target);
@@ -547,7 +552,7 @@ export const SkillFilesEditor = ({
             </Empty>
           )}
           {rendered && (
-            <div className="h-full thin-scrollbar overflow-y-auto p-4">
+            <div key={selected?.path} className="h-full thin-scrollbar overflow-y-auto p-4">
               {rendered.frontmatter && (
                 <pre className="mb-4 thin-scrollbar overflow-x-auto rounded-md border border-border bg-container p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-label">
                   {rendered.frontmatter}

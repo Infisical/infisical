@@ -13,8 +13,9 @@ type MarkdownProps = {
   children: string;
   className?: string;
   /**
-   * Called with the href of a link that has no scheme, such as `references/guide.md` or `#usage`, instead of
-   * the browser following it. Without it such a link resolves against the app's URL and lands on a missing page.
+   * Called with the href of a link that has no scheme, such as `references/guide.md` or `#usage`, on a click or
+   * middle-click, instead of the browser following it. Without it such a link resolves against the app's URL and
+   * lands on a missing page.
    */
   onRelativeLinkClick?: (href: string) => void;
 };
@@ -34,12 +35,19 @@ const MarkdownLink = ({
 }: ComponentProps<"a"> & ExtraProps) => {
   const onRelativeLinkClick = useContext(RelativeLinkContext);
   if (onRelativeLinkClick && href && !isAbsoluteHref(href)) {
+    // The real href would still reach the browser through "Open in new tab" and copy link, so it stays out of the
+    // anchor; "#" keeps the link focusable and opens this same page at worst.
     return (
       <a
         className={cn(linkClassName, className)}
-        href={href}
+        href="#"
         {...props}
         onClick={(event) => {
+          event.preventDefault();
+          onRelativeLinkClick(href);
+        }}
+        onAuxClick={(event) => {
+          if (event.button !== 1) return;
           event.preventDefault();
           onRelativeLinkClick(href);
         }}
