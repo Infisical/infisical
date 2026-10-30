@@ -336,6 +336,10 @@ export const authLoginServiceFactory = ({
   }: TProcessProviderCallbackDTO): Promise<TProviderAuthCallback> => {
     const appCfg = getConfig();
 
+    const idpMfaOrgId = idpMfa?.verified ? organizationId : undefined;
+
+    // A first login that still has to verify its mailbox finishes in completeAccount, which mints the session
+    // from this token, so the proof rides along or that one login would be prompted despite the trust.
     if (!user.isAccepted || !isEmailVerified) {
       const signupToken = crypto.jwt().sign(
         {
@@ -345,6 +349,7 @@ export const authLoginServiceFactory = ({
           isEmailVerified,
           aliasId,
           organizationId,
+          idpMfaOrgId,
           callbackPort,
           email: user.email,
           firstName: user.firstName,
@@ -363,7 +368,7 @@ export const authLoginServiceFactory = ({
       ip,
       userAgent,
       authMethod,
-      idpMfaOrgId: idpMfa?.verified ? organizationId : undefined
+      idpMfaOrgId
     });
 
     if (organizationId) {

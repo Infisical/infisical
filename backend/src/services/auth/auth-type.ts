@@ -162,6 +162,7 @@ export type AuthModeSignUpTokenPayload = {
   isEmailVerified: boolean;
   aliasId?: string;
   organizationId?: string;
+  idpMfaOrgId?: string;
   callbackPort?: string;
   // User profile fields for the frontend signup page
   email?: string;

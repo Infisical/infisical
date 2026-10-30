@@ -307,8 +307,9 @@ two factors (possession-only classes such as `Smartcard` and `SoftwarePKI` are n
 attribute named by `saml_configs.mfaSignalAttribute` contains `mfa`. Both names default to `amr`, and the
 per-config allowlists extend the built-in values rather than replace them. The verdict travels on the org-less
 session token as `idpMfaOrgId`, the root org whose SSO config produced it (absent when the IdP did not signal
-MFA), and `selectOrganization` (`auth-login-service.ts`) applies it through `isIdpMfaTrusted` (`auth-fns.ts`),
-the only reader of the setting. Rules that must hold:
+MFA). A first login that still has to verify its mailbox carries it on the signup token instead, and
+`completeAccount` copies it onto the session it mints. `selectOrganization` (`auth-login-service.ts`) applies it
+through `isIdpMfaTrusted` (`auth-fns.ts`), the only reader of the setting. Rules that must hold:
 
 - Enforcement is decided once per selection against the root org (`actorRootOrgId`), so moving between a root
   org and its sub-orgs never re-prompts.
