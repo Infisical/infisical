@@ -1,4 +1,5 @@
-import ReactMarkdown, { type Components } from "react-markdown";
+import { type ComponentProps, createContext, useContext } from "react";
+import ReactMarkdown, { type Components, type ExtraProps } from "react-markdown";
 import { CheckIcon } from "lucide-react";
 import remarkGfm from "remark-gfm";
 
@@ -11,6 +12,61 @@ type MarkdownProps = {
    */
   children: string;
   className?: string;
+  /**
+   * Called with the href of a link that has no scheme, such as `references/guide.md` or `#usage`, on a click or
+   * middle-click, instead of the browser following it. Without it such a link resolves against the app's URL and
+   * lands on a missing page.
+   */
+  onRelativeLinkClick?: (href: string) => void;
+};
+
+const linkClassName = "text-info underline underline-offset-4 hover:text-info/80";
+
+const isAbsoluteHref = (href: string) => /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("//");
+
+const RelativeLinkContext = createContext<MarkdownProps["onRelativeLinkClick"]>(undefined);
+
+const MarkdownLink = ({
+  node,
+  className,
+  children,
+  href,
+  ...props
+}: ComponentProps<"a"> & ExtraProps) => {
+  const onRelativeLinkClick = useContext(RelativeLinkContext);
+  if (onRelativeLinkClick && href && !isAbsoluteHref(href)) {
+    // The real href would still reach the browser through "Open in new tab" and copy link, so it stays out of the
+    // anchor; "#" keeps the link focusable and opens this same page at worst.
+    return (
+      <a
+        className={cn(linkClassName, className)}
+        href="#"
+        {...props}
+        onClick={(event) => {
+          event.preventDefault();
+          onRelativeLinkClick(href);
+        }}
+        onAuxClick={(event) => {
+          if (event.button !== 1) return;
+          event.preventDefault();
+          onRelativeLinkClick(href);
+        }}
+      >
+        {children}
+      </a>
+    );
+  }
+  return (
+    <a
+      className={cn(linkClassName, className)}
+      target="_blank"
+      rel="noopener noreferrer"
+      href={href}
+      {...props}
+    >
+      {children}
+    </a>
+  );
 };
 
 const components: Components = {
@@ -50,16 +106,7 @@ const components: Components = {
   p: ({ node, className, ...props }) => (
     <p className={cn("my-3 leading-relaxed first:mt-0 last:mb-0", className)} {...props} />
   ),
-  a: ({ node, className, children, ...props }) => (
-    <a
-      className={cn("text-info underline underline-offset-4 hover:text-info/80", className)}
-      target="_blank"
-      rel="noopener noreferrer"
-      {...props}
-    >
-      {children}
-    </a>
-  ),
+  a: MarkdownLink,
   ul: ({ node, className, ...props }) => (
     <ul
       className={cn(
@@ -149,12 +196,14 @@ const components: Components = {
   )
 };
 
-const Markdown = ({ children, className }: MarkdownProps) => (
-  <div data-slot="markdown" className={cn("min-w-0 text-sm text-foreground", className)}>
-    <ReactMarkdown components={components} remarkPlugins={[remarkGfm]} skipHtml>
-      {children}
-    </ReactMarkdown>
-  </div>
+const Markdown = ({ children, className, onRelativeLinkClick }: MarkdownProps) => (
+  <RelativeLinkContext.Provider value={onRelativeLinkClick}>
+    <div data-slot="markdown" className={cn("min-w-0 text-sm text-foreground", className)}>
+      <ReactMarkdown components={components} remarkPlugins={[remarkGfm]} skipHtml>
+        {children}
+      </ReactMarkdown>
+    </div>
+  </RelativeLinkContext.Provider>
 );
 
 export { Markdown, type MarkdownProps };
