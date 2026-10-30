@@ -342,3 +342,108 @@ it("disables the header toggle when every row is locked", async () => {
   expect(box("Read for every row in Permissions").disabled).toBe(true);
   expect(box("Read for every row in Permissions").getAttribute("aria-checked")).toBe("false");
 });
+
+type Cell = {
+  id: string;
+  name: string;
+  value: boolean | "indeterminate";
+  absent?: boolean;
+  note?: string;
+};
+
+function ExtendedHarness({
+  initial,
+  onChange
+}: {
+  initial: Cell[];
+  onChange: (ids: string[], checked: boolean) => void;
+}) {
+  const [cells, setCells] = React.useState(initial);
+  return (
+    <V4Scope>
+      <TooltipProvider>
+        <DataTable
+          label="Matrix"
+          rows={cells}
+          getRowId={(row) => row.id}
+          rowLabel={(row) => row.name}
+          onRowActivate={() => undefined}
+          columns={[
+            { id: "name", header: "Policy", primary: true, grow: true, render: (row) => row.name },
+            {
+              id: "edit",
+              header: "Edit",
+              width: 120,
+              toggle: {
+                checked: (row) => row.value,
+                absent: (row) => Boolean(row.absent),
+                adornment: (row) =>
+                  row.note ? (
+                    <button type="button" aria-label={`Conditions for ${row.name}`}>
+                      i
+                    </button>
+                  ) : null,
+                onChange: (ids, checked) => {
+                  onChange(ids, checked);
+                  setCells((current) =>
+                    current.map((row) => (ids.includes(row.id) ? { ...row, value: checked } : row))
+                  );
+                }
+              }
+            }
+          ]}
+        />
+      </TooltipProvider>
+    </V4Scope>
+  );
+}
+
+it("renders mixed cells, adornments and absent cells and counts only real controls", async () => {
+  const onChange = vi.fn();
+  await React.act(async () =>
+    root.render(
+      <ExtendedHarness
+        onChange={onChange}
+        initial={[
+          { id: "s", name: "Secrets", value: true, note: "Only /prod" },
+          { id: "f", name: "Folders", value: "indeterminate" },
+          { id: "a", name: "Audit logs", value: false, absent: true }
+        ]}
+      />
+    )
+  );
+  const header = () => box("Edit for every row in Matrix");
+  expect(box("Edit for Folders").getAttribute("aria-checked")).toBe("mixed");
+  expect(header().getAttribute("aria-checked")).toBe("mixed");
+  expect(host.querySelector('[aria-label="Edit for Audit logs"]')).toBeNull();
+  expect(host.querySelector('[data-slot="table-toggle-absent"]')?.textContent).toContain(
+    "Edit for Audit logs: not applicable"
+  );
+
+  const adornment = box("Conditions for Secrets");
+  const cell = adornment.closest("td");
+  expect(cell?.contains(box("Edit for Secrets"))).toBe(true);
+  expect(cell?.hasAttribute("data-row-interactive")).toBe(true);
+  expect(adornment.closest("button, [role=checkbox]") === adornment).toBe(true);
+  expect(box("Edit for Secrets").contains(adornment)).toBe(false);
+
+  await React.act(async () => header().click());
+  expect(onChange).toHaveBeenLastCalledWith(["f"], true);
+  expect(header().getAttribute("aria-checked")).toBe("true");
+
+  await React.act(async () => header().click());
+  expect(onChange).toHaveBeenLastCalledWith(["s", "f"], false);
+  expect(header().getAttribute("aria-checked")).toBe("false");
+});
+
+it("disables the header when every row is absent", async () => {
+  await React.act(async () =>
+    root.render(
+      <ExtendedHarness
+        onChange={vi.fn()}
+        initial={[{ id: "a", name: "Audit logs", value: false, absent: true }]}
+      />
+    )
+  );
+  expect(box("Edit for every row in Matrix").disabled).toBe(true);
+});

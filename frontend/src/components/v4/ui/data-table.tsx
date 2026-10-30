@@ -38,9 +38,11 @@ export interface DataTableColumn<Row> {
   hideHeader?: boolean;
 }
 export interface DataTableToggle<Row> {
-  checked: (row: Row) => boolean;
+  checked: (row: Row) => boolean | "indeterminate";
   onChange: (rowIds: string[], checked: boolean) => void;
   disabledReason?: (row: Row) => string | undefined;
+  absent?: (row: Row) => boolean;
+  adornment?: (row: Row) => React.ReactNode;
   label?: string;
 }
 export interface DataTableProps<Row> {
@@ -191,8 +193,12 @@ export function DataTable<Row>({
     row.focus({ preventScroll: true });
   }, [focusRow, start]);
   const toggleCounts = (toggle: DataTableToggle<Row>) => {
-    const enabled = rows.filter((row) => !toggle.disabledReason?.(row));
-    return { enabled, on: enabled.filter(toggle.checked).length };
+    const enabled = rows.filter((row) => !toggle.absent?.(row) && !toggle.disabledReason?.(row));
+    return {
+      enabled,
+      on: enabled.filter((row) => toggle.checked(row) === true).length,
+      off: enabled.filter((row) => toggle.checked(row) === false).length
+    };
   };
   const span = columns.length + (selectable ? 1 : 0);
   const hasGrowingColumn = columns.some((column) => column.grow && column.width === undefined);
@@ -510,21 +516,22 @@ function ToggleHead<Row>({
   getRowId
 }: {
   toggle: DataTableToggle<Row>;
-  counts: { enabled: Row[]; on: number };
+  counts: { enabled: Row[]; on: number; off: number };
   label: string;
   disabled: boolean;
   getRowId: (row: Row) => string;
 }) {
-  const { enabled, on } = counts;
+  const { enabled, on, off } = counts;
   const all = enabled.length > 0 && on === enabled.length;
+  const none = off === enabled.length;
   return (
     <span className={styles.tableToggle} data-slot="table-column-toggle">
       <Checkbox
         aria-label={label}
         disabled={disabled || !enabled.length}
-        checked={on > 0 && !all ? "indeterminate" : all}
+        checked={all || (none ? false : "indeterminate")}
         onCheckedChange={() =>
-          toggle.onChange(enabled.filter((row) => toggle.checked(row) === all).map(getRowId), !all)
+          toggle.onChange(enabled.filter((row) => toggle.checked(row) !== !all).map(getRowId), !all)
         }
       />
     </span>
@@ -542,7 +549,15 @@ function ToggleCell<Row>({
   label: string;
   rowId: string;
 }) {
+  if (toggle.absent?.(row))
+    return (
+      <span className={styles.tableToggleAbsent} data-slot="table-toggle-absent">
+        <span aria-hidden>−</span>
+        <span className={styles.sr}>{`${label}: not applicable`}</span>
+      </span>
+    );
   const reason = toggle.disabledReason?.(row);
+  const adornment = toggle.adornment?.(row);
   const box = (
     <span className={styles.tableToggle}>
       <Checkbox
@@ -554,5 +569,10 @@ function ToggleCell<Row>({
       />
     </span>
   );
-  return reason ? <Tooltip content={reason}>{box}</Tooltip> : box;
+  return (
+    <span className={styles.tableToggleCell}>
+      {reason ? <Tooltip content={reason}>{box}</Tooltip> : box}
+      {adornment}
+    </span>
+  );
 }
