@@ -169,7 +169,9 @@ export const AwsParameterStoreSyncOptionsFields = () => {
                     <TooltipTrigger asChild>
                       <CircleHelp className="size-3 cursor-help text-muted" />
                     </TooltipTrigger>
-                    <TooltipContent>The AWS KMS key to encrypt parameters with.</TooltipContent>
+                    <TooltipContent>
+                      The AWS KMS key to encrypt parameters with: an alias, key ID, or ARN.
+                    </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
                 <FieldContent>
@@ -208,8 +210,7 @@ export const AwsParameterStoreSyncOptionsFields = () => {
                     modal
                   />
                   <FieldDescription>
-                    Select an alias or enter a key ID or ARN. Custom keys require{" "}
-                    <span className="font-mono">kms:ListAliases</span>,{" "}
+                    Custom keys require <span className="font-mono">kms:ListAliases</span>,{" "}
                     <span className="font-mono">kms:DescribeKey</span>,{" "}
                     <span className="font-mono">kms:Encrypt</span>, and{" "}
                     <span className="font-mono">kms:Decrypt</span> on the selected IAM role.

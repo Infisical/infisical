@@ -176,10 +176,10 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                       <CircleHelp className="size-3 cursor-help text-muted" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-sm">
-                      The AWS KMS key to encrypt secrets with. Select an alias or enter a key ID or
-                      ARN. Custom keys require <Code>kms:ListAliases</Code>,{" "}
-                      <Code>kms:DescribeKey</Code>, <Code>kms:Encrypt</Code>, and{" "}
-                      <Code>kms:Decrypt</Code> on the selected IAM role.
+                      The AWS KMS key to encrypt secrets with: an alias, key ID, or ARN. Custom keys
+                      require <Code>kms:ListAliases</Code>, <Code>kms:DescribeKey</Code>,{" "}
+                      <Code>kms:Encrypt</Code>, and <Code>kms:Decrypt</Code> on the selected IAM
+                      role.
                     </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
