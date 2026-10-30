@@ -852,6 +852,10 @@ export const oidcConfigServiceFactory = ({
       }
       await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
       issuer = await Issuer.discover(oidcCfg.discoveryURL);
+      // the verify callback below takes no userinfo argument, so userinfo_endpoint is never requested
+      const { jwks_uri: jwksUri, token_endpoint: tokenEndpoint } = issuer.metadata;
+      if (jwksUri) await blockLocalAndPrivateIpAddresses(jwksUri);
+      if (tokenEndpoint) await blockLocalAndPrivateIpAddresses(tokenEndpoint);
     } else {
       if (
         !oidcCfg.issuer ||
