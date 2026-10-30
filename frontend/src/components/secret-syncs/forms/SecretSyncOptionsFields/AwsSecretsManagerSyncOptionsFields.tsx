@@ -28,6 +28,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/hooks/api/secretSyncs/types/aws-secrets-manager-sync";
 
 import { TSecretSyncForm } from "../schemas";
+import { isAwsKmsKeyIdentifier } from "./aws-kms-key";
 
 const AwsTagsEditor = () => {
   const { control } = useFormContext<
@@ -205,7 +206,8 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                     creation={{
                       onCreate: (inputValue) => onChange(inputValue.trim()),
                       formatLabel: (inputValue) => `Use "${inputValue}"`,
-                      isDuplicate: (inputValue, option) => option.alias === inputValue
+                      isDuplicate: (inputValue, option) => option.alias === inputValue,
+                      isValid: isAwsKmsKeyIdentifier
                     }}
                     placeholder="Leave blank to use default KMS key"
                     searchPlaceholder="Search KMS keys..."
