@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
+import {
+  custom,
+  CustomHttpOptionsProvider,
+  Issuer,
+  Issuer as OpenIdIssuer,
+  Strategy as OpenIdStrategy,
+  TokenSet
+} from "openid-client";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
@@ -31,6 +38,7 @@ import {
 import { OrgServiceActor } from "@app/lib/types";
 import {
   blockLocalAndPrivateIpAddresses,
+  buildSsrfSafeAgent,
   matchesAllowedEmailDomain,
   sanitizeEmail,
   validateEmail
@@ -844,6 +852,7 @@ export const oidcConfigServiceFactory = ({
     const org = await orgDAL.findOne({ id: resolvedOrgId });
 
     let issuer: Issuer;
+    let discoveredEndpointHttpOptions: CustomHttpOptionsProvider | undefined;
     if (oidcCfg.configurationType === OIDCConfigurationType.DISCOVERY_URL) {
       if (!oidcCfg.discoveryURL) {
         throw new BadRequestError({
@@ -853,9 +862,11 @@ export const oidcConfigServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
       issuer = await Issuer.discover(oidcCfg.discoveryURL);
       // the verify callback below takes no userinfo argument, so userinfo_endpoint is never requested
-      const { jwks_uri: jwksUri, token_endpoint: tokenEndpoint } = issuer.metadata;
-      if (jwksUri) await blockLocalAndPrivateIpAddresses(jwksUri);
-      if (tokenEndpoint) await blockLocalAndPrivateIpAddresses(tokenEndpoint);
+      const endpoints = [issuer.metadata.jwks_uri, issuer.metadata.token_endpoint].filter((url) => url !== undefined);
+      const agents = new Map(
+        await Promise.all(endpoints.map(async (url) => [new URL(url).origin, await buildSsrfSafeAgent(url)] as const))
+      );
+      discoveredEndpointHttpOptions = (url) => ({ agent: agents.get(url.origin) });
     } else {
       if (
         !oidcCfg.issuer ||
@@ -886,6 +897,12 @@ export const oidcConfigServiceFactory = ({
       redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`],
       id_token_signed_response_alg: oidcCfg.jwtSignatureAlgorithm
     });
+
+    if (discoveredEndpointHttpOptions) {
+      // the issuer fetches the JWKS and the client calls the token endpoint
+      issuer[custom.http_options] = discoveredEndpointHttpOptions;
+      client[custom.http_options] = discoveredEndpointHttpOptions;
+    }
 
     // Check if the OIDC provider supports PKCE
     const codeChallengeMethods = client.issuer.metadata.code_challenge_methods_supported;
