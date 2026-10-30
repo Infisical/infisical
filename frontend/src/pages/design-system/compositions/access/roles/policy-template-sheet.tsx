@@ -21,6 +21,7 @@ import {
   DialogTitle
 } from "@app/components/v4/ui/dialog";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
+import { Inline } from "@app/components/v4/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -256,24 +257,26 @@ export const PolicyTemplateSheet = ({
             </div>
           </SheetBody>
           <SheetFooter>
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                const conflicting = selected.permissions
-                  .map((group) => group.subject)
-                  .filter((subject) => permissions[subject]?.length);
-                if (conflicting.length) {
-                  setConflicts(conflicting);
-                  return;
-                }
-                apply(false);
-              }}
-            >
-              Apply template
-            </Button>
+            <Inline gap={8} justify="end">
+              <Button variant="ghost" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  const conflicting = selected.permissions
+                    .map((group) => group.subject)
+                    .filter((subject) => permissions[subject]?.length);
+                  if (conflicting.length) {
+                    setConflicts(conflicting);
+                    return;
+                  }
+                  apply(false);
+                }}
+              >
+                Apply template
+              </Button>
+            </Inline>
           </SheetFooter>
         </SheetContent>
       </Sheet>

@@ -5,7 +5,7 @@ import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Stack, Inline } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
 import {
   Sheet,
@@ -243,25 +243,27 @@ export const ServiceTokenCreateSheet = ({
           </SheetBody>
         )}
         <SheetFooter>
-          {token ? (
-            <Button variant="primary" onClick={close}>
-              Done
-            </Button>
-          ) : (
-            <>
-              <Button variant="outline" disabled={pending} onClick={close}>
-                Cancel
+          <Inline gap={8} justify="end">
+            {token ? (
+              <Button variant="primary" onClick={close}>
+                Done
               </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                form="add-service-token-form"
-                loading={pending}
-              >
-                Create
-              </Button>
-            </>
-          )}
+            ) : (
+              <>
+                <Button variant="outline" disabled={pending} onClick={close}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  type="submit"
+                  form="add-service-token-form"
+                  loading={pending}
+                >
+                  Create
+                </Button>
+              </>
+            )}
+          </Inline>
         </SheetFooter>
       </SheetContent>
     </Sheet>

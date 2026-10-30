@@ -4,7 +4,7 @@ import { Button } from "@app/components/v4/ui/button";
 import { Combobox } from "@app/components/v4/ui/combobox";
 import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Stack, Inline } from "@app/components/v4/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -176,12 +176,14 @@ const AddIdentityForm = ({
         </form>
       </SheetBody>
       <SheetFooter>
-        <Button variant="ghost" disabled={pending} onClick={onClose}>
-          Cancel
-        </Button>
-        <Button variant="primary" type="submit" form="add-project-identity" loading={pending}>
-          {mode === "assign" ? "Add" : "Create"}
-        </Button>
+        <Inline gap={8} justify="end">
+          <Button variant="ghost" disabled={pending} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" form="add-project-identity" loading={pending}>
+            {mode === "assign" ? "Add" : "Create"}
+          </Button>
+        </Inline>
       </SheetFooter>
     </>
   );

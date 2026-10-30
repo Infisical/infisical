@@ -4,6 +4,7 @@ import { Alert } from "@app/components/v4/ui/alert";
 import { Button } from "@app/components/v4/ui/button";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Inline } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
 import {
   Sheet,
@@ -323,12 +324,14 @@ export const VaultImportSheet = ({
           </div>
         </SheetBody>
         <SheetFooter>
-          <Button variant="ghost" onClick={close}>
-            Cancel
-          </Button>
-          <Button variant="primary" disabled={!hcl.trim() || !mounts} onClick={translate}>
-            Translate & apply
-          </Button>
+          <Inline gap={8} justify="end">
+            <Button variant="ghost" onClick={close}>
+              Cancel
+            </Button>
+            <Button variant="primary" disabled={!hcl.trim() || !mounts} onClick={translate}>
+              Translate & apply
+            </Button>
+          </Inline>
         </SheetFooter>
       </SheetContent>
     </Sheet>

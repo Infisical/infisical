@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@app/components/v4/ui/button";
 import { Combobox } from "@app/components/v4/ui/combobox";
 import { Field } from "@app/components/v4/ui/field";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Stack, Inline } from "@app/components/v4/ui/layout";
 import { MultiSelect } from "@app/components/v4/ui/multi-select";
 import { Select } from "@app/components/v4/ui/select";
 import {
@@ -230,12 +230,14 @@ export const InviteUsersSheet = ({
           </form>
         </SheetBody>
         <SheetFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" form="invite-users" loading={pending}>
-            Add member
-          </Button>
+          <Inline gap={8} justify="end">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" form="invite-users" loading={pending}>
+              Add member
+            </Button>
+          </Inline>
         </SheetFooter>
       </SheetContent>
     </Sheet>

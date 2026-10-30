@@ -16,7 +16,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Stack, Inline } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { Select } from "@app/components/v4/ui/select";
 import {
@@ -453,14 +453,21 @@ export const AuthMethodFormSheet = ({
           </Stack>
         </SheetBody>
         <SheetFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Gate allowed={method === "universal"} reason="Only Universal Auth is ported">
-            <Button variant="primary" type="submit" form={formId} disabled={method !== "universal"}>
-              {isUpdate ? "Update" : "Add"}
+          <Inline gap={8} justify="end">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
             </Button>
-          </Gate>
+            <Gate allowed={method === "universal"} reason="Only Universal Auth is ported">
+              <Button
+                variant="primary"
+                type="submit"
+                form={formId}
+                disabled={method !== "universal"}
+              >
+                {isUpdate ? "Update" : "Add"}
+              </Button>
+            </Gate>
+          </Inline>
         </SheetFooter>
       </SheetContent>
     </Sheet>
@@ -554,16 +561,18 @@ export const AuthMethodViewSheet = ({
           )}
         </SheetBody>
         <SheetFooter>
-          <Gate allowed={canDelete}>
-            <Button variant="destructive" disabled={!canDelete} onClick={onRemove}>
-              Remove
-            </Button>
-          </Gate>
-          <Gate allowed={canEditAuth}>
-            <Button variant="primary" disabled={!canEditAuth} onClick={onEdit}>
-              Edit
-            </Button>
-          </Gate>
+          <Inline gap={8} justify="end">
+            <Gate allowed={canDelete}>
+              <Button variant="destructive" disabled={!canDelete} onClick={onRemove}>
+                Remove
+              </Button>
+            </Gate>
+            <Gate allowed={canEditAuth}>
+              <Button variant="primary" disabled={!canEditAuth} onClick={onEdit}>
+                Edit
+              </Button>
+            </Gate>
+          </Inline>
         </SheetFooter>
       </SheetContent>
     </Sheet>

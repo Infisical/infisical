@@ -37,6 +37,7 @@ import {
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Inline } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
 import {
   Sheet,
@@ -185,16 +186,18 @@ export const EditRolesSheet = ({
           </div>
         </SheetBody>
         <SheetFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            disabled={!dirty || disabled}
-            onClick={() => onSave(toGrants(member.id, drafts))}
-          >
-            Save roles
-          </Button>
+          <Inline gap={8} justify="end">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!dirty || disabled}
+              onClick={() => onSave(toGrants(member.id, drafts))}
+            >
+              Save roles
+            </Button>
+          </Inline>
         </SheetFooter>
       </SheetContent>
     </Sheet>

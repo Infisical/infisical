@@ -123,18 +123,20 @@ export const AuthMethodFormSheet = ({
           </form>
         </SheetBody>
         <SheetFooter>
-          <Button variant="ghost" disabled={pending} onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            type="submit"
-            form="project-identity-auth-method"
-            loading={pending}
-            disabled={!selected}
-          >
-            {isUpdate ? "Update" : "Add"}
-          </Button>
+          <Inline gap={8} justify="end">
+            <Button variant="ghost" disabled={pending} onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              form="project-identity-auth-method"
+              loading={pending}
+              disabled={!selected}
+            >
+              {isUpdate ? "Update" : "Add"}
+            </Button>
+          </Inline>
         </SheetFooter>
       </SheetContent>
     </Sheet>

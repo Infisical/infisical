@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@app/components/v4/ui/button";
 import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Stack, Inline } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
 import {
   Sheet,
@@ -121,12 +121,14 @@ export const CreateIdentitySheet = ({
           </form>
         </SheetBody>
         <SheetFooter>
-          <Button variant="outline" onClick={() => close(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" form="create-org-identity" loading={pending}>
-            Create
-          </Button>
+          <Inline gap={8} justify="end">
+            <Button variant="outline" onClick={() => close(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" form="create-org-identity" loading={pending}>
+              Create
+            </Button>
+          </Inline>
         </SheetFooter>
       </SheetContent>
     </Sheet>

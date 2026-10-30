@@ -4,7 +4,7 @@ import slugify from "@sindresorhus/slugify";
 import { Button } from "@app/components/v4/ui/button";
 import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Stack, Inline } from "@app/components/v4/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -136,12 +136,14 @@ export const RoleListRoleSheet = ({
           </form>
         </SheetBody>
         <SheetFooter>
-          <Button variant="ghost" disabled={pending} onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" form="project-role-form" loading={pending}>
-            {duplicate ? "Duplicate role" : "Create role"}
-          </Button>
+          <Inline gap={8} justify="end">
+            <Button variant="ghost" disabled={pending} onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" form="project-role-form" loading={pending}>
+              {duplicate ? "Duplicate role" : "Create role"}
+            </Button>
+          </Inline>
         </SheetFooter>
       </SheetContent>
     </Sheet>

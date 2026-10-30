@@ -22,7 +22,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Stack, Inline } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
 import {
   Sheet,
@@ -160,12 +160,14 @@ const TemplateSheet = ({
           </form>
         </SheetBody>
         <SheetFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" form="identity-auth-template">
-            {isEdit ? "Update template" : "Create template"}
-          </Button>
+          <Inline gap={8} justify="end">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" form="identity-auth-template">
+              {isEdit ? "Update template" : "Create template"}
+            </Button>
+          </Inline>
         </SheetFooter>
       </SheetContent>
     </Sheet>

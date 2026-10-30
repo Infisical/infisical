@@ -12,7 +12,7 @@ import {
 } from "@app/components/v4/ui/dialog";
 import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Stack, Inline } from "@app/components/v4/ui/layout";
 import {
   Sheet,
   SheetBody,
@@ -271,12 +271,14 @@ export const ProjectRoleSheet = ({
           </form>
         </SheetBody>
         <SheetFooter>
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" form={formId} variant="primary">
-            {mode === "update" ? "Save changes" : "Duplicate role"}
-          </Button>
+          <Inline gap={8} justify="end">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form={formId} variant="primary">
+              {mode === "update" ? "Save changes" : "Duplicate role"}
+            </Button>
+          </Inline>
         </SheetFooter>
       </SheetContent>
     </Sheet>
