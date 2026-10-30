@@ -136,7 +136,10 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
 
 - **Never put the user in `userId`.** Ownership is `userId` or `identityId` alone (`isSessionOwnedBy`, the list's actor
   filter), so a user in `userId` would see the session and its logs. The DB check
-  `agent_vault_sessions_on_behalf_of_check` keeps an on-behalf-of session an identity's.
+  `agent_vault_sessions_on_behalf_of_check` keeps an on-behalf-of session an identity's. During a rolling upgrade, a pod
+  from before these columns resolves the session as the identity's own (its reach and personal values), which is no
+  more than the identity can mint for itself. With the user in `userId`, that pod would resolve it with the user's
+  reach and no delegation check.
 - **`onBehalfOfUserName` is what marks the session on-behalf-of** once deleting the user sets the id to NULL, the
   same lesson as `actorType`. A session with the name and no id is orphaned: it reads as revoked
   (`isOrphanedSession`) and resolve refuses it, rather than resolving as the identity's own session with the
