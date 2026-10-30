@@ -97,13 +97,18 @@ const IMPORT_ROTATION_CONCURRENCY = 5;
 
 export const MAX_ROTATIONS_PER_IMPORT = 50;
 
-const toResultMessage = (err: unknown, fallback: string) =>
-  err instanceof BadRequestError ||
-  err instanceof NotFoundError ||
-  err instanceof ForbiddenRequestError ||
-  err instanceof ForbiddenError
-    ? err.message
-    : fallback;
+const toResultMessage = (err: unknown, fallback: string, logMessage: string) => {
+  if (
+    err instanceof BadRequestError ||
+    err instanceof NotFoundError ||
+    err instanceof ForbiddenRequestError ||
+    err instanceof ForbiddenError
+  ) {
+    return err.message;
+  }
+  logger.error(err, logMessage);
+  return fallback;
+};
 
 const withScanTimeout = async <T>(scan: Promise<T>, controller: AbortController, timeoutMs: number): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -787,7 +792,11 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       } catch (err) {
         return {
           rotationStatus: ROTATION_STATUS.Failed,
-          rotationMessage: toResultMessage(err, "Failed to set the rotation account")
+          rotationMessage: toResultMessage(
+            err,
+            "Failed to set the rotation account",
+            `PAM discovery import could not set the rotation account [accountId=${accountId}] [rotationAccountId=${rotationAccountId}]`
+          )
         };
       }
       const { accountName, rotationAccountName } = names;
@@ -805,7 +814,11 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         .rotateNow({ accountId, projectId, ...ctx })
         .catch((err: unknown) => ({
           rotationStatus: ROTATION_STATUS.Failed,
-          message: toResultMessage(err, "Rotation failed")
+          message: toResultMessage(
+            err,
+            "Rotation failed",
+            `PAM discovery import rotation failed [accountId=${accountId}]`
+          )
         }));
       await auditLogService.createAuditLog({
         ...auditLogInfo,
@@ -886,7 +899,11 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           return {
             discoveredAccountId: item.discoveredAccountId,
             status: PamDiscoveryImportStatus.Error,
-            message: toResultMessage(err, "Import failed")
+            message: toResultMessage(
+              err,
+              "Import failed",
+              `PAM discovery import failed [sourceId=${sourceId}] [discoveredAccountId=${item.discoveredAccountId}]`
+            )
           };
         }
       })
