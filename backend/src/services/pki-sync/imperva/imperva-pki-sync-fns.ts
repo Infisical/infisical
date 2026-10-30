@@ -389,6 +389,18 @@ export const impervaPkiSyncFactory = ({
 
           const externalIdentifier = buildImpervaExternalIdentifier(siteId, authType);
 
+          // Claimed up front so the slot is never held by a live certificate no record points at,
+          // and released below when Imperva answers that it wrote nothing.
+          const claimedRecord = certificate.certificateId
+            ? existingSyncRecords.find(
+                (record: TCertificateSyncs) => record.certificateId === certificate.certificateId
+              )
+            : undefined;
+
+          if (certificate.certificateId) {
+            await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificate.certificateId, externalIdentifier);
+          }
+
           try {
             await uploadCustomCertificate(makeRequest, credentials, siteId, {
               certificate: buildImpervaCertificatePayload(certificate.cert, certificate.certificateChain),
@@ -398,16 +410,6 @@ export const impervaPkiSyncFactory = ({
 
             occupiedSlots.add(externalIdentifier);
             uploaded += 1;
-
-            // Claimed only once the upload has landed. A claim for a slot nothing was written to
-            // would stop another sync cleaning up a certificate this one never placed.
-            if (certificate.certificateId) {
-              await certificateSyncDAL.claimExternalIdentifier(
-                pkiSync.id,
-                certificate.certificateId,
-                externalIdentifier
-              );
-            }
 
             deploymentWarning = await buildDeploymentWarning(makeRequest, credentials, siteId, authType);
             if (deploymentWarning) {
@@ -446,6 +448,18 @@ export const impervaPkiSyncFactory = ({
               `Imperva PKI sync [syncId=${pkiSync.id}]: uploaded ${authType} custom certificate to site ${siteLabel}`
             );
           } catch (error: unknown) {
+            // Imperva answering a refusal means nothing was written, so the claim has to go back to
+            // whatever it said before. A timeout says nothing either way, so the claim stands.
+            if (certificate.certificateId && !isImpervaRetryable(error)) {
+              if (claimedRecord) {
+                await certificateSyncDAL.updateById(claimedRecord.id, {
+                  externalIdentifier: claimedRecord.externalIdentifier
+                });
+              } else {
+                await certificateSyncDAL.removeCertificates(pkiSync.id, [certificate.certificateId]);
+              }
+            }
+
             const errorMessage = describeImpervaUploadFailure(error);
             uploadRetryable = isImpervaRetryable(error);
             failedUploads.push({ name: certificate.certName, error: errorMessage });

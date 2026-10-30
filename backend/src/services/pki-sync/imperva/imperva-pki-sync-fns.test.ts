@@ -374,7 +374,59 @@ describe("Imperva retry decisions", () => {
     expect(isImpervaRetryable(new Error("socket hang up"))).toBe(true);
   });
 
-  test("does not claim a slot when the upload is rejected", async () => {
+  test("releases the claim when Imperva refuses, and keeps it when the answer is unknown", async () => {
+    const { impervaPkiSyncFactory } = await import("./imperva-pki-sync-fns");
+    const { ImpervaRequestError } = await import("@app/services/app-connection/imperva/imperva-connection-fns");
+
+    const run = async (error: Error, existing: Array<Record<string, unknown>>) => {
+      impervaRequest.mockReset();
+      impervaRequest.mockRejectedValue(error);
+      const removeCertificates = vi.fn();
+      const updateById = vi.fn();
+      const factory = impervaPkiSyncFactory({
+        certificateSyncDAL: {
+          findByPkiSyncId: vi.fn().mockResolvedValue(existing),
+          removeCertificates,
+          addCertificates: vi.fn(),
+          findByPkiSyncAndCertificate: vi.fn().mockResolvedValue(undefined),
+          updateById,
+          updateSyncStatus: vi.fn(),
+          findExternalIdentifiersInUse: vi.fn().mockResolvedValue(new Set<string>()),
+          claimExternalIdentifier: vi.fn()
+        } as never,
+        certificateDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never
+      });
+
+      await expect(
+        factory.syncCertificates(
+          {
+            id: "sync-1",
+            destination: "imperva",
+            projectId: "project-1",
+            destinationConfig: { siteId: "111", siteName: "waf.example.com" },
+            syncOptions: { canRemoveCertificates: true },
+            connection: { credentials: { apiId: "id", apiKey: "key" }, gatewayId: null, gatewayPoolId: null }
+          } as never,
+          { leaf: { cert: RSA_CERT_PEM, privateKey: "key", certificateId: "cert-1" } } as never
+        )
+      ).rejects.toThrow();
+
+      return { removeCertificates, updateById };
+    };
+
+    const refused = await run(new ImpervaRequestError({ message: "Invalid input", status: 400 }), []);
+    expect(refused.removeCertificates).toHaveBeenCalledWith("sync-1", ["cert-1"]);
+
+    const renewed = await run(new ImpervaRequestError({ message: "Invalid input", status: 400 }), [
+      { id: "row-1", certificateId: "cert-1", externalIdentifier: "111:ECC" }
+    ]);
+    expect(renewed.updateById).toHaveBeenCalledWith("row-1", { externalIdentifier: "111:ECC" });
+
+    const unknown = await run(new Error("socket hang up"), []);
+    expect(unknown.removeCertificates).not.toHaveBeenCalled();
+  });
+
+  test("marks a refused upload as final rather than retrying it", async () => {
     const { impervaPkiSyncFactory } = await import("./imperva-pki-sync-fns");
     const { ImpervaRequestError } = await import("@app/services/app-connection/imperva/imperva-connection-fns");
 
@@ -410,6 +462,6 @@ describe("Imperva retry decisions", () => {
       )
     ).rejects.toMatchObject({ shouldRetry: false });
 
-    expect(claimExternalIdentifier).not.toHaveBeenCalled();
+    expect(claimExternalIdentifier).toHaveBeenCalledWith("sync-1", "cert-1", "111:RSA");
   });
 });
