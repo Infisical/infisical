@@ -18,6 +18,17 @@ export const SALESFORCE_API_VERSION = "v65.0";
 const normalizeInstanceUrl = (instanceUrl: string) =>
   removeTrailingSlash(instanceUrl.startsWith("http") ? instanceUrl : `https://${instanceUrl}`);
 
+// Salesforce returns its links as paths on the instance the connection authenticated with
+export const resolveSalesforcePath = (instanceUrl: string, path: string) => {
+  if (!path.startsWith("/")) {
+    throw new BadRequestError({
+      message:
+        "Salesforce returned a link outside the connection's instance URL. Check that the instance URL points to your Salesforce org."
+    });
+  }
+  return `${instanceUrl}${path}`;
+};
+
 export const getSalesforceConnectionListItem = () => {
   return {
     name: "Salesforce" as const,
@@ -66,7 +77,7 @@ export const listSalesforceConnectionOauthApps = async (
   let nextUrl: string | null = `/services/data/${SALESFORCE_API_VERSION}/apps/oauth/usage`;
 
   for (let page = 0; page < SALESFORCE_OAUTH_APPS_PAGE_LIMIT && nextUrl; page += 1) {
-    const url: string = `${instanceUrl}${nextUrl}`;
+    const url = resolveSalesforcePath(instanceUrl, nextUrl);
     // eslint-disable-next-line no-await-in-loop
     const response = await request.request<TSalesforceOauthUsageResponse>({
       method: "GET",
