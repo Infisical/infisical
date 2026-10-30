@@ -50,7 +50,8 @@ Every sidecar starts its proxy from the same proxy token, so you create the prox
 - The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A [Modal](https://modal.com) account, with a [Modal token](https://modal.com/docs/reference/cli/token) on the machine that runs your code (run `modal setup`, or set `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`)
-- The Modal SDK for your language: the [`modal`](https://pypi.org/project/modal/) and [`requests`](https://pypi.org/project/requests/) packages for Python, the [`modal`](https://www.npmjs.com/package/modal) package for TypeScript, or the [Modal Go SDK](https://pkg.go.dev/github.com/modal-labs/modal-client/go)
+- The Modal SDK for your language: the [`modal`](https://pypi.org/project/modal/) package for Python, the [`modal`](https://www.npmjs.com/package/modal) package for TypeScript, or the [Modal Go SDK](https://pkg.go.dev/github.com/modal-labs/modal-client/go)
+- For Python, the [Infisical Python SDK](/sdks/languages/python)
 
 ## Step 1: Set up Agent Vault
 
@@ -119,7 +120,7 @@ app = modal.App.lookup("agent-vault-sandboxes", create_if_missing=True)
 image = modal.Image.from_registry("node:24-bookworm-slim").dockerfile_commands(
     [
         "RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*",
-        "RUN npm install -g @infisical/cli@<cli-version> @anthropic-ai/claude-code",
+        "RUN npm install -g @infisical/cli @anthropic-ai/claude-code",
         "RUN useradd --create-home --uid 2000 agent",
     ]
 ).build(app)
@@ -137,7 +138,7 @@ export const image = await modal.images
   .fromRegistry("node:24-bookworm-slim")
   .dockerfileCommands([
     "RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*",
-    "RUN npm install -g @infisical/cli@<cli-version> @anthropic-ai/claude-code",
+    "RUN npm install -g @infisical/cli @anthropic-ai/claude-code",
     "RUN useradd --create-home --uid 2000 agent",
   ])
   .build(app);
@@ -160,7 +161,7 @@ func buildImage(ctx context.Context, mc *modal.Client) (*modal.App, *modal.Image
 	}
 	image, err := mc.Images.FromRegistry("node:24-bookworm-slim", nil).DockerfileCommands([]string{
 		"RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*",
-		"RUN npm install -g @infisical/cli@<cli-version> @anthropic-ai/claude-code",
+		"RUN npm install -g @infisical/cli @anthropic-ai/claude-code",
 		"RUN useradd --create-home --uid 2000 agent",
 	}, nil).Build(ctx, app, nil)
 	if err != nil {
@@ -172,7 +173,6 @@ func buildImage(ctx context.Context, mc *modal.Client) (*modal.App, *modal.Image
 
 </CodeGroup>
 
-- **Infisical CLI:** replace `<cli-version>` with `<min-cli-version>` or later, because earlier versions can't start a proxy from a proxy token
 - **The `agent` user:** Modal runs commands as root, and Claude Code won't skip its permission prompts as root, so the agent runs as this user
 - **Building the image first:** Modal can't build a sidecar's image when it starts the sidecar, so the code builds the image before it creates any sandbox
 
@@ -187,7 +187,7 @@ This function runs one prompt in a new sandbox. Replace `<access-bundle-name>` a
 import os
 
 import modal
-import requests
+from infisical_sdk import InfisicalSDKClient
 
 from sandbox_image import app, image
 
@@ -222,27 +222,15 @@ AGENT_ENV = {
 
 def run_agent(prompt: str) -> str:
     # The machine identity's credentials stay here and never enter the sandbox.
-    login = requests.post(
-        f"{INFISICAL_URL}/api/v1/auth/universal-auth/login",
-        json={
-            "clientId": os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"],
-            "clientSecret": os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"],
-        },
-        timeout=30,
+    infisical = InfisicalSDKClient(host=INFISICAL_URL)
+    infisical.auth.universal_auth.login(
+        client_id=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"],
+        client_secret=os.environ["INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"],
     )
-    login.raise_for_status()
-    headers = {"Authorization": f"Bearer {login.json()['accessToken']}"}
 
     # One session per run. The ttl outlasts the sandbox's 15-minute timeout, so
     # the agent can't lose access mid-run.
-    created = requests.post(
-        f"{INFISICAL_URL}/api/v1/agent-vault/sessions",
-        headers=headers,
-        json={"accessBundles": [ACCESS_BUNDLE], "ttl": "20m"},
-        timeout=30,
-    )
-    created.raise_for_status()
-    session = created.json()["session"]
+    session = infisical.agent_vault.sessions.create(access_bundle=ACCESS_BUNDLE, ttl="20m")
 
     sandbox = None
     try:
@@ -280,7 +268,7 @@ def run_agent(prompt: str) -> str:
         )
         # Modal shows each command's arguments in its dashboard, so the token
         # and the prompt go on stdin instead.
-        agent.stdin.write(session["token"] + "\n" + prompt)
+        agent.stdin.write(session.token + "\n" + prompt)
         agent.stdin.write_eof()
         agent.stdin.drain()
         output = agent.stdout.read()
@@ -290,11 +278,7 @@ def run_agent(prompt: str) -> str:
     finally:
         # Revoke first, so the session ends even if terminating fails.
         try:
-            requests.post(
-                f"{INFISICAL_URL}/api/v1/agent-vault/sessions/{session['id']}/revoke",
-                headers=headers,
-                timeout=30,
-            ).raise_for_status()
+            infisical.agent_vault.sessions.revoke(session_id=session.id)
         finally:
             if sandbox:
                 sandbox.terminate()
