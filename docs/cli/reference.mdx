@@ -25,7 +25,7 @@ import { CLIPage, CLICommand } from "/snippets/CLIPage.jsx";
     { name: "--org", value: "<string>", type: "string", description: "The organization to use for this command, by name, slug, or ID. It overrides the profile's organization without changing it. Can also be set with `INFISICAL_ORG`." },
     { name: "--profile", value: "<string>", type: "string", description: "The login profile to use for this command. Run `infisical profile list` to see your profiles. Can also be set with `INFISICAL_PROFILE`." },
     { name: "--silent", type: "bool", description: "Hide update notices, the notice naming the profile in use, and the warning that a token is overriding your login. Useful in scripts and CI." },
-    { name: "--telemetry", type: "bool", default: "true", description: "Send usage telemetry to Infisical." },
+    { name: "--telemetry", type: "bool", default: "true", description: "Send usage telemetry to Infisical. Pass `--telemetry=false` to opt out for one command. To opt out without the flag, set `INFISICAL_DISABLE_TELEMETRY` or `DO_NOT_TRACK` to any value other than empty, `0`, or `false`. An explicitly passed `--telemetry` takes precedence over both variables." },
   ]}
 >
 
