@@ -410,3 +410,7 @@ sm
 (?i)unscoped
 (?i)rsync
 (?i)zsh
+
+# GitHub product name that GitHub itself lowercases in permission labels, such as
+# "Organization dependabot secrets".
+(?i)Dependabot

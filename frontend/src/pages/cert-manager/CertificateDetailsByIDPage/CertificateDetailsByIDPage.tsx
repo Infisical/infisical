@@ -232,27 +232,27 @@ const Page = () => {
 
   const canReadCertificate = Boolean(
     certSubject &&
-      (permission.can(ProjectPermissionCertificateActions.Read, certSubject) ||
-        appPermissionData?.permission?.can(
-          PkiApplicationResourceActions.Read,
-          PkiApplicationResourceSub.Certificates
-        ))
+    (permission.can(ProjectPermissionCertificateActions.Read, certSubject) ||
+      appPermissionData?.permission?.can(
+        PkiApplicationResourceActions.Read,
+        PkiApplicationResourceSub.Certificates
+      ))
   );
   const canEditCertificate = Boolean(
     certSubject &&
-      (permission.can(ProjectPermissionCertificateActions.Edit, certSubject) ||
-        appPermissionData?.permission?.can(
-          PkiApplicationResourceActions.Edit,
-          PkiApplicationResourceSub.Certificates
-        ))
+    (permission.can(ProjectPermissionCertificateActions.Edit, certSubject) ||
+      appPermissionData?.permission?.can(
+        PkiApplicationResourceActions.Edit,
+        PkiApplicationResourceSub.Certificates
+      ))
   );
   const canDeleteCertificate = Boolean(
     certSubject &&
-      (permission.can(ProjectPermissionCertificateActions.Delete, certSubject) ||
-        appPermissionData?.permission?.can(
-          PkiApplicationResourceActions.Delete,
-          PkiApplicationResourceSub.Certificates
-        ))
+    (permission.can(ProjectPermissionCertificateActions.Delete, certSubject) ||
+      appPermissionData?.permission?.can(
+        PkiApplicationResourceActions.Delete,
+        PkiApplicationResourceSub.Certificates
+      ))
   );
   const canEditPkiSyncs =
     permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs) ||

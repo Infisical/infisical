@@ -1,6 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, OrgMembershipStatus, ProjectMembershipRole, TAgentVaultProxies } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  TAgentVaultProxies,
+  TAgentVaultSessions
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultProxyActions,
@@ -22,6 +28,8 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
@@ -41,6 +49,7 @@ import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-sessio
 import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
+import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
@@ -65,8 +74,10 @@ import { TAgentVaultProxyDALFactory } from "./agent-vault-proxy-dal";
 import {
   TAgentVaultProxyConfig,
   TAgentVaultProxyScoped,
+  TAuthorizeSessionDTO,
   TBootstrapProxyDTO,
   TCreateProxyDTO,
+  TGetSessionSkillsDTO,
   THeartbeatDTO,
   TListProxiesDTO,
   TProxyByIdDTO,
@@ -97,6 +108,8 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: TSessionLogLicenseService;
@@ -142,6 +155,8 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultSessionLogConfigDAL,
   membershipDAL,
   orgDAL,
+  projectDAL,
+  userDAL,
   permissionService,
   kmsService,
   licenseService,
@@ -650,21 +665,9 @@ export const agentVaultProxyServiceFactory = ({
     return resolved;
   };
 
-  // Shared by resolve and credential refresh, so a refresh can never reach a service resolve would not.
-  const $authorizeSession = async ({
-    proxyId,
-    orgId,
-    sessionToken
-  }: Pick<TResolveSessionDTO, "proxyId" | "orgId" | "sessionToken">) => {
-    const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
-    if (!session) throw new NotFoundError({ message: "Session not found" });
-
-    // A mismatch is 404, not 403, so a proxy cannot probe another tenant for session ids.
-    const proxy = await agentVaultProxyDAL.findByIdWithOrg(proxyId);
-    if (!proxy || proxy.projectId !== session.projectId || proxy.orgId !== orgId) {
-      throw new NotFoundError({ message: "Session not found" });
-    }
-
+  // Shared by the proxy's session routes and the CLI's skills fetch, so none of them can reach a bundle resolve
+  // would not. Returns the bundles the session's owner reaches now, null for an admin.
+  const $authorizeSessionOwner = async (session: TAgentVaultSessions, orgId: string) => {
     if (session.revokedAt) throw new UnauthorizedError({ message: "This session has been revoked" });
     if (session.expiresAt && session.expiresAt <= new Date()) {
       throw new UnauthorizedError({ message: "This session has expired" });
@@ -721,14 +724,26 @@ export const agentVaultProxyServiceFactory = ({
       throw error;
     }
 
-    const accessBundleIds = isAdmin
+    return isAdmin
       ? null
-      : await findReachableAccessBundleIds(membershipDAL, {
+      : findReachableAccessBundleIds(membershipDAL, {
           projectId: session.projectId,
           actor,
           groupIds: liveGroupIds
         });
+  };
 
+  const $authorizeSession = async ({ proxyId, orgId, sessionToken }: TAuthorizeSessionDTO) => {
+    const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
+    if (!session) throw new NotFoundError({ message: "Session not found" });
+
+    // A mismatch is 404, not 403, so a proxy cannot probe another tenant for session ids.
+    const proxy = await agentVaultProxyDAL.findByIdWithOrg(proxyId);
+    if (!proxy || proxy.projectId !== session.projectId || proxy.orgId !== orgId) {
+      throw new NotFoundError({ message: "Session not found" });
+    }
+
+    const accessBundleIds = await $authorizeSessionOwner(session, orgId);
     return { session, proxy, accessBundleIds };
   };
 
@@ -973,6 +988,55 @@ export const agentVaultProxyServiceFactory = ({
     );
   };
 
+  // Called by the CLI once when an agent starts: the latest files of every skill on the session's reachable bundles.
+  // The session token is the only credential, so an unknown one gets the same 401 as any other refusal.
+  const getSessionSkills = async ({ sessionToken }: TGetSessionSkillsDTO) => {
+    const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
+    const project = session ? await projectDAL.findById(session.projectId) : undefined;
+    if (!session || !project) {
+      throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
+    }
+
+    const accessBundleIds = await $authorizeSessionOwner(session, project.orgId);
+
+    const rows = await agentVaultResolveDAL.findSessionSkills({
+      sessionId: session.id,
+      projectId: session.projectId,
+      accessBundleIds
+    });
+
+    const decryptor = rows.length
+      ? (
+          await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId: session.projectId
+          })
+        ).decryptor
+      : null;
+
+    const skills = rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      version: row.version,
+      sha256: row.sha256,
+      files: deserializeSkillFiles(decryptor!({ cipherTextBlob: row.encryptedFiles })),
+      accessBundleId: row.accessBundleId,
+      accessBundleName: row.accessBundleName
+    }));
+
+    // The session snapshots its owner at mint. Name a user as they are now, as PAM does, and fall back to the
+    // snapshot for one who is gone.
+    let ownerUser: { username: string; email: string | null } | null = null;
+    if (session.userId) {
+      const user = await userDAL.findById(session.userId);
+      ownerUser = user
+        ? { username: user.username, email: user.email ?? null }
+        : { username: session.actorEmail ?? session.actorName, email: session.actorEmail ?? null };
+    }
+
+    return { skills, session, ownerUser, orgId: project.orgId };
+  };
+
   return {
     getProxyForAuth,
     listProxies,
@@ -985,6 +1049,7 @@ export const agentVaultProxyServiceFactory = ({
     heartbeat,
     resolveSession,
     refreshCredential,
-    reportMissingScopes
+    reportMissingScopes,
+    getSessionSkills
   };
 };

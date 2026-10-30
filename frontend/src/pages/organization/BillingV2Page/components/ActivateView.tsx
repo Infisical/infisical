@@ -169,7 +169,6 @@ export const ActivateView = ({
       });
     }, 400);
     return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, prod.id, plan.tier, cadence, quantitiesKey]);
 
   // Both figures come from the preview. "Charged today" differs by path: adding to a live subscription

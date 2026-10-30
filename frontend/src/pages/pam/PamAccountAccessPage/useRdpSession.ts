@@ -181,7 +181,6 @@ export const useRdpSession = ({
           await sessionInfo.run();
         })
         .catch((err) => {
-          // eslint-disable-next-line no-console
           console.error("RDP session failed:", err);
           if (!isCurrent()) return;
           setError(RDP_SESSION_FAILED_MESSAGE);
@@ -222,7 +221,6 @@ export const useRdpSession = ({
       teardown();
       removeInnerHeightOverride();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const disconnect = useCallback(() => {

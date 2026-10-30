@@ -205,7 +205,7 @@ WAIT_FOR_PROXY = (
 START_AGENT = r"""
 IFS= read -r INFISICAL_AGENT_VAULT_SESSION_TOKEN
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN
-exec infisical agent-vault run --telemetry=false --proxy agent-proxy:17323 \
+exec infisical agent-vault run --telemetry=false --no-skills --proxy agent-proxy:17323 \
   -- claude -p --permission-mode bypassPermissions
 """
 
@@ -319,7 +319,7 @@ const WAIT_FOR_PROXY =
 const START_AGENT = String.raw`
 IFS= read -r INFISICAL_AGENT_VAULT_SESSION_TOKEN
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN
-exec infisical agent-vault run --telemetry=false --proxy agent-proxy:17323 \
+exec infisical agent-vault run --telemetry=false --no-skills --proxy agent-proxy:17323 \
   -- claude -p --permission-mode bypassPermissions
 `;
 
@@ -443,7 +443,7 @@ const waitForProxy = "for i in $(seq 60); do " +
 const startAgent = `
 IFS= read -r INFISICAL_AGENT_VAULT_SESSION_TOKEN
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN
-exec infisical agent-vault run --telemetry=false --proxy agent-proxy:17323 \
+exec infisical agent-vault run --telemetry=false --no-skills --proxy agent-proxy:17323 \
   -- claude -p --permission-mode bypassPermissions
 `
 
@@ -606,7 +606,7 @@ func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *moda
 
 </CodeGroup>
 
-For more about creating sessions from code, see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api). For the flags the agent starts with, see the [`agent-vault run` CLI reference](/cli/reference#agent-vault-run).
+For more about creating sessions from code, see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api). For the flags the agent starts with, see the [`agent-vault run` CLI reference](/cli/reference#agent-vault-run). The script that starts the agent passes `--no-skills`, because the agent's container can't reach Infisical to download [skills](/documentation/platform/agent-vault/skills).
 
 To run a different agent, install it in [the image](#step-3-build-the-sandbox-image), replace the `claude` command in the script that starts the agent with the agent's non-interactive command, such as `codex exec`, and replace the Claude Code settings in the agent's environment variables. For an agent you built yourself, run it the same way, or set the proxy in its HTTP client as [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent#step-4-send-requests-through-the-proxy) describes.
 

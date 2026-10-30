@@ -744,6 +744,7 @@
                     ]
                   },
                   "documentation/platform/agent-vault/variables",
+                  "documentation/platform/agent-vault/skills",
                   {
                     "group": "Sessions",
                     "root": "documentation/platform/agent-vault/sessions",
@@ -4567,6 +4568,22 @@
                       "api-reference/endpoints/agent-vault-variables/update",
                       "api-reference/endpoints/agent-vault-variables/delete",
                       "api-reference/endpoints/agent-vault-variables/get-value"
+                    ]
+                  },
+                  {
+                    "group": "Skills",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-skills/list",
+                      "api-reference/endpoints/agent-vault-skills/get",
+                      "api-reference/endpoints/agent-vault-skills/create",
+                      "api-reference/endpoints/agent-vault-skills/delete",
+                      "api-reference/endpoints/agent-vault-skills/list-versions",
+                      "api-reference/endpoints/agent-vault-skills/get-version",
+                      "api-reference/endpoints/agent-vault-skills/update",
+                      "api-reference/endpoints/agent-vault-skills/restore-version",
+                      "api-reference/endpoints/agent-vault-skills/list-bundle-skills",
+                      "api-reference/endpoints/agent-vault-skills/add",
+                      "api-reference/endpoints/agent-vault-skills/remove"
                     ]
                   },
                   {

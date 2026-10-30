@@ -114,7 +114,7 @@ export const MemberRoleDetailsSection = ({
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
 
   const handleRoleDelete = async () => {
-    const { id } = popUp?.deleteRole?.data as TProjectRole;
+    const { id } = popUp.deleteRole.data as TProjectRole;
     const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
     await updateUserWorkspaceRole.mutateAsync({
       projectId,

@@ -14,8 +14,8 @@ import {
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker/GatewayPicker";
 import { useOrganization, useSubscription } from "@app/context";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 
 import { HostForm } from "./schemas";
 

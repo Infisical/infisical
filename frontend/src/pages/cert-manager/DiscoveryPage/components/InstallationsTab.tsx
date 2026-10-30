@@ -57,8 +57,8 @@ import {
   useCanRescanPkiInstallations
 } from "@app/pages/cert-manager/pki-discovery-utils";
 
-import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 import { DeleteInstallationModal } from "./DeleteInstallationModal";
+import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 import { EditInstallationModal } from "./EditInstallationModal";
 import {
   RESCAN_POLL_INTERVAL_MS,

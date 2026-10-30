@@ -269,7 +269,6 @@ export const AuditLogStreamTable = () => {
               <TableBody>
                 {isPending &&
                   Array.from({ length: 5 }).map((_, i) => (
-                    // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={`log-stream-skeleton-${i + 1}`}>
                       <TableCell>
                         <Skeleton className="h-4 w-full" />
