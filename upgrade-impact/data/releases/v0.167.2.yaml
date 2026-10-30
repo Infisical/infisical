@@ -1,0 +1,108 @@
+version: v0.167.2
+releasedAt: 2026-10-23T23:16:46+03:00
+sourceTag: v0.167.2
+previousTag: v0.167.1
+impactLevel: medium
+summary: Agent Vault session logs can now use instance-wide S3 storage, and
+  Agent Vault proxies now start from proxy tokens. Both changes add startup
+  migrations and may require operator setup or CLI updates.
+requiresDbMigration: true
+breakingChanges:
+  - title: Agent Vault proxy tokens
+    description: Agent Vault proxies now start with proxy tokens and bootstrap
+      against a new token-auth flow. Older CLIs cannot start a proxy with this
+      flow.
+    action: Upgrade the Infisical CLI used to start Agent Vault proxies before
+      upgrading the server.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/ee/routes/v1/agent-vault-routers/agent-vault-proxy-agent-router.ts
+        path: backend/src/ee/routes/v1/agent-vault-routers/agent-vault-proxy-agent-router.ts
+        description: Proxy bootstrap now requires proxy access token
+      - type: file
+        ref: backend/src/ee/routes/v1/agent-vault-routers/agent-vault-proxy-router.ts
+        path: backend/src/ee/routes/v1/agent-vault-routers/agent-vault-proxy-router.ts
+        description: Create and rotate now issue proxy tokens
+      - type: pr
+        ref: "#8822"
+        url: https://github.com/Infisical/infisical/pull/8822
+        description: Older CLIs cannot start proxies
+dbSchemaChanges:
+  - title: Session log storage type
+    description: Adds a storageType column for Agent Vault session logs. Existing
+      enabled rows with bucket settings are backfilled to external storage; all
+      other rows are reset to disabled with cleared bucket fields.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261014120000_agent-vault-session-log-storage-type.ts
+        path: backend/src/db/migrations/20261014120000_agent-vault-session-log-storage-type.ts
+        description: Adds storageType and backfills existing rows
+      - type: file
+        ref: backend/src/ee/services/agent-vault-session-log/agent-vault-session-log-storage-fns.ts
+        path: backend/src/ee/services/agent-vault-session-log/agent-vault-session-log-storage-fns.ts
+        description: Unsaved config defaults to enabled default storage
+  - title: Agent Vault proxy CA columns
+    description: Adds stored certificate authority columns to Agent Vault proxies so
+      each proxy can keep its CA certificate and encrypted private key.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261022093358_agent-vault-proxy-stored-ca.ts
+        path: backend/src/db/migrations/20261022093358_agent-vault-proxy-stored-ca.ts
+        description: Adds proxy CA certificate and key columns
+      - type: file
+        ref: backend/src/ee/services/agent-vault-proxy/agent-vault-proxy-service.ts
+        path: backend/src/ee/services/agent-vault-proxy/agent-vault-proxy-service.ts
+        description: Proxy create and rotate persist CA material
+configChanges:
+  - title: Session log default storage
+    description: You can now enable instance-wide default storage for Agent Vault
+      session logs with S3 settings. If you set only part of the S3
+      configuration, backend startup fails.
+    action: If you want default session log storage, set OBJECT_STORAGE_S3_BUCKET
+      and OBJECT_STORAGE_S3_REGION together, plus optional prefix and
+      credentials.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/lib/config/env.ts
+        path: backend/src/lib/config/env.ts
+        description: Partial S3 env groups fail validation
+      - type: file
+        ref: docs/self-hosting/guides/session-log-storage.mdx
+        path: docs/self-hosting/guides/session-log-storage.mdx
+        description: Lists required S3 environment variables
+      - type: file
+        ref: docs/self-hosting/configuration/envars.mdx
+        path: docs/self-hosting/configuration/envars.mdx
+        description: Self-hosted env docs include object storage settings
+deploymentNotes:
+  - title: Session log S3 bucket setup
+    description: Default session log storage needs an S3 bucket, CORS for SITE_URL,
+      lifecycle rules for retention tags, and IAM permissions for list, read,
+      write, and tagging.
+    action: Create the S3 bucket and apply the documented CORS, lifecycle, and IAM
+      settings before enabling default session log storage.
+    confidence: high
+    evidence:
+      - type: file
+        ref: docs/self-hosting/guides/session-log-storage.mdx
+        path: docs/self-hosting/guides/session-log-storage.mdx
+        description: Bucket, CORS, lifecycle, and IAM steps
+      - type: file
+        ref: backend/src/ee/services/agent-vault-session-log/agent-vault-session-log-storage-fns.ts
+        path: backend/src/ee/services/agent-vault-session-log/agent-vault-session-log-storage-fns.ts
+        description: Default storage unavailable surfaces operator-managed errors
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-10-23T21:03:25.941Z
+  sourceRange:
+    from: v0.167.1
+    to: v0.167.2
