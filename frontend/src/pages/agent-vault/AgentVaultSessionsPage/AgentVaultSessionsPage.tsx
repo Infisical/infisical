@@ -137,7 +137,7 @@ export const AgentVaultSessionsPage = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
-  const { sessionId: openSessionId, openSheet } = useAgentVaultSheetState();
+  const { id: openSessionId, openSheet } = useAgentVaultSheetState();
 
   const { data, isPending } = useListAgentVaultSessions({
     scope: isAdmin ? scope : AgentVaultSessionScope.Mine,

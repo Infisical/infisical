@@ -14,6 +14,7 @@ import { TAgentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-
 import { TAgentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { TAgentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
 import { TAgentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { TAgentVaultSkillServiceFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-service";
 import { TAgentVaultVariableServiceFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-service";
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
@@ -406,6 +407,7 @@ declare module "fastify" {
     agentVaultPersonalValue: TAgentVaultPersonalValueServiceFactory;
     agentVaultProxy: TAgentVaultProxyServiceFactory;
     agentVaultSession: TAgentVaultSessionServiceFactory;
+    agentVaultSkill: TAgentVaultSkillServiceFactory;
     agentVaultSessionLog: TAgentVaultSessionLogServiceFactory;
     agentVaultMembership: TAgentVaultMembershipServiceFactory;
     certManagerInstance: TCertManagerInstanceServiceFactory;

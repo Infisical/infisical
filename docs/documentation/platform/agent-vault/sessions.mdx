@@ -12,7 +12,7 @@ Every session is scoped to one access bundle and expires on a schedule you set. 
 Anyone granted at least one access bundle can create a session. Admins can create one with any access bundle.
 
 <Tip>
-  If you want to create sessions programmatically, you can have a [machine identity](/documentation/platform/identities/machine-identities) create a new session for each run using [the CLI](/documentation/platform/agent-vault/sessions-cli) or [the API](/documentation/platform/agent-vault/sessions-api).
+  If you want to create sessions programmatically, you can have a [machine identity](/documentation/platform/identities/machine-identities) create a new session for each run using [the CLI](/documentation/platform/agent-vault/sessions-cli), [the API](/documentation/platform/agent-vault/sessions-api), or [the Python SDK](/sdks/languages/python#agent_vault-sessions).
 </Tip>
 
 <Tabs>
@@ -110,6 +110,8 @@ The access bundle is chosen when you create the session and can't be changed aft
 - If someone still has another grant on the bundle, such as through a group, revoking one grant doesn't affect their sessions
 - If you delete an access bundle, every session scoped to it stops getting credentials (the session still lists the bundle's name, so you can see what it was)
 - If you remove someone from Agent Vault, the proxy refuses every request on their sessions
+
+None of these changes removes the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, [delete the installed copies](/documentation/platform/agent-vault/skills#remove-installed-skills).
 
 <Note>
 If a session stops getting credentials because of a lost grant or a deleted bundle, the proxy still forwards the agent's requests, without credentials. Whether those requests reach the upstream host depends on the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).

@@ -828,6 +828,15 @@ export enum EventType {
   AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
   AGENT_VAULT_PERSONAL_VALUES_SET = "agent-vault-personal-values-set",
   AGENT_VAULT_PERSONAL_VALUES_DELETE = "agent-vault-personal-values-delete",
+  AGENT_VAULT_SKILL_CREATE = "agent-vault-skill-create",
+  AGENT_VAULT_SKILL_VERSION_CREATE = "agent-vault-skill-version-create",
+  AGENT_VAULT_SKILL_RENAME = "agent-vault-skill-rename",
+  AGENT_VAULT_SKILL_VERSION_RESTORE = "agent-vault-skill-version-restore",
+  AGENT_VAULT_SKILL_VERSION_VIEW = "agent-vault-skill-version-view",
+  AGENT_VAULT_SKILL_DELETE = "agent-vault-skill-delete",
+  AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD = "agent-vault-access-bundle-skill-add",
+  AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE = "agent-vault-access-bundle-skill-remove",
+  AGENT_VAULT_SKILLS_DELIVERED = "agent-vault-skills-delivered",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
@@ -6729,6 +6738,96 @@ interface AgentVaultPersonalValuesDeleteEvent {
   };
 }
 
+interface AgentVaultSkillCreateEvent {
+  type: EventType.AGENT_VAULT_SKILL_CREATE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+    sha256: string;
+  };
+}
+
+interface AgentVaultSkillVersionCreateEvent {
+  type: EventType.AGENT_VAULT_SKILL_VERSION_CREATE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+    sha256: string;
+  };
+}
+
+interface AgentVaultSkillRenameEvent {
+  type: EventType.AGENT_VAULT_SKILL_RENAME;
+  metadata: {
+    skillId: string;
+    oldName: string;
+    newName: string;
+  };
+}
+
+interface AgentVaultSkillVersionRestoreEvent {
+  type: EventType.AGENT_VAULT_SKILL_VERSION_RESTORE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+    restoredFromVersion: number;
+    sha256: string;
+  };
+}
+
+interface AgentVaultSkillVersionViewEvent {
+  type: EventType.AGENT_VAULT_SKILL_VERSION_VIEW;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+  };
+}
+
+interface AgentVaultSkillDeleteEvent {
+  type: EventType.AGENT_VAULT_SKILL_DELETE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    // The access bundles the skill was in when it was deleted.
+    removedFromBundles: { id: string; name: string }[];
+  };
+}
+
+interface AgentVaultAccessBundleSkillAddEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    accessBundleId: string;
+    accessBundleName: string;
+  };
+}
+
+interface AgentVaultAccessBundleSkillRemoveEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    accessBundleId: string;
+    accessBundleName: string;
+  };
+}
+
+// Recorded once per fetch when the CLI gets a session's skills at agent start, not when the agent reads them.
+interface AgentVaultSkillsDeliveredEvent {
+  type: EventType.AGENT_VAULT_SKILLS_DELIVERED;
+  metadata: {
+    sessionId: string;
+    accessBundleId: string;
+    accessBundleName: string;
+    skills: { skillId: string; skillName: string; version: number; sha256: string }[];
+  };
+}
+
 interface AgentVaultProductMemberAddEvent {
   type: EventType.AGENT_VAULT_MEMBER_ADD;
   metadata: {
@@ -8825,6 +8924,15 @@ export type Event =
   | AgentVaultVariableValueViewEvent
   | AgentVaultPersonalValuesSetEvent
   | AgentVaultPersonalValuesDeleteEvent
+  | AgentVaultSkillCreateEvent
+  | AgentVaultSkillVersionCreateEvent
+  | AgentVaultSkillVersionRestoreEvent
+  | AgentVaultSkillVersionViewEvent
+  | AgentVaultSkillRenameEvent
+  | AgentVaultSkillDeleteEvent
+  | AgentVaultAccessBundleSkillAddEvent
+  | AgentVaultAccessBundleSkillRemoveEvent
+  | AgentVaultSkillsDeliveredEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
   | AgentVaultProductMemberRemoveEvent
