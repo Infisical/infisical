@@ -24,7 +24,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { AgentVaultIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { lockMembershipsById, TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { assertWillRetainProjectAdmin } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
@@ -668,6 +668,10 @@ export const agentVaultMembershipServiceFactory = ({
         productLabel: "Agent Vault",
         tx
       });
+
+      // In id order before anything is deleted, the order a delegation save takes them in. A multi-row delete takes
+      // its rows in whatever order its plan reads them, so without this the two could each hold a row the other wants.
+      await lockMembershipsById(membershipIds, tx);
 
       await Promise.all(
         ALL_ACTOR_TYPES.map(async (type) => {

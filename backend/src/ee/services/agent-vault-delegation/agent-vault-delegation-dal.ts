@@ -350,7 +350,8 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
           if (userIds.length) void actor.orWhereIn(`${TableName.Membership}.actorUserId`, userIds);
           if (groupIds.length) void actor.orWhereIn(`${TableName.Membership}.actorGroupId`, groupIds);
         })
-        // In id order, the order a removal's multi-row delete takes them, so the two can't each wait on the other.
+        // In id order, the order a removal of several memberships locks them in (lockMembershipsById) before it
+        // deletes, so the two can't each wait on the other.
         .orderBy(`${TableName.Membership}.id`)
         .forShare()
         .select(
