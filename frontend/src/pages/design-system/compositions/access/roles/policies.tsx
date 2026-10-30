@@ -20,9 +20,9 @@ const LEGACY_PROJECT_ACTIONS: Record<string, string> = {
   groups: "grant-privileges"
 };
 
-export const VISUALIZABLE = ["secrets", "secret-folders", "dynamic-secrets", "secret-imports"];
+const VISUALIZABLE = ["secrets", "secret-folders", "dynamic-secrets", "secret-imports"];
 
-export const visibleActions = (scope: Scope, config: PermissionSubject, rule: Rule) =>
+const visibleActions = (scope: Scope, config: PermissionSubject, rule: Rule) =>
   config.actions.filter(({ value }) => {
     if (config.subject === "secrets" && value === "read") return rule.actions.includes(value);
     if (scope === "project" && LEGACY_PROJECT_ACTIONS[config.subject] === value)

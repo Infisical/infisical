@@ -1,7 +1,6 @@
-import type { Scope } from "../model";
 import type { PermissionSubject } from "./catalog";
 import { CONDITION_OPTIONS } from "./conditions";
-import { actionLabel, type Condition, type Rule } from "./permissions-model";
+import type { Condition } from "./permissions-model";
 
 const FALLBACK_LABELS: Record<string, string> = {
   environment: "environment",
@@ -23,7 +22,7 @@ const OPERATOR_WORDS: Record<string, string> = {
   $all: "contains all"
 };
 
-export const conditionText = (subject: string, condition: Condition) => {
+const conditionText = (subject: string, condition: Condition) => {
   const word =
     condition.lhs === "secretTags" && condition.operator === "$in"
       ? "contains"
@@ -33,31 +32,6 @@ export const conditionText = (subject: string, condition: Condition) => {
 
 export const conditionsText = (subject: string, conditions: readonly Condition[]) =>
   conditions.map((condition) => conditionText(subject, condition)).join(" and ");
-
-export const actionsText = (scope: Scope, subject: string, actions: readonly string[]) =>
-  actions.map((action) => actionLabel(scope, subject, action)).join(", ");
-
-export type SubjectState = {
-  ruleCount: number;
-  simple: boolean;
-  allowed: readonly string[];
-  conditional: boolean;
-  forbid: boolean;
-};
-
-export const subjectState = (rules: readonly Rule[] | undefined): SubjectState => {
-  const list = rules ?? [];
-  const conditional = list.some((rule) => rule.conditions.length > 0);
-  const forbid = list.some((rule) => rule.inverted);
-  const simple = list.length <= 1 && !conditional && !forbid;
-  return {
-    ruleCount: list.length,
-    simple,
-    allowed: simple ? (list[0]?.actions ?? []) : [],
-    conditional,
-    forbid
-  };
-};
 
 export type Verb = "view" | "create" | "edit" | "delete" | "other";
 export const VERBS: { id: Verb; label: string }[] = [
