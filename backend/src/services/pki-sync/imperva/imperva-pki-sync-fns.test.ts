@@ -111,7 +111,7 @@ describe("Imperva upload failures", () => {
     const rejected = new ImpervaRequestError({ message: "Invalid input", status: 400 });
 
     expect(describeImpervaUploadFailure(rejected)).toBe(
-      "Invalid input. Imperva rejected the certificate. It has to cover every domain the website serves, and its key has to be RSA under 4096 bits or ECDSA P-256"
+      "Invalid input. Imperva rejected the certificate. It has to cover at least one domain the website serves, and its key has to be RSA under 4096 bits or ECDSA P-256"
     );
   });
 

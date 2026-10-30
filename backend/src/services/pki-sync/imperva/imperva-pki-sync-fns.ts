@@ -57,7 +57,7 @@ const IMPERVA_CUSTOM_CERT_TYPE = "CUSTOM_CERT";
 // Imperva answers a rejected upload with a bare "Invalid input", which tells the user nothing about
 // what to change, so the conditions it enforces are spelled out alongside its message.
 const IMPERVA_UPLOAD_REJECTION_HINT =
-  "Imperva rejected the certificate. It has to cover every domain the website serves, and its key has to be RSA under 4096 bits or ECDSA P-256";
+  "Imperva rejected the certificate. It has to cover at least one domain the website serves, and its key has to be RSA under 4096 bits or ECDSA P-256";
 
 // 429 aside, a 4xx is Imperva refusing the request itself, so repeating it changes nothing.
 export const isImpervaRetryable = (error: unknown): boolean => {
@@ -213,6 +213,7 @@ export const impervaPkiSyncFactory = ({
     certificateChain?: string;
     certificateId?: string;
     renewedFromCertificateId?: string | null;
+    authType: ImpervaCertificateAuthType;
   };
 
   const prepareCertificate = async (
@@ -231,6 +232,16 @@ export const impervaPkiSyncFactory = ({
 
       if (!cert || !privateKey) {
         skippedCertificates.push({ name: certName, reason: "Missing certificate or private key data" });
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      const authType = resolveImpervaAuthType(cert);
+      if (!authType) {
+        skippedCertificates.push({
+          name: certName,
+          reason: `Imperva accepts only RSA and ECDSA certificates, and this one uses ${describeImpervaKeyType(cert)}`
+        });
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -258,7 +269,7 @@ export const impervaPkiSyncFactory = ({
         renewedFromCertificateId = certificate?.renewedFromCertificateId;
       }
 
-      selected = { certName, cert, privateKey, certificateChain, certificateId, renewedFromCertificateId };
+      selected = { certName, cert, privateKey, certificateChain, certificateId, renewedFromCertificateId, authType };
     }
 
     return { certificate: selected, skippedCertificates };
@@ -377,16 +388,7 @@ export const impervaPkiSyncFactory = ({
         const renewedFromCertificateIds: string[] = [];
 
         if (certificate) {
-          const authType = resolveImpervaAuthType(certificate.cert);
-
-          if (!authType) {
-            throw new PkiSyncError({
-              message: `Imperva accepts only RSA and ECDSA certificates, and '${
-                certificate.certName
-              }' uses ${describeImpervaKeyType(certificate.cert)}`
-            });
-          }
-
+          const { authType } = certificate;
           const externalIdentifier = buildImpervaExternalIdentifier(siteId, authType);
 
           // Claimed up front so the slot is never held by a live certificate no record points at,
