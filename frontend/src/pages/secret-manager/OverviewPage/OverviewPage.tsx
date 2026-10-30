@@ -641,7 +641,7 @@ const OverviewPageContent = () => {
         .filter((env) => envSlugs.includes(env.slug))
         .map((env) => env.id);
       if (envIds.length > 0) {
-        setStoredEnvIds(envIds);
+        setStoredEnvIds(envIds.length === userAvailableEnvs.length ? [] : envIds);
       }
     }
 
@@ -4671,6 +4671,8 @@ const OverviewPageContent = () => {
                           ) => (
                             <FolderTableRow
                               folderName={folderName}
+                              secretPath={secretPath}
+                              isNavigationDisabled={isOverviewPending}
                               description={description}
                               isFolderPresentInEnv={isFolderPresentInEnv}
                               isSelected={
