@@ -62,9 +62,7 @@ Every sidecar starts its proxy from the same proxy token, so you create the prox
     In Agent Vault, go to **Proxies** and select **Create Proxy**.
   </Step>
   <Step>
-    Enter a **Name**, such as `modal-sandboxes`, and expand **Advanced Options**. Under **Traffic Policy**, choose **Access bundle hosts only**, and add any hosts the agent needs without a credential to **Exceptions**, such as `registry.npmjs.org`.
-
-    The sidecar can reach the internet, so with **Any host**, the agent could send requests through the proxy to any host. Learn more about the [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
+    Enter a **Name**, such as `modal-sandboxes`.
   </Step>
   <Step>
     Select **Create**, then copy the proxy token from the **Proxy Token** dialog. Infisical shows the token only once.
@@ -669,7 +667,7 @@ To check which requests the agent made, [set up session logs](/documentation/pla
 The agent's container can't connect to the internet directly, but it has two kinds of network access:
 
 - **DNS:** Modal answers DNS lookups in a sandbox even with an empty allowlist, so the agent can look up hostnames
-- **Hosts through the proxy:** with **Access bundle hosts only**, the agent can reach the hosts that services in the session's access bundle cover, and the proxy's exceptions
+- **Hosts through the proxy:** under the default [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), **Any host**, the proxy forwards the agent's requests to any host on the internet (to allow only the hosts that services in the session's access bundle cover, set the traffic policy to **Access bundle hosts only** and add any other hosts the agent needs, such as `registry.npmjs.org`, to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions))
 
 ### Compromised sandboxes
 
@@ -691,7 +689,7 @@ Each sidecar has a copy of the proxy token. If you think someone took control of
     The session expired or was revoked. Set the session's `ttl` a few minutes longer than the sandbox's `timeout`, so the session lasts as long as the sandbox can run.
   </Accordion>
   <Accordion title="Requests to a host fail with a 403 from the start">
-    The proxy's traffic policy blocks hosts that no service in the access bundle covers. Add a service for the host, or add the host to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
+    If the proxy's traffic policy is **Access bundle hosts only**, the proxy blocks hosts that no service in the access bundle covers. Add a service for the host, or add the host to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
   </Accordion>
   <Accordion title="Can I use Modal's `proxy_traffic_via_sidecar` option instead?">
     No. That option sends the agent's HTTPS connections to the sidecar without a session token, and the proxy needs the session token to know which credentials to attach. Use `infisical agent-vault run`, or set the proxy in the agent's HTTP client.
