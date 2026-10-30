@@ -1087,6 +1087,29 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Other live projects with a secret import pointing at one of this project's live environments.
+  const findProjectsImportingFrom = async (projectId: string, tx?: Knex) => {
+    try {
+      const sourceEnvIds = db
+        .replicaNode()(TableName.Environment)
+        .where({ projectId })
+        .whereNull("deleteAfter")
+        .select("id");
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+        .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereIn(`${TableName.SecretImport}.importEnv`, sourceEnvIds)
+        .whereNot(`${TableName.Project}.id`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .distinct(db.ref("id").withSchema(TableName.Project), db.ref("name").withSchema(TableName.Project));
+      return docs as { id: string; name: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find projects importing from project" });
+    }
+  };
+
   const countOfBillableOrgProjects = async (orgId: string | null, tx?: Knex) => {
     try {
       const subOrgProjects = db.replicaNode()(TableName.Organization).where({ rootOrgId: orgId }).select("id");
@@ -1151,6 +1174,7 @@ export const projectDALFactory = (db: TDbClient) => {
     findProjectByEnvId,
     findProjectDeletedEnvironments,
     findDeletedProjects,
+    findProjectsImportingFrom,
     countOfBillableOrgProjects
   };
 };

@@ -180,6 +180,57 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
     expect((await permanentlyDeleteProject(project.id)).statusCode).toBe(200);
   });
 
+  test("refuses to delete a project that another project imports secrets from", async () => {
+    const orgId = seedData1.organization.id;
+    const headers = { authorization: `Bearer ${jwtAuthToken}` };
+    const restoreLicense = overrideLicenseFeatures({ crossProjectSecretSharing: true });
+    const org = await testDb(TableName.Organization).where({ id: orgId }).first();
+    await testDb(TableName.Organization).where({ id: orgId }).update({ allowCrossProjectSecretSharing: true });
+    try {
+      const source = await createProject("e2e-import-source");
+      const importer = await createProject("e2e-import-target");
+      const grantRes = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/project-folder-grants",
+        headers,
+        body: { sourceProjectId: source.id, environment: "dev", secretPath: "/", targetProjectId: importer.id }
+      });
+      expect(grantRes.statusCode).toBe(200);
+      const importRes = await testServer.inject({
+        method: "POST",
+        url: "/api/v2/secret-imports",
+        headers,
+        body: {
+          projectId: importer.id,
+          environment: "dev",
+          path: "/",
+          import: { sourceProjectId: source.id, environment: "dev", path: "/" }
+        }
+      });
+      expect(importRes.statusCode).toBe(200);
+
+      const blockedRes = await deleteProject(source.id);
+      expect(blockedRes.statusCode).toBe(400);
+      expect(JSON.parse(blockedRes.payload).message).toContain(importer.name);
+
+      const removeRes = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v2/secret-imports/${importRes.json().secretImport.id}`,
+        headers,
+        body: { projectId: importer.id, environment: "dev", path: "/" }
+      });
+      expect(removeRes.statusCode).toBe(200);
+      expect((await deleteProject(source.id, true)).statusCode).toBe(200);
+
+      await deleteProject(importer.id, true);
+    } finally {
+      await testDb(TableName.Organization)
+        .where({ id: orgId })
+        .update({ allowCrossProjectSecretSharing: Boolean(org?.allowCrossProjectSecretSharing) });
+      restoreLicense();
+    }
+  });
+
   test("refuses to restore a project when the plan's project limit is reached", async () => {
     const project = await createProject("e2e-restore-limit");
     expect((await deleteProject(project.id)).statusCode).toBe(200);

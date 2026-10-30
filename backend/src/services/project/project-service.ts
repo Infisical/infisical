@@ -868,6 +868,15 @@ export const projectServiceFactory = ({
       }
     }
 
+    // Deleting a project that others import from would silently drop those secrets from their reads and
+    // syncs, and the deleter may not be a member of those projects, so the imports must be removed first.
+    const importingProjects = await projectDAL.findProjectsImportingFrom(project.id);
+    if (importingProjects.length) {
+      throw new BadRequestError({
+        message: `Project '${project.name}' can't be deleted while other projects import secrets from it: ${importingProjects.map(({ name }) => `'${name}'`).join(", ")}. Remove those secret imports first, then retry.`
+      });
+    }
+
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
     try {
       lock = await keyStore.acquireLock([KeyStorePrefixes.ProjectDeleteLock(project.id)], 30_000, {
