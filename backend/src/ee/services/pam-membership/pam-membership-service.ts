@@ -8,6 +8,11 @@ import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/ident
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import {
   ResourcePermissionPamResourceActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
@@ -274,14 +279,21 @@ export const pamMembershipServiceFactory = ({
     memberships: Awaited<ReturnType<typeof membershipDAL.find>>,
     defaultRole: string
   ) => {
+    const userIds = memberships.map((m) => m.actorUserId).filter((v): v is string => Boolean(v));
+    const users = userIds.length ? await userDAL.find({ $in: { id: userIds } }) : [];
+    const userById = new Map(users.map((u) => [u.id, u]));
+
     return Promise.all(
       memberships.map(async (m) => {
         const roles = await membershipRoleDAL.find({ membershipId: m.id });
+        const user = m.actorUserId ? userById.get(m.actorUserId) : undefined;
         return {
           membershipId: m.id,
           userId: m.actorUserId,
           identityId: m.actorIdentityId,
           groupId: m.actorGroupId,
+          email: user?.email ?? null,
+          username: user?.username ?? null,
           role: roles[0]?.role ?? defaultRole,
           isActive: m.isActive,
           expiresAt: roles[0]?.isTemporary ? (roles[0]?.temporaryAccessEndTime ?? null) : null,
@@ -344,7 +356,7 @@ export const pamMembershipServiceFactory = ({
   // Product members
 
   const listProductMembers = async ({ projectId, ...ctx }: TListPamProductMembersDTO & TActorContext) => {
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
       projectId,
@@ -352,6 +364,7 @@ export const pamMembershipServiceFactory = ({
       actorOrgId: ctx.actorOrgId,
       actionProjectType: ActionProjectType.PAM
     });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
 
     const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
     return resolveMemberships(memberships, PamProductRole.Member);
@@ -360,7 +373,7 @@ export const pamMembershipServiceFactory = ({
   // Identity members enriched with the identity's name and scope, so the PAM UI never has to
   // join against org- or project-level identity endpoints (the org list excludes PAM-scoped identities).
   const listProductIdentityMembers = async ({ projectId, ...ctx }: TListPamProductMembersDTO & TActorContext) => {
-    await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor: ctx.actor,
       actorId: ctx.actorId,
       projectId,
@@ -368,6 +381,10 @@ export const pamMembershipServiceFactory = ({
       actorOrgId: ctx.actorOrgId,
       actionProjectType: ActionProjectType.PAM
     });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionSub.Identity
+    );
 
     const memberships = await membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId });
     const identityMemberships = memberships.filter((m) => m.actorIdentityId);

@@ -1,7 +1,9 @@
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import knex, { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/services/auth/auth-type";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
@@ -208,5 +210,61 @@ describe("pamMembership addProductUserMembers", () => {
     const { service } = buildService();
 
     await expect(add(service, [IDENTIFIER])).rejects.toThrow(`'${IDENTIFIER}'`);
+  });
+});
+
+describe("pamMembership member lists", () => {
+  const buildListService = (rules: { action: string; subject: string }[]) => {
+    const createdAt = new Date();
+    const deps = {
+      permissionService: {
+        getProjectPermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(rules) })
+      },
+      membershipDAL: {
+        find: vi.fn().mockResolvedValue([
+          { id: "mem-1", actorUserId: "user-1", isActive: true, createdAt },
+          { id: "mem-2", actorUserId: "user-2", isActive: true, createdAt },
+          { id: "mem-3", actorGroupId: "group-1", isActive: true, createdAt },
+          { id: "mem-4", actorIdentityId: "identity-1", isActive: true, createdAt }
+        ])
+      },
+      membershipRoleDAL: { find: vi.fn().mockResolvedValue([{ role: PamProductRole.Member }]) },
+      userDAL: {
+        find: vi.fn().mockResolvedValue([
+          { id: "user-1", email: "robert@example.com", username: "robert" },
+          { id: "user-2", email: null, username: "ldap-user" }
+        ])
+      }
+    };
+    return {
+      service: pamMembershipServiceFactory(deps as unknown as Parameters<typeof pamMembershipServiceFactory>[0]),
+      deps
+    };
+  };
+
+  test("returns each user member's email and username from one batched lookup", async () => {
+    const { service, deps } = buildListService([
+      { action: ProjectPermissionMemberActions.Read, subject: ProjectPermissionSub.Member }
+    ]);
+
+    const members = await service.listProductMembers({ ...ctx, projectId: PROJECT_ID });
+
+    expect(deps.userDAL.find).toHaveBeenCalledTimes(1);
+    expect(deps.userDAL.find).toHaveBeenCalledWith({ $in: { id: ["user-1", "user-2"] } });
+    expect(members.map(({ email, username }) => ({ email, username }))).toEqual([
+      { email: "robert@example.com", username: "robert" },
+      { email: null, username: "ldap-user" },
+      { email: null, username: null },
+      { email: null, username: null }
+    ]);
+  });
+
+  // A delegated OAuth token scoped to secrets:read is left with no member or identity rules.
+  test("refuses a caller whose ability cannot read members", async () => {
+    const { service, deps } = buildListService([]);
+
+    await expect(service.listProductMembers({ ...ctx, projectId: PROJECT_ID })).rejects.toThrow(ForbiddenError);
+    await expect(service.listProductIdentityMembers({ ...ctx, projectId: PROJECT_ID })).rejects.toThrow(ForbiddenError);
+    expect(deps.membershipDAL.find).not.toHaveBeenCalled();
   });
 });
