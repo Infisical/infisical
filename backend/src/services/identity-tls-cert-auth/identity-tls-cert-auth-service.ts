@@ -171,7 +171,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   identityTlsCertAuthDAL: Pick<
     TIdentityTlsCertAuthDALFactory,
-    "findOne" | "transaction" | "create" | "updateById" | "delete"
+    "findOne" | "transaction" | "create" | "updateById" | "delete" | "primaryNode"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
@@ -212,7 +212,11 @@ export const identityTlsCertAuthServiceFactory = ({
   }) => {
     const authMetricStartTime = performance.now();
     const appCfg = getConfig();
-    const identityTlsCertAuth = await identityTlsCertAuthDAL.findOne({ identityId });
+    // Read from the primary so a lagging replica can't issue an unbound token after binding was turned on.
+    const identityTlsCertAuth = await identityTlsCertAuthDAL.findOne(
+      { identityId },
+      identityTlsCertAuthDAL.primaryNode()
+    );
     if (!identityTlsCertAuth) {
       throw new NotFoundError({
         message: "TLS Certificate auth method not found for identity, did you configure TLS Certificate auth?"
