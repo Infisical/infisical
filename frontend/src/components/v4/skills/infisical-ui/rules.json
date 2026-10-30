@@ -1002,6 +1002,19 @@
       "category": "Visual"
     },
     {
+      "id": "no-left-accent-bars",
+      "title": "No left accent bars",
+      "instruction": "Never mark a row, card, Alert, list item or current state with a colored stripe or tinted edge on its left (or inline-start) side, even where main uses one. Carry the state with a translucent tint over the whole row or surface, a labeled Badge, an icon with text, or weight, so the meaning reads without color.",
+      "good": "A batch-edited secret row with a translucent ok tint across the row and a Modified badge beside its name; a deleted one with a bad tint and a Deleted badge.",
+      "avoid": "A 2px green or red inset line down the first cell, a colored left border on an Alert or callout, or a tinted left edge on the current nav item.",
+      "detect": {
+        "by": "lint",
+        "check": "left-accent-bar"
+      },
+      "category": "Visual",
+      "exceptions": "Structure is not an accent: tree hierarchy guides, timeline connectors and column or pane dividers drawn in line or line-soft stay."
+    },
+    {
       "id": "skeleton-for-known-shape",
       "title": "Skeleton when the shape is known, Loader when it is not",
       "instruction": "When the shape of the content being loaded is known or measurable, show Skeleton shapes that match the loaded state at the same size. Use a Loader only when the shape is unknown.",

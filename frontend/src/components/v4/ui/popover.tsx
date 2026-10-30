@@ -10,8 +10,29 @@ import { cn } from "../lib/utils";
 
 import menu from "./menu.module.css";
 
-function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />;
+const PopoverOpenContext = React.createContext(false);
+
+function Popover({
+  open,
+  defaultOpen = false,
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof PopoverPrimitive.Root>) {
+  const [uncontrolled, setUncontrolled] = React.useState(defaultOpen);
+  const current = open ?? uncontrolled;
+  return (
+    <PopoverOpenContext value={current}>
+      <PopoverPrimitive.Root
+        data-slot="popover"
+        open={current}
+        onOpenChange={(next) => {
+          if (open === undefined) setUncontrolled(next);
+          onOpenChange?.(next);
+        }}
+        {...props}
+      />
+    </PopoverOpenContext>
+  );
 }
 
 function PopoverTrigger({ ref, ...props }: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
@@ -75,9 +96,14 @@ function PopoverAnchor({
     },
     [ref]
   );
+  // The trigger can re-claim the anchor on a later commit (StrictMode ref replays, re-mounts in a
+  // Dialog) and a virtual anchor only re-announces when its element changes, so it remounts on
+  // every open to point the popper back at this anchor.
+  const generation = React.useContext(PopoverOpenContext) ? "open" : "closed";
   if (virtualRef)
     return (
       <PopoverPrimitive.Anchor
+        key={generation}
         ref={ref}
         data-slot="popover-anchor"
         virtualRef={virtualRef}
@@ -91,7 +117,7 @@ function PopoverAnchor({
   return (
     <>
       <Comp ref={attach} data-slot="popover-anchor" {...props} />
-      <PopoverPrimitive.Anchor virtualRef={node} hidden />
+      <PopoverPrimitive.Anchor key={generation} virtualRef={node} hidden />
     </>
   );
 }

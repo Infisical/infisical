@@ -12,6 +12,7 @@ import {
   Undo2Icon
 } from "lucide-react";
 
+import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
@@ -132,6 +133,22 @@ export function ActionButton({
         </Button>
       </span>
     </Tooltip>
+  );
+}
+
+const pendingBadges = {
+  create: { tone: "ok", label: "New" },
+  update: { tone: "ok", label: "Modified" },
+  delete: { tone: "bad", label: "Deleted" }
+} as const;
+
+export function PendingBadge({ type }: { type?: PendingType }) {
+  if (!type) return null;
+  const { tone, label } = pendingBadges[type];
+  return (
+    <Badge size="sm" tone={tone}>
+      {label}
+    </Badge>
   );
 }
 

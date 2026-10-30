@@ -71,6 +71,7 @@ import {
   type KindOverlay,
   NEXT_PHASE,
   PendingActions,
+  PendingBadge,
   type RowContext,
   SelectCell,
   StatusCell
@@ -815,6 +816,7 @@ export function SecretRow({
                   </span>
                 </Tooltip>
               )}
+              <PendingBadge type={ctx.pending?.[first.id]} />
             </div>
           </TableCell>
           <TableCell className={styles.valueCell}>

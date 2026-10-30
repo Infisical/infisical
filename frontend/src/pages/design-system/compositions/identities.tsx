@@ -15,7 +15,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
 import { Media } from "@app/components/v4/ui/item";
-import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { DetailLayout, Inline, Stack } from "@app/components/v4/ui/layout";
 import { DataList, List, ListRow } from "@app/components/v4/ui/list";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import {
@@ -389,121 +389,113 @@ const Detail = ({ identity, onBack }: { identity: Identity; onBack: () => void }
           }
         />
       </Stack>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 2fr) minmax(0, 3fr)",
-          gap: "var(--v4-space-24)",
-          alignItems: "start"
-        }}
-      >
-        <Card title="Details">
-          <DataList
-            variant="props"
-            items={[
-              ["ID", <code key="id">{identity.id}</code>],
-              [
-                "Managed by",
-                identity.project ? (
-                  <ProjectLink key="p" project={identity.project} />
-                ) : (
-                  "Organization"
-                )
-              ],
-              ["Organization role", identity.role],
-              [
-                "Metadata",
-                identity.metadata.length ? (
-                  <Inline key="meta" gap={8} wrap>
-                    {identity.metadata.map(([k, v]) => (
-                      <Badge key={k} tone="outline" mono>
-                        {k}={v}
-                      </Badge>
-                    ))}
-                  </Inline>
-                ) : (
-                  "None"
-                )
-              ],
-              ["Created", identity.created],
-              [
-                "Last login",
-                identity.lastMethod
-                  ? `${identity.lastUsed} with ${authNames[identity.lastMethod]}`
-                  : "Never"
-              ],
-              ["Delete protection", identity.deleteProtection ? "On" : "Off"]
-            ]}
-          />
-        </Card>
-        <Stack gap={24}>
-          <List
-            label="Auth methods"
-            title="Authentication"
-            action={
-              <Button variant="outline" size="sm" icon="plus">
-                Add auth method
-              </Button>
-            }
-            empty={
-              <EmptyState
-                size="sm"
-                icon="lock"
-                title="No auth methods yet"
-                description="Add an auth method so this machine identity can sign in."
-              />
-            }
-          >
-            {identity.auth.map((kind) => (
-              <ListRow
-                key={kind}
-                value={kind}
-                label={authNames[kind]}
-                title={authNames[kind]}
-                media={
-                  <Media
-                    icon={kind === "universal" || kind === "token" ? "key" : "lock"}
-                    size="sm"
-                  />
-                }
-                description={
-                  kind === identity.lastMethod
-                    ? `Last used ${identity.lastUsed}`
-                    : "Not used in the last 30 days"
-                }
-                badge={
-                  identity.lockedOut === kind ? (
-                    <Badge tone="bad" dot>
-                      Locked out
-                    </Badge>
-                  ) : undefined
-                }
-                onClick={() => setAuthKind(kind)}
-              />
-            ))}
-          </List>
-          <Card
-            title="Projects"
-            flush
-            action={
-              <Button variant="outline" size="sm" icon="plus">
-                Add to project
-              </Button>
-            }
-          >
-            <DataTable
-              label={`Projects ${identity.name} belongs to`}
-              rows={identity.projects}
-              columns={projectColumns}
-              getRowId={(r) => r.project}
-              rowLabel={(r) => r.project}
-              empty={
-                <EmptyState size="sm" media="bare" icon="folder" title="Not in any project yet" />
-              }
+      <DetailLayout
+        asideLabel="Details"
+        aside={
+          <Card title="Details">
+            <DataList
+              variant="props"
+              items={[
+                ["ID", <code key="id">{identity.id}</code>],
+                [
+                  "Managed by",
+                  identity.project ? (
+                    <ProjectLink key="p" project={identity.project} />
+                  ) : (
+                    "Organization"
+                  )
+                ],
+                ["Organization role", identity.role],
+                [
+                  "Metadata",
+                  identity.metadata.length ? (
+                    <Inline key="meta" gap={8} wrap>
+                      {identity.metadata.map(([k, v]) => (
+                        <Badge key={k} tone="outline" mono>
+                          {k}={v}
+                        </Badge>
+                      ))}
+                    </Inline>
+                  ) : (
+                    "None"
+                  )
+                ],
+                ["Created", identity.created],
+                [
+                  "Last login",
+                  identity.lastMethod
+                    ? `${identity.lastUsed} with ${authNames[identity.lastMethod]}`
+                    : "Never"
+                ],
+                ["Delete protection", identity.deleteProtection ? "On" : "Off"]
+              ]}
             />
           </Card>
-        </Stack>
-      </div>
+        }
+      >
+        <List
+          label="Auth methods"
+          title="Authentication"
+          action={
+            <Button variant="outline" size="sm" icon="plus">
+              Add auth method
+            </Button>
+          }
+          empty={
+            <EmptyState
+              size="sm"
+              icon="lock"
+              title="No auth methods yet"
+              description="Add an auth method so this machine identity can sign in."
+            />
+          }
+        >
+          {identity.auth.map((kind) => (
+            <ListRow
+              key={kind}
+              value={kind}
+              label={authNames[kind]}
+              title={authNames[kind]}
+              media={
+                <Media icon={kind === "universal" || kind === "token" ? "key" : "lock"} size="sm" />
+              }
+              description={
+                kind === identity.lastMethod
+                  ? `Last used ${identity.lastUsed}`
+                  : "Not used in the last 30 days"
+              }
+              badge={
+                identity.lockedOut === kind ? (
+                  <Badge tone="bad" dot>
+                    Locked out
+                  </Badge>
+                ) : undefined
+              }
+              onClick={() => setAuthKind(kind)}
+            />
+          ))}
+        </List>
+        <Card
+          title="Projects"
+          flush
+          action={
+            <Button variant="outline" size="sm" icon="plus">
+              Add to project
+            </Button>
+          }
+        >
+          <DataTable
+            label={`Projects ${identity.name} belongs to`}
+            rows={identity.projects}
+            columns={projectColumns}
+            getRowId={(r) => r.project}
+            rowLabel={(r) => r.project}
+            empty={
+              <EmptyState size="sm" media="bare" icon="folder" title="Not in any project yet" />
+            }
+          />
+        </Card>
+      </DetailLayout>
       <AuthSheet
         identity={identity}
         kind={authKind}

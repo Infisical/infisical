@@ -10,7 +10,7 @@ Start with [the v4 instructions](../../AGENTS.md), then query the affected task 
 ## Work in order
 
 1. Confirm the boundary. v4 is incubating and fenced from product imports. Keep product code on v3 unless a separate migration is authorized.
-2. Run `npm run ui:info -- <task or component>` from frontend. Read the matching generated guide in `src/components/v4/docs/`, then actual exported props and `/design-system#<canonical-id>`. The catalog covers 72 families, including composed patterns and text/layout helpers. Family count and coverage declarations do not prove behavior or visual consistency.
+2. Run `npm run ui:info -- <task or component>` from frontend. Read the matching generated guide in `src/components/v4/docs/`, then actual exported props and `/design-system#<canonical-id>`. The catalog covers 73 families, including composed patterns and text/layout helpers. Family count and coverage declarations do not prove behavior or visual consistency.
 3. Read `tokens.json` for source roles and `v4.css` for current runtime mappings. Do not assume the source specification and every installed primitive already match.
 4. Compose the supported Radix API under React 19. Use variants and sizes before classes. On a v4 component, caller classes carry layout only. Raise missing behavior instead of inventing props or adding another implementation.
 5. Verify the actual result. Typecheck and run the affected runtime tests, then lint. Use the browser for both themes, narrow layouts, long content, keyboard navigation and open portals. Report checks you did not run.
@@ -21,7 +21,7 @@ Use warm neutrals, Archivo and Geist Mono. Corners are square everywhere: there 
 
 Icons come from the Infisical 2.0 line set: use `Icon` with one of its 52 names. Use Lucide (`lucide-react`) only for glyphs the set lacks, at `stroke-icon` (1.7) and the size tokens; never import another icon library or hand-draw SVG icons.
 
-Disable blocked actions instead of hiding them, and gate each one by its own permission. Hover and press overlays are translucent ink, never opaque fills. Show Skeleton shapes when the loaded shape is known and a Loader only when it is not. Focus glows share size-focus-glow and focus-ring.
+Disable blocked actions instead of hiding them, and gate each one by its own permission. Hover and press overlays are translucent ink, never opaque fills. Never mark state with a left accent bar or tinted left edge; tint the whole row or surface and add a Badge. Show Skeleton shapes when the loaded shape is known and a Loader only when it is not. Focus glows share size-focus-glow and focus-ring.
 
 Composites and compositions don't use avatars until the product supports them: show names and emails as plain text, and keep the Avatar primitive for its own docs page. Page content takes its width from the size-content token through PageGutter, the same gutter TopBar pads by; never cap it with an arbitrary max-width.
 

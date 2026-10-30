@@ -46,6 +46,7 @@ import {
   ActionButton,
   ExpandToggle,
   PendingActions,
+  PendingBadge,
   presenceOf,
   type RowContext,
   SelectCell,
@@ -526,6 +527,7 @@ export function FolderRow({
             {first.name}
           </span>
           {first.description && <InfoHint text={first.description} />}
+          <PendingBadge type={ctx.pending?.[first.id]} />
           <TableRowActions reveal>
             <PendingActions id={first.id} ctx={ctx} />
             <ActionButton

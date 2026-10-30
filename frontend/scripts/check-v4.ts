@@ -263,6 +263,18 @@ export const v4Checks: readonly V4Check[] = [
       )
   },
   {
+    id: "left-accent-bar",
+    rule: "no-left-accent-bars",
+    message:
+      "No left accent bar. Mark the state with a translucent tint over the whole row or surface plus a Badge or icon with text. Dividers and guides in line or line-soft are fine.",
+    appliesTo: isAuthored,
+    css: [
+      /box-shadow\s*:\s*inset\s+(?!-|0(?:px)?\s)[^\s;]+\s+0(?:px)?\s+0(?:px)?\s/g,
+      /border-(?:left|inline-start)(?:-color)?\s*:[^;]*var\(--v4-(?!line\b|size-|space-)[\w-]+\)/g
+    ],
+    markup: [/\bborder-[ls](?:-\d+)?-\[color:var\(--v4-(?!line\b)[\w-]+\)\]/g]
+  },
+  {
     id: "dot-separator",
     rule: "no-dot-separators",
     message: "Separate details with words or layout, not a middle dot or bullet.",

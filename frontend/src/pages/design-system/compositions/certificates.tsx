@@ -27,7 +27,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
+import { DetailLayout, Grid, Inline, Stack } from "@app/components/v4/ui/layout";
 import { DataList, List, ListRow } from "@app/components/v4/ui/list";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
@@ -666,160 +666,156 @@ const CertificateDetail = ({
         description={ledeOf(cert)}
         actions={<CertificateHeaderActions cert={cert} onRevoke={onRevoke} onDelete={onDelete} />}
       />
-      <Grid columns={3} gap={24} style={{ alignItems: "start" }}>
-        <Stack gap={24}>
-          <Card title="Overview">
-            <DataList
-              variant="props"
-              items={[
-                ["Common name", cert.cn],
-                ["Serial number", <code key="serial">{cert.serial}</code>],
-                ["Status", <StatusBadge key="status" status={cert.status} />],
-                ["Not before", cert.issued],
-                [
-                  "Not after",
-                  <Inline key="after" gap={8} align="center">
-                    {cert.expires}
-                    <ExpiryBadge cert={cert} />
-                  </Inline>
-                ],
-                ["Source", "Managed"]
-              ]}
-            />
-          </Card>
-          <Card title="Issuance">
-            <DataList
-              variant="props"
-              items={[
-                [
-                  "Certificate authority",
-                  <Button key="ca" variant="link">
-                    {cert.ca}
-                  </Button>
-                ],
-                ["Profile", <code key="profile">{cert.profile}</code>],
-                ["Application", cert.application ?? "None"],
-                ["Enrollment", cert.enrollment],
-                ["Auto renewal", cert.autoRenew ? `${cert.autoRenew} days before expiry` : "Off"]
-              ]}
-            />
-          </Card>
-        </Stack>
-        <Stack gap={24} style={{ gridColumn: "span 2" }}>
-          <Grid columns={2} gap={24} style={{ alignItems: "start" }}>
-            <Card title="Subject">
+      <DetailLayout
+        asideLabel="Certificate details"
+        aside={
+          <>
+            <Card title="Overview">
               <DataList
                 variant="props"
                 items={[
                   ["Common name", cert.cn],
-                  ["Organization", "Acme Corp"],
-                  ["Organizational unit", "Platform"],
-                  ["Locality", "Vancouver"],
-                  ["State", "British Columbia"],
-                  ["Country", "CA"]
+                  ["Serial number", <code key="serial">{cert.serial}</code>],
+                  ["Status", <StatusBadge key="status" status={cert.status} />],
+                  ["Not before", cert.issued],
+                  [
+                    "Not after",
+                    <Inline key="after" gap={8} align="center">
+                      {cert.expires}
+                      <ExpiryBadge cert={cert} />
+                    </Inline>
+                  ],
+                  ["Source", "Managed"]
                 ]}
               />
             </Card>
-            <Card title="Key usage">
+            <Card title="Issuance">
               <DataList
                 variant="props"
                 items={[
                   [
-                    "Key usage",
-                    cert.profile === "code-signing"
-                      ? "Digital signature"
-                      : "Digital signature, key encipherment"
+                    "Certificate authority",
+                    <Button key="ca" variant="link">
+                      {cert.ca}
+                    </Button>
                   ],
-                  ["Extended key usage", extendedKeyUsage[cert.profile]],
-                  ["Basic constraints", "Not a CA"],
-                  ["Key algorithm", cert.algorithm],
-                  [
-                    "Signature algorithm",
-                    cert.algorithm.startsWith("RSA") ? "RSA-SHA256" : "ECDSA-SHA384"
-                  ]
+                  ["Profile", <code key="profile">{cert.profile}</code>],
+                  ["Application", cert.application ?? "None"],
+                  ["Enrollment", cert.enrollment],
+                  ["Auto renewal", cert.autoRenew ? `${cert.autoRenew} days before expiry` : "Off"]
                 ]}
               />
             </Card>
-          </Grid>
-          <List
-            label="Subject alternative names"
-            title="Subject alternative names"
-            size="sm"
-            empty={
-              <EmptyState
-                size="sm"
-                media="bare"
-                icon="cert"
-                title="No subject alternative names"
-                description="This certificate identifies by common name only."
-              />
-            }
-          >
-            {cert.sans.map((san) => (
-              <ListRow
-                key={san}
-                value={san}
-                label={san}
-                title={<code>{san}</code>}
-                meta="DNS name"
-              />
-            ))}
-          </List>
-          <List label="Certificate chain" title="Certificate chain" size="sm">
-            <ListRow
-              value="leaf"
-              label={cert.cn}
-              media={<Icon name="cert" />}
-              title={cert.cn}
-              meta="This certificate"
+          </>
+        }
+      >
+        <Grid columns={2} gap={24} style={{ alignItems: "start" }}>
+          <Card title="Subject">
+            <DataList
+              variant="props"
+              items={[
+                ["Common name", cert.cn],
+                ["Organization", "Acme Corp"],
+                ["Organizational unit", "Platform"],
+                ["Locality", "Vancouver"],
+                ["State", "British Columbia"],
+                ["Country", "CA"]
+              ]}
             />
-            {cert.ca === issuing && (
-              <ListRow
-                value="intermediate"
-                label={issuing}
-                media={<Icon name="building" />}
-                title={issuing}
-                meta="Intermediate, expires 2030-04-01"
-              />
-            )}
+          </Card>
+          <Card title="Key usage">
+            <DataList
+              variant="props"
+              items={[
+                [
+                  "Key usage",
+                  cert.profile === "code-signing"
+                    ? "Digital signature"
+                    : "Digital signature, key encipherment"
+                ],
+                ["Extended key usage", extendedKeyUsage[cert.profile]],
+                ["Basic constraints", "Not a CA"],
+                ["Key algorithm", cert.algorithm],
+                [
+                  "Signature algorithm",
+                  cert.algorithm.startsWith("RSA") ? "RSA-SHA256" : "ECDSA-SHA384"
+                ]
+              ]}
+            />
+          </Card>
+        </Grid>
+        <List
+          label="Subject alternative names"
+          title="Subject alternative names"
+          size="sm"
+          empty={
+            <EmptyState
+              size="sm"
+              media="bare"
+              icon="cert"
+              title="No subject alternative names"
+              description="This certificate identifies by common name only."
+            />
+          }
+        >
+          {cert.sans.map((san) => (
+            <ListRow key={san} value={san} label={san} title={<code>{san}</code>} meta="DNS name" />
+          ))}
+        </List>
+        <List label="Certificate chain" title="Certificate chain" size="sm">
+          <ListRow
+            value="leaf"
+            label={cert.cn}
+            media={<Icon name="cert" />}
+            title={cert.cn}
+            meta="This certificate"
+          />
+          {cert.ca === issuing && (
             <ListRow
-              value="root"
-              label={root}
+              value="intermediate"
+              label={issuing}
               media={<Icon name="building" />}
-              title={root}
-              meta="Root, expires 2036-01-09"
+              title={issuing}
+              meta="Intermediate, expires 2030-04-01"
             />
-          </List>
-          <List
-            label="Installations"
-            title="Installations"
-            size="sm"
-            loading={loading}
-            loadingRows={2}
-            empty={
-              <EmptyState
-                size="sm"
-                media="bare"
-                icon="search"
-                title="Not found on any host yet"
-                description="Discovery scans list the hosts that serve this certificate."
-              />
-            }
-          >
-            {(live ? installations : []).map((host) => (
-              <ListRow
-                key={host.id}
-                value={host.id}
-                label={host.title}
-                media={<Icon name="machine" />}
-                title={host.title}
-                description={host.description}
-                meta={host.meta}
-              />
-            ))}
-          </List>
-        </Stack>
-      </Grid>
+          )}
+          <ListRow
+            value="root"
+            label={root}
+            media={<Icon name="building" />}
+            title={root}
+            meta="Root, expires 2036-01-09"
+          />
+        </List>
+        <List
+          label="Installations"
+          title="Installations"
+          size="sm"
+          loading={loading}
+          loadingRows={2}
+          empty={
+            <EmptyState
+              size="sm"
+              media="bare"
+              icon="search"
+              title="Not found on any host yet"
+              description="Discovery scans list the hosts that serve this certificate."
+            />
+          }
+        >
+          {(live ? installations : []).map((host) => (
+            <ListRow
+              key={host.id}
+              value={host.id}
+              label={host.title}
+              media={<Icon name="machine" />}
+              title={host.title}
+              description={host.description}
+              meta={host.meta}
+            />
+          ))}
+        </List>
+      </DetailLayout>
     </Stack>
   );
 };
