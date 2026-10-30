@@ -142,11 +142,14 @@ export const QuickAddSecretRow = ({
       setKey("");
       setValue("");
       setComment("");
+      const { activeElement } = document;
+      if (activeElement instanceof HTMLElement && rowRef.current?.contains(activeElement)) {
+        activeElement.blur();
+      }
+      setIsActive(false);
     } finally {
       setIsSubmitting(false);
     }
-
-    if (refocus) setTimeout(() => keyInputRef.current?.focus(), 0);
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -258,7 +261,7 @@ export const QuickAddSecretRow = ({
             className="h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:border-transparent focus-visible:ring-0"
             disabled={isSubmitting}
             isError={Boolean(error)}
-            placeholder="Add a secret name"
+            placeholder="Add a secret name or paste a .env"
             spellCheck={false}
             value={key}
             onPaste={handlePaste}

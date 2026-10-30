@@ -1743,7 +1743,7 @@ const MultipleCombobox = <TOption,>({
 
 /**
  * Searchable object select built on Base UI. Use `multiple` for the chips-based
- * multi-select contract while legacy `FilterableSelect` consumers migrate incrementally.
+ * multi-select contract.
  * Options are filtered in the browser unless `onSearchChange` is passed, which hands
  * filtering to the caller so the list can be fetched a page at a time.
  */

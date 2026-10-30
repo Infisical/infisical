@@ -21,9 +21,11 @@ agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-variable/        global and personal variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
-agent-vault-session/         mint, revoke, list, get
+agent-vault-skill/           the skill library, versions, bundle links, file validation and hashing
+agent-vault-session/         mint, revoke, list, get, edit label
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
-agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve
+agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh, session skills
+agent-vault-oauth/           OAuth for MCP services: discovery, client registration, authorizations, refresh
 agent-vault-session-log/     storage settings, chunk ingest, playback
 ```
 
@@ -107,11 +109,18 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
   `actorType` is stored at mint because `SET NULL` erases which kind of owner it was. It stays nullable (a pod
   on the previous release writes none) and `toSessionActor` falls back to the backfill's guess.
+- When `SET NULL` leaves a session with neither actor id, `updatedAt` is the only record of when the owner
+  went, and the session log service retires the session from it. So nothing writes to such a row: label edits
+  are refused and revoke is a no-op (the session already reads as revoked). The guard sits in each write's own
+  SQL on the primary (`updateLabel`, `revokeIfActive`), not in a check on the session read beforehand, which
+  can come from a replica that hasn't seen the deletion yet. A new write to sessions needs the same guard, or it
+  reopens the session's late-log window.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
   actor id reads as revoked in the list and the status filter, so they agree with resolve refusing it. Expiry
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
 - **Sessions are never deleted**, so the Sessions page is a full history and a session's row keeps the key its
   logs need. Settled with the product owner.
+- Anyone with a session token can download its skills from Infisical with only the token (`GET /session/skills`).
 
 ## Proxies
 
@@ -319,12 +328,69 @@ reference.
   The sidebar asks for `requiresSetup=true&granted=true` and reads the count, so an admin isn't nagged in the nav
   about bundles they reach only by role, while the page's banner and badges still show them.
 
+## Skills
+
+A skill is an Agent Skills folder (`SKILL.md` plus files) kept per project and added to bundles. When an agent
+starts, the CLI fetches the session's skills from Infisical once, with the session token, and installs them in the user's home
+(`~/.agents/skills/<name>`, linked for Claude Code and Hermes, or `--skills-dir`), where they stay after the run.
+There are no live updates: a running agent keeps what it got until it restarts, and nothing on the server removes
+an installed copy.
+
+- **Files change through `PATCH /skills/:skillId`** (`updateSkill`), which saves them as a new version; there is no
+  `POST /skills/:skillId/versions`. The version routes are only list, get one, and restore.
+- **The name comes from the latest version's `SKILL.md`.** An update whose `SKILL.md` names something else renames
+  the skill in the same transaction (409 if the name is taken) and writes an `agent-vault-skill-rename` audit event
+  beside the version event. A restore never renames: if the old `SKILL.md` names something else, only the value on
+  its top-level `name:` line is rewritten to the current name (`replaceSkillHeaderName`) and the files are
+  re-validated, re-hashed and re-sealed, so the stored `SKILL.md` always agrees with the skill row. A restore that
+  meets a rename made after it read the name is a 409, not a rename back. The description is the latest version's,
+  stored on the skill row; a restore re-reads it from the files and keeps the current one if that old `SKILL.md` no
+  longer parses.
+- **The server is the authority** on validation (`agent-vault-skill-fns.ts`): the limits, the paths and the YAML
+  header. The upload body limit is 2 MB and the schema caps content only at that, so an oversize file in a request
+  of up to about 1.5 MB of file content (base64 adds a third) gets the 400 that names it; a larger request gets
+  "Request body is too large". The header is parsed with `JSON_SCHEMA` (no custom types; aliases are harmless under it and the 4 KB cap).
+- **Paths must install on every OS:** relative, at most 255 characters with no part over 255 UTF-8 bytes, no
+  `.`/`..`/empty parts, no backslash, control character, lone surrogate or `: < > " | ? *`, no part ending in a dot
+  or space, no Windows device name (`CON`, `COM1`, `nul.txt`...), and no path that is also a folder of another.
+  Duplicates compare by NFC plus lowercase.
+- **A version's `sha256` is over the canonical JSON** (files sorted by UTF-8 path bytes, which is Go's string
+  order, `{ path, mode, contentBase64 }`, content re-encoded). The CLI recomputes it from the files and refuses a
+  mismatch, so the serialization is a contract with the CLI.
+- Files are one sealed blob per version (project `SecretManager` key), encrypted before the transaction. Update
+  and restore lock the skill row, so version numbers are unique, the unchanged check is authoritative, and an
+  update racing a delete gets a 404. An update may send `baseVersion`, the version its edits started from; if the
+  latest version under the lock is a different one, it is a 409 so a stale editor can't silently overwrite a newer
+  version (an unchanged update still answers `unchanged: true`). Restore takes no base. The newest 20 versions
+  are kept. An update or a restore whose files match the
+  latest version writes nothing and answers `unchanged: true` with that version, and records no audit or PostHog event.
+- Reading one version's files (`GET /skills/:skillId/versions/:version`) writes an `agent-vault-skill-version-view`
+  audit event (data-access class). So does `GET /skills/:skillId`, which returns the latest version's files with the
+  skill (for that version); the list routes return no files and write none.
+- **`GET /session/skills`** returns the latest files of every skill on the session's reachable bundles (the same
+  intersection as the services), sorted by name, read from the primary. The proxy is not involved: the CLI calls it
+  with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
+  parses the header itself. Any refusal is a 401, an unknown token included. It shares the owner checks of resolve
+  and credential refresh (`$authorizeSessionOwner`), with the org taken from the session's project instead of a
+  proxy. A call that returns at least one skill writes one `agent-vault-skills-delivered` audit event
+  (data-access class) listing every skill delivered (id, name, version, sha256), with the session's owner as the
+  actor (a user named as they are now, or from the session's snapshot if they are gone) and the session's access
+  bundle (sessions carry one today), plus one anonymous `Agent Vault Skills Delivered` PostHog event with the
+  count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
+- Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
+  (`getAgentVaultReachability`): they see only skills in a bundle they can reach, each with only those
+  bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
+  Listing versions checks `Edit`, so it is admin only. Creating, updating, restoring and deleting are admin only. Adding a skill to a bundle or removing it needs `Edit` on access bundles and `Read` on skills, and a
+  bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock). Agent Vault
+  holds at most 250 skills (`AGENT_VAULT_MAX_SKILLS`, checked under a per-project advisory lock on create).
+
 ## Credentials at rest
 
 - The KMS cipher pair is project-scoped (`KmsDataKey.SecretManager`) and built once per resolve.
 - `credentialType` is a column and `credentialConfig` the plaintext half (header name, prefix), so a list page
-  renders without a decrypt and a new credential type is a config entry, not a migration. For basic, the
-  username is sealed with the password: some APIs put the whole key in the username.
+  renders without a decrypt. The column has a CHECK constraint, so a new credential type needs a migration that
+  drops and re-adds `agent_vault_services_credential_type_check`. For basic, the username is sealed with the
+  password: some APIs put the whole key in the username.
 - A service update is a patch. `AgentVaultCredentialUpdateSchema` makes every field optional and
   `mergeCredential` overlays what arrived. Never reuse `AgentVaultBearerConfigSchema` on that path: its
   `.default()`s would reset an omitted `headerName` to `Authorization`.
@@ -332,9 +398,85 @@ reference.
   leaves it alone. `$decryptCredential` reads NULL as passthrough, so a bearer row that lost its secret would
   silently stop attaching a credential.
 
+## OAuth credentials
+
+`agent-vault-oauth/`. MCP services only. Infisical is the OAuth client and does discovery, registration, the
+code exchange and refresh; the proxy only ever receives the access token.
+
+- **The tokens live on the service row**, like every other credential: the non-secret half (endpoints, client,
+  scopes, status, expiry, token hash) in `credentialConfig`, `{ accessToken, refreshToken, clientSecret }` sealed
+  in `encryptedCredential`. Each service has its own client, used only with the issuer it was registered at.
+  Reauthorizing registers a fresh client, since the server may have dropped the old one and the sign-in would then
+  die on its page; only a client entered by hand is kept, and the stored one is the fallback when registration
+  fails. Scopes carry over only at the same issuer.
+- **Refresh writes the row, which no other credential does, so it races admin edits.** A refresh is a
+  compare-and-swap on `encryptedCredential` and a jsonb merge of only the token keys, so an admin who reauthorized
+  meanwhile keeps the newer tokens. An admin edit that keeps the tokens never writes `credentialConfig`, so it
+  can't write back token fields a refresh changed. A scope report (`missing-scopes`, its own route because it never
+  refreshes) changes only the config, so it passes that compare; the refresh's UPDATE keeps `needs-additional-scopes` in SQL rather than in the WHERE, since
+  losing the write would drop a rotated refresh token. For the same reason two scope reports can't be told apart by
+  the compare, so the report unions `requiredScopes` in its UPDATE (`addRequiredScopes`), never from what it read.
+- **A token only goes where the service still points.** `credential-refresh` and `missing-scopes` take the host
+  pattern the proxy cached and answer 409 once the service has moved; resolve's lazy refresh is pinned to the host and server URL of
+  the snapshot it answers with, and falls back to that snapshot's own token. Both are checked on every row a token
+  comes from, since a move can land mid-refresh. A reauthorizing save re-checks the authorization's server URL
+  under the bundle lock, and a reauthorization committed since its first read wins with a 409 (a refresh doesn't
+  count: it keeps `authorizedAt`). Any other edit that keeps the tokens re-checks under the lock that the server URL
+  it writes is the one `credentialConfig.serverUrl` records (set at every authorization), so it can't restore an
+  old URL over a reauthorization for another server. `updateService` reads the service once under the lock and
+  runs every one of these checks against that row (`reconcileWithLockedRow`); add a new one there, not as another
+  read.
+- **No network call inside a transaction.** Discovery, registration, the exchange and refresh all run before any
+  write. Refresh serializes per service on a Redis lock, not a row lock.
+- **A pending authorization is Redis only** (10 minutes), with the PKCE verifier and tokens sealed by the project
+  cipher. Only its creator can read or complete it (anyone else gets a 404), so an authorize link sent to someone
+  else can't capture their account. It is single use: a save validates it, then claims it by deleting the Redis
+  record, and only the save whose delete removed it proceeds. A save that fails after the claim puts the exact
+  stored value back with its remaining TTL, so it can be retried; nothing runs after commit.
+- **Resolve sends an OAuth token in the bearer shape** with `source: "oauth"`, so a proxy that predates OAuth
+  injects it unchanged. The header is always `Authorization: Bearer` (the MCP authorization spec), so an OAuth
+  credential stores no header name or prefix and its input is only `authorizationId`. Resolve refreshes a token that expires before the next poll; the proxy calls
+  `credential-refresh` after an upstream 401. A failing provider never fails resolve for other services: it costs
+  that service a stale token and a `lastError`. A refresh error that means the login is dead (`invalid_grant`, a
+  dropped client, providers' own revoked or expired refresh token codes: `DEAD_LOGIN_ERROR_CODES`) moves the service
+  to needs reauthorization, so it isn't retried every poll. Any token type but a proof-of-possession one (DPoP, MAC,
+  PoP) is sent as a bearer token, since servers may name their own (Slack's is `user`).
+- **Both proxy calls answer well inside the proxy's 15 second timeout.** Resolve waits 4 seconds in total for its
+  refreshes and sends the stored token for any still running, which finish in the background. Token requests (the
+  `invalid_target` retry included) share one 7 second budget. Resolve's refresh waits about 3 seconds for another's
+  lock; the proxy's refresh after a 401 waits about 10, so it outlasts the holder and gets the new token rather than
+  the rejected one. Either then answers with what is stored, and a waiter whose holder failed spends only the time
+  left before 13 seconds on its own request. Keep that under the proxy's timeout.
+- **Neither refreshes nor resolve are audited.** Connect and reauthorize are recorded by the service create and
+  update events, which carry `oauthIssuer` and `oauthScopes`.
+- **Non-conforming servers are supported through fallbacks**, each recorded in `compatibility`. A fallback may
+  relax what a server must advertise, never a check that stops mix-up or token theft: the issuer must match (a
+  trailing slash aside), the protected resource must be the server's own origin, and `iss` is checked whenever it
+  arrives.
+- **Every scope is an RFC 6749 scope-token** (`isOauthScopeToken`): the proxy's reports are refused otherwise, and
+  scopes from metadata, challenges and token responses that aren't are dropped. A space would split the `scope`
+  parameter and a NUL fails the jsonb write. A granted `scope` splits on spaces only, since a comma is legal inside a
+  token; GitHub-style `repo,gist` splits on commas only when every part was requested (`scope-comma-separated`).
+- **Error text never contains a token.** Provider text is bounded and stripped before it reaches `lastError` or a
+  response, and outbound URLs are logged through `sanitizeUrlForLog`.
+- **Provider data never throws or fails a write.** Every provider string that can reach a message, a log,
+  `lastError` or an authorization's `error` goes through `normalizeProviderText`, and `writeStatus` normalizes
+  `lastError` again. Values stored as sent (client ID, endpoint URLs, tokens) must be printable ASCII, and
+  `expires_in` outside 1 second to 1 year counts as no expiry.
+- **Token requests are never retried by the HTTP client.** Codes are one-use and refresh tokens can rotate. Only
+  the explicit `invalid_target` fallback retries them, inside the same request deadline.
+- **Known gap: scopes only grow.** Reauthorizing at the same issuer asks for every granted and required scope, so
+  a scope an agent's call reported (`missing-scopes`) sticks for good. There is no way to drop one requested scope
+  or reset to the server's defaults short of deleting the service; a follow-up should add both.
+- **Known gap: a Bearer token MCP service only gets the 401 rewrite.** The proxy turns its upstream 401 into a
+  502 so the agent doesn't start its own sign-in, but a `403 insufficient_scope` reaches the agent unchanged, as
+  for HTTP services, and an MCP client may start its own OAuth on it (the TypeScript SDK's `onInsufficientScope`
+  defaults to `reauthorize`).
+
 ## Session logs
 
-Metadata only (method, host, path, status, decision), never bodies, headers or the query string. The agent is
+Metadata only (method, host, path, status, decision). Bodies, headers and the query string are never stored;
+for an MCP service the proxy reads only the JSON-RPC method and tool name of each call from the body. The agent is
 hostile input: nothing it sends may erase or hide its own records, so the proxy logs every request it drops.
 
 - **Bytes go proxy to the bucket to the browser, and S3 is the index.** Infisical stores nothing per chunk and never
@@ -389,7 +531,7 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
 - **Default storage problems go to the server logs, never to an org.** The operator, not an org admin, owns that
   bucket: at boot, API pods list it, write a tagged test file, read it back and send a CORS preflight for `SITE_URL`,
   and log what failed; health skips default storage, and failed reads tell everyone, admins too, to contact support.
-- **Each storage type has its own plan flag**: `agentVaultManagedStorage` (default on) and `agentVaultByoS3`. The flag
+- **Each storage type has its own plan flag**: `agentVaultManagedStorage` and `agentVaultByoS3`. Cloud plans always include default storage unless the org's plan or an override turns it off (`withCloudPlanDefaults`), and self-hosted needs a license that includes it. The flag
   for the storage in use gates uploads and reads, so an org without it can't record or view session logs: unlike
   most paid features, which read from Infisical's database, each read is a billed S3 request. Keep the read check.
   Turning off is never gated, and turning off clears the saved storage, so it always frees the connection. The row
@@ -435,3 +577,10 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
 - The browser fetches session logs straight from S3, so `frontend/index.html`'s CSP `connect-src` must list
   every host the SDK presigns: `*.s3.<region>`, the path-style `s3.<region>` used for dotted bucket names, and
   both `s3-fips` forms. A region added to `AWSRegion` needs its hosts there too.
+
+## Follow-ups
+
+- **Docs screenshots predate the MCP UI.** Retake them once the Agent Vault UI redesign lands:
+  `access-bundle-services.png` (columns are now Type and Target, and it should show an MCP row),
+  `service-template-picker.png` (the service type sidebar, the MCP Servers section, **Custom HTTP API**), and
+  `session-logs-view.png` (the Request column, with a tool call and a `tools/list` row).

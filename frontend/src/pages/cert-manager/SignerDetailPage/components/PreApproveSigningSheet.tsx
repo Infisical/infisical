@@ -129,7 +129,6 @@ export const PreApproveSigningSheet = ({ isOpen, onOpenChange, signerId }: Props
 
   useEffect(() => {
     if (!isOpen) reset(buildDefaults());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxSignings, maxWindowDuration]);
 
   const close = () => {

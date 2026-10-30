@@ -2,6 +2,7 @@ import { IdentityAuthMethod, ProjectType, SecretFolderRole } from "@app/db/schem
 import {
   AgentVaultCredentialType,
   AgentVaultMemberType,
+  AgentVaultServiceType,
   AgentVaultTrafficPolicy
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
@@ -328,6 +329,12 @@ export enum PostHogEventTypes {
   AgentVaultVariableCreated = "Agent Vault Variable Created",
   AgentVaultVariableUpdated = "Agent Vault Variable Updated",
   AgentVaultVariableDeleted = "Agent Vault Variable Deleted",
+  AgentVaultSkillCreated = "Agent Vault Skill Created",
+  AgentVaultSkillVersionPublished = "Agent Vault Skill Version Published",
+  AgentVaultSkillDeleted = "Agent Vault Skill Deleted",
+  AgentVaultAccessBundleSkillAdded = "Agent Vault Access Bundle Skill Added",
+  AgentVaultAccessBundleSkillRemoved = "Agent Vault Access Bundle Skill Removed",
+  AgentVaultSkillsDelivered = "Agent Vault Skills Delivered",
   AgentVaultAccessBundleMemberAdded = "Agent Vault Access Bundle Member Added",
   AgentVaultAccessBundleMemberRemoved = "Agent Vault Access Bundle Member Removed",
   AgentVaultSessionCreated = "Agent Vault Session Created",
@@ -2465,6 +2472,7 @@ export type TAgentVaultServiceCreatedEvent = {
   properties: TAgentVaultEventBase & {
     accessBundleId: string;
     serviceId: string;
+    serviceType: AgentVaultServiceType;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
     allowedMethodCount: number;
@@ -2480,6 +2488,7 @@ export type TAgentVaultServiceUpdatedEvent = {
   properties: TAgentVaultEventBase & {
     accessBundleId: string;
     serviceId: string;
+    serviceType: AgentVaultServiceType;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
     allowedMethodCount: number;
@@ -2514,6 +2523,49 @@ export type TAgentVaultVariableUpdatedEvent = {
 export type TAgentVaultVariableDeletedEvent = {
   event: PostHogEventTypes.AgentVaultVariableDeleted;
   properties: TAgentVaultEventBase & { variableId: string; scope: string };
+};
+
+// sizeBucket keeps the size a breakdown.
+type TAgentVaultSkillContentProperties = {
+  skillId: string;
+  fileCount: number;
+  sizeBucket: string;
+};
+
+export type TAgentVaultSkillCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultSkillCreated;
+  properties: TAgentVaultEventBase & TAgentVaultSkillContentProperties;
+};
+
+export type TAgentVaultSkillVersionPublishedEvent = {
+  event: PostHogEventTypes.AgentVaultSkillVersionPublished;
+  properties: TAgentVaultEventBase & TAgentVaultSkillContentProperties & { version: number; isRestore: boolean };
+};
+
+export type TAgentVaultSkillDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultSkillDeleted;
+  properties: TAgentVaultEventBase & { skillId: string; removedBundleCount: number };
+};
+
+export type TAgentVaultAccessBundleSkillAddedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleSkillAdded;
+  properties: TAgentVaultEventBase & { skillId: string; accessBundleId: string };
+};
+
+export type TAgentVaultAccessBundleSkillRemovedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleSkillRemoved;
+  properties: TAgentVaultEventBase & { skillId: string; accessBundleId: string };
+};
+
+// Fired once per agent start by the route the CLI calls with a session token, which has no request actor.
+export type TAgentVaultSkillsDeliveredEvent = {
+  event: PostHogEventTypes.AgentVaultSkillsDelivered;
+  properties: {
+    orgId: string;
+    channel: string;
+    actorType: string;
+    skillCount: number;
+  };
 };
 
 export type TAgentVaultAccessBundleMemberAddedEvent = {
@@ -2619,6 +2671,12 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultVariableCreatedEvent
   | TAgentVaultVariableUpdatedEvent
   | TAgentVaultVariableDeletedEvent
+  | TAgentVaultSkillCreatedEvent
+  | TAgentVaultSkillVersionPublishedEvent
+  | TAgentVaultSkillDeletedEvent
+  | TAgentVaultAccessBundleSkillAddedEvent
+  | TAgentVaultAccessBundleSkillRemovedEvent
+  | TAgentVaultSkillsDeliveredEvent
   | TAgentVaultAccessBundleMemberAddedEvent
   | TAgentVaultAccessBundleMemberRemovedEvent
   | TAgentVaultSessionCreatedEvent
@@ -2634,7 +2692,10 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultProductMemberUpdatedEvent
   | TAgentVaultProductMemberRemovedEvent;
 
-export type TAgentVaultActorPostHogEvent = Exclude<TAgentVaultPostHogEvent, TAgentVaultSessionLogChunkAcceptedEvent>;
+export type TAgentVaultActorPostHogEvent = Exclude<
+  TAgentVaultPostHogEvent,
+  TAgentVaultSessionLogChunkAcceptedEvent | TAgentVaultSkillsDeliveredEvent
+>;
 
 // A trial is burned per PRODUCT, not per (product, plan): the trial-history gate discards plan_key
 // (see licenseV2Service.getOverview), and the license server 409s a repeat. So TrialStarted fires at

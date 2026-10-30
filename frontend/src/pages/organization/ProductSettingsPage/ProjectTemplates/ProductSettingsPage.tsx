@@ -1,6 +1,6 @@
-import { Helmet } from "react-helmet";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { linkOptions, useParams } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3/platform";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
@@ -11,26 +11,22 @@ import { TProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { ProjectTemplatesSection } from "../project-templates/ProjectTemplatesSection";
 
 export const ProductSettingsPage = () => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { type } = useParams({
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/product-settings/$type/"
   });
   const projectType = urlSlugToProjectType(type) as ProjectType;
 
-  const navigateToTemplate = (template: TProjectTemplate) => {
-    navigate({
+  const getTemplateLink = (template: TProjectTemplate) =>
+    linkOptions({
       to: "/organizations/$orgId/projects/product-settings/$type/project-templates/$templateId",
       params: { orgId: currentOrg.id, type, templateId: template.id }
     });
-  };
 
   return (
     <>
-      <Helmet>
-        <title>Product Settings | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Product Settings" />
+      <link rel="icon" href="/infisical.ico" />
       <div>
         <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">
           <PageHeader
@@ -47,7 +43,7 @@ export const ProductSettingsPage = () => {
                 isAllowed && (
                   <ProjectTemplatesSection
                     projectType={projectType}
-                    onTemplateSelect={navigateToTemplate}
+                    getTemplateLink={getTemplateLink}
                   />
                 )
               }

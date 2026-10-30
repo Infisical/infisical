@@ -3,6 +3,9 @@ import { TGenericPermission } from "@app/lib/types";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
+  AgentVaultMcpTransport,
+  AgentVaultOauthStatus,
+  AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField
 } from "../agent-vault/agent-vault-enums";
@@ -28,9 +31,22 @@ export type TAgentVaultCredentialInput =
       password?: string;
       memberProvidedFields?: TAgentVaultBasicMemberField[];
     }
-  | { type: AgentVaultCredentialType.Passthrough };
+  | { type: AgentVaultCredentialType.Passthrough }
+  | { type: AgentVaultCredentialType.OAuth; authorizationId: string };
 
 export type TAgentVaultCredentialUpdate = TAgentVaultCredentialInput;
+
+export type TAgentVaultOauthCredentialSummary = {
+  type: AgentVaultCredentialType.OAuth;
+  status: AgentVaultOauthStatus;
+  issuer: string;
+  grantedScopes: string[];
+  requiredScopes: string[];
+  // Left out for members: they describe the admin's sign-in, not the service's setup.
+  expiresAt?: string | null;
+  authorizedAt?: string | null;
+  lastError?: string | null;
+};
 
 export type TAgentVaultCredentialSummary =
   | {
@@ -40,7 +56,8 @@ export type TAgentVaultCredentialSummary =
       memberProvidedFields: TAgentVaultBearerMemberField[];
     }
   | { type: AgentVaultCredentialType.Basic; memberProvidedFields: TAgentVaultBasicMemberField[] }
-  | { type: AgentVaultCredentialType.Passthrough };
+  | { type: AgentVaultCredentialType.Passthrough }
+  | TAgentVaultOauthCredentialSummary;
 
 export type TAgentVaultVariableReferenceSummary = { variableId: string; key: string } & (
   | { field: AgentVaultVariableReferenceField.CredentialValue | AgentVaultVariableReferenceField.CredentialUsername }
@@ -94,10 +111,15 @@ export type TAgentVaultSubstitutionUpdate = {
   value?: string;
 };
 
+// Flat rather than a union on `type`: which of the type-specific fields a service takes is decided by the
+// service type registry, which refuses the ones its type does not take.
 export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
+  type: AgentVaultServiceType;
   name: string;
-  hostPattern: string;
+  hostPattern?: string;
+  serverUrl?: string;
+  transport?: AgentVaultMcpTransport;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   credential: TAgentVaultCredentialInput;
@@ -108,8 +130,13 @@ export type TCreateServiceDTO = TAgentVaultProjectScoped & {
 export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   serviceId: string;
+  // Must match the stored type, which never changes.
+  type: AgentVaultServiceType;
   name?: string;
   hostPattern?: string;
+  // Null only as an HTTP service's read-back value.
+  serverUrl?: string | null;
+  transport?: AgentVaultMcpTransport | null;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;

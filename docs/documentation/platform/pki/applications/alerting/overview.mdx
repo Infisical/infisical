@@ -1,7 +1,7 @@
 ---
 title: "Certificate alerts"
 sidebarTitle: "Alerts"
-description: "Get notified when certificates expire, are issued, renewed, or revoked, across Certificate Management or in one application."
+description: "Get notified when certificates expire, are issued, renewed, or revoked, across your organization or in one application."
 ---
 
 An alert notifies your team when a certificate is about to expire, or when a certificate is issued, renewed, or revoked. Each alert watches for one of these events and sends a notification to up to 10 channels. To create an alert, follow the guide for the channel you want to notify:
@@ -25,22 +25,22 @@ Infisical checks for expiring certificates once a day, and sends issuance, renew
 
 ## Choose where to create an alert
 
-You can create an alert for all of Infisical Certificate Management or for one [application](/documentation/platform/pki/applications/overview):
+You can create an organization-wide alert, which covers all of Infisical Certificate Management, or an alert for one [application](/documentation/platform/pki/applications/overview):
 
-| | Certificate Management alert | Application alert |
+| | Organization-wide alert | Application alert |
 | --- | --- | --- |
-| Covers | Every certificate in Infisical Certificate Management, or the ones that match its [filters](#filter-a-certificate-management-alert) | Every certificate in the application |
+| Covers | Every certificate in Infisical Certificate Management, or the ones that match its [filters](#filter-an-organization-wide-alert) | Every certificate in the application |
 | Created in | **Certificate Manager** > **Settings** > **Alerts** | The application's **Settings** tab |
 | Who can create it | The Certificate Management **Admin** role | The **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) |
 | Events | Certificate events, plus [signer certificate expiration](#signer-certificate-expiration) for code signing | Certificate events, with one alert for each event |
 
-Use an application alert when one team owns the certificates and wants its own notifications. Use a Certificate Management alert to cover several applications at once, or certificates that don't belong to an application, such as imported or discovered certificates.
+Use an application alert when one team owns the certificates and wants its own notifications. Use an organization-wide alert to cover several applications at once, or certificates that don't belong to an application, such as imported or discovered certificates.
 
 If you delete an application, Infisical deletes its alerts too.
 
-## Filter a Certificate Management alert
+## Filter an organization-wide alert
 
-Without filters, a Certificate Management alert covers every certificate in Infisical Certificate Management. Each filter you add narrows the alert, and a certificate must match every filter:
+Without filters, an organization-wide alert covers every certificate in Infisical Certificate Management. Each filter you add narrows the alert, and a certificate must match every filter:
 
 | Filter | Certificates covered |
 |--------|----------------------|
@@ -65,7 +65,7 @@ An expiration alert keeps notifying you about the same certificate until the cer
 
 ## Signer certificate expiration
 
-A **Signer Certificate Expiration** alert, in the **Code Signing** group, warns you before a [signer's](/documentation/platform/pki/code-signing/signers) current certificate expires. You can only create it as a Certificate Management alert. Otherwise, it works like a certificate expiration alert.
+A **Signer Certificate Expiration** alert, in the **Code Signing** group, warns you before a [signer's](/documentation/platform/pki/code-signing/signers) current certificate expires. You can only create it as an organization-wide alert. Otherwise, it works like a certificate expiration alert.
 
 Without filters, the alert covers every active signer under **Code Signing** > **Signers**. To cover only some signers, add a **Signers** filter in the **Filters** step and select up to 100 signers. Signer alerts also differ from certificate alerts in these ways:
 

@@ -13,6 +13,7 @@ export type TMintSessionDTO = {
   actorName: string;
   actorEmail: string | null;
   ttl: string;
+  label: string | null;
 };
 
 export type TListSessionsDTO = {
@@ -32,6 +33,10 @@ export type TRevokeSessionDTO = {
 };
 
 export type TGetSessionByIdDTO = TRevokeSessionDTO;
+
+export type TUpdateSessionLabelDTO = TRevokeSessionDTO & {
+  label: string | null;
+};
 
 export type TAgentVaultSessionActor =
   | {

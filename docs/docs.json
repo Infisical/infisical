@@ -529,7 +529,8 @@
                     "root": "documentation/platform/pki/discovery/overview",
                     "pages": [
                       "documentation/platform/pki/discovery/network",
-                      "documentation/platform/pki/discovery/linux-server"
+                      "documentation/platform/pki/discovery/linux-server",
+                      "documentation/platform/pki/discovery/windows-server"
                     ]
                   },
                   {
@@ -700,34 +701,50 @@
                 ]
               },
               {
-                "group": "Agent guides",
+                "group": "Guides",
                 "pages": [
-                  "documentation/platform/agent-vault/guides/claude-code",
-                  "documentation/platform/agent-vault/guides/codex",
-                  "documentation/platform/agent-vault/guides/opencode",
                   {
-                    "group": "Hermes Agent",
-                    "root": "documentation/platform/agent-vault/guides/hermes",
+                    "group": "Sandboxes",
                     "pages": [
-                      "documentation/platform/agent-vault/guides/hermes-gateway"
+                      "documentation/platform/agent-vault/guides/modal",
+                      "documentation/platform/agent-vault/guides/daytona",
+                      "documentation/platform/agent-vault/guides/docker"
                     ]
                   },
                   {
-                    "group": "OpenClaw",
-                    "root": "documentation/platform/agent-vault/guides/openclaw",
+                    "group": "Messaging gateways",
                     "pages": [
+                      "documentation/platform/agent-vault/guides/hermes-gateway",
                       "documentation/platform/agent-vault/guides/openclaw-gateway"
                     ]
                   },
-                  "documentation/platform/agent-vault/guides/custom-agent"
+                  "documentation/platform/agent-vault/guides/custom-agent",
+                  {
+                    "group": "Local development",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/claude-code",
+                      "documentation/platform/agent-vault/guides/codex",
+                      "documentation/platform/agent-vault/guides/opencode",
+                      "documentation/platform/agent-vault/guides/hermes",
+                      "documentation/platform/agent-vault/guides/openclaw"
+                    ]
+                  }
                 ]
               },
               {
                 "group": "Concepts",
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
-                  "documentation/platform/agent-vault/services",
+                  {
+                    "group": "Services",
+                    "root": "documentation/platform/agent-vault/services",
+                    "pages": [
+                      "documentation/platform/agent-vault/http-apis",
+                      "documentation/platform/agent-vault/mcp-servers"
+                    ]
+                  },
                   "documentation/platform/agent-vault/variables",
+                  "documentation/platform/agent-vault/skills",
                   {
                     "group": "Sessions",
                     "root": "documentation/platform/agent-vault/sessions",
@@ -1505,7 +1522,6 @@
                       "api-reference/endpoints/projects/get-project",
                       "api-reference/endpoints/projects/list-projects",
                       "api-reference/endpoints/projects/update-project",
-                      "api-reference/endpoints/projects/secret-snapshots",
                       {
                         "group": "Legacy",
                         "pages": [
@@ -2493,6 +2509,18 @@
                         ]
                       },
                       {
+                        "group": "ServiceNow",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/servicenow/list",
+                          "api-reference/endpoints/app-connections/servicenow/available",
+                          "api-reference/endpoints/app-connections/servicenow/get-by-id",
+                          "api-reference/endpoints/app-connections/servicenow/get-by-name",
+                          "api-reference/endpoints/app-connections/servicenow/create",
+                          "api-reference/endpoints/app-connections/servicenow/update",
+                          "api-reference/endpoints/app-connections/servicenow/delete"
+                        ]
+                      },
+                      {
                         "group": "Supabase",
                         "pages": [
                           "api-reference/endpoints/app-connections/supabase/list",
@@ -2640,6 +2668,16 @@
                       "api-reference/endpoints/audit-logs/update-organization-audit-log-settings",
                       "api-reference/endpoints/audit-logs/get-project-audit-log-settings",
                       "api-reference/endpoints/audit-logs/update-project-audit-log-settings"
+                    ]
+                  },
+                  {
+                    "group": "Alerts",
+                    "pages": [
+                      "api-reference/endpoints/alerts/list",
+                      "api-reference/endpoints/alerts/create",
+                      "api-reference/endpoints/alerts/get-by-id",
+                      "api-reference/endpoints/alerts/update",
+                      "api-reference/endpoints/alerts/delete"
                     ]
                   },
                   {
@@ -3371,9 +3409,7 @@
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/create",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/update",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/delete",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/import-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/remove-secrets"
+                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets"
                         ]
                       },
                       {
@@ -4535,6 +4571,22 @@
                     ]
                   },
                   {
+                    "group": "Skills",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-skills/list",
+                      "api-reference/endpoints/agent-vault-skills/get",
+                      "api-reference/endpoints/agent-vault-skills/create",
+                      "api-reference/endpoints/agent-vault-skills/delete",
+                      "api-reference/endpoints/agent-vault-skills/list-versions",
+                      "api-reference/endpoints/agent-vault-skills/get-version",
+                      "api-reference/endpoints/agent-vault-skills/update",
+                      "api-reference/endpoints/agent-vault-skills/restore-version",
+                      "api-reference/endpoints/agent-vault-skills/list-bundle-skills",
+                      "api-reference/endpoints/agent-vault-skills/add",
+                      "api-reference/endpoints/agent-vault-skills/remove"
+                    ]
+                  },
+                  {
                     "group": "Access bundle members",
                     "pages": [
                       "api-reference/endpoints/agent-vault-access-bundle-members/list",
@@ -4570,6 +4622,7 @@
                       "api-reference/endpoints/agent-vault-sessions/list",
                       "api-reference/endpoints/agent-vault-sessions/get",
                       "api-reference/endpoints/agent-vault-sessions/create",
+                      "api-reference/endpoints/agent-vault-sessions/update",
                       "api-reference/endpoints/agent-vault-sessions/revoke",
                       "api-reference/endpoints/agent-vault-session-logs/list",
                       "api-reference/endpoints/agent-vault-session-logs/tail"

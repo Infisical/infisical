@@ -1,6 +1,21 @@
-import { Braces, FileText, IdCard, Info, Package, Server, Settings, Shield } from "lucide-react";
+import {
+  BookOpenText,
+  Braces,
+  FileText,
+  IdCard,
+  Info,
+  ListChecks,
+  Package,
+  Server,
+  Settings,
+  Shield
+} from "lucide-react";
 
 import { useAgentVaultIntro } from "@app/components/agent-vault/AgentVaultIntro";
+import {
+  SetupChecklist,
+  useAgentVaultSetupProgress
+} from "@app/components/agent-vault/SetupChecklist";
 import {
   SidebarCollapsibleGroup,
   SidebarMenu,
@@ -30,6 +45,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   // An admin can use any bundle, but the nav only nags about the ones granted to them.
   const { data: grantedRequiringSetup } = useListGrantedAgentVaultAccessBundlesRequiringSetup();
   const needsSetup = Boolean(grantedRequiringSetup?.totalCount);
+  const setupProgress = useAgentVaultSetupProgress();
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
@@ -39,7 +55,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       pathSuffix: "access-bundles",
       alertVariant: needsSetup ? "warning" : undefined
     },
-    { label: "Variables", icon: Braces, pathSuffix: "variables" }
+    { label: "Variables", icon: Braces, pathSuffix: "variables" },
+    { label: "Skills", icon: BookOpenText, pathSuffix: "skills", hidden: !isAdmin }
   ];
 
   const infrastructureItems: NavItem[] = [
@@ -78,7 +95,22 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
           <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
         </SidebarCollapsibleGroup>
       )}
-      <SidebarMenu className="mt-auto">
+      <div className="mt-auto" />
+      <SetupChecklist progress={setupProgress} />
+      <SidebarMenu>
+        {setupProgress.canRestore && (
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              tooltip="Setup Steps"
+              className="text-xs text-muted [&_svg]:size-3.5"
+              onClick={setupProgress.restore}
+            >
+              <ListChecks className="mb-px" />
+              <span>Setup Steps</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
         <SidebarMenuItem>
           <SidebarMenuButton
             size="lg"

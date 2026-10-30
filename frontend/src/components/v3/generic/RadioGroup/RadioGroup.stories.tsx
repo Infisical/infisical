@@ -27,7 +27,7 @@ import { RadioGroup, RadioGroupItem } from "./RadioGroup";
  *
  * Reach for `RadioGroup` for short, mutually-exclusive choices that benefit
  * from showing every option at once. For long lists, use `Select` (or
- * `FilterableSelect` once the list gets searchable). For multi-select,
+ * `Combobox` once the list gets searchable). For multi-select,
  * `Checkbox` rows in a `FieldSet`.
  */
 const meta = {

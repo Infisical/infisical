@@ -9,7 +9,8 @@ export enum Pkcs11Mechanism {
   Sha512RsaPkcs = "CKM_SHA512_RSA_PKCS",
   Ecdsa = "CKM_ECDSA",
   EcdsaSha256 = "CKM_ECDSA_SHA256",
-  EcdsaSha384 = "CKM_ECDSA_SHA384"
+  EcdsaSha384 = "CKM_ECDSA_SHA384",
+  MlDsa = "CKM_ML_DSA"
 }
 
 export type Pkcs11SigningMechanism = {

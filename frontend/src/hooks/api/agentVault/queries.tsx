@@ -1,12 +1,22 @@
 import { useMemo, useRef, useState } from "react";
-import { InfiniteData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  InfiniteData,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+  UseQueryOptions
+} from "@tanstack/react-query";
 import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 import { VARIABLE_KEY_MAX_LENGTH, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 
-import { AgentVaultMemberType, AgentVaultVariableScope } from "./enums";
+import {
+  AgentVaultMemberType,
+  AgentVaultOauthAuthorizationStatus,
+  AgentVaultVariableScope
+} from "./enums";
 import {
   createSessionLogChunkCache,
   decryptSessionLogPage,
@@ -21,8 +31,10 @@ import {
 import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
+  TAgentVaultBundleSkill,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultMember,
+  TAgentVaultOauthAuthorization,
   TAgentVaultProductActor,
   TAgentVaultProductMember,
   TAgentVaultProductMemberOf,
@@ -34,17 +46,33 @@ import {
   TAgentVaultSessionLogReadCheck,
   TAgentVaultSessionLogSettingsState,
   TAgentVaultSessionLogTailPage,
+  TAgentVaultSkillDetail,
+  TAgentVaultSkillPage,
+  TAgentVaultSkillVersion,
+  TAgentVaultSkillVersionWithFiles,
   TAgentVaultVariable,
   TListAgentVaultAccessBundlesDTO,
   TListAgentVaultMembersDTO,
   TListAgentVaultProxiesDTO,
   TListAgentVaultSessionsDTO,
+  TListAgentVaultSkillsDTO,
   TListAgentVaultVariablesDTO
 } from "./types";
 
 export const fetchAgentVaultProjectId = async () => {
   const { data } = await apiRequest.get<{ projectId: string }>("/api/v1/agent-vault/project");
   return data.projectId;
+};
+
+export const fetchAgentVaultOauthAuthorization = async (
+  authorizationId: string,
+  signal?: AbortSignal
+) => {
+  const { data } = await apiRequest.get<{ authorization: TAgentVaultOauthAuthorization }>(
+    `/api/v1/agent-vault/oauth/authorizations/${encodeURIComponent(authorizationId)}`,
+    { signal }
+  );
+  return data.authorization;
 };
 
 export const AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS = 15_000;
@@ -62,6 +90,8 @@ export const getSessionLogStorageError = (error: unknown) =>
 // path parameter: without it a switch to another org would serve the previous org's data from cache.
 export const agentVaultKeys = {
   all: (orgId: string) => ["agent-vault", orgId] as const,
+  oauthAuthorization: (orgId: string, authorizationId: string) =>
+    [...agentVaultKeys.all(orgId), "oauth-authorizations", authorizationId] as const,
   accessBundles: (orgId: string) => [...agentVaultKeys.all(orgId), "access-bundles"] as const,
   accessBundle: (orgId: string, accessBundleId: string) =>
     [...agentVaultKeys.accessBundles(orgId), accessBundleId] as const,
@@ -95,6 +125,19 @@ export const agentVaultKeys = {
     [...agentVaultKeys.variables(orgId), "list", params] as const,
   variableKeyStatus: (orgId: string, scope: AgentVaultVariableScope, keys: string[]) =>
     [...agentVaultKeys.variables(orgId), "key-status", scope, keys] as const,
+  skills: (orgId: string) => [...agentVaultKeys.all(orgId), "skills"] as const,
+  skillLists: (orgId: string) => [...agentVaultKeys.skills(orgId), "list"] as const,
+  skillList: (orgId: string, params: TListAgentVaultSkillsDTO) =>
+    [...agentVaultKeys.skillLists(orgId), params] as const,
+  skill: (orgId: string, skillId: string) =>
+    [...agentVaultKeys.skills(orgId), "detail", skillId] as const,
+  skillVersions: (orgId: string, skillId: string) =>
+    [...agentVaultKeys.skill(orgId, skillId), "versions"] as const,
+  skillVersion: (orgId: string, skillId: string, version: number) =>
+    [...agentVaultKeys.skillVersions(orgId, skillId), version] as const,
+  // Nested under accessBundle() so changes to the bundle refresh its skills too.
+  accessBundleSkills: (orgId: string, accessBundleId: string) =>
+    [...agentVaultKeys.accessBundle(orgId, accessBundleId), "skills"] as const,
   members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
   memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.members(orgId), params] as const,
@@ -112,6 +155,35 @@ export const agentVaultKeys = {
     [...agentVaultKeys.sessions(orgId), sessionId, "logs", range ?? {}] as const,
   sessionLogsLive: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
     [...agentVaultKeys.sessions(orgId), sessionId, "logs-live", range ?? {}] as const
+};
+
+// A dropped connection, a deploy, a 5xx or a rate limit can clear on the next poll; any other client error,
+// such as the 404 of an expired authorization, never will.
+export const isTerminalOauthAuthorizationError = (error: unknown) => {
+  if (!axios.isAxiosError(error)) return true;
+  const status = error.response?.status;
+  return status !== undefined && status >= 400 && status < 500 && status !== 408 && status !== 429;
+};
+
+export const useGetAgentVaultOauthAuthorization = (authorizationId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.oauthAuthorization(currentOrg.id, authorizationId),
+    queryFn: ({ signal }) => fetchAgentVaultOauthAuthorization(authorizationId, signal),
+    enabled: Boolean(authorizationId),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+    refetchInterval: (query) => {
+      const { data, error } = query.state;
+      if (error && isTerminalOauthAuthorizationError(error)) return false;
+      if (data && data.status !== AgentVaultOauthAuthorizationStatus.Pending) return false;
+      return error ? 5000 : 2000;
+    },
+    // The provider popup can leave the Infisical tab in the background until authorization finishes.
+    refetchIntervalInBackground: true
+  });
 };
 
 export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentVaultMemberType>(
@@ -203,19 +275,28 @@ export const useListAgentVaultAccessBundleMembers = (
   });
 };
 
-export const useListAgentVaultAccessBundles = (params: TListAgentVaultAccessBundlesDTO = {}) => {
+type TAgentVaultAccessBundleList = {
+  accessBundles: TAgentVaultAccessBundleListItem[];
+  totalCount: number;
+};
+
+export const useListAgentVaultAccessBundles = (
+  params: TListAgentVaultAccessBundlesDTO = {},
+  options?: Omit<UseQueryOptions<TAgentVaultAccessBundleList>, "queryKey" | "queryFn">
+) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
+    placeholderData: (prev) => prev,
+    ...options,
     queryKey: agentVaultKeys.accessBundleList(currentOrg.id, params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{
-        accessBundles: TAgentVaultAccessBundleListItem[];
-        totalCount: number;
-      }>("/api/v1/agent-vault/access-bundles", { params });
+      const { data } = await apiRequest.get<TAgentVaultAccessBundleList>(
+        "/api/v1/agent-vault/access-bundles",
+        { params }
+      );
       return data;
-    },
-    placeholderData: (prev) => prev
+    }
   });
 };
 
@@ -242,40 +323,49 @@ export const useGetAgentVaultAccessBundle = (accessBundleId: string) => {
   });
 };
 
-export const useListAgentVaultSessions = (params?: TListAgentVaultSessionsDTO) => {
+export type TAgentVaultSessionList = { sessions: TAgentVaultSession[]; totalCount: number };
+
+export const useListAgentVaultSessions = (
+  params?: TListAgentVaultSessionsDTO,
+  options?: Omit<UseQueryOptions<TAgentVaultSessionList>, "queryKey" | "queryFn">
+) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
+    refetchInterval: 30_000,
+    placeholderData: (prev) => prev,
+    ...options,
     queryKey: agentVaultKeys.sessionList(currentOrg.id, params),
     queryFn: async () => {
       const { statuses, ...rest } = params ?? {};
-      const { data } = await apiRequest.get<{
-        sessions: TAgentVaultSession[];
-        totalCount: number;
-      }>("/api/v1/agent-vault/sessions", {
-        params: { ...rest, status: statuses?.length ? statuses.join(",") : undefined }
-      });
+      const { data } = await apiRequest.get<TAgentVaultSessionList>(
+        "/api/v1/agent-vault/sessions",
+        { params: { ...rest, status: statuses?.length ? statuses.join(",") : undefined } }
+      );
       return data;
-    },
-    refetchInterval: 30_000,
-    placeholderData: (prev) => prev
+    }
   });
 };
 
-export const useListAgentVaultProxies = (params: TListAgentVaultProxiesDTO = {}) => {
+export type TAgentVaultProxyList = { proxies: TAgentVaultProxy[]; totalCount: number };
+
+export const useListAgentVaultProxies = (
+  params: TListAgentVaultProxiesDTO = {},
+  options?: Omit<UseQueryOptions<TAgentVaultProxyList>, "queryKey" | "queryFn">
+) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
+    refetchInterval: 30_000,
+    placeholderData: (prev) => prev,
+    ...options,
     queryKey: agentVaultKeys.proxyList(currentOrg.id, params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ proxies: TAgentVaultProxy[]; totalCount: number }>(
-        "/api/v1/agent-vault/proxies",
-        { params }
-      );
+      const { data } = await apiRequest.get<TAgentVaultProxyList>("/api/v1/agent-vault/proxies", {
+        params
+      });
       return data;
-    },
-    refetchInterval: 30_000,
-    placeholderData: (prev) => prev
+    }
   });
 };
 
@@ -619,4 +709,90 @@ export const useAgentVaultVariableKeyStatus = (
       ) as ReadonlySet<string>
     };
   }, [data, keySignature]);
+};
+
+export const useListAgentVaultSkills = (
+  params: TListAgentVaultSkillsDTO = {},
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.skillList(currentOrg.id, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TAgentVaultSkillPage>("/api/v1/agent-vault/skills", {
+        params
+      });
+      return data;
+    },
+    placeholderData: (prev) => prev,
+    enabled
+  });
+};
+
+export const useGetAgentVaultSkill = (skillId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.skill(currentOrg.id, skillId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ skill: TAgentVaultSkillDetail }>(
+        `/api/v1/agent-vault/skills/${skillId}`
+      );
+      return data.skill;
+    },
+    enabled: Boolean(skillId)
+  });
+};
+
+export const useListAgentVaultSkillVersions = (skillId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.skillVersions(currentOrg.id, skillId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ versions: TAgentVaultSkillVersion[] }>(
+        `/api/v1/agent-vault/skills/${skillId}/versions`
+      );
+      return data.versions;
+    },
+    enabled: Boolean(skillId)
+  });
+};
+
+export const fetchAgentVaultSkillVersion = async (skillId: string, version: number) => {
+  const { data } = await apiRequest.get<{ version: TAgentVaultSkillVersionWithFiles }>(
+    `/api/v1/agent-vault/skills/${skillId}/versions/${version}`
+  );
+  return data.version;
+};
+
+export const useGetAgentVaultSkillVersion = (skillId: string, version?: number) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.skillVersion(currentOrg.id, skillId, version ?? 0),
+    queryFn: () => fetchAgentVaultSkillVersion(skillId, version ?? 0),
+    enabled: Boolean(skillId) && Boolean(version),
+    // A version never changes once published.
+    staleTime: Infinity
+  });
+};
+
+export const useListAgentVaultAccessBundleSkills = (
+  accessBundleId: string,
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.accessBundleSkills(currentOrg.id, accessBundleId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ skills: TAgentVaultBundleSkill[] }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/skills`
+      );
+      return data.skills;
+    },
+    enabled: enabled && Boolean(accessBundleId)
+  });
 };

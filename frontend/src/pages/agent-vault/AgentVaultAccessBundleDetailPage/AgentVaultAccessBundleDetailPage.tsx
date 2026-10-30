@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
   EllipsisIcon,
+  IdCardIcon,
   PackageIcon,
   PencilIcon,
   TrashIcon,
@@ -16,6 +15,7 @@ import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundle
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertAction,
@@ -32,21 +32,40 @@ import {
   PageHeader,
   PageLoader
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission } from "@app/context";
-import { useGetAgentVaultAccessBundle } from "@app/hooks/api/agentVault";
+import {
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProjectPermission
+} from "@app/context";
+import {
+  AgentVaultSessionScope,
+  useGetAgentVaultAccessBundle,
+  useListAgentVaultSessions
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { DeleteAccessBundleDialog } from "@app/pages/agent-vault/AgentVaultAccessBundlesPage/components/DeleteAccessBundleDialog";
 
 import { ServicesCard } from "./components/ServicesCard";
+import { SkillsCard } from "./components/SkillsCard";
 
 export const AgentVaultAccessBundleDetailPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
+  const { hasProjectRole, permission } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const canReadSkills = permission.can(
+    ProjectPermissionAgentVaultSkillActions.Read,
+    ProjectPermissionSub.AgentVaultSkills
+  );
+  const canEditBundle = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Edit,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
 
   const accessBundleId = useParams({
     strict: false,
@@ -58,40 +77,62 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const needsSetup = (accessBundle?.services ?? []).filter(
     (service) => service.personalValues && !service.personalValues.isConfigured
   );
+  // Listing every session is admin-only, and only admins see the note that reads this.
+  const { data: sessions } = useListAgentVaultSessions(
+    { scope: AgentVaultSessionScope.All, limit: 1 },
+    {
+      enabled: isAdmin,
+      refetchInterval: (query) => ((query.state.data?.totalCount ?? 0) > 0 ? false : 30_000)
+    }
+  );
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isManageAccessOpen, setIsManageAccessOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [serviceToEdit, setServiceToEdit] = useState<TAgentVaultService | null>(null);
+  useAgentVaultCreateIntent(
+    () => {
+      setServiceToEdit(null);
+      setIsServiceSheetOpen(true);
+    },
+    isAdmin && Boolean(accessBundle)
+  );
 
-  if (isPending) return <PageLoader />;
+  if (isPending)
+    return (
+      <>
+        <PageTitle title="Access Bundle" />
+        <PageLoader />
+      </>
+    );
   if (!accessBundle) {
     return (
-      <div className="mx-auto mb-6 w-full max-w-8xl">
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>Access bundle not found</EmptyTitle>
-            <EmptyDescription>It was deleted or is no longer granted to you.</EmptyDescription>
-          </EmptyHeader>
-          <Button variant="av" asChild>
-            <Link
-              to="/organizations/$orgId/agent-vault/access-bundles"
-              params={{ orgId: currentOrg.id }}
-            >
-              Back to Access Bundles
-            </Link>
-          </Button>
-        </Empty>
-      </div>
+      <>
+        <PageTitle title="Access Bundle" />
+        <div className="mx-auto mb-6 w-full max-w-8xl">
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>Access bundle not found</EmptyTitle>
+              <EmptyDescription>It was deleted or is no longer granted to you.</EmptyDescription>
+            </EmptyHeader>
+            <Button variant="av" asChild>
+              <Link
+                to="/organizations/$orgId/agent-vault/access-bundles"
+                params={{ orgId: currentOrg.id }}
+              >
+                Back to Access Bundles
+              </Link>
+            </Button>
+          </Empty>
+        </div>
+      </>
     );
   }
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: accessBundle.name })}</title>
-      </Helmet>
+      <PageTitle title={accessBundle.name || "Access Bundle"} />
 
       <PageHeader
         scope={ProjectType.AgentVault}
@@ -154,20 +195,48 @@ export const AgentVaultAccessBundleDetailPage = () => {
         </Alert>
       )}
 
-      <ServicesCard
-        accessBundleId={accessBundle.id}
-        onSetUp={setServiceToSetUp}
-        services={accessBundle.services}
-        canManage={isAdmin}
-        onAdd={() => {
-          setServiceToEdit(null);
-          setIsServiceSheetOpen(true);
-        }}
-        onEdit={(service) => {
-          setServiceToEdit(service);
-          setIsServiceSheetOpen(true);
-        }}
-      />
+      {isAdmin && accessBundle.services.length > 0 && sessions?.totalCount === 0 && (
+        <Alert variant="info" className="mb-6">
+          <IdCardIcon />
+          <AlertDescription>
+            <p>This bundle is ready. Create a session with it to give an agent access.</p>
+            <AlertAction>
+              <Button variant="outline" size="sm" asChild>
+                <Link
+                  to="/organizations/$orgId/agent-vault/sessions"
+                  params={{ orgId: currentOrg.id }}
+                >
+                  Go to Sessions
+                </Link>
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex flex-col gap-6">
+        <ServicesCard
+          accessBundleId={accessBundle.id}
+          onSetUp={setServiceToSetUp}
+          services={accessBundle.services}
+          canManage={isAdmin}
+          onAdd={() => {
+            setServiceToEdit(null);
+            setIsServiceSheetOpen(true);
+          }}
+          onEdit={(service) => {
+            setServiceToEdit(service);
+            setIsServiceSheetOpen(true);
+          }}
+        />
+        {canReadSkills && (
+          <SkillsCard
+            accessBundleId={accessBundle.id}
+            accessBundleName={accessBundle.name}
+            canManage={canEditBundle}
+          />
+        )}
+      </div>
 
       <PersonalValuesDialog
         target={

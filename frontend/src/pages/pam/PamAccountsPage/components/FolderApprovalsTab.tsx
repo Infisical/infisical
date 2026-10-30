@@ -68,7 +68,6 @@ import {
   useSetPamApprovalConfig
 } from "@app/hooks/api/pam";
 import { TPamAccessRequest, TPamNotificationConfig } from "@app/hooks/api/pam/types";
-import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 import { AlertAction } from "@app/views/Alerts";
 
 import { AccessTypeBadge } from "../../components/AccessTypeBadge";
@@ -84,6 +83,7 @@ import {
   toAutoApprovalDraft
 } from "../../components/auto-approval/autoApprovalDraft";
 import { getRequesterSubtitle } from "../../components/requesterDisplay";
+import { usePamProductUsers } from "../../components/usePamProductUsers";
 import { FolderNotificationsSection } from "./FolderNotificationsSection";
 
 type ApproverEntry = { type: PamApproverType; id: string };
@@ -125,7 +125,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
   const { data: config, isLoading } = useGetPamApprovalConfig(folderId);
-  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { users: productUsers, userMap: productUserMap } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const { data: folderMembers } = useListFolderMembers(folderId);
   const setConfig = useSetPamApprovalConfig();
@@ -257,18 +257,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   );
 
   const userMap = useMemo(
-    () =>
-      new Map(
-        (orgUsers ?? []).map((ou) => [
-          ou.user.id,
-          {
-            label:
-              [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ") || ou.user.username,
-            email: ou.user.email ?? ou.inviteEmail ?? ou.user.username
-          }
-        ])
-      ),
-    [orgUsers]
+    () => new Map([...productUserMap].map(([id, u]) => [id, { label: u.name, email: u.email }])),
+    [productUserMap]
   );
 
   const groupMap = useMemo(
@@ -291,48 +281,24 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       .filter((g) => memberGroupIds.has(g.id) && !selectedIds.has(`group:${g.id}`))
       .map((g) => ({ value: g.id, label: g.name, kind: PamApproverType.Group, subtitle: "Group" }));
 
-    const users: ApproverOption[] = (orgUsers ?? [])
-      .filter(
-        (ou) =>
-          ou.user.id && memberUserIds.has(ou.user.id) && !selectedIds.has(`user:${ou.user.id}`)
-      )
-      .map((ou) => {
-        const name = [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ");
-        return {
-          value: ou.user.id,
-          label: name || ou.user.email || ou.inviteEmail || ou.user.username,
-          kind: PamApproverType.User,
-          subtitle: ou.user.email ?? ou.inviteEmail ?? ""
-        };
-      });
+    const users: ApproverOption[] = productUsers
+      .filter((u) => memberUserIds.has(u.id) && !selectedIds.has(`user:${u.id}`))
+      .map((u) => ({ value: u.id, label: u.name, kind: PamApproverType.User, subtitle: u.email }));
 
     return [...groups, ...users];
-  }, [orgGroups, orgUsers, selectedIds, memberUserIds, memberGroupIds]);
+  }, [orgGroups, productUsers, selectedIds, memberUserIds, memberGroupIds]);
 
   const breakGlassOptions = useMemo<ApproverOption[]>(() => {
     const groups: ApproverOption[] = (orgGroups ?? [])
       .filter((g) => memberGroupIds.has(g.id) && !selectedBreakGlassIds.has(`group:${g.id}`))
       .map((g) => ({ value: g.id, label: g.name, kind: PamApproverType.Group, subtitle: "Group" }));
 
-    const users: ApproverOption[] = (orgUsers ?? [])
-      .filter(
-        (ou) =>
-          ou.user.id &&
-          memberUserIds.has(ou.user.id) &&
-          !selectedBreakGlassIds.has(`user:${ou.user.id}`)
-      )
-      .map((ou) => {
-        const name = [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ");
-        return {
-          value: ou.user.id,
-          label: name || ou.user.email || ou.inviteEmail || ou.user.username,
-          kind: PamApproverType.User,
-          subtitle: ou.user.email ?? ou.inviteEmail ?? ""
-        };
-      });
+    const users: ApproverOption[] = productUsers
+      .filter((u) => memberUserIds.has(u.id) && !selectedBreakGlassIds.has(`user:${u.id}`))
+      .map((u) => ({ value: u.id, label: u.name, kind: PamApproverType.User, subtitle: u.email }));
 
     return [...groups, ...users];
-  }, [orgGroups, orgUsers, selectedBreakGlassIds, memberUserIds, memberGroupIds]);
+  }, [orgGroups, productUsers, selectedBreakGlassIds, memberUserIds, memberGroupIds]);
 
   const addApprover = (opt: ApproverOption | null) => {
     if (!opt) return;

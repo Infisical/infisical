@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
 import {
   Button,
@@ -27,8 +27,8 @@ import {
 } from "@app/context";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
-import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
 import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
+import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
 
 export const AccessManagementPage = () => {
   const { t } = useTranslation();
@@ -107,9 +107,7 @@ export const AccessManagementPage = () => {
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-      </Helmet>
+      <PageTitle title={t("page-titles.access-control")} />
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={isSubOrganization ? "namespace" : "org"}

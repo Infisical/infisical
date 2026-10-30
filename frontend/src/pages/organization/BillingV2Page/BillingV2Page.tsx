@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -8,6 +7,7 @@ import {
 } from "@app/components/license/self-hosted-license";
 import { getSafeUpgradeReturnPath } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3/platform";
 import {
@@ -30,13 +30,13 @@ import {
   useRefreshBillingV2Entitlements
 } from "@app/hooks/api";
 
+import { catalogById } from "./billing-v2-format";
+import { BillingV2RenderState } from "./billing-v2-view-types";
 import { Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
 import { RemoveProductModal } from "./components/RemoveProductModal";
 import { ALL_ORGS_VALUE } from "./components/RootOrgFilter";
 import { UsageBreakdownSheet } from "./components/UsageBreakdownSheet";
-import { catalogById } from "./billing-v2-format";
-import { BillingV2RenderState } from "./billing-v2-view-types";
 import { useOfflineBilling } from "./useOfflineBilling";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
@@ -181,7 +181,6 @@ export const BillingV2Page = () => {
       createNotification({ type: "info", text: "Checkout was canceled." });
     }
     window.history.replaceState({}, "", window.location.pathname);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // An instance admin can point the page at an organization they are not a member of, which the
@@ -333,11 +332,9 @@ export const BillingV2Page = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("billing.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <PageTitle title={t("billing.title")} />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
       <div className="mb-8 flex w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />

@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
-import { Helmet } from "react-helmet";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -174,7 +174,7 @@ const Page = () => {
             <DiscoveryDetailsSection discovery={discovery} />
             <DiscoveryTargetSection discovery={discovery} />
           </div>
-          <div className="flex flex-1 flex-col gap-y-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-y-5">
             <DiscoveryScanLogsSection
               discoveryId={discoveryId}
               onTriggerScan={handleTriggerScan}
@@ -213,10 +213,8 @@ const Page = () => {
 export const DiscoveryDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Discovery Job Details</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Discovery Job Details" />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

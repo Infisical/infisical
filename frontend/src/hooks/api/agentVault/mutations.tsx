@@ -12,27 +12,38 @@ import {
   TAgentVaultAccessBundle,
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
+  TAgentVaultBundleSkill,
   TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
+  TAgentVaultOauthAuthorization,
   TAgentVaultPersonalValues,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TAgentVaultProxyWithToken,
   TAgentVaultService,
+  TAgentVaultSession,
   TAgentVaultSessionLogSettingsState,
+  TAgentVaultSkillSummary,
+  TAgentVaultSkillVersion,
   TAgentVaultVariable,
   TAgentVaultWrittenMember,
+  TCompleteAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultAccessBundleDTO,
+  TCreateAgentVaultOauthAuthorizationDTO,
+  TCreateAgentVaultOauthAuthorizationResponse,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
+  TCreateAgentVaultSkillDTO,
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
   TSetAgentVaultPersonalValuesDTO,
   TUpdateAgentVaultAccessBundleDTO,
   TUpdateAgentVaultMemberRolesDTO,
   TUpdateAgentVaultServiceDTO,
+  TUpdateAgentVaultSessionLabelDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
+  TUpdateAgentVaultSkillDTO,
   TUpdateAgentVaultVariableDTO
 } from "./types";
 
@@ -71,6 +82,8 @@ export const useUpdateAgentVaultAccessBundle = () => {
       });
       // A variable's usedByServices names each service's bundle.
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
+      // A skill lists the bundles it is in by name.
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.skills(currentOrg.id) });
     }
   });
 };
@@ -89,17 +102,24 @@ export const useDeleteAgentVaultAccessBundle = () => {
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(currentOrg.id) });
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(currentOrg.id) });
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.skills(currentOrg.id) });
     }
   });
 };
+
+// The service sheet renders these inline when it recognizes them (a host-pattern conflict, an authorization that
+// expired or was already used) and hands the rest back to onRequestError, so the global toast must not also fire.
+export const SERVICE_SAVE_HANDLED_ERROR_CODES: string[] = [
+  ApiErrorTypes.BadRequestError,
+  ApiErrorTypes.ConflictError,
+  ApiErrorTypes.NotFoundError
+];
 
 export const useCreateAgentVaultService = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
-    // so the global toast must not also fire for it.
-    meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    meta: { skipValidationToast: true, handledErrorCodes: SERVICE_SAVE_HANDLED_ERROR_CODES },
     mutationFn: async ({ accessBundleId, ...params }: TCreateAgentVaultServiceDTO) => {
       const { data } = await apiRequest.post<{ service: TAgentVaultService }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`,
@@ -121,9 +141,7 @@ export const useUpdateAgentVaultService = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
-    // so the global toast must not also fire for it.
-    meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    meta: { skipValidationToast: true, handledErrorCodes: SERVICE_SAVE_HANDLED_ERROR_CODES },
     mutationFn: async ({ accessBundleId, serviceId, ...params }: TUpdateAgentVaultServiceDTO) => {
       const { data } = await apiRequest.patch<{ service: TAgentVaultService }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}`,
@@ -214,6 +232,23 @@ export const useCreateAgentVaultSession = () => {
       const { data } = await apiRequest.post<{ session: TAgentVaultMintedSession }>(
         "/api/v1/agent-vault/sessions",
         params
+      );
+      return data.session;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
+    }
+  });
+};
+
+export const useUpdateAgentVaultSessionLabel = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sessionId, label }: TUpdateAgentVaultSessionLabelDTO) => {
+      const { data } = await apiRequest.patch<{ session: TAgentVaultSession }>(
+        `/api/v1/agent-vault/sessions/${sessionId}`,
+        { label }
       );
       return data.session;
     },
@@ -465,6 +500,35 @@ export const useRevealAgentVaultVariableValue = () =>
     }
   });
 
+export const useCreateAgentVaultOauthAuthorization = () =>
+  useMutation({
+    // The Authorize card shows every failure in place, discovery and registration ones naming the server.
+    meta: { skipErrorToast: true },
+    mutationFn: async (params: TCreateAgentVaultOauthAuthorizationDTO) => {
+      const { data } = await apiRequest.post<TCreateAgentVaultOauthAuthorizationResponse>(
+        "/api/v1/agent-vault/oauth/authorizations",
+        params
+      );
+      return data;
+    }
+  });
+
+export const useCompleteAgentVaultOauthAuthorization = () =>
+  useMutation({
+    // The callback page shows every outcome itself.
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError, ApiErrorTypes.NotFoundError] },
+    mutationFn: async ({
+      authorizationId,
+      ...params
+    }: TCompleteAgentVaultOauthAuthorizationDTO) => {
+      const { data } = await apiRequest.post<{ authorization: TAgentVaultOauthAuthorization }>(
+        `/api/v1/agent-vault/oauth/authorizations/${encodeURIComponent(authorizationId)}/complete`,
+        params
+      );
+      return data.authorization;
+    }
+  });
+
 // The status shows on the bundle read and the bundle list, and Used By on personal variables follows the references.
 const invalidatePersonalValues = (
   queryClient: ReturnType<typeof useQueryClient>,
@@ -515,5 +579,182 @@ export const useDeleteAgentVaultPersonalValues = () => {
     },
     onSuccess: (_, { accessBundleId }) =>
       invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId)
+  });
+};
+
+// Matches every access bundle's skill list, whose rows show each skill's latest version.
+const isAccessBundleSkillsKey = (orgId: string) => (query: { queryKey: readonly unknown[] }) => {
+  const [, keyOrgId, scope, , leaf] = query.queryKey;
+  return keyOrgId === orgId && scope === "access-bundles" && leaf === "skills";
+};
+
+const invalidateSkillVersionChange = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  skillId: string
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.skill(orgId, skillId), exact: true }),
+    queryClient.invalidateQueries({
+      queryKey: agentVaultKeys.skillVersions(orgId, skillId),
+      exact: true
+    }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(orgId) }),
+    queryClient.invalidateQueries({ predicate: isAccessBundleSkillsKey(orgId) })
+  ]);
+
+export const useCreateAgentVaultSkill = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: TCreateAgentVaultSkillDTO) => {
+      const { data } = await apiRequest.post<{
+        skill: TAgentVaultSkillSummary;
+        version: TAgentVaultSkillVersion;
+      }>("/api/v1/agent-vault/skills", params);
+      return data;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(currentOrg.id) })
+  });
+};
+
+/** A save sent with a `baseVersion` that is no longer the latest. The caller shows it, so no toast is raised. */
+export class SkillVersionConflictError extends Error {
+  latestVersion: number;
+
+  constructor(message: string, latestVersion: number) {
+    super(message);
+    this.latestVersion = latestVersion;
+  }
+}
+
+const STALE_BASE_VERSION_RE = /^Version (\d+) was published after you opened this skill\./;
+
+export const useUpdateAgentVaultSkill = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ skillId, ...params }: TUpdateAgentVaultSkillDTO) => {
+      try {
+        const { data } = await apiRequest.patch<{
+          skill: TAgentVaultSkillSummary;
+          version: TAgentVaultSkillVersion;
+          unchanged: boolean;
+        }>(`/api/v1/agent-vault/skills/${skillId}`, params);
+        return data;
+      } catch (error) {
+        const message: unknown = axios.isAxiosError(error)
+          ? error.response?.data?.message
+          : undefined;
+        const match =
+          axios.isAxiosError(error) && error.response?.status === 409 && typeof message === "string"
+            ? STALE_BASE_VERSION_RE.exec(message)
+            : null;
+        if (match) throw new SkillVersionConflictError(message as string, Number(match[1]));
+        throw error;
+      }
+    },
+    onSuccess: (_, { skillId }) =>
+      invalidateSkillVersionChange(queryClient, currentOrg.id, skillId),
+    onError: (error, { skillId }) => {
+      if (error instanceof SkillVersionConflictError) {
+        invalidateSkillVersionChange(queryClient, currentOrg.id, skillId).catch(() => undefined);
+      }
+    }
+  });
+};
+
+export const useRestoreAgentVaultSkillVersion = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ skillId, version }: { skillId: string; version: number }) => {
+      const { data } = await apiRequest.post<{
+        version: TAgentVaultSkillVersion;
+        unchanged: boolean;
+      }>(`/api/v1/agent-vault/skills/${skillId}/versions/${version}/restore`);
+      return data;
+    },
+    onSuccess: (_, { skillId }) => invalidateSkillVersionChange(queryClient, currentOrg.id, skillId)
+  });
+};
+
+export const useDeleteAgentVaultSkill = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (skillId: string) => {
+      const { data } = await apiRequest.delete<{ skill: TAgentVaultSkillSummary }>(
+        `/api/v1/agent-vault/skills/${skillId}`
+      );
+      return data.skill;
+    },
+    // The skill's own queries are dropped rather than invalidated, which would refetch them only to get 404s. A page
+    // still showing the skill drops its queries once it has navigated away.
+    onSuccess: (_, skillId) => {
+      queryClient.removeQueries({
+        queryKey: agentVaultKeys.skill(currentOrg.id, skillId),
+        type: "inactive"
+      });
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(currentOrg.id) }),
+        queryClient.invalidateQueries({ predicate: isAccessBundleSkillsKey(currentOrg.id) })
+      ]);
+    }
+  });
+};
+
+const invalidateBundleSkillChange = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  { accessBundleId, skillId }: { accessBundleId: string; skillId: string }
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: agentVaultKeys.accessBundleSkills(orgId, accessBundleId)
+    }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.skill(orgId, skillId), exact: true }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(orgId) })
+  ]);
+
+export const useAddAgentVaultAccessBundleSkill = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accessBundleId,
+      skillId
+    }: {
+      accessBundleId: string;
+      skillId: string;
+    }) => {
+      const { data } = await apiRequest.post<{ skill: TAgentVaultBundleSkill }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/skills`,
+        { skillId }
+      );
+      return data.skill;
+    },
+    onSuccess: (_, params) => invalidateBundleSkillChange(queryClient, currentOrg.id, params)
+  });
+};
+
+export const useRemoveAgentVaultAccessBundleSkill = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accessBundleId,
+      skillId
+    }: {
+      accessBundleId: string;
+      skillId: string;
+    }) => {
+      const { data } = await apiRequest.delete<{ skill: TAgentVaultBundleSkill }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/skills/${skillId}`
+      );
+      return data.skill;
+    },
+    onSuccess: (_, params) => invalidateBundleSkillChange(queryClient, currentOrg.id, params)
   });
 };

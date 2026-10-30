@@ -8,12 +8,14 @@ import {
   MfaSessionChallenge
 } from "@app/components/mfa/MfaSessionChallenge";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { CardContent, VerificationCodeHeader } from "@app/components/v3";
 import { stashMfaLockoutError } from "@app/helpers/mfaSession";
 import { MfaSessionStatus, useMfaSessionStatus } from "@app/hooks/api/mfaSession";
 
 const MfaAuthPage = ({ children }: { children: ReactNode }) => (
   <AuthPageLayout variant="focused" showFooter={false}>
+    <PageTitle title="Two-Factor Authentication" />
     <AuthPagePanel>{children}</AuthPagePanel>
   </AuthPageLayout>
 );

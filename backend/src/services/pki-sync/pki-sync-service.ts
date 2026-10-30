@@ -28,11 +28,11 @@ import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-app
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { CertStatus } from "../certificate/certificate-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { TSyncMetadata } from "../certificate-sync/certificate-sync-schemas";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { CertStatus } from "../certificate/certificate-types";
 import { encryptPkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { HEALTH_CHECK_COMMAND_OPTION_KEY, PkiSync, PkiSyncStatus } from "./pki-sync-enums";

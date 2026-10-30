@@ -586,6 +586,29 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteUserBypassersInProjects = async (
+    args: { projectIds: string[]; userIds: string[]; scopeTypes: string[] },
+    tx?: Knex
+  ): Promise<void> => {
+    try {
+      if (!args.projectIds.length || !args.userIds.length || !args.scopeTypes.length) return;
+
+      const conn = tx || db;
+
+      const policyIds = conn(TableName.ApprovalPolicies)
+        .whereIn("projectId", args.projectIds)
+        .whereIn("scopeType", args.scopeTypes)
+        .select("id");
+
+      await conn(TableName.ApprovalPolicyBypassers)
+        .whereIn("policyId", policyIds)
+        .whereIn("userId", args.userIds)
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete user bypassers in projects" });
+    }
+  };
+
   return {
     ...orm,
     findByIdForUpdate,
@@ -600,7 +623,8 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     findRequestableScopes,
     deleteStepApproversBySubject,
     deleteBypassersBySubject,
-    deleteUserStepApproversInProjects
+    deleteUserStepApproversInProjects,
+    deleteUserBypassersInProjects
   };
 };
 

@@ -15,8 +15,6 @@ import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
-import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
@@ -40,6 +38,8 @@ import {
   CertificateRenewalKeySource,
   TCertificateIssuanceResponse
 } from "@app/services/certificate-v3/certificate-v3-types";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
+import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -1199,6 +1199,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           hasOriginatingRequest: z.boolean().describe(CERTIFICATES.RENEWAL_PREVIEW.hasOriginatingRequest),
+          hasOriginatingCsr: z.boolean().describe(CERTIFICATES.RENEWAL_PREVIEW.hasOriginatingCsr),
           request: z
             .object({
               commonName: z.string().optional(),

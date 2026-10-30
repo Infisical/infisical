@@ -15,6 +15,10 @@ import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-c
 import { buildGoDaddySsoKeyHeader } from "@app/services/app-connection/godaddy/godaddy-connection-constants";
 import { getGoDaddyApiBaseUrl } from "@app/services/app-connection/godaddy/godaddy-connection-fns";
 import { TGoDaddyConnection } from "@app/services/app-connection/godaddy/godaddy-connection-types";
+import {
+  GoDaddyExternalMetadataSchema,
+  TGoDaddyExternalMetadata
+} from "@app/services/certificate-common/external-metadata-schemas";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
@@ -23,10 +27,6 @@ import {
 } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
-import {
-  GoDaddyExternalMetadataSchema,
-  TGoDaddyExternalMetadata
-} from "@app/services/certificate-common/external-metadata-schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";

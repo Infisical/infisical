@@ -1,9 +1,9 @@
-import { Helmet } from "react-helmet";
 import { subject } from "@casl/ability";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import {
   AccessRestrictedDialog,
@@ -232,27 +232,27 @@ const Page = () => {
 
   const canReadCertificate = Boolean(
     certSubject &&
-      (permission.can(ProjectPermissionCertificateActions.Read, certSubject) ||
-        appPermissionData?.permission?.can(
-          PkiApplicationResourceActions.Read,
-          PkiApplicationResourceSub.Certificates
-        ))
+    (permission.can(ProjectPermissionCertificateActions.Read, certSubject) ||
+      appPermissionData?.permission?.can(
+        PkiApplicationResourceActions.Read,
+        PkiApplicationResourceSub.Certificates
+      ))
   );
   const canEditCertificate = Boolean(
     certSubject &&
-      (permission.can(ProjectPermissionCertificateActions.Edit, certSubject) ||
-        appPermissionData?.permission?.can(
-          PkiApplicationResourceActions.Edit,
-          PkiApplicationResourceSub.Certificates
-        ))
+    (permission.can(ProjectPermissionCertificateActions.Edit, certSubject) ||
+      appPermissionData?.permission?.can(
+        PkiApplicationResourceActions.Edit,
+        PkiApplicationResourceSub.Certificates
+      ))
   );
   const canDeleteCertificate = Boolean(
     certSubject &&
-      (permission.can(ProjectPermissionCertificateActions.Delete, certSubject) ||
-        appPermissionData?.permission?.can(
-          PkiApplicationResourceActions.Delete,
-          PkiApplicationResourceSub.Certificates
-        ))
+    (permission.can(ProjectPermissionCertificateActions.Delete, certSubject) ||
+      appPermissionData?.permission?.can(
+        PkiApplicationResourceActions.Delete,
+        PkiApplicationResourceSub.Certificates
+      ))
   );
   const canEditPkiSyncs =
     permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs) ||
@@ -555,10 +555,8 @@ const Page = () => {
 export const CertificateDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Certificate Details</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Certificate Details" />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );
