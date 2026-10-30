@@ -13,6 +13,8 @@ This page explains how the pieces fit together in a cluster and how to choose an
   Deploy the proxy, lock agent pods to it, and start an agent with its own session.
 </Card>
 
+## How the pieces fit together
+
 ```mermaid
 flowchart LR
   subgraph cluster["Kubernetes cluster"]
@@ -32,8 +34,6 @@ flowchart LR
   proxy -->|"request with the credential"| apis
   proxy -->|"fetches the credentials"| infisical
 ```
-
-## How the pieces fit together
 
 | Piece | Where it runs | Credentials it stores |
 |---|---|---|
