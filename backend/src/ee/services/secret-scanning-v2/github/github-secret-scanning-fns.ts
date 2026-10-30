@@ -586,7 +586,9 @@ const toCheckRunAnnotations = (findings: TFindingsPayload) =>
 
 const escapeMarkdownTableCell = (value: string) => value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 
-const toMarkdownUrl = (url: string) => url.replace(/ /g, "%20").replace(/\(/g, "%28").replace(/\)/g, "%29");
+// GitHub splits table cells on "|" even inside a link, so it is encoded along with the characters that end a link.
+const toMarkdownUrl = (url: string) =>
+  url.replace(/ /g, "%20").replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/\|/g, "%7C");
 
 const toStatusLabel = (status?: string | null) =>
   (status ?? SecretScanningFindingStatus.Unresolved)
