@@ -121,6 +121,7 @@ export type OrgMember = {
     status: "invited" | "verified" | "accepted";
     lastLogin?: { method: string; time: string };
     createdAt: string;
+    metadata?: { key: string; value: string }[];
   };
   groups: GroupRef[];
 };
@@ -176,7 +177,8 @@ export const orgMembers: OrgMember[] = [
       isActive: true,
       status: "accepted",
       lastLogin: { method: "Email", time: "Oct 28, 2026, 11:03 AM" },
-      createdAt: "Mar 2, 2025"
+      createdAt: "Mar 2, 2025",
+      metadata: [{ key: "team", value: "payments" }]
     },
     groups: [{ id: "g-platform", name: "platform-eng", roles: [{ role: "admin" }] }]
   },
@@ -265,6 +267,8 @@ export type OrgGroup = {
   slug: string;
   role: string;
   memberIds: string[];
+  identityIds?: string[];
+  addedOn?: Record<string, string>;
   createdAt: string;
 };
 
@@ -275,6 +279,7 @@ export const orgGroups: OrgGroup[] = [
     slug: "platform-eng",
     role: "admin",
     memberIds: ["u-sarah", "u-marcus", "u-priya"],
+    identityIds: ["4b1e8c2a-93f0-4d55-a1c6-0e7d2f9b3a11"],
     createdAt: "Feb 1, 2025"
   },
   {
@@ -337,6 +342,7 @@ export type OrgIdentity = {
   createdAt: string;
   lastLogin?: string;
   managedByProject?: string;
+  universalAuth?: UniversalAuthConfig;
 };
 
 export const orgIdentities: OrgIdentity[] = [
@@ -402,6 +408,17 @@ export const orgIdentities: OrgIdentity[] = [
     hasDeleteProtection: false,
     metadata: [],
     createdAt: "Oct 20, 2026"
+  },
+  {
+    id: "2c8f1a6d-4e3b-4f9a-b7c2-5d0e8a1f9c37",
+    name: "payments-webhook-worker",
+    role: "no-access",
+    authMethods: ["universal"],
+    hasDeleteProtection: false,
+    metadata: [],
+    createdAt: "Sep 14, 2026",
+    lastLogin: "25 minutes ago",
+    managedByProject: "payments-api"
   }
 ];
 
@@ -559,6 +576,149 @@ export const environments = [
   { value: "prod", label: "Production" }
 ];
 
+export type UniversalAuthConfig = {
+  accessTokenTTL: string;
+  accessTokenMaxTTL: string;
+  accessTokenNumUsesLimit: string;
+  accessTokenPeriod: string;
+  lockoutEnabled: boolean;
+  lockoutThreshold: string;
+  lockoutDurationValue: string;
+  lockoutDurationUnit: string;
+  lockoutCounterResetValue: string;
+  lockoutCounterResetUnit: string;
+  clientSecretTrustedIps: string[];
+  accessTokenTrustedIps: string[];
+};
+
+export const DEFAULT_UNIVERSAL_AUTH: UniversalAuthConfig = {
+  accessTokenTTL: "2592000",
+  accessTokenMaxTTL: "2592000",
+  accessTokenNumUsesLimit: "0",
+  accessTokenPeriod: "0",
+  lockoutEnabled: true,
+  lockoutThreshold: "3",
+  lockoutDurationValue: "5",
+  lockoutDurationUnit: "m",
+  lockoutCounterResetValue: "30",
+  lockoutCounterResetUnit: "s",
+  clientSecretTrustedIps: ["0.0.0.0/0", "::/0"],
+  accessTokenTrustedIps: ["0.0.0.0/0", "::/0"]
+};
+
+export type ProjectType = "secret-manager" | "cert-manager" | "kms" | "ssh" | "pam";
+export const projectTypeNames: Record<ProjectType, string> = {
+  "secret-manager": "Secrets Management",
+  "cert-manager": "Certificate Manager",
+  kms: "KMS",
+  ssh: "SSH",
+  pam: "PAM"
+};
+
+export type OrgProject = { id: string; name: string; type: ProjectType; description?: string };
+export const CURRENT_PROJECT_ID = "payments-api";
+export const orgProjects: OrgProject[] = [
+  {
+    id: "payments-api",
+    name: "payments-api",
+    type: "secret-manager",
+    description: "Secrets for the payments API"
+  },
+  { id: "web-dashboard", name: "web-dashboard", type: "secret-manager" },
+  {
+    id: "platform-core",
+    name: "platform-core",
+    type: "secret-manager",
+    description: "Shared platform services"
+  },
+  { id: "kms-keys", name: "kms-keys", type: "kms" },
+  { id: "ssh-bastion", name: "ssh-bastion", type: "ssh" },
+  { id: "internal-pki", name: "internal-pki", type: "cert-manager" }
+];
+
+export type OtherProjectMembership = {
+  id: string;
+  projectId: string;
+  subject: "user" | "identity" | "group";
+  subjectId: string;
+  roles: string[];
+  createdAt: string;
+};
+export const otherProjectMemberships: OtherProjectMembership[] = [
+  {
+    id: "opm-1",
+    projectId: "web-dashboard",
+    subject: "user",
+    subjectId: "u-priya",
+    roles: ["member"],
+    createdAt: "Apr 2, 2025"
+  },
+  {
+    id: "opm-2",
+    projectId: "platform-core",
+    subject: "user",
+    subjectId: "u-priya",
+    roles: ["viewer", "member"],
+    createdAt: "Jun 18, 2025"
+  },
+  {
+    id: "opm-3",
+    projectId: "internal-pki",
+    subject: "user",
+    subjectId: "u-priya",
+    roles: ["admin"],
+    createdAt: "Jul 1, 2025"
+  },
+  {
+    id: "opm-4",
+    projectId: "kms-keys",
+    subject: "identity",
+    subjectId: "4b1e8c2a-93f0-4d55-a1c6-0e7d2f9b3a11",
+    roles: ["admin"],
+    createdAt: "Mar 9, 2026"
+  },
+  {
+    id: "opm-5",
+    projectId: "platform-core",
+    subject: "group",
+    subjectId: "g-platform",
+    roles: ["admin"],
+    createdAt: "Feb 3, 2025"
+  }
+];
+
+export type AuthTemplateMethod = "ldap" | "kubernetes" | "oidc";
+export type AuthTemplate = {
+  id: string;
+  name: string;
+  method: AuthTemplateMethod;
+  endpoint: string;
+  usages: string[];
+};
+export const identityAuthTemplates: AuthTemplate[] = [
+  {
+    id: "t-ldap",
+    name: "corp-ldap",
+    method: "ldap",
+    endpoint: "ldaps://ldap.acme.dev:636",
+    usages: []
+  },
+  {
+    id: "t-k8s",
+    name: "prod-cluster",
+    method: "kubernetes",
+    endpoint: "https://k8s.prod.acme.dev:6443",
+    usages: ["9d27a4f1-0c3b-4e8a-b5f2-6a1d7c4e2b90"]
+  },
+  {
+    id: "t-oidc",
+    name: "github-actions-oidc",
+    method: "oidc",
+    endpoint: "https://token.actions.githubusercontent.com",
+    usages: ["4b1e8c2a-93f0-4d55-a1c6-0e7d2f9b3a11"]
+  }
+];
+
 export type AccessData = {
   orgMembers: OrgMember[];
   orgGroups: OrgGroup[];
@@ -569,6 +729,9 @@ export type AccessData = {
   projectIdentities: ProjectIdentity[];
   serviceTokens: ServiceToken[];
   projectRoles: Role[];
+  defaultOrgRole: string;
+  identityAuthTemplates: AuthTemplate[];
+  otherProjectMemberships: OtherProjectMembership[];
 };
 
 export const createData = (scenario: Scenario): AccessData => {
@@ -582,7 +745,10 @@ export const createData = (scenario: Scenario): AccessData => {
       projectGroups: [],
       projectIdentities: [],
       serviceTokens: [],
-      projectRoles: projectRoles.filter((r) => r.builtIn)
+      projectRoles: projectRoles.filter((r) => r.builtIn),
+      defaultOrgRole: DEFAULT_ORG_ROLE,
+      identityAuthTemplates: [],
+      otherProjectMemberships: []
     };
   return {
     orgMembers,
@@ -593,7 +759,10 @@ export const createData = (scenario: Scenario): AccessData => {
     projectGroups,
     projectIdentities,
     serviceTokens,
-    projectRoles
+    projectRoles,
+    defaultOrgRole: DEFAULT_ORG_ROLE,
+    identityAuthTemplates,
+    otherProjectMemberships
   };
 };
 

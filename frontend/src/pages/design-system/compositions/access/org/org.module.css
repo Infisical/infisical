@@ -1,0 +1,127 @@
+.detailPage {
+  container-type: inline-size;
+}
+.detailGrid {
+  display: grid;
+  grid-template-columns: 384px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--v4-space-24);
+}
+@container (max-width: 896px) {
+  .detailGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-32);
+  min-width: 0;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-12);
+  min-width: 0;
+}
+.sectionHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--v4-space-12);
+}
+.sectionCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-4);
+  min-width: 0;
+}
+.start {
+  align-self: flex-start;
+}
+.value {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--v4-space-4);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mono {
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+  letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+}
+.metadata {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--v4-space-4);
+}
+.typeIcon {
+  display: inline-flex;
+  color: var(--v4-muted);
+}
+.ok {
+  display: inline-flex;
+  color: var(--v4-ok);
+}
+.bad {
+  display: inline-flex;
+  color: var(--v4-bad);
+}
+.metaRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--v4-space-8);
+}
+.metaBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-12);
+  max-height: 30vh;
+  overflow-y: auto;
+  padding: var(--v4-space-16);
+  border: var(--v4-size-control-border) solid var(--v4-line);
+}
+.metaBox[data-empty] {
+  border-style: dashed;
+  color: var(--v4-muted);
+  text-align: center;
+}
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--v4-space-8);
+}
+.ipRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--v4-space-8);
+}
+.dimmed {
+  opacity: 0.7;
+}
+.projectCell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.usageList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.toolbarTabs {
+  flex: none;
+}
+.end {
+  align-self: flex-end;
+}
