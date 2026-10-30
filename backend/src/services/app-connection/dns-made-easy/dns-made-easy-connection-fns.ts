@@ -118,6 +118,43 @@ export const listDNSMadeEasyZones = async (appConnection: TDNSMadeEasyConnection
   }
 };
 
+export const getDNSMadeEasyZone = async (
+  appConnection: TDNSMadeEasyConnection,
+  zoneId: string
+): Promise<TDNSMadeEasyZone> => {
+  if (appConnection.method !== DNSMadeEasyConnectionMethod.APIKeySecret) {
+    throw new BadRequestError({ message: "Unsupported DNS Made Easy connection method" });
+  }
+
+  const {
+    credentials: { apiKey, secretKey }
+  } = appConnection;
+
+  try {
+    const resp = await request.get<{ id: number; name: string }>(
+      getDNSMadeEasyUrl(`/V2.0/dns/managed/${encodeURIComponent(zoneId)}`),
+      {
+        headers: {
+          ...makeDNSMadeEasyAuthHeaders(apiKey, secretKey),
+          Accept: "application/json"
+        }
+      }
+    );
+
+    return { id: String(resp.data.id), name: resp.data.name };
+  } catch (error: unknown) {
+    logger.error(error, "Error fetching DNS Made Easy zone");
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        message: `Failed to fetch DNS Made Easy zone: ${error.response?.data?.error?.[0] || error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to fetch DNS Made Easy zone"
+    });
+  }
+};
 export const listDNSMadeEasyRecords = async (
   appConnection: TDNSMadeEasyConnection,
   options: { zoneId: string; type?: string; name?: string }
