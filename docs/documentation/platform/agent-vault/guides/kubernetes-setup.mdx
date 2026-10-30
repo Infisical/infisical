@@ -16,11 +16,9 @@ This guide deploys an Agent Vault [proxy](/documentation/platform/agent-vault/pr
 ## Prerequisites
 
 - The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
-- If you self-host Infisical, version `v0.167.2` or later
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A Kubernetes cluster whose network plugin enforces network policies, such as [Cilium](https://cilium.io) or [Calico](https://www.tigera.io/project-calico/)
-- Permission to create namespaces and RBAC roles in the cluster with `kubectl`
-- An agent image that runs as a non-root user and includes the [Infisical CLI](/cli/overview) `0.44.10` or later, such as [the Docker guide's](/documentation/platform/agent-vault/guides/docker#step-3-write-the-agent’s-dockerfile)
+- An agent image that runs as a non-root user and includes the [Infisical CLI](/cli/overview)
 - [`curl`](https://curl.se), [`jq`](https://jqlang.org), and [`openssl`](https://openssl-library.org) on the machine where you run the script in Step 5
 
 ## Step 1: Set up Agent Vault
@@ -62,7 +60,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: agent-vault-proxy
-          image: infisical/cli:<cli-version>
+          image: infisical/cli
           args: ["agent-vault", "proxy", "--domain", "https://app.infisical.com"]
           envFrom:
             - secretRef:
@@ -147,7 +145,6 @@ spec:
         - port: 80
 ```
 
-- **Infisical CLI:** replace `<cli-version>` with `0.44.10` or later, because earlier versions can't start a proxy from a proxy token
 - **Instance URL:** if you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the URL of your self-hosted instance
 - **Egress:** the proxy can only reach public addresses on ports 443 and 80, so add an egress rule for anything else, such as a self-hosted Infisical instance on a private address or a service at `api.example.com:8443`
 - **DNS:** this policy and the one in Step 3 allow DNS only to `k8s-app: kube-dns` pods in `kube-system`, so change both if your DNS runs elsewhere, such as a node-local DNS cache or OpenShift's `openshift-dns`
@@ -216,8 +213,6 @@ Set the client ID and client secret of the machine identity from [Step 1](#step-
 export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
 export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
 ```
-
-The script in Step 5 logs in with them, and they never go into an agent pod.
 
 <Tip>
   If your orchestrator runs in a Kubernetes cluster whose API server Infisical can reach, use [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) instead, so it logs in with its service account token and has no client secret to store.
