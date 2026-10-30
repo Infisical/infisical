@@ -641,7 +641,7 @@ const OverviewPageContent = () => {
         .filter((env) => envSlugs.includes(env.slug))
         .map((env) => env.id);
       if (envIds.length > 0) {
-        setStoredEnvIds(envIds);
+        setStoredEnvIds(envIds.length === userAvailableEnvs.length ? [] : envIds);
       }
     }
 
