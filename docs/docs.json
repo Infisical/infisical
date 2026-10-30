@@ -752,6 +752,7 @@
                       "documentation/platform/agent-vault/sessions-cli",
                       "documentation/platform/agent-vault/sessions-api",
                       "documentation/platform/agent-vault/sessions-on-behalf-of-users",
+                      "documentation/platform/agent-vault/inline-services",
                       "documentation/platform/agent-vault/session-logs"
                     ]
                   },

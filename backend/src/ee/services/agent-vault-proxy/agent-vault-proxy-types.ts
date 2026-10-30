@@ -85,7 +85,8 @@ export type TReportMissingScopesDTO = TRefreshCredentialDTO & {
 export type TResolvedService = {
   id: string;
   name: string;
-  accessBundleName: string;
+  // Null for a service sent inline with the session, which belongs to no bundle.
+  accessBundleName: string | null;
   type: AgentVaultServiceType;
   hostPattern: string;
   allowedMethods: string[] | null;

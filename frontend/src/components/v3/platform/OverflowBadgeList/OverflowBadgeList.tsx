@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Link, LinkComponentProps } from "@tanstack/react-router";
 
 import { Badge, TBadgeProps } from "../../generic/Badge";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "../../generic/HoverCard";
 import { Popover, PopoverContent, PopoverTrigger } from "../../generic/Popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
 import { cn } from "../../utils";
@@ -12,9 +13,13 @@ type TOverflowBadgeListProps<T> = {
   getLabel: (item: T) => string;
   getVariant?: (item: T) => TBadgeProps["variant"];
   getTooltip?: (item: T) => React.ReactNode;
+  // For an item whose details need scrolling or links, which a tooltip can't hold. Replaces its tooltip.
+  getHoverCard?: (item: T) => React.ReactNode;
   getClassName?: (item: T) => string | undefined;
   appearance?: "badge" | "text";
   icon?: React.ReactNode;
+  // For a list whose items aren't all the same kind. Falls back to `icon`.
+  getIcon?: (item: T) => React.ReactNode;
   getLinkProps?: (item: T) => LinkComponentProps | undefined;
   onItemClick?: (item: T) => void;
   maxBadgeWidth?: number;
@@ -32,9 +37,11 @@ export const OverflowBadgeList = <T,>({
   getLabel,
   getVariant,
   getTooltip,
+  getHoverCard,
   getClassName,
   appearance = "badge",
   icon,
+  getIcon,
   getLinkProps,
   onItemClick,
   maxBadgeWidth = 160,
@@ -45,6 +52,9 @@ export const OverflowBadgeList = <T,>({
   const [layout, setLayout] = useState<TOverflowLayout>({
     visibleCount: items.length
   });
+  const iconOf = (item: T) => getIcon?.(item) ?? icon;
+  // The narrowest a truncated badge can get still fits an icon, whichever item it is.
+  const minimumIcon = icon ?? (items.length ? iconOf(items[0]) : undefined);
   const visibleItems = items.slice(0, layout.visibleCount);
   const hiddenCount = Math.max(0, items.length - layout.visibleCount);
   const hiddenItems = items.slice(visibleItems.length);
@@ -113,7 +123,7 @@ export const OverflowBadgeList = <T,>({
     resizeObserver.observe(container);
 
     return () => resizeObserver.disconnect();
-  }, [getLabel, getVariant, getClassName, icon, items, maxBadgeWidth]);
+  }, [getLabel, getVariant, getClassName, icon, getIcon, items, maxBadgeWidth]);
 
   const renderItem = (item: T, width?: number) => {
     const label = getLabel(item);
@@ -141,39 +151,57 @@ export const OverflowBadgeList = <T,>({
     }
 
     const linkProps = getLinkProps?.(item);
+    const itemIcon = iconOf(item);
+    const badge = (
+      <Badge
+        variant={getVariant?.(item) ?? "neutral"}
+        className={getClassName?.(item)}
+        isTruncatable
+        iconPosition={itemIcon ? "left" : undefined}
+        asChild={Boolean(linkProps)}
+        style={{
+          maxWidth: width ?? maxBadgeWidth
+        }}
+      >
+        {linkProps ? (
+          <Link
+            {...linkProps}
+            onClick={(event) => {
+              event.stopPropagation();
+              linkProps.onClick?.(event);
+            }}
+          >
+            {itemIcon}
+            <span>{label}</span>
+          </Link>
+        ) : (
+          <>
+            {itemIcon}
+            <span>{label}</span>
+          </>
+        )}
+      </Badge>
+    );
+
+    const hoverCard = getHoverCard?.(item);
+    if (hoverCard) {
+      return (
+        <HoverCard key={getKey(item)} openDelay={150} closeDelay={100}>
+          <HoverCardTrigger asChild>{badge}</HoverCardTrigger>
+          <HoverCardContent
+            align="start"
+            className="w-auto"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {hoverCard}
+          </HoverCardContent>
+        </HoverCard>
+      );
+    }
 
     return (
       <Tooltip key={getKey(item)}>
-        <TooltipTrigger asChild>
-          <Badge
-            variant={getVariant?.(item) ?? "neutral"}
-            className={getClassName?.(item)}
-            isTruncatable
-            iconPosition={icon ? "left" : undefined}
-            asChild={Boolean(linkProps)}
-            style={{
-              maxWidth: width ?? maxBadgeWidth
-            }}
-          >
-            {linkProps ? (
-              <Link
-                {...linkProps}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  linkProps.onClick?.(event);
-                }}
-              >
-                {icon}
-                <span>{label}</span>
-              </Link>
-            ) : (
-              <>
-                {icon}
-                <span>{label}</span>
-              </>
-            )}
-          </Badge>
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
         <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
     );
@@ -239,10 +267,10 @@ export const OverflowBadgeList = <T,>({
               variant={getVariant?.(item) ?? "neutral"}
               className={getClassName?.(item)}
               isTruncatable
-              iconPosition={icon ? "left" : undefined}
+              iconPosition={iconOf(item) ? "left" : undefined}
               style={{ maxWidth: maxBadgeWidth }}
             >
-              {icon}
+              {iconOf(item)}
               <span>{getLabel(item)}</span>
             </Badge>
           )
@@ -250,8 +278,12 @@ export const OverflowBadgeList = <T,>({
         {appearance === "text" ? (
           <span data-overflow-badge-minimum className="w-6 text-sm" />
         ) : (
-          <Badge data-overflow-badge-minimum isTruncatable iconPosition={icon ? "left" : undefined}>
-            {icon}
+          <Badge
+            data-overflow-badge-minimum
+            isTruncatable
+            iconPosition={minimumIcon ? "left" : undefined}
+          >
+            {minimumIcon}
             <span />
           </Badge>
         )}

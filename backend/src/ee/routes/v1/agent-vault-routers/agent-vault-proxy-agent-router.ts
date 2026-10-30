@@ -159,7 +159,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             .object({
               id: z.string().uuid(),
               name: z.string(),
-              accessBundleName: z.string(),
+              accessBundleName: z.string().nullable(),
               type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
               hostPattern: z.string(),
               allowedMethods: z.string().array().nullable(),

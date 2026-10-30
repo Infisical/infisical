@@ -12,7 +12,7 @@ never in anything the agent holds.
 | --- | --- |
 | **Access bundle** | A named set of services. The unit you grant |
 | **Service** | One host pattern set plus its credential |
-| **Session** | A minted token naming one actor, one of their bundles, and an expiry. The token *is* the session |
+| **Session** | A minted token naming one actor, one of their bundles, services of its own, or both, and an expiry. The token *is* the session |
 | **Proxy** | One egress identity and its CA. Any number of processes can run it from its proxy token |
 
 ```
@@ -197,6 +197,45 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
   the delegation row before reading or replacing it, and `updatedAt` moves only on a save or a real add or remove.
 - **Delegation routes take no `AuthMode.OAUTH`.** The admin check reads the role, which a delegated token's scopes
   don't narrow, and a delegation lets an identity act as other users.
+
+## Inline services
+
+An Agent Vault admin can send services with a session itself, without an access bundle or alongside one, for a caller
+that holds its own credentials and needs a host for one session only. The API calls them the session's `services` (on
+mint, on session reads and in the mint audit event); the code and the Sessions page say inline services, which is what
+tells them apart from a bundle's. They are rows of `agent_vault_session_inline_services` and belong to that session
+alone: nothing edits them, no bundle or other session reads them, and only resolve opens their secrets.
+
+- **Admin only, at mint and on every resolve.** Whoever starts the session decides which hosts it reaches and with
+  which credentials, an admin's call for a bundle's services too. It also keeps `bundle-hosts` meaningful: a proxy lets
+  through any host a session's services cover, so a member's inline service would open any host they chose. Resolve
+  sends inline services only while the session's owner (the identity, on an on-behalf-of session) is a live admin, so a
+  demotion keeps the bundle and drops the inline services until they are an admin again, the way a lost grant drops a
+  bundle.
+- **No value may wrap text in double braces, and resolve never expands one.** Whoever starts the session names its
+  hosts, so a variable reference would let them send any variable's value to a host of their choosing, and the stored
+  `{{<uuid>}}` form is refused by the same rule (`acceptsNoVariableReferences` on every value field). Resolve adds
+  inline services after `$expandVariableReferences` and `$applyPersonalValues`, so the rule doesn't rest on the refusal
+  alone.
+- **No member-provided fields and no OAuth.** Every value arrives with the mint, and an OAuth service needs a sign-in in
+  the UI and a refresh that writes the service row. The schema accepts both, hidden, so `prepareInlineServices` refuses
+  them by name, as a bundle service's create refuses fields its type doesn't take.
+- **The name is optional.** Wherever a name is shown (resolve, so the proxy's messages and session logs, the audit log,
+  the Sessions page), an unnamed service goes by its first host (`inlineServiceDisplayName`, mirrored in the frontend).
+  Resolve sends `accessBundleName: null` for an inline service.
+- **The host rule of one bundle's services applies across the session**: two inline services covering the same pattern
+  are refused, and so is one covering a pattern the session's bundle covers. Mint checks it without the bundle lock, so
+  a later bundle edit can still create the overlap; resolve puts the bundle's services first, and the Go matcher breaks
+  a tie by slice order, so the bundle's service gets the host.
+- **Secrets go when the session ends; the rest stays.** The credential, custom header values and substitution values are
+  sealed together in `encryptedSecrets`, so deleting them is one write. The row keeps the name, type, hosts, rules,
+  credential type, header names and placeholders, since sessions are never deleted and the Sessions page shows what an
+  ended session could reach. Revoke deletes the secrets in its transaction, and the hourly `FrequentResourceCleanup`
+  (`deleteSecretsOfEndedSessions`) catches sessions that expired or lost their owner, matching `deriveSessionStatus`.
+  Neither writes the session row, so an ownerless session's `updatedAt` never moves. `ttl: never` is allowed, so such a
+  session keeps its secrets until it is revoked or its owner is deleted.
+- **A NULL `encryptedSecrets` means nothing to send only for a pass-through service with no custom headers or
+  substitutions.** On any other service it means the session ended, and resolve leaves the service out.
 
 ## Proxies
 

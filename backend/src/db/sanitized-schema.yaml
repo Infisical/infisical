@@ -121,6 +121,19 @@ tables:
       - accessBundleId
       - createdAt
 
+  - name: agent_vault_session_inline_services
+    source: public.agent_vault_session_inline_services
+    columns:
+      - id
+      - sessionId
+      - type
+      - hostPattern
+      - credentialType
+      - allowedMethods
+      - allowedPathPrefixes
+      - createdAt
+      - updatedAt
+
   - name: agent_vault_session_log_configs
     source: public.agent_vault_session_log_configs
     columns:
