@@ -302,7 +302,8 @@ Token detection logic in `inject-identity.ts` checks `x-api-key` header first, t
 `organizations.ssoMfaTrust` (`SsoMfaTrust` enum, `none` or `signal`) lets a SAML or OIDC login satisfy the
 org's MFA enforcement with the MFA the IdP already performed. The SAML and OIDC callbacks derive one verdict
 per login with `matchIdpMfaSignal` (`services/auth/idp-mfa-signal.ts`): the OIDC claim named by
-`oidc_configs.mfaClaimName` contains `mfa`, the SAML `AuthnContextClassRef` is a two-factor class, or the
+`oidc_configs.mfaClaimName` contains `mfa`, the SAML `AuthnContextClassRef` is a class whose definition asserts
+two factors (possession-only classes such as `Smartcard` and `SoftwarePKI` are not defaults), or the
 attribute named by `saml_configs.mfaSignalAttribute` contains `mfa`. Both names default to `amr`, and the
 per-config allowlists extend the built-in values rather than replace them. The verdict travels on the org-less
 session token as `idpMfaOrgId`, the root org whose SSO config produced it (absent when the IdP did not signal

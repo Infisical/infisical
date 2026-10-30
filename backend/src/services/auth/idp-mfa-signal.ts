@@ -4,14 +4,15 @@ export const DEFAULT_MFA_CLAIM_NAME = "amr";
 // RFC 8176 value for a completed multi-factor login; Okta, Entra ID, Auth0, Google and Duo all emit it.
 export const DEFAULT_OIDC_MFA_CLAIM_VALUES = ["mfa"];
 
-// Two-factor SAML classes, the REFEDS MFA profile and Entra ID's satisfied-MFA class. Single-factor classes
-// such as PasswordProtectedTransport and MobileTwoFactorUnregistered are deliberately absent.
+// Only classes whose definition asserts two factors: SmartcardPKI is a card plus a PIN and TimeSyncToken a
+// PIN plus a token code, alongside MobileTwoFactorContract, the REFEDS MFA profile and Entra ID's
+// satisfied-MFA class. Possession-only classes such as Smartcard and SoftwarePKI, and single-factor ones such
+// as PasswordProtectedTransport and MobileTwoFactorUnregistered, are deliberately absent; an org that knows
+// its IdP only issues them after MFA adds them to `mfaAuthnContexts`.
 export const DEFAULT_SAML_MFA_AUTHN_CONTEXTS = [
   "urn:oasis:names:tc:SAML:2.0:ac:classes:MobileTwoFactorContract",
   "urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken",
-  "urn:oasis:names:tc:SAML:2.0:ac:classes:Smartcard",
   "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI",
-  "urn:oasis:names:tc:SAML:2.0:ac:classes:SoftwarePKI",
   "https://refeds.org/profile/mfa",
   "http://schemas.microsoft.com/claims/multipleauthn"
 ];

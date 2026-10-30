@@ -72,6 +72,8 @@ describe("matchIdpMfaSignal for SAML", () => {
     ["PasswordProtectedTransport (Okta default)", "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport"],
     ["MobileTwoFactorUnregistered", "urn:oasis:names:tc:SAML:2.0:ac:classes:MobileTwoFactorUnregistered"],
     ["Password", "urn:oasis:names:tc:SAML:2.0:ac:classes:Password"],
+    ["possession-only Smartcard", "urn:oasis:names:tc:SAML:2.0:ac:classes:Smartcard"],
+    ["possession-only SoftwarePKI", "urn:oasis:names:tc:SAML:2.0:ac:classes:SoftwarePKI"],
     ["unspecified", "urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified"]
   ])("rejects the single-factor %s context class", (_, classRef) => {
     expect(saml([classRef]).verified).toBe(false);
