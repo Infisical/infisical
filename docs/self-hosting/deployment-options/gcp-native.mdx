@@ -302,6 +302,29 @@ For production deployments with many users or secrets, increase these values acc
       ```bash
       gcloud secrets list --filter="name:infisical"
       ```
+
+      <Note>
+        The Helm chart reads these values from a Kubernetes Secret. Google Secret Manager doesn't sync values into your cluster automatically, so copy the values into `infisical-secrets` before you deploy Infisical.
+      </Note>
+
+      ```bash
+      # Create the namespace before creating the Kubernetes Secret
+      kubectl create namespace infisical
+
+      # Copy the Google Secret Manager values into Kubernetes
+      kubectl create secret generic infisical-secrets \
+        --from-literal=ENCRYPTION_KEY="$(gcloud secrets versions access latest --secret=infisical-encryption-key)" \
+        --from-literal=AUTH_SECRET="$(gcloud secrets versions access latest --secret=infisical-auth-secret)" \
+        --from-literal=DB_CONNECTION_URI="$(gcloud secrets versions access latest --secret=infisical-db-uri)" \
+        --from-literal=REDIS_URL="$(gcloud secrets versions access latest --secret=infisical-redis-url)" \
+        --from-literal=SITE_URL="https://infisical.example.com" \
+        -n infisical
+      ```
+
+      **Verify:** Confirm the Kubernetes Secret is created:
+      ```bash
+      kubectl get secret infisical-secrets -n infisical
+      ```
     </Tab>
 
     <Tab title="Kubernetes Secrets">
