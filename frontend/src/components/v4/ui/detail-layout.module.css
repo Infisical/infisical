@@ -1,0 +1,42 @@
+.root {
+  --v4-detail-layout-offset: var(--v4-space-24);
+  container: detail-layout / inline-size;
+  min-width: 0;
+}
+:global([data-slot="app-inset"]:has(> [data-slot="top-bar"])) .root {
+  --v4-detail-layout-offset: calc(var(--v4-size-shell-bar) + var(--v4-space-24));
+}
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--v4-space-24);
+}
+.aside,
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-24);
+  min-width: 0;
+}
+.aside {
+  scroll-margin-top: var(--v4-detail-layout-offset);
+  scroll-margin-bottom: var(--v4-space-24);
+}
+/* Container conditions cannot read custom properties, so this repeats size-sidecar-collapse (896px); detail-layout.test.ts fails if they drift. */
+@container detail-layout (min-width: 896px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr) var(--v4-size-sidecar);
+    grid-template-areas: "main aside";
+  }
+  .aside {
+    grid-area: aside;
+  }
+  .main {
+    grid-area: main;
+  }
+  .aside[data-sticky] {
+    position: sticky;
+    top: var(--v4-detail-layout-offset);
+  }
+}

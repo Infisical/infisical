@@ -1,0 +1,27 @@
+.icon {
+  --v4-provider-icon: var(--v4-size-icon);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-provider-icon);
+  height: var(--v4-provider-icon);
+  object-fit: contain;
+}
+.icon[data-size="sm"] {
+  --v4-provider-icon: var(--v4-size-icon-sm);
+}
+.icon[data-size="lg"] {
+  --v4-provider-icon: var(--v4-size-icon-lg);
+}
+.icon[data-size="xl"] {
+  --v4-provider-icon: var(--v4-size-icon-xl);
+}
+.fallback {
+  color: var(--v4-faint);
+}
+.fallback > svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: var(--v4-stroke-icon);
+}

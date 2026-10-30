@@ -1,0 +1,6 @@
+.host.host:has([data-slot="data-table"]),
+.host.host:has([role="grid"]) {
+  border-color: transparent;
+  background: transparent;
+  padding: 0;
+}

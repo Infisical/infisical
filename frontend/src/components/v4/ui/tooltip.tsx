@@ -1,0 +1,89 @@
+import * as React from "react";
+import { Tooltip as TooltipPrimitive } from "radix-ui";
+
+import { useV4CollisionBoundary, useV4PortalContainer } from "@app/components/v4/scope";
+
+import { cn } from "../lib/utils";
+import { Kbd } from "./kbd";
+
+import menu from "./menu.module.css";
+
+function TooltipProvider({
+  delayDuration = 200,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
+  return (
+    <TooltipPrimitive.Provider
+      data-slot="tooltip-provider"
+      delayDuration={delayDuration}
+      {...props}
+    />
+  );
+}
+
+function Tooltip({
+  content,
+  shortcut,
+  side = "top",
+  align = "center",
+  wrap: _wrap,
+  children,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Root> & {
+  content?: React.ReactNode;
+  shortcut?: string;
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+  /** @deprecated Tooltips always wrap at size-tooltip-max; this has no effect. */
+  wrap?: boolean;
+}) {
+  return (
+    <TooltipPrimitive.Root data-slot="tooltip" {...props}>
+      {content ? (
+        <>
+          <TooltipTrigger asChild>{children}</TooltipTrigger>
+          <TooltipContent side={side} align={align}>
+            <span className={menu.tooltipText}>{content}</span>
+            {shortcut && <Kbd>{shortcut}</Kbd>}
+          </TooltipContent>
+        </>
+      ) : (
+        children
+      )}
+    </TooltipPrimitive.Root>
+  );
+}
+
+function TooltipTrigger({ ref, ...props }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+  return <TooltipPrimitive.Trigger ref={ref} data-slot="tooltip-trigger" {...props} />;
+}
+TooltipTrigger.displayName = "TooltipTrigger";
+
+function TooltipContent({
+  className,
+  collisionPadding = 8,
+  sideOffset = 0,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+  return (
+    <TooltipPrimitive.Portal container={useV4PortalContainer()}>
+      <TooltipPrimitive.Content
+        ref={ref}
+        data-slot="tooltip-content"
+        collisionPadding={collisionPadding}
+        collisionBoundary={useV4CollisionBoundary()}
+        sideOffset={sideOffset}
+        className={cn("z-50", menu.tooltip, menu.motion, className)}
+        {...props}
+      >
+        {children}
+        <TooltipPrimitive.Arrow width={10} height={5} className={menu.tooltipArrow} />
+      </TooltipPrimitive.Content>
+    </TooltipPrimitive.Portal>
+  );
+}
+TooltipContent.displayName = "TooltipContent";
+
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger };

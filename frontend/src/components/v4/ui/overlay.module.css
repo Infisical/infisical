@@ -1,0 +1,146 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  background-color: var(--v4-scrim);
+}
+.scrim[data-state="open"] {
+  animation: fadeIn var(--v4-duration-slow) var(--v4-ease-fade) both;
+}
+.scrim[data-state="closed"] {
+  animation: fadeOut var(--v4-duration-exit-slow) var(--v4-ease-exit) both;
+}
+.pop {
+  box-sizing: border-box;
+  background-color: var(--v4-pop);
+  color: var(--v4-ink);
+  white-space: normal;
+  box-shadow:
+    0 0 0 var(--v4-size-control-border) var(--v4-pop-line),
+    var(--v4-shadow-pop);
+  outline: none;
+}
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: calc(100% - 2 * var(--v4-space-16));
+  max-width: var(--v4-size-dialog);
+  max-height: calc(100dvh - 2 * var(--v4-size-overlay-margin));
+  overflow-y: auto;
+  translate: -50% -50%;
+}
+.dialog[data-sections] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dialog[data-state="open"] {
+  animation: dialogIn var(--v4-duration-slow) var(--v4-ease-spring-soft) both;
+}
+.dialog[data-state="closed"] {
+  animation: dialogOut var(--v4-duration-exit-slow) var(--v4-ease-exit) both;
+}
+.palette {
+  --v4-palette-top: clamp(var(--v4-space-48), 13vh, calc(3 * var(--v4-space-48)));
+  top: var(--v4-palette-top);
+  display: flex;
+  flex-direction: column;
+  max-width: var(--v4-size-dialog-wide);
+  max-height: calc(100dvh - var(--v4-palette-top) - var(--v4-space-16));
+  overflow: hidden;
+  translate: -50% 0;
+}
+.palette [cmdk-root] {
+  min-height: 0;
+}
+.palette [data-slot="command-scroll"] {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+.palette [cmdk-item] {
+  min-height: var(--v4-size-control-md);
+}
+.close[data-slot] {
+  position: absolute;
+  top: calc(
+    var(--v4-dialog-pad, var(--v4-space-overlay-inset)) +
+      (var(--v4-type-title-line-height) - var(--v4-size-nested-md)) / 2
+  );
+  inset-inline-end: calc(
+    var(--v4-dialog-pad, var(--v4-space-overlay-inset)) -
+      (var(--v4-size-nested-md) - var(--v4-size-icon)) / 2
+  );
+}
+.sheet {
+  --v4-sheet-from: 100% 0;
+  --v4-sheet-size: var(--v4-size-sheet-sm);
+}
+.sheet[data-size="md"] {
+  --v4-sheet-size: var(--v4-size-sheet-md);
+}
+.sheet[data-size="lg"] {
+  --v4-sheet-size: var(--v4-size-sheet-lg);
+}
+.sheet[data-side="left"],
+.sheet[data-side="right"] {
+  max-width: min(var(--v4-sheet-size), 100vw);
+}
+.sheet[data-side="left"] {
+  --v4-sheet-from: -100% 0;
+}
+.sheet[data-side="top"] {
+  --v4-sheet-from: 0 -100%;
+}
+.sheet[data-side="bottom"] {
+  --v4-sheet-from: 0 100%;
+}
+.sheet[data-state="open"] {
+  animation: sheetIn var(--v4-duration-slow) var(--v4-ease-spring-soft) both;
+}
+.sheet[data-state="closed"] {
+  animation: sheetOut var(--v4-duration-exit-slow) var(--v4-ease-exit) both;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+@keyframes dialogOut {
+  to {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+@keyframes sheetIn {
+  from {
+    translate: var(--v4-sheet-from);
+  }
+}
+@keyframes sheetOut {
+  to {
+    translate: var(--v4-sheet-from);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dialog[data-state="open"],
+  .sheet[data-state="open"] {
+    animation-name: fadeIn;
+  }
+  .dialog[data-state="closed"],
+  .sheet[data-state="closed"] {
+    animation-name: fadeOut;
+  }
+}
