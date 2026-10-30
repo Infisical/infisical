@@ -58,37 +58,43 @@ export const AgentVaultSetupQuestions = () => {
 
   const BUILDS = [
     {
-      id: "personal",
-      label: "A coding agent for yourself",
-      example: "An agent that you work alongside, on your computer or a dev box.",
-      runs: ["computer", "server", "container"],
-    },
-    {
-      id: "assistant",
-      label: "An always-on assistant",
-      example: "An agent that keeps running and answers messages, such as a chat bot.",
-      runs: ["computer", "server", "container"],
+      id: "platform",
+      label: "A service that starts agents for tasks",
+      example: "Your own code, such as a Slack bot or a backend service, that starts a new agent for each task.",
+      runs: ["sandbox", "kubernetes", "container", "server"],
     },
     {
       id: "scheduled",
       label: "A scheduled or unattended job",
       example: "An agent that runs on a schedule or in CI, such as one that triages new issues.",
-      runs: ["computer", "server", "container", "ci"],
+      runs: ["server", "container", "ci"],
     },
     {
-      id: "platform",
-      label: "A service that starts agents for tasks",
-      example: "Your own service that starts a separate agent for each task it receives.",
-      runs: ["server", "container", "ci"],
+      id: "personal",
+      label: "An agent you run manually",
+      example: "You create a session in the Infisical dashboard and run the agent with its token, such as a coding agent on a dev box.",
+      runs: ["server", "container"],
     },
   ];
 
   const RUNS = [
-    { id: "computer", label: "Your computer", example: "Your laptop or desktop." },
     { id: "server", label: "A server or VM", example: "Such as a dev box, a cloud VM, or a home server." },
     { id: "container", label: "A container", example: "Such as a Docker container or a dev container." },
+    { id: "kubernetes", label: "Kubernetes", example: "A pod in your own cluster." },
+    { id: "sandbox", label: "A managed sandbox", example: "Such as Modal or Daytona." },
     { id: "ci", label: "A CI runner", example: "Such as a GitHub Actions job." },
   ];
+
+  // Daytona's logo is black on a transparent background, so it's inverted in dark mode.
+  const RUN_LOGOS = {
+    sandbox: [
+      { light: "agent-vault-agents/modal.svg" },
+      { light: "agent-vault-agents/daytona.svg", invertDark: true },
+    ],
+    kubernetes: [{ light: "stack/kubernetes.png" }],
+    container: [{ light: "agent-vault-agents/docker.svg" }],
+    ci: [{ light: "agent-vault-templates/GitHub.on-light.png", dark: "agent-vault-templates/GitHub.png" }],
+  };
 
   const AGENTS = [
     { id: "claude-code", label: "Claude Code" },
@@ -115,7 +121,7 @@ export const AgentVaultSetupQuestions = () => {
   };
 
   const [selection, setSelection] = useState({
-    building: "personal",
+    building: "platform",
     runs: null,
     agent: null,
   });
@@ -153,7 +159,7 @@ export const AgentVaultSetupQuestions = () => {
   };
 
   const activeBuild = BUILDS.find((option) => option.id === selection.building);
-  const visibleRuns = RUNS.filter((option) => activeBuild.runs.includes(option.id));
+  const visibleRuns = activeBuild.runs.map((id) => RUNS.find((option) => option.id === id));
 
   const renderAgentIcon = (id) => {
     if (id === "custom") {
@@ -233,10 +239,31 @@ export const AgentVaultSetupQuestions = () => {
         <div className="ifx-avsp__cards">
           {visibleRuns.map((option) =>
             renderOption("runs", option, (
-              <>
-                <span className="ifx-avsp__card-label">{option.label}</span>
-                <span className="ifx-avsp__card-desc">{option.example}</span>
-              </>
+              <span className="ifx-avsp__card-row">
+                <span className="ifx-avsp__card-text">
+                  <span className="ifx-avsp__card-label">{option.label}</span>
+                  <span className="ifx-avsp__card-desc">{option.example}</span>
+                </span>
+                {RUN_LOGOS[option.id] && (
+                  <span className="ifx-avsp__card-logos">
+                    {RUN_LOGOS[option.id].map((logo) => {
+                      const src = (file) => `${docsBase}/images/${file}`;
+                      const invert = logo.invertDark ? " ifx-avsp__card-logo--invert-dark" : "";
+                      if (!logo.dark) {
+                        return (
+                          <img key={logo.light} src={src(logo.light)} alt="" className={`ifx-avsp__card-logo${invert}`} />
+                        );
+                      }
+                      return (
+                        <span key={logo.light} className="ifx-avsp__card-logo-pair">
+                          <img src={src(logo.light)} alt="" className="ifx-avsp__card-logo ifx-avqs__img--light-only" />
+                          <img src={src(logo.dark)} alt="" className="ifx-avsp__card-logo ifx-avqs__img--dark-only" />
+                        </span>
+                      );
+                    })}
+                  </span>
+                )}
+              </span>
             )),
           )}
         </div>
@@ -264,17 +291,19 @@ export const AgentVaultSetupQuestions = () => {
 
 export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const RULES = {
-    personal: { model: "user", runs: ["computer", "server", "container"] },
-    assistant: { model: "user", runs: ["computer", "server", "container"] },
-    scheduled: { model: "job", runs: ["computer", "server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["server", "container", "ci"] },
+    personal: { model: "user", runs: ["server", "container"] },
+    scheduled: { model: "job", runs: ["server", "container", "ci"] },
+    platform: { model: "orchestrator", runs: ["sandbox", "kubernetes", "container", "server"] },
   };
   const HOSTS = {
-    computer: "Your computer",
     server: "Server or VM",
     container: "Container",
+    kubernetes: "Kubernetes pod",
+    sandbox: "Managed sandbox",
     ci: "CI runner",
   };
+  // The Docker, Modal, and Daytona guides start a proxy with each agent. Every other setup shares one proxy.
+  const PER_AGENT_PROXY_RUNS = ["container", "sandbox"];
 
   const FOCUS = {
     building: { lanes: ["infisical", "creator"], messages: ["create", "token", "start", "revoke"] },
@@ -292,7 +321,7 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
     // An own-key check, so a value such as "constructor" doesn't match an inherited property.
     const building = Object.prototype.hasOwnProperty.call(RULES, params.get("building"))
       ? params.get("building")
-      : "personal";
+      : "platform";
     const runs = params.get("runs");
     const agent = params.get("agent");
     return {
@@ -304,8 +333,8 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   };
 
   const [selection, setSelection] = useState({
-    building: "personal",
-    model: "user",
+    building: "platform",
+    model: "orchestrator",
     runs: null,
     agent: null,
   });
@@ -319,8 +348,8 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
       "claude-code": "guides/claude-code",
       codex: "guides/codex",
       opencode: "guides/opencode",
-      hermes: selection.building === "assistant" ? "guides/hermes-gateway" : "guides/hermes",
-      openclaw: selection.building === "assistant" ? "guides/openclaw-gateway" : "guides/openclaw",
+      hermes: "guides/hermes",
+      openclaw: "guides/openclaw",
       custom: "guides/custom-agent",
     }[selection.agent];
     buildHref = `${GUIDES}/${guide ?? "quickstart"}`;
@@ -380,16 +409,32 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const sharesHost = selection.model === "job";
 
   const creator = {
-    user: { label: "You", sub: "Infisical dashboard" },
-    job: { label: "Infisical CLI", sub: "Machine identity" },
-    orchestrator: { label: "Orchestrator", sub: "Machine identity" },
+    user: { label: "Orchestrator", sub: "You, in the dashboard" },
+    job: { label: "Orchestrator", sub: "Infisical CLI in your job" },
+    orchestrator: { label: "Orchestrator", sub: "Your service" },
   }[selection.model];
+
+  let proxyLayout = "single";
+  if (selection.model === "orchestrator" && PER_AGENT_PROXY_RUNS.includes(selection.runs)) {
+    proxyLayout = "per-agent";
+  } else if (selection.model !== "user") {
+    proxyLayout = "shared";
+  }
+  const proxySub = {
+    single: "Its own host",
+    shared: selection.runs === "kubernetes" ? "Shared, own namespace" : "Shared by every agent",
+    "per-agent": "One per agent",
+  }[proxyLayout];
 
   const lanes = [
     { id: "infisical", label: "Infisical", sub: "Cloud or self-hosted" },
     { id: "creator", label: creator.label, sub: creator.sub },
-    { id: "agent", label: "Agent", sub: selection.runs ? HOSTS[selection.runs] : "Agent's host" },
-    { id: "proxy", label: "Proxy", sub: "Its own host" },
+    {
+      id: "agent",
+      label: proxyLayout === "shared" ? "Agents" : "Agent",
+      sub: selection.runs ? HOSTS[selection.runs] : "Agent's host",
+    },
+    { id: "proxy", label: "Proxy", sub: proxySub },
     { id: "api", label: "API", sub: "Such as GitHub" },
   ];
   const laneIndex = (id) => lanes.findIndex((lane) => lane.id === id);
@@ -539,8 +584,20 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
                 <span className="ifx-avsp__boundary-label">Same host</span>
               </div>
             )}
+            {proxyLayout === "per-agent" && (!revealed || revealed.shownLanes.has("agent")) && (
+              <div className="ifx-avsp__boundary ifx-avsp__boundary--per-agent">
+                <span className="ifx-avsp__boundary-label">Created for each task</span>
+              </div>
+            )}
             {lanes.map((lane) => (
-              <div key={lane.id} className={laneClass(lane.id)}>
+              <div
+                key={lane.id}
+                className={
+                  proxyLayout === "shared" && lane.id === "agent"
+                    ? `${laneClass(lane.id)} ifx-avsp__lane--stacked`
+                    : laneClass(lane.id)
+                }
+              >
                 <span className="ifx-avsp__lane-label">{lane.label}</span>
                 <span className="ifx-avsp__lane-sub">{lane.sub}</span>
               </div>
@@ -615,7 +672,6 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
 export const AgentVaultSetupStep = ({ step, children }) => {
   const MODELS = {
     personal: "user",
-    assistant: "user",
     scheduled: "job",
     platform: "orchestrator",
   };
@@ -626,10 +682,10 @@ export const AgentVaultSetupStep = ({ step, children }) => {
   const readModel = () => {
     const params = new URLSearchParams(window.location.search);
     const building = params.get("building");
-    return Object.prototype.hasOwnProperty.call(MODELS, building) ? MODELS[building] : "user";
+    return Object.prototype.hasOwnProperty.call(MODELS, building) ? MODELS[building] : "orchestrator";
   };
 
-  const [model, setModel] = useState("user");
+  const [model, setModel] = useState("orchestrator");
 
   useEffect(() => {
     const sync = () => setModel(readModel());
@@ -699,21 +755,20 @@ export const AgentVaultSetupStep = ({ step, children }) => {
 
 export const AgentVaultSetupSummary = () => {
   const BUILDS = {
-    personal: "coding agent for yourself",
-    assistant: "an always-on assistant",
+    personal: "an agent you run manually",
     scheduled: "a scheduled or unattended job",
     platform: "a service that starts agents for tasks",
   };
   const RUNS = {
-    personal: ["computer", "server", "container"],
-    assistant: ["computer", "server", "container"],
-    scheduled: ["computer", "server", "container", "ci"],
-    platform: ["server", "container", "ci"],
+    personal: ["server", "container"],
+    scheduled: ["server", "container", "ci"],
+    platform: ["sandbox", "kubernetes", "container", "server"],
   };
   const PLACES = {
-    computer: "on your computer",
     server: "on a server or VM",
     container: "in a container",
+    kubernetes: "on Kubernetes",
+    sandbox: "in a managed sandbox",
     ci: "in a CI runner",
   };
   const AGENTS = {
@@ -730,7 +785,7 @@ export const AgentVaultSetupSummary = () => {
   const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
     const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
-    const building = has(BUILDS, params.get("building")) ? params.get("building") : "personal";
+    const building = has(BUILDS, params.get("building")) ? params.get("building") : "platform";
     const runs = params.get("runs");
     const agent = params.get("agent");
     return {
@@ -740,7 +795,7 @@ export const AgentVaultSetupSummary = () => {
     };
   };
 
-  const [selection, setSelection] = useState({ building: "personal", runs: null, agent: null });
+  const [selection, setSelection] = useState({ building: "platform", runs: null, agent: null });
 
   useEffect(() => {
     const sync = () => setSelection(readSelection());
@@ -758,7 +813,9 @@ export const AgentVaultSetupSummary = () => {
     buildText =
       selection.building === "platform"
         ? `a service that starts agents ${PLACES[selection.runs]} for each task`
-        : `${buildText} that runs ${PLACES[selection.runs]}`;
+        : selection.building === "personal"
+          ? `${buildText} ${PLACES[selection.runs]}`
+          : `${buildText} that runs ${PLACES[selection.runs]}`;
   }
   const agentText = selection.agent ? `, using ${AGENTS[selection.agent]}` : "";
   const missing = [];
@@ -780,10 +837,9 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
   const SELECTION_EVENT = "av-setup-selection-change";
 
   const RULES = {
-    personal: { model: "user", runs: ["computer", "server", "container"] },
-    assistant: { model: "user", runs: ["computer", "server", "container"] },
-    scheduled: { model: "job", runs: ["computer", "server", "container", "ci"] },
-    platform: { model: "orchestrator", runs: ["server", "container", "ci"] },
+    personal: { model: "user", runs: ["server", "container"] },
+    scheduled: { model: "job", runs: ["server", "container", "ci"] },
+    platform: { model: "orchestrator", runs: ["sandbox", "kubernetes", "container", "server"] },
   };
   const ALL_AGENTS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "custom"];
 
@@ -791,7 +847,7 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
     const params = new URLSearchParams(window.location.search);
     const buildingId = Object.prototype.hasOwnProperty.call(RULES, params.get("building"))
       ? params.get("building")
-      : "personal";
+      : "platform";
     const rule = RULES[buildingId];
     const runsId = params.get("runs");
     const agentId = params.get("agent");
@@ -804,8 +860,8 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
   };
 
   const [selection, setSelection] = useState({
-    building: "personal",
-    model: "user",
+    building: "platform",
+    model: "orchestrator",
     runs: null,
     agent: null,
   });

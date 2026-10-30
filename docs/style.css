@@ -1973,6 +1973,36 @@ a.ifx-card__title:hover .ifx-card__chevron {
   outline-offset: 2px;
 }
 
+.ifx-avsp__card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ifx-avsp__card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ifx-avsp__card-logos {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ifx-avsp__card-logo {
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+}
+
+.dark .ifx-avsp__card-logo--invert-dark {
+  filter: invert(1);
+}
+
 .ifx-avsp__card-label {
   color: var(--ifx-card-title);
   font-size: 0.9375rem;
@@ -2073,6 +2103,26 @@ a.ifx-card__title:hover .ifx-card__chevron {
   width: 40%;
   border: 1px dashed var(--ifx-hover-line);
   background-color: var(--ifx-hover-fill);
+}
+
+/* Lanes 3 and 4 (the agent and its proxy) when each agent run gets its own proxy. The offset
+   outlines stack copies of the box behind it, to show that every task gets a new pair. */
+.ifx-avsp__boundary--per-agent {
+  left: 40%;
+  box-shadow:
+    3px 3px 0 -1px var(--ifx-page),
+    3px 3px 0 0 var(--ifx-hover-line),
+    6px 6px 0 -1px var(--ifx-page),
+    6px 6px 0 0 var(--ifx-hover-line);
+}
+
+/* The agent lane when many agents share one proxy. */
+.ifx-avsp__lane--stacked {
+  box-shadow:
+    3px 3px 0 -1px var(--ifx-page),
+    3px 3px 0 0 var(--ifx-control-line),
+    6px 6px 0 -1px var(--ifx-page),
+    6px 6px 0 0 var(--ifx-control-line);
 }
 
 .ifx-avsp__boundary-label {
