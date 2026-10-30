@@ -133,6 +133,7 @@ const PageContent = () => {
         if (
           account.accountType === PamAccountType.Postgres ||
           account.accountType === PamAccountType.MySQL ||
+          account.accountType === PamAccountType.MariaDB ||
           account.accountType === PamAccountType.Snowflake ||
           account.accountType === PamAccountType.ClickHouse
         ) {
