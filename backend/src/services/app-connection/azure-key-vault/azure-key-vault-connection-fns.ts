@@ -21,6 +21,7 @@ import {
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { getAppConnectionOidcSubject, getOidcIssuerUrl } from "@app/services/oidc-issuer/oidc-issuer-fns";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TSignOidcIssuerTokenDTO } from "@app/services/oidc-issuer/oidc-issuer-types";
 
@@ -39,6 +40,18 @@ import {
 
 // Entra only accepts federated tokens with this audience
 const AZURE_FEDERATED_TOKEN_AUDIENCE = "api://AzureADTokenExchange";
+
+// Not stored with the credentials, so the issuer follows SITE_URL if it changes. Without SITE_URL there is no issuer,
+// but reading the connection must still work.
+export const getAzureKeyVaultConnectionFederatedCredential = ({ id, orgId }: { id: string; orgId: string }) => {
+  const { SITE_URL } = getConfig();
+
+  return {
+    issuerUrl: SITE_URL ? getOidcIssuerUrl(SITE_URL, orgId) : null,
+    subjectIdentifier: getAppConnectionOidcSubject(id),
+    audience: AZURE_FEDERATED_TOKEN_AUDIENCE
+  };
+};
 
 const getManagedIdentityAccessToken = async (
   {

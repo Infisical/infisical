@@ -83,6 +83,12 @@ export const AzureKeyVaultConnectionManagedIdentityOutputCredentialsSchema = z.o
   expiresAt: z.number().optional()
 });
 
+export const AzureKeyVaultConnectionFederatedCredentialSchema = z.object({
+  issuerUrl: z.string().nullable(),
+  subjectIdentifier: z.string(),
+  audience: z.string()
+});
+
 export const ValidateAzureKeyVaultConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
@@ -204,6 +210,10 @@ export const SanitizedAzureKeyVaultConnectionSchema = z.discriminatedUnion("meth
     credentials: AzureKeyVaultConnectionManagedIdentityOutputCredentialsSchema.pick({
       clientId: true,
       tenantId: true
+    }).extend({
+      federatedCredential: AzureKeyVaultConnectionFederatedCredentialSchema.describe(
+        "The values to add to a federated credential on the managed identity. The issuer is null when SITE_URL is not set."
+      )
     })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureKeyVault]} (Managed Identity)` }))
 ]);

@@ -15,6 +15,7 @@ import { KmsKeyUsage } from "@app/services/kms/kms-types";
 import {
   getAppConnectionOidcSubject,
   getKeyRotationPlan,
+  getOidcIssuerUrl,
   getSigningKey,
   OIDC_ISSUER_KEY_NAME_PREFIX,
   OIDC_ISSUER_SIGNING_ALG,
@@ -52,7 +53,7 @@ export const oidcIssuerServiceFactory = ({
       });
     }
 
-    return `${SITE_URL}/api/v1/oidc-issuer/organizations/${orgId}`;
+    return getOidcIssuerUrl(SITE_URL, orgId);
   };
 
   // Customers cannot create reserved keys, so the prefix only separates these from the org's other reserved keys

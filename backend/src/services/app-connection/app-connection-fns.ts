@@ -85,8 +85,13 @@ import {
   getAzureEntraIdConnectionListItem,
   validateAzureEntraIdConnectionCredentials
 } from "./azure-entra-id";
-import { AzureKeyVaultConnectionMethod, TAzureKeyVaultConnectionConfig } from "./azure-key-vault";
 import {
+  AzureKeyVaultConnectionMethod,
+  TAzureKeyVaultConnectionConfig,
+  TAzureKeyVaultConnectionFederatedCredential
+} from "./azure-key-vault";
+import {
+  getAzureKeyVaultConnectionFederatedCredential,
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault/azure-key-vault-connection-fns";
@@ -954,6 +959,35 @@ export const decryptAppConnection = async (
     }),
     credentialsHash: crypto.nativeCrypto.createHash("sha256").update(encryptedCredentials).digest("hex")
   } as TAppConnection;
+};
+
+type TAzureKeyVaultManagedIdentityConnection = Extract<
+  TAppConnection,
+  { app: AppConnection.AzureKeyVault; method: AzureKeyVaultConnectionMethod.ManagedIdentity }
+>;
+
+// Only for connections returned to the user, who copies these values into Azure
+export const addAppConnectionFederatedCredential = (
+  appConnection: TAppConnection
+):
+  | Exclude<TAppConnection, TAzureKeyVaultManagedIdentityConnection>
+  | (TAzureKeyVaultManagedIdentityConnection & {
+      credentials: { federatedCredential: TAzureKeyVaultConnectionFederatedCredential };
+    }) => {
+  if (
+    appConnection.app !== AppConnection.AzureKeyVault ||
+    appConnection.method !== AzureKeyVaultConnectionMethod.ManagedIdentity
+  ) {
+    return appConnection;
+  }
+
+  return {
+    ...appConnection,
+    credentials: {
+      ...appConnection.credentials,
+      federatedCredential: getAzureKeyVaultConnectionFederatedCredential(appConnection)
+    }
+  };
 };
 
 const platformManagedCredentialsNotSupported: TAppConnectionTransitionCredentialsToPlatform = ({ app }) => {

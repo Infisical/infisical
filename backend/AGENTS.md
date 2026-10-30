@@ -1226,6 +1226,10 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
   `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which
   caches the provider's access token in the credentials like the secret-based methods do.
+- **The API returns the values the customer copies.** Connection responses carry
+  `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
+  `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.
+  The issuer is null when `SITE_URL` is unset, so reading a connection never fails on it.
 
 ### Enterprise (EE) Features
 

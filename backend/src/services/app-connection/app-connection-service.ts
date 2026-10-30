@@ -29,6 +29,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
+  addAppConnectionFederatedCredential,
   decryptAppConnection,
   decryptAppConnectionCredentials,
   encryptAppConnectionConfiguration,
@@ -419,11 +420,13 @@ export const appConnectionServiceFactory = ({
       );
     }
 
-    return Promise.all(
+    const decryptedAppConnections = await Promise.all(
       appConnections
         .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
         .map((appConnection) => decryptAppConnection(appConnection, kmsService))
     );
+
+    return decryptedAppConnections.map(addAppConnectionFederatedCredential);
   };
 
   const findAppConnectionById = async (
@@ -471,7 +474,7 @@ export const appConnectionServiceFactory = ({
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
-    return decryptAppConnection(appConnection, kmsService);
+    return addAppConnectionFederatedCredential(await decryptAppConnection(appConnection, kmsService));
   };
 
   const findAppConnectionByName = async (
@@ -522,7 +525,7 @@ export const appConnectionServiceFactory = ({
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with name ${connectionName} is not for App "${app}"` });
 
-    return decryptAppConnection(appConnection, kmsService);
+    return addAppConnectionFederatedCredential(await decryptAppConnection(appConnection, kmsService));
   };
 
   // In project scope, an org-managed GitHub App can only be referenced by actors who can also
@@ -755,12 +758,12 @@ export const appConnectionServiceFactory = ({
         connection = await createConnection(validatedCredentials);
       }
 
-      return {
+      return addAppConnectionFederatedCredential({
         ...connection,
         credentialsHash: crypto.nativeCrypto.createHash("sha256").update(connection.encryptedCredentials).digest("hex"),
         credentials: validatedCredentials,
         configuration
-      } as TAppConnection;
+      } as TAppConnection);
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
@@ -1140,7 +1143,7 @@ export const appConnectionServiceFactory = ({
         return connection;
       });
 
-      return await decryptAppConnection(updatedConnection, kmsService);
+      return addAppConnectionFederatedCredential(await decryptAppConnection(updatedConnection, kmsService));
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
@@ -1211,7 +1214,7 @@ export const appConnectionServiceFactory = ({
     try {
       const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);
 
-      return await decryptAppConnection(deletedAppConnection, kmsService);
+      return addAppConnectionFederatedCredential(await decryptAppConnection(deletedAppConnection, kmsService));
     } catch (err) {
       if (
         err instanceof DatabaseError &&
