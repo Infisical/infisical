@@ -593,20 +593,11 @@ export const orgServiceFactory = ({
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
     }
 
-    if (ssoMfaTrust !== undefined && ssoMfaTrust !== SsoMfaTrust.None) {
-      if (!plan.enforceMfa) {
-        throw new BadRequestError({
-          message:
-            "Failed to update MFA for SSO logins due to plan restriction. Upgrade plan to trust identity provider MFA."
-        });
-      }
-
-      if (!currentOrg.orgAuthMethod) {
-        throw new BadRequestError({
-          message:
-            "Trusting the identity provider's MFA signal requires an active SAML or OIDC SSO configuration. Set up SSO first."
-        });
-      }
+    if (ssoMfaTrust !== undefined && ssoMfaTrust !== SsoMfaTrust.None && !plan.enforceMfa) {
+      throw new BadRequestError({
+        message:
+          "Failed to update MFA for SSO logins due to plan restriction. Upgrade plan to trust identity provider MFA."
+      });
     }
 
     if (authEnforced !== undefined) {

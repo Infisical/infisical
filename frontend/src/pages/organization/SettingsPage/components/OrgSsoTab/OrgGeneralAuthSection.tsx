@@ -375,7 +375,7 @@ export const OrgGeneralAuthSection = ({
               )}
             </div>
 
-            <SsoMfaTrustField isSsoActive={isSamlActive || isOidcActive} />
+            <SsoMfaTrustField />
           </FieldGroup>
         </CardContent>
       </Card>

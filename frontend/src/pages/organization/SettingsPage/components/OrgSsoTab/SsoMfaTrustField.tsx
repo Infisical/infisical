@@ -22,15 +22,12 @@ import { useUpdateOrg } from "@app/hooks/api";
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-type Props = {
-  isSsoActive: boolean;
-};
-
-export const SsoMfaTrustField = ({ isSsoActive }: Props) => {
+export const SsoMfaTrustField = () => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const { mutateAsync } = useUpdateOrg();
+  const isTrustOn = currentOrg?.ssoMfaTrust === SsoMfaTrust.Signal;
 
   const handleToggle = async (value: boolean) => {
     if (!currentOrg?.id) return;
@@ -77,9 +74,9 @@ export const SsoMfaTrustField = ({ isSsoActive }: Props) => {
             <Toggle
               id="trust-idp-mfa"
               variant="org"
-              checked={currentOrg?.ssoMfaTrust === SsoMfaTrust.Signal}
+              checked={isTrustOn}
               onCheckedChange={handleToggle}
-              disabled={!isAllowed || !isSsoActive}
+              disabled={!isAllowed}
             />
           )}
         </OrgPermissionCan>

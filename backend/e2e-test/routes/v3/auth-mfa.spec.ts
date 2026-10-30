@@ -311,11 +311,11 @@ describe("Auth MFA V3", () => {
       }
     });
 
-    test("the setting cannot be turned on without an active SSO configuration", async () => {
+    test("the setting can be turned on before any SSO configuration exists, like the bypass toggle", async () => {
       const res = await updateOrg({ ssoMfaTrust: SsoMfaTrust.Signal });
 
-      expect(res.statusCode).toBe(400);
-      expect(res.json().message).toMatch(/SAML or OIDC/);
+      expect(res.statusCode).toBe(200);
+      expect(res.json().organization.ssoMfaTrust).toBe(SsoMfaTrust.Signal);
     });
 
     test("the signal also covers personal MFA when the org enforces it", async () => {
