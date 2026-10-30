@@ -198,6 +198,7 @@ I
 (?i)runbook
 (?i)runbooks
 (?i)sandboxed
+(?i)sandboxing
 (?i)sarif
 (?i)serverless
 (?i)signup
