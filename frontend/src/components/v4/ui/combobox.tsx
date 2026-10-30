@@ -33,6 +33,7 @@ type SharedComboboxProps = {
   invalid?: boolean;
   mono?: boolean;
   defaultOpen?: boolean;
+  closeOnFocusOutside?: boolean;
   onCreate?: OptionCreateHandler;
   className?: string;
 };
@@ -88,6 +89,7 @@ export function Combobox({
     }
   };
   const [open, setOpen] = React.useState(props.defaultOpen ?? false);
+  const closeOnFocusOutside = props.closeOnFocusOutside ?? !props.defaultOpen;
   const fieldRef = React.useRef<HTMLDivElement>(null);
   const refocus = React.useRef<string | null | undefined>(undefined);
   React.useLayoutEffect(() => {
@@ -176,6 +178,7 @@ export function Combobox({
           quickActions={false}
           anchorRef={fieldRef}
           defaultOpen={props.defaultOpen}
+          closeOnFocusOutside={closeOnFocusOutside}
           renderValue={selected.length ? () => null : undefined}
           onCreate={onCreate}
           className={className}
@@ -235,7 +238,14 @@ export function Combobox({
       }}
     >
       {trigger}
-      <PopoverContent id={contentId} align="start" surface="menu">
+      <PopoverContent
+        id={contentId}
+        align="start"
+        surface="menu"
+        onFocusOutside={(event) => {
+          if (!closeOnFocusOutside) event.preventDefault();
+        }}
+      >
         <Command shouldFilter={false}>
           <CommandInput
             value={query}
