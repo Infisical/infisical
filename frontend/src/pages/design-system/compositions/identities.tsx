@@ -207,7 +207,7 @@ const AuthSheet = ({
   ]);
   return (
     <Sheet open={Boolean(kind)} onOpenChange={onOpenChange}>
-      <SheetContent>
+      <SheetContent size="lg">
         {kind && (
           <>
             <SheetHeader>
@@ -219,7 +219,7 @@ const AuthSheet = ({
             <SheetBody>
               <Stack gap={24}>
                 {kind === "universal" && (
-                  <Field label="Client ID">
+                  <Field label="Client ID" wide>
                     <Snippet label="Client ID" value="b7f1d2c4-58e3-4a0f-9e6b-2c8d1a7f3e05" />
                   </Field>
                 )}

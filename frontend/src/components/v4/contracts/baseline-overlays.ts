@@ -621,7 +621,8 @@ export const baselineOverlays = [
     referenceNames: ["Sheet"],
     behavior: [
       "SheetBody owns the shared body inset. When SheetHeader, SheetSubheader, SheetBody or SheetFooter is a direct child, Content wraps the header and body in one scroll region with the edge fade, so the header scrolls away with the body; SheetFooter and the corner close stay outside it and remain visible. SheetSubheader pins itself and the header above the scroll region and runs the full width, without the space reserved for the close button: use it for an artifact or legend the content needs, such as a path preview, a step meter or a filter row. Content without these slots, such as a Sidebar, renders unchanged. Each slot forwards a div ref and native props.",
-      "Sheet composes Radix Dialog with side-specific Content and scoped portals. open/onOpenChange controls visibility; Close is an explicit dismiss action."
+      "Sheet composes Radix Dialog with side-specific Content and scoped portals. open/onOpenChange controls visibility; Close is an explicit dismiss action.",
+      "SheetContent size sets the maximum width of a left or right sheet from a token: sm (size-sheet-sm, 384px, the default) for details and short forms, md (size-sheet-md, 512px) for create forms such as Create secret, and lg (size-sheet-lg, 672px) for form sheets with credentials, field pairs or a step bar, such as New connection and an auth method. The sheet is never wider than the viewport. Top and bottom sheets span the viewport and ignore size."
     ],
     accessibility: [
       "Provide SheetTitle and SheetDescription. Focus stays in the sheet and returns to the trigger. Escape inside an open editor closes the editor before the sheet."
@@ -640,6 +641,12 @@ export const baselineOverlays = [
         id: "placements",
         title: "Sides",
         module: "./examples/sheet/placements.tsx",
+        states: ["default"]
+      },
+      {
+        id: "sizes",
+        title: "Sizes",
+        module: "./examples/sheet/sizes.tsx",
         states: ["default"]
       },
       {
@@ -679,6 +686,27 @@ export const baselineOverlays = [
             value: "left",
             exampleId: "placements",
             label: "left"
+          }
+        ]
+      },
+      {
+        axis: "SheetContent.size",
+        expected: ["sm", "md", "lg"],
+        shown: [
+          {
+            value: "sm",
+            exampleId: "sizes",
+            label: "sm"
+          },
+          {
+            value: "md",
+            exampleId: "sizes",
+            label: "md"
+          },
+          {
+            value: "lg",
+            exampleId: "sizes",
+            label: "lg"
           }
         ]
       },

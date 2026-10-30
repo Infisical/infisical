@@ -99,7 +99,7 @@ export function SecretEntryFields({
   return (
     <div className={styles.entry} data-framed={framed || undefined}>
       <div className={styles.entryHead}>
-        <Field label="Key" error={keyError} className={styles.grow}>
+        <Field label="Key" error={keyError} wide className={styles.grow}>
           <Input
             ref={keyRef}
             value={entry.key}
@@ -193,7 +193,7 @@ export function SecretEntryFields({
           <SmallText muted>Saving removes the value, not the secret.</SmallText>
         )}
       </div>
-      <Field label="Comment">
+      <Field label="Comment" wide>
         <Textarea
           value={entry.comment}
           placeholder="Add a comment for this secret..."
@@ -205,7 +205,7 @@ export function SecretEntryFields({
           <AccordionTrigger>Advanced options</AccordionTrigger>
           <AccordionContent>
             <Stack gap={16}>
-              <Field label="Tags">
+              <Field label="Tags" wide>
                 <MultiSelect
                   label="Tags"
                   options={tagOptions}
@@ -237,6 +237,7 @@ export function SecretEntryFields({
                 label="Metadata"
                 description="Encrypted Metadata will not be searchable via the UI or API."
                 group
+                wide
               >
                 <div className={styles.metadata}>
                   {entry.metadata.length === 0 && (
@@ -517,7 +518,7 @@ export function CreateSecretFlow({
         }}
       >
         <SheetContent
-          className={styles.secretSheet}
+          size="md"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             keyInputs.current[entries[0].id]?.focus();
@@ -543,7 +544,7 @@ export function CreateSecretFlow({
                 }
               }}
             >
-              <Field label="Environments" error={errors.environments}>
+              <Field label="Environments" error={errors.environments} wide>
                 <MultiSelect
                   label="Environments"
                   options={scope.environments}

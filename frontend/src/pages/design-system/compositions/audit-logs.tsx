@@ -561,7 +561,7 @@ export default function AuditLogs() {
         </Stack>
       </Stack>
       <Sheet open={Boolean(opened)} onOpenChange={(open) => !open && setOpened(null)}>
-        <SheetContent>
+        <SheetContent size="lg">
           {opened && (
             <>
               <SheetHeader>

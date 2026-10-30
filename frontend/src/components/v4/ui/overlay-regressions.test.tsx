@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import * as React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -16,6 +18,7 @@ import {
 import { ContextMenu, ContextMenuTrigger } from "./context-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./dialog";
 import { DropdownMenu, DropdownMenuTrigger } from "./dropdown-menu";
+import { MultiStep } from "./multi-step";
 import { Sheet, SheetBody, SheetContent, SheetHeader, SheetSubheader, SheetTitle } from "./sheet";
 
 let host: HTMLDivElement;
@@ -135,4 +138,54 @@ it("leaves free-form sheet content unwrapped", async () => {
   const content = document.querySelector('[data-slot="sheet-content"]');
   expect(content?.querySelector('[data-slot="sheet-scroll"]')).toBeNull();
   expect(content?.querySelector(":scope > aside")).not.toBeNull();
+});
+
+it.each([
+  [undefined, "sm"],
+  ["md", "md"],
+  ["lg", "lg"]
+] as const)("sizes a sheet from a token: %s", async (size, expected) => {
+  await React.act(async () =>
+    root.render(
+      <V4Scope>
+        <Sheet open>
+          <SheetContent size={size} aria-describedby={undefined}>
+            <SheetTitle>New connection</SheetTitle>
+          </SheetContent>
+        </Sheet>
+      </V4Scope>
+    )
+  );
+  const content = document.querySelector('[data-slot="sheet-content"]');
+  expect(content?.getAttribute("data-size")).toBe(expected);
+  expect(content?.className).not.toMatch(/max-w-/);
+});
+
+it("caps every sheet size at its token and the viewport width", async () => {
+  const css = await readFile(path.resolve("src/components/v4/ui/overlay.module.css"), "utf8");
+  expect(css).toContain("--v4-sheet-size: var(--v4-size-sheet-sm);");
+  expect(css).toMatch(/\.sheet\[data-size="md"\] \{\s*--v4-sheet-size: var\(--v4-size-sheet-md\);/);
+  expect(css).toMatch(/\.sheet\[data-size="lg"\] \{\s*--v4-sheet-size: var\(--v4-size-sheet-lg\);/);
+  expect(css).toMatch(
+    /\.sheet\[data-side="left"\],\s*\.sheet\[data-side="right"\] \{\s*max-width: min\(var\(--v4-sheet-size\), 100vw\);/
+  );
+});
+
+it("passes the sheet size through MultiStep", async () => {
+  await React.act(async () =>
+    root.render(
+      <V4Scope>
+        <MultiStep
+          variant="sheet"
+          size="lg"
+          open
+          title="New connection"
+          steps={[{ title: "App", content: <p>Pick an app</p> }]}
+        />
+      </V4Scope>
+    )
+  );
+  expect(document.querySelector('[data-slot="sheet-content"]')?.getAttribute("data-size")).toBe(
+    "lg"
+  );
 });

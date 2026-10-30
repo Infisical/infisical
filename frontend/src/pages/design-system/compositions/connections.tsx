@@ -273,6 +273,7 @@ const NewConnection = ({ onCreate }: { onCreate: (connection: Connection) => voi
   return (
     <MultiStep
       variant="sheet"
+      size="lg"
       title="New connection"
       description="Connect a third-party app once and reuse it across your projects."
       trigger={
@@ -366,10 +367,11 @@ const NewConnection = ({ onCreate }: { onCreate: (connection: Connection) => voi
                 label="Name"
                 description="Lowercase letters, numbers and dashes."
                 error={nameError}
+                wide
               >
                 <Input mono value={name} onChange={(event) => setName(event.target.value)} />
               </Field>
-              <Field label="Description" optional>
+              <Field label="Description" optional wide>
                 <Textarea
                   rows={2}
                   value={description}
@@ -377,7 +379,7 @@ const NewConnection = ({ onCreate }: { onCreate: (connection: Connection) => voi
                 />
               </Field>
               {entry && (
-                <Field label="Method">
+                <Field label="Method" wide>
                   <Select
                     aria-label="Method"
                     options={entry.methods.map(({ value, label }) => ({ value, label }))}
@@ -387,7 +389,7 @@ const NewConnection = ({ onCreate }: { onCreate: (connection: Connection) => voi
                 </Field>
               )}
               {chosen?.fields.map((field) => (
-                <Field key={`${chosen.value}-${field.label}`} label={field.label}>
+                <Field key={`${chosen.value}-${field.label}`} label={field.label} wide>
                   <Input mono type={field.secret ? "password" : "text"} />
                 </Field>
               ))}

@@ -66,6 +66,7 @@ Exports: Sheet, SheetBody, SheetClose, SheetContent, SheetDescription, SheetFoot
 
 - SheetBody owns the shared body inset. When SheetHeader, SheetSubheader, SheetBody or SheetFooter is a direct child, Content wraps the header and body in one scroll region with the edge fade, so the header scrolls away with the body; SheetFooter and the corner close stay outside it and remain visible. SheetSubheader pins itself and the header above the scroll region and runs the full width, without the space reserved for the close button: use it for an artifact or legend the content needs, such as a path preview, a step meter or a filter row. Content without these slots, such as a Sidebar, renders unchanged. Each slot forwards a div ref and native props.
 - Sheet composes Radix Dialog with side-specific Content and scoped portals. open/onOpenChange controls visibility; Close is an explicit dismiss action.
+- SheetContent size sets the maximum width of a left or right sheet from a token: sm (size-sheet-sm, 384px, the default) for details and short forms, md (size-sheet-md, 512px) for create forms such as Create secret, and lg (size-sheet-lg, 672px) for form sheets with credentials, field pairs or a step bar, such as New connection and an auth method. The sheet is never wider than the viewport. Top and bottom sheets span the viewport and ignore size.
 
 ## Accessibility
 
@@ -93,6 +94,12 @@ Source declarations and review criteria only. Generation checks references and c
 - right: example `placements`, visible label "right".
 - bottom: example `placements`, visible label "bottom".
 - left: example `placements`, visible label "left".
+
+### SheetContent.size
+
+- sm: example `sizes`, visible label "sm".
+- md: example `sizes`, visible label "md".
+- lg: example `sizes`, visible label "lg".
 
 ### Close control
 
@@ -168,6 +175,54 @@ export default function Example() {
             </UI.SheetContent>
           </UI.Sheet>
         </div><figcaption className="text-muted-foreground text-xs">{side}</figcaption></figure>))}
+    </div>);
+}
+```
+
+### Sizes
+
+Save this example at `src/pages/design-system/examples/sheet/sizes.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/button, @infisical/field, @infisical/input, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Button } from "../../../../components/v4/ui/button";
+import { Field, FieldGroup } from "../../../../components/v4/ui/field";
+import { Input } from "../../../../components/v4/ui/input";
+import * as UI from "../../../../components/v4/ui/sheet";
+const sizes = ["sm", "md", "lg"] as const;
+export default function Example() {
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
+      {sizes.map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
+          <UI.Sheet>
+            <UI.SheetTrigger asChild>
+              <Button variant="outline">{size} sheet</Button>
+            </UI.SheetTrigger>
+            <UI.SheetContent size={size}>
+              <UI.SheetHeader>
+                <UI.SheetTitle>Staging connection</UI.SheetTitle>
+                <UI.SheetDescription>
+                  Edit the name and access key for this connection.
+                </UI.SheetDescription>
+              </UI.SheetHeader>
+              <UI.SheetBody>
+                <FieldGroup>
+                  <Field label="Connection name" wide>
+                    <Input defaultValue="aws-staging-keys"/>
+                  </Field>
+                  <Field label="Access key ID" description="Shown in activity logs." wide>
+                    <Input defaultValue="AKIAEXAMPLESTAGING01"/>
+                  </Field>
+                </FieldGroup>
+              </UI.SheetBody>
+              <UI.SheetFooter>
+                <UI.SheetClose asChild>
+                  <Button variant="outline">Close connection</Button>
+                </UI.SheetClose>
+              </UI.SheetFooter>
+            </UI.SheetContent>
+          </UI.Sheet>
+        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
     </div>);
 }
 ```

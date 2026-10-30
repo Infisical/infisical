@@ -531,7 +531,7 @@ export default function SecretScanning() {
         ]}
       />
       <Sheet open={Boolean(openFinding)} onOpenChange={(next) => !next && setOpened(null)}>
-        <SheetContent>
+        <SheetContent size="lg">
           {openFinding && (
             <>
               <SheetHeader>

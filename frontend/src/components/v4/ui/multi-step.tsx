@@ -113,6 +113,7 @@ export const Steps = ({
 export type MultiStepProps = {
   steps: readonly MultiStepStep[];
   variant?: "dialog" | "sheet" | "page";
+  size?: React.ComponentProps<typeof SheetContent>["size"];
   title?: React.ReactNode;
   description?: React.ReactNode;
   open?: boolean;
@@ -134,6 +135,7 @@ const fieldSelector =
 export const MultiStep = ({
   steps,
   variant = "dialog",
+  size,
   title,
   description,
   open,
@@ -344,7 +346,7 @@ export const MultiStep = ({
     return (
       <Sheet open={isOpen} onOpenChange={changeOpen}>
         {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
-        <SheetContent className={className}>
+        <SheetContent size={size} className={className}>
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
             {description && <SheetDescription>{description}</SheetDescription>}
