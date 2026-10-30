@@ -108,7 +108,7 @@ function Author({ commit }: { commit: LocalCommit }) {
     <span className={styles.inlineGroup}>
       <span className={styles.truncate}>{authorName(commit)}</span>
       {commit.actorType === "platform" && (
-        <Tooltip wrap content={PLATFORM_HINT}>
+        <Tooltip content={PLATFORM_HINT}>
           <span className={styles.hint}>
             <Icon name="info" size={12} label="About platform commits" />
           </span>

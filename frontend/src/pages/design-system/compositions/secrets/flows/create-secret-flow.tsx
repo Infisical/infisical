@@ -147,7 +147,6 @@ export function SecretEntryFields({
         <div className={styles.labelRow}>
           <FieldLabel htmlFor={`${entry.id}-value`}>Value</FieldLabel>
           <Tooltip
-            wrap
             content={
               <>
                 You can add references to other secrets using the format{" "}

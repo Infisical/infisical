@@ -303,10 +303,7 @@ export function ShareSecretSheet({
                             invalid={Boolean(errors.emails)}
                             onChange={(event) => patch({ emails: event.target.value })}
                             trailing={
-                              <Tooltip
-                                wrap
-                                content="Each recipient gets their own link. Leave this empty to get one link you can share yourself."
-                              >
+                              <Tooltip content="Each recipient gets their own link. Leave this empty to get one link you can share yourself.">
                                 <span className={styles.hint}>
                                   <Icon name="info" size={14} label="About email recipients" />
                                 </span>

@@ -15,7 +15,7 @@ export default function Example() {
       <ExampleGrid width="compact">
         {placements.map(({ side, align }) => (
           <ExampleCell key={side} label={side}>
-            <Tooltip side={side} align={align} wrap content="Connection status">
+            <Tooltip side={side} align={align} content="Connection status">
               <Button variant="outline">align {align}</Button>
             </Tooltip>
           </ExampleCell>

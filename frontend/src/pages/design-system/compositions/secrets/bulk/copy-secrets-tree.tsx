@@ -261,7 +261,7 @@ function Folder({
                     )}
                     <span className={styles.treeMeta}>
                       {restrictionLabel && !isReadOnly && (
-                        <Tooltip content={getRestrictionDescription(secret)} wrap>
+                        <Tooltip content={getRestrictionDescription(secret)}>
                           <button
                             type="button"
                             className={styles.badgeButton}
@@ -272,7 +272,7 @@ function Folder({
                         </Tooltip>
                       )}
                       {secret.previewStatus && (
-                        <Tooltip content={getPreviewDescription(secret)} wrap>
+                        <Tooltip content={getPreviewDescription(secret)}>
                           <button
                             type="button"
                             className={styles.badgeButton}

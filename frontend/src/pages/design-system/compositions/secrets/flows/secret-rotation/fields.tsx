@@ -50,7 +50,7 @@ export const useConnectionId = () => {
 
 export function InfoTip({ content }: { content: ReactNode }) {
   return (
-    <Tooltip content={content} wrap>
+    <Tooltip content={content}>
       <Button type="button" variant="ghost" size="icon-xs" aria-label="More information">
         <Icon name="info" />
       </Button>

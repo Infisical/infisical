@@ -139,10 +139,7 @@ export function AccessInsightsSheet({
               <span className={styles.toggleLabel}>
                 <Switch id="access-show-all" checked={showAll} onCheckedChange={setShowAll} />
                 <FieldLabel htmlFor="access-show-all">Show all members</FieldLabel>
-                <Tooltip
-                  wrap
-                  content="When enabled, all project members are shown including those without any access to this secret."
-                >
+                <Tooltip content="When enabled, all project members are shown including those without any access to this secret.">
                   <span className={styles.hint}>
                     <Icon name="info" size={14} label="About showing all members" />
                   </span>

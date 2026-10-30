@@ -125,10 +125,7 @@ export function ReferencesDialog({
           <section className={styles.referenceSection}>
             <h3 className={styles.sectionHead}>
               Reference tree
-              <Tooltip
-                wrap
-                content="Overview of all secrets across your project that this secret references. You can only view references you have access to."
-              >
+              <Tooltip content="Overview of all secrets across your project that this secret references. You can only view references you have access to.">
                 <span className={styles.hint}>
                   <Icon name="info" size={14} label="About the reference tree" />
                 </span>
@@ -166,10 +163,7 @@ export function ReferencesDialog({
           <section className={styles.referenceSection}>
             <h3 className={styles.sectionHead}>
               Dependency tree
-              <Tooltip
-                wrap
-                content="Overview of all secrets across your project that reference this secret. You can only view references you have access to."
-              >
+              <Tooltip content="Overview of all secrets across your project that reference this secret. You can only view references you have access to.">
                 <span className={styles.hint}>
                   <Icon name="info" size={14} label="About the dependency tree" />
                 </span>

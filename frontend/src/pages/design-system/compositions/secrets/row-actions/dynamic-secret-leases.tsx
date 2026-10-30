@@ -208,7 +208,7 @@ export function DynamicSecretLeasesDialog({
                       <div className={styles.leaseId}>
                         <span className={styles.truncate}>{id}</span>
                         {status && (
-                          <Tooltip wrap content={statusDetails || status}>
+                          <Tooltip content={statusDetails || status}>
                             <span className={styles.warn} aria-label="Lease warning">
                               <Icon name="alert" size={16} />
                             </span>
@@ -251,10 +251,7 @@ export function DynamicSecretLeasesDialog({
                           />
                         </Tooltip>
                         {status === "failed-deletion" && (
-                          <Tooltip
-                            wrap
-                            content="Force delete lease. This removes the lease from Infisical without revoking it in the external provider."
-                          >
+                          <Tooltip content="Force delete lease. This removes the lease from Infisical without revoking it in the external provider.">
                             <Button
                               variant="danger-ghost"
                               size="icon-xs"

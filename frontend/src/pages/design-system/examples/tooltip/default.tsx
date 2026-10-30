@@ -17,7 +17,6 @@ export default function Example() {
           <Tooltip
             side="bottom"
             align="start"
-            wrap
             content="Read access permits fetching values. It does not permit creating or updating secrets."
           >
             <Button variant="ghost">About read access</Button>

@@ -7,6 +7,7 @@
     0 0 0 var(--v4-size-control-border) var(--v4-pop-line),
     var(--v4-shadow-pop);
   outline: none;
+  white-space: normal;
   font-family: var(--v4-type-body-font-family);
   font-size: var(--v4-type-body-font-size);
   line-height: var(--v4-type-body-line-height);
@@ -46,8 +47,9 @@
   align-items: center;
   gap: var(--v4-space-8);
   width: fit-content;
-  max-width: min(var(--v4-size-menu-max), var(--radix-popper-available-width, 100vw));
+  max-width: min(var(--v4-size-tooltip-max), var(--radix-popper-available-width, 100vw));
   padding: var(--v4-space-6) var(--v4-space-8);
+  white-space: normal;
   border-radius: 0;
   background-color: var(--v4-ink);
   color: var(--v4-on-ink);

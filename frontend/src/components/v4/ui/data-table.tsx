@@ -57,6 +57,7 @@ export interface DataTableProps<Row> {
   defaultSelectedIds?: readonly string[];
   onSelectionChange?: (ids: string[]) => void;
   isSelectable?: (row: Row) => boolean;
+  selectionDisabledReason?: (row: Row) => string | undefined;
   sort?: { columnId: string; direction: "asc" | "desc" };
   onSortChange?: (sort: { columnId: string; direction: "asc" | "desc" }) => void;
   empty?: React.ReactNode;
@@ -94,7 +95,8 @@ export function DataTable<Row>({
   selectedIds,
   defaultSelectedIds = [],
   onSelectionChange,
-  isSelectable = () => true,
+  isSelectable: isSelectableProp = () => true,
+  selectionDisabledReason,
   sort,
   onSortChange,
   empty = "No rows",
@@ -125,6 +127,7 @@ export function DataTable<Row>({
   });
   const effectiveRowHeight =
     measuredRow.requested === requestedRowHeight ? measuredRow.height : requestedRowHeight;
+  const isSelectable = (row: Row) => isSelectableProp(row) && !selectionDisabledReason?.(row);
   const selected = selectedIds ?? ownSelected;
   const eligible = rows.filter(isSelectable).map(getRowId);
   const checked = eligible.filter((id) => selected.includes(id)).length;
@@ -404,14 +407,13 @@ export function DataTable<Row>({
               >
                 {selectable && (
                   <TableCell className={styles.tableCheck} data-row-interactive>
-                    <div className={styles.tableSelection}>
-                      <Checkbox
-                        aria-label={`Select ${rowLabel(row)}`}
-                        checked={selected.includes(getRowId(row))}
-                        disabled={!isSelectable(row)}
-                        onCheckedChange={() => toggle(getRowId(row))}
-                      />
-                    </div>
+                    <SelectionBox
+                      label={`Select ${rowLabel(row)}`}
+                      checked={selected.includes(getRowId(row))}
+                      disabled={!isSelectable(row)}
+                      reason={selectionDisabledReason?.(row)}
+                      onToggle={() => toggle(getRowId(row))}
+                    />
                   </TableCell>
                 )}
                 {columns.map((column) => (
@@ -575,4 +577,31 @@ function ToggleCell<Row>({
       {adornment}
     </span>
   );
+}
+
+function SelectionBox({
+  label,
+  checked,
+  disabled,
+  reason,
+  onToggle
+}: {
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  reason?: string;
+  onToggle: () => void;
+}) {
+  const box = (
+    <div className={styles.tableSelection}>
+      <Checkbox
+        aria-label={label}
+        aria-description={reason}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onToggle}
+      />
+    </div>
+  );
+  return reason ? <Tooltip content={reason}>{box}</Tooltip> : box;
 }

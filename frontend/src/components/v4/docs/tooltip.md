@@ -48,8 +48,8 @@ Exports: Tooltip, TooltipContent, TooltipProvider, TooltipTrigger. Source TypeSc
 ## Behavior
 
 - The shortcut specimen owns a Mod+K binding scoped to its focused region. Its button and binding open the same local search, which filters fictional connections and exposes the selected record. Editing and composition keys remain with their controls.
-- Tooltip opens after a hover delay and immediately from focus; side, alignment, wrapping and a displayed shortcut are explicit.
-- Content renders as one inline text run beside the shortcut, so inline code stays inside the sentence. Long content needs wrap; wrapped content breaks long inline code so it never runs past the surface.
+- Tooltip opens after a hover delay and immediately from focus; side, alignment and a displayed shortcut are explicit.
+- Content renders as one inline text run beside the shortcut, so inline code stays inside the sentence. It grows to size-tooltip-max (320px) and then wraps, breaking long inline code so it never runs past the surface. Content resets white-space, so a trigger inside a nowrap table cell or menu row never forces one long line; wrap is deprecated and has no effect. Menus, popovers, hover cards, dialogs and sheets reset white-space the same way.
 
 ## Accessibility
 
@@ -117,7 +117,6 @@ export default function Example() {
           <Tooltip
             side="bottom"
             align="start"
-            wrap
             content="Read access permits fetching values. It does not permit creating or updating secrets."
           >
             <Button variant="ghost">About read access</Button>
@@ -151,7 +150,7 @@ export default function Example() {
     return (<TooltipProvider>
       <div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
         {placements.map(({ side, align }) => (<figure key={side} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-            <Tooltip side={side} align={align} wrap content="Connection status">
+            <Tooltip side={side} align={align} content="Connection status">
               <Button variant="outline">align {align}</Button>
             </Tooltip>
           </div><figcaption className="text-muted-foreground text-xs">{side}</figcaption></figure>))}

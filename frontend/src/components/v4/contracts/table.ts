@@ -53,6 +53,7 @@ export const tableDefinition = {
   ],
   accessibility: [
     "Native table/header/cell semantics, labelled selection and aria-sort buttons.",
+    "selectionDisabledReason(row) disables that row's selection Checkbox, shows the reason in a tooltip and sets it as the Checkbox's accessible description. Header select-all skips and does not count those rows; isSelectable remains for rows that need no explanation.",
     "With virtual rows, screen readers still hear the total row count and each row's real position.",
     "Focus remains on native controls; loading and selected totals announced politely.",
     "After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived.",
@@ -62,6 +63,7 @@ export const tableDefinition = {
   ],
   limitations: [
     "The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.",
+    "There is no muted row state. Lowered opacity drops text below contrast and carries the state by color alone; mark an inactive row with a Badge in its name cell (for example Deactivated) and, when it cannot be acted on, a selectionDisabledReason.",
     "Virtual tables use one uniform effective row height. rowHeight defaults to the size-row token (40px) as a requested minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.",
     "Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.",
     "Use text(row) for full hover text when render returns truncated complex content.",
