@@ -98,6 +98,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
     } else if (method === MfaMethod.WEBAUTHN) {
       checkUserWebAuthnMfa().then((hasPasskeys) => {
         if (!hasPasskeys) {
+          SecurityClient.setMfaToken("");
           setShouldShowWebAuthnRegistration(true);
         }
       });
