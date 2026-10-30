@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "../lib/utils";
+import { Icon, type IconName } from "./icon";
 
 import styles from "./text.module.css";
 
@@ -81,3 +82,29 @@ export function Meta({
   );
 }
 Meta.displayName = "Meta";
+
+export function StatusText({
+  tone = "neutral",
+  icon,
+  className,
+  children,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"span"> & {
+  tone?: "neutral" | "ok" | "warn" | "bad";
+  icon: IconName;
+} & { ref?: React.Ref<HTMLSpanElement> }) {
+  return (
+    <span
+      ref={ref}
+      data-slot="status-text"
+      data-tone={tone}
+      className={cn(styles.status, className)}
+      {...props}
+    >
+      <Icon name={icon} />
+      <span>{children}</span>
+    </span>
+  );
+}
+StatusText.displayName = "StatusText";

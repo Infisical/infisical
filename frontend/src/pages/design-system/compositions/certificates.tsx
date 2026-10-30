@@ -673,25 +673,28 @@ const CertificateDetail = ({
             <Card title="Overview">
               <DataList
                 variant="props"
+                density="compact"
                 items={[
                   ["Common name", cert.cn],
                   ["Serial number", <code key="serial">{cert.serial}</code>],
-                  ["Status", <StatusBadge key="status" status={cert.status} />],
-                  ["Not before", cert.issued],
+                  ["Status", <StatusBadge key="status" status={cert.status} />, { span: "half" }],
+                  ["Source", "Managed", { span: "half" }],
+                  ["Not before", cert.issued, { span: "half" }],
                   [
                     "Not after",
-                    <Inline key="after" gap={8} align="center">
+                    <Inline key="after" gap={8} align="center" wrap>
                       {cert.expires}
                       <ExpiryBadge cert={cert} />
-                    </Inline>
-                  ],
-                  ["Source", "Managed"]
+                    </Inline>,
+                    { span: "half" }
+                  ]
                 ]}
               />
             </Card>
             <Card title="Issuance">
               <DataList
                 variant="props"
+                density="compact"
                 items={[
                   [
                     "Certificate authority",
@@ -713,12 +716,13 @@ const CertificateDetail = ({
           <Card title="Subject">
             <DataList
               variant="props"
+              density="compact"
               items={[
                 ["Common name", cert.cn],
-                ["Organization", "Acme Corp"],
-                ["Organizational unit", "Platform"],
-                ["Locality", "Vancouver"],
-                ["State", "British Columbia"],
+                ["Organization", "Acme Corp", { span: "half" }],
+                ["Organizational unit", "Platform", { span: "half" }],
+                ["Locality", "Vancouver", { span: "half" }],
+                ["State", "British Columbia", { span: "half" }],
                 ["Country", "CA"]
               ]}
             />
@@ -726,6 +730,7 @@ const CertificateDetail = ({
           <Card title="Key usage">
             <DataList
               variant="props"
+              density="compact"
               items={[
                 [
                   "Key usage",

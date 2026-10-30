@@ -791,6 +791,32 @@ button.rowTitle::after {
   overflow-wrap: anywhere;
   text-align: right;
 }
+.dataList[data-density="compact"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--v4-space-16);
+  row-gap: 0;
+}
+.dataList[data-density="compact"] .dataPair {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(min-content, var(--v4-size-data-list-term)) minmax(0, 1fr);
+  align-content: center;
+  align-items: baseline;
+  gap: 0 var(--v4-space-12);
+  min-height: var(--v4-size-data-list-row);
+  padding: var(--v4-space-4) 0;
+}
+.dataList[data-density="compact"] .dataPair[data-span="half"] {
+  grid-column: auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+.dataList[data-density="compact"] dt {
+  max-width: none;
+}
+.dataList[data-density="compact"] dd {
+  text-align: start;
+}
 .dataList[data-variant="stat"] dd {
   font-family: var(--v4-type-display-font-family);
   font-size: var(--v4-type-display-font-size);

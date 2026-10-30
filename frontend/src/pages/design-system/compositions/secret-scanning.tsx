@@ -48,10 +48,10 @@ type Finding = {
 };
 
 const statuses: { value: Status; label: string; tone: BadgeTone; action: string }[] = [
-  { value: "unresolved", label: "Unresolved", tone: "warn", action: "Reopen" },
+  { value: "unresolved", label: "Unresolved", tone: "outline", action: "Reopen" },
   { value: "resolved", label: "Resolved", tone: "ok", action: "Mark resolved" },
   { value: "false-positive", label: "False positive", tone: "soft", action: "Mark false positive" },
-  { value: "ignored", label: "Ignored", tone: "outline", action: "Ignore" }
+  { value: "ignored", label: "Ignored", tone: "soft", action: "Ignore" }
 ];
 const statusOf = (value: Status) => statuses.find((item) => item.value === value) ?? statuses[0];
 
@@ -278,6 +278,7 @@ export default function SecretScanning() {
   const pageRows = rows.slice((page - 1) * pageSize, page * pageSize);
   const count = (value: Status) => scoped.filter((finding) => finding.status === value).length;
   const openFinding = findings.find((finding) => finding.id === opened);
+  const unresolved = findings.filter((finding) => finding.status === "unresolved").length;
   const repoOptions = useMemo(
     () => [
       { value: "all", label: "All repositories" },
@@ -402,6 +403,13 @@ export default function SecretScanning() {
       <Stack gap={24}>
         <PageHeader
           title="Findings"
+          badges={
+            unresolved > 0 && (
+              <Badge tone="warn" dot>
+                {unresolved} need attention
+              </Badge>
+            )
+          }
           description="Secrets detected across every data source. Review and triage leaked secrets."
           tabs={
             <Tabs

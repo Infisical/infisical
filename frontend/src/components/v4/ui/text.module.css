@@ -146,3 +146,26 @@
   font-weight: var(--v4-type-mono-sm-font-weight);
   letter-spacing: var(--v4-type-mono-sm-letter-spacing);
 }
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-6);
+  min-width: 0;
+  vertical-align: top;
+  color: var(--v4-text2, var(--muted-foreground));
+}
+.status > svg {
+  flex: none;
+  width: var(--v4-size-icon);
+  height: var(--v4-size-icon);
+  stroke-width: var(--v4-stroke-icon);
+}
+.status[data-tone="ok"] {
+  color: var(--v4-ok);
+}
+.status[data-tone="warn"] {
+  color: var(--v4-warn);
+}
+.status[data-tone="bad"] {
+  color: var(--v4-bad);
+}
