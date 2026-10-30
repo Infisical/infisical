@@ -31,6 +31,12 @@
       "rule": "Database migrations must never depend on the license or feature flags, directly or transitively. Migrations run before the license service initializes, so any plan/entitlement/feature-flag lookup returns its default value instead of the deployment's real one, and a migration that branches on that value silently takes the wrong path and can corrupt data. (Real incident: a migration used getMigrationEncryptionServices, whose HSM check is license-gated; with the license uninitialized the flag read as off, so data was nearly re-encrypted with the wrong key.) Flag any migration that: reads the license service (licenseServiceFactory, licenseService, getPlan, entitlement/feature-set lookups); reads a feature flag (getFeatureFlag or any flag-provider call); or calls a shared helper that does either check internally without the option that skips it (e.g. getMigrationEncryptionServices without skipHsmLicenseCheck: true, or isHsmActiveAndEnabled given a licenseService). Migrations may only branch on DB state and env config (e.g. the kms_root_config encryption strategy).",
       "severity": "high",
       "scope": ["backend/src/db/migrations/**"]
+    },
+    {
+      "id": "flag-breaking-changes-for-self-hosted",
+      "rule": "Flag any change that can break a self-hosted deployment, API client, or integration on upgrade, using the categories and real examples in BREAKING_CHANGES.md: endpoints removed, moved, or changing HTTP method; response or request fields dropped, renamed, retyped, or ignored; stricter validation or TLS verification rejecting setups that used to work; changed defaults or processing order; permission checks that now return 403 for roles that used to succeed; features disabled; columns or tables dropped; migrations or storage changes old pods or CLIs cannot handle during a rolling deploy; env vars renamed, removed, or reinterpreted; audit log event fields renamed, retyped, or removed. Name the category, say who it breaks, and suggest the compatible alternative from BREAKING_CHANGES.md. If the break is deliberate, check that the PR ticks Breaking and has a `## Breaking change` section stating what stops working and what the operator must do, and flag it when either is missing.",
+      "severity": "high",
+      "scope": ["backend/src/**", "backend-go/**"]
     }
   ]
 }
