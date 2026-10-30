@@ -65,7 +65,7 @@ export const GroupContainer = ({
         {unsavedCount > 0 && (
           <Badge variant="warning" className="ml-auto">
             <PencilIcon />
-            {unsavedCount} unsaved change{unsavedCount !== 1 ? "s" : ""}
+            {unsavedCount} Unsaved Change{unsavedCount !== 1 ? "s" : ""}
           </Badge>
         )}
       </AccordionTrigger>
