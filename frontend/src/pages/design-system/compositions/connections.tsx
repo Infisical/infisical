@@ -26,7 +26,7 @@ import { Select } from "@app/components/v4/ui/select";
 import { Tabs } from "@app/components/v4/ui/tabs";
 import { Textarea } from "@app/components/v4/ui/textarea";
 
-import { Shell, useCrumbs } from "./shared";
+import { Shell, useCrumbs, usePagedRows } from "./shared";
 
 type AppId = "aws" | "github" | "vercel" | "gcp" | "azure-key-vault" | "databricks";
 type Method = { value: string; label: string; fields: { label: string; secret?: boolean }[] };
@@ -447,6 +447,7 @@ export default function Connections() {
           a.name.localeCompare(b.name)
       );
   }, [rows, orgRows, scope, query, filter, sort]);
+  const { pageRows, pagination } = usePagedRows(visible, "App connection pages");
   const columns: DataTableColumn<Connection>[] = [
     {
       id: "app",
@@ -592,7 +593,8 @@ export default function Connections() {
             </Inline>
             <DataTable
               label="App connections"
-              rows={visible}
+              rows={pageRows}
+              pagination={visible.length > 0 ? pagination : undefined}
               columns={columns}
               getRowId={(r) => r.id}
               rowLabel={(r) => r.name}

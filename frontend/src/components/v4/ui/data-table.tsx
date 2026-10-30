@@ -3,7 +3,9 @@ import * as React from "react";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
+import { FloatingActionBarHostContext } from "./floating-action-bar";
 import { Icon } from "./icon";
+import { Skeleton } from "./skeleton";
 import {
   Table,
   TableBody,
@@ -54,7 +56,23 @@ export interface DataTableProps<Row> {
   loadMore?: { label: string; onClick: () => void; loading?: boolean };
   end?: React.ReactNode;
   footer?: React.ReactNode;
+  onRowActivate?: (row: Row) => void;
+  pagination?: React.ReactNode;
+  loading?: boolean;
+  loadingRows?: number;
+  actionBar?: React.ReactNode;
 }
+const interactiveTarget =
+  "a, button, input, select, textarea, label, summary, [contenteditable], [tabindex]:not(tr), [role=button], [role=checkbox], [role=combobox], [role=link], [role=menuitem], [role=switch], [role=tab], [data-row-interactive]";
+const activatesRow = (event: React.MouseEvent<HTMLTableRowElement>) => {
+  const row = event.currentTarget;
+  const target = event.target as Element;
+  if (event.button !== 0 || !row.contains(target)) return false;
+  const interactive = target.closest(interactiveTarget);
+  if (interactive && row.contains(interactive)) return false;
+  const selection = window.getSelection();
+  return !(selection && !selection.isCollapsed && row.contains(selection.anchorNode));
+};
 export function DataTable<Row>({
   label,
   rows,
@@ -75,8 +93,14 @@ export function DataTable<Row>({
   rowHeight,
   loadMore,
   end,
-  footer
+  footer,
+  onRowActivate,
+  pagination,
+  loading = false,
+  loadingRows = 5,
+  actionBar
 }: DataTableProps<Row>) {
+  const [barPlacement, setBarPlacement] = React.useState<"fixed" | "contained" | null>(null);
   const [ownSelected, setOwnSelected] = React.useState<readonly string[]>(defaultSelectedIds);
   const [top, setTop] = React.useState(0);
   const scroll = React.useRef<HTMLDivElement>(null);
@@ -98,6 +122,8 @@ export function DataTable<Row>({
     if (selectedIds === undefined) setOwnSelected(next);
     onSelectionChange?.(next);
   };
+  const toggle = (id: string) =>
+    update(selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id]);
   const windowed = Boolean(height && virtual);
   const windowSize =
     height && effectiveRowHeight ? Math.ceil(height / effectiveRowHeight) + 8 : rows.length;
@@ -158,12 +184,18 @@ export function DataTable<Row>({
   }, [focusRow, start]);
   const span = columns.length + (selectable ? 1 : 0);
   const hasGrowingColumn = columns.some((column) => column.grow && column.width === undefined);
+  const fixedLayout = columns.every((column) => column.width !== undefined || column.grow);
+  const fixedFloor = columns
+    .filter((column) => column.width === undefined)
+    .map((column) => (column.minWidth ? `${column.minWidth}px` : "var(--v4-size-cell-min)"));
+  const fixedWidth = columns.reduce((sum, column) => sum + (column.width ?? 0), 0);
   const columnStyle = (column: DataTableColumn<Row>): React.CSSProperties => ({
     width: column.width ?? (hasGrowingColumn && !column.grow ? "1%" : undefined),
     minWidth: column.width ?? (column.actions ? undefined : (column.minWidth ?? 64)),
     maxWidth: column.maxWidth,
     textAlign: column.align
   });
+  const skeletonRows = Math.max(1, Math.floor(loadingRows));
   const tableStyle: React.CSSProperties & { "--v4-table-row-height"?: string } = {
     maxHeight: height,
     "--v4-table-row-height": effectiveRowHeight ? `${effectiveRowHeight}px` : undefined
@@ -192,14 +224,27 @@ export function DataTable<Row>({
       style={tableStyle}
       onScroll={(event) => setTop(event.currentTarget.scrollTop)}
     >
-      <Table aria-label={label} aria-rowcount={rows.length + 1} data-variant={variant}>
+      <Table
+        aria-label={label}
+        aria-rowcount={rows.length + 1}
+        aria-busy={loading || undefined}
+        data-variant={variant}
+        data-layout={fixedLayout ? "fixed" : undefined}
+        style={
+          fixedLayout
+            ? {
+                minWidth: `calc(${[`${fixedWidth}px`, ...fixedFloor, ...(selectable ? ["var(--v4-size-control-lg)"] : [])].join(" + ")})`
+              }
+            : undefined
+        }
+      >
         <TableHeader>
           <TableRow>
             {selectable && (
               <TableHead className={styles.tableCheck}>
                 <Checkbox
                   aria-label={`Select all available rows in ${label}`}
-                  disabled={!eligible.length}
+                  disabled={loading || !eligible.length}
                   checked={
                     checked > 0 && checked < eligible.length
                       ? "indeterminate"
@@ -262,7 +307,39 @@ export function DataTable<Row>({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {start > 0 && (
+          {loading &&
+            Array.from({ length: skeletonRows }, (_, index) => (
+              <TableRow key={`loading-${index}`} aria-hidden data-loading>
+                {selectable && (
+                  <TableCell className={styles.tableCheck}>
+                    <div className={styles.tableSelection}>
+                      <Skeleton width="var(--v4-size-icon)" height="var(--v4-size-icon)" />
+                    </div>
+                  </TableCell>
+                )}
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.id}
+                    style={columnStyle(column)}
+                    data-actions={column.actions || undefined}
+                    data-pin={column.pin ?? column.actions}
+                  >
+                    {column.actions ? (
+                      <TableRowActions>
+                        <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
+                      </TableRowActions>
+                    ) : (
+                      <Skeleton
+                        className={styles.tableSkeleton}
+                        data-primary={column.primary || undefined}
+                        style={{ maxWidth: column.maxWidth }}
+                      />
+                    )}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          {!loading && start > 0 && (
             <TableRow aria-hidden data-spacer>
               <TableCell
                 colSpan={span}
@@ -270,58 +347,72 @@ export function DataTable<Row>({
               />
             </TableRow>
           )}
-          {rows.slice(start, stop).map((row, i) => (
-            <TableRow
-              key={getRowId(row)}
-              aria-rowindex={start + i + 2}
-              tabIndex={start + i === focusRow ? -1 : undefined}
-              onBlur={start + i === focusRow ? () => setFocusRow(null) : undefined}
-              data-state={selected.includes(getRowId(row)) ? "selected" : undefined}
-              style={{ height: effectiveRowHeight }}
-            >
-              {selectable && (
-                <TableCell className={styles.tableCheck}>
-                  <div className={styles.tableSelection}>
-                    <Checkbox
-                      aria-label={`Select ${rowLabel(row)}`}
-                      checked={selected.includes(getRowId(row))}
-                      disabled={!isSelectable(row)}
-                      onCheckedChange={() =>
-                        update(
-                          selected.includes(getRowId(row))
-                            ? selected.filter((id) => id !== getRowId(row))
-                            : [...selected, getRowId(row)]
-                        )
+          {!loading &&
+            rows.slice(start, stop).map((row, i) => (
+              <TableRow
+                key={getRowId(row)}
+                aria-rowindex={start + i + 2}
+                tabIndex={onRowActivate ? 0 : start + i === focusRow ? -1 : undefined}
+                onBlur={start + i === focusRow ? () => setFocusRow(null) : undefined}
+                data-state={selected.includes(getRowId(row)) ? "selected" : undefined}
+                data-activatable={onRowActivate ? "" : undefined}
+                onClick={
+                  onRowActivate
+                    ? (event) => {
+                        if (activatesRow(event)) onRowActivate(row);
                       }
-                    />
-                  </div>
-                </TableCell>
-              )}
-              {columns.map((column) => (
-                <TableCell
-                  key={column.id}
-                  style={columnStyle(column)}
-                  data-actions={column.actions || undefined}
-                  data-pin={column.pin ?? column.actions}
-                >
-                  {column.actions ? (
-                    <TableRowActions style={{ maxWidth: column.maxWidth }}>
-                      {column.render(row, start + i)}
-                    </TableRowActions>
-                  ) : (
-                    <div
-                      className={column.primary ? styles.tablePrimary : styles.tableValue}
-                      style={{ maxWidth: column.maxWidth }}
-                      title={column.text?.(row)}
-                    >
-                      {column.render(row, start + i)}
+                    : undefined
+                }
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === "Enter" && onRowActivate) {
+                    event.preventDefault();
+                    onRowActivate(row);
+                  } else if (event.key === " " && selectable && isSelectable(row)) {
+                    event.preventDefault();
+                    toggle(getRowId(row));
+                  }
+                }}
+                style={{ height: effectiveRowHeight }}
+              >
+                {selectable && (
+                  <TableCell className={styles.tableCheck} data-row-interactive>
+                    <div className={styles.tableSelection}>
+                      <Checkbox
+                        aria-label={`Select ${rowLabel(row)}`}
+                        checked={selected.includes(getRowId(row))}
+                        disabled={!isSelectable(row)}
+                        onCheckedChange={() => toggle(getRowId(row))}
+                      />
                     </div>
-                  )}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-          {stop < rows.length && (
+                  </TableCell>
+                )}
+                {columns.map((column) => (
+                  <TableCell
+                    key={column.id}
+                    style={columnStyle(column)}
+                    data-actions={column.actions || undefined}
+                    data-pin={column.pin ?? column.actions}
+                    data-row-interactive={column.actions || undefined}
+                  >
+                    {column.actions ? (
+                      <TableRowActions style={{ maxWidth: column.maxWidth }}>
+                        {column.render(row, start + i)}
+                      </TableRowActions>
+                    ) : (
+                      <div
+                        className={column.primary ? styles.tablePrimary : styles.tableValue}
+                        style={{ maxWidth: column.maxWidth }}
+                        title={column.text?.(row)}
+                      >
+                        {column.render(row, start + i)}
+                      </div>
+                    )}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          {!loading && stop < rows.length && (
             <TableRow aria-hidden data-spacer>
               <TableCell
                 colSpan={span}
@@ -329,7 +420,7 @@ export function DataTable<Row>({
               />
             </TableRow>
           )}
-          {!rows.length && (
+          {!loading && !rows.length && (
             <TableRow>
               <TableCell colSpan={span}>{empty}</TableCell>
             </TableRow>
@@ -337,17 +428,41 @@ export function DataTable<Row>({
         </TableBody>
       </Table>
       {height && more && <div className={cn(frame.frameFoot, styles.tableMore)}>{more}</div>}
+      {pagination && (
+        <div
+          className={cn(frame.frameFoot, styles.tablePagination)}
+          data-slot="data-table-pagination"
+        >
+          {pagination}
+        </div>
+      )}
     </div>
   );
   return (
-    <div className={styles.tableShell} data-slot="data-table" data-variant={variant}>
+    <div
+      className={styles.tableShell}
+      data-slot="data-table"
+      data-variant={variant}
+      data-action-bar={barPlacement ?? undefined}
+    >
       {scrollFrame}
       {!height && more && <div className={styles.actions}>{more}</div>}
       {footer && <div className={styles.status}>{footer}</div>}
       <span className={styles.sr} role="status">
-        {selectable ? `${selected.length} selected. ` : ""}
-        {rows.length} rows available{loadMore?.loading ? ". Loading more rows" : ""}
+        {loading ? (
+          "Loading rows"
+        ) : (
+          <>
+            {selectable ? `${selected.length} selected. ` : ""}
+            {rows.length} rows available{loadMore?.loading ? ". Loading more rows" : ""}
+          </>
+        )}
       </span>
+      {actionBar && (
+        <FloatingActionBarHostContext.Provider value={setBarPlacement}>
+          {actionBar}
+        </FloatingActionBarHostContext.Provider>
+      )}
     </div>
   );
 }

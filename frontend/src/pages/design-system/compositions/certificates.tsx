@@ -33,7 +33,7 @@ import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 
-import { Shell, useCrumbs } from "./shared";
+import { Shell, useCrumbs, usePagedRows } from "./shared";
 
 type Status = "active" | "expired" | "revoked" | "renewed";
 type Cert = {
@@ -351,6 +351,7 @@ const Inventory = ({
       const key = sort.columnId === "cn" ? "cn" : "expires";
       return a[key].localeCompare(b[key]) * (sort.direction === "asc" ? 1 : -1);
     });
+  const { pageRows, pagination } = usePagedRows(rows, "Certificate pages", 25);
   const filtered = Boolean(needle) || statuses.length > 0 || view !== "all";
   const expiring = certs.filter(expiresSoon).length;
   const expired = certs.filter((cert) => cert.status === "expired").length;
@@ -508,7 +509,9 @@ const Inventory = ({
       </Inline>
       <DataTable
         label="Certificates in internal-pki"
-        rows={rows}
+        rows={pageRows}
+        onRowActivate={(row) => onOpen(row.id)}
+        pagination={rows.length >= 25 ? pagination : undefined}
         columns={columns.filter((column) => !hidden.includes(column.id))}
         getRowId={(r) => r.id}
         rowLabel={(r) => r.cn}
