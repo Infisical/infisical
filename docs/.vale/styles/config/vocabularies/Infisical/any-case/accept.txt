@@ -414,3 +414,4 @@ sm
 # GitHub product name that GitHub itself lowercases in permission labels, such as
 # "Organization dependabot secrets".
 (?i)Dependabot
+[Oo]verprivileged
