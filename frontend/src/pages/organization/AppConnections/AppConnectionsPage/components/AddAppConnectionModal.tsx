@@ -138,6 +138,7 @@ export const AddAppConnectionModal = ({
               {createdConnection ? (
                 <AppConnectionForm
                   appConnection={createdConnection}
+                  isNewConnection
                   onComplete={closeSheet}
                   onCancel={() => requestDiscardAction(closeSheet)}
                   onDirtyChange={setIsDirty}

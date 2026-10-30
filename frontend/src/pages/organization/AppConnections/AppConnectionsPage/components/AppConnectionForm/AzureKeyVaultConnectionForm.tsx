@@ -235,7 +235,7 @@ const getDefaultValues = (appConnection?: TAzureKeyVaultConnection): Partial<For
 
 export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
-  const { onCancel } = useAppConnectionForm();
+  const { onCancel, isNewConnection } = useAppConnectionForm();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [hasVerifyFailed, setHasVerifyFailed] = useState(false);
 
@@ -439,7 +439,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                   <TooltipTrigger asChild>
                     <div>
                       <GatewayPicker
-                        isDisabled={!isAllowed}
+                        isDisabled={!isAllowed || isNewConnection}
                         value={{
                           gatewayId: gatewayId ?? null,
                           gatewayPoolId: gatewayPoolId ?? null
@@ -718,6 +718,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                       setHasVerifyFailed(false);
                     }}
                     id="credentials.tenantId"
+                    disabled={isNewConnection}
                     placeholder="00000000-0000-0000-0000-000000000000"
                     isError={Boolean(error)}
                   />
@@ -738,6 +739,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                       setHasVerifyFailed(false);
                     }}
                     id="credentials.clientId"
+                    disabled={isNewConnection}
                     placeholder="00000000-0000-0000-0000-000000000000"
                     isError={Boolean(error)}
                   />

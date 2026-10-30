@@ -782,6 +782,7 @@ type Props = {
   onDirtyChange?: (isDirty: boolean) => void;
   onPendingChange?: (isPending: boolean) => void;
   layout?: "sheet" | "dialog";
+  isNewConnection?: boolean;
   projectId?: string;
   projectType?: ProjectType;
 } & Pick<FormProps, "onComplete"> &
@@ -794,6 +795,7 @@ export const AppConnectionForm = ({
   onDirtyChange,
   onPendingChange,
   layout = "sheet",
+  isNewConnection,
   projectId,
   projectType,
   ...props
@@ -801,8 +803,8 @@ export const AppConnectionForm = ({
   const { app, appConnection } = props;
 
   const contextValue = useMemo(
-    () => ({ onCancel, onDirtyChange, onPendingChange, layout }),
-    [onCancel, onDirtyChange, onPendingChange, layout]
+    () => ({ onCancel, onDirtyChange, onPendingChange, layout, isNewConnection }),
+    [onCancel, onDirtyChange, onPendingChange, layout, isNewConnection]
   );
 
   return (
