@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { RESOURCE_SCOPE, ResourceType, TableName, TAgentVaultAccessBundles } from "@app/db/schemas";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { ACTOR_COLUMN } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
@@ -226,10 +227,18 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     {
       projectId,
       accessBundleId,
+      actorType,
       search,
       limit,
       offset
-    }: { projectId: string; accessBundleId: string; search?: string; limit: number; offset: number },
+    }: {
+      projectId: string;
+      accessBundleId: string;
+      actorType?: AgentVaultMemberType;
+      search?: string;
+      limit: number;
+      offset: number;
+    },
     tx?: Knex
   ): Promise<{ members: TAgentVaultAccessBundleMemberDetail[]; totalCount: number }> => {
     try {
@@ -241,6 +250,10 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
           .leftJoin(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
           .leftJoin(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`);
+
+        if (actorType) {
+          void query.whereNotNull(`${TableName.Membership}.${ACTOR_COLUMN[actorType]}`);
+        }
 
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;

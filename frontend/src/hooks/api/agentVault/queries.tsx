@@ -112,13 +112,13 @@ export const agentVaultKeys = {
   accessBundleMemberList: (
     orgId: string,
     accessBundleId: string,
-    params?: Omit<TListAgentVaultMembersDTO, "actorType">
+    params?: TListAgentVaultMembersDTO
   ) => [...agentVaultKeys.accessBundleMembers(orgId, accessBundleId), params] as const,
   // Nested under accessBundleMembers() so a grant invalidates the candidate list too.
   availableAccessBundleMemberList: (
     orgId: string,
     accessBundleId: string,
-    params?: Omit<TListAgentVaultMembersDTO, "actorType">
+    params?: TListAgentVaultMembersDTO
   ) => [...agentVaultKeys.accessBundleMembers(orgId, accessBundleId), "available", params] as const,
   variables: (orgId: string) => [...agentVaultKeys.all(orgId), "variables"] as const,
   variableList: (orgId: string, params: TListAgentVaultVariablesDTO) =>
@@ -212,7 +212,7 @@ const AVAILABLE_MEMBER_LIMIT = 50;
 
 export const useListAvailableAgentVaultAccessBundleMembers = (
   accessBundleId: string,
-  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: Omit<TListAgentVaultMembersDTO, "actorType"> = {},
+  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: TListAgentVaultMembersDTO = {},
   enabled = true
 ) => {
   const { currentOrg } = useOrganization();
@@ -257,7 +257,7 @@ export const useListAvailableAgentVaultMembers = <
 
 export const useListAgentVaultAccessBundleMembers = (
   accessBundleId: string,
-  params: Omit<TListAgentVaultMembersDTO, "actorType"> = {}
+  params: TListAgentVaultMembersDTO = {}
 ) => {
   const { currentOrg } = useOrganization();
 

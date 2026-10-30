@@ -1661,7 +1661,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
   };
 
-  const listMembers = async ({ accessBundleId, search, limit, offset, ...rest }: TListMembersDTO) => {
+  const listMembers = async ({ accessBundleId, actorType, search, limit, offset, ...rest }: TListMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
@@ -1670,6 +1670,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return agentVaultAccessBundleDAL.findMembers({
       projectId: rest.projectId,
       accessBundleId: bundle.id,
+      actorType,
       search,
       limit,
       offset
@@ -1679,7 +1680,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   // The candidates for a grant are the product's own members, since addMembers refuses anyone else, minus
   // whoever already holds this bundle. A member reaching it only through a granted group stays a
   // candidate: an individual grant is a different thing, and it outlives the group membership.
-  const listAvailableMembers = async ({ accessBundleId, search, limit, offset, ...rest }: TListMembersDTO) => {
+  const listAvailableMembers = async ({
+    accessBundleId,
+    actorType,
+    search,
+    limit,
+    offset,
+    ...rest
+  }: TListMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
@@ -1688,7 +1696,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return agentVaultMemberDAL.findProductMembers({
       projectId: rest.projectId,
       orgId: rest.ctx.actorOrgId,
-      actorTypes: ALL_GRANTEE_ACTOR_TYPES,
+      actorTypes: actorType ? [actorType] : ALL_GRANTEE_ACTOR_TYPES,
       search,
       limit,
       offset,

@@ -41,7 +41,7 @@ export type TAgentVaultProductMember = TAgentVaultProductActor & {
   addedAt: Date;
 };
 
-const ACTOR_COLUMN: Record<AgentVaultMemberType, "actorUserId" | "actorIdentityId" | "actorGroupId"> = {
+export const ACTOR_COLUMN: Record<AgentVaultMemberType, "actorUserId" | "actorIdentityId" | "actorGroupId"> = {
   [AgentVaultMemberType.User]: "actorUserId",
   [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
   [AgentVaultMemberType.Group]: "actorGroupId"
