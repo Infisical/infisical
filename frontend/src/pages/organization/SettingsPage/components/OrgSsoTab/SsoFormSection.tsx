@@ -21,12 +21,12 @@ export const FormSection = ({
 }) => (
   // The padding sits on the wrapper because a browser draws a fieldset's legend above its padding box.
   <div className="border-b border-border p-4 last:border-b-0">
-    <FieldSet className="gap-0">
-      <FieldLegend className="mb-0 flex items-center gap-2">
+    <FieldSet>
+      <FieldLegend className="flex items-center gap-2">
         {title}
         {badge}
       </FieldLegend>
-      <FieldDescription className="mb-4 text-sm">{description}</FieldDescription>
+      <FieldDescription>{description}</FieldDescription>
       <FieldGroup>{children}</FieldGroup>
     </FieldSet>
   </div>
