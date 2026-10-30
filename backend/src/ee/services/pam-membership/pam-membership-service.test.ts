@@ -210,3 +210,39 @@ describe("pamMembership addProductUserMembers", () => {
     await expect(add(service, [IDENTIFIER])).rejects.toThrow(`'${IDENTIFIER}'`);
   });
 });
+
+describe("pamMembership member lists", () => {
+  test("returns each user member's email and username from one batched lookup", async () => {
+    const createdAt = new Date();
+    const deps = {
+      permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
+      membershipDAL: {
+        find: vi.fn().mockResolvedValue([
+          { id: "mem-1", actorUserId: "user-1", isActive: true, createdAt },
+          { id: "mem-2", actorUserId: "user-2", isActive: true, createdAt },
+          { id: "mem-3", actorGroupId: "group-1", isActive: true, createdAt },
+          { id: "mem-4", actorIdentityId: "identity-1", isActive: true, createdAt }
+        ])
+      },
+      membershipRoleDAL: { find: vi.fn().mockResolvedValue([{ role: PamProductRole.Member }]) },
+      userDAL: {
+        find: vi.fn().mockResolvedValue([
+          { id: "user-1", email: "robert@example.com", username: "robert" },
+          { id: "user-2", email: null, username: "ldap-user" }
+        ])
+      }
+    };
+    const service = pamMembershipServiceFactory(deps as unknown as Parameters<typeof pamMembershipServiceFactory>[0]);
+
+    const members = await service.listProductMembers({ ...ctx, projectId: PROJECT_ID });
+
+    expect(deps.userDAL.find).toHaveBeenCalledTimes(1);
+    expect(deps.userDAL.find).toHaveBeenCalledWith({ $in: { id: ["user-1", "user-2"] } });
+    expect(members.map(({ email, username }) => ({ email, username }))).toEqual([
+      { email: "robert@example.com", username: "robert" },
+      { email: null, username: "ldap-user" },
+      { email: null, username: null },
+      { email: null, username: null }
+    ]);
+  });
+});

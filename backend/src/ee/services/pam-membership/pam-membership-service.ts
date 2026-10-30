@@ -274,14 +274,21 @@ export const pamMembershipServiceFactory = ({
     memberships: Awaited<ReturnType<typeof membershipDAL.find>>,
     defaultRole: string
   ) => {
+    const userIds = memberships.map((m) => m.actorUserId).filter((v): v is string => Boolean(v));
+    const users = userIds.length ? await userDAL.find({ $in: { id: userIds } }) : [];
+    const userById = new Map(users.map((u) => [u.id, u]));
+
     return Promise.all(
       memberships.map(async (m) => {
         const roles = await membershipRoleDAL.find({ membershipId: m.id });
+        const user = m.actorUserId ? userById.get(m.actorUserId) : undefined;
         return {
           membershipId: m.id,
           userId: m.actorUserId,
           identityId: m.actorIdentityId,
           groupId: m.actorGroupId,
+          email: user?.email ?? null,
+          username: user?.username ?? null,
           role: roles[0]?.role ?? defaultRole,
           isActive: m.isActive,
           expiresAt: roles[0]?.isTemporary ? (roles[0]?.temporaryAccessEndTime ?? null) : null,
