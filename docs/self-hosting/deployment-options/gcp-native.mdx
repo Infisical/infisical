@@ -344,7 +344,7 @@ For production deployments with many users or secrets, increase these values acc
   gcloud iam service-accounts add-iam-policy-binding \
     infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com \
     --role roles/iam.workloadIdentityUser \
-    --member "serviceAccount:<YOUR_PROJECT_ID>.svc.id.goog[infisical/infisical]"
+    --member "serviceAccount:<YOUR_PROJECT_ID>.svc.id.goog[infisical/infisical-infisical]"
   ```
 </Step>
 
@@ -365,98 +365,60 @@ For production deployments with many users or secrets, increase these values acc
   ```yaml
   # infisical-values.yaml
 
-  replicaCount: 2
+  infisical:
+    fullnameOverride: infisical
+    replicaCount: 2
+    kubeSecretRef: infisical-secrets
 
-  image:
-    repository: infisical/infisical
-    tag: "v0.46.2-postgres"  # Use a specific version
-    pullPolicy: IfNotPresent
+    image:
+      repository: infisical/infisical
+      tag: "v0.167.0"
+      pullPolicy: IfNotPresent
 
-  service:
-    type: ClusterIP
-    port: 8080
+    serviceAccount:
+      create: true
+      annotations:
+        iam.gke.io/gcp-service-account: infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com
+
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  component: infisical
+              topologyKey: topology.kubernetes.io/zone
 
   ingress:
     enabled: true
-    className: "gce"
+    ingressClassName: "gce"
+    hostName: "infisical.example.com"
+    nginx:
+      enabled: false
     annotations:
       kubernetes.io/ingress.class: "gce"
       kubernetes.io/ingress.global-static-ip-name: "infisical-ip"
       networking.gke.io/managed-certificates: "infisical-cert"
-    hosts:
-      - host: infisical.example.com
-        paths:
-          - path: /
-            pathType: Prefix
 
-  env:
-    - name: SITE_URL
-      value: "https://infisical.example.com"
-    - name: HOST
-      value: "0.0.0.0"
-    - name: PORT
-      value: "8080"
+  postgresql:
+    enabled: false
 
-  envFrom:
-    - secretRef:
-        name: infisical-secrets
-
-  resources:
-    requests:
-      memory: "512Mi"
-      cpu: "500m"
-    limits:
-      memory: "1Gi"
-      cpu: "1000m"
-
-  livenessProbe:
-    httpGet:
-      path: /api/status
-      port: 8080
-    initialDelaySeconds: 30
-    periodSeconds: 10
-
-  readinessProbe:
-    httpGet:
-      path: /api/status
-      port: 8080
-    initialDelaySeconds: 10
-    periodSeconds: 5
-
-  podDisruptionBudget:
-    enabled: true
-    minAvailable: 1
-
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 70
-
-  serviceAccount:
-    create: true
-    name: infisical
-    annotations:
-      iam.gke.io/gcp-service-account: infisical-gsa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com
-
-  podSecurityContext:
-    fsGroup: 1000
-    runAsNonRoot: true
-    runAsUser: 1000
-
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                    - infisical
-            topologyKey: topology.kubernetes.io/zone
+  redis:
+    enabled: false
   ```
+
+  <Note>
+    This configuration uses Cloud SQL and Memorystore, so it disables the chart's bundled PostgreSQL and Redis dependencies. Set `postgresql.enabled` to `true` only when you use in-cluster PostgreSQL; the `infisical-standalone` chart then creates the PostgreSQL StatefulSet.
+  </Note>
 
   **Reserve a Static IP Address:**
 
@@ -468,7 +430,7 @@ For production deployments with many users or secrets, increase these values acc
   **Deploy Infisical:**
 
   ```bash
-  helm install infisical infisical-helm-charts/infisical \
+  helm install infisical infisical-helm-charts/infisical-standalone \
     --namespace infisical \
     --create-namespace \
     --values infisical-values.yaml
@@ -486,7 +448,7 @@ For production deployments with many users or secrets, increase these values acc
   kubectl get ingress -n infisical
 
   # Check pod logs
-  kubectl logs -l app.kubernetes.io/name=infisical -n infisical --tail=50
+  kubectl logs -l component=infisical -n infisical --tail=50
   ```
 
   Wait for all pods to be in `Running` state.
@@ -642,14 +604,14 @@ After completing the above steps, your Infisical instance should be up and runni
 
     Upgrade the deployment:
     ```bash
-    helm upgrade infisical infisical-helm-charts/infisical \
+    helm upgrade infisical infisical-helm-charts/infisical-standalone \
       --namespace infisical \
       --values infisical-values.yaml
     ```
 
     **Verify:** Check logs for SMTP configuration:
     ```bash
-    kubectl logs -l app.kubernetes.io/name=infisical -n infisical | grep -i smtp
+    kubectl logs -l component=infisical -n infisical | grep -i smtp
     ```
   </Accordion>
 
@@ -691,7 +653,7 @@ After completing the above steps, your Infisical instance should be up and runni
 
     **Check migration status:**
     ```bash
-    kubectl logs -l app.kubernetes.io/name=infisical -n infisical | grep -i migration
+    kubectl logs -l component=infisical -n infisical | grep -i migration
     ```
 
     **Run migrations manually:**
@@ -751,10 +713,10 @@ After completing the above steps, your Infisical instance should be up and runni
     helm repo update
 
     # Update image tag in values file
-    # Edit infisical-values.yaml: image.tag: "v0.X.X"
+    # Edit infisical-values.yaml: infisical.image.tag: "v0.X.X"
 
     # Upgrade deployment
-    helm upgrade infisical infisical-helm-charts/infisical \
+    helm upgrade infisical infisical-helm-charts/infisical-standalone \
       --namespace infisical \
       --values infisical-values.yaml
 
