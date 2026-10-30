@@ -17,6 +17,7 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
 import {
+  assertCertificateBinding,
   assertJwtNotExpired,
   assertMinimalRenewClaims,
   assertRevocableClaims,
@@ -39,6 +40,7 @@ import {
 import { TIdentityAccessTokenRevocationDALFactory } from "./identity-access-token-revocation-dal";
 import {
   TAWSAuthDetails,
+  TCertificateConfirmation,
   TIdentityAccessTokenJwtPayload,
   TKubernetesAuthDetails,
   TMinimalRenewClaims,
@@ -68,6 +70,7 @@ export type TIssueIdentityAccessTokenInput = {
     kubernetes?: TKubernetesAuthDetails;
     aws?: TAWSAuthDetails;
   };
+  cnf?: TCertificateConfirmation;
   // Set by Token Auth to insert a real PG row in its transaction; every other
   // auth method omits this and gets a fresh in-memory UUID.
   persistToPg?: { tx: Knex; name?: string | null };
@@ -388,7 +391,8 @@ export const identityAccessTokenServiceFactory = ({
       accessTokenMaxTTL: requestedMaxTTL,
       accessTokenPeriod: period,
       creationEpoch,
-      identityAuth: input.identityAuth
+      identityAuth: input.identityAuth,
+      cnf: input.cnf
     });
 
     if (numUsesLimit > 0) {
@@ -435,9 +439,14 @@ export const identityAccessTokenServiceFactory = ({
     };
   };
 
-  const fnValidateIdentityAccessTokenFast = async (rawToken: TIdentityAccessTokenJwtPayload, ipAddress?: string) => {
+  const fnValidateIdentityAccessTokenFast = async (
+    rawToken: TIdentityAccessTokenJwtPayload,
+    ipAddress?: string,
+    clientCertificate?: string
+  ) => {
     const appCfg = getConfig();
     const token = assertMinimalRenewClaims(rawToken);
+    assertCertificateBinding({ cnf: token.cnf, clientCertificate, messagePrefix: "Failed to authorize" });
     const tokenId = token.jti ?? token.identityAccessTokenId;
     const source: TRenewSource = hasFullRenewClaims(token)
       ? {
@@ -557,9 +566,10 @@ export const identityAccessTokenServiceFactory = ({
     };
   };
 
-  const renewAccessTokenInner = async ({ accessToken }: TRenewAccessTokenDTO) => {
+  const renewAccessTokenInner = async ({ accessToken, clientCertificate }: TRenewAccessTokenDTO) => {
     const appCfg = getConfig();
     const decodedToken = assertMinimalRenewClaims(verifyAccessTokenJwt(accessToken));
+    assertCertificateBinding({ cnf: decodedToken.cnf, clientCertificate, messagePrefix: "Cannot renew" });
 
     // Single-JWT max age for legacy tokens without exp. New-format validation
     // uses JWT exp; no-exp legacy tokens get a deployment-anchored grace window.
@@ -648,7 +658,8 @@ export const identityAccessTokenServiceFactory = ({
       accessTokenTTL: source.accessTokenTTL,
       accessTokenMaxTTL: source.accessTokenMaxTTL,
       accessTokenPeriod: source.accessTokenPeriod,
-      creationEpoch: source.creationEpoch
+      creationEpoch: source.creationEpoch,
+      cnf: decodedToken.cnf
     });
 
     // Renewed JWT keeps the same token id; PG revocation already applies. Reseed
@@ -792,24 +803,30 @@ export const identityAccessTokenServiceFactory = ({
   // Scoped revoke for auth-method removal: rejects every JWT issued via the
   // removed method with iat < revokedAt. Tokens issued via other methods on
   // the same identity stay valid.
+  // With a tx the caller must call bumpIdentityRevocationVersion after commit.
   const revokeTokensForIdentityAuthMethod = async ({
     identityId,
-    authMethod
+    authMethod,
+    tx
   }: {
     identityId: string;
     authMethod: IdentityAuthMethod;
+    tx?: Knex;
   }) => {
     const appCfg = getConfig();
     const revokedAt = new Date();
 
-    await identityAccessTokenRevocationDAL.insertRevocation({
-      id: crypto.nativeCrypto.randomUUID(),
-      identityId,
-      scope: authMethod,
-      revokedAt,
-      expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
-    });
-    await bumpRevocationVersion(identityId);
+    await identityAccessTokenRevocationDAL.insertRevocation(
+      {
+        id: crypto.nativeCrypto.randomUUID(),
+        identityId,
+        scope: authMethod,
+        revokedAt,
+        expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
+      },
+      tx
+    );
+    if (!tx) await bumpRevocationVersion(identityId);
   };
 
   // Org-scoped revoke marker for membership deactivate / remove-from-org: rejects

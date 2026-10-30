@@ -30,7 +30,9 @@ import {
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
+import { computeCertificateThumbprint } from "../identity-access-token/identity-access-token-fns";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
+import { CERTIFICATE_THUMBPRINT_CLAIM } from "../identity-access-token/identity-access-token-types";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -169,7 +171,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
   identityTlsCertAuthDAL: Pick<
     TIdentityTlsCertAuthDALFactory,
-    "findOne" | "transaction" | "create" | "updateById" | "delete"
+    "findOne" | "transaction" | "create" | "updateById" | "delete" | "primaryNode"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
@@ -182,7 +184,10 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
+    | "issueIdentityAccessToken"
+    | "revokeTokensForIdentityAuthMethod"
+    | "invalidateTrustedIpsCache"
+    | "bumpIdentityRevocationVersion"
   >;
   eventEmitter: TEventEmitter;
 };
@@ -207,7 +212,11 @@ export const identityTlsCertAuthServiceFactory = ({
   }) => {
     const authMetricStartTime = performance.now();
     const appCfg = getConfig();
-    const identityTlsCertAuth = await identityTlsCertAuthDAL.findOne({ identityId });
+    // Read from the primary so a lagging replica can't issue an unbound token after binding was turned on.
+    const identityTlsCertAuth = await identityTlsCertAuthDAL.findOne(
+      { identityId },
+      identityTlsCertAuthDAL.primaryNode()
+    );
     if (!identityTlsCertAuth) {
       throw new NotFoundError({
         message: "TLS Certificate auth method not found for identity, did you configure TLS Certificate auth?"
@@ -421,7 +430,10 @@ export const identityTlsCertAuthServiceFactory = ({
         accessTokenNumUsesLimit: Number(identityTlsCertAuth.accessTokenNumUsesLimit),
         // TLS Cert auth schema has no accessTokenPeriod column.
         accessTokenPeriod: 0,
-        accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIp[]
+        accessTokenTrustedIps: identityTlsCertAuth.accessTokenTrustedIps as TIp[],
+        cnf: identityTlsCertAuth.bindAccessTokenToCertificate
+          ? { [CERTIFICATE_THUMBPRINT_CLAIM]: computeCertificateThumbprint(clientCertificateX509.raw) }
+          : undefined
       });
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -489,7 +501,8 @@ export const identityTlsCertAuthServiceFactory = ({
     caCertificate,
     allowedCommonNames,
     allowedSubjectAltNames,
-    verifyClientCertificateChain: verifyClientCertificateChainOpt
+    verifyClientCertificateChain: verifyClientCertificateChainOpt,
+    bindAccessTokenToCertificate
   }) => {
     const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
       scopeData: {
@@ -565,6 +578,7 @@ export const identityTlsCertAuthServiceFactory = ({
           accessTokenTTL,
           encryptedCaCertificate: encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob,
           verifyClientCertificateChain: verifyClientCertificateChainOpt ?? false,
+          bindAccessTokenToCertificate: bindAccessTokenToCertificate ?? false,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps)
         },
@@ -593,6 +607,7 @@ export const identityTlsCertAuthServiceFactory = ({
     allowedCommonNames,
     allowedSubjectAltNames,
     verifyClientCertificateChain: verifyClientCertificateChainOpt,
+    bindAccessTokenToCertificate,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -677,6 +692,8 @@ export const identityTlsCertAuthServiceFactory = ({
       validateCaCertificateUsable(caCertificate);
     }
 
+    const isEnablingBinding =
+      Boolean(bindAccessTokenToCertificate) && !identityTlsCertAuth.bindAccessTokenToCertificate;
     const updatedTlsCertAuth = await identityTlsCertAuthDAL.transaction(async (tx) => {
       const doc = await identityTlsCertAuthDAL.updateById(
         identityTlsCertAuth.id,
@@ -687,6 +704,7 @@ export const identityTlsCertAuthServiceFactory = ({
             ? encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob
             : undefined,
           verifyClientCertificateChain: verifyClientCertificateChainOpt,
+          bindAccessTokenToCertificate,
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
@@ -707,9 +725,20 @@ export const identityTlsCertAuthServiceFactory = ({
         },
         tx
       );
+      // Tokens issued before binding was enabled carry no certificate claim, so they must not outlive the change.
+      if (isEnablingBinding) {
+        await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+          identityId,
+          authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+          tx
+        });
+      }
       return doc;
     });
 
+    if (isEnablingBinding) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
+    }
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TLS_CERT_AUTH);
     return { ...updatedTlsCertAuth, orgId: identityMembershipOrg.scopeOrgId };
   };

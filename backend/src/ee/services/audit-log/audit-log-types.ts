@@ -2047,6 +2047,7 @@ interface AddIdentityTlsCertAuthEvent {
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
     verifyClientCertificateChain: boolean;
+    bindAccessTokenToCertificate: boolean;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -2068,6 +2069,7 @@ interface UpdateIdentityTlsCertAuthEvent {
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
     verifyClientCertificateChain?: boolean;
+    bindAccessTokenToCertificate?: boolean;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
