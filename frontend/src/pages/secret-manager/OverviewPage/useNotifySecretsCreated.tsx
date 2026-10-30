@@ -32,7 +32,9 @@ const toEnvLine = (key: string, value: string) =>
 const toSavedValue = (value: string) =>
   value.at(-1) === "\n" ? `${value.trim()}\n` : value.trim();
 
+// With nothing newly created (an upload that only overwrote), the detail is the whole message.
 const toCreatedNotification = (createdCount: number, detail?: string) => {
+  if (!createdCount && detail) return { text: detail };
   const title = `${createdCount} New Secret${createdCount === 1 ? "" : "s"} Created`;
   return detail ? { title, text: detail } : { text: title };
 };

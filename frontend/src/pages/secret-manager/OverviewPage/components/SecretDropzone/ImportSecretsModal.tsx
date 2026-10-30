@@ -478,7 +478,7 @@ const ImportSecretsContent = ({
     let failureCount = 0;
     let folderResponseCount = 0;
     let folderFailureCount = 0;
-    const createdSecrets: TCreatedSecret[] = [];
+    const shareableSecrets: TCreatedSecret[] = [];
 
     try {
       const requestedSlugs = new Set<string>();
@@ -646,7 +646,7 @@ const ImportSecretsContent = ({
                     }).then((result) => {
                       addCount(createdCountByEnv, environment, result, secretsToCreate.length);
                       if (!("approval" in result))
-                        createdSecrets.push(
+                        shareableSecrets.push(
                           ...resolvedEntries
                             .filter(({ finalKey }) => !existingKeys.has(finalKey))
                             .map(({ finalKey, secretData }) => ({
@@ -667,9 +667,30 @@ const ImportSecretsContent = ({
                       environment,
                       secretPath: path,
                       secrets: secretsToUpdate
-                    }).then((result) =>
-                      addCount(updatedCountByEnv, environment, result, secretsToUpdate.length)
-                    )
+                    }).then((result) => {
+                      addCount(updatedCountByEnv, environment, result, secretsToUpdate.length);
+                      if (!("approval" in result))
+                        shareableSecrets.push(
+                          ...resolvedEntries
+                            .filter(({ finalKey }) => existingKeys.has(finalKey))
+                            .map(({ finalKey, secretData }) => {
+                              const uploadedTags = secretData.tagSlugs?.filter((slug) =>
+                                slugToTagId.has(slug)
+                              );
+                              return {
+                                environment,
+                                key: finalKey,
+                                value: secretData.value,
+                                tags: uploadedTags?.length
+                                  ? uploadedTags
+                                  : existingSecrets
+                                      .find((secret) => secret.key === finalKey)
+                                      ?.tags?.map((tag) => tag.slug)
+                              };
+                            })
+                        );
+                      return result;
+                    })
                   ]
                 : [])
             ])
@@ -877,12 +898,15 @@ const ImportSecretsContent = ({
         .filter(Boolean)
         .join(", ");
       if (createdCount) {
-        notifySecretsCreated(createdCount, createdSecrets, existingDetail || undefined);
-      } else if (successEnvs.length) {
-        createNotification({
-          type: "success",
-          text: `Uploaded secrets${folderSummary} into ${successEnvs.join(", ")}; ${existingDetail || "no new secrets"}`
-        });
+        notifySecretsCreated(createdCount, shareableSecrets, existingDetail || undefined);
+      } else if (successEnvs.length || updatedCount) {
+        notifySecretsCreated(
+          0,
+          shareableSecrets,
+          successEnvs.length
+            ? `Uploaded secrets${folderSummary} into ${successEnvs.join(", ")}; ${existingDetail || "no new secrets"}`
+            : `Uploaded secrets${folderSummary}; ${existingDetail}`
+        );
       }
 
       if (approvalEnvs.length) {
