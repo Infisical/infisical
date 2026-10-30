@@ -71,9 +71,10 @@ export const registerAgentVaultSessionSkillRouter = async (server: FastifyZodPro
         });
       }
 
-      const { skills, session, ownerUser, orgId } = await server.services.agentVaultProxy.getSessionSkills({
-        sessionToken: authorization.data
-      });
+      const { skills, session, ownerUser, onBehalfOfUser, orgId } =
+        await server.services.agentVaultProxy.getSessionSkills({
+          sessionToken: authorization.data
+        });
 
       const actor = sessionOwnerActor(session, ownerUser);
       if (skills.length > 0) {
@@ -95,7 +96,12 @@ export const registerAgentVaultSessionSkillRouter = async (server: FastifyZodPro
                 skillName: skill.name,
                 version: skill.version,
                 sha256: skill.sha256
-              }))
+              })),
+              ...(onBehalfOfUser && {
+                ...(onBehalfOfUser.id && { onBehalfOfUserId: onBehalfOfUser.id }),
+                onBehalfOfUserName: onBehalfOfUser.username,
+                ...(onBehalfOfUser.email && { onBehalfOfUserEmail: onBehalfOfUser.email })
+              })
             }
           }
         });

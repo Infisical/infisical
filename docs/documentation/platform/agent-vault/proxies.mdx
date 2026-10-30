@@ -185,7 +185,7 @@ The proxy also returns a 403 for:
 
 - A request to a port the service's [host pattern](/documentation/platform/agent-vault/http-apis#host-patterns) doesn't name, such as `example.com:8443` for a service on `example.com`, which only covers port `443`
 - A request that breaks the service's [method or path rules](/documentation/platform/agent-vault/http-apis#methods-and-paths), under either traffic policy
-- A request to a service that needs the session owner's [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), before they set them up
+- A request to a service whose [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) aren't set up yet for the session's owner, or, for a session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users), for that user
 
 ### Exceptions
 

@@ -6829,6 +6829,10 @@ interface AgentVaultSkillsDeliveredEvent {
     accessBundleId: string;
     accessBundleName: string;
     skills: { skillId: string; skillName: string; version: number; sha256: string }[];
+    // Set when the machine identity in the actor started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 

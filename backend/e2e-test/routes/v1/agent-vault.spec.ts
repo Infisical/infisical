@@ -5040,6 +5040,53 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("a session can be started for a user whose full name is longer than 255 characters", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`obo-long-name-${Date.now()}`);
+      const bot = await createMemberIdentity(`obo-long-name-bot-${Date.now()}`);
+      const alice = await createAgentVaultUser("obo-long-name-alice", projectId);
+      try {
+        // Each half fits its own 255-character column; the snapshot holds both together.
+        await testDb("users")
+          .where({ id: alice.userId })
+          .update({ firstName: "A".repeat(200), lastName: "N".repeat(200) });
+        await grantBundle(bundle.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId] });
+
+        const minted = await mintFor(bot, { userId: alice.userId }, bundle.name);
+        expect(minted.statusCode, minted.payload).toBe(200);
+        const row = await testDb("agent_vault_sessions").where({ id: minted.json().session.id }).first();
+        expect(row.onBehalfOfUserName).toHaveLength(401);
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId]);
+      }
+    });
+
+    test("the database keeps a session on a user's behalf a machine identity's", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`obo-check-${Date.now()}`);
+      const bot = await createMemberIdentity(`obo-check-bot-${Date.now()}`);
+      const alice = await createAgentVaultUser("obo-check-alice", projectId);
+      try {
+        await grantBundle(bundle.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId] });
+        const minted = await mintFor(bot, { userId: alice.userId }, bundle.name);
+        expect(minted.statusCode).toBe(200);
+        const session = () => testDb("agent_vault_sessions").where({ id: minted.json().session.id as string });
+
+        const check = /agent_vault_sessions_on_behalf_of_check/;
+        await expect(session().update({ actorType: null })).rejects.toThrow(check);
+        await expect(session().update({ actorType: "user", userId: alice.userId, identityId: null })).rejects.toThrow(
+          check
+        );
+        await expect(session().update({ onBehalfOfUserName: null })).rejects.toThrow(check);
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId]);
+      }
+    });
+
     test("a revoke that finds the session's user just deleted reports the session as it is now", async () => {
       const bundle = await createAccessBundle(`obo-revoke-race-${Date.now()}`);
       const bot = await createMemberIdentity(`obo-revoke-race-bot-${Date.now()}`);
@@ -5185,6 +5232,29 @@ describe("Agent Vault V1 Router", async () => {
         expect(new Date(replaced.createdAt).getTime()).toBeGreaterThan(
           new Date((first as unknown as { createdAt: string }).createdAt).getTime()
         );
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId, bob.userId]);
+      }
+    });
+
+    test("two requests creating an identity's first delegation at once both land", async () => {
+      const projectId = await getProjectId();
+      const bot = await createMemberIdentity(`obo-first-race-${Date.now()}`);
+      const alice = await createAgentVaultUser("obo-first-race-alice", projectId);
+      const bob = await createAgentVaultUser("obo-first-race-bob", projectId);
+      const subjectsUrl = `${delegationUrl(bot.id)}/subjects`;
+      try {
+        // Neither write finds a delegation, so both insert one and collide on the row. A save and an add, then two adds.
+        for await (const round of Array.from({ length: 20 }, (_, index) => index)) {
+          const first =
+            round % 2 === 0
+              ? inject("PUT", delegationUrl(bot.id), { scope: "selected", userIds: [alice.userId] })
+              : inject("POST", subjectsUrl, { userIds: [alice.userId] });
+          const results = await Promise.all([first, inject("POST", subjectsUrl, { userIds: [bob.userId] })]);
+          expect([round, ...results.map((res) => res.statusCode)]).toEqual([round, 200, 200]);
+          expect((await inject("DELETE", delegationUrl(bot.id))).statusCode).toBe(200);
+        }
       } finally {
         await bot.cleanup();
         await deleteUsers([alice.userId, bob.userId]);

@@ -1127,7 +1127,20 @@ export const agentVaultProxyServiceFactory = ({
         : { username: session.actorEmail ?? session.actorName, email: session.actorEmail ?? null };
     }
 
-    return { skills, session, ownerUser, orgId: project.orgId };
+    // The user a session acts for is named the same way, so the audit event can say whose session it was.
+    let onBehalfOfUser: { id: string | null; username: string; email: string | null } | null = null;
+    if (session.onBehalfOfUserName != null) {
+      const user = session.onBehalfOfUserId ? await userDAL.findById(session.onBehalfOfUserId) : undefined;
+      onBehalfOfUser = user
+        ? { id: user.id, username: user.username, email: user.email ?? null }
+        : {
+            id: null,
+            username: session.onBehalfOfUserEmail ?? session.onBehalfOfUserName,
+            email: session.onBehalfOfUserEmail ?? null
+          };
+    }
+
+    return { skills, session, ownerUser, onBehalfOfUser, orgId: project.orgId };
   };
 
   return {

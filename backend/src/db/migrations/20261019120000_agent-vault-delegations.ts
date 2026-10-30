@@ -13,17 +13,18 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.AgentVaultSession, (t) => {
       t.uuid("onBehalfOfUserId");
       t.foreign("onBehalfOfUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
-      t.string("onBehalfOfUserName", 255);
+      // Built from the first and last name, which can each be 255 characters.
+      t.text("onBehalfOfUserName");
       t.string("onBehalfOfUserEmail", 255);
     });
     await knex.raw(
       `CREATE INDEX agent_vault_session_by_on_behalf_of_user ON ?? ("onBehalfOfUserId") WHERE "onBehalfOfUserId" IS NOT NULL`,
       [TableName.AgentVaultSession]
     );
-    // An on-behalf-of session is always a machine identity's, and an id is never stored without the name. actorType can
-    // be NULL on rows the previous release writes during a rolling deploy.
+    // An on-behalf-of session is always a machine identity's, and an id is never stored without the name. actorType is
+    // tested for NULL too: a comparison with NULL is unknown, which a CHECK lets through.
     await knex.raw(
-      `ALTER TABLE ?? ADD CONSTRAINT ?? CHECK (("onBehalfOfUserName" IS NULL OR ("userId" IS NULL AND ("actorType" IS NULL OR "actorType" = 'machineIdentity'))) AND ("onBehalfOfUserId" IS NULL OR "onBehalfOfUserName" IS NOT NULL))`,
+      `ALTER TABLE ?? ADD CONSTRAINT ?? CHECK (("onBehalfOfUserName" IS NULL OR ("userId" IS NULL AND "actorType" IS NOT NULL AND "actorType" = 'machineIdentity')) AND ("onBehalfOfUserId" IS NULL OR "onBehalfOfUserName" IS NOT NULL))`,
       [TableName.AgentVaultSession, SESSION_ON_BEHALF_OF_CHECK]
     );
   }
@@ -51,8 +52,10 @@ export async function up(knex: Knex): Promise<void> {
 
       t.timestamps(true, true, true);
 
-      // identityId leads, so the index also serves the identity foreign key's cascade.
-      t.unique(["identityId", "projectId"]);
+      // Lookups by identity and project. Unique through membershipId, since an identity has one membership per project; a
+      // second unique key would make two first saves at once clash on the key ON CONFLICT doesn't name. identityId
+      // leads, so the index also serves the identity foreign key's cascade.
+      t.index(["identityId", "projectId"]);
     });
 
     await knex.raw(

@@ -60,8 +60,8 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
     try {
       const [row] = (await tx(TableName.AgentVaultDelegation)
         .insert({ projectId, identityId, membershipId, scope })
-        .onConflict(["identityId", "projectId"])
-        .merge({ membershipId, scope })
+        .onConflict("membershipId")
+        .merge({ scope })
         .returning("*")) as TAgentVaultDelegations[];
       return row;
     } catch (error) {
@@ -78,7 +78,7 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
     try {
       await tx(TableName.AgentVaultDelegation)
         .insert({ projectId, identityId, membershipId, scope: AgentVaultDelegationScope.Selected })
-        .onConflict(["identityId", "projectId"])
+        .onConflict("membershipId")
         .ignore();
     } catch (error) {
       throw new DatabaseError({ error, name: "Create Agent Vault delegation" });

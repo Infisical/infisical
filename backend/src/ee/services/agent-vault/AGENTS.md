@@ -165,8 +165,9 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
 - **Mint runs `getProjectPermission` for the user, then once more for the caller.** The permission service leaves
   the last actor it ran for in the request context, where the audit log reads the caller's permission metadata. The
   second call is memoized, so it costs no query; dropping it attributes the user's metadata to the identity.
-- **The user's session permission is checked with `can()`, not thrown through CASL**, since a CASL denial would be
-  recorded against the identity making the request.
+- **The user's Read on sessions is checked with `can()`, not thrown through CASL**, at mint as on every resolve: the
+  identity starts the session, so the user only needs a live Agent Vault role. A CASL denial would be recorded against
+  the identity making the request.
 - **TTL defaults to 1h, with no maximum for now**: the user didn't start the session and may not know it exists, so a
   cap probably belongs here too, but any TTL is allowed for now, `never` included. The route's `ttl` is optional rather
   than defaulted because the default depends on `onBehalfOf`.
@@ -339,9 +340,9 @@ An admin can leave a credential field to each member: the bearer token, or eithe
 `credential-username` a username). Custom header and substitution values can't be member-provided yet. The personal
 value tables already carry the reference tables' target columns, but adding them still needs the service's check
 constraint and the API's field enum widened. Each actor saves their own **personal values** for the service, one row
-per field, and a session uses the values of whoever it belongs to. Every actor, admins included, also keeps
-**personal variables**, rows of `agent_vault_variables` with an owner, that only their own personal values can
-reference.
+per field, and a session uses the values of whoever it belongs to, or on a user's behalf that user's. Every actor,
+admins included, also keeps **personal variables**, rows of `agent_vault_variables` with an owner, that only their own
+personal values can reference.
 
 - **`memberProvidedFields` is NULL, never `{}`, for a credential the admin sets in full**, like `allowedMethods`. The
   service's sealed secret holds only the admin's fields, so a bearer token left to members stores no secret at all
