@@ -244,7 +244,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         className={cn(
           "no-scrollbar w-full overflow-auto bg-transparent text-foreground",
           variant === "default" &&
-            "flex min-h-9 items-center rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
+            "flex min-h-9 items-center-safe rounded-md border border-border shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
           variant === "plain" && invisibleChars.length > 0 && "flex",
           variant === "default" && isMultiline && "min-h-16 items-start py-1",
           containerClassName
