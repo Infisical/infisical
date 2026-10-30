@@ -24,6 +24,7 @@ import {
   PamAccountAccessibilityIssue,
   PamAccountType,
   PamRotationStatus,
+  TImportPamDiscoveredAccountResult,
   TPamDiscoveredAccount,
   useImportPamDiscoveredAccounts,
   useListPamAccounts,
@@ -31,6 +32,8 @@ import {
   useListPamFolders,
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
+
+const MAX_ROTATIONS_PER_IMPORT = 50;
 
 type Props = {
   isOpen: boolean;
@@ -53,6 +56,7 @@ export const ImportDiscoveredModal = ({
 
   const [templateByType, setTemplateByType] = useState<Record<string, string>>({});
   const [rotateOnImport, setRotateOnImport] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   // null is a cleared selection; a type with no entry falls back to the source's credential account
   const [rotationAccountByType, setRotationAccountByType] = useState<Record<string, string | null>>(
     {}
@@ -94,51 +98,64 @@ export const ImportDiscoveredModal = ({
     setRotationAccountByType({});
   };
 
-  const handleImport = () => {
-    importAccounts.mutate(
-      {
-        sourceId,
-        folderId,
-        accounts: accounts.map((a) => {
-          const rotationAccountId =
-            isRotating && isRotatablePamAccountType(a.accountType)
-              ? rotationAccountIdFor(a.accountType)
-              : null;
-          return {
-            discoveredAccountId: a.id,
-            templateId: templateByType[a.accountType],
-            ...(rotationAccountId ? { rotationAccountId } : {})
-          };
-        })
-      },
-      {
-        onSuccess: (results) => {
-          const imported = results.filter((r) => r.status === "imported").length;
-          const failed = results.length - imported;
-          const rotationFailures = results.filter(
-            (r) => r.rotationStatus === PamRotationStatus.Failed
-          );
-          const rotationNote =
-            rotationFailures.length > 0
-              ? `. ${rotationFailures.length} could not be rotated: ${rotationFailures[0].rotationMessage}`
-              : "";
-          createNotification({
-            type: failed > 0 || rotationFailures.length > 0 ? "info" : "success",
-            text: `Imported ${imported} account${imported === 1 ? "" : "s"}${failed > 0 ? `, ${failed} failed` : ""}${rotationNote}`
-          });
-          reset();
-          onImported();
-          onOpenChange(false);
-        }
+  const handleImport = async () => {
+    const items = accounts.map((a) => {
+      const rotationAccountId =
+        isRotating && isRotatablePamAccountType(a.accountType)
+          ? rotationAccountIdFor(a.accountType)
+          : null;
+      return {
+        discoveredAccountId: a.id,
+        templateId: templateByType[a.accountType],
+        ...(rotationAccountId ? { rotationAccountId } : {})
+      };
+    });
+    const batches = isRotating
+      ? Array.from({ length: Math.ceil(items.length / MAX_ROTATIONS_PER_IMPORT) }, (_, i) =>
+          items.slice(i * MAX_ROTATIONS_PER_IMPORT, (i + 1) * MAX_ROTATIONS_PER_IMPORT)
+        )
+      : [items];
+
+    const results: TImportPamDiscoveredAccountResult[] = [];
+    setIsImporting(true);
+    try {
+      for (const batch of batches) {
+        // eslint-disable-next-line no-await-in-loop
+        const batchResults = await importAccounts.mutateAsync({
+          sourceId,
+          folderId,
+          accounts: batch
+        });
+        results.push(...batchResults);
       }
-    );
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+      return;
+    } finally {
+      setIsImporting(false);
+    }
+
+    const imported = results.filter((r) => r.status === "imported").length;
+    const failed = results.length - imported;
+    const rotationFailures = results.filter((r) => r.rotationStatus === PamRotationStatus.Failed);
+    const rotationNote =
+      rotationFailures.length > 0
+        ? `. ${rotationFailures.length} could not be rotated: ${rotationFailures[0].rotationMessage}`
+        : "";
+    createNotification({
+      type: failed > 0 || rotationFailures.length > 0 ? "info" : "success",
+      text: `Imported ${imported} account${imported === 1 ? "" : "s"}${failed > 0 ? `, ${failed} failed` : ""}${rotationNote}`
+    });
+    reset();
+    onImported();
+    onOpenChange(false);
   };
 
   const canImport = Boolean(folderId) && accountTypes.every((type) => templateByType[type]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl" isPending={isImporting}>
         <DialogHeader>
           <DialogTitle>
             Import {accounts.length} Account{accounts.length === 1 ? "" : "s"}
@@ -252,7 +269,7 @@ export const ImportDiscoveredModal = ({
             type="button"
             variant="pam"
             isDisabled={!canImport}
-            isPending={importAccounts.isPending}
+            isPending={isImporting}
             onClick={handleImport}
           >
             Import

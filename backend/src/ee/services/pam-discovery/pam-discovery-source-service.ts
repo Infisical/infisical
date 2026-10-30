@@ -95,6 +95,8 @@ const DISCOVERED_UPSERT_CONCURRENCY = 8;
 
 const IMPORT_ROTATION_CONCURRENCY = 5;
 
+export const MAX_ROTATIONS_PER_IMPORT = 50;
+
 const toResultMessage = (err: unknown, fallback: string) =>
   err instanceof BadRequestError ||
   err instanceof NotFoundError ||
@@ -757,6 +759,11 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     ...ctx
   }: TImportDiscoveredDTO) => {
     await verifyAdmin(projectId, ctx);
+    if (accounts.filter((a) => a.rotationAccountId).length > MAX_ROTATIONS_PER_IMPORT) {
+      throw new BadRequestError({
+        message: `An import can rotate at most ${MAX_ROTATIONS_PER_IMPORT} accounts. Split the accounts into smaller imports.`
+      });
+    }
     const source = await pamDiscoverySourceDAL.findById(sourceId);
     if (!source || source.projectId !== projectId) {
       throw new NotFoundError({ message: `Discovery source with ID '${sourceId}' not found` });

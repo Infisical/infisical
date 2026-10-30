@@ -12,6 +12,7 @@ import {
   DISCOVERY_TYPE_CONFIGS,
   PamDiscoveryTypeMetadataSchema
 } from "@app/ee/services/pam-discovery/pam-discovery-schemas";
+import { MAX_ROTATIONS_PER_IMPORT } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -466,7 +467,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
               .uuid()
               .optional()
               .describe(
-                "Account that rotates this account's password. When set, it becomes the account's rotation account and the password is rotated right after import"
+                `Account that rotates this account's password. When set, it becomes the account's rotation account and the password is rotated right after import. At most ${MAX_ROTATIONS_PER_IMPORT} accounts per request can set it`
               )
           })
           .array()
