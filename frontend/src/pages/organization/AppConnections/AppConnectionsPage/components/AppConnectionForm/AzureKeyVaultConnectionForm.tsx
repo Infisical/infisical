@@ -755,11 +755,19 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                   <p className="text-xs leading-normal text-accent">
                     Add these values to the managed identity in Azure, then verify the connection.
                   </p>
-                  {federatedCredential?.issuerUrl && (
-                    <CopyableValue label="Issuer" value={federatedCredential.issuerUrl} />
-                  )}
                   {federatedCredential && (
                     <>
+                      {federatedCredential.issuerUrl ? (
+                        <CopyableValue label="Issuer" value={federatedCredential.issuerUrl} />
+                      ) : (
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-xs text-accent">Issuer</span>
+                          <p className="text-xs leading-normal text-danger">
+                            The issuer is unavailable because SITE_URL is not set. Set it to this
+                            instance&apos;s public URL.
+                          </p>
+                        </div>
+                      )}
                       <CopyableValue
                         label="Subject Identifier"
                         value={federatedCredential.subjectIdentifier}
