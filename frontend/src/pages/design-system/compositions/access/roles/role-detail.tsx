@@ -283,7 +283,7 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
       <Gate allowed={editable} reason={reason}>
         <ButtonGroup label="Add policies">
           {policySelect}
-          <DropdownMenu>
+          <DropdownMenu defaultOpen={startsWith("add-from-template")}>
             <DropdownMenuTrigger asChild>
               <Button
                 type="button"

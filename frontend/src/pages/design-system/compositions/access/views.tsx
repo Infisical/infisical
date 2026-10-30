@@ -256,6 +256,23 @@ export const accessViews: AccessView[] = [
     }
   },
   {
+    value: "proj-role-add-from-template",
+    label: "Project: Role editor, add from template menu",
+    start: {
+      nav: {
+        scope: "project",
+        detail: { kind: "project-role", id: "p-deploy-reviewer", label: "Deploy bot reviewer" }
+      },
+      overlay: "add-from-template"
+    }
+  },
+  {
+    value: "proj-denied",
+    label: "Project: No access",
+    start: { nav: { scope: "project" } },
+    scenario: "denied"
+  },
+  {
     value: "proj-loading",
     label: "Project: Users, loading",
     start: { nav: { scope: "project" } },
