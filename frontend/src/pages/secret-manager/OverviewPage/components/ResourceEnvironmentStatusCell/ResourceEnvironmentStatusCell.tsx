@@ -59,7 +59,6 @@ export const ResourceEnvironmentStatusCell = ({ status, hasOverride, children }:
     <TableCell
       className={twMerge(
         "relative border-r last:border-r-0",
-        hasOverride && "pr-7",
         status === "present" && "text-success",
         status === "empty" && "text-warning",
         status === "missing" && "text-danger",
@@ -77,7 +76,7 @@ export const ResourceEnvironmentStatusCell = ({ status, hasOverride, children }:
           <TooltipContent>Has personal override</TooltipContent>
         </Tooltip>
       )}
-      <div className="flex items-center justify-between gap-2">
+      <div className={twMerge("flex items-center justify-between gap-2", hasOverride && "pr-4")}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Icon className={twMerge(iconClassName, "size-4 shrink-0")} />
