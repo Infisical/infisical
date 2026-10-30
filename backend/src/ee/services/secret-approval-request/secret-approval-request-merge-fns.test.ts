@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
+import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { SecretOperations } from "@app/services/secret/secret-types";
 
@@ -86,6 +87,21 @@ describe("detectSecretApprovalCommitConflicts", () => {
       { op: SecretOperations.Update, secretId: "commit-A" }
     ]);
     expect(result.updates).toEqual([clean]);
+  });
+
+  test("refuses a request that creates the same key twice before reading the folder", async () => {
+    const { fns, secretV2BridgeDAL } = buildFns([]);
+    const commits = [
+      commit({ op: SecretOperations.Create, key: "A", id: "commit-A-1" }),
+      commit({ op: SecretOperations.Create, key: "A", id: "commit-A-2" }),
+      commit({ op: SecretOperations.Create, key: "B" })
+    ];
+
+    const result = fns.detectSecretApprovalCommitConflicts({ folderId: "folder-1", commits });
+
+    await expect(result).rejects.toBeInstanceOf(BadRequestError);
+    await expect(result).rejects.toThrow("it creates secret 'A' more than once");
+    expect(secretV2BridgeDAL.findBySecretKeys).not.toHaveBeenCalled();
   });
 });
 

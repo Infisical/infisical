@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { LoaderCircle } from "lucide-react";
@@ -27,6 +26,7 @@ import {
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
@@ -300,13 +300,11 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
 
   const pageContent = (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("signup.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("signup.og-title") as string} />
-        <meta name="og:description" content={t("signup.og-description") as string} />
-      </Helmet>
+      <PageTitle title={t("signup.title")} />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content={t("signup.og-title") as string} />
+      <meta name="og:description" content={t("signup.og-description") as string} />
       <OnboardingStepTransition step={section}>
         {section === SignupSection.VerifyCode ||
         section === SignupSection.UserInfo ||
@@ -324,12 +322,15 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
 
   if (!signupFlowVariant) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-page" role="status">
-        <div className="flex flex-col items-center gap-3 text-sm text-label">
-          <LoaderCircle className="size-5 animate-spin text-project motion-reduce:animate-none" />
-          <span>Preparing sign up</span>
+      <>
+        <PageTitle title={t("signup.title")} />
+        <div className="flex min-h-screen items-center justify-center bg-page" role="status">
+          <div className="flex flex-col items-center gap-3 text-sm text-label">
+            <LoaderCircle className="size-5 animate-spin text-project motion-reduce:animate-none" />
+            <span>Preparing sign up</span>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { FilterIcon, MessageSquareTextIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -25,6 +24,7 @@ import {
   IconButton,
   PageLoader,
   Pagination,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -36,7 +36,8 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   SIGNER_TABLE_PAGE_SIZE,
@@ -70,8 +71,7 @@ type Props = {
 };
 
 export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: Props) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [statusFilters, setStatusFilters] = useState<Set<FilterStatus>>(new Set());
   const [isRequestOpen, setIsRequestOpen] = useState(false);
   const [isPreApproveOpen, setIsPreApproveOpen] = useState(false);
@@ -250,20 +250,8 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                   return (
                     <TableRow
                       key={req.id}
-                      className="group cursor-pointer transition-colors hover:bg-surface-hover [&>td]:py-3"
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
-                          params: {
-                            orgId: currentOrg.id,
-                            approvalRequestId: req.id
-                          },
-                          search: {
-                            policyType: ApprovalPolicyType.CertCodeSigning,
-                            signerId
-                          }
-                        })
-                      }
+                      className="group transition-colors hover:bg-surface-hover [&>td]:py-3"
+                      linked
                     >
                       <TableCell isTruncatable>
                         <div className="flex items-start gap-2">
@@ -271,7 +259,22 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                             <KindIcon kind={member.kind} />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-foreground">{member.label}</div>
+                            <RowLink
+                              {...getInstancePinningLink(
+                                currentProject.orgId,
+                                currentProject,
+                                `approvals/${req.id}`
+                              )!}
+                              search={
+                                {
+                                  policyType: ApprovalPolicyType.CertCodeSigning,
+                                  signerId
+                                } as never
+                              }
+                              className="text-foreground"
+                            >
+                              {member.label}
+                            </RowLink>
                             {req.justification && (
                               <div className="mt-0.5 max-w-full text-xs text-muted">
                                 <Tooltip>
@@ -315,7 +318,7 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                       <TableCell className="text-accent">
                         <ExpiresCell req={req} />
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell data-row-interactive>
                         {isRevocable && canPreApprove && (
                           <Tooltip>
                             <TooltipTrigger asChild>

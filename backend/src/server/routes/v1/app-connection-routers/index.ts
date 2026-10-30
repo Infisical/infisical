@@ -46,6 +46,7 @@ import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHpeIloConnectionRouter } from "./hpe-ilo-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerImpervaConnectionRouter } from "./imperva-connection-router";
+import { registerJiraConnectionRouter } from "./jira-connection-router";
 import { registerKeeperConnectionRouter } from "./keeper-connection-router";
 import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
@@ -76,6 +77,7 @@ import { registerRenderConnectionRouter } from "./render-connection-router";
 import { registerRundeckConnectionRouter } from "./rundeck-connection-router";
 import { registerS3CompatibleConnectionRouter } from "./s3-compatible-connection-router";
 import { registerSalesforceConnectionRouter } from "./salesforce-connection-router";
+import { registerServiceNowConnectionRouter } from "./servicenow-connection-router";
 import { registerSmbConnectionRouter } from "./smb-connection-router";
 import { registerSnowflakeConnectionRouter } from "./snowflake-connection-router";
 import { registerSpaceliftConnectionRouter } from "./spacelift-connection-router";
@@ -190,5 +192,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Stripe]: registerStripeConnectionRouter,
     [AppConnection.Keeper]: registerKeeperConnectionRouter,
     [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter,
-    [AppConnection.S3Compatible]: registerS3CompatibleConnectionRouter
+    [AppConnection.ServiceNow]: registerServiceNowConnectionRouter,
+    [AppConnection.S3Compatible]: registerS3CompatibleConnectionRouter,
+    [AppConnection.Jira]: registerJiraConnectionRouter
   };

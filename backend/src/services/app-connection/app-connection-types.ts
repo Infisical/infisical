@@ -280,6 +280,12 @@ import {
   TValidateImpervaConnectionCredentialsSchema
 } from "./imperva";
 import {
+  TJiraConnection,
+  TJiraConnectionConfig,
+  TJiraConnectionInput,
+  TValidateJiraConnectionCredentialsSchema
+} from "./jira";
+import {
   TKeeperConnection,
   TKeeperConnectionConfig,
   TKeeperConnectionInput,
@@ -448,6 +454,12 @@ import {
   TSalesforceConnectionInput,
   TValidateSalesforceConnectionCredentialsSchema
 } from "./salesforce";
+import {
+  TServiceNowConnection,
+  TServiceNowConnectionConfig,
+  TServiceNowConnectionInput,
+  TValidateServiceNowConnectionCredentialsSchema
+} from "./servicenow";
 import {
   TSmbConnection,
   TSmbConnectionConfig,
@@ -646,7 +658,9 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TStripeConnection
   | TKeeperConnection
   | THpeIloConnection
+  | TServiceNowConnection
   | TS3CompatibleConnection
+  | TJiraConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -750,7 +764,9 @@ export type TAppConnectionInput = { id: string } & (
   | TStripeConnectionInput
   | TKeeperConnectionInput
   | THpeIloConnectionInput
+  | TServiceNowConnectionInput
   | TS3CompatibleConnectionInput
+  | TJiraConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -888,7 +904,9 @@ export type TAppConnectionConfig =
   | TStripeConnectionConfig
   | TKeeperConnectionConfig
   | THpeIloConnectionConfig
-  | TS3CompatibleConnectionConfig;
+  | TServiceNowConnectionConfig
+  | TS3CompatibleConnectionConfig
+  | TJiraConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -983,7 +1001,9 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateStripeConnectionCredentialsSchema
   | TValidateKeeperConnectionCredentialsSchema
   | TValidateHpeIloConnectionCredentialsSchema
-  | TValidateS3CompatibleConnectionCredentialsSchema;
+  | TValidateServiceNowConnectionCredentialsSchema
+  | TValidateS3CompatibleConnectionCredentialsSchema
+  | TValidateJiraConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

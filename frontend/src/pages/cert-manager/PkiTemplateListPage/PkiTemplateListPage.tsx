@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import {
   faCog,
   faEllipsis,
@@ -17,6 +15,7 @@ import {
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -74,7 +73,6 @@ import { PkiTemplateForm } from "./components/PkiTemplateForm";
 
 const PER_PAGE_INIT = 25;
 export const PkiTemplateListPage = () => {
-  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
@@ -122,9 +120,7 @@ export const PkiTemplateListPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "PKI Templates" })}</title>
-      </Helmet>
+      <PageTitle title="PKI Templates" />
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col justify-between">
           <div className="mx-auto flex w-full max-w-8xl flex-col">

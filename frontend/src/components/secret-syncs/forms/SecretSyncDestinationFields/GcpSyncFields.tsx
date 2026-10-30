@@ -87,7 +87,7 @@ export const GcpSyncFields = () => {
     isGlobalScope && ((userReplicaLocationIds?.length ?? 0) > 0 || Boolean(locationId));
   const hasAccordionError = Boolean(
     formState.errors.destinationConfig &&
-      "userReplicaLocationIds" in formState.errors.destinationConfig
+    "userReplicaLocationIds" in formState.errors.destinationConfig
   );
 
   const [openItem, setOpenItem] = useState<string>(

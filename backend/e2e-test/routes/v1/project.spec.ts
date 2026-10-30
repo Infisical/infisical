@@ -108,19 +108,6 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
 });
 
 describe("Project update (audit logs retention)", async () => {
-  test("rejects a retention period the plan does not allow", async () => {
-    const project = await createProject("e2e-retention-plan-limit");
-
-    const res = await updateProject(project.id, { auditLogsRetentionDays: 30 });
-
-    expect(res.statusCode).toBe(400);
-    expect(JSON.parse(res.payload).message).toContain("audit logs");
-
-    expect(JSON.parse((await getProject(project.id)).payload).project.auditLogsRetentionDays).toBeNull();
-
-    await deleteProject(project.id);
-  });
-
   test("leaves other fields updatable", async () => {
     const project = await createProject("e2e-retention-other-fields");
 

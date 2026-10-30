@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -78,7 +79,7 @@ func TestSecret_Update(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		oldTag, newTagID := newTag(t, proj, "old-tag"), newTag(t, proj, "new-tag")
+		oldTag, newTagID := secretmanager.CreateTag(t, proj, "old-tag"), secretmanager.CreateTag(t, proj, "new-tag")
 		_, err := tn.Admin.API.CreateSecretV4WithResponse(t.Context(), "TAGGED",
 			api.CreateSecretV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretValue: "value", TagIds: &[]string{oldTag}})
 		require.NoError(t, err)
@@ -135,5 +136,50 @@ func TestSecret_Update(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
 		require.Equal(t, "You are not allowed to edit on secrets", res.JSON403.Message)
 		require.Equal(t, "original", secretmanager.GetSecret(t, proj, "dev", "API_KEY").Value)
+	})
+
+	t.Run("should keep the stored value but answer with an empty value when an update sends no value", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "stored")
+
+		// Action
+		res, err := tn.Admin.API.UpdateSecretV4WithResponse(t.Context(), "API_KEY",
+			api.UpdateSecretV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretComment: new("owned by payments")})
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "updating returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+
+		// Assert
+		updated, err := res.JSON200.AsUpdateSecretV4200JSONResponseBody0()
+		require.NoError(t, err)
+		require.Equal(t, "API_KEY", updated.Secret.SecretKey)
+		require.Empty(t, updated.Secret.SecretValue, "today the response echoes the request's value, not the stored one")
+		require.False(t, updated.Secret.SecretValueHidden)
+		require.Equal(t, "stored", secretmanager.GetSecret(t, proj, "dev", "API_KEY").Value)
+	})
+
+	t.Run("should refuse an empty new name and keep the secret", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "value")
+
+		// Action
+		res, err := tn.Admin.API.UpdateSecretV4WithResponse(t.Context(), "API_KEY",
+			api.UpdateSecretV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", NewSecretName: new("")})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusUnprocessableEntity, res.StatusCode(), "renaming returned %s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "newSecretName")
+		secrets := secretmanager.ListSecrets(t, proj, "dev")
+		require.Len(t, secrets, 1)
+		require.Equal(t, "API_KEY", secrets[0].Key)
+		require.Equal(t, "value", secrets[0].Value)
 	})
 }

@@ -1,10 +1,47 @@
 import crypto from "node:crypto";
 
+import RE2 from "re2";
+import { z } from "zod";
+
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
+import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultSessionActor } from "./agent-vault-session-types";
 
 export const AGENT_VAULT_SESSION_TOKEN_PREFIX = "agv_";
+
+export const AGENT_VAULT_SESSION_LABEL_MAX_LENGTH = 128;
+
+// Controls, format characters (zero-width spaces, text-direction overrides), private-use characters and
+// line or paragraph separators either render as nothing or reorder what is shown, so a stored label could
+// read differently from what search matches. RE2 sees a lone surrogate only after it becomes U+FFFD, so
+// isWellFormed catches that case.
+const AGENT_VAULT_SESSION_LABEL_DISALLOWED_RE = new RE2(/[\p{Cc}\p{Cf}\p{Co}\p{Zl}\p{Zp}]/u);
+
+export const AGENT_VAULT_SESSION_LABEL_MESSAGE =
+  "A label can't contain line breaks, tabs, or invisible characters such as zero-width spaces or text direction marks.";
+
+export const isValidAgentVaultSessionLabel = (label: string) =>
+  label.isWellFormed() && !AGENT_VAULT_SESSION_LABEL_DISALLOWED_RE.test(label);
+
+const agentVaultSessionLabelStringSchema = z
+  .string()
+  .trim()
+  .max(
+    AGENT_VAULT_SESSION_LABEL_MAX_LENGTH,
+    `A label can be at most ${AGENT_VAULT_SESSION_LABEL_MAX_LENGTH} characters`
+  )
+  .refine(isValidAgentVaultSessionLabel, AGENT_VAULT_SESSION_LABEL_MESSAGE);
+
+// Null and a blank string both mean no label, so a client can send back what a read returned.
+export const agentVaultSessionLabelSchema = agentVaultSessionLabelStringSchema
+  .nullish()
+  .transform((label) => label || null);
+
+// Required on update: the label is the only field, so leaving it out must not read as clearing it.
+export const agentVaultSessionLabelUpdateSchema = agentVaultSessionLabelStringSchema
+  .nullable()
+  .transform((label) => label || null);
 
 export const hashSessionToken = (token: string) => crypto.createHash("sha256").update(token).digest("hex");
 
@@ -34,3 +71,15 @@ export const deriveSessionStatus = (
   if (session.expiresAt && session.expiresAt <= now) return AgentVaultSessionStatus.Expired;
   return AgentVaultSessionStatus.Active;
 };
+
+// Most sessions have no label, so a session's audit event also names whose session it is and what it carried.
+export const describeSessionForAudit = (session: {
+  actor: TAgentVaultSessionActor;
+  accessBundles: { name: string }[];
+}) => ({
+  sessionOwner:
+    session.actor.type === AgentVaultMemberType.MachineIdentity
+      ? session.actor.name
+      : (session.actor.email ?? session.actor.username),
+  accessBundleName: session.accessBundles[0]?.name ?? null
+});

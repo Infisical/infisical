@@ -5,6 +5,7 @@ import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
+import { getAccessErrorMessage } from "@app/pages/pam/access-error";
 
 import "@devolutions/iron-remote-desktop";
 
@@ -180,7 +181,6 @@ export const useRdpSession = ({
           await sessionInfo.run();
         })
         .catch((err) => {
-          // eslint-disable-next-line no-console
           console.error("RDP session failed:", err);
           if (!isCurrent()) return;
           setError(RDP_SESSION_FAILED_MESSAGE);
@@ -203,8 +203,7 @@ export const useRdpSession = ({
   const handleConnectError = useCallback((err: unknown) => {
     let message = "Failed to start RDP session";
     if (axios.isAxiosError(err)) {
-      const apiMessage = (err.response?.data as { message?: string } | undefined)?.message;
-      if (apiMessage) message = apiMessage;
+      message = getAccessErrorMessage(err, message);
     } else if (err instanceof Error && err.message) {
       message = err.message;
     }
@@ -222,7 +221,6 @@ export const useRdpSession = ({
       teardown();
       removeInnerHeightOverride();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const disconnect = useCallback(() => {

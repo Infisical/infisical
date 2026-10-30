@@ -10,7 +10,6 @@ import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import {
   CertExtendedKeyUsageType,
   certificateExtensionOidSchema,
@@ -27,6 +26,7 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SubjectAltNameDefaultsSchema = z

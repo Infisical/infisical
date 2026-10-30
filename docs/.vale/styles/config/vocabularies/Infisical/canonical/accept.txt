@@ -371,6 +371,8 @@ OpenClaw
 OpenCode
 Perplexity
 xAI
+# The MCP transport, always written "Streamable HTTP"
+Streamable
 
 # --- Communication and messaging ---
 Discord
@@ -689,3 +691,6 @@ snowsql
 
 # --- Surfaced by the Stripe API key rotation pages ---
 Stripe
+
+# --- Surfaced by the Agent Vault Docker guide ---
+gVisor

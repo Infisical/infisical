@@ -30,7 +30,6 @@ import {
   useAddFolderMember,
   useListPamProductGroups,
   useListPamProductIdentities,
-  useListPamProductMembers,
   useListPamResourceRoles,
   useUpdateAccountGroupMemberRole,
   useUpdateAccountIdentityMemberRole,
@@ -39,9 +38,9 @@ import {
   useUpdateFolderIdentityMemberRole,
   useUpdateFolderMemberRole
 } from "@app/hooks/api/pam";
-import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 
 import { PamMemberKind, PamMembershipScope } from "../../components/memberEnums";
+import { usePamProductUsers } from "../../components/usePamProductUsers";
 
 type AssigneeOption = {
   value: string;
@@ -97,9 +96,8 @@ export const AssignAccessModal = ({
   editMember
 }: Props) => {
   const { currentOrg } = useOrganization();
-  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { users: productUsers } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
-  const { data: productMembers } = useListPamProductMembers();
   const { data: productGroups } = useListPamProductGroups();
   // Product identity members carry the identity name, covering both org-level and PAM-scoped identities
   const { data: productIdentities } = useListPamProductIdentities();
@@ -149,10 +147,6 @@ export const AssignAccessModal = ({
     };
   }, [editMember]);
 
-  const pamUserIds = useMemo(
-    () => new Set((productMembers ?? []).map((m) => m.userId).filter(Boolean) as string[]),
-    [productMembers]
-  );
   const pamGroupIds = useMemo(
     () => new Set((productGroups ?? []).map((m) => m.groupId).filter(Boolean) as string[]),
     [productGroups]
@@ -163,17 +157,9 @@ export const AssignAccessModal = ({
       .filter((g) => pamGroupIds.has(g.id) && !existingGroupIds.has(g.id))
       .map((g) => ({ value: g.id, label: g.name, kind: PamMemberKind.Group, subtitle: "Group" }));
 
-    const users: AssigneeOption[] = (orgUsers ?? [])
-      .filter((ou) => ou.user.id && pamUserIds.has(ou.user.id) && !existingUserIds.has(ou.user.id))
-      .map((ou) => {
-        const name = [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ");
-        return {
-          value: ou.user.id,
-          label: name || ou.user.email || ou.inviteEmail || ou.user.username,
-          kind: PamMemberKind.User,
-          subtitle: ou.user.email ?? ou.inviteEmail ?? ""
-        };
-      });
+    const users: AssigneeOption[] = productUsers
+      .filter((u) => !u.isGroupMember && !existingUserIds.has(u.id))
+      .map((u) => ({ value: u.id, label: u.name, kind: PamMemberKind.User, subtitle: u.email }));
 
     const existingIds = existingIdentityIds ?? new Set<string>();
     const identities: AssigneeOption[] = (productIdentities ?? [])
@@ -189,10 +175,9 @@ export const AssignAccessModal = ({
     return [...groups, ...identities, ...users];
   }, [
     orgGroups,
-    orgUsers,
+    productUsers,
     productIdentities,
     pamGroupIds,
-    pamUserIds,
     existingGroupIds,
     existingUserIds,
     existingIdentityIds

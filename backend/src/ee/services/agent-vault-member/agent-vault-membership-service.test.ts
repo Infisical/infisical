@@ -45,11 +45,13 @@ const buildTx = (adminCount: number) => {
 };
 
 // Only the collaborators these three guards touch; everything else is left undefined so a guard that
-// fails to short-circuit shows up as a crash rather than a silent pass.
+// fails to short-circuit shows up as a crash rather than a silent pass. findActorsWithActiveOrgAccess
+// follows the org read, and groupReachableIds fakes actors that reach the org only through a group.
 const buildService = ({
   identityProjectId = null as string | null,
   productMemberships = [] as ({ id: string } & Record<string, string | null>)[],
-  adminMembershipIds = [] as string[]
+  adminMembershipIds = [] as string[],
+  groupReachableIds = [] as string[]
 } = {}) => {
   const txs: ReturnType<typeof buildTx>[] = [];
   const deps = {
@@ -68,7 +70,31 @@ const buildService = ({
     groupDAL: { find: vi.fn().mockResolvedValue([]) },
     userDAL: { find: vi.fn().mockResolvedValue([]) },
     userAliasDAL: { findBySsoExternalIds: vi.fn().mockResolvedValue([]) },
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }) },
+    orgDAL: {
+      findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }),
+      lockActorsForOrgAccess: vi.fn().mockResolvedValue(undefined),
+      findActorsWithActiveOrgAccess: vi.fn(
+        async ({ userIds, identityIds }: { userIds: string[]; identityIds: string[] }) => {
+          const active = async (column: "actorUserId" | "actorIdentityId", ids: string[]) => {
+            if (!ids.length) return new Set<string>();
+            const rows = (await deps.membershipDAL.find({
+              scope: AccessScope.Organization,
+              $in: { [column]: ids }
+            })) as Record<string, unknown>[];
+            const direct = rows.filter((row) => ids.includes(row[column] as string));
+            const withRow = new Set(direct.map((row) => row[column] as string));
+            return new Set([
+              ...direct.filter((row) => row.isActive).map((row) => row[column] as string),
+              ...ids.filter((id) => groupReachableIds.includes(id) && !withRow.has(id))
+            ]);
+          };
+          return {
+            userIds: await active("actorUserId", userIds),
+            identityIds: await active("actorIdentityId", identityIds)
+          };
+        }
+      )
+    },
     membershipDAL: {
       // The organization read is how an actor is judged to exist here, so it answers for whatever it is
       // asked about. That is what an org holds for every actor it reaches, including one it does not own
@@ -103,7 +129,10 @@ const buildService = ({
       delete: vi.fn().mockResolvedValue(undefined)
     },
     projectAccessRequestDAL: { delete: vi.fn().mockResolvedValue(undefined) },
-    usageMeteringService: { emitForProject: vi.fn() }
+    usageMeteringService: { emitForProject: vi.fn() },
+    agentVaultPersonalValueDAL: { deleteForActorsWithoutGrant: vi.fn().mockResolvedValue(0) },
+    userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
+    identityGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
   };
 
   const service = agentVaultMembershipServiceFactory(
@@ -186,6 +215,11 @@ describe("agentVaultMembership guards", () => {
     await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
 
     expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: ["mem-1"] } }, expect.anything());
+    // Leaving Agent Vault loses every bundle, so the cleanup covers the whole project for this identity.
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
+      { projectId: PROJECT_ID, accessBundleId: undefined, userIds: [], identityIds: [IDENTITY_ID] },
+      expect.anything()
+    );
   });
 
   // A sub-organization reaches one of its parent's groups through a membership of its own, and the group
@@ -231,7 +265,27 @@ describe("agentVaultMembership guards", () => {
   // Reaching the organization through a group is how a sub-org is given a parent group's members. They
   // reach Agent Vault the same way, by the group being a member, so neither is individually assignable.
   // Authentication resolves them through the group and is deliberately untouched by this.
-  test("refuses an actor whose organization access comes only from a group", async () => {
+  test("accepts an actor whose organization access comes only from a group", async () => {
+    const { service, deps } = buildService({ groupReachableIds: [OTHER_USER_ID] });
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await service.addProductMembers({
+      projectId: PROJECT_ID,
+      userIds: [OTHER_USER_ID],
+      machineIdentityIds: [],
+      groupIds: [],
+      emails: [],
+      role: ProjectMembershipRole.Member,
+      ctx
+    });
+
+    expect(deps.membershipDAL.insertMany).toHaveBeenCalledWith(
+      [expect.objectContaining({ actorUserId: OTHER_USER_ID })],
+      expect.anything()
+    );
+  });
+
+  test("refuses an actor the organization does not reach at all", async () => {
     const { service, deps } = buildService();
     deps.membershipDAL.find.mockResolvedValue([]);
 
@@ -404,6 +458,11 @@ describe("agentVaultMembership guards", () => {
       [{ membershipId: "mem-1", role: ProjectMembershipRole.Member }],
       expect.anything()
     );
+    // A demoted admin no longer reaches the bundles they hold no grant on.
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
+      { projectId: PROJECT_ID, accessBundleId: undefined, userIds: [], identityIds: [IDENTITY_ID] },
+      expect.anything()
+    );
   });
 
   test("skips a member who already has the role instead of rewriting it", async () => {
@@ -459,6 +518,8 @@ describe("agentVaultMembership guards", () => {
       [{ membershipId: "mem-identity", role: ProjectMembershipRole.Admin }],
       expect.anything()
     );
+    // A promotion takes nothing away, so nothing is cleared.
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).not.toHaveBeenCalled();
   });
 
   test("refuses one batch that would demote every remaining admin", async () => {

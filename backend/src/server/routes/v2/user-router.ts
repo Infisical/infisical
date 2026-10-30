@@ -8,7 +8,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
-import { ensureStepUpMfa, getStepUpSessionId, MfaStepUpResource } from "../mfa-step-up-fns";
+import {
+  ensureFactorEnrollmentStepUpMfa,
+  ensureStepUpMfa,
+  getStepUpSessionId,
+  MfaStepUpResource
+} from "../mfa-step-up-fns";
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
@@ -77,7 +82,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
 
   // Enroll a factor: proves possession of the factor in-request and persists it.
   // Reachable pre-MFA (requireOrg:false) so the enforced-MFA onboarding flow can set
-  // up a factor at login. It NEVER mints recovery codes: those are issued only after
+  // up a factor at login; an account that already has one must prove it first.
+  // It NEVER mints recovery codes: those are issued only after
   // the org-required MFA is actually completed (on the first successful verifyMfaToken,
   // or via POST /me/mfa/activate from a full authenticated session). This keeps a
   // password-only, pre-MFA session from bootstrapping recovery codes.
@@ -122,6 +128,12 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
+      await ensureFactorEnrollmentStepUpMfa(server, {
+        userId: req.permission.id,
+        tokenVersionId: getStepUpSessionId(req),
+        enrollingMethod: req.body.method
+      });
+
       if (req.body.method === MfaMethod.TOTP) {
         await server.services.totp.verifyUserTotpConfig({
           userId: req.permission.id,
