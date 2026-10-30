@@ -370,6 +370,12 @@ export const certificateEstV3ServiceFactory = ({
       throw new UnauthorizedError({ message: "Client certificate has been revoked" });
     }
 
+    if (storedCert?.deletedAt) {
+      throw new UnauthorizedError({
+        message: `Client certificate with serial number '${cert.serialNumber}' was deleted and can no longer be re-enrolled. Enroll a new certificate instead.`
+      });
+    }
+
     const $rejectReenrollCsr = async (message: string) => {
       const error = new BadRequestError({ message });
       await $recordEstFailure({

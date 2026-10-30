@@ -1,5 +1,8 @@
+import { format } from "date-fns";
 import ms from "ms";
 
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { CaType } from "@app/hooks/api/ca/enums";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { TCertificateSource } from "@app/hooks/api/certificates/types";
 
@@ -14,6 +17,8 @@ export const getCertSourceLabel = (source: TCertificateSource): string => {
       return "Managed";
   }
 };
+
+export const DELETED_CERTIFICATE_NO_ACTIONS = "No actions are available for a deleted certificate.";
 
 export const RENEWAL_UNAVAILABLE_NO_PROFILE =
   "Renewal is unavailable because the certificate profile this certificate was issued from no longer exists.";
@@ -30,9 +35,14 @@ type TCertificateStatusSource = {
   status?: string | null;
   notAfter: string;
   renewedByCertificateId?: string | null;
+  deletedAt?: string | null;
 };
 
 export const getCertificateDisplayStatus = (certificate: TCertificateStatusSource) => {
+  if (certificate.deletedAt) {
+    return { status: CertStatus.DELETED, label: "Deleted", variant: "neutral" as const };
+  }
+
   if (certificate.status === CertStatus.REVOKED) {
     return { status: CertStatus.REVOKED, label: "Revoked", variant: "danger" as const };
   }
@@ -48,33 +58,73 @@ export const getCertificateDisplayStatus = (certificate: TCertificateStatusSourc
   return { status: CertStatus.ACTIVE, label: "Active", variant: "success" as const };
 };
 
-const DELETION_BLOCKED_NOT_EXPIRED =
-  "This certificate has not expired yet. Revoke it to retire it early, then delete it once it has expired.";
+type TCertificateDeletedBySource = {
+  deletedByActorType?: ActorType | null;
+  deletedByActorName?: string | null;
+};
 
-const DELETION_BLOCKED_NOT_EXPIRED_NO_ISSUER =
-  "This certificate has not expired yet. Delete it once it has expired.";
+export const getCertificateDeletedBySummary = (certificate: TCertificateDeletedBySource) => {
+  if (certificate.deletedByActorName) return certificate.deletedByActorName;
 
-const DELETION_BLOCKED_REVOKED_NOT_EXPIRED =
-  "This certificate was revoked but has not expired yet. Delete it once it has expired.";
+  if (certificate.deletedByActorType === ActorType.PLATFORM) return "Certificate cleanup";
+
+  return certificate.deletedByActorType === ActorType.IDENTITY ? "A machine identity" : "A user";
+};
+
+export const canRevokeAfterDeletion = (
+  certificate: { source?: string | null; profileId?: string | null },
+  caType?: string | null
+) =>
+  !(
+    certificate.source === CertSource.Imported &&
+    Boolean(certificate.profileId) &&
+    caType === CaType.INTERNAL
+  );
 
 type TCertificateDeletionSource = {
   status?: string | null;
   notAfter: string;
-  source?: string | null;
+  hasPrivateKey?: boolean;
 };
 
-export const getCertificateDeletionBlockReason = (
-  certificate: TCertificateDeletionSource,
-  canRevoke: boolean
+export type TCertificateHoldingSync = {
+  isAutoSyncEnabled: boolean;
+  syncOptions?: { canRemoveCertificates?: boolean } | null;
+};
+
+export const isRemovedFromSyncDestination = (sync: TCertificateHoldingSync) =>
+  sync.isAutoSyncEnabled && Boolean(sync.syncOptions?.canRemoveCertificates);
+
+const getCertificateTrustWarning = (
+  certificate: TCertificateDeletionSource | undefined,
+  canRevoke: boolean,
+  isRevocableAfterDeletion: boolean
 ) => {
-  const source = certificate.source ?? CertSource.Issued;
-  const hasExpired = new Date(certificate.notAfter) <= new Date();
+  if (
+    !certificate ||
+    certificate.status === CertStatus.REVOKED ||
+    new Date(certificate.notAfter) <= new Date()
+  ) {
+    return "";
+  }
 
-  if (hasExpired) return null;
-  if (certificate.status === CertStatus.REVOKED) return DELETION_BLOCKED_REVOKED_NOT_EXPIRED;
-  if (source === CertSource.Discovered || source === CertSource.Imported) return null;
+  const expiresOn = format(new Date(certificate.notAfter), "yyyy-MM-dd");
+  if (!canRevoke) return ` It stays valid until ${expiresOn}.`;
+  if (isRevocableAfterDeletion) return ` It stays trusted until ${expiresOn} unless you revoke it.`;
+  return " It can't be revoked once deleted, so revoke it first if clients should stop trusting it.";
+};
 
-  return canRevoke ? DELETION_BLOCKED_NOT_EXPIRED : DELETION_BLOCKED_NOT_EXPIRED_NO_ISSUER;
+export const getCertificateDeletionWarning = (
+  certificate?: TCertificateDeletionSource,
+  canRevoke = false,
+  isRevocableAfterDeletion = true
+) => {
+  const removed =
+    certificate?.hasPrivateKey === false
+      ? "This removes the certificate."
+      : "This removes the certificate and its private key.";
+
+  return `${removed}${getCertificateTrustWarning(certificate, canRevoke, isRevocableAfterDeletion)} This cannot be undone.`;
 };
 
 export const isExpiringWithinOneDay = (notAfter: string): boolean => {

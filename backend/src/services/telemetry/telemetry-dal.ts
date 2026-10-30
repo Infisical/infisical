@@ -98,7 +98,10 @@ export const telemetryDALFactory = (db: TDbClient) => {
         countTable(db, TableName.AppConnection),
         countTable(db, TableName.Integration),
         countTable(db, TableName.CertificateAuthority),
-        countTable(db, TableName.Certificate),
+        (async () => {
+          const result = (await db(TableName.Certificate).whereNull("deletedAt").count().first())?.count as string;
+          return parseInt(result || "0", 10);
+        })(),
         countTable(db, TableName.PkiCertificatePolicy),
         countTable(db, TableName.PkiCertificateProfile),
         countTable(db, TableName.PkiApplication),

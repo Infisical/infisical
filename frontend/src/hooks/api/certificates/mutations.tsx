@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import { certificateProfileKeys } from "../certificateProfiles/queries";
 import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
+import { pkiSyncKeys } from "../pkiSyncs/queries";
 import { projectKeys } from "../projects";
 import { certKeys } from "./queries";
 import {
@@ -52,6 +53,7 @@ export const useDeleteCert = () => {
       queryClient.invalidateQueries({
         queryKey: ["cert-dashboard-stats"]
       });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.all });
     }
   });
 };

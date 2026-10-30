@@ -353,6 +353,7 @@ export const hsmConnectorServiceFactory = ({
           message: `HSM Connector is in use by ${caCount} certificate authority(ies). Delete or migrate those CAs before removing this connector.`
         });
       }
+      await hsmConnectorDAL.detachDeletedCertificates(row.id, tx);
       try {
         await hsmConnectorDAL.deleteById(row.id, tx);
       } catch (err) {

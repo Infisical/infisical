@@ -46,9 +46,9 @@ import { CertificateRequestStatus } from "@app/services/certificate-request/cert
 import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import {
   CertExtendedKeyUsage,
-  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
+  CertStatus,
   CrlReason
 } from "@app/services/certificate/certificate-types";
 import type { ExternalMigrationImportStatus } from "@app/services/external-migration/external-migration-types";
@@ -3315,7 +3315,7 @@ interface DeleteCert {
     serialNumber: string;
     notAfter: string;
     source: CertificateSource;
-    deletionAllowedReason: CertificateDeletionEligibility;
+    statusAtDeletion: CertStatus;
     applicationId?: string | null;
     applicationName?: string | null;
   };

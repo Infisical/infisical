@@ -25,8 +25,18 @@ export const pkiSyncKeys = {
     applicationId
       ? ([...pkiSyncKeys.all, "list", projectId, "application", applicationId] as const)
       : ([...pkiSyncKeys.all, "list", projectId] as const),
-  listWithCertificate: (projectId: string, certificateId: string) =>
-    [...pkiSyncKeys.all, "list", projectId, "with-certificate", certificateId] as const,
+  listWithCertificate: (projectId: string, certificateId: string, applicationId?: string) =>
+    applicationId
+      ? ([
+          ...pkiSyncKeys.all,
+          "list",
+          projectId,
+          "with-certificate",
+          certificateId,
+          "application",
+          applicationId
+        ] as const)
+      : ([...pkiSyncKeys.all, "list", projectId, "with-certificate", certificateId] as const),
   byId: (syncId: string, projectId: string) =>
     [...pkiSyncKeys.all, "by-id", syncId, projectId] as const,
   certificates: (syncId: string, pagination?: { offset: number; limit: number }) =>
@@ -230,11 +240,12 @@ export const useListPkiSyncsWithCertificate = (
       ReturnType<typeof pkiSyncKeys.listWithCertificate>
     >,
     "queryKey" | "queryFn"
-  >
+  >,
+  applicationId?: string
 ) => {
   return useQuery({
-    queryKey: pkiSyncKeys.listWithCertificate(projectId, certificateId),
-    queryFn: () => fetchPkiSyncsByProjectId(projectId, certificateId),
+    queryKey: pkiSyncKeys.listWithCertificate(projectId, certificateId, applicationId),
+    queryFn: () => fetchPkiSyncsByProjectId(projectId, certificateId, applicationId),
     enabled: !!projectId && !!certificateId,
     ...options
   });

@@ -17,13 +17,8 @@ export enum CertStatus {
   ACTIVE = "active",
   EXPIRED = "expired",
   REVOKED = "revoked",
-  RENEWED = "renewed"
-}
-
-export enum CertificateDeletionEligibility {
-  Expired = "expired",
-  Discovered = "discovered",
-  Imported = "imported"
+  RENEWED = "renewed",
+  DELETED = "deleted"
 }
 
 export enum CertKeyAlgorithm {
@@ -124,6 +119,7 @@ export enum CrlReason {
 export type TGetCertDTO = {
   id?: string;
   serialNumber?: string;
+  includeDeleted?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteCertDTO = {

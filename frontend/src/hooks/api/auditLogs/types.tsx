@@ -1,6 +1,6 @@
 import { AuditLogEventClass } from "../auditLogSettings/types";
 import { CaStatus } from "../ca";
-import { CrlReason } from "../certificates/enums";
+import { CertStatus, CrlReason } from "../certificates/enums";
 import { IdentityTrustedIp } from "../identities/types";
 import { PkiItemType } from "../pkiCollections/constants";
 import { WorkflowIntegration } from "../workflowIntegrations/types";
@@ -702,7 +702,8 @@ interface DeleteCert {
     serialNumber: string;
     notAfter: string;
     source: string;
-    deletionAllowedReason: string;
+    statusAtDeletion?: CertStatus;
+    deletionAllowedReason?: string;
     applicationId?: string | null;
     applicationName?: string | null;
   };

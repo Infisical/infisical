@@ -94,7 +94,8 @@ import { getCertManagerLink } from "../../cert-manager-link";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import {
-  getCertificateDeletionBlockReason,
+  canRevokeAfterDeletion,
+  DELETED_CERTIFICATE_NO_ACTIONS,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
@@ -134,6 +135,11 @@ type Props = {
       renewalError?: string;
       renewedFromCertificateId?: string;
       renewedByCertificateId?: string;
+      status?: string;
+      hasPrivateKey?: boolean;
+      canRevoke?: boolean;
+      isRevocableAfterDeletion?: boolean;
+      applicationId?: string | null;
     }
   ) => void;
   externalFilter?: {
@@ -249,11 +255,12 @@ export const CertificatesTable = ({
     if (dashboardViewId) return dashboardViewId;
     if (hasDashboardFilters) return null;
     try {
-      return localStorage.getItem(getViewStorageKey(applicationId)) || "system-all";
+      return localStorage.getItem(getViewStorageKey(applicationId)) || "system-default";
     } catch {
-      return "system-all";
+      return "system-default";
     }
   });
+  const [includeDeleted, setIncludeDeleted] = useState(activeViewId === "system-all");
   const [isSaveViewOpen, setIsSaveViewOpen] = useState(false);
   const [hasRestoredView, setHasRestoredView] = useState(
     hasDashboardFilters || hasSynchronousDashboardView
@@ -381,6 +388,7 @@ export const CertificatesTable = ({
     limit: perPage,
     search: appliedSearch.trim() || undefined,
     status: filterSearchParams.status as string | undefined,
+    includeDeleted,
     profileIds: filterSearchParams.profileIds as string[] | undefined,
     keyAlgorithm: filterSearchParams.keyAlgorithm,
     keySizes: filterSearchParams.keySizes,
@@ -477,8 +485,9 @@ export const CertificatesTable = ({
   const handleClearAllFilters = () => {
     setAppliedFilters([]);
     setPendingFilters([]);
-    setActiveViewId("system-all");
-    persistViewId("system-all");
+    setIncludeDeleted(false);
+    setActiveViewId("system-default");
+    persistViewId("system-default");
     setPage(1);
   };
 
@@ -486,11 +495,12 @@ export const CertificatesTable = ({
     (viewId: string, filters: TInventoryViewFilters | TSystemViewFilters) => {
       setActiveViewId(viewId);
       persistViewId(viewId);
+      setIncludeDeleted(Boolean(filters.includeDeleted));
       setAppliedFilters([]);
       setPendingFilters([]);
       setPage(1);
 
-      if (viewId === "system-all") {
+      if (viewId === "system-default" || viewId === "system-all") {
         // do nothing
       } else if (viewId === "system-expiring-7d") {
         const now = new Date();
@@ -527,6 +537,10 @@ export const CertificatesTable = ({
       } else if (viewId === "system-revoked") {
         setAppliedFilters([
           { id: "sv-status", field: "status", operator: "in", value: [CertStatus.REVOKED] }
+        ]);
+      } else if (viewId === "system-deleted") {
+        setAppliedFilters([
+          { id: "sv-status", field: "status", operator: "in", value: [CertStatus.DELETED] }
         ]);
       } else if (viewId === "system-pqc") {
         setAppliedFilters([
@@ -694,7 +708,7 @@ export const CertificatesTable = ({
     if (hasRestoredView || !viewsData) return;
     setHasRestoredView(true);
 
-    if (!activeViewId || activeViewId === "system-all") return;
+    if (!activeViewId || activeViewId === "system-default") return;
 
     const systemView = viewsData.systemViews.find((v) => v.id === activeViewId);
     if (systemView) {
@@ -714,8 +728,8 @@ export const CertificatesTable = ({
       return;
     }
 
-    setActiveViewId("system-all");
-    persistViewId("system-all");
+    setActiveViewId("system-default");
+    persistViewId("system-default");
   }, [viewsData, hasRestoredView, handleSelectView]);
 
   const handleExportCSV = () => {
@@ -805,7 +819,7 @@ export const CertificatesTable = ({
 
         {canReadViews && (
           <ViewsDropdown
-            activeViewId={activeViewId}
+            activeViewId={activeViewId ?? (includeDeleted ? "system-all" : null)}
             systemViews={viewsData?.systemViews || []}
             sharedViews={viewsData?.sharedViews || []}
             customViews={viewsData?.customViews || []}
@@ -898,6 +912,7 @@ export const CertificatesTable = ({
                   const { variant, label } = getCertValidUntilBadgeDetails(certificate.notAfter);
                   const displayStatus = getCertificateDisplayStatus(certificate);
                   const isRevoked = certificate.status === CertStatus.REVOKED;
+                  const isDeleted = Boolean(certificate.deletedAt);
                   const isExpired = new Date(certificate.notAfter) < new Date();
                   const isExpiringWithinDay = isExpiringWithinOneDay(certificate.notAfter);
                   const hasFailed = Boolean(certificate.renewalError);
@@ -926,6 +941,16 @@ export const CertificatesTable = ({
                     Boolean(certificate.caId) &&
                     (!certificateCaType ||
                       caSupportsCapability(certificateCaType, CaCapability.REVOKE_CERTIFICATES));
+                  const isRevocableAfterDeletion = canRevokeAfterDeletion(
+                    certificate,
+                    certificateCaType
+                  );
+                  const canOfferRevoke =
+                    canRevokeCertificate &&
+                    !isRevoked &&
+                    certificate.source !== CertSource.Discovered &&
+                    (!isDeleted || isRevocableAfterDeletion) &&
+                    !(isInventoryView && certificate.applicationId);
                   const canEditPkiSyncs =
                     permission.can(
                       ProjectPermissionPkiSyncActions.Edit,
@@ -933,6 +958,7 @@ export const CertificatesTable = ({
                     ) || canEditPkiSyncsAtApplication;
                   const canShowAutoRenewalIcon = Boolean(
                     !isInventoryView &&
+                    !isDeleted &&
                     certificate.profileId &&
                     certificate.hasPrivateKey !== false &&
                     !certificate.renewedByCertificateId &&
@@ -985,11 +1011,10 @@ export const CertificatesTable = ({
                       )}
                       {visibleColumns.has("health") && (
                         <TableCell>
-                          {isRevoked ? (
-                            <Badge variant="danger">Critical</Badge>
-                          ) : (
-                            <Badge variant={variant}>{label}</Badge>
-                          )}
+                          {isDeleted && isRevoked && <Badge variant="danger">Revoked</Badge>}
+                          {isDeleted && !isRevoked && <EmptyCell />}
+                          {!isDeleted && isRevoked && <Badge variant="danger">Critical</Badge>}
+                          {!isDeleted && !isRevoked && <Badge variant={variant}>{label}</Badge>}
                         </TableCell>
                       )}
                       {visibleColumns.has("issuedAt") && (
@@ -1112,44 +1137,57 @@ export const CertificatesTable = ({
                               })()}
                           </div>
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                variant="ghost"
-                                size="xs"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreHorizontalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
+                            <Tooltip open={isDeleted && !canOfferRevoke ? undefined : false}>
+                              <TooltipTrigger asChild>
+                                <span>
+                                  <DropdownMenuTrigger asChild>
+                                    <IconButton
+                                      variant="ghost"
+                                      size="xs"
+                                      isDisabled={isDeleted && !canOfferRevoke}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <MoreHorizontalIcon />
+                                    </IconButton>
+                                  </DropdownMenuTrigger>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{DELETED_CERTIFICATE_NO_ACTIONS}</TooltipContent>
+                            </Tooltip>
                             <DropdownMenuContent align="end" sideOffset={2}>
-                              <DropdownMenuItem
-                                isDisabled={!canReadCertificate}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("certificateExport", {
-                                    certificateId: certificate.id,
-                                    serialNumber: certificate.serialNumber
-                                  });
-                                }}
-                              >
-                                <FileOutputIcon />
-                                Export Certificate
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                isDisabled={!canReadCertificate}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("certificateCert", {
-                                    serialNumber: certificate.serialNumber
-                                  });
-                                }}
-                              >
-                                <EyeIcon />
-                                View Details
-                              </DropdownMenuItem>
+                              {!isDeleted && (
+                                <DropdownMenuItem
+                                  isDisabled={!canReadCertificate}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("certificateExport", {
+                                      certificateId: certificate.id,
+                                      serialNumber: certificate.serialNumber
+                                    });
+                                  }}
+                                >
+                                  <FileOutputIcon />
+                                  Export Certificate
+                                </DropdownMenuItem>
+                              )}
+                              {!isDeleted && (
+                                <DropdownMenuItem
+                                  isDisabled={!canReadCertificate}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("certificateCert", {
+                                      serialNumber: certificate.serialNumber
+                                    });
+                                  }}
+                                >
+                                  <EyeIcon />
+                                  View Details
+                                </DropdownMenuItem>
+                              )}
                               {(() => {
                                 const canManageRenewal =
                                   !isInventoryView &&
+                                  !isDeleted &&
                                   certificate.profileId &&
                                   certificate.hasPrivateKey !== false &&
                                   !certificate.renewedByCertificateId &&
@@ -1200,6 +1238,7 @@ export const CertificatesTable = ({
                               {(() => {
                                 const canDisableRenewal =
                                   !isInventoryView &&
+                                  !isDeleted &&
                                   certificate.profileId &&
                                   certificate.hasPrivateKey !== false &&
                                   !certificate.renewedByCertificateId &&
@@ -1229,6 +1268,7 @@ export const CertificatesTable = ({
                               {(() => {
                                 const isRenewable =
                                   !isInventoryView &&
+                                  !isDeleted &&
                                   !certificate.renewedByCertificateId &&
                                   !isRevoked &&
                                   !isExpired;
@@ -1273,6 +1313,7 @@ export const CertificatesTable = ({
                                 );
                               })()}
                               {!isInventoryView &&
+                                !isDeleted &&
                                 certificate.status === CertStatus.ACTIVE &&
                                 !certificate.renewedByCertificateId &&
                                 certificate.source !== CertSource.Discovered && (
@@ -1290,26 +1331,21 @@ export const CertificatesTable = ({
                                     Manage PKI Syncs
                                   </DropdownMenuItem>
                                 )}
-                              {hasProjectRole("admin") && !certificate.applicationId && (
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setAssignTargetId(certificate.id);
-                                  }}
-                                >
-                                  <BoxIcon />
-                                  Assign to Application
-                                </DropdownMenuItem>
-                              )}
+                              {hasProjectRole("admin") &&
+                                !isDeleted &&
+                                !certificate.applicationId && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAssignTargetId(certificate.id);
+                                    }}
+                                  >
+                                    <BoxIcon />
+                                    Assign to Application
+                                  </DropdownMenuItem>
+                                )}
                               {(() => {
-                                if (
-                                  !canRevokeCertificate ||
-                                  isRevoked ||
-                                  certificate.source === CertSource.Discovered ||
-                                  (isInventoryView && certificate.applicationId)
-                                ) {
-                                  return null;
-                                }
+                                if (!canOfferRevoke) return null;
 
                                 return (
                                   <DropdownMenuItem
@@ -1327,49 +1363,28 @@ export const CertificatesTable = ({
                                   </DropdownMenuItem>
                                 );
                               })()}
-                              {!(isInventoryView && certificate.applicationId) &&
-                                (() => {
-                                  const deletionBlockReason = getCertificateDeletionBlockReason(
-                                    certificate,
-                                    canRevokeCertificate
-                                  );
-
-                                  const item = (
-                                    <DropdownMenuItem
-                                      variant="danger"
-                                      isDisabled={
-                                        !canDeleteCertificate || Boolean(deletionBlockReason)
-                                      }
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePopUpOpen("deleteCertificate", {
-                                          certificateId: certificate.id,
-                                          commonName: certificate.commonName
-                                        });
-                                      }}
-                                    >
-                                      <Trash2Icon />
-                                      Delete Certificate
-                                    </DropdownMenuItem>
-                                  );
-
-                                  if (!deletionBlockReason) return item;
-
-                                  return (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div>{item}</div>
-                                      </TooltipTrigger>
-                                      <TooltipContent
-                                        side="left"
-                                        sideOffset={20}
-                                        className="max-w-72"
-                                      >
-                                        {deletionBlockReason}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  );
-                                })()}
+                              {!isDeleted && !(isInventoryView && certificate.applicationId) && (
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  isDisabled={!canDeleteCertificate}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("deleteCertificate", {
+                                      certificateId: certificate.id,
+                                      applicationId: certificate.applicationId,
+                                      commonName: certificate.commonName,
+                                      status: certificate.status,
+                                      notAfter: certificate.notAfter,
+                                      hasPrivateKey: certificate.hasPrivateKey,
+                                      canRevoke: canRevokeCertificate,
+                                      isRevocableAfterDeletion
+                                    });
+                                  }}
+                                >
+                                  <Trash2Icon />
+                                  Delete Certificate
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -1409,6 +1424,7 @@ export const CertificatesTable = ({
         isOpen={isSaveViewOpen}
         onOpenChange={setIsSaveViewOpen}
         filters={pendingFilters.length > 0 ? pendingFilters : appliedFilters}
+        includeDeleted={includeDeleted}
         onViewCreated={(viewId, viewFilters) => {
           handleSelectView(viewId, viewFilters);
         }}

@@ -3,7 +3,6 @@ import { Knex } from "knex";
 import forge from "node-forge";
 import RE2 from "re2";
 
-import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -16,12 +15,16 @@ import {
 import { TCertificateSource, toX509Certificate } from "@app/services/certificate-common/certificate-parse-utils";
 
 import { extractDnParts } from "../certificate-authority/certificate-authority-fns";
+import type { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
+import type { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import type { TPkiCollectionItemDALFactory } from "../pki-collection/pki-collection-item-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";
+import type { TCertificateBodyDALFactory } from "./certificate-body-dal";
 import type { TCertificateDALFactory } from "./certificate-dal";
+import type { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
-  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertSignatureAlgorithm,
@@ -530,6 +533,82 @@ export const extractExternallyIssuedCertificateFields = (
   };
 };
 
+export const resolveCertificateStatus = (certificate: {
+  status: string;
+  notAfter: Date;
+  renewedByCertificateId?: string | null;
+}): CertStatus => {
+  if (certificate.status === CertStatus.REVOKED) return CertStatus.REVOKED;
+  if (new Date(certificate.notAfter).getTime() <= Date.now()) return CertStatus.EXPIRED;
+  if (certificate.renewedByCertificateId) return CertStatus.RENEWED;
+  return CertStatus.ACTIVE;
+};
+
+type TDeletableCertificate = {
+  friendlyName?: string | null;
+  commonName?: string | null;
+  serialNumber: string;
+  deletedAt?: Date | null;
+};
+
+export const getCertificateDisplayName = (certificate: Omit<TDeletableCertificate, "deletedAt">) =>
+  certificate.friendlyName || certificate.commonName || certificate.serialNumber;
+
+export const assertCertificateNotDeleted = (
+  certificate: TDeletableCertificate,
+  consequence = "It can no longer be renewed or changed."
+) => {
+  if (!certificate.deletedAt) return;
+
+  throw new BadRequestError({
+    message: `Certificate '${getCertificateDisplayName(certificate)}' was deleted on ${new Date(certificate.deletedAt).toISOString()}. ${consequence}`
+  });
+};
+
+export const assertCertificateMaterialAvailable = (certificate: TDeletableCertificate) =>
+  assertCertificateNotDeleted(certificate, "Its certificate and private key are no longer available.");
+
+export const softDeleteCertificates = async (
+  { certificateIds, actorType, actorId }: { certificateIds: string[]; actorType: string; actorId?: string | null },
+  {
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateRequestDAL,
+    pkiCollectionItemDAL,
+    certificateSyncDAL
+  }: {
+    certificateDAL: Pick<TCertificateDALFactory, "update">;
+    certificateBodyDAL: Pick<TCertificateBodyDALFactory, "delete">;
+    certificateSecretDAL: Pick<TCertificateSecretDALFactory, "delete">;
+    certificateRequestDAL: Pick<TCertificateRequestDALFactory, "update">;
+    pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "delete">;
+    certificateSyncDAL: Pick<TCertificateSyncDALFactory, "find">;
+  },
+  tx: Knex
+) => {
+  if (certificateIds.length === 0) return { deletedCertificates: [], pkiSyncIdsHoldingCertificates: [] };
+
+  const deletedCertificates = await certificateDAL.update(
+    { $in: { id: certificateIds }, deletedAt: null },
+    { deletedAt: new Date(), deletedByActorType: actorType, deletedByActorId: actorId ?? null },
+    tx
+  );
+  const deletedIds = deletedCertificates.map((cert) => cert.id);
+  if (deletedIds.length === 0) return { deletedCertificates, pkiSyncIdsHoldingCertificates: [] };
+
+  await certificateBodyDAL.delete({ $in: { certId: deletedIds } }, tx);
+  await certificateSecretDAL.delete({ $in: { certId: deletedIds } }, tx);
+  await certificateRequestDAL.update({ $in: { certificateId: deletedIds } }, { encryptedPrivateKey: null }, tx);
+  await pkiCollectionItemDAL.delete({ $in: { certId: deletedIds } }, tx);
+  const syncLinks = await certificateSyncDAL.find({ $in: { certificateId: deletedIds } }, { tx });
+
+  return {
+    deletedCertificates,
+    pkiSyncIdsHoldingCertificates: [...new Set(syncLinks.map((link) => link.pkiSyncId))]
+  };
+};
+
 export const linkRenewedCertificate = async (
   certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">,
   originalCertificateId: string,
@@ -543,20 +622,4 @@ export const linkRenewedCertificate = async (
   }
 
   await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
-};
-
-export const resolveCertificateDeletionEligibility = (certificate: {
-  status: string;
-  notAfter: Date;
-  source?: string | null;
-}): CertificateDeletionEligibility | null => {
-  const hasExpired = new Date(certificate.notAfter).getTime() <= Date.now();
-
-  if (!hasExpired && certificate.status === CertStatus.REVOKED) return null;
-
-  if (certificate.source === CertificateSource.Discovered) return CertificateDeletionEligibility.Discovered;
-  if (certificate.source === CertificateSource.Imported) return CertificateDeletionEligibility.Imported;
-  if (hasExpired) return CertificateDeletionEligibility.Expired;
-
-  return null;
 };

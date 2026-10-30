@@ -32,6 +32,7 @@ import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { TSyncMetadata } from "../certificate-sync/certificate-sync-schemas";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import { getCertificateDisplayName } from "../certificate/certificate-fns";
 import { CertStatus } from "../certificate/certificate-types";
 import { encryptPkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
@@ -539,6 +540,15 @@ export const pkiSyncServiceFactory = ({
 
     const orderIds = [...new Set(certificates.map((cert) => cert.orderId))];
 
+    if (requireSyncable) {
+      const deleted = certificates.filter((cert) => cert.deletedAt);
+      if (deleted.length > 0) {
+        throw new BadRequestError({
+          message: `Deleted certificates can't be synced: ${deleted.map((cert) => `'${getCertificateDisplayName(cert)}'`).join(", ")}. Remove them and try again.`
+        });
+      }
+    }
+
     if (requireSyncable && expectedApplicationId) {
       const syncable = await certificateDAL.findCertificatesMatchingSyncFilters(
         { certificateOrderIds: orderIds },
@@ -576,9 +586,14 @@ export const pkiSyncServiceFactory = ({
     const now = new Date();
     const ineligibleReasons = certificates
       .filter(
-        (cert) => cert.status !== CertStatus.ACTIVE || cert.notAfter <= now || Boolean(cert.renewedByCertificateId)
+        (cert) =>
+          Boolean(cert.deletedAt) ||
+          cert.status !== CertStatus.ACTIVE ||
+          cert.notAfter <= now ||
+          Boolean(cert.renewedByCertificateId)
       )
       .map((cert) => {
+        if (cert.deletedAt) return `'${cert.commonName}' was deleted`;
         if (cert.status === CertStatus.REVOKED) return `'${cert.commonName}' is revoked`;
         if (cert.renewedByCertificateId)
           return `'${cert.commonName}' has been renewed, so link the certificate that replaced it instead`;

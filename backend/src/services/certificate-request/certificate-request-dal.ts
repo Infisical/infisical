@@ -11,6 +11,7 @@ import {
 } from "@app/lib/knex/permission-filter-utils";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { CertificateRequestStatus } from "./certificate-request-types";
@@ -35,6 +36,7 @@ type TCertificateRequestQueryResult = TCertificateRequests & {
   certId: string | null;
   certSerialNumber: string | null;
   certStatus: string | null;
+  certDeletedAt: Date | null;
   profileName: string | null;
 };
 
@@ -62,17 +64,19 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         .select(db.ref("id").withSchema(TableName.Certificate).as("certId"))
         .select(db.ref("serialNumber").withSchema(TableName.Certificate).as("certSerialNumber"))
         .select(db.ref("status").withSchema(TableName.Certificate).as("certStatus"))
+        .select(db.ref("deletedAt").withSchema(TableName.Certificate).as("certDeletedAt"))
         .first()) as TCertificateRequestQueryResult | undefined;
 
       if (!result) return null;
 
-      const { certId, certSerialNumber, certStatus, profileName, ...certificateRequestData } = result;
+      const { certId, certSerialNumber, certStatus, certDeletedAt, profileName, ...certificateRequestData } = result;
 
       const certificate: TCertificates | null = certId
         ? ({
             id: certId,
             serialNumber: certSerialNumber,
-            status: certStatus
+            status: certStatus,
+            deletedAt: certDeletedAt
           } as TCertificates)
         : null;
 
@@ -391,6 +395,7 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         .select(db.ref("id").withSchema(TableName.Certificate).as("certId"))
         .select(db.ref("serialNumber").withSchema(TableName.Certificate).as("certSerialNumber"))
         .select(db.ref("status").withSchema(TableName.Certificate).as("certStatus"))
+        .select(db.ref("deletedAt").withSchema(TableName.Certificate).as("certDeletedAt"))
         .where(`${TableName.CertificateRequests}.projectId`, projectId);
 
       if (search) {
@@ -433,13 +438,20 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
         .limit(limit)) as TCertificateRequestQueryResult[];
 
       return results.map((row): TCertificateRequestWithCertificate => {
-        const { certId, certSerialNumber, certStatus, profileName: rowProfileName, ...certificateRequestData } = row;
+        const {
+          certId,
+          certSerialNumber,
+          certStatus,
+          certDeletedAt,
+          profileName: rowProfileName,
+          ...certificateRequestData
+        } = row;
 
         const certificate: TCertificates | null = certId
           ? ({
               id: certId,
               serialNumber: certSerialNumber,
-              status: certStatus
+              status: certDeletedAt ? CertStatus.DELETED : certStatus
             } as TCertificates)
           : null;
 

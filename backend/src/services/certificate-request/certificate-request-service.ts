@@ -366,14 +366,15 @@ export const certificateRequestServiceFactory = ({
     } | null;
 
     // If no certificate is attached, return basic info
-    if (!certificateRequest.certificate) {
+    if (!certificateRequest.certificate || certificateRequest.certificate.deletedAt) {
       return {
         certificateRequest: {
           status: certificateRequest.status as CertificateRequestStatus,
           certificate: null,
-          certificateId: null,
+          certificateId: certificateRequest.certificate?.id ?? null,
           privateKey: null,
-          serialNumber: null,
+          serialNumber: certificateRequest.certificate?.serialNumber ?? null,
+          certificateDeletedAt: certificateRequest.certificate?.deletedAt ?? null,
           errorMessage: certificateRequest.errorMessage || null,
           pendingMessage: certificateRequest.pendingMessage || null,
           commonName: certificateRequest.commonName || null,

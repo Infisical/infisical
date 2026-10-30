@@ -552,7 +552,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const { deletedCert, applicationName, deletionEligibility } = await server.services.certificate.deleteCert({
+      const { deletedCert, applicationName, statusAtDeletion } = await server.services.certificate.deleteCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -573,7 +573,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
             serialNumber: deletedCert.serialNumber,
             notAfter: deletedCert.notAfter.toISOString(),
             source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
-            deletionAllowedReason: deletionEligibility,
+            statusAtDeletion,
             applicationId: deletedCert.applicationId,
             applicationName
           }

@@ -2,21 +2,23 @@ import { createPrivateKey, generateKeyPairSync, webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
-import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { BadRequestError } from "@app/lib/errors";
 
 import {
+  assertCertificateMaterialAvailable,
+  assertCertificateNotDeleted,
   buildCertificateBundle,
   CertificateThumbprintAlgorithm,
   extractCertificateFields,
   extractExternallyIssuedCertificateFields,
+  getCertificateDisplayName,
   normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
   parsePemCertificateChain,
-  resolveCertificateDeletionEligibility
+  resolveCertificateStatus
 } from "./certificate-fns";
-import { CertExtendedKeyUsage, CertificateDeletionEligibility, CertKeyUsage, CertStatus } from "./certificate-types";
+import { CertExtendedKeyUsage, CertKeyUsage, CertStatus } from "./certificate-types";
 
 describe("normalizeThumbprint", () => {
   const sha1Hex = "a".repeat(40);
@@ -280,76 +282,50 @@ describe("extractExternallyIssuedCertificateFields", () => {
   });
 });
 
-describe("resolveCertificateDeletionEligibility", () => {
+describe("resolveCertificateStatus", () => {
   const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  it("allows an expired certificate", () => {
-    expect(resolveCertificateDeletionEligibility({ status: CertStatus.ACTIVE, notAfter: past })).toBe(
-      CertificateDeletionEligibility.Expired
+  it("derives revoked > expired > renewed > active from the stored columns", () => {
+    expect(resolveCertificateStatus({ status: CertStatus.REVOKED, notAfter: past })).toBe(CertStatus.REVOKED);
+    expect(
+      resolveCertificateStatus({ status: CertStatus.ACTIVE, notAfter: past, renewedByCertificateId: "next" })
+    ).toBe(CertStatus.EXPIRED);
+    expect(
+      resolveCertificateStatus({ status: CertStatus.ACTIVE, notAfter: future, renewedByCertificateId: "next" })
+    ).toBe(CertStatus.RENEWED);
+    expect(resolveCertificateStatus({ status: CertStatus.ACTIVE, notAfter: future })).toBe(CertStatus.ACTIVE);
+  });
+});
+
+describe("deleted certificate guards", () => {
+  const deletedAt = new Date("2026-10-20T14:38:27.000Z");
+  const certificate = { friendlyName: "web", commonName: "web.example.com", serialNumber: "0a1b2c" };
+
+  it("lets a certificate that was never deleted through", () => {
+    expect(() => assertCertificateMaterialAvailable(certificate)).not.toThrow();
+    expect(() => assertCertificateNotDeleted({ ...certificate, deletedAt: null })).not.toThrow();
+  });
+
+  it("refuses the certificate and private key of a deleted certificate, naming it and the date", () => {
+    expect(() => assertCertificateMaterialAvailable({ ...certificate, deletedAt })).toThrow(
+      new BadRequestError({
+        message:
+          "Certificate 'web' was deleted on 2026-10-20T14:38:27.000Z. Its certificate and private key are no longer available."
+      })
     );
   });
 
-  it("allows a discovered certificate that has not expired", () => {
-    expect(
-      resolveCertificateDeletionEligibility({
-        status: CertStatus.ACTIVE,
-        notAfter: future,
-        source: CertificateSource.Discovered
-      })
-    ).toBe(CertificateDeletionEligibility.Discovered);
-  });
-
-  it("allows an imported certificate that has not expired", () => {
-    expect(
-      resolveCertificateDeletionEligibility({
-        status: CertStatus.ACTIVE,
-        notAfter: future,
-        source: CertificateSource.Imported
-      })
-    ).toBe(CertificateDeletionEligibility.Imported);
-  });
-
-  it("blocks an issued certificate that has not expired", () => {
-    expect(
-      resolveCertificateDeletionEligibility({
-        status: CertStatus.ACTIVE,
-        notAfter: future,
-        source: CertificateSource.Issued
-      })
-    ).toBeNull();
-  });
-
-  it("blocks a certificate with no source, because issuance never records one", () => {
-    expect(resolveCertificateDeletionEligibility({ status: CertStatus.ACTIVE, notAfter: future })).toBeNull();
-  });
-
-  it("blocks a revoked certificate until it expires, so its serial stays on the CRL", () => {
-    expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: future })).toBeNull();
-  });
-
-  it("blocks a revoked certificate even when its source would exempt it", () => {
-    expect(
-      resolveCertificateDeletionEligibility({
-        status: CertStatus.REVOKED,
-        notAfter: future,
-        source: CertificateSource.Imported
-      })
-    ).toBeNull();
-
-    expect(
-      resolveCertificateDeletionEligibility({
-        status: CertStatus.REVOKED,
-        notAfter: future,
-        source: CertificateSource.Discovered
-      })
-    ).toBeNull();
-  });
-
-  it("allows a revoked certificate once it has expired", () => {
-    expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: past })).toBe(
-      CertificateDeletionEligibility.Expired
+  it("refuses to act on a deleted certificate", () => {
+    expect(() => assertCertificateNotDeleted({ ...certificate, deletedAt })).toThrow(BadRequestError);
+    expect(() => assertCertificateNotDeleted({ ...certificate, deletedAt })).toThrow(
+      "Certificate 'web' was deleted on 2026-10-20T14:38:27.000Z. It can no longer be renewed or changed."
     );
+  });
+
+  it("falls back to the common name and then the serial number when the name is empty", () => {
+    expect(getCertificateDisplayName({ ...certificate, friendlyName: "" })).toBe("web.example.com");
+    expect(getCertificateDisplayName({ ...certificate, friendlyName: "", commonName: "" })).toBe("0a1b2c");
   });
 });
 
