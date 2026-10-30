@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { type DateRange } from "react-day-picker";
 
+import {
+  FilterBar,
+  type FilterBarField,
+  type FilterBarFilter
+} from "@app/components/v4/patterns/filter-bar";
 import { Button } from "@app/components/v4/ui/button";
 import { Calendar } from "@app/components/v4/ui/calendar";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
@@ -11,7 +16,6 @@ import { DataList } from "@app/components/v4/ui/list";
 import { MiddleTruncate } from "@app/components/v4/ui/middle-truncate";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
-import { Select } from "@app/components/v4/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -167,41 +171,66 @@ const ranges = [
   { value: "7d", label: "7d", ms: 7 * 24 * 3600 * 1000, title: "last 7 days" },
   { value: "30d", label: "30d", ms: window30d, title: "last 30 days" }
 ] as const;
-const eventOptions = [
-  { value: "all", label: "All events" },
-  ...[
-    "get-secrets",
-    "get-secret",
-    "create-secret",
-    "update-secret",
-    "delete-secret",
-    "login-identity-universal-auth",
-    "create-identity-universal-auth-client-secret",
-    "add-workspace-member",
-    "cmek-encrypt",
-    "cmek-decrypt",
-    "issue-cert"
-  ].map((value) => ({ value, label: value }))
+const filterFields: FilterBarField[] = [
+  {
+    key: "event",
+    label: "Event type",
+    type: "select",
+    searchable: true,
+    options: [
+      "get-secrets",
+      "get-secret",
+      "create-secret",
+      "update-secret",
+      "delete-secret",
+      "login-identity-universal-auth",
+      "create-identity-universal-auth-client-secret",
+      "add-workspace-member",
+      "cmek-encrypt",
+      "cmek-decrypt",
+      "issue-cert"
+    ].map((value) => ({ value, label: value }))
+  },
+  {
+    key: "actor",
+    label: "Actor",
+    type: "multi-select",
+    searchable: true,
+    options: [
+      ...people.map((actor) => ({ value: actor.name, label: actor.name, group: "Users" })),
+      ...machines.map((actor) => ({
+        value: actor.name,
+        label: actor.name,
+        group: "Machine identities"
+      }))
+    ]
+  },
+  {
+    key: "project",
+    label: "Project",
+    type: "select",
+    options: [...secretProjects, "internal-pki", "kms-keys"].map((value) => ({
+      value,
+      label: value
+    }))
+  },
+  {
+    key: "environment",
+    label: "Environment",
+    type: "select",
+    options: [
+      { value: "production", label: "Production" },
+      { value: "staging", label: "Staging" },
+      { value: "development", label: "Development" }
+    ]
+  }
 ];
-const actorOptions = [
-  { value: "all", label: "All actors" },
-  ...people.map((actor) => ({ value: actor.name, label: actor.name, group: "Users" })),
-  ...machines.map((actor) => ({
-    value: actor.name,
-    label: actor.name,
-    group: "Machine identities"
-  }))
-];
-const projectOptions = [
-  { value: "all", label: "All projects" },
-  ...[...secretProjects, "internal-pki", "kms-keys"].map((value) => ({ value, label: value }))
-];
-const environmentOptions = [
-  { value: "all", label: "All environments" },
-  { value: "production", label: "Production" },
-  { value: "staging", label: "Staging" },
-  { value: "development", label: "Development" }
-];
+const filterValue = (entry: AuditEvent, key: string) => {
+  if (key === "event") return entry.event;
+  if (key === "actor") return entry.actor.name;
+  if (key === "project") return entry.project;
+  return entry.environment;
+};
 
 type Row = AuditEvent | { id: string; placeholder: true };
 const isPlaceholder = (row: Row): row is { id: string; placeholder: true } => "placeholder" in row;
@@ -312,10 +341,7 @@ export default function AuditLogs() {
   const [custom, setCustom] = useState<DateRange>();
   const [opened, setOpened] = useState<AuditEvent | null>(null);
   const columns = useMemo(() => makeColumns(setOpened), []);
-  const [eventType, setEventType] = useState("all");
-  const [actor, setActor] = useState("all");
-  const [project, setProject] = useState("all");
-  const [environment, setEnvironment] = useState("all");
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [search, setSearch] = useState("");
   const [loaded, setLoaded] = useState(page);
   const [frame, setFrame] = useState(initialFrame);
@@ -339,10 +365,10 @@ export default function AuditLogs() {
       if (entry.at < active.from) break;
       const matches =
         entry.at <= active.to &&
-        (eventType === "all" || entry.event === eventType) &&
-        (actor === "all" || entry.actor.name === actor) &&
-        (project === "all" || entry.project === project) &&
-        (environment === "all" || entry.environment === environment) &&
+        filters.every(
+          (filter) =>
+            !filter.values.length || filter.values.includes(filterValue(entry, filter.field) ?? "")
+        ) &&
         (!query ||
           [entry.event, entry.actor.name, entry.project, entry.target, entry.source].some((value) =>
             value?.toLowerCase().includes(query)
@@ -350,7 +376,7 @@ export default function AuditLogs() {
       if (matches) result.push(entry);
     }
     return result;
-  }, [active.from, active.to, eventType, actor, project, environment, search]);
+  }, [active.from, active.to, filters, search]);
 
   const reset = () => {
     setLoaded(page);
@@ -373,22 +399,10 @@ export default function AuditLogs() {
   }, [loadingMore]);
 
   const shown = matching.slice(0, loaded);
-  const filtered =
-    eventType !== "all" ||
-    actor !== "all" ||
-    project !== "all" ||
-    environment !== "all" ||
-    search !== "";
+  const filtered = filters.some((filter) => filter.values.length > 0) || search !== "";
   const clear = () => {
-    setEventType("all");
-    setActor("all");
-    setProject("all");
-    setEnvironment("all");
+    setFilters([]);
     setSearch("");
-    reset();
-  };
-  const filter = (set: (value: string) => void) => (value: string) => {
-    set(value);
     reset();
   };
 
@@ -459,10 +473,18 @@ export default function AuditLogs() {
             />
           }
         />
-        <Inline gap={8} align="center">
-          <div style={{ flex: 1 }}>
+        <FilterBar
+          label="Audit log filters"
+          fields={filterFields}
+          value={filters}
+          onChange={(next) => {
+            setFilters(next);
+            reset();
+          }}
+          search={
             <Input
               icon="search"
+              aria-label="Search events"
               placeholder="Search events, actors and projects"
               kbd="/"
               value={search}
@@ -472,42 +494,8 @@ export default function AuditLogs() {
                 setFrame(initialFrame);
               }}
             />
-          </div>
-          <div style={{ width: 184 }}>
-            <Select
-              aria-label="Event type"
-              options={eventOptions}
-              value={eventType}
-              onChange={filter(setEventType)}
-              menuWidth={320}
-            />
-          </div>
-          <div style={{ width: 184 }}>
-            <Select
-              aria-label="Actor"
-              options={actorOptions}
-              value={actor}
-              onChange={filter(setActor)}
-              menuWidth={280}
-            />
-          </div>
-          <div style={{ width: 160 }}>
-            <Select
-              aria-label="Project"
-              options={projectOptions}
-              value={project}
-              onChange={filter(setProject)}
-            />
-          </div>
-          <div style={{ width: 184 }}>
-            <Select
-              aria-label="Environment"
-              options={environmentOptions}
-              value={environment}
-              onChange={filter(setEnvironment)}
-            />
-          </div>
-        </Inline>
+          }
+        />
         <Stack gap={12}>
           <Inline gap={16} align="center" justify="between">
             <Heading level={2} size="subsection">
@@ -520,7 +508,7 @@ export default function AuditLogs() {
             </Meta>
           </Inline>
           <DataTable<Row>
-            key={[active.from, active.to, eventType, actor, project, environment, search].join()}
+            key={[active.from, active.to, JSON.stringify(filters), search].join()}
             label={`Audit log, ${active.title}`}
             rows={refreshing ? placeholders : shown}
             columns={columns}

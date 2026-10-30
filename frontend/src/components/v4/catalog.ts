@@ -11,6 +11,7 @@ import { comboboxDefinition } from "./contracts/combobox";
 import { coverDefinition } from "./contracts/cover";
 import { dataGridDefinition } from "./contracts/data-grid";
 import { fileTreeDefinition } from "./contracts/file-tree";
+import { filterBarDefinition } from "./contracts/filter-bar";
 import { floatingActionBarDefinition } from "./contracts/floating-action-bar";
 import { iconDefinition } from "./contracts/icon";
 import { jsonDefinition } from "./contracts/json";
@@ -45,6 +46,7 @@ export const componentCatalog: readonly ComponentDefinition[] = [
   coverDefinition,
   dataGridDefinition,
   fileTreeDefinition,
+  filterBarDefinition,
   floatingActionBarDefinition,
   iconDefinition,
   jsonDefinition,

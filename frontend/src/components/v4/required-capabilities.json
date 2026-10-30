@@ -541,6 +541,19 @@
       ]
     },
     {
+      "id": "filter-bar",
+      "name": "FilterBar",
+      "kind": "pattern",
+      "exports": ["FilterBar"],
+      "variants": ["select", "multi-select", "date before/after", "text", "empty", "wrapped"],
+      "behavior": "Search plus Add filter menu; each applied filter is a removable chip opening its own picker",
+      "acceptance": [
+        "Chips name field and value",
+        "Focus moves to a neighbor on remove",
+        "Applied fields disabled in the menu"
+      ]
+    },
+    {
       "id": "floating-action-bar",
       "name": "FloatingActionBar",
       "kind": "composite",
