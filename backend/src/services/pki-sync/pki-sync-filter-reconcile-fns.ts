@@ -177,6 +177,29 @@ export const computePkiSyncCertificateDiff = async (
   return { matched, toLink, toUnlink };
 };
 
+// What the sync will hold after the edit. A filtered sync holds whatever its filters match; link
+// rows also carry a certificate on its way out and whatever a failed removal left behind.
+export const countCertificatesHeldAfterUpdate = async (
+  pkiSync: { id: string; projectId: string; applicationId?: string | null },
+  filters: TPkiSyncFilters | null | undefined,
+  {
+    certificateDAL,
+    certificateSyncDAL
+  }: {
+    certificateDAL: Pick<TCertificateDALFactory, "countCertificatesMatchingSyncFilters">;
+    certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findByPkiSyncId">;
+  }
+): Promise<number> => {
+  if (hasAnyPkiSyncFilter(filters) && pkiSync.applicationId) {
+    return certificateDAL.countCertificatesMatchingSyncFilters(filters, {
+      projectId: pkiSync.projectId,
+      applicationId: pkiSync.applicationId
+    });
+  }
+
+  return (await certificateSyncDAL.findByPkiSyncId(pkiSync.id)).length;
+};
+
 export const assertPkiSyncCanHoldMatchedCertificates = (pkiSync: TPkiSyncReconcileTarget, matchedCount: number) =>
   assertPkiSyncCanHoldCertificateCount(
     pkiSync.destination as PkiSync,

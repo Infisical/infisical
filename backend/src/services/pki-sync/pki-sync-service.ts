@@ -50,6 +50,7 @@ import {
   applyPkiSyncCertificateDiff,
   assertPkiSyncCanHoldMatchedCertificates,
   assertPkiSyncUnlinkAllowed,
+  countCertificatesHeldAfterUpdate,
   computePkiSyncCertificateDiff,
   findPkiSyncUnlinkIdsAtDestination,
   TPkiSyncReconcileTarget,
@@ -986,15 +987,10 @@ export const pkiSyncServiceFactory = ({
     if (syncOptions || destinationConfig) {
       const effectiveFilters = filters === undefined ? (pkiSync.filters as TPkiSyncFilters | null) : filters;
 
-      // Link rows also carry a certificate on its way out and whatever a failed removal left, and
-      // counting those blocks the edit that fixes them.
-      const heldCount =
-        hasAnyPkiSyncFilter(effectiveFilters) && pkiSync.applicationId
-          ? await certificateDAL.countCertificatesMatchingSyncFilters(effectiveFilters, {
-              projectId: pkiSync.projectId,
-              applicationId: pkiSync.applicationId
-            })
-          : (await certificateSyncDAL.findByPkiSyncId(id)).length;
+      const heldCount = await countCertificatesHeldAfterUpdate(pkiSync, effectiveFilters, {
+        certificateDAL,
+        certificateSyncDAL
+      });
 
       assertPkiSyncCertificateCapsAllowCount(
         pkiSync.destination,

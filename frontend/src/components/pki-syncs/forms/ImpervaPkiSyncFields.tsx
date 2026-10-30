@@ -14,8 +14,8 @@ import {
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 import { useListImpervaSites } from "@app/hooks/api/pkiSyncs/queries";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncConnectionField } from "./PkiSyncConnectionField";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 type TImpervaForm = TPkiSyncForm & { destination: PkiSync.Imperva };
 
