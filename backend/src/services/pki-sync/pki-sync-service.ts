@@ -50,7 +50,6 @@ import {
   applyPkiSyncCertificateDiff,
   assertPkiSyncCanHoldMatchedCertificates,
   assertPkiSyncUnlinkAllowed,
-  countCertificatesHeldAfterUpdate,
   computePkiSyncCertificateDiff,
   findPkiSyncUnlinkIdsAtDestination,
   TPkiSyncReconcileTarget,
@@ -985,24 +984,18 @@ export const pkiSyncServiceFactory = ({
     });
 
     if (syncOptions || destinationConfig) {
-      const effectiveFilters = filters === undefined ? (pkiSync.filters as TPkiSyncFilters | null) : filters;
-
-      const heldCount = await countCertificatesHeldAfterUpdate(pkiSync, effectiveFilters, {
-        certificateDAL,
-        certificateSyncDAL
-      });
-
+      const existingCount = (await certificateSyncDAL.findByPkiSyncId(id)).length;
       assertPkiSyncCertificateCapsAllowCount(
         pkiSync.destination,
         effectiveSyncOptions,
         effectiveDestinationConfig,
-        heldCount
+        existingCount
       );
       assertFiltersCannotExceedCertificateCap(
         pkiSync.destination,
         effectiveSyncOptions,
         effectiveDestinationConfig,
-        effectiveFilters
+        filters === undefined ? (pkiSync.filters as TPkiSyncFilters | null) : filters
       );
     }
 
