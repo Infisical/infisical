@@ -263,7 +263,8 @@ export function MultiSelect({
   };
   return (
     <Popover open={open && !disabled} onOpenChange={changeOpen}>
-      {anchorRef && <PopoverAnchor virtualRef={anchorRef} />}
+      {/* Radix's trigger can re-claim the anchor on a later commit (StrictMode ref replays, re-mounts in a Dialog) and a virtual anchor only re-announces when its element changes, so remounting it on open re-points the popper at the field. */}
+      {anchorRef && <PopoverAnchor key={open ? "open" : "closed"} virtualRef={anchorRef} />}
       <PopoverTrigger
         ref={ref}
         asChild
