@@ -212,3 +212,9 @@ export const RoleBadges = ({
 export const Muted = ({ children }: { children: ReactNode }) => (
   <span className={styles.muted}>{children}</span>
 );
+
+export const FabDock = ({ active, children }: { active: boolean; children: ReactNode }) => (
+  <div className={styles.fabDock} data-active={active || undefined}>
+    {children}
+  </div>
+);

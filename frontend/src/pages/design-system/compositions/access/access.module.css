@@ -93,3 +93,15 @@ button.rowHint {
   background: none;
   cursor: default;
 }
+.fabDock {
+  position: sticky;
+  bottom: 0;
+  height: 0;
+  pointer-events: none;
+}
+.fabDock[data-active] {
+  height: calc(var(--v4-space-48) + var(--v4-space-16));
+}
+.fabDock > * {
+  pointer-events: auto;
+}

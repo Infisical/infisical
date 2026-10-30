@@ -31,7 +31,7 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { useAccess } from "../context";
 import { displayName, type OrgMember, type Role, roleName, SELF_USER_ID } from "../model";
 import { type AccessColumn, AccessTable } from "../table";
-import { Gate, ListToolbar, Muted, useCan, usePagedList } from "../ui";
+import { FabDock, Gate, ListToolbar, Muted, useCan, usePagedList } from "../ui";
 import { InviteUsersSheet } from "./invite-users-sheet";
 
 import styles from "../access.module.css";
@@ -452,26 +452,29 @@ export const OrgMembersTab = () => {
         />
         {!loading && list.pagination}
       </Stack>
-      <FloatingActionBar
-        placement="fixed"
-        label="Selected user actions"
-        count={selected.length}
-        total={data.orgMembers.filter((member) => member.membership).length}
-        onSelectAll={() =>
-          setSelected(data.orgMembers.flatMap((m) => (m.membership ? [m.membership.id] : [])))
-        }
-        onClear={() => setSelected([])}
-        noun={selected.length === 1 ? "user" : "users"}
-        actions={[
-          {
-            label: "Delete",
-            icon: "trash",
-            danger: true,
-            disabled: !can("member", "delete"),
-            onClick: () => selectedMembers.length && setBulkRemoving(selectedMembers)
+
+      <FabDock active={selected.length > 0}>
+        <FloatingActionBar
+          placement="contained"
+          label="Selected user actions"
+          count={selected.length}
+          total={data.orgMembers.filter((member) => member.membership).length}
+          onSelectAll={() =>
+            setSelected(data.orgMembers.flatMap((m) => (m.membership ? [m.membership.id] : [])))
           }
-        ]}
-      />
+          onClear={() => setSelected([])}
+          noun={selected.length === 1 ? "user" : "users"}
+          actions={[
+            {
+              label: "Delete",
+              icon: "trash",
+              danger: true,
+              disabled: !can("member", "delete"),
+              onClick: () => selectedMembers.length && setBulkRemoving(selectedMembers)
+            }
+          ]}
+        />
+      </FabDock>
       <InviteUsersSheet open={inviting} onOpenChange={setInviting} />
       <AlertDialog
         open={Boolean(removing)}
