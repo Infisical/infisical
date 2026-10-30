@@ -66,6 +66,7 @@ Exports: Popover, PopoverAnchor, PopoverContent, PopoverDescription, PopoverHead
 ## Behavior
 
 - Radix open/onOpenChange controls a trigger-anchored region with side/alignment placement. Content portals into V4Scope and honors descendant Escape ownership.
+- PopoverAnchor re-anchors on every open, so content placed against a custom anchor stays on it inside a Dialog or Sheet and under StrictMode, where the trigger can otherwise re-claim the anchor.
 
 ## Accessibility
 

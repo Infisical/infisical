@@ -452,7 +452,8 @@ export const baselineOverlays = [
     ],
     referenceNames: ["Popover"],
     behavior: [
-      "Radix open/onOpenChange controls a trigger-anchored region with side/alignment placement. Content portals into V4Scope and honors descendant Escape ownership."
+      "Radix open/onOpenChange controls a trigger-anchored region with side/alignment placement. Content portals into V4Scope and honors descendant Escape ownership.",
+      "PopoverAnchor re-anchors on every open, so content placed against a custom anchor stays on it inside a Dialog or Sheet and under StrictMode, where the trigger can otherwise re-claim the anchor."
     ],
     accessibility: [
       "Name the popover's purpose through a heading or aria-label. Focus moves in when it opens and back to the trigger when it closes. Choose modal behavior for the task."

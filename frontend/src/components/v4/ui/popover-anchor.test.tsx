@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { V4Scope } from "../scope";
 import { Combobox } from "./combobox";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./dialog";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./popover";
 
 let root: Root;
 let host: HTMLDivElement;
@@ -30,7 +31,7 @@ beforeEach(() => {
     this: Element
   ) {
     const anchored =
-      this.matches('[data-slot="field-anchor"]') ||
+      this.matches('[data-slot="field-anchor"], [data-slot="popover-anchor"]') ||
       (this.tagName === "BUTTON" && this.getAttribute("role") === "combobox");
     const { x, y, width, height } = anchored ? fieldRect : { x: 0, y: 0, width: 0, height: 0 };
     return DOMRect.fromRect({ x, y, width, height });
@@ -100,3 +101,44 @@ it.each([false, true])(
     expect(gap).toBeLessThanOrEqual(8);
   }
 );
+
+it("anchors a generic PopoverAnchor inside a Dialog", async () => {
+  await React.act(async () =>
+    root.render(
+      <React.StrictMode>
+        <V4Scope>
+          <Dialog open>
+            <DialogContent>
+              <DialogTitle>Edit value</DialogTitle>
+              <DialogDescription>Reference suggestions.</DialogDescription>
+              <Popover>
+                <PopoverAnchor asChild>
+                  <div>
+                    <PopoverTrigger>Suggest</PopoverTrigger>
+                  </div>
+                </PopoverAnchor>
+                <PopoverContent>Suggestions</PopoverContent>
+              </Popover>
+            </DialogContent>
+          </Dialog>
+        </V4Scope>
+      </React.StrictMode>
+    )
+  );
+  await React.act(async () =>
+    [...document.querySelectorAll("button")]
+      .find((button) => button.textContent === "Suggest")
+      ?.click()
+  );
+  await React.act(
+    async () =>
+      new Promise((resolve) => {
+        setTimeout(resolve, 50);
+      })
+  );
+  const transform =
+    document.querySelector<HTMLElement>("[data-radix-popper-content-wrapper]")?.style.transform ??
+    "";
+  const [, x] = transform.match(/translate\((-?[\d.]+)px, (-?[\d.]+)px\)/) ?? [];
+  expect(Number(x)).toBe(fieldRect.x);
+});
