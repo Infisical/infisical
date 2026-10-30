@@ -860,11 +860,14 @@ const ImportSecretsContent = ({
         }
       });
 
-      const sumForSuccessEnvs = (counts: Map<string, number>) =>
-        successEnvSlugs.reduce((count, slug) => count + (counts.get(slug) ?? 0), 0);
-      const skippedCount = sumForSuccessEnvs(skippedCountByEnv);
-      const createdCount = sumForSuccessEnvs(createdCountByEnv);
-      const updatedCount = sumForSuccessEnvs(updatedCountByEnv);
+      const skippedCount = successEnvSlugs.reduce(
+        (count, slug) => count + (skippedCountByEnv.get(slug) ?? 0),
+        0
+      );
+      const sumAll = (counts: Map<string, number>) =>
+        [...counts.values()].reduce((count, value) => count + value, 0);
+      const createdCount = sumAll(createdCountByEnv);
+      const updatedCount = sumAll(updatedCountByEnv);
       const existingDetail = [
         updatedCount &&
           `${updatedCount} existing ${updatedCount === 1 ? "secret" : "secrets"} overwritten`,
@@ -873,7 +876,7 @@ const ImportSecretsContent = ({
       ]
         .filter(Boolean)
         .join(", ");
-      if (successEnvs.length && createdCount) {
+      if (createdCount) {
         notifySecretsCreated(createdCount, createdSecrets, existingDetail || undefined);
       } else if (successEnvs.length) {
         createNotification({
