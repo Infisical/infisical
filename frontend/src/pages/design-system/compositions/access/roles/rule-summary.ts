@@ -1,6 +1,6 @@
-import type { PermissionSubject } from "./catalog";
+import type { Scope } from "../model";
 import { CONDITION_OPTIONS } from "./conditions";
-import type { Condition } from "./permissions-model";
+import { actionLabel, type Condition } from "./permissions-model";
 
 const FALLBACK_LABELS: Record<string, string> = {
   environment: "environment",
@@ -33,26 +33,5 @@ const conditionText = (subject: string, condition: Condition) => {
 export const conditionsText = (subject: string, conditions: readonly Condition[]) =>
   conditions.map((condition) => conditionText(subject, condition)).join(" and ");
 
-export type Verb = "view" | "create" | "edit" | "delete" | "other";
-export const VERBS: { id: Verb; label: string }[] = [
-  { id: "view", label: "View" },
-  { id: "create", label: "Create" },
-  { id: "edit", label: "Edit" },
-  { id: "delete", label: "Delete" },
-  { id: "other", label: "Other" }
-];
-
-export const verbOf = (action: string): Verb => {
-  if (/^(read|describe|list|view)/i.test(action)) return "view";
-  if (/^create/i.test(action)) return "create";
-  if (/^edit/i.test(action)) return "edit";
-  if (/^delete/i.test(action)) return "delete";
-  return "other";
-};
-
-export const matrixActions = (config: PermissionSubject) =>
-  config.actions.filter(
-    (action) =>
-      !(config.subject === "secrets" && action.value === "read") &&
-      action.value !== "grant-privileges"
-  );
+export const actionsText = (scope: Scope, subject: string, actions: readonly string[]) =>
+  actions.map((action) => actionLabel(scope, subject, action)).join(", ");

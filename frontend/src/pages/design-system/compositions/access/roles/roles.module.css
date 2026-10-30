@@ -77,41 +77,6 @@
   align-items: center;
   gap: var(--v4-space-8);
 }
-.rules {
-  display: flex;
-  flex-direction: column;
-  gap: var(--v4-space-12);
-  padding: var(--v4-space-12);
-  background: var(--v4-tint);
-}
-.or {
-  display: flex;
-  align-items: center;
-  gap: var(--v4-space-12);
-}
-.orLine {
-  flex: 1 1 auto;
-  border-top: var(--v4-size-control-border) solid var(--v4-line);
-}
-.rule {
-  padding: var(--v4-space-16) var(--v4-space-20);
-  border: var(--v4-size-control-border) solid var(--v4-line);
-  background: var(--v4-surface);
-}
-.ruleRow {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--v4-space-8);
-}
-.ruleEffect {
-  flex: none;
-  width: 128px;
-}
-.ruleActions {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
 .conditions {
   margin-top: var(--v4-space-24);
   padding-top: var(--v4-space-12);
@@ -453,118 +418,17 @@
   align-items: center;
   gap: var(--v4-space-8);
 }
+.ruleSheetRow {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--v4-space-12);
+}
 .legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--v4-space-16);
   margin: 0;
-  padding: 0;
-  list-style: none;
   color: var(--v4-muted);
   font-family: var(--v4-type-small-font-family);
   font-size: var(--v4-type-small-font-size);
   line-height: var(--v4-type-small-line-height);
   font-weight: var(--v4-type-small-font-weight);
   letter-spacing: var(--v4-type-small-letter-spacing);
-}
-.matrixTitle {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.legendCheck {
-  display: inline-flex;
-  pointer-events: none;
-}
-.matrixCell {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--v4-space-4);
-}
-.mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--v4-space-24);
-  height: var(--v4-space-24);
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: default;
-}
-.mark:focus-visible {
-  outline: var(--v4-size-focus-ring) solid var(--v4-focus-ring);
-  outline-offset: calc(var(--v4-size-focus-ring) * -1);
-}
-.legendAbsent {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--v4-size-icon-lg);
-  color: var(--v4-faint);
-}
-.mark[data-tone="partial"] {
-  color: var(--v4-muted);
-}
-.mark[data-tone="conditional"] {
-  color: var(--v4-warn);
-}
-.mark[data-tone="forbid"] {
-  color: var(--v4-bad);
-}
-.markList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--v4-space-2);
-  max-width: 320px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  overflow-wrap: anywhere;
-}
-.popoverTitle {
-  font-family: var(--v4-type-label-font-family);
-  font-size: var(--v4-type-label-font-size);
-  line-height: var(--v4-type-label-line-height);
-  font-weight: var(--v4-type-label-font-weight);
-}
-.otherList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--v4-space-8);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.otherRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--v4-space-8);
-}
-.otherLabel {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--v4-space-8);
-  cursor: pointer;
-}
-.otherLabel > label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--v4-space-2);
-}
-.otherHint {
-  color: var(--v4-muted);
-  font-family: var(--v4-type-small-font-family);
-  font-size: var(--v4-type-small-font-size);
-  line-height: var(--v4-type-small-line-height);
-}
-.legend > li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--v4-space-4);
-}
-.legend .mark {
-  width: auto;
-  height: auto;
 }

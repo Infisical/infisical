@@ -27,7 +27,6 @@ import { Skeleton } from "@app/components/v4/ui/skeleton";
 import { useAccess } from "../context";
 import type { AccessData, Role, Scope } from "../model";
 import { Gate, RESTRICTED, useCan } from "../ui";
-import { type MatrixProps, PermissionMatrix } from "./permission-matrix";
 import {
   type PermissionErrors,
   type RolePermissions,
@@ -37,6 +36,7 @@ import {
 } from "./permissions-model";
 import { PolicyTemplateSheet } from "./policy-template-sheet";
 import { OrgRoleDialog, ProjectRoleSheet, type RoleDraft } from "./role-dialogs";
+import { RuleTable } from "./rule-table";
 import { VAULT_CONNECTIONS, VaultImportSheet } from "./vault-import-sheet";
 
 import styles from "./roles.module.css";
@@ -225,9 +225,10 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
   };
 
   const builtInNote = isCustom ? undefined : BUILT_IN;
+  const ruleStart = startsWith("conditions") ? "conditions" : undefined;
   const importMenu = scope === "project" && (
     <Gate allowed={editable} reason={reason}>
-      <DropdownMenu>
+      <DropdownMenu defaultOpen={startsWith("add-from-template")}>
         <DropdownMenuTrigger asChild>
           <Button type="button" variant="outline" iconRight="chev-down" disabled={!editable}>
             Import
@@ -248,17 +249,6 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
       </DropdownMenu>
     </Gate>
   );
-  const matrixProps: MatrixProps = {
-    scope,
-    draft,
-    subjects,
-    editable,
-    reason,
-    errors,
-    onChange: (next) => change(next),
-    initialSubject: startsWith("conditions") ? "secrets" : undefined,
-    initialShow: startsWith("add-policy") ? "all" : "granted"
-  };
 
   return (
     <Stack gap={24}>
@@ -346,7 +336,18 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
         </header>
         <div className={styles.panelBody}>
           {loading && <Skeleton lines={3} height={48} />}
-          {!loading && <PermissionMatrix {...matrixProps} />}
+          {!loading && (
+            <RuleTable
+              scope={scope}
+              draft={draft}
+              subjects={subjects}
+              editable={editable}
+              reason={reason}
+              errors={errors}
+              onChange={change}
+              start={startsWith("add-policy") ? "add" : ruleStart}
+            />
+          )}
         </div>
       </section>
       {overlay === "edit" &&
