@@ -23,7 +23,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
@@ -367,13 +367,12 @@ const DetailSkeleton = () => (
       <Skeleton width={260} height={28} />
       <Skeleton width={360} height={14} />
     </Stack>
-    <div className={styles.detailGrid}>
-      <Skeleton height={360} />
+    <DetailLayout asideLabel="Details" aside={<Skeleton height={360} />}>
       <Stack gap={24}>
         <Skeleton height={160} />
         <Skeleton height={200} />
       </Stack>
-    </div>
+    </DetailLayout>
   </Stack>
 );
 
@@ -459,12 +458,16 @@ export const ProjectIdentityDetail = ({ id }: { id: string }) => {
           }
         />
       </Stack>
-      <div className={styles.detailGrid}>
-        <DetailsCard
-          identity={identity}
-          createdAt={membership.createdAt}
-          onEdit={() => setEditing(true)}
-        />
+      <DetailLayout
+        asideLabel="Details"
+        aside={
+          <DetailsCard
+            identity={identity}
+            createdAt={membership.createdAt}
+            onEdit={() => setEditing(true)}
+          />
+        }
+      >
         <Stack gap={24}>
           {isProjectIdentity ? (
             <ProjectIdentityAuthSection identity={identity} />
@@ -473,7 +476,7 @@ export const ProjectIdentityDetail = ({ id }: { id: string }) => {
           )}
           <IdentityRoleDetailsSection membership={membership} />
         </Stack>
-      </div>
+      </DetailLayout>
       {editing && (
         <EditIdentityDialog identity={identity} open={editing} onOpenChange={setEditing} />
       )}

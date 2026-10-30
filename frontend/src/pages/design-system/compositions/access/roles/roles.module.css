@@ -195,7 +195,7 @@
 }
 .conditionRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 200px minmax(0, 2fr) auto;
+  grid-template-columns: minmax(184px, 1fr) minmax(144px, 184px) minmax(120px, 2fr) auto;
   align-items: center;
   gap: var(--v4-space-8);
 }

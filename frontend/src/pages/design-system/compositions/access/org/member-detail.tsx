@@ -31,7 +31,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
@@ -355,85 +355,89 @@ export const OrgMemberDetail = ({ id }: { id: string }) => {
             }
           />
         </Stack>
-        <div className={css.detailGrid}>
-          <Card
-            title="Details"
-            description="User membership details"
-            action={
-              !isSelf && (
-                <Gate allowed={canEdit}>
-                  <Button
-                    variant="outline"
-                    size="icon-xs"
-                    aria-label="Edit user"
-                    disabled={!canEdit}
-                    onClick={() => setEditing(true)}
-                  >
-                    <Icon icon={PencilIcon} size={12} />
-                  </Button>
-                </Gate>
-              )
-            }
-          >
-            <Stack gap={16}>
-              <DataList
-                variant="props"
-                items={[
-                  ["Name", name ?? <Dash key="name" />],
-                  [
-                    "ID",
-                    <Value key="id" mono>
-                      {user.id}
-                      <CopyButton value={user.id} label="Copy user ID to clipboard" />
-                    </Value>
-                  ],
-                  [
-                    "Email",
-                    <Value key="email">
-                      {user.email}
-                      <VerifiedMark verified={membership.status !== "invited"} />
-                      <CopyButton value={user.email} label="Copy user email to clipboard" />
-                    </Value>
-                  ],
-                  ...(user.username !== user.email ? [["Username", user.username] as const] : []),
-                  ["Organization role", roleName(data.orgRoles, membership.role)],
-                  [
-                    "Status",
-                    <Badge key="status" tone={status.tone}>
-                      <Icon icon={status.icon} size={12} />
-                      {status.label}
-                    </Badge>
-                  ],
-                  ["Last login method", membership.lastLogin?.method ?? <Dash key="method" />],
-                  ["Last logged in", membership.lastLogin?.time ?? <Dash key="time" />],
-                  ["Metadata", <MetadataBadges key="metadata" items={membership.metadata} />]
-                ]}
-              />
-              {membership.isActive &&
-                (membership.status === "invited" || membership.status === "verified") && (
-                  <Gate allowed={can("member", "create")}>
+        <DetailLayout
+          asideLabel="Details"
+          aside={
+            <Card
+              title="Details"
+              description="User membership details"
+              action={
+                !isSelf && (
+                  <Gate allowed={canEdit}>
                     <Button
-                      variant="primary"
-                      loading={resending}
-                      disabled={!can("member", "create")}
-                      onClick={() => {
-                        setResending(true);
-                        window.setTimeout(() => {
-                          setResending(false);
-                          toast({
-                            tone: "ok",
-                            title: "Successfully resent org invitation",
-                            description: "Local demo only. No email was sent."
-                          });
-                        }, 600);
-                      }}
+                      variant="outline"
+                      size="icon-xs"
+                      aria-label="Edit user"
+                      disabled={!canEdit}
+                      onClick={() => setEditing(true)}
                     >
-                      Resend invite
+                      <Icon icon={PencilIcon} size={12} />
                     </Button>
                   </Gate>
-                )}
-            </Stack>
-          </Card>
+                )
+              }
+            >
+              <Stack gap={16}>
+                <DataList
+                  variant="props"
+                  items={[
+                    ["Name", name ?? <Dash key="name" />],
+                    [
+                      "ID",
+                      <Value key="id" mono>
+                        {user.id}
+                        <CopyButton value={user.id} label="Copy user ID to clipboard" />
+                      </Value>
+                    ],
+                    [
+                      "Email",
+                      <Value key="email">
+                        {user.email}
+                        <VerifiedMark verified={membership.status !== "invited"} />
+                        <CopyButton value={user.email} label="Copy user email to clipboard" />
+                      </Value>
+                    ],
+                    ...(user.username !== user.email ? [["Username", user.username] as const] : []),
+                    ["Organization role", roleName(data.orgRoles, membership.role)],
+                    [
+                      "Status",
+                      <Badge key="status" tone={status.tone}>
+                        <Icon icon={status.icon} size={12} />
+                        {status.label}
+                      </Badge>
+                    ],
+                    ["Last login method", membership.lastLogin?.method ?? <Dash key="method" />],
+                    ["Last logged in", membership.lastLogin?.time ?? <Dash key="time" />],
+                    ["Metadata", <MetadataBadges key="metadata" items={membership.metadata} />]
+                  ]}
+                />
+                {membership.isActive &&
+                  (membership.status === "invited" || membership.status === "verified") && (
+                    <Gate allowed={can("member", "create")}>
+                      <Button
+                        variant="primary"
+                        loading={resending}
+                        disabled={!can("member", "create")}
+                        onClick={() => {
+                          setResending(true);
+                          window.setTimeout(() => {
+                            setResending(false);
+                            toast({
+                              tone: "ok",
+                              title: "Successfully resent org invitation",
+                              description: "Local demo only. No email was sent."
+                            });
+                          }, 600);
+                        }}
+                      >
+                        Resend invite
+                      </Button>
+                    </Gate>
+                  )}
+              </Stack>
+            </Card>
+          }
+        >
           <div className={css.column}>
             <ProjectMembershipsSection
               subject="user"
@@ -444,7 +448,7 @@ export const OrgMemberDetail = ({ id }: { id: string }) => {
             />
             <UserGroupsSection member={member} />
           </div>
-        </div>
+        </DetailLayout>
       </Stack>
       {editing && <EditMembershipDialog member={member} open onOpenChange={setEditing} />}
       <AlertDialog open={removing} onOpenChange={setRemoving}>

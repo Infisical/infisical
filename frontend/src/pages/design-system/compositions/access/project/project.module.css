@@ -40,17 +40,6 @@
 .durationCell :global([data-slot="button"]) {
   width: 100%;
 }
-.detailLayout {
-  display: grid;
-  grid-template-columns: minmax(0, 384px) minmax(0, 1fr);
-  align-items: start;
-  gap: var(--v4-space-16);
-}
-@container (max-width: 896px) {
-  .detailLayout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 .details {
   display: flex;
   flex-direction: column;

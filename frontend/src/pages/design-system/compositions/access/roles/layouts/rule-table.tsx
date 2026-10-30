@@ -122,7 +122,7 @@ const RuleSheet = ({
                 </Gate>
               </Field>
             </div>
-            <Field label="Actions" error={errors?.actions}>
+            <Field label="Actions" error={errors?.actions} wide>
               <Combobox
                 multiple
                 clearable

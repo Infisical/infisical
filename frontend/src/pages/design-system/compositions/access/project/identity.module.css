@@ -1,14 +1,3 @@
-.detailGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 384px) minmax(0, 1fr);
-  gap: var(--v4-space-24);
-  align-items: start;
-}
-@media (max-width: 1024px) {
-  .detailGrid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 .helper {
   color: var(--v4-muted);
 }

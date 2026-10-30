@@ -19,7 +19,7 @@ import {
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
+import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import {
   Sheet,
@@ -150,43 +150,47 @@ export const ProjectMemberDetail = ({ id }: { id: string }) => {
           </div>
         }
       />
-      <div className={styles.detailLayout}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Details</CardTitle>
-            <CardDescription>User membership details</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <dl className={styles.details}>
-              <div>
-                <dt>Name</dt>
-                <dd>{displayName(user) ?? <Muted>-</Muted>}</dd>
-              </div>
-              <div>
-                <dt>ID</dt>
-                <dd>
-                  <CopyValue value={user.id} what="User ID" />
-                </dd>
-              </div>
-              <div>
-                <dt>Email</dt>
-                <dd>
-                  <CopyValue value={user.email} what="User email" />
-                </dd>
-              </div>
-              {user.username !== user.email && (
+      <DetailLayout
+        asideLabel="Details"
+        aside={
+          <Card>
+            <CardHeader>
+              <CardTitle>Details</CardTitle>
+              <CardDescription>User membership details</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <dl className={styles.details}>
                 <div>
-                  <dt>Username</dt>
-                  <dd>{user.username}</dd>
+                  <dt>Name</dt>
+                  <dd>{displayName(user) ?? <Muted>-</Muted>}</dd>
                 </div>
-              )}
-              <div>
-                <dt>Joined project</dt>
-                <dd>{joinedFormat.format(new Date(member.createdAt))}</dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
+                <div>
+                  <dt>ID</dt>
+                  <dd>
+                    <CopyValue value={user.id} what="User ID" />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Email</dt>
+                  <dd>
+                    <CopyValue value={user.email} what="User email" />
+                  </dd>
+                </div>
+                {user.username !== user.email && (
+                  <div>
+                    <dt>Username</dt>
+                    <dd>{user.username}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt>Joined project</dt>
+                  <dd>{joinedFormat.format(new Date(member.createdAt))}</dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+        }
+      >
         <Stack gap={16}>
           <MemberRolesSection
             member={member}
@@ -224,7 +228,7 @@ export const ProjectMemberDetail = ({ id }: { id: string }) => {
             </CardContent>
           </Card>
         </Stack>
-      </div>
+      </DetailLayout>
       <RemoveMemberDialog
         name={removing ? name : undefined}
         onOpenChange={(next) => !next && setRemoving(false)}

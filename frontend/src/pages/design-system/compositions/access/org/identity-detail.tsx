@@ -32,7 +32,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
@@ -284,71 +284,78 @@ export const OrgIdentityDetail = ({ id }: { id: string }) => {
             }
           />
         </Stack>
-        <div className={css.detailGrid}>
-          <Card
-            title="Details"
-            description="Machine identity details"
-            action={
-              <Gate allowed={canEdit}>
-                <Button
-                  variant="outline"
-                  size="icon-xs"
-                  aria-label="Edit machine identity"
-                  disabled={!canEdit}
-                  onClick={() => setEditing(true)}
-                >
-                  <Icon icon={PencilIcon} size={12} />
-                </Button>
-              </Gate>
-            }
-          >
-            <DataList
-              variant="props"
-              items={[
-                ["Name", identity.name],
-                [
-                  "ID",
-                  <Value key="id" mono>
-                    {identity.id}
-                    <CopyButton value={identity.id} label="Copy machine identity ID to clipboard" />
-                  </Value>
-                ],
-                [
-                  "Managed by",
-                  <Badge key="managed" tone="outline">
-                    <Icon name="building" size={12} />
-                    Organization
-                  </Badge>
-                ],
-                ["Organization role", roleName(data.orgRoles, identity.role)],
-                ["Metadata", <MetadataBadges key="metadata" items={identity.metadata} />],
-                ["Created", identity.createdAt],
-                [
-                  "Last login method",
-                  identity.lastLogin && identity.authMethods.length ? (
-                    authMethodNames[identity.authMethods[0]]
-                  ) : (
-                    <Dash key="method" />
-                  )
-                ],
-                ["Last logged in", identity.lastLogin ?? <Dash key="login" />],
-                [
-                  "Delete protection",
-                  identity.hasDeleteProtection ? (
-                    <Badge key="protection" tone="ok">
-                      <Icon name="check" size={12} />
-                      Enabled
+        <DetailLayout
+          asideLabel="Details"
+          aside={
+            <Card
+              title="Details"
+              description="Machine identity details"
+              action={
+                <Gate allowed={canEdit}>
+                  <Button
+                    variant="outline"
+                    size="icon-xs"
+                    aria-label="Edit machine identity"
+                    disabled={!canEdit}
+                    onClick={() => setEditing(true)}
+                  >
+                    <Icon icon={PencilIcon} size={12} />
+                  </Button>
+                </Gate>
+              }
+            >
+              <DataList
+                variant="props"
+                items={[
+                  ["Name", identity.name],
+                  [
+                    "ID",
+                    <Value key="id" mono>
+                      {identity.id}
+                      <CopyButton
+                        value={identity.id}
+                        label="Copy machine identity ID to clipboard"
+                      />
+                    </Value>
+                  ],
+                  [
+                    "Managed by",
+                    <Badge key="managed" tone="outline">
+                      <Icon name="building" size={12} />
+                      Organization
                     </Badge>
-                  ) : (
-                    <Badge key="protection" tone="outline">
-                      <Icon name="x" size={12} />
-                      Disabled
-                    </Badge>
-                  )
-                ]
-              ]}
-            />
-          </Card>
+                  ],
+                  ["Organization role", roleName(data.orgRoles, identity.role)],
+                  ["Metadata", <MetadataBadges key="metadata" items={identity.metadata} />],
+                  ["Created", identity.createdAt],
+                  [
+                    "Last login method",
+                    identity.lastLogin && identity.authMethods.length ? (
+                      authMethodNames[identity.authMethods[0]]
+                    ) : (
+                      <Dash key="method" />
+                    )
+                  ],
+                  ["Last logged in", identity.lastLogin ?? <Dash key="login" />],
+                  [
+                    "Delete protection",
+                    identity.hasDeleteProtection ? (
+                      <Badge key="protection" tone="ok">
+                        <Icon name="check" size={12} />
+                        Enabled
+                      </Badge>
+                    ) : (
+                      <Badge key="protection" tone="outline">
+                        <Icon name="x" size={12} />
+                        Disabled
+                      </Badge>
+                    )
+                  ]
+                ]}
+              />
+            </Card>
+          }
+        >
           <div className={css.column}>
             <Section
               title="Authentication"
@@ -384,7 +391,7 @@ export const OrgIdentityDetail = ({ id }: { id: string }) => {
               canEdit={canEdit}
             />
           </div>
-        </div>
+        </DetailLayout>
       </Stack>
       {editing && <EditIdentityDialog identity={identity} open onOpenChange={setEditing} />}
       {authForm && (

@@ -30,7 +30,7 @@ import {
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
+import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { MultiSelect } from "@app/components/v4/ui/multi-select";
 import { PageHeader } from "@app/components/v4/ui/page-header";
@@ -437,47 +437,51 @@ export const OrgGroupDetail = ({ id }: { id: string }) => {
             }
           />
         </Stack>
-        <div className={css.detailGrid}>
-          <Card
-            title="Details"
-            description="Group details"
-            action={
-              <Gate allowed={canEdit}>
-                <Button
-                  variant="outline"
-                  size="icon-xs"
-                  aria-label="Edit group"
-                  disabled={!canEdit}
-                  onClick={() => setEditing(true)}
-                >
-                  <Icon icon={PencilIcon} size={12} />
-                </Button>
-              </Gate>
-            }
-          >
-            <DataList
-              variant="props"
-              items={[
-                ["Name", group.name],
-                [
-                  "ID",
-                  <Value key="id" mono>
-                    {group.id}
-                    <CopyButton value={group.id} label="Copy group ID to clipboard" />
-                  </Value>
-                ],
-                [
-                  "Slug",
-                  <Value key="slug">
-                    {group.slug}
-                    <CopyButton value={group.slug} label="Copy slug to clipboard" />
-                  </Value>
-                ],
-                ["Organization role", group.role],
-                ["Created", group.createdAt]
-              ]}
-            />
-          </Card>
+        <DetailLayout
+          asideLabel="Details"
+          aside={
+            <Card
+              title="Details"
+              description="Group details"
+              action={
+                <Gate allowed={canEdit}>
+                  <Button
+                    variant="outline"
+                    size="icon-xs"
+                    aria-label="Edit group"
+                    disabled={!canEdit}
+                    onClick={() => setEditing(true)}
+                  >
+                    <Icon icon={PencilIcon} size={12} />
+                  </Button>
+                </Gate>
+              }
+            >
+              <DataList
+                variant="props"
+                items={[
+                  ["Name", group.name],
+                  [
+                    "ID",
+                    <Value key="id" mono>
+                      {group.id}
+                      <CopyButton value={group.id} label="Copy group ID to clipboard" />
+                    </Value>
+                  ],
+                  [
+                    "Slug",
+                    <Value key="slug">
+                      {group.slug}
+                      <CopyButton value={group.slug} label="Copy slug to clipboard" />
+                    </Value>
+                  ],
+                  ["Organization role", group.role],
+                  ["Created", group.createdAt]
+                ]}
+              />
+            </Card>
+          }
+        >
           <div className={css.column}>
             <GroupMembersSection group={group} />
             <ProjectMembershipsSection
@@ -487,7 +491,7 @@ export const OrgGroupDetail = ({ id }: { id: string }) => {
               canEdit={canEdit}
             />
           </div>
-        </div>
+        </DetailLayout>
       </Stack>
       {editing && <GroupDialog group={group} roleLabel="Role" open onOpenChange={setEditing} />}
       <AlertDialog open={deleting} onOpenChange={setDeleting}>

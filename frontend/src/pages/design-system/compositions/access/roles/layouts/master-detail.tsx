@@ -18,13 +18,17 @@ import styles from "../roles.module.css";
 
 const rowMeta = (props: LayoutProps, config: PermissionSubject) => {
   const state = subjectState(props.draft[config.subject]);
-  if (!state.ruleCount) return undefined;
+  if (
+    !state.ruleCount ||
+    (state.ruleCount === 1 && !state.conditional && !props.errors?.[config.subject])
+  )
+    return undefined;
   return (
     <span className={styles.rowBadges}>
       {props.errors?.[config.subject] && <Badge tone="bad">Needs attention</Badge>}
       {state.forbid && <Badge tone="bad">Forbid</Badge>}
       {state.conditional && <Badge tone="soft">Conditional</Badge>}
-      <Badge tone="outline">{state.ruleCount === 1 ? "1 rule" : `${state.ruleCount} rules`}</Badge>
+      {state.ruleCount > 1 && <Badge tone="outline">{`${state.ruleCount} rules`}</Badge>}
     </span>
   );
 };

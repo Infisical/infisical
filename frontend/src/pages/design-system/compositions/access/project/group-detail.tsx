@@ -22,7 +22,7 @@ import {
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
+import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
@@ -352,10 +352,9 @@ export const ProjectGroupDetail = ({ id }: { id: string }) => {
           <Skeleton width={256} height={32} />
           <Skeleton width={320} height={16} />
         </Stack>
-        <div className={styles.columns}>
+        <DetailLayout asideLabel="Details" aside={<Skeleton width="100%" height={256} />}>
           <Skeleton width="100%" height={256} />
-          <Skeleton width="100%" height={256} />
-        </div>
+        </DetailLayout>
       </Stack>
     );
 
@@ -408,36 +407,40 @@ export const ProjectGroupDetail = ({ id }: { id: string }) => {
           }
         />
       </Stack>
-      <div className={styles.columns}>
-        <Card title="Details" description="Group details">
-          <DataList
-            variant="props"
-            items={[
-              ["Name", group.name],
-              [
-                "ID",
-                <span key="id" className={styles.idValue}>
-                  {group.id}
-                  <CopyGroupId id={group.id} />
-                </span>
-              ],
-              [
-                "Project role",
-                <GroupRoles
-                  key="roles"
-                  groupId={group.id}
-                  groupName={group.name}
-                  roles={membership.roles}
-                />
-              ],
-              ["Joined project", format(new Date(membership.createdAt), "PPpp")]
-            ]}
-          />
-        </Card>
+      <DetailLayout
+        asideLabel="Details"
+        aside={
+          <Card title="Details" description="Group details">
+            <DataList
+              variant="props"
+              items={[
+                ["Name", group.name],
+                [
+                  "ID",
+                  <span key="id" className={styles.idValue}>
+                    {group.id}
+                    <CopyGroupId id={group.id} />
+                  </span>
+                ],
+                [
+                  "Project role",
+                  <GroupRoles
+                    key="roles"
+                    groupId={group.id}
+                    groupName={group.name}
+                    roles={membership.roles}
+                  />
+                ],
+                ["Joined project", format(new Date(membership.createdAt), "PPpp")]
+              ]}
+            />
+          </Card>
+        }
+      >
         <Card title="Group members" description="View members of this group">
           <GroupMembersTable group={group} />
         </Card>
-      </div>
+      </DetailLayout>
       <RemoveGroupDialog
         group={removing ? group : undefined}
         onOpenChange={setRemoving}
