@@ -833,6 +833,12 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   const loadAccountFromPrimary = (accountId: string, projectId: string) =>
     loadAccount(accountId, projectId, pamAccountDAL.primaryNode());
 
+  const getRotationAccountName = async (account: TPamAccountDetail) => {
+    if (!account.rotationAccountId) return null;
+    if (account.rotationAccountId === account.id) return account.name;
+    return (await pamAccountDAL.findById(account.rotationAccountId))?.name ?? null;
+  };
+
   const getRotation = async ({
     accountId,
     projectId,
@@ -915,6 +921,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       throw new BadRequestError({ message: "Credential rotation is not supported for this account type" });
     }
 
+    let rotationAccountName = rotationAccountId === accountId ? account.name : null;
     if (rotationAccountId) {
       const targetCredentials = await decryptSqlCredentials(
         projectId,
@@ -973,6 +980,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
           ResourcePermissionPamResourceActions.ViewCredentials,
           ctx
         );
+        rotationAccountName = rotator.name;
       }
     }
 
@@ -984,6 +992,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     });
     return {
       rotationAccountId,
+      rotationAccountName,
+      accountName: account.name,
       accountType: account.accountType,
       scheduledRotationEnabled: getRotationConfig(account.templateSettings)?.enabled ?? false
     };
@@ -1005,8 +1015,10 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     projectId,
     ...ctx
   }: TRotatePamAccountDTO & TActorContext): Promise<{
+    accountName: string;
     accountType: string;
     rotationAccountId: string | null;
+    rotationAccountName: string | null;
     rotationStatus: string;
     message?: string;
   }> => {
@@ -1028,8 +1040,10 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       throw new BadRequestError({ message: ROTATION_NOT_READY_MESSAGE[readiness.issue] });
     }
     return {
+      accountName: account.name,
       accountType: account.accountType,
       rotationAccountId: account.rotationAccountId ?? null,
+      rotationAccountName: await getRotationAccountName(account),
       ...(await runRotation(account))
     };
   };
@@ -1094,9 +1108,11 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   const rotateScheduledAccount = async (
     accountId: string
   ): Promise<{
+    accountName: string;
     accountType: string;
     projectId: string;
     rotationAccountId: string | null;
+    rotationAccountName: string | null;
     rotationStatus: string;
     message?: string;
   } | null> => {
@@ -1111,9 +1127,11 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       return null;
     }
     return {
+      accountName: account.name,
       accountType: account.accountType,
       projectId: account.projectId as string,
       rotationAccountId: account.rotationAccountId ?? null,
+      rotationAccountName: await getRotationAccountName(account),
       ...result
     };
   };

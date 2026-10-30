@@ -6945,10 +6945,12 @@ interface PamAccountRotateCredentialsEvent {
   type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS;
   metadata: {
     accountId: string;
+    accountName: string;
     accountType: string;
     rotationStatus: string;
     manual: boolean;
     rotationAccountId?: string | null;
+    rotationAccountName?: string | null;
     message?: string;
   };
 }
@@ -6957,7 +6959,9 @@ interface PamAccountSetRotationAccountEvent {
   type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT;
   metadata: {
     accountId: string;
+    accountName: string;
     rotationAccountId: string | null;
+    rotationAccountName: string | null;
   };
 }
 

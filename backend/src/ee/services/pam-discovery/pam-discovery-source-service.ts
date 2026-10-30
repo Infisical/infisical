@@ -770,19 +770,24 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     const rotationLimit = pLimit(IMPORT_ROTATION_CONCURRENCY);
 
     const rotateImported = async (accountId: string, accountType: string, rotationAccountId: string) => {
+      let names: { accountName: string; rotationAccountName: string | null };
       try {
-        await pamAccountRotationService.setRotationAccount({ accountId, rotationAccountId, projectId, ...ctx });
+        names = await pamAccountRotationService.setRotationAccount({ accountId, rotationAccountId, projectId, ...ctx });
       } catch (err) {
         return {
           rotationStatus: ROTATION_STATUS.Failed,
           rotationMessage: toResultMessage(err, "Failed to set the rotation account")
         };
       }
+      const { accountName, rotationAccountName } = names;
       await auditLogService.createAuditLog({
         ...auditLogInfo,
         orgId: ctx.actorOrgId,
         projectId,
-        event: { type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT, metadata: { accountId, rotationAccountId } }
+        event: {
+          type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT,
+          metadata: { accountId, accountName, rotationAccountId, rotationAccountName }
+        }
       });
 
       const { rotationStatus, message } = await pamAccountRotationService
@@ -799,10 +804,12 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
           metadata: {
             accountId,
+            accountName,
             accountType,
             rotationStatus,
             manual: true,
             rotationAccountId,
+            rotationAccountName,
             ...(message ? { message } : {})
           }
         }
