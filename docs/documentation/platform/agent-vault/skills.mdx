@@ -118,7 +118,7 @@ To remove a skill from an access bundle, open its actions menu in the **Skills**
 
 ## How agents get skills
 
-When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI downloads the latest version of each skill in the session's access bundle, and installs the skills before the agent starts. The agent keeps the skills it started with, so if you publish a new version or add a skill to the access bundle, restart the agent to pick up the change.
+When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI downloads the latest version of each skill in the session's access bundle, and installs the skills before the agent starts. If you publish a new version or add a skill to the access bundle, restart the agent to pick up the change. Starting another agent on the same host also updates the skills there, including for agents already running.
 
 ### Reaching Infisical from the agent's host
 
