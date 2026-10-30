@@ -107,7 +107,7 @@ describe("Auth MFA V3", () => {
     const rootOrgId = seedData1.organization.id;
     let restoreLicense: () => void;
 
-    const signSsoSession = async (authMethod: AuthMethod, idpMfaVerified?: boolean) => {
+    const signSsoSession = async (authMethod: AuthMethod, idpMfaOrgId?: string) => {
       const [session] = await db()(TableName.AuthTokenSession)
         .insert({
           userId: seedData1.id,
@@ -126,7 +126,7 @@ describe("Auth MFA V3", () => {
           userId: seedData1.id,
           tokenVersionId: session.id,
           accessVersion: 1,
-          ...(idpMfaVerified && { idpMfaVerified })
+          ...(idpMfaOrgId && { idpMfaOrgId })
         },
         process.env.AUTH_SECRET as string,
         { expiresIn: "1h" }
@@ -158,10 +158,10 @@ describe("Auth MFA V3", () => {
       async (authMethod) => {
         await setSsoMfaTrust(SsoMfaTrust.Signal);
 
-        const { payload } = await selectOrg(await signSsoSession(authMethod, true), rootOrgId);
+        const { payload } = await selectOrg(await signSsoSession(authMethod, rootOrgId), rootOrgId);
 
         expect(payload.isMfaEnabled).toBe(false);
-        expect(decode(payload.token)).toMatchObject({ organizationId: rootOrgId, idpMfaVerified: true });
+        expect(decode(payload.token)).toMatchObject({ organizationId: rootOrgId, idpMfaOrgId: rootOrgId });
       }
     );
 
@@ -172,6 +172,41 @@ describe("Auth MFA V3", () => {
 
       expect(payload.isMfaEnabled).toBe(true);
       expect(payload.mfaMethod).toBe(MfaMethod.EMAIL);
+    });
+
+    test("the root org's proof also covers its sub-organizations", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+      const [subOrg] = await db()(TableName.Organization)
+        .insert({
+          name: `idp-mfa-${crypto.randomUUID()}`,
+          slug: `idp-mfa-${crypto.randomUUID()}`,
+          rootOrgId,
+          parentOrgId: rootOrgId,
+          enforceMfa: true
+        })
+        .returning("*");
+      try {
+        await addUserMembership({ userId: seedData1.id, orgId: subOrg.id, role: OrgMembershipRole.Member });
+
+        const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId), subOrg.id);
+
+        expect(payload.isMfaEnabled).toBe(false);
+        expect(decode(payload.token)).toMatchObject({
+          organizationId: rootOrgId,
+          subOrganizationId: subOrg.id,
+          idpMfaOrgId: rootOrgId
+        });
+      } finally {
+        await db()(TableName.Organization).where({ id: subOrg.id }).del();
+      }
+    });
+
+    test("a proof produced by another organization's IdP still gets the prompt", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+
+      const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, crypto.randomUUID()), rootOrgId);
+
+      expect(payload.isMfaEnabled).toBe(true);
     });
 
     test("a password session on the same org still gets the prompt", async () => {
@@ -186,7 +221,7 @@ describe("Auth MFA V3", () => {
     test("the signal is ignored while the org requires Infisical MFA", async () => {
       await setSsoMfaTrust(SsoMfaTrust.None);
 
-      const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, true), rootOrgId);
+      const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId), rootOrgId);
 
       expect(payload.isMfaEnabled).toBe(true);
     });
@@ -203,7 +238,7 @@ describe("Auth MFA V3", () => {
       await db()(TableName.Organization).where({ id: rootOrgId }).update({ enforceMfa: false });
       await db()(TableName.Users).where({ id: seedData1.id }).update({ isMfaEnabled: true });
       try {
-        const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, true), rootOrgId);
+        const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId), rootOrgId);
 
         expect(payload.isMfaEnabled).toBe(true);
       } finally {

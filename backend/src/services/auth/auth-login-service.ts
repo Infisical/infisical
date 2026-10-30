@@ -190,14 +190,14 @@ export const authLoginServiceFactory = ({
     authMethod,
     organizationId,
     requiredMfaMethod,
-    idpMfaVerified
+    idpMfaOrgId
   }: {
     userId: string;
     email?: string | null;
     authMethod: AuthMethod;
     organizationId?: string;
     requiredMfaMethod: MfaMethod;
-    idpMfaVerified?: boolean;
+    idpMfaOrgId?: string;
   }) => {
     const appCfg = getConfig();
 
@@ -209,7 +209,7 @@ export const authLoginServiceFactory = ({
         organizationId,
         email,
         requiredMfaMethod,
-        idpMfaVerified
+        idpMfaOrgId
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_MFA_LIFETIME }
@@ -238,7 +238,7 @@ export const authLoginServiceFactory = ({
       authMethod,
       isMfaVerified,
       mfaMethod,
-      idpMfaVerified
+      idpMfaOrgId
     }: {
       userId: string;
       ip: string;
@@ -248,7 +248,7 @@ export const authLoginServiceFactory = ({
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
       mfaMethod?: MfaMethod;
-      idpMfaVerified?: boolean;
+      idpMfaOrgId?: string;
     },
     tx?: Knex
   ) => {
@@ -297,7 +297,7 @@ export const authLoginServiceFactory = ({
         subOrganizationId,
         isMfaVerified,
         mfaMethod,
-        idpMfaVerified
+        idpMfaOrgId
       },
       cfg.AUTH_SECRET,
       { expiresIn: tokenSessionExpiresIn }
@@ -314,7 +314,7 @@ export const authLoginServiceFactory = ({
         subOrganizationId,
         isMfaVerified,
         mfaMethod,
-        idpMfaVerified
+        idpMfaOrgId
       },
       cfg.AUTH_SECRET,
       { expiresIn: refreshTokenExpiresIn }
@@ -363,7 +363,7 @@ export const authLoginServiceFactory = ({
       ip,
       userAgent,
       authMethod,
-      idpMfaVerified: idpMfa?.verified || undefined
+      idpMfaOrgId: idpMfa?.verified ? organizationId : undefined
     });
 
     if (organizationId) {
@@ -775,7 +775,7 @@ export const authLoginServiceFactory = ({
       authMethod: decodedToken.authMethod,
       isMfaVerified: true,
       mfaMethod,
-      idpMfaVerified: decodedToken.idpMfaVerified
+      idpMfaOrgId: decodedToken.idpMfaOrgId
     });
 
     // Open the grace window for THIS session only (the one that just proved MFA), so
@@ -1192,7 +1192,7 @@ export const authLoginServiceFactory = ({
     actorRootOrgId,
     isMfaVerified,
     mfaMethod,
-    idpMfaVerified
+    idpMfaOrgId
   }: {
     userAgent: string | undefined;
     ipAddress: string;
@@ -1202,7 +1202,7 @@ export const authLoginServiceFactory = ({
     actorRootOrgId?: string;
     isMfaVerified?: boolean;
     mfaMethod?: MfaMethod;
-    idpMfaVerified?: boolean;
+    idpMfaOrgId?: string;
   }) => {
     const cfg = getConfig();
     if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
@@ -1336,7 +1336,8 @@ export const authLoginServiceFactory = ({
       isIdpMfaTrusted({
         ssoMfaTrust: rootOrg.ssoMfaTrust,
         authMethod: userAuthMethod,
-        idpMfaVerified
+        rootOrgId: rootOrg.id,
+        idpMfaOrgId
       });
     const shouldTriggerMfa =
       isMfaRequired && !isMfaSatisfiedByIdp && (!isMfaVerified || hasMfaMethodChanged || hasOrganizationChanged);
@@ -1350,7 +1351,7 @@ export const authLoginServiceFactory = ({
         authMethod: userAuthMethod,
         requiredMfaMethod,
         organizationId: rootOrg.id,
-        idpMfaVerified
+        idpMfaOrgId
       });
 
       return { isMfaEnabled: true, mfa: mfaToken, mfaMethod: requiredMfaMethod } as const;
@@ -1367,7 +1368,7 @@ export const authLoginServiceFactory = ({
       subOrganizationId: isSubOrganization ? organizationId : undefined,
       isMfaVerified,
       mfaMethod,
-      idpMfaVerified
+      idpMfaOrgId
     });
 
     let mfaSatisfiedBy: "not-required" | "infisical" | "idp" = "infisical";

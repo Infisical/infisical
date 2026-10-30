@@ -155,7 +155,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
           ...(decodedToken.subOrganizationId && { subOrganizationId: decodedToken.subOrganizationId }),
           isMfaVerified: decodedToken.isMfaVerified,
           mfaMethod: decodedToken.mfaMethod,
-          idpMfaVerified: decodedToken.idpMfaVerified
+          idpMfaOrgId: decodedToken.idpMfaOrgId
         },
         appCfg.AUTH_SECRET,
         { expiresIn }

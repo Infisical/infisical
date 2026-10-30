@@ -94,9 +94,9 @@ describe("Auth IdP Service-Level Tests", () => {
           idpMfa
         });
 
-      expect(sessionClaims(await login({ verified: true, evidence: ["amr=mfa"] })).idpMfaVerified).toBe(true);
-      expect(sessionClaims(await login({ verified: false, evidence: [] })).idpMfaVerified).toBeUndefined();
-      expect(sessionClaims(await login()).idpMfaVerified).toBeUndefined();
+      expect(sessionClaims(await login({ verified: true, evidence: ["amr=mfa"] })).idpMfaOrgId).toBe(TEST_ORG_ID);
+      expect(sessionClaims(await login({ verified: false, evidence: [] })).idpMfaOrgId).toBeUndefined();
+      expect(sessionClaims(await login()).idpMfaOrgId).toBeUndefined();
     });
 
     test("an OIDC login carries the verdict on its session, and only when the IdP signalled MFA", async () => {
@@ -113,8 +113,8 @@ describe("Auth IdP Service-Level Tests", () => {
           idpMfa
         });
 
-      expect(sessionClaims(await login({ verified: true, evidence: ["mfa"] })).idpMfaVerified).toBe(true);
-      expect(sessionClaims(await login()).idpMfaVerified).toBeUndefined();
+      expect(sessionClaims(await login({ verified: true, evidence: ["mfa"] })).idpMfaOrgId).toBe(TEST_ORG_ID);
+      expect(sessionClaims(await login()).idpMfaOrgId).toBeUndefined();
     });
   });
 

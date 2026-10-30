@@ -305,13 +305,17 @@ per login with `matchIdpMfaSignal` (`services/auth/idp-mfa-signal.ts`): the OIDC
 `oidc_configs.mfaClaimName` contains `mfa`, the SAML `AuthnContextClassRef` is a two-factor class, or the
 attribute named by `saml_configs.mfaSignalAttribute` contains `mfa`. Both names default to `amr`, and the
 per-config allowlists extend the built-in values rather than replace them. The verdict travels on the org-less
-session token as `idpMfaVerified`, and `selectOrganization` (`auth-login-service.ts`) applies it through
-`isIdpMfaTrusted` (`auth-fns.ts`), the only reader of the setting. Rules that must hold:
+session token as `idpMfaOrgId`, the root org whose SSO config produced it (absent when the IdP did not signal
+MFA), and `selectOrganization` (`auth-login-service.ts`) applies it through `isIdpMfaTrusted` (`auth-fns.ts`),
+the only reader of the setting. Rules that must hold:
 
 - Enforcement is decided once per selection against the root org (`actorRootOrgId`), so moving between a root
   org and its sub-orgs never re-prompts.
 - `isIdpMfaTrusted` refuses every non-SSO auth method, so password, Google and LDAP logins (break-glass
   accounts) always get the Infisical challenge.
+- The proof only counts for the root org whose IdP produced it. A user in two orgs could otherwise tune one
+  org's allowlist to accept a single factor and carry that verdict into the other, so the token stores the org
+  id rather than a boolean and selection requires it to equal the selected root org.
 - The trust only applies while `enforceMfa` is on. A user's own account-level MFA is still prompted. The
   setting can be stored before enforcement is turned on; `updateOrg` refuses any value but `none` only while
   the org has no active SAML or OIDC config.

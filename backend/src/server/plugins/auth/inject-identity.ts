@@ -40,7 +40,7 @@ export type TAuthMode =
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
       mfaMethod?: MfaMethod;
-      idpMfaVerified?: boolean;
+      idpMfaOrgId?: string;
       oauthClientId?: string;
       token: AuthModeJwtTokenPayload;
     }
@@ -340,7 +340,7 @@ export const injectIdentity = fp(
             isMfaVerified: token.isMfaVerified,
             token,
             mfaMethod: token.mfaMethod,
-            idpMfaVerified: token.idpMfaVerified
+            idpMfaOrgId: token.idpMfaOrgId
           };
           fireIdentifyForUser(user);
           break;

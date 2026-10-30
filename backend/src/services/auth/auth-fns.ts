@@ -74,18 +74,21 @@ export const getRequiredMfaMethod = (
 };
 
 // Only SAML and OIDC carry a signed IdP signal. Password, Google and LDAP never qualify, so break-glass
-// accounts always get the Infisical challenge.
+// accounts always get the Infisical challenge. The proof names the org whose IdP produced it: a user in two
+// orgs could otherwise tune one org's allowlist to accept a single factor and carry that verdict into the other.
 export const isIdpMfaTrusted = ({
   ssoMfaTrust,
   authMethod,
-  idpMfaVerified
+  rootOrgId,
+  idpMfaOrgId
 }: {
   ssoMfaTrust?: string | null;
   authMethod: AuthMethod;
-  idpMfaVerified?: boolean;
+  rootOrgId: string;
+  idpMfaOrgId?: string;
 }): boolean => {
   if (!isAuthMethodSaml(authMethod) && authMethod !== AuthMethod.OIDC) return false;
-  return ssoMfaTrust === SsoMfaTrust.Signal && Boolean(idpMfaVerified);
+  return ssoMfaTrust === SsoMfaTrust.Signal && idpMfaOrgId === rootOrgId;
 };
 
 export const RECOVERY_CODE_MFA_ASSURANCE = "recovery-code";
@@ -96,11 +99,15 @@ export const isMfaProofAccepted = (proven: string | null | undefined, acceptedMe
 
 export const extractBearerToken = (token?: string): string => {
   if (!token) {
-    throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });
+    throw new UnauthorizedError({
+      message: "Missing Authorization Header in the request header."
+    });
   }
   const [authTokenType, authTokenValue] = token.split(" ", 2) as [string, string];
   if (!authTokenType) {
-    throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });
+    throw new UnauthorizedError({
+      message: "Missing Authorization Header in the request header."
+    });
   }
   if (authTokenType.toLowerCase() !== "bearer") {
     throw new UnauthorizedError({
