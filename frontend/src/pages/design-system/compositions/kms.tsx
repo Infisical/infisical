@@ -15,6 +15,7 @@ import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { MiddleTruncate } from "@app/components/v4/ui/middle-truncate";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
@@ -191,11 +192,15 @@ const KeyActions = ({
   );
 };
 
-const CopyId = ({ id }: { id: string }) => {
+export const KeyId = ({ id }: { id: string }) => {
   const [copied, setCopied] = useState(false);
   return (
-    <Inline gap={4} align="center">
-      <code>{`${id.slice(0, 8)}…`}</code>
+    <Inline gap={4} align="center" wrap={false}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Tooltip content={<code>{id}</code>} side="top">
+          <MiddleTruncate mono keepEnd={4} text={id} title={false} tabIndex={0} />
+        </Tooltip>
+      </div>
       <Tooltip content={copied ? "Copied" : "Copy key ID"} side="top">
         <Button
           variant="ghost"
@@ -257,7 +262,14 @@ export default function Kms() {
         </Inline>
       )
     },
-    { id: "id", header: "Key ID", width: 140, render: (r) => <CopyId id={r.id} /> },
+    {
+      id: "id",
+      header: "Key ID",
+      width: 196,
+      maxWidth: 196,
+      text: (r) => r.id,
+      render: (r) => <KeyId id={r.id} />
+    },
     { id: "usage", header: "Key usage", width: 172, render: (r) => usageLabel[r.usage] },
     { id: "algorithm", header: "Algorithm", width: 128, render: (r) => r.algorithm },
     {
