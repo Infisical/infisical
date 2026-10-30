@@ -139,6 +139,21 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       ]
     ]
   },
+  "left-accent-bar": {
+    bad: [
+      [css, ".row[data-pending] > td:first-child { box-shadow: inset 2px 0 0 var(--v4-ok-line); }"],
+      [css, ".cell { box-shadow: inset var(--v4-size-control-border) 0 0 var(--v4-info-line); }"],
+      [css, ".alert { border-left: 3px solid var(--v4-warn); }"],
+      [css, ".item { border-inline-start: var(--v4-size-control-border) solid var(--v4-accent); }"],
+      [ui, '<div className="border-l-2 border-l-[color:var(--v4-bad)]" />']
+    ],
+    good: [
+      [css, ".tree { border-left: var(--v4-size-control-border) solid var(--v4-line-soft); }"],
+      [css, ".pin { border-inline-start: 1px solid var(--v4-line); }"],
+      [css, ".field { box-shadow: inset 0 0 0 var(--v4-size-control-border) var(--v4-line); }"],
+      [css, ".row { background-image: linear-gradient(var(--tint), var(--tint)); }"]
+    ]
+  },
   "dot-separator": {
     bad: [[example, "<span>Primary · alias of default</span>"]],
     good: [[example, "<span>Primary, alias of default</span>"]]

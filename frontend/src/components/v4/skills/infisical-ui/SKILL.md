@@ -21,7 +21,7 @@ Use warm neutrals, Archivo and Geist Mono. Corners are square everywhere: there 
 
 Icons come from the Infisical 2.0 line set: use `Icon` with one of its 52 names. Use Lucide (`lucide-react`) only for glyphs the set lacks, at `stroke-icon` (1.7) and the size tokens; never import another icon library or hand-draw SVG icons.
 
-Disable blocked actions instead of hiding them, and gate each one by its own permission. Hover and press overlays are translucent ink, never opaque fills. Show Skeleton shapes when the loaded shape is known and a Loader only when it is not. Focus glows share size-focus-glow and focus-ring.
+Disable blocked actions instead of hiding them, and gate each one by its own permission. Hover and press overlays are translucent ink, never opaque fills. Never mark state with a left accent bar or tinted left edge; tint the whole row or surface and add a Badge. Show Skeleton shapes when the loaded shape is known and a Loader only when it is not. Focus glows share size-focus-glow and focus-ring.
 
 Composites and compositions don't use avatars until the product supports them: show names and emails as plain text, and keep the Avatar primitive for its own docs page. Page content takes its width from the size-content token through PageGutter, the same gutter TopBar pads by; never cap it with an arbitrary max-width.
 

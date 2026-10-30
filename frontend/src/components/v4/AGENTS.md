@@ -32,6 +32,7 @@ The Infisical 2.0 line set (52 glyphs from #8691, ui/icon-data.ts) is the primar
 
 - Disable, do not hide: a blocked action stays visible and disabled, with a reason, so the layout never shifts. Gate each action by its own permission only; a person who may view a secret may copy it while it is masked.
 - Hover and press overlays on anything with content behind it are translucent ink (opacity-hover and opacity-press), never an opaque fill.
+- No left accent bars: never mark a row, card, Alert or current state with a colored stripe or tinted left edge, even where main does. Use a translucent tint over the whole row or surface plus a Badge or icon with text. Tree guides, timeline connectors and dividers in line or line-soft are structure, not accents.
 - Loading: when the loaded shape is known, show Skeleton shapes that match it; use Loader only when the shape is unknown.
 - Focus: fields, slider thumbs and other glow-focused controls share one glow, size-focus-glow in focus-ring (neutral ink, never the accent).
 - Menus: every menu-like popover (Switcher, account menu, DropdownMenu, Select and Combobox lists, ContextMenu, CommandMenu) uses the shared recipe in menu.module.css: pop ground, pop-line edge and shadow-pop, a 3px inset on all four sides, 32px rows as inset blocks, eyebrow labels and one lead-icon column. Separators may span the panel; rows and their tints never touch its edge.
