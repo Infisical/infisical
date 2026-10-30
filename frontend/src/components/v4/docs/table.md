@@ -162,6 +162,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - When every column declares a width, or grows to fill the rest, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.
 - actionBar hosts the table's FloatingActionBar. While the bar shows, the table reserves size-action-bar plus the bar's offset (space-action-bar-offset, or space-action-bar-offset-contained) below itself, so the last row can scroll clear of the bar.
 - A column with toggle is a boolean column: every cell is a Checkbox and the header gets a tri-state Checkbox before its title. The header reads checked when every enabled row is on, indeterminate when some are, and unchecked when none are. Selecting it turns every enabled row on, or off when all are on, and calls onChange once with only the row ids that change. Rows with a disabledReason keep their value, are left out of the count, and show the reason on their disabled cell; with no enabled rows the header is disabled. render is optional on a toggle column.
+- checked may return "indeterminate" for a partial grant: the cell shows a mixed Checkbox, and the header counts the row as not on, so it reads checked only when every counted row is fully on. From mixed, a cell click or a header click that turns the column on sets the row on. absent(row) marks a row with no such action: the cell shows a muted dash and no control, and the row is left out of the count like a disabled one. adornment(row) renders after the Checkbox inside the same cell, for marks such as conditions or forbid rules; they keep their own tab stops, and clicks on them never activate the row.
 
 ## Accessibility
 
@@ -171,7 +172,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived.
 - With onRowActivate, rows join the tab order without an interactive role, so the table keeps native row semantics and never nests a button or link role around the row's own controls. Enter activates the focused row and Space toggles its selection when the table is selectable. Keep a real link or button for the same destination in the primary cell, so screen reader users meet a named control.
 - Loading rows are hidden from assistive technology; the table is aria-busy and the polite status says Loading rows.
-- Toggle checkboxes are named, not left to the header: each cell is "<header> for <rowLabel>" and the header control is "<header> for every row in <label>" unless toggle.label overrides it. The header control announces mixed for some. A disabled cell carries its reason as its accessible description.
+- Toggle checkboxes are named, not left to the header: each cell is "<header> for <rowLabel>" and the header control is "<header> for every row in <label>" unless toggle.label overrides it. The header control announces mixed for some. A disabled cell carries its reason as its accessible description. An absent cell has no control; its dash is hidden from assistive technology and replaced by "<header> for <rowLabel>: not applicable". An adornment is a sibling of the Checkbox, never inside it, so a button mark is its own named control in the tab order with no nested interactive roles; give icon-only marks a visible tooltip and an accessible name.
 
 ## Use cases
 
@@ -880,18 +881,26 @@ export default function Loading() {
 
 Save this example at `src/pages/design-system/examples/table/column-toggle.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard, controlled.
 
-Registry items used: @infisical/data-table, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/data-table, @infisical/icon, @infisical/text, @infisical/tooltip. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
+import { BanIcon, FilterIcon } from "lucide-react";
+import { Button } from "../../../../components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
+import { Icon } from "../../../../components/v4/ui/icon";
 import { Meta } from "../../../../components/v4/ui/text";
+import { Tooltip } from "../../../../components/v4/ui/tooltip";
 type Action = "read" | "create" | "edit" | "delete";
+type Grant = boolean | "some";
 type Policy = {
     id: string;
     subject: string;
     managed?: boolean;
-    allowed: Action[];
+    actions: Action[];
+    grants: Partial<Record<Action, Grant>>;
+    conditions?: Partial<Record<Action, string>>;
+    forbid?: Partial<Record<Action, string>>;
 };
 const actions: {
     id: Action;
@@ -902,13 +911,47 @@ const actions: {
     { id: "edit", header: "Edit" },
     { id: "delete", header: "Delete" }
 ];
+const all: Action[] = ["read", "create", "edit", "delete"];
 const initial: Policy[] = [
-    { id: "secrets", subject: "Secrets", allowed: ["read", "create", "edit"] },
-    { id: "folders", subject: "Secret folders", allowed: ["read"] },
-    { id: "imports", subject: "Secret imports", allowed: [] },
-    { id: "rotation", subject: "Secret rotation", allowed: ["read"] },
-    { id: "audit", subject: "Audit logs", managed: true, allowed: ["read"] }
+    {
+        id: "secrets",
+        subject: "Secrets",
+        actions: all,
+        grants: { read: true, create: true, edit: true },
+        conditions: { edit: "Only in /payments, staging and production" }
+    },
+    {
+        id: "folders",
+        subject: "Secret folders",
+        actions: all,
+        grants: { read: "some" },
+        conditions: { read: "Two rules: /payments allowed, /legacy forbidden" },
+        forbid: { delete: "Forbidden by the Read only folders rule" }
+    },
+    { id: "imports", subject: "Secret imports", actions: all, grants: {} },
+    { id: "rotation", subject: "Secret rotation", actions: ["read", "edit"], grants: { read: true } },
+    { id: "audit", subject: "Audit logs", managed: true, actions: ["read"], grants: { read: true } }
 ];
+function Mark({ kind, text }: {
+    kind: "condition" | "forbid";
+    text: string;
+}) {
+    return (<Tooltip content={text}>
+      <Button type="button" variant="ghost" size="icon-row">
+        <Icon icon={kind === "condition" ? FilterIcon : BanIcon}/>
+        <span className="sr-only">
+          {kind === "condition" ? `Conditions: ${text}` : `Forbidden: ${text}`}
+        </span>
+      </Button>
+    </Tooltip>);
+}
+const markFor = (action: Action) => (row: Policy) => {
+    const condition = row.conditions?.[action];
+    const forbid = row.forbid?.[action];
+    if (forbid)
+        return <Mark kind="forbid" text={forbid}/>;
+    return condition ? <Mark kind="condition" text={condition}/> : null;
+};
 export default function ColumnToggle() {
     const [policies, setPolicies] = React.useState(initial);
     const [status, setStatus] = React.useState("No changes yet.");
@@ -924,18 +967,18 @@ export default function ColumnToggle() {
         ...actions.map((action): DataTableColumn<Policy> => ({
             id: action.id,
             header: action.header,
-            width: 112,
+            width: 120,
             toggle: {
-                checked: (row) => row.allowed.includes(action.id),
+                checked: (row) => {
+                    const grant = row.grants[action.id] ?? false;
+                    return grant === "some" ? "indeterminate" : grant;
+                },
+                absent: (row) => !row.actions.includes(action.id),
                 disabledReason: (row) => row.managed ? "Managed by Infisical. Audit log access cannot change." : undefined,
+                adornment: markFor(action.id),
                 onChange: (ids, checked) => {
                     setPolicies((current) => current.map((row) => ids.includes(row.id)
-                        ? {
-                            ...row,
-                            allowed: checked
-                                ? [...row.allowed, action.id]
-                                : row.allowed.filter((item) => item !== action.id)
-                        }
+                        ? { ...row, grants: { ...row.grants, [action.id]: checked } }
                         : row));
                     setStatus(`${checked ? "Allowed" : "Removed"} ${action.header.toLowerCase()} on ${ids.length} ${ids.length === 1 ? "policy" : "policies"}.`);
                 }

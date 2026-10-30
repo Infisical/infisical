@@ -734,6 +734,23 @@ button.rowTitle::after {
 .tableToggle + * {
   margin-inline-start: var(--v4-space-8);
 }
+.tableToggleCell {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+  min-height: var(--v4-size-target-row);
+}
+.tableToggleCell > .tableToggle + * {
+  margin-inline-start: 0;
+}
+.tableToggleAbsent {
+  display: flex;
+  min-height: var(--v4-size-target-row);
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-icon-lg);
+  color: var(--v4-faint);
+}
 .sr {
   position: absolute;
   width: 1px;
