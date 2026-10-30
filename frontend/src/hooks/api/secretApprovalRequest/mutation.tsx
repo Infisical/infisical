@@ -103,7 +103,6 @@ export const useBulkActOnSecretApprovalRequests = () => {
     mutationFn: async ({ action, comment, requestIds }) => {
       const results: TBulkChangeRequestResult[] = [];
 
-      // eslint-disable-next-line no-restricted-syntax
       for (const id of requestIds) {
         try {
           if (action === BulkChangeRequestAction.Merge) {

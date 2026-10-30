@@ -317,10 +317,7 @@ export const KeyValidityStep = ({
                     })}
                   </SelectContent>
                 </Select>
-                <FieldDescription>
-                  Algorithm and size of the CA key pair.
-                  {isHsm && " HSM-backed CAs support RSA and ECDSA only."}
-                </FieldDescription>
+                <FieldDescription>Algorithm of the CA key pair.</FieldDescription>
                 <FieldError errors={[error]} />
               </FieldContent>
             </Field>

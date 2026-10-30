@@ -9,9 +9,9 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { PoolHealthBadge } from "@app/pages/organization/NetworkingPage/components/GatewayTab/components/PoolHealthBadge";
 
 import {

@@ -6,8 +6,8 @@ import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/compo
 import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-import { ExternalCaSection } from "./components/ExternalCaSection";
 import { CaSection } from "./components";
+import { ExternalCaSection } from "./components/ExternalCaSection";
 
 export enum CertificateAuthorityTab {
   Internal = "internal",

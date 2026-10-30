@@ -2,7 +2,6 @@ import { useFormContext } from "react-hook-form";
 
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { AwsCertificateManagerPkiSyncFields } from "./AwsCertificateManagerPkiSyncFields";
 import { AwsElasticLoadBalancerPkiSyncFields } from "./AwsElasticLoadBalancerPkiSyncFields";
 import { AwsSecretsManagerPkiSyncFields } from "./AwsSecretsManagerPkiSyncFields";
@@ -16,6 +15,7 @@ import { LinuxServerPkiSyncFields } from "./LinuxServerPkiSyncFields";
 import { NetScalerPkiSyncFields } from "./NetScalerPkiSyncFields";
 import { NutanixPrismCentralPkiSyncFields } from "./NutanixPrismCentralPkiSyncFields";
 import { PaloAltoNetworksPkiSyncFields } from "./PaloAltoNetworksPkiSyncFields";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { WindowsServerPkiSyncFields } from "./WindowsServerPkiSyncFields";
 
 type Props = {

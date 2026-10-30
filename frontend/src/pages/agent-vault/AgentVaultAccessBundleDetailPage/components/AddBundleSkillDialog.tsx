@@ -76,7 +76,6 @@ export const AddBundleSkillDialog = ({
     const added: TAgentVaultSkill[] = [];
     try {
       // One at a time, so the bundle's skill limit stops the rest once it is reached.
-      // eslint-disable-next-line no-restricted-syntax
       for (const skill of skills) {
         // eslint-disable-next-line no-await-in-loop
         await addSkill.mutateAsync({ accessBundleId, skillId: skill.id });

@@ -14,11 +14,14 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Infisical/infisical/tests/fakes/aws"
 	"github.com/Infisical/infisical/tests/fakes/github"
 	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fakes/oidcidp"
 	"github.com/Infisical/infisical/tests/fakes/servicenow"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
+	"github.com/Infisical/infisical/tests/fakes/vercel"
+	"github.com/Infisical/infisical/tests/fakes/webhook"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
@@ -38,6 +41,10 @@ func main() {
 		license.Service,
 		servicenow.Service,
 		oidcidp.Service,
+		webhook.Service,
+		webhook.Slack,
+		aws.STS, aws.SSM, aws.SecretsManager, aws.IAM, aws.CloudFormation,
+		vercel.Service,
 	)
 
 	mail := smtp.New(func(domain string) fakenet.Emitter { return srv.Emitter(smtp.Host, domain) })

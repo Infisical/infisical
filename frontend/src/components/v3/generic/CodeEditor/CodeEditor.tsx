@@ -181,14 +181,12 @@ const CodeEditor = ({
       viewRef.current = null;
     };
     // The editor is created once; later prop changes are applied by the effects below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     viewRef.current?.dispatch({
       effects: compartmentRef.current.reconfigure(configurableExtensions(options))
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language, isReadOnly, hasLineNumbers, hasLineWrapping, placeholder]);
 
   // Runs before the value effect below, so a swapped-in document is not then replaced as an edit.
@@ -206,7 +204,6 @@ const CodeEditor = ({
       effects: compartmentRef.current.reconfigure(configurableExtensions(options))
     });
     view.contentDOM.setAttribute("aria-label", ariaLabel ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stateKey]);
 
   useEffect(() => {
@@ -224,7 +221,6 @@ const CodeEditor = ({
       changes: sync,
       annotations: [externalSync.of(true), Transaction.addToHistory.of(false)]
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   useEffect(() => {

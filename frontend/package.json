@@ -11,8 +11,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "eslint ./src --max-warnings 0",
-    "lint:fix": "eslint --fix ./src --max-warnings 0",
+    "lint": "oxlint --type-aware --report-unused-disable-directives-severity=error --max-warnings 0 src && oxfmt --check 'src/**/*.{ts,tsx}'",
+    "lint:fix": "oxlint --type-aware --report-unused-disable-directives-severity=error --fix --max-warnings 0 src && oxfmt 'src/**/*.{ts,tsx}'",
     "test": "vitest run -c vitest.config.mts",
     "type:check": "tsc --noEmit --project ./tsconfig.app.json",
     "storybook": "storybook dev -p 6006",
@@ -25,7 +25,7 @@
     "qs": "^6.14.2",
     "mdast-util-to-hast": "^13.2.1",
     "js-yaml": "^4.1.1",
-    "storybook": "~10.3.6",
+    "storybook": "~10.6.3",
     "tar": ">=7.5.11",
     "chokidar": {
       "picomatch": "^2.3.2"
@@ -36,8 +36,8 @@
     "cosmiconfig": {
       "yaml": "^1.10.3"
     },
-    "@eslint/eslintrc": {
-      "minimatch": "^3.1.2"
+    "i18next": {
+      "typescript": "$typescript"
     }
   },
   "dependencies": {
@@ -145,13 +145,10 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
-    "@eslint/js": "^9.15.0",
-    "@storybook/addon-a11y": "~10.3.6",
-    "@storybook/addon-docs": "~10.3.6",
-    "@storybook/react-vite": "~10.3.6",
-    "@stylistic/eslint-plugin": "^2.12.1",
+    "@storybook/addon-a11y": "~10.6.3",
+    "@storybook/addon-docs": "~10.6.3",
+    "@storybook/react-vite": "~10.6.3",
     "@tailwindcss/postcss": "^4.1.14",
-    "@tanstack/eslint-plugin-router": "^1.87.6",
     "@tanstack/router-plugin": "^1.95.1",
     "@types/file-saver": "^2.0.7",
     "@types/js-yaml": "^4.0.9",
@@ -162,26 +159,15 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
-    "eslint": "^9.39.5",
-    "eslint-config-airbnb-extended": "^3.2.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-import-resolver-typescript": "^3.7.0",
-    "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-prettier": "^5.2.1",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.4.14",
-    "eslint-plugin-simple-import-sort": "^12.1.1",
-    "eslint-plugin-storybook": "~10.3.6",
-    "globals": "^15.12.0",
+    "oxfmt": "^0.74.0",
+    "oxlint": "^1.89.0",
+    "oxlint-tsgolint": "^7.0.2004",
     "postcss": "^8.4.49",
-    "prettier": "3.4.2",
-    "prettier-plugin-tailwindcss": "^0.6.14",
-    "storybook": "~10.3.6",
+    "storybook": "~10.6.3",
     "storybook-addon-tag-badges": "^3.0.0",
     "tailwindcss": "^4.1.14",
     "tw-animate-css": "^1.4.0",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.70.0",
+    "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vite-plugin-node-polyfills": "^0.28.0",
     "vite-plugin-wasm": "^3.6.0",

@@ -464,7 +464,14 @@ export const gitHubAppServiceFactory = ({
         secrets: "write",
         environments: "write",
         actions: "read",
-        organization_secrets: "write"
+        organization_secrets: "write",
+        dependabot_secrets: "write",
+        organization_dependabot_secrets: "write",
+        // GitHub Enterprise Server has no Codespaces, so these permissions do not exist there
+        ...(instanceType !== "server" && {
+          codespaces_secrets: "write",
+          organization_codespaces_secrets: "write"
+        })
       },
       default_events: [] as string[]
     };

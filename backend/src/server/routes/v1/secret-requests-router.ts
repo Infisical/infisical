@@ -88,6 +88,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
       rateLimit: publicEndpointLimit
     },
     schema: {
+      operationId: "getSecretRequestBrandingAsset",
       params: z.object({
         id: z.string(),
         assetType: z.enum(["brand-logo", "brand-favicon"])

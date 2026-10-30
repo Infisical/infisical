@@ -58,6 +58,8 @@ infisical:
   podAnnotations: {}
   # -- Custom annotations for Infisical deployment
   deploymentAnnotations: {}
+  # -- Adds an `updatedAt` timestamp annotation to the Deployment and pods, so every render (each `helm upgrade` or GitOps sync) rolls the pods and picks up changes to `kubeSecretRef`. Set to `false` for GitOps tools like Argo CD, and restart with `kubectl rollout restart` after changing the secret.
+  rolloutOnEveryRender: true
   # -- Number of pod replicas for high availability
   replicaCount: 2
 

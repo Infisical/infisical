@@ -172,7 +172,7 @@ export const ProjectCategoryOverview = () => {
     () =>
       Boolean(
         currentOrg?.pamProjectId &&
-          projects.some((project) => project.id === currentOrg.pamProjectId)
+        projects.some((project) => project.id === currentOrg.pamProjectId)
       ),
     [currentOrg?.pamProjectId, projects]
   );
@@ -183,7 +183,7 @@ export const ProjectCategoryOverview = () => {
     () =>
       Boolean(
         currentOrg?.agentVaultProjectId &&
-          projects.some((project) => project.id === currentOrg.agentVaultProjectId)
+        projects.some((project) => project.id === currentOrg.agentVaultProjectId)
       ),
     [currentOrg?.agentVaultProjectId, projects]
   );
@@ -199,7 +199,7 @@ export const ProjectCategoryOverview = () => {
     () =>
       Boolean(
         activeSecretScanningProjectId &&
-          projects.some((project) => project.id === activeSecretScanningProjectId)
+        projects.some((project) => project.id === activeSecretScanningProjectId)
       ),
     [activeSecretScanningProjectId, projects]
   );

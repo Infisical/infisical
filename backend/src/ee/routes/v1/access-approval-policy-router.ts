@@ -254,6 +254,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     url: "/count",
     method: "GET",
     schema: {
+      operationId: "getAccessApprovalPolicyCount",
       querystring: z.object({
         projectSlug: z.string(),
         envSlug: z.string()
@@ -392,6 +393,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteAccessApprovalPolicy",
       params: z.object({
         policyId: z.string()
       }),

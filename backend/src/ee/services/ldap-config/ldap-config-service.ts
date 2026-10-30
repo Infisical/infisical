@@ -1043,6 +1043,14 @@ export const ldapConfigServiceFactory = ({
         message: "Failed to test LDAP connection due to plan restriction. Upgrade plan to test the LDAP connection."
       });
 
+    try {
+      await blockLocalAndPrivateIpAddresses(url);
+    } catch (error) {
+      if (error instanceof BadRequestError) throw error;
+      // an unresolvable host fails the same way the connection itself would
+      return false;
+    }
+
     if (Boolean(clientCertificate) !== Boolean(clientKeyCertificate)) {
       throw new BadRequestError({
         message: "clientCertificate and clientKeyCertificate must be provided together for mTLS."

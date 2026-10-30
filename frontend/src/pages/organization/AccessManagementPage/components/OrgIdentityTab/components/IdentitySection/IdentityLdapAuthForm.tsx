@@ -292,9 +292,9 @@ export const IdentityLdapAuthForm = ({
   const urlValue = watch("url");
   const hasUrlChanged = Boolean(
     isUpdate &&
-      scope !== "template" &&
-      data?.url &&
-      normalizeUrl(urlValue) !== normalizeUrl(data.url)
+    scope !== "template" &&
+    data?.url &&
+    normalizeUrl(urlValue) !== normalizeUrl(data.url)
   );
 
   const configurationOptions = useMemo<ConfigurationOption[]>(

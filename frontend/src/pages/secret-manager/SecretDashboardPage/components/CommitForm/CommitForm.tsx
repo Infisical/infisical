@@ -51,7 +51,6 @@ interface CommitFormProps {
   onReviewOpenChange?: (isOpen: boolean) => void;
 }
 
-/* eslint-disable react/no-unused-prop-types */
 type RenderResourceProps = {
   onDiscard: () => void;
   change: PendingChange;
@@ -61,7 +60,6 @@ type RenderResourceProps = {
   isLoadingOldValue?: boolean;
   isLoadingNewValue?: boolean;
 };
-/* eslint-enable react/no-unused-prop-types */
 
 const RenderSecretChanges = ({
   onDiscard,

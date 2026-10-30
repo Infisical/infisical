@@ -78,7 +78,6 @@ export const IntegrationSettingsSection = ({ integration }: Props) => {
     return null;
   }
 
-  // eslint-disable-next-line no-nested-ternary
   return (
     <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
       <div className="mb-4 flex items-center justify-between border-b border-border-emphasis pb-4">

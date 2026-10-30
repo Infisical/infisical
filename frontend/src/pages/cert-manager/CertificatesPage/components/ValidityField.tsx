@@ -6,7 +6,6 @@ import { Field, FieldDescription, FieldLabel, Input } from "@app/components/v3";
 import { PolicyRowMessage } from "./PolicyRowMessage";
 
 type Props = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
   label: string;
   description?: ReactNode;

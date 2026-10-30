@@ -18,12 +18,10 @@ export const useAgentVaultSheetState = (param: "sessionId" | "skillId" = "sessio
     id,
     isOpen: Boolean(id),
     openSheet: (nextId: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ search: { ...search, [param]: nextId } as any });
     },
     closeSheet: () => {
       const rest = Object.fromEntries(Object.entries(search).filter(([key]) => key !== param));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return navigate({ search: rest as any });
     }
   };
