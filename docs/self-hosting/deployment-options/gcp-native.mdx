@@ -308,15 +308,37 @@ For production deployments with many users or secrets, increase these values acc
       </Note>
 
       ```bash
+      # Grant the account running these commands read access to the secrets
+      # Use serviceAccount:<SERVICE_ACCOUNT_EMAIL> for a service account
+      SETUP_PRINCIPAL="user:<YOUR_EMAIL>"
+      for secret in infisical-encryption-key infisical-auth-secret infisical-db-uri infisical-redis-url; do
+        gcloud secrets add-iam-policy-binding "$secret" \
+          --member="$SETUP_PRINCIPAL" \
+          --role="roles/secretmanager.secretAccessor"
+      done
+      ```
+
+      ```bash
       # Create the namespace before creating the Kubernetes Secret
       kubectl create namespace infisical
 
-      # Copy the Google Secret Manager values into Kubernetes
+      # Stop if any secret cannot be read or has an empty value
+      set -euo pipefail
+      ENCRYPTION_KEY="$(gcloud secrets versions access latest --secret=infisical-encryption-key)" || exit 1
+      AUTH_SECRET="$(gcloud secrets versions access latest --secret=infisical-auth-secret)" || exit 1
+      DB_CONNECTION_URI="$(gcloud secrets versions access latest --secret=infisical-db-uri)" || exit 1
+      REDIS_URL="$(gcloud secrets versions access latest --secret=infisical-redis-url)" || exit 1
+      if [[ -z "$ENCRYPTION_KEY" || -z "$AUTH_SECRET" || -z "$DB_CONNECTION_URI" || -z "$REDIS_URL" ]]; then
+        echo "One or more Google Secret Manager values are empty" >&2
+        exit 1
+      fi
+
+      # Copy the Google Secret Manager values into Kubernetes after all reads succeed
       kubectl create secret generic infisical-secrets \
-        --from-literal=ENCRYPTION_KEY="$(gcloud secrets versions access latest --secret=infisical-encryption-key)" \
-        --from-literal=AUTH_SECRET="$(gcloud secrets versions access latest --secret=infisical-auth-secret)" \
-        --from-literal=DB_CONNECTION_URI="$(gcloud secrets versions access latest --secret=infisical-db-uri)" \
-        --from-literal=REDIS_URL="$(gcloud secrets versions access latest --secret=infisical-redis-url)" \
+        --from-literal=ENCRYPTION_KEY="$ENCRYPTION_KEY" \
+        --from-literal=AUTH_SECRET="$AUTH_SECRET" \
+        --from-literal=DB_CONNECTION_URI="$DB_CONNECTION_URI" \
+        --from-literal=REDIS_URL="$REDIS_URL" \
         --from-literal=SITE_URL="https://infisical.example.com" \
         -n infisical
       ```
