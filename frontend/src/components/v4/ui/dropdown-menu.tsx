@@ -1,7 +1,7 @@
 import * as React from "react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 
-import { useV4PortalContainer } from "@app/components/v4/scope";
+import { useV4CollisionBoundary, useV4PortalContainer } from "@app/components/v4/scope";
 
 import { ListHighlight } from "../lib/list-highlight";
 import { cn } from "../lib/utils";
@@ -69,6 +69,7 @@ function DropdownMenuContent({
         ref={ref}
         data-slot="dropdown-menu-content"
         collisionPadding={collisionPadding}
+        collisionBoundary={useV4CollisionBoundary()}
         sideOffset={sideOffset}
         align={align}
         className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
@@ -309,6 +310,7 @@ function DropdownMenuSubContent({
       ref={ref}
       data-slot="dropdown-menu-sub-content"
       collisionPadding={collisionPadding}
+      collisionBoundary={useV4CollisionBoundary()}
       className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
       data-scroll-fade="y"
       {...props}

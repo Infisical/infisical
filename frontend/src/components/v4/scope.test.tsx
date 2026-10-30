@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useV4PortalContainer, useV4Theme, V4Scope } from "./scope";
+import { useV4CollisionBoundary, useV4PortalContainer, useV4Theme, V4Scope } from "./scope";
 import { ChartStyle } from "./ui/chart";
 
 let host: HTMLDivElement;
@@ -105,6 +105,70 @@ describe("portable theme boundaries", () => {
     expect(themedProbe("outer-portal").theme).toBe("light");
     expect(themedProbe("implicit-portal").theme).toBe("light");
     expect(themedProbe("dark-wrapper").theme).toBe("dark");
+  });
+
+  it("places its portal container inside a given element and keeps other scopes on the body", async () => {
+    const frame = document.createElement("div");
+    document.body.append(frame);
+    const rafs: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => rafs.push(callback));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    const tree = (theme: "light" | "dark") => (
+      <V4Scope theme={theme}>
+        <Probe name="page" />
+        <V4Scope theme={theme} portalContainer={frame}>
+          <Probe name="framed" />
+        </V4Scope>
+      </V4Scope>
+    );
+    await render(tree("light"));
+    const framed = document.querySelector('[data-probe="framed-portal"]');
+    const container = framed?.closest(".v4");
+    expect(container?.parentElement).toBe(frame);
+    expect(themedProbe("framed-portal")).toEqual({ theme: "light", context: "light" });
+    expect(
+      document.querySelector('[data-probe="page-portal"]')?.closest(".v4")?.parentElement
+    ).toBe(document.body);
+    await render(tree("dark"));
+    expect(themedProbe("framed-portal")).toEqual({ theme: "dark", context: "dark" });
+    expect(container?.hasAttribute("data-theme-switching")).toBe(true);
+    await React.act(async () => rafs.splice(0).forEach((callback) => callback(0)));
+    expect(container?.hasAttribute("data-theme-switching")).toBe(false);
+    await render(null);
+    expect(frame.childElementCount).toBe(0);
+    frame.remove();
+  });
+
+  it("offers the portal frame as the collision boundary and none for body portals", async () => {
+    const frame = document.createElement("div");
+    document.body.append(frame);
+    const boundaries: Record<string, HTMLElement | undefined> = {};
+    function Boundary({ name }: { name: string }) {
+      boundaries[name] = useV4CollisionBoundary();
+      return null;
+    }
+    await render(
+      <V4Scope>
+        <Boundary name="page" />
+        <V4Scope portalContainer={frame}>
+          <Boundary name="framed" />
+        </V4Scope>
+      </V4Scope>
+    );
+    expect(boundaries.page).toBeUndefined();
+    expect(boundaries.framed).toBe(frame);
+    await render(null);
+    frame.remove();
+  });
+
+  it("renders no portal container while the given element is not mounted", async () => {
+    await render(
+      <V4Scope portalContainer={null}>
+        <Probe name="pending" />
+      </V4Scope>
+    );
+    expect(themedProbe("pending-wrapper").context).toBe("light");
+    expect(document.querySelector('[data-probe="pending-portal"]')).toBeNull();
   });
 
   it("selects chart configuration colors from the resolved scope and updates them with the scope", async () => {

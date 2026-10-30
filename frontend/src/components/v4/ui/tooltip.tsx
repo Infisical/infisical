@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Tooltip as TooltipPrimitive } from "radix-ui";
 
-import { useV4PortalContainer } from "@app/components/v4/scope";
+import { useV4CollisionBoundary, useV4PortalContainer } from "@app/components/v4/scope";
 
 import { cn } from "../lib/utils";
 import { Kbd } from "./kbd";
@@ -76,6 +76,7 @@ function TooltipContent({
         ref={ref}
         data-slot="tooltip-content"
         collisionPadding={collisionPadding}
+        collisionBoundary={useV4CollisionBoundary()}
         sideOffset={sideOffset}
         className={cn("z-50", menu.tooltip, menu.motion, className)}
         {...props}

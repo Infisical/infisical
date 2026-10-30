@@ -7,7 +7,7 @@ import {
   useState
 } from "react";
 
-import { useV4Theme } from "@app/components/v4/scope";
+import { useV4Theme, V4Scope } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
@@ -28,6 +28,7 @@ export const ComparisonSlider = ({ title, before, After, start = 50 }: Compariso
   const [position, setPosition] = useState(start);
   const [view, setView] = useState<"compare" | "live">("compare");
   const stage = useRef<HTMLDivElement>(null);
+  const [frame, setFrame] = useState<HTMLDivElement | null>(null);
   const dragging = useRef(false);
   const [scale, setScale] = useState(1);
   useLayoutEffect(() => {
@@ -81,8 +82,10 @@ export const ComparisonSlider = ({ title, before, After, start = 50 }: Compariso
       </div>
       {view === "live" ? (
         <div className={styles.full}>
-          <div>
-            <After />
+          <div ref={setFrame} className={styles.frame}>
+            <V4Scope theme={theme} portalContainer={frame} className={styles.scope}>
+              <After />
+            </V4Scope>
           </div>
         </div>
       ) : (
@@ -104,12 +107,15 @@ export const ComparisonSlider = ({ title, before, After, start = 50 }: Compariso
           }}
         >
           <div
+            ref={setFrame}
             className={styles.after}
             style={{ transform: `scale(${scale})` }}
             aria-label={`${title}, v4`}
             role="group"
           >
-            <After />
+            <V4Scope theme={theme} portalContainer={frame} className={styles.scope}>
+              <After />
+            </V4Scope>
           </div>
           <div className={styles.before} style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}>
             {shot ? (

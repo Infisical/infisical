@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ContextMenu as ContextMenuPrimitive } from "radix-ui";
 
-import { useV4PortalContainer } from "@app/components/v4/scope";
+import { useV4CollisionBoundary, useV4PortalContainer } from "@app/components/v4/scope";
 
 import { ListHighlight } from "../lib/list-highlight";
 import { cn } from "../lib/utils";
@@ -93,6 +93,7 @@ function ContextMenuContent({
         ref={ref}
         data-slot="context-menu-content"
         collisionPadding={collisionPadding}
+        collisionBoundary={useV4CollisionBoundary()}
         className={cn("z-50", menu.surface, menu.panel, menu.inset, menu.motion, className)}
         data-scroll-fade="y"
         {...props}
@@ -167,6 +168,7 @@ function ContextMenuSubContent({
       ref={ref}
       data-slot="context-menu-sub-content"
       collisionPadding={collisionPadding}
+      collisionBoundary={useV4CollisionBoundary()}
       className={cn("z-50", menu.surface, menu.panel, menu.sub, menu.inset, menu.motion, className)}
       data-scroll-fade="y"
       {...props}
