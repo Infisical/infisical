@@ -7,8 +7,7 @@ description: "Learn how to run AI agents in Kubernetes pods that contain no cred
 
 You can run AI agents on Kubernetes, with each agent run in its own pod. An agent runs commands that a prompt can influence, so if you give its pod an API key, such as from a Kubernetes Secret, the key can leak through a [prompt injection](/documentation/platform/agent-vault/why-agent-vault). With Agent Vault, agent pods contain no API keys. Each pod receives a [session](/documentation/platform/agent-vault/sessions) token instead, and sends its requests through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) that attaches the real credentials.
 
-This page explains how the pieces fit together in a cluster and how to choose an isolation level for agent pods. To set it up, follow [Set up Agent Vault on Kubernetes](/documentation/platform/agent-vault/guides/kubernetes-setup).
-
+ we want to make this a card or something to make it more obvious that, hey, there's this other guy that you could click on. What do you think? 
 ```mermaid
 flowchart LR
   subgraph cluster["Kubernetes cluster"]
