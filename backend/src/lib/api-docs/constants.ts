@@ -4457,7 +4457,8 @@ export const SecretValidationRules = {
     ruleId: `The ID of the ${SECRET_VALIDATION_RULE_NAME_MAP[type]} Validation Rule to retrieve.`
   }),
   GENERATE_STATIC_SECRET_VALUE: {
-    ruleId: "The ID of the Static Secrets Validation Rule whose value constraints the generated value must satisfy."
+    ruleId: "The ID of the Static Secrets Validation Rule whose value constraints the generated value must satisfy.",
+    value: "The generated secret value. It is not stored."
   },
   CREATE: (type: SecretValidationRuleType) => {
     const name = SECRET_VALIDATION_RULE_NAME_MAP[type];

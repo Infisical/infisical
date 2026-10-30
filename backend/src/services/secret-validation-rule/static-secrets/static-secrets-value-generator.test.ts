@@ -17,6 +17,10 @@ describe("generateStaticSecretValue", () => {
     expect(new RE2("[A-Z]{16}").test(value)).toBe(true);
   });
 
+  test("generates below the default minimum length when only a maximum is set", () => {
+    expect(generateStaticSecretValue({ regexPattern: "^[A-Z]{8}$", maxLength: 8 })).toMatch(/^[A-Z]{8}$/);
+  });
+
   test("respects the length window without a regex", () => {
     const value = generateStaticSecretValue({ minLength: 20, maxLength: 24, requiredPrefix: "a_" });
 
@@ -33,7 +37,8 @@ describe("generateStaticSecretValue", () => {
     ["a leading inline flag", { regexPattern: "(?i)^[a-z]{16}$" }],
     ["a unicode brace escape RE2 reads differently", { regexPattern: "^\\u{41}$" }],
     ["a prefix and suffix longer than the maximum", { requiredPrefix: "pre_", requiredSuffix: "_end", maxLength: 4 }],
-    ["a minimum above the maximum", { minLength: 30, maxLength: 20 }]
+    ["a minimum above the maximum", { minLength: 30, maxLength: 20 }],
+    ["nested repeats that would expand without bound", { regexPattern: "^(((([a-z]+)+)+)+)+$" }]
   ])("fails visibly for %s", (_, constraints) => {
     expect(() => generateStaticSecretValue(constraints)).toThrow(BadRequestError);
   });

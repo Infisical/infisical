@@ -10,6 +10,7 @@ import { TValueConstraints } from "../secret-validation-rule-schemas";
 const DEFAULT_MIN_LENGTH = 16;
 const DEFAULT_MAX_LENGTH = 64;
 const MAX_GENERATION_ATTEMPTS = 25;
+const MAX_REGEX_OUTPUT_LENGTH = 4096;
 const CHAR_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~!*";
 
 const randomString = (length: number) => {
@@ -18,16 +19,52 @@ const randomString = (length: number) => {
   return out;
 };
 
-const buildRegexGenerator = (regexPattern: string) => {
-  try {
-    const generator = new RandExp(regexPattern);
-    generator.randInt = (min: number, max: number) => crypto.randomInt(min, max + 1);
-    return generator;
-  } catch {
-    throw new BadRequestError({
+type TRegexToken = {
+  type: number;
+  stack?: TRegexToken[];
+  options?: TRegexToken[][];
+  value?: TRegexToken | number;
+  min?: number;
+  max?: number | null;
+};
+
+const REGEX_TOKEN_REPETITION = 5;
+const REGEX_TOKEN_REFERENCE = 6;
+const REGEX_TOKEN_POSITION = 2;
+
+const estimateMaxOutputLength = (token: TRegexToken, repeatCap: number): number => {
+  if (token.type === REGEX_TOKEN_POSITION) return 0;
+  if (token.type === REGEX_TOKEN_REFERENCE) return Infinity;
+  if (token.type === REGEX_TOKEN_REPETITION) {
+    const times = Math.min(token.max ?? repeatCap, repeatCap);
+    return times * estimateMaxOutputLength(token.value as TRegexToken, repeatCap);
+  }
+  const sum = (stack: TRegexToken[]) =>
+    stack.reduce((total, child) => total + estimateMaxOutputLength(child, repeatCap), 0);
+  if (token.options) return Math.max(0, ...token.options.map(sum));
+  if (token.stack) return sum(token.stack);
+  return 1;
+};
+
+const buildRegexGenerator = (regexPattern: string, repeatCap: number) => {
+  const unsupported = () =>
+    new BadRequestError({
       message: `A value can't be generated for the regex pattern "${regexPattern}". It uses syntax the generator doesn't support, so enter a value manually.`
     });
+
+  let generator: RandExp;
+  try {
+    generator = new RandExp(regexPattern);
+  } catch {
+    throw unsupported();
   }
+
+  generator.max = repeatCap;
+  generator.randInt = (min: number, max: number) => crypto.randomInt(min, max + 1);
+
+  if (estimateMaxOutputLength(generator.tokens as TRegexToken, repeatCap) > MAX_REGEX_OUTPUT_LENGTH)
+    throw unsupported();
+  return generator;
 };
 
 /**
@@ -39,8 +76,8 @@ export const generateStaticSecretValue = (constraints: TValueConstraints): strin
   const { minLength, maxLength, regexPattern, requiredPrefix = "", requiredSuffix = "" } = constraints;
   const fixedLength = requiredPrefix.length + requiredSuffix.length;
 
-  const min = minLength ?? DEFAULT_MIN_LENGTH;
-  const max = maxLength ?? Math.max(DEFAULT_MAX_LENGTH, min);
+  const max = maxLength ?? Math.max(DEFAULT_MAX_LENGTH, minLength ?? 0);
+  const min = minLength ?? Math.min(DEFAULT_MIN_LENGTH, max);
 
   if (min > max) {
     throw new BadRequestError({
@@ -54,7 +91,7 @@ export const generateStaticSecretValue = (constraints: TValueConstraints): strin
     });
   }
 
-  const regexGenerator = regexPattern ? buildRegexGenerator(regexPattern) : undefined;
+  const regexGenerator = regexPattern ? buildRegexGenerator(regexPattern, max) : undefined;
   let violatedConstraints: string[] = [];
 
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
