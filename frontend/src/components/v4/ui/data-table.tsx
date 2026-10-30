@@ -15,6 +15,7 @@ import {
   TableRow,
   TableRowActions
 } from "./table";
+import { Tooltip } from "./tooltip";
 
 import styles from "./data.module.css";
 import frame from "./frame.module.css";
@@ -22,7 +23,8 @@ import frame from "./frame.module.css";
 export interface DataTableColumn<Row> {
   id: string;
   header: string;
-  render: (row: Row, index: number) => React.ReactNode;
+  render?: (row: Row, index: number) => React.ReactNode;
+  toggle?: DataTableToggle<Row>;
   text?: (row: Row) => string;
   primary?: boolean;
   sortable?: boolean;
@@ -34,6 +36,12 @@ export interface DataTableColumn<Row> {
   actions?: boolean;
   pin?: boolean;
   hideHeader?: boolean;
+}
+export interface DataTableToggle<Row> {
+  checked: (row: Row) => boolean;
+  onChange: (rowIds: string[], checked: boolean) => void;
+  disabledReason?: (row: Row) => string | undefined;
+  label?: string;
 }
 export interface DataTableProps<Row> {
   label: string;
@@ -182,6 +190,10 @@ export function DataTable<Row>({
     focusPending.current = false;
     row.focus({ preventScroll: true });
   }, [focusRow, start]);
+  const toggleCounts = (toggle: DataTableToggle<Row>) => {
+    const enabled = rows.filter((row) => !toggle.disabledReason?.(row));
+    return { enabled, on: enabled.filter(toggle.checked).length };
+  };
   const span = columns.length + (selectable ? 1 : 0);
   const hasGrowingColumn = columns.some((column) => column.grow && column.width === undefined);
   const fixedLayout = columns.every((column) => column.width !== undefined || column.grow);
@@ -275,6 +287,15 @@ export function DataTable<Row>({
                     : undefined
                 }
               >
+                {column.toggle && (
+                  <ToggleHead
+                    toggle={column.toggle}
+                    counts={toggleCounts(column.toggle)}
+                    label={column.toggle.label ?? `${column.header} for every row in ${label}`}
+                    disabled={loading}
+                    getRowId={getRowId}
+                  />
+                )}
                 {column.sortable && onSortChange ? (
                   <button
                     type="button"
@@ -393,11 +414,18 @@ export function DataTable<Row>({
                     style={columnStyle(column)}
                     data-actions={column.actions || undefined}
                     data-pin={column.pin ?? column.actions}
-                    data-row-interactive={column.actions || undefined}
+                    data-row-interactive={column.actions || column.toggle ? true : undefined}
                   >
-                    {column.actions ? (
+                    {column.toggle ? (
+                      <ToggleCell
+                        toggle={column.toggle}
+                        row={row}
+                        label={`${column.header} for ${rowLabel(row)}`}
+                        rowId={getRowId(row)}
+                      />
+                    ) : column.actions ? (
                       <TableRowActions style={{ maxWidth: column.maxWidth }}>
-                        {column.render(row, start + i)}
+                        {column.render?.(row, start + i)}
                       </TableRowActions>
                     ) : (
                       <div
@@ -405,7 +433,7 @@ export function DataTable<Row>({
                         style={{ maxWidth: column.maxWidth }}
                         title={column.text?.(row)}
                       >
-                        {column.render(row, start + i)}
+                        {column.render?.(row, start + i)}
                       </div>
                     )}
                   </TableCell>
@@ -472,4 +500,59 @@ export function EnvMark({ present, env }: { present: boolean; env?: string }) {
       {present ? "✓" : "−"}
     </span>
   );
+}
+
+function ToggleHead<Row>({
+  toggle,
+  counts,
+  label,
+  disabled,
+  getRowId
+}: {
+  toggle: DataTableToggle<Row>;
+  counts: { enabled: Row[]; on: number };
+  label: string;
+  disabled: boolean;
+  getRowId: (row: Row) => string;
+}) {
+  const { enabled, on } = counts;
+  const all = enabled.length > 0 && on === enabled.length;
+  return (
+    <span className={styles.tableToggle} data-slot="table-column-toggle">
+      <Checkbox
+        aria-label={label}
+        disabled={disabled || !enabled.length}
+        checked={on > 0 && !all ? "indeterminate" : all}
+        onCheckedChange={() =>
+          toggle.onChange(enabled.filter((row) => toggle.checked(row) === all).map(getRowId), !all)
+        }
+      />
+    </span>
+  );
+}
+
+function ToggleCell<Row>({
+  toggle,
+  row,
+  label,
+  rowId
+}: {
+  toggle: DataTableToggle<Row>;
+  row: Row;
+  label: string;
+  rowId: string;
+}) {
+  const reason = toggle.disabledReason?.(row);
+  const box = (
+    <span className={styles.tableToggle}>
+      <Checkbox
+        aria-label={label}
+        aria-description={reason}
+        checked={toggle.checked(row)}
+        disabled={Boolean(reason)}
+        onCheckedChange={(next) => toggle.onChange([rowId], next === true)}
+      />
+    </span>
+  );
+  return reason ? <Tooltip content={reason}>{box}</Tooltip> : box;
 }

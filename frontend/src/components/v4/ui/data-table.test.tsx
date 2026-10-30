@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { V4Scope } from "../scope";
 import { DataTable, type DataTableColumn } from "./data-table";
 import { FloatingActionBar } from "./floating-action-bar";
+import { TooltipProvider } from "./tooltip";
 
 type Row = { id: string; name: string; region: string };
 
@@ -246,4 +247,98 @@ it("reserves room for a hosted floating action bar only while it shows", async (
   expect(shell().dataset.actionBar).toBe("contained");
   await render(table(0, "contained"));
   expect(shell().dataset.actionBar).toBeUndefined();
+});
+
+type Grant = { id: string; name: string; read: boolean; locked?: boolean };
+
+function ToggleHarness({
+  initial,
+  onChange
+}: {
+  initial: Grant[];
+  onChange: (ids: string[], checked: boolean) => void;
+}) {
+  const [grants, setGrants] = React.useState(initial);
+  return (
+    <V4Scope>
+      <TooltipProvider>
+        <DataTable
+          label="Permissions"
+          rows={grants}
+          getRowId={(row) => row.id}
+          rowLabel={(row) => row.name}
+          columns={[
+            { id: "name", header: "Policy", primary: true, grow: true, render: (row) => row.name },
+            {
+              id: "read",
+              header: "Read",
+              width: 96,
+              toggle: {
+                checked: (row) => row.read,
+                disabledReason: (row) => (row.locked ? "Managed by Infisical" : undefined),
+                onChange: (ids, checked) => {
+                  onChange(ids, checked);
+                  setGrants((current) =>
+                    current.map((row) => (ids.includes(row.id) ? { ...row, read: checked } : row))
+                  );
+                }
+              }
+            }
+          ]}
+        />
+      </TooltipProvider>
+    </V4Scope>
+  );
+}
+
+const box = (name: string) => {
+  const node = host.querySelector<HTMLButtonElement>(`[aria-label="${name}"]`);
+  if (!node) throw new Error(`Missing ${name}`);
+  return node;
+};
+
+it("toggles a boolean column from its header with all, some and none states", async () => {
+  const onChange = vi.fn();
+  await React.act(async () =>
+    root.render(
+      <ToggleHarness
+        onChange={onChange}
+        initial={[
+          { id: "s", name: "Secrets", read: true },
+          { id: "f", name: "Folders", read: false },
+          { id: "a", name: "Audit logs", read: true, locked: true }
+        ]}
+      />
+    )
+  );
+  const header = () => box("Read for every row in Permissions");
+  expect(header().getAttribute("aria-checked")).toBe("mixed");
+  expect(box("Read for Audit logs").disabled).toBe(true);
+  expect(box("Read for Audit logs").getAttribute("aria-description")).toBe("Managed by Infisical");
+
+  await React.act(async () => header().click());
+  expect(onChange).toHaveBeenLastCalledWith(["f"], true);
+  expect(header().getAttribute("aria-checked")).toBe("true");
+
+  await React.act(async () => header().click());
+  expect(onChange).toHaveBeenLastCalledWith(["s", "f"], false);
+  expect(header().getAttribute("aria-checked")).toBe("false");
+  expect(box("Read for Audit logs").getAttribute("aria-checked")).toBe("true");
+
+  await React.act(async () => box("Read for Secrets").click());
+  expect(onChange).toHaveBeenLastCalledWith(["s"], true);
+  expect(header().getAttribute("aria-checked")).toBe("mixed");
+});
+
+it("disables the header toggle when every row is locked", async () => {
+  await React.act(async () =>
+    root.render(
+      <ToggleHarness
+        onChange={vi.fn()}
+        initial={[{ id: "a", name: "Audit logs", read: true, locked: true }]}
+      />
+    )
+  );
+  expect(box("Read for every row in Permissions").disabled).toBe(true);
+  expect(box("Read for every row in Permissions").getAttribute("aria-checked")).toBe("false");
 });

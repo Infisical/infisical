@@ -27,6 +27,7 @@ export const tableDefinition = {
     "TableRowActionsSeparator",
     "TableRowIndicators",
     "DataTableColumn",
+    "DataTableToggle",
     "EnvMark"
   ],
   referenceNames: ["Table"],
@@ -46,7 +47,8 @@ export const tableDefinition = {
     "pagination renders its node in a foot inside the tint frame, below the rows. It stays in view while a wide table scrolls sideways and, with a fixed height, while the rows scroll.",
     "loading replaces the rows with loadingRows (default 5) skeleton rows at the same row height: a square for the selection and actions cells and a size-skeleton-text bar for each value, shorter in the primary column. Empty and load-more stay hidden while loading.",
     "When every column declares a width, or grows to fill the rest, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.",
-    "actionBar hosts the table's FloatingActionBar. While the bar shows, the table reserves size-action-bar plus the bar's offset (space-action-bar-offset, or space-action-bar-offset-contained) below itself, so the last row can scroll clear of the bar."
+    "actionBar hosts the table's FloatingActionBar. While the bar shows, the table reserves size-action-bar plus the bar's offset (space-action-bar-offset, or space-action-bar-offset-contained) below itself, so the last row can scroll clear of the bar.",
+    "A column with toggle is a boolean column: every cell is a Checkbox and the header gets a tri-state Checkbox before its title. The header reads checked when every enabled row is on, indeterminate when some are, and unchecked when none are. Selecting it turns every enabled row on, or off when all are on, and calls onChange once with only the row ids that change. Rows with a disabledReason keep their value, are left out of the count, and show the reason on their disabled cell; with no enabled rows the header is disabled. render is optional on a toggle column."
   ],
   accessibility: [
     "Native table/header/cell semantics, labelled selection and aria-sort buttons.",
@@ -54,7 +56,8 @@ export const tableDefinition = {
     "Focus remains on native controls; loading and selected totals announced politely.",
     "After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived.",
     "With onRowActivate, rows join the tab order without an interactive role, so the table keeps native row semantics and never nests a button or link role around the row's own controls. Enter activates the focused row and Space toggles its selection when the table is selectable. Keep a real link or button for the same destination in the primary cell, so screen reader users meet a named control.",
-    "Loading rows are hidden from assistive technology; the table is aria-busy and the polite status says Loading rows."
+    "Loading rows are hidden from assistive technology; the table is aria-busy and the polite status says Loading rows.",
+    'Toggle checkboxes are named, not left to the header: each cell is "<header> for <rowLabel>" and the header control is "<header> for every row in <label>" unless toggle.label overrides it. The header control announces mixed for some. A disabled cell carries its reason as its accessible description.'
   ],
   limitations: [
     "The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.",
@@ -64,7 +67,8 @@ export const tableDefinition = {
     "The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows.",
     "onRowActivate is a pointer and keyboard shortcut. It cannot open a new tab or be copied as a link; navigation that needs those belongs on the link in the primary cell.",
     "The pagination slot takes any node. The host slices rows, owns page and page size, and resets the page when filters change.",
-    "Only a FloatingActionBar passed through actionBar reserves space. A bar rendered elsewhere on the page cannot reach the table."
+    "Only a FloatingActionBar passed through actionBar reserves space. A bar rendered elsewhere on the page cannot reach the table.",
+    "A toggle column acts on the rows passed in. With pagination the header counts and sets the current page only; the host decides whether a bulk change spans pages. The host owns the values and persists them through onChange."
   ],
   related: ["data-grid", "pagination"],
   examples: [
@@ -127,6 +131,12 @@ export const tableDefinition = {
       title: "Loading rows",
       module: "./examples/table/loading.tsx",
       states: ["loading", "default"]
+    },
+    {
+      id: "column-toggle",
+      title: "Column toggle, permission matrix",
+      module: "./examples/table/column-toggle.tsx",
+      states: ["default", "disabled", "keyboard", "controlled"]
     }
   ],
   coverage: [
