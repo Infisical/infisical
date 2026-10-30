@@ -709,7 +709,7 @@ const CertificateDetail = ({
           </>
         }
       >
-        <Grid columns={2} gap={24} style={{ alignItems: "start" }}>
+        <Grid min="card" gap={24} style={{ alignItems: "start" }}>
           <Card title="Subject">
             <DataList
               variant="props"

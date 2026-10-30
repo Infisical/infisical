@@ -100,11 +100,12 @@ Inline.displayName = "Inline";
 export function Grid({
   gap = 16,
   columns,
+  min = "tile",
   style,
   className,
   ref,
   ...props
-}: Omit<LayoutProps, "align" | "justify"> & { columns?: 2 | 3 | 4 } & {
+}: Omit<LayoutProps, "align" | "justify"> & { columns?: 2 | 3 | 4; min?: "tile" | "card" } & {
   ref?: React.Ref<HTMLDivElement>;
 }) {
   return (
@@ -116,7 +117,7 @@ export function Grid({
         gap: spacing(gap),
         gridTemplateColumns: columns
           ? `repeat(${columns}, minmax(0, 1fr))`
-          : "repeat(auto-fit, minmax(min(100%, var(--v4-size-tile-min, 208px)), 1fr))",
+          : `repeat(auto-fit, minmax(min(100%, var(--v4-size-${min}-min)), 1fr))`,
         ...style
       }}
       {...props}

@@ -68,6 +68,7 @@ Exports: Stack, Inline, Grid, Container, Measure, PageMeasure, FormMeasure. Sour
 
 - Stack and Inline use source spacing tokens, alignment and wrapping; Inline wraps by default.
 - Grid automatically preserves the tile-width floor and drops columns in narrow containers. Explicit columns use equal flexible tracks.
+- min="card" raises the auto-fit floor to size-card-min (320px) for grids of Cards holding DataLists, so a pair of cards drops to one column before label and value rows start wrapping.
 - Container centers the page width; Measure constrains prose, forms or page content.
 
 ## Accessibility

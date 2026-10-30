@@ -141,7 +141,7 @@ Why: Stable lanes support comparison. Counts must describe actual loaded rows an
 - src/components/v4/ui/frame.module.css
 - src/components/v4/tokens.json
 
-Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, TableRowActions, TableRowActionsSeparator, TableRowIndicators, DataTableColumn, EnvMark. Source TypeScript defines the API.
+Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, TableRowActions, TableRowActionsSeparator, TableRowIndicators, DataTableColumn, DataTableToggle, EnvMark. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -161,6 +161,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - loading replaces the rows with loadingRows (default 5) skeleton rows at the same row height: a square for the selection and actions cells and a size-skeleton-text bar for each value, shorter in the primary column. Empty and load-more stay hidden while loading.
 - When every column declares a width, or grows to fill the rest, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.
 - actionBar hosts the table's FloatingActionBar. While the bar shows, the table reserves size-action-bar plus the bar's offset (space-action-bar-offset, or space-action-bar-offset-contained) below itself, so the last row can scroll clear of the bar.
+- A column with toggle is a boolean column: every cell is a Checkbox and the header gets a tri-state Checkbox before its title. The header reads checked when every enabled row is on, indeterminate when some are, and unchecked when none are. Selecting it turns every enabled row on, or off when all are on, and calls onChange once with only the row ids that change. Rows with a disabledReason keep their value, are left out of the count, and show the reason on their disabled cell; with no enabled rows the header is disabled. render is optional on a toggle column.
 
 ## Accessibility
 
@@ -170,6 +171,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived.
 - With onRowActivate, rows join the tab order without an interactive role, so the table keeps native row semantics and never nests a button or link role around the row's own controls. Enter activates the focused row and Space toggles its selection when the table is selectable. Keep a real link or button for the same destination in the primary cell, so screen reader users meet a named control.
 - Loading rows are hidden from assistive technology; the table is aria-busy and the polite status says Loading rows.
+- Toggle checkboxes are named, not left to the header: each cell is "<header> for <rowLabel>" and the header control is "<header> for every row in <label>" unless toggle.label overrides it. The header control announces mixed for some. A disabled cell carries its reason as its accessible description.
 
 ## Use cases
 
@@ -185,6 +187,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - onRowActivate is a pointer and keyboard shortcut. It cannot open a new tab or be copied as a link; navigation that needs those belongs on the link in the primary cell.
 - The pagination slot takes any node. The host slices rows, owns page and page size, and resets the page when filters change.
 - Only a FloatingActionBar passed through actionBar reserves space. A bar rendered elsewhere on the page cannot reach the table.
+- A toggle column acts on the rows passed in. With pagination the header counts and sets the current page only; the host decides whether a bulk change spans pages. The host owns the values and persists them through onChange.
 
 ## Declared example coverage
 
@@ -869,6 +872,79 @@ export default function Loading() {
           <KeyTable label="Keys, reloadable" loading={reloading}/>
         </Stack>
       </div><figcaption className="text-muted-foreground text-xs">{"Reload in place"}</figcaption></figure>
+    </div>);
+}
+```
+
+### Column toggle, permission matrix
+
+Save this example at `src/pages/design-system/examples/table/column-toggle.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard, controlled.
+
+Registry items used: @infisical/data-table, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
+import { Meta } from "../../../../components/v4/ui/text";
+type Action = "read" | "create" | "edit" | "delete";
+type Policy = {
+    id: string;
+    subject: string;
+    managed?: boolean;
+    allowed: Action[];
+};
+const actions: {
+    id: Action;
+    header: string;
+}[] = [
+    { id: "read", header: "Read" },
+    { id: "create", header: "Create" },
+    { id: "edit", header: "Edit" },
+    { id: "delete", header: "Delete" }
+];
+const initial: Policy[] = [
+    { id: "secrets", subject: "Secrets", allowed: ["read", "create", "edit"] },
+    { id: "folders", subject: "Secret folders", allowed: ["read"] },
+    { id: "imports", subject: "Secret imports", allowed: [] },
+    { id: "rotation", subject: "Secret rotation", allowed: ["read"] },
+    { id: "audit", subject: "Audit logs", managed: true, allowed: ["read"] }
+];
+export default function ColumnToggle() {
+    const [policies, setPolicies] = React.useState(initial);
+    const [status, setStatus] = React.useState("No changes yet.");
+    const columns: DataTableColumn<Policy>[] = [
+        {
+            id: "subject",
+            header: "Policy",
+            primary: true,
+            grow: true,
+            text: (row) => row.subject,
+            render: (row) => row.subject
+        },
+        ...actions.map((action): DataTableColumn<Policy> => ({
+            id: action.id,
+            header: action.header,
+            width: 112,
+            toggle: {
+                checked: (row) => row.allowed.includes(action.id),
+                disabledReason: (row) => row.managed ? "Managed by Infisical. Audit log access cannot change." : undefined,
+                onChange: (ids, checked) => {
+                    setPolicies((current) => current.map((row) => ids.includes(row.id)
+                        ? {
+                            ...row,
+                            allowed: checked
+                                ? [...row.allowed, action.id]
+                                : row.allowed.filter((item) => item !== action.id)
+                        }
+                        : row));
+                    setStatus(`${checked ? "Allowed" : "Removed"} ${action.header.toLowerCase()} on ${ids.length} ${ids.length === 1 ? "policy" : "policies"}.`);
+                }
+            }
+        }))
+    ];
+    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+      <DataTable label="Developer role permissions" rows={policies} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.subject}/>
+      <Meta role="status">{status}</Meta>
     </div>);
 }
 ```

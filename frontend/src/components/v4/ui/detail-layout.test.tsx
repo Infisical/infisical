@@ -6,7 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import tokens from "../tokens.json";
-import { DetailLayout } from "./layout";
+import { DetailLayout, Grid } from "./layout";
 
 let root: Root;
 let host: HTMLDivElement;
@@ -82,4 +82,20 @@ it("collapses at the size-sidecar-collapse token and sizes the sidecar from size
   const breakpoint = css.match(/@container detail-layout \(min-width: ([^)]+)\)/)?.[1];
   expect(breakpoint).toBe(token("size-sidecar-collapse"));
   expect(css).toContain("minmax(0, 1fr) var(--v4-size-sidecar)");
+});
+
+it("raises the auto-fit floor to size-card-min for card grids", async () => {
+  expect(token("size-card-min")).toBe("320px");
+  await React.act(async () =>
+    root.render(
+      <>
+        <Grid data-testid="tiles" />
+        <Grid data-testid="cards" min="card" />
+      </>
+    )
+  );
+  const columns = (id: string) =>
+    host.querySelector<HTMLElement>(`[data-testid="${id}"]`)?.style.gridTemplateColumns;
+  expect(columns("tiles")).toContain("var(--v4-size-tile-min)");
+  expect(columns("cards")).toContain("var(--v4-size-card-min)");
 });

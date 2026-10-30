@@ -726,6 +726,14 @@ button.rowTitle::after {
   border-radius: 0;
   flex-shrink: 0;
 }
+.tableToggle {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+.tableToggle + * {
+  margin-inline-start: var(--v4-space-8);
+}
 .sr {
   position: absolute;
   width: 1px;
