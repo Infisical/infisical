@@ -803,24 +803,30 @@ export const identityAccessTokenServiceFactory = ({
   // Scoped revoke for auth-method removal: rejects every JWT issued via the
   // removed method with iat < revokedAt. Tokens issued via other methods on
   // the same identity stay valid.
+  // With a tx the caller must call bumpIdentityRevocationVersion after commit.
   const revokeTokensForIdentityAuthMethod = async ({
     identityId,
-    authMethod
+    authMethod,
+    tx
   }: {
     identityId: string;
     authMethod: IdentityAuthMethod;
+    tx?: Knex;
   }) => {
     const appCfg = getConfig();
     const revokedAt = new Date();
 
-    await identityAccessTokenRevocationDAL.insertRevocation({
-      id: crypto.nativeCrypto.randomUUID(),
-      identityId,
-      scope: authMethod,
-      revokedAt,
-      expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
-    });
-    await bumpRevocationVersion(identityId);
+    await identityAccessTokenRevocationDAL.insertRevocation(
+      {
+        id: crypto.nativeCrypto.randomUUID(),
+        identityId,
+        scope: authMethod,
+        revokedAt,
+        expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
+      },
+      tx
+    );
+    if (!tx) await bumpRevocationVersion(identityId);
   };
 
   // Org-scoped revoke marker for membership deactivate / remove-from-org: rejects

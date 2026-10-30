@@ -184,7 +184,10 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
+    | "issueIdentityAccessToken"
+    | "revokeTokensForIdentityAuthMethod"
+    | "invalidateTrustedIpsCache"
+    | "bumpIdentityRevocationVersion"
   >;
   eventEmitter: TEventEmitter;
 };
@@ -685,6 +688,8 @@ export const identityTlsCertAuthServiceFactory = ({
       validateCaCertificateUsable(caCertificate);
     }
 
+    const isEnablingBinding =
+      Boolean(bindAccessTokenToCertificate) && !identityTlsCertAuth.bindAccessTokenToCertificate;
     const updatedTlsCertAuth = await identityTlsCertAuthDAL.transaction(async (tx) => {
       const doc = await identityTlsCertAuthDAL.updateById(
         identityTlsCertAuth.id,
@@ -716,15 +721,19 @@ export const identityTlsCertAuthServiceFactory = ({
         },
         tx
       );
+      // Tokens issued before binding was enabled carry no certificate claim, so they must not outlive the change.
+      if (isEnablingBinding) {
+        await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+          identityId,
+          authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+          tx
+        });
+      }
       return doc;
     });
 
-    // Tokens issued before binding was enabled carry no certificate claim, so they must not outlive the change.
-    if (bindAccessTokenToCertificate && !identityTlsCertAuth.bindAccessTokenToCertificate) {
-      await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
-        identityId,
-        authMethod: IdentityAuthMethod.TLS_CERT_AUTH
-      });
+    if (isEnablingBinding) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
     }
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TLS_CERT_AUTH);
     return { ...updatedTlsCertAuth, orgId: identityMembershipOrg.scopeOrgId };
