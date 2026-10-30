@@ -16,9 +16,10 @@ import { ProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { getPqcCrypto, isPqcAlgorithm } from "@app/lib/crypto/pqc";
+import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { bufferToArrayBuffer } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -32,7 +33,12 @@ import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { algorithmHashName, buildExternalCaSigner, createEphemeralKeyCache } from "../ca-signer";
+import {
+  algorithmHashName,
+  buildExternalCaSigner,
+  buildPqcExternalCaSigner,
+  createEphemeralKeyCache
+} from "../ca-signer";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import {
   AWS_KMS_KEY_SPEC_BY_ALGORITHM,
@@ -205,17 +211,12 @@ export const awsKmsCaKeySourceFactory = ({
       const keyAlgCfg = keyAlgorithmToAlgCfg(keyAlgorithm);
 
       if (isPqcAlgorithm(keyAlgorithm)) {
-        const pqcCrypto = getPqcCrypto();
-        const caPublicKey = await pqcCrypto.subtle.importKey("spki", publicKeySpki, keyAlgCfg, true, ["verify"]);
         const rawPublicKey = new Uint8Array(AsnConvert.parse(publicKeySpki, SubjectPublicKeyInfo).subjectPublicKey);
 
-        return buildExternalCaSigner({
-          caPublicKey,
-          signingAlgorithm: keyAlgCfg,
-          generateEphemeralKey: () =>
-            ephemeralKeys(keyAlgCfg, () =>
-              pqcCrypto.subtle.generateKey(keyAlgCfg as RsaHashedKeyGenParams, true, ["sign", "verify"])
-            ),
+        return buildPqcExternalCaSigner({
+          keyAlgCfg,
+          publicKeySpki,
+          ephemeralKeys,
           signTbs: (tbs) =>
             sign(
               computeMlDsaExternalMu(rawPublicKey, tbs),
@@ -230,9 +231,13 @@ export const awsKmsCaKeySourceFactory = ({
       const certSigningAlgorithm = { name: keyAlgCfg.name, hash } as Algorithm;
       const ephemeralKeyParams = { ...keyAlgCfg, hash } as RsaHashedKeyGenParams;
 
-      const caPublicKey = await crypto.nativeCrypto.subtle.importKey("spki", publicKeySpki, keyAlgCfg, true, [
-        "verify"
-      ]);
+      const caPublicKey = await crypto.nativeCrypto.subtle.importKey(
+        "spki",
+        asNonSharedBuffer(publicKeySpki),
+        keyAlgCfg,
+        true,
+        ["verify"]
+      );
 
       return buildExternalCaSigner({
         caPublicKey,

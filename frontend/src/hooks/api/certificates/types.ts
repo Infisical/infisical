@@ -388,6 +388,7 @@ export type TIssuerModifiedField = {
 
 export type TCertificateRenewalPreview = {
   hasOriginatingRequest: boolean;
+  hasOriginatingCsr: boolean;
   request: {
     commonName?: string;
     organization?: string;

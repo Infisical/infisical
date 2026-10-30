@@ -8,8 +8,8 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import {
   EnrollmentType,

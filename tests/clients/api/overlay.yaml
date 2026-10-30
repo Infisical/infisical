@@ -10,3 +10,200 @@ actions:
       items:
         type: object
         additionalProperties: true
+  # Comma-separated query values that the server splits into a list. The allOf of a
+  # string and an array cannot be merged into one Go type, so send them as the string
+  # the server parses.
+  - target: $.paths['/api/v1/dashboard/secrets-by-metadata'].get.parameters[?(@.name == 'environments')].schema.allOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-by-metadata'].get.parameters[?(@.name == 'environments')].schema
+    update:
+      type: string
+  - target: $.paths['/api/v1/organization/audit-logs'].get.parameters[?(@.name == 'eventType' || @.name == 'eventClass')].schema.allOf
+    remove: true
+  - target: $.paths['/api/v1/organization/audit-logs'].get.parameters[?(@.name == 'eventType' || @.name == 'eventClass')].schema
+    update:
+      type: string
+  # The same permission-action naming bug as createProjectRole above, in every other body
+  # that carries project permission rules. The suite sends rules as JSON
+  # (fixture.Permission).
+  # createProjectRoleV1
+  - target: $.paths['/api/v1/projects/{projectId}/roles'].post.requestBody.content['application/json'].schema.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v1/projects/{projectId}/roles'].post.requestBody.content['application/json'].schema.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true
+  # updateProjectRoleV1
+  - target: $.paths['/api/v1/projects/{projectId}/roles/{roleId}'].patch.requestBody.content['application/json'].schema.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v1/projects/{projectId}/roles/{roleId}'].patch.requestBody.content['application/json'].schema.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true
+  # createUserProjectAdditionalPrivilege
+  - target: $.paths['/api/v1/user-project-additional-privilege'].post.requestBody.content['application/json'].schema.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v1/user-project-additional-privilege'].post.requestBody.content['application/json'].schema.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true
+  # updateUserProjectAdditionalPrivilege
+  - target: $.paths['/api/v1/user-project-additional-privilege/{privilegeId}'].patch.requestBody.content['application/json'].schema.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v1/user-project-additional-privilege/{privilegeId}'].patch.requestBody.content['application/json'].schema.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true
+  # createProjectTemplate
+  - target: $.paths['/api/v1/project-templates'].post.requestBody.content['application/json'].schema.properties.roles.items.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v1/project-templates'].post.requestBody.content['application/json'].schema.properties.roles.items.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true
+  # updateProjectTemplate
+  - target: $.paths['/api/v1/project-templates/{templateId}'].patch.requestBody.content['application/json'].schema.properties.roles.items.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v1/project-templates/{templateId}'].patch.requestBody.content['application/json'].schema.properties.roles.items.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true
+  # updateProjectRole
+  - target: $.paths['/api/v2/workspace/{projectId}/roles/{roleId}'].patch.requestBody.content['application/json'].schema.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v2/workspace/{projectId}/roles/{roleId}'].patch.requestBody.content['application/json'].schema.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true
+  # createIdentityProjectAdditionalPrivilege
+  - target: $.paths['/api/v2/identity-project-additional-privilege'].post.requestBody.content['application/json'].schema.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v2/identity-project-additional-privilege'].post.requestBody.content['application/json'].schema.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true
+  # updateIdentityProjectAdditionalPrivilege
+  - target: $.paths['/api/v2/identity-project-additional-privilege/{id}'].patch.requestBody.content['application/json'].schema.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v2/identity-project-additional-privilege/{id}'].patch.requestBody.content['application/json'].schema.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true
+  # Boolean query flags the server also accepts as "true"/"false" strings. The anyOf
+  # generates a union with no exported setter, so a test could not set the flag at all.
+  - target: $.paths['/api/v1/pit/commits/{commitId}/compare'].get.parameters[?(@.name == 'deepRollback')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/pit/commits/{commitId}/compare'].get.parameters[?(@.name == 'deepRollback')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/projects/{projectId}/memberships/{membershipId}/permissions/audit'].get.parameters[?(@.name == 'includeFolderPermissions')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/projects/{projectId}/memberships/{membershipId}/permissions/audit'].get.parameters[?(@.name == 'includeFolderPermissions')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeSecrets')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeSecrets')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeFolders')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeFolders')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeImports')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeImports')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeSecretRotations')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeSecretRotations')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeDynamicSecrets')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeDynamicSecrets')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeHoneyTokens')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeHoneyTokens')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeProxiedServices')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-overview'].get.parameters[?(@.name == 'includeProxiedServices')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeSecrets')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeSecrets')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeFolders')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeFolders')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeDynamicSecrets')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeDynamicSecrets')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeImports')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeImports')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeSecretRotations')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeSecretRotations')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeHoneyTokens')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeHoneyTokens')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeProxiedServices')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeProxiedServices')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/accessible-secrets'].get.parameters[?(@.name == 'recursive')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/accessible-secrets'].get.parameters[?(@.name == 'recursive')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-by-keys'].get.parameters[?(@.name == 'viewSecretValue')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-by-keys'].get.parameters[?(@.name == 'viewSecretValue')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v1/dashboard/secrets-by-keys'].get.parameters[?(@.name == 'hideUnreadableValues')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/dashboard/secrets-by-keys'].get.parameters[?(@.name == 'hideUnreadableValues')].schema
+    update:
+      type: boolean
+  - target: $.paths['/api/v2/folders'].get.parameters[?(@.name == 'recursive')].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v2/folders'].get.parameters[?(@.name == 'recursive')].schema
+    update:
+      type: boolean
+  # Each access request permission is [action, subject, conditions]; the spec types every
+  # element as a string, so the conditions object could not be sent.
+  - target: $.paths['/api/v1/access-approvals/requests'].post.requestBody.content['application/json'].schema.properties.permissions.items.items
+    remove: true
+  - target: $.paths['/api/v1/access-approvals/requests'].post.requestBody.content['application/json'].schema.properties.permissions.items
+    update:
+      items: {}

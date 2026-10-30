@@ -119,7 +119,6 @@ export const SecretMetadataForm = ({
         clearTimeout(debounceTimer.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBatchMode, serializedMetadata, onMetadataChange]);
 
   const onSubmit = async (data: TFormSchema) => {

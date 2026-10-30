@@ -5,6 +5,7 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionAppConnectionActions,
   ProjectPermissionApplicationActions,
   ProjectPermissionApprovalRequestActions,
@@ -835,6 +836,16 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
 
   can(
     [
+      ProjectPermissionAgentVaultSkillActions.Read,
+      ProjectPermissionAgentVaultSkillActions.Create,
+      ProjectPermissionAgentVaultSkillActions.Edit,
+      ProjectPermissionAgentVaultSkillActions.Delete
+    ],
+    ProjectPermissionSub.AgentVaultSkills
+  );
+
+  can(
+    [
       ProjectPermissionAppConnectionActions.Read,
       ProjectPermissionAppConnectionActions.Create,
       ProjectPermissionAppConnectionActions.Edit,
@@ -924,6 +935,7 @@ const buildAgentVaultProjectMemberPermissionRules = () => {
     ProjectPermissionSub.AgentVaultSessions
   );
   can([ProjectPermissionAgentVaultProxyActions.Read], ProjectPermissionSub.AgentVaultProxies);
+  can([ProjectPermissionAgentVaultSkillActions.Read], ProjectPermissionSub.AgentVaultSkills);
 
   return rules;
 };

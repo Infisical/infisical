@@ -55,8 +55,7 @@ export const UpgradeDialogLayout = ({
       onCloseAutoFocus={onCloseAutoFocus}
       showCloseButton={false}
       height="fixed"
-      overlayClassName="z-[70]"
-      className="@container z-[70] gap-0 overflow-hidden bg-container p-0 sm:max-w-4xl"
+      className="@container gap-0 overflow-hidden bg-container p-0 sm:max-w-4xl"
     >
       <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] @min-[48rem]:grid-cols-[minmax(16rem,0.9fr)_minmax(0,1.25fr)] @min-[48rem]:grid-rows-1">
         <aside

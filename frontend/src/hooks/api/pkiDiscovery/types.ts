@@ -1,7 +1,26 @@
 export enum PkiDiscoveryType {
   Network = "network",
-  LinuxServer = "linux-server"
+  LinuxServer = "linux-server",
+  WindowsServer = "windows-server"
 }
+
+export enum WindowsCertificateStore {
+  Personal = "My",
+  WebHosting = "WebHosting",
+  RemoteDesktop = "Remote Desktop",
+  IntermediateCertificationAuthorities = "CA",
+  TrustedRootCertificationAuthorities = "Root"
+}
+
+export const WindowsCertificateStoreLabels: Record<WindowsCertificateStore, string> = {
+  [WindowsCertificateStore.Personal]: "Personal",
+  [WindowsCertificateStore.WebHosting]: "Web Hosting",
+  [WindowsCertificateStore.RemoteDesktop]: "Remote Desktop",
+  [WindowsCertificateStore.IntermediateCertificationAuthorities]:
+    "Intermediate Certification Authorities",
+  [WindowsCertificateStore.TrustedRootCertificationAuthorities]:
+    "Trusted Root Certification Authorities"
+};
 
 export enum PkiKeystoreStatus {
   Locked = "locked",
@@ -60,6 +79,7 @@ export type TPkiDiscoveryTargetConfig = {
   skipFolderPaths?: string[];
   maxFolderDepth?: number;
   maxFileSizeKb?: number;
+  certificateStores?: WindowsCertificateStore[];
   importStandaloneCaCertificates?: boolean;
 };
 
@@ -105,6 +125,10 @@ export type TPkiInstallation = {
     gatewayName?: string;
     hostname?: string;
     format?: PkiCertificateFileFormat;
+    storeLocation?: string;
+    storeName?: WindowsCertificateStore;
+    thumbprint?: string;
+    hasPrivateKey?: boolean;
   };
   locationFingerprint: string;
   name: string | null;

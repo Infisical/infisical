@@ -449,6 +449,12 @@ import {
   TValidateSalesforceConnectionCredentialsSchema
 } from "./salesforce";
 import {
+  TServiceNowConnection,
+  TServiceNowConnectionConfig,
+  TServiceNowConnectionInput,
+  TValidateServiceNowConnectionCredentialsSchema
+} from "./servicenow";
+import {
   TSmbConnection,
   TSmbConnectionConfig,
   TSmbConnectionInput,
@@ -645,6 +651,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TStripeConnection
   | TKeeperConnection
   | THpeIloConnection
+  | TServiceNowConnection
   | TS3CompatibleConnection
   | TJiraConnection
 );
@@ -749,6 +756,7 @@ export type TAppConnectionInput = { id: string } & (
   | TStripeConnectionInput
   | TKeeperConnectionInput
   | THpeIloConnectionInput
+  | TServiceNowConnectionInput
   | TS3CompatibleConnectionInput
   | TJiraConnectionInput
 );
@@ -887,6 +895,7 @@ export type TAppConnectionConfig =
   | TStripeConnectionConfig
   | TKeeperConnectionConfig
   | THpeIloConnectionConfig
+  | TServiceNowConnectionConfig
   | TS3CompatibleConnectionConfig
   | TJiraConnectionConfig;
 
@@ -982,6 +991,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateStripeConnectionCredentialsSchema
   | TValidateKeeperConnectionCredentialsSchema
   | TValidateHpeIloConnectionCredentialsSchema
+  | TValidateServiceNowConnectionCredentialsSchema
   | TValidateS3CompatibleConnectionCredentialsSchema
   | TValidateJiraConnectionCredentialsSchema;
 

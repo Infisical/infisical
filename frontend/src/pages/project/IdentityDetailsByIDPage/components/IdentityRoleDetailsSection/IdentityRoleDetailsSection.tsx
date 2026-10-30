@@ -107,7 +107,7 @@ export const IdentityRoleDetailsSection = ({
   }, [assignRoleConditions, identityMembershipDetails?.identity?.id]);
 
   const handleRoleDelete = async () => {
-    const { id } = popUp?.deleteRole?.data as TProjectRole;
+    const { id } = popUp.deleteRole.data as TProjectRole;
     const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
     await updateIdentityProjectMembership({
       projectId: currentProject?.id || "",

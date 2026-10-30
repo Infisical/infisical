@@ -8,13 +8,13 @@ import {
 import { ConflictError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
+import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
+import { TRefreshServiceTokenDTO } from "../agent-vault-oauth/agent-vault-oauth-types";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthStatus,
   AgentVaultServiceType
 } from "../agent-vault/agent-vault-enums";
-import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
-import { TRefreshServiceTokenDTO } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { agentVaultProxyServiceFactory } from "./agent-vault-proxy-service";
 import { TResolveServiceRow } from "./agent-vault-resolve-dal";
 
@@ -70,7 +70,7 @@ const setup = (
     agentVaultProxyDAL: {
       findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 })
     } as never,
-    agentVaultResolveDAL: { findResolvableServices: async () => rows },
+    agentVaultResolveDAL: { findResolvableServices: async () => rows, findSessionSkills: async () => [] },
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
     agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
     agentVaultVariableDAL: { findValuesForResolve: async () => variables },
@@ -85,6 +85,8 @@ const setup = (
     },
     membershipDAL: { findResourceMembershipsForActor: async () => [] },
     orgDAL: { findEffectiveOrgMembership: async () => ({ isActive: true }) as never },
+    projectDAL: { findById: async () => ({ id: PROJECT_ID, orgId: "org-1" }) as never },
+    userDAL: { findById: async () => undefined as never },
     permissionService: {
       getProjectPermission: async () =>
         ({
