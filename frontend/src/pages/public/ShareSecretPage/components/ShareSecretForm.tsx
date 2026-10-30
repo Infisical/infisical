@@ -414,8 +414,9 @@ export const ShareSecretForm = ({
                   {isValueLocked && (
                     <div className="flex items-center justify-between gap-4">
                       <FieldDescription>
-                        Locked to the stored value, so the link shares exactly what is saved in
-                        Infisical.
+                        {secretKey
+                          ? "Locked to the stored value. Turn off Include key to share the value alone."
+                          : "Locked so the link shares the saved contents without edits."}
                       </FieldDescription>
                       {secretKey && (
                         <div className="flex shrink-0 items-center gap-2">

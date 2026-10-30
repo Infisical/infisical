@@ -17,6 +17,13 @@ export type TNotifySecretsCreated = (text: string, secrets: TCreatedSecret[]) =>
 
 export type TCreatedSecretsShare = { value: string; name?: string };
 
+const MAX_SHARED_SECRET_LENGTH = 10_000;
+
+const toEnvLine = (key: string, value: string) =>
+  /[\n"'#]|^\s|\s$/.test(value)
+    ? `${key}="${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`
+    : `${key}=${value}`;
+
 export const notifySecretsCreatedWithoutShare: TNotifySecretsCreated = (text) => {
   createNotification({ type: "success", text });
 };
@@ -44,16 +51,19 @@ export const useNotifySecretsCreated = (
         });
       }
 
-      if (!shareable.size) {
-        createNotification({ type: "success", text });
-        return;
-      }
-
       const entries = [...shareable.entries()];
       const share: TCreatedSecretsShare =
         entries.length === 1
           ? { name: entries[0][0], value: entries[0][1] }
-          : { value: entries.map(([key, value]) => `${key}=${value}`).join("\n") };
+          : { value: entries.map(([key, value]) => toEnvLine(key, value)).join("\n") };
+      const sharedLength = share.name
+        ? share.name.length + 1 + share.value.length
+        : share.value.length;
+
+      if (!entries.length || sharedLength > MAX_SHARED_SECRET_LENGTH) {
+        createNotification({ type: "success", text });
+        return;
+      }
 
       const notificationId = createNotification(
         {
