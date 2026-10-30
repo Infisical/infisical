@@ -120,4 +120,33 @@ describe("CloudflarePagesSyncFns", () => {
       expect.anything()
     );
   });
+
+  it("does not throw when deployment_configs for environment is undefined", async () => {
+    get.mockResolvedValue({
+      data: {
+        result: {
+          deployment_configs: {}
+        }
+      }
+    });
+
+    await CloudflarePagesSyncFns.syncSecrets(
+      syncWith(CloudflarePagesVariableType.Secret),
+      payloadOf({ NEW_SECRET: "value" })
+    );
+
+    expect(patch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/pages\/projects\/my-site$/),
+      {
+        deployment_configs: {
+          production: {
+            env_vars: {
+              NEW_SECRET: { type: "secret_text", value: "value" }
+            }
+          }
+        }
+      },
+      expect.anything()
+    );
+  });
 });

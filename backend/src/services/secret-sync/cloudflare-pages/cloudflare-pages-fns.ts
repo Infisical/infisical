@@ -20,10 +20,10 @@ const getProjectEnvironmentSecrets = async (secretSync: TCloudflarePagesSyncWith
   const secrets = (
     await request.get<{
       result: {
-        deployment_configs: Record<
+        deployment_configs?: Record<
           string,
           {
-            env_vars: Record<string, { type: CloudflarePagesVariableType; value: string }>;
+            env_vars?: Record<string, { type: CloudflarePagesVariableType; value: string }>;
           }
         >;
       };
@@ -36,7 +36,7 @@ const getProjectEnvironmentSecrets = async (secretSync: TCloudflarePagesSyncWith
         }
       }
     )
-  ).data.result.deployment_configs[destinationConfig.environment].env_vars;
+  ).data.result.deployment_configs?.[destinationConfig.environment]?.env_vars;
 
   return Object.entries(secrets ?? {}).map(([key, envVar]) => ({ key, type: envVar.type }));
 };
