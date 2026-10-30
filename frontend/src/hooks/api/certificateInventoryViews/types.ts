@@ -28,6 +28,7 @@ export type TCertificateInventoryView = {
 
 export type TSystemViewFilters = {
   status?: string[];
+  includeDeleted?: boolean;
   notAfterTo?: string;
 };
 

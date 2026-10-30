@@ -20,6 +20,7 @@ import {
 
 type TSystemViewFilters = {
   status?: string[];
+  includeDeleted?: boolean;
   notAfterTo?: string;
   keyAlgorithm?: string[];
 };
@@ -34,7 +35,15 @@ type TSystemView = {
 };
 
 const SYSTEM_VIEWS: TSystemView[] = [
-  { id: "system-all", name: "All Certificates", filters: {}, columns: null, isSystem: true, createdByUserId: null },
+  { id: "system-default", name: "Default", filters: {}, columns: null, isSystem: true, createdByUserId: null },
+  {
+    id: "system-all",
+    name: "All Certificates",
+    filters: { includeDeleted: true },
+    columns: null,
+    isSystem: true,
+    createdByUserId: null
+  },
   {
     id: "system-expiring-7d",
     name: "Expiring in 7 days",

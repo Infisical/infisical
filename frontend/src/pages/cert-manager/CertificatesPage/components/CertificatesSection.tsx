@@ -28,6 +28,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CertificateCertModal } from "./CertificateCertModal";
+import { CertificateDeletionSyncImpact } from "./CertificateDeletionSyncImpact";
 import { CertificateExportModal, ExportOptions } from "./CertificateExportModal";
 import { CertificateImportSheet } from "./CertificateImportSheet";
 import { CertificateManagePkiSyncsModal } from "./CertificateManagePkiSyncsModal";
@@ -237,12 +238,16 @@ export const CertificatesSection = ({
           title={`Delete Certificate ${
             (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
           }?`}
-          description={getCertificateDeletionWarning(
-            deleteCertificateData,
-            deleteCertificateData?.canRevoke,
-            deleteCertificateData?.isRevocableAfterDeletion,
-            holdingSyncs
-          )}
+          description={
+            <>
+              {getCertificateDeletionWarning(
+                deleteCertificateData,
+                deleteCertificateData?.canRevoke,
+                deleteCertificateData?.isRevocableAfterDeletion
+              )}
+              <CertificateDeletionSyncImpact holdingSyncs={holdingSyncs} />
+            </>
+          }
           onOpenChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
           isPending={isLoadingHoldingSyncs}
           confirmKey="confirm"

@@ -1096,16 +1096,27 @@ Note that `logger.ts` also has a `redactedKeys` list applied to structured-objec
 
 ### Certificate soft delete
 
-Deleting a certificate stamps `deletedAt`, `deletedByActorType` and `deletedByActorId` on the row and, in the
-same transaction, removes its `certificate_bodies`, `certificate_secrets` and `certificate_syncs` rows. The
-row itself stays, so the inventory, audit trail and renewal chain keep pointing at something. Things that rely
-on that:
+Deleting a certificate goes through `softDeleteCertificates` (`certificate-fns.ts`), which both the delete
+endpoint and the expiry cleanup job (`certificate-cleanup-queue.ts`) call: it stamps `deletedAt`,
+`deletedByActorType` and `deletedByActorId` on the row and, in the same transaction, removes its
+`certificate_bodies`, `certificate_secrets` and PKI collection items and clears the private key copy on
+`certificate_requests.encryptedPrivateKey`. The row itself stays, so the inventory, audit trail and renewal
+chain keep pointing at something. Nothing hard deletes certificates any more, so deleted rows accumulate;
+instance-level hard delete is a possible future option. Things that rely on that:
+
+- **`certificate_syncs` rows are kept.** Linux, Windows and Azure (free-text naming) find what they delivered
+  only through those rows (`syncMetadata.files`, `externalIdentifier`), so the delete queues the auto-sync
+  syncs holding the certificate, the run sees a tracked certificate that is no longer active and removes it
+  from the destination, and the provider untracks the row. A sync with Auto-Sync or "Remove certificates from
+  destination" off keeps the row and the copy until a later run that removes it. The sync's certificate list
+  (`findWithDetails`) hides deleted certificates.
 
 - **Every background or enumeration query filters `whereNull("deletedAt")`**: expiry alerts, auto-renewal,
   syncs, discovery, HSM connector usage and stats. A new query over `certificates` needs the same filter unless
   it is deliberately showing deleted rows. Reads the API serves skip deleted certificates by default too:
   `GET /certificates/:id` returns 404 unless the caller passes `includeDeleted`, and list or search returns
-  them only for a `deleted` status filter, so clients written before soft delete keep seeing what they saw
+  them only for a `deleted` status filter or `includeDeleted` (the **All Certificates** view; **Default**
+  hides them), so clients written before soft delete keep seeing what they saw
   when the row was hard deleted. The one background job that still reads deleted rows is the DigiCert
   revocation sync: it records an upstream revocation on a deleted certificate (without alerts) so the quota
   stops counting it.
@@ -1123,6 +1134,7 @@ on that:
 - **A sync can still write a link for a certificate deleted mid-run.** `certificate_syncs` inserts are not
   filtered on `deletedAt`, so a provider that uploads and then records the link leaves a tracking row, and the
   sync the delete queued removes that copy from the destination through it.
+- **Cleanup skips certificates a code signing signer uses**, the same rule the delete endpoint enforces.
 - **Deleted certificates are not restored.** Serial numbers stay globally unique
   (`certificates_serialnumber_unique`), so re-importing a deleted certificate into the same project fails with
   the deleted message (any other project gets the generic serial conflict, so nothing about it leaks), and

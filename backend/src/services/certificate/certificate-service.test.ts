@@ -47,7 +47,7 @@ const buildService = () => {
   const certificateBodyDAL = { delete: vi.fn().mockResolvedValue([]) };
   const certificateSecretDAL = { delete: vi.fn().mockResolvedValue([]) };
   const pkiCollectionItemDAL = { delete: vi.fn().mockResolvedValue([]) };
-  const certificateSyncDAL = { delete: vi.fn().mockResolvedValue([]) };
+  const certificateSyncDAL = { find: vi.fn().mockResolvedValue([]) };
   const signerDAL = { findOne: vi.fn().mockResolvedValue(undefined) };
 
   const deps = {
@@ -89,8 +89,8 @@ describe("certificateService.deleteCert", () => {
     ctx = buildService();
   });
 
-  it("keeps the row, stamps who deleted it, and removes its material, collection items and sync links", async () => {
-    ctx.certificateSyncDAL.delete.mockResolvedValue([{ pkiSyncId: "sync-1" }, { pkiSyncId: "sync-1" }]);
+  it("keeps the row and its sync links, stamps who deleted it, and removes its material and collection items", async () => {
+    ctx.certificateSyncDAL.find.mockResolvedValue([{ pkiSyncId: "sync-1" }, { pkiSyncId: "sync-1" }]);
 
     const result = await ctx.service.deleteCert({
       id: "cert-1",
@@ -99,7 +99,7 @@ describe("certificateService.deleteCert", () => {
     });
 
     expect(ctx.certificateDAL.update).toHaveBeenCalledWith(
-      { id: "cert-1" },
+      { $in: { id: ["cert-1"] }, deletedAt: null },
       expect.objectContaining({
         deletedByActorType: ActorType.USER,
         deletedByActorId: "user-1",
@@ -107,10 +107,10 @@ describe("certificateService.deleteCert", () => {
       }),
       tx
     );
-    expect(ctx.certificateBodyDAL.delete).toHaveBeenCalledWith({ certId: "cert-1" }, tx);
-    expect(ctx.certificateSecretDAL.delete).toHaveBeenCalledWith({ certId: "cert-1" }, tx);
-    expect(ctx.pkiCollectionItemDAL.delete).toHaveBeenCalledWith({ certId: "cert-1" }, tx);
-    expect(ctx.certificateSyncDAL.delete).toHaveBeenCalledWith({ certificateId: "cert-1" }, tx);
+    expect(ctx.certificateBodyDAL.delete).toHaveBeenCalledWith({ $in: { certId: ["cert-1"] } }, tx);
+    expect(ctx.certificateSecretDAL.delete).toHaveBeenCalledWith({ $in: { certId: ["cert-1"] } }, tx);
+    expect(ctx.pkiCollectionItemDAL.delete).toHaveBeenCalledWith({ $in: { certId: ["cert-1"] } }, tx);
+    expect(ctx.certificateSyncDAL.find).toHaveBeenCalledWith({ $in: { certificateId: ["cert-1"] } }, { tx });
     expect(result.statusAtDeletion).toBe(CertStatus.ACTIVE);
   });
 

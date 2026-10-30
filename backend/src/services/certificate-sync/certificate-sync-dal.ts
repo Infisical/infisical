@@ -302,7 +302,8 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
       const baseQuery = (tx || db.replicaNode())(TableName.CertificateSync)
         .leftJoin(TableName.Certificate, `${TableName.CertificateSync}.certificateId`, `${TableName.Certificate}.id`)
-        .leftJoin(TableName.PkiSync, `${TableName.CertificateSync}.pkiSyncId`, `${TableName.PkiSync}.id`);
+        .leftJoin(TableName.PkiSync, `${TableName.CertificateSync}.pkiSyncId`, `${TableName.PkiSync}.id`)
+        .whereNull(`${TableName.Certificate}.deletedAt`);
 
       if (filter) {
         // eslint-disable-next-line @typescript-eslint/no-misused-promises

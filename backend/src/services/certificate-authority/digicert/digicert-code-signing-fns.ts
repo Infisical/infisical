@@ -366,7 +366,7 @@ export const digiCertCodeSigningFns = ({
     const certObj = new x509.X509Certificate(leaf);
     const parsedFields = extractExternallyIssuedCertificateFields(certObj);
     const differentCaError = new BadRequestError({
-      message: `The certificate in DigiCert order ${orderId} is already in Certificate Manager under a different certificate authority. Remove that copy from the certificate inventory, then try again.`
+      message: `The certificate in DigiCert order ${orderId} is already in Certificate Manager under a different certificate authority, so it can't be added under this one. Request a new code signing certificate instead.`
     });
 
     const existingCert = await certificateDAL.findOne({ serialNumber: certObj.serialNumber });

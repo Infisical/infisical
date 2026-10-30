@@ -6,7 +6,8 @@ import { CertStatus } from "@app/hooks/api/certificates/enums";
 import {
   getCertificateDeletedBySummary,
   getCertificateDeletionWarning,
-  getCertificateDisplayStatus
+  getCertificateDisplayStatus,
+  isRemovedFromSyncDestination
 } from "./CertificatesTable.utils";
 
 const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -105,24 +106,26 @@ describe("getCertificateDeletionWarning", () => {
   });
 });
 
-describe("getCertificateDeletionWarning sync removal", () => {
-  const expired = { status: CertStatus.ACTIVE, notAfter: past, hasPrivateKey: false };
-  const holdingSync = { id: "sync-1" };
-
-  it("says nothing about syncs when the certificate is in none", () => {
-    expect(getCertificateDeletionWarning(expired, false, true, [])).not.toContain("sync");
-  });
-
-  it("says the certificate is removed from the sync that holds it", () => {
-    expect(getCertificateDeletionWarning(expired, false, true, [holdingSync])).toContain(
-      "It's also removed from 1 certificate sync."
-    );
-  });
-
-  it("counts every sync that holds the certificate", () => {
+describe("isRemovedFromSyncDestination", () => {
+  it("is true only when Auto-Sync and removal are both on", () => {
     expect(
-      getCertificateDeletionWarning(expired, false, true, [holdingSync, holdingSync, holdingSync])
-    ).toContain("It's also removed from 3 certificate syncs.");
+      isRemovedFromSyncDestination({
+        isAutoSyncEnabled: true,
+        syncOptions: { canRemoveCertificates: true }
+      })
+    ).toBe(true);
+    expect(
+      isRemovedFromSyncDestination({
+        isAutoSyncEnabled: false,
+        syncOptions: { canRemoveCertificates: true }
+      })
+    ).toBe(false);
+    expect(
+      isRemovedFromSyncDestination({
+        isAutoSyncEnabled: true,
+        syncOptions: { canRemoveCertificates: false }
+      })
+    ).toBe(false);
   });
 });
 

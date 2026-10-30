@@ -51,6 +51,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
 import { CertificateCertModal } from "../CertificatesPage/components/CertificateCertModal";
+import { CertificateDeletionSyncImpact } from "../CertificatesPage/components/CertificateDeletionSyncImpact";
 import {
   CertificateExportModal,
   ExportOptions
@@ -542,12 +543,16 @@ const Page = () => {
       <ConfirmationAlertDialog
         isOpen={popUp.deleteCertificate.isOpen}
         title={`Delete Certificate ${displayName}?`}
-        description={getCertificateDeletionWarning(
-          certificate,
-          supportsRevocation,
-          isRevocableAfterDeletion,
-          holdingSyncs
-        )}
+        description={
+          <>
+            {getCertificateDeletionWarning(
+              certificate,
+              supportsRevocation,
+              isRevocableAfterDeletion
+            )}
+            <CertificateDeletionSyncImpact holdingSyncs={holdingSyncs} />
+          </>
+        }
         onOpenChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
         isPending={isLoadingHoldingSyncs}
         confirmKey="confirm"

@@ -106,7 +106,8 @@ import {
   parseCertificateBody,
   parsePemCertificateChain,
   resolveCertificateStatus,
-  revocationReasonToCrlCode
+  revocationReasonToCrlCode,
+  softDeleteCertificates
 } from "./certificate-fns";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
@@ -160,7 +161,7 @@ type TCertificateServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId" | "delete">;
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId" | "find">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "update">;
   signerDAL: Pick<TSignerDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -586,26 +587,20 @@ export const certificateServiceFactory = ({
         });
       }
 
-      const [softDeleted] = await certificateDAL.update(
-        { id: cert.id },
+      const { deletedCertificates, pkiSyncIdsHoldingCertificates } = await softDeleteCertificates(
+        { certificateIds: [cert.id], actorType: actor, actorId },
         {
-          deletedAt: new Date(),
-          deletedByActorType: actor,
-          deletedByActorId: actorId
+          certificateDAL,
+          certificateBodyDAL,
+          certificateSecretDAL,
+          certificateRequestDAL,
+          pkiCollectionItemDAL,
+          certificateSyncDAL
         },
         tx
       );
 
-      await certificateBodyDAL.delete({ certId: cert.id }, tx);
-      await certificateSecretDAL.delete({ certId: cert.id }, tx);
-      await certificateRequestDAL.update({ certificateId: cert.id }, { encryptedPrivateKey: null }, tx);
-      await pkiCollectionItemDAL.delete({ certId: cert.id }, tx);
-      const removedSyncLinks = await certificateSyncDAL.delete({ certificateId: cert.id }, tx);
-
-      return {
-        deletedCert: softDeleted,
-        pkiSyncIdsHoldingCertificate: [...new Set(removedSyncLinks.map((link) => link.pkiSyncId))]
-      };
+      return { deletedCert: deletedCertificates[0], pkiSyncIdsHoldingCertificate: pkiSyncIdsHoldingCertificates };
     });
 
     await triggerSyncsForDeletedCertificate(

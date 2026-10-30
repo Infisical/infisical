@@ -1134,6 +1134,8 @@ export const PROJECTS = {
     search: "Search by SAN, CN, certificate ID, or serial number.",
     status:
       "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired, revoked and deleted. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked. Deleted certificates match only deleted.",
+    includeDeleted:
+      "Include deleted certificates in the results when no status filter is set. Deleted certificates are excluded by default.",
     profileIds: "Filter by certificate profile IDs.",
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",

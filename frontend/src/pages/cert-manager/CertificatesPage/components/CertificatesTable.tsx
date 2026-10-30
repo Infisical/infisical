@@ -256,9 +256,9 @@ export const CertificatesTable = ({
     if (dashboardViewId) return dashboardViewId;
     if (hasDashboardFilters) return null;
     try {
-      return localStorage.getItem(getViewStorageKey(applicationId)) || "system-all";
+      return localStorage.getItem(getViewStorageKey(applicationId)) || "system-default";
     } catch {
-      return "system-all";
+      return "system-default";
     }
   });
   const [isSaveViewOpen, setIsSaveViewOpen] = useState(false);
@@ -388,6 +388,7 @@ export const CertificatesTable = ({
     limit: perPage,
     search: appliedSearch.trim() || undefined,
     status: filterSearchParams.status as string | undefined,
+    includeDeleted: activeViewId === "system-all",
     profileIds: filterSearchParams.profileIds as string[] | undefined,
     keyAlgorithm: filterSearchParams.keyAlgorithm,
     keySizes: filterSearchParams.keySizes,
@@ -484,8 +485,8 @@ export const CertificatesTable = ({
   const handleClearAllFilters = () => {
     setAppliedFilters([]);
     setPendingFilters([]);
-    setActiveViewId("system-all");
-    persistViewId("system-all");
+    setActiveViewId("system-default");
+    persistViewId("system-default");
     setPage(1);
   };
 
@@ -497,7 +498,7 @@ export const CertificatesTable = ({
       setPendingFilters([]);
       setPage(1);
 
-      if (viewId === "system-all") {
+      if (viewId === "system-default" || viewId === "system-all") {
         // do nothing
       } else if (viewId === "system-expiring-7d") {
         const now = new Date();
@@ -705,7 +706,7 @@ export const CertificatesTable = ({
     if (hasRestoredView || !viewsData) return;
     setHasRestoredView(true);
 
-    if (!activeViewId || activeViewId === "system-all") return;
+    if (!activeViewId || activeViewId === "system-default") return;
 
     const systemView = viewsData.systemViews.find((v) => v.id === activeViewId);
     if (systemView) {
@@ -725,8 +726,8 @@ export const CertificatesTable = ({
       return;
     }
 
-    setActiveViewId("system-all");
-    persistViewId("system-all");
+    setActiveViewId("system-default");
+    persistViewId("system-default");
   }, [viewsData, hasRestoredView, handleSelectView]);
 
   const handleExportCSV = () => {

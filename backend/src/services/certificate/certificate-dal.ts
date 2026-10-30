@@ -137,6 +137,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     commonName?: string;
     search?: string;
     status?: string | string[];
+    includeDeleted?: boolean;
     profileIds?: string[];
     fromDate?: Date;
     toDate?: Date;
@@ -206,7 +207,7 @@ export const certificateDALFactory = (db: TDbClient) => {
       });
     }
 
-    if (!filters.status) {
+    if (!filters.status && !filters.includeDeleted) {
       q = q.whereNull(`${TableName.Certificate}.deletedAt`);
     }
 
@@ -883,6 +884,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         commonName,
         search,
         status,
+        includeDeleted,
         profileIds,
         fromDate,
         toDate,
@@ -915,6 +917,7 @@ export const certificateDALFactory = (db: TDbClient) => {
           commonName,
           search,
           status,
+          includeDeleted,
           profileIds,
           fromDate,
           toDate,

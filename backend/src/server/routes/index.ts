@@ -3089,16 +3089,6 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const certificateCleanupQueue = certificateCleanupQueueFactory({
-    db,
-    cronJob,
-    certificateCleanupConfigDAL,
-    certificateDAL,
-    certificateRequestDAL,
-    auditLogService,
-    telemetryService
-  });
-
   const dynamicSecretProviders = buildDynamicSecretProviders({
     gatewayV2Service,
     gatewayPoolService,
@@ -3764,6 +3754,23 @@ export const registerRoutes = async (
     cronJob,
     pkiSyncDAL,
     pkiSyncQueue
+  });
+
+  const certificateCleanupQueue = certificateCleanupQueueFactory({
+    db,
+    cronJob,
+    certificateCleanupConfigDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateRequestDAL,
+    pkiCollectionItemDAL,
+    certificateSyncDAL,
+    pkiSyncDAL,
+    pkiSyncQueue,
+    usageMeteringService,
+    auditLogService,
+    telemetryService
   });
 
   const pkiSyncHealthCheckQueue = pkiSyncHealthCheckQueueFactory({

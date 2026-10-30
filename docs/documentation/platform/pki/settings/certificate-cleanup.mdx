@@ -1,10 +1,10 @@
 ---
 title: "Certificate cleanup"
 sidebarTitle: "Certificate cleanup"
-description: "Automatically remove expired certificates to keep your inventory organized."
+description: "Automatically delete expired certificates to keep your inventory organized."
 ---
 
-Automatically remove expired certificates from Infisical Certificate Management. Cleanup runs daily and permanently removes certificates that have been expired for a configurable number of days. If you delete a certificate yourself, its details stay in the inventory until it expires and cleanup removes it.
+Automatically delete expired certificates in Infisical Certificate Management. Cleanup runs daily and deletes certificates that have been expired for a configurable number of days. Cleanup deletes a certificate the same way you would: the certificate and its private key are removed, and its details stay in the inventory as **Deleted**. The **Default** view hides them, and the **All Certificates** and **Deleted** views show them. Cleanup never deletes a certificate that a code signing signer uses.
 
 <Info>
   This setting is managed by product admins and applies to all certificates in Infisical Certificate Management.
@@ -24,9 +24,9 @@ Automatically remove expired certificates from Infisical Certificate Management.
     
     | Value | Behavior |
     |-------|----------|
-    | `3` | Certificates are permanently removed 3 days after expiration |
-    | `7` | Certificates are permanently removed 7 days after expiration |
-    | `30` | Certificates are permanently removed 30 days after expiration |
+    | `3` | Certificates are deleted 3 days after expiration |
+    | `7` | Certificates are deleted 7 days after expiration |
+    | `30` | Certificates are deleted 30 days after expiration |
     
     <Note>
       Values must be between 1 and 30 days.

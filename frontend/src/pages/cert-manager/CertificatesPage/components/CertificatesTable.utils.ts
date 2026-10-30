@@ -85,13 +85,13 @@ type TCertificateDeletionSource = {
   hasPrivateKey?: boolean;
 };
 
-const getCertificateSyncRemovalWarning = (holdingSyncs: unknown[]) => {
-  if (holdingSyncs.length === 0) return "";
-
-  return holdingSyncs.length === 1
-    ? " It's also removed from 1 certificate sync."
-    : ` It's also removed from ${holdingSyncs.length} certificate syncs.`;
+export type TCertificateHoldingSync = {
+  isAutoSyncEnabled: boolean;
+  syncOptions?: { canRemoveCertificates?: boolean } | null;
 };
+
+export const isRemovedFromSyncDestination = (sync: TCertificateHoldingSync) =>
+  sync.isAutoSyncEnabled && Boolean(sync.syncOptions?.canRemoveCertificates);
 
 const getCertificateTrustWarning = (
   certificate: TCertificateDeletionSource | undefined,
@@ -115,15 +115,14 @@ const getCertificateTrustWarning = (
 export const getCertificateDeletionWarning = (
   certificate?: TCertificateDeletionSource,
   canRevoke = false,
-  isRevocableAfterDeletion = true,
-  holdingSyncs: unknown[] = []
+  isRevocableAfterDeletion = true
 ) => {
   const removed =
     certificate?.hasPrivateKey === false
       ? "This removes the certificate."
       : "This removes the certificate and its private key.";
 
-  return `${removed}${getCertificateTrustWarning(certificate, canRevoke, isRevocableAfterDeletion)}${getCertificateSyncRemovalWarning(holdingSyncs)} This cannot be undone.`;
+  return `${removed}${getCertificateTrustWarning(certificate, canRevoke, isRevocableAfterDeletion)} This cannot be undone.`;
 };
 
 export const isExpiringWithinOneDay = (notAfter: string): boolean => {
