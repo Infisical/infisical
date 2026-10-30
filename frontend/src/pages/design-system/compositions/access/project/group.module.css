@@ -1,0 +1,60 @@
+.roleCell {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+  min-width: 0;
+}
+.editor {
+  width: 288px;
+}
+.editorFooter {
+  display: flex;
+  padding: var(--v4-space-8);
+  border-block-start: var(--v4-size-control-border) solid var(--v4-line);
+}
+.editorFooter > * {
+  flex: 1 1 auto;
+}
+.roleName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roleMeta {
+  color: var(--v4-muted);
+  white-space: nowrap;
+}
+.roleMeta[data-expired] {
+  color: var(--v4-bad);
+}
+.notice {
+  margin: 0;
+}
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
+  gap: var(--v4-space-24);
+  align-items: start;
+}
+@media (max-width: 64rem) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.idValue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+  min-width: 0;
+  font-family: var(--v4-type-mono-font-family);
+  overflow-wrap: anywhere;
+}
+.memberIcon {
+  display: inline-flex;
+  color: var(--v4-muted);
+}
+.muted {
+  color: var(--v4-muted);
+}

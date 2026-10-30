@@ -74,7 +74,7 @@ export const projectRoles: Role[] = [
   {
     id: "p-member",
     slug: "member",
-    name: "Developer",
+    name: "Member",
     builtIn: true,
     description: "Limited read/write role in a project"
   },
@@ -346,6 +346,7 @@ export const orgIdentities: OrgIdentity[] = [
     role: "member",
     authMethods: ["universal", "oidc"],
     hasDeleteProtection: true,
+    lockedOut: true,
     metadata: [
       { key: "team", value: "platform" },
       { key: "runner", value: "github-actions" }
@@ -369,7 +370,6 @@ export const orgIdentities: OrgIdentity[] = [
     role: "admin",
     authMethods: ["universal"],
     hasDeleteProtection: false,
-    lockedOut: true,
     metadata: [{ key: "team", value: "platform" }],
     createdAt: "Nov 30, 2025",
     lastLogin: "2 hours ago"
@@ -402,6 +402,17 @@ export const orgIdentities: OrgIdentity[] = [
     hasDeleteProtection: false,
     metadata: [],
     createdAt: "Oct 20, 2026"
+  },
+  {
+    id: "a3f09c6e-41d2-4b7a-9e58-2c6d0b8f1e43",
+    name: "payments-webhook-relay",
+    role: "no-access",
+    authMethods: ["universal"],
+    hasDeleteProtection: true,
+    metadata: [{ key: "service", value: "webhooks" }],
+    createdAt: "Sep 14, 2026",
+    lastLogin: "25 minutes ago",
+    managedByProject: "payments-api"
   }
 ];
 
@@ -521,6 +532,11 @@ export const projectIdentities: ProjectIdentity[] = [
     identityId: "1f6c3e9b-7a24-4d0e-8b51-c2e9a7d40f36",
     roles: [{ id: "pi-3", role: "admin", isTemporary: false }],
     createdAt: "Nov 30, 2025"
+  },
+  {
+    identityId: "a3f09c6e-41d2-4b7a-9e58-2c6d0b8f1e43",
+    roles: [{ id: "pi-4", role: "member", isTemporary: false }],
+    createdAt: "Sep 14, 2026"
   }
 ];
 
@@ -535,18 +551,15 @@ export type ServiceToken = {
 export const serviceTokens: ServiceToken[] = [
   {
     id: "st-1",
-    name: "legacy-cron",
+    name: "legacy-ci-read",
     scopes: [{ environment: "prod", secretPath: "/" }],
     permissions: ["read"],
     createdAt: "Feb 3, 2025"
   },
   {
     id: "st-2",
-    name: "staging-smoke-tests",
-    scopes: [
-      { environment: "staging", secretPath: "/api" },
-      { environment: "dev", secretPath: "/" }
-    ],
+    name: "staging-sync",
+    scopes: [{ environment: "staging", secretPath: "/api" }],
     permissions: ["read", "write"],
     expiresAt: "Nov 30, 2026",
     createdAt: "Sep 9, 2026"
