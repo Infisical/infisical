@@ -2,8 +2,10 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
 
+import { getProjectTitle } from "@app/helpers/project";
 import { projectKeys } from "@app/hooks/api";
 import { fetchProjectById } from "@app/hooks/api/projects/queries";
+import { useImplicitProduct } from "@app/hooks/useImplicitProduct";
 
 export const PageTitle = ({ title }: { title: string }) => {
   const { t, ready } = useTranslation(undefined, { useSuspense: false });
@@ -15,6 +17,7 @@ export const PageTitle = ({ title }: { title: string }) => {
       return params && "projectId" in params ? params.projectId : "";
     }
   });
+  const implicitProduct = useImplicitProduct();
 
   // Only reads the project the route layout already loaded, so a title never sends a request of its own.
   const { data: project } = useQuery({
@@ -23,18 +26,24 @@ export const PageTitle = ({ title }: { title: string }) => {
     enabled: false
   });
 
-  if (project?.name) {
+  // Products with one project per organization never name it, so the product stands in for it,
+  // unless the page title already names the product.
+  const productName = implicitProduct ? getProjectTitle(implicitProduct) : undefined;
+  const scope =
+    project?.name ?? (productName && !title.includes(productName) ? productName : undefined);
+
+  if (scope && scope !== title) {
     // Locale files are served immutable for 30 days, so a cached copy can predate this key. The
-    // default stays a template so the project name is interpolated, never parsed as one.
+    // default stays a template so the scope is interpolated, never parsed as one.
     return (
       <title>
         {ready
-          ? t("common.head-title-project", {
+          ? t("common.head-title-scoped", {
               title,
-              project: project.name,
-              defaultValue: "{{title}} · {{project}} | Infisical"
+              scope,
+              defaultValue: "{{title}} · {{scope}} | Infisical"
             })
-          : `${title} · ${project.name} | Infisical`}
+          : `${title} · ${scope} | Infisical`}
       </title>
     );
   }
