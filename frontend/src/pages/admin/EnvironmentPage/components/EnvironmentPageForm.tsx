@@ -17,6 +17,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   Field,
   FieldError,
@@ -29,6 +30,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useDiscardChangesGuard } from "@app/hooks";
 import { useGetEnvOverrides, useUpdateServerConfig } from "@app/hooks/api";
 
 type TForm = Record<string, string>;
@@ -185,6 +187,9 @@ export const EnvironmentPageForm = () => {
 
   const dirtyCount = isDirty ? Object.keys(dirtyFields).length : 0;
 
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty, onDiscard: () => reset() });
+
   return (
     <Card>
       <CardHeader>
@@ -201,7 +206,9 @@ export const EnvironmentPageForm = () => {
         <form id={FORM_ID} className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
           <SelectedActionBar
             selectedCount={dirtyCount}
-            onClearSelection={() => reset(defaultValues)}
+            onClearSelection={() => {
+              if (!isSubmitting) requestDiscard();
+            }}
             selectionLabel={`${dirtyCount} unsaved change${dirtyCount !== 1 ? "s" : ""}`}
             clearLabel="Discard"
             iconOnlyClear={false}
@@ -213,12 +220,19 @@ export const EnvironmentPageForm = () => {
               type="submit"
               form={FORM_ID}
               isPending={isSubmitting}
-              isDisabled={isSubmitting}
+              isDisabled={isSubmitting || !isDirty}
             >
               <SaveIcon />
               Save
             </Button>
           </SelectedActionBar>
+          <DiscardChangesAlertDialog
+            open={isDiscardDialogOpen}
+            onOpenChange={setIsDiscardDialogOpen}
+            onDiscard={confirmDiscard}
+            title="Discard Changes?"
+            description="Your unsaved changes to these environment overrides will be lost."
+          />
           <InputGroup>
             <InputGroupAddon>
               <Search />
