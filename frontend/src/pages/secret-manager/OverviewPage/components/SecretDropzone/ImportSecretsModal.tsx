@@ -276,16 +276,42 @@ const ImportSecretsContent = ({
 
   const existingSecretQueries = useQueries({
     queries: selectedEnvs.map((env) =>
-      getCopySecretsQueryOptions({
-        projectId,
-        environment: env.slug,
-        secretPath,
-        enabled: Boolean(activeSecrets)
-      })
+      nestedImport
+        ? getCopySecretsQueryOptions({
+            projectId,
+            environment: env.slug,
+            secretPath,
+            enabled: Boolean(activeSecrets)
+          })
+        : {
+            queryKey: ["upload-existing-secrets", { projectId, environment: env.slug, secretPath }],
+            enabled: Boolean(activeSecrets),
+            staleTime: 0,
+            gcTime: 0,
+            queryFn: async () => {
+              try {
+                const { secrets } = await fetchProjectSecrets({
+                  projectId,
+                  environment: env.slug,
+                  secretPath,
+                  viewSecretValue: false
+                });
+                return mergePersonalSecrets(secrets).map(({ id, key }) => ({
+                  id,
+                  name: key,
+                  path: secretPath
+                }));
+              } catch (error) {
+                // The upload creates a missing destination folder, so it has no existing secrets
+                if (axios.isAxiosError(error) && error.response?.status === 404) return [];
+                throw error;
+              }
+            }
+          }
     )
   });
   const isCheckingExistingSecrets = existingSecretQueries.some(
-    (query) => query.isPending && query.fetchStatus !== "idle"
+    (query) => query.isFetching || (query.isPending && query.fetchStatus !== "idle")
   );
   const hasExistingSecretsError = existingSecretQueries.some((query) => query.isError);
   const incomingSecrets = (
@@ -426,7 +452,6 @@ const ImportSecretsContent = ({
 
   const handleImport = async (overwriteExisting: boolean) => {
     if (!activeSecrets || !selectedEnvs.length) return;
-    const skippedCount = overwriteExisting ? 0 : secretConflicts.length;
 
     if (isImportRunningRef.current) return;
     isImportRunningRef.current = true;
@@ -484,6 +509,8 @@ const ImportSecretsContent = ({
             : `${skippedTagsCount} tag${skippedTagsCount > 1 ? "s were" : " was"} skipped because ${skippedTagsCount > 1 ? "they don't" : "it doesn't"} exist and you don't have permission to create tags.`
         });
       }
+
+      const skippedCountByEnv = new Map<string, number>();
 
       const resolveTagIds = (slugs?: string[]): string[] | undefined => {
         if (!slugs?.length) return undefined;
@@ -576,6 +603,13 @@ const ImportSecretsContent = ({
               : undefined,
             skipMultilineEncoding: secretData.skipMultilineEncoding
           }));
+
+        if (!overwriteExisting) {
+          skippedCountByEnv.set(
+            environment,
+            (skippedCountByEnv.get(environment) ?? 0) + secretsToUpdate.length
+          );
+        }
 
         if (!enqueue) {
           return {
@@ -785,6 +819,10 @@ const ImportSecretsContent = ({
         }
       });
 
+      const skippedCount = successEnvSlugs.reduce(
+        (count, slug) => count + (skippedCountByEnv.get(slug) ?? 0),
+        0
+      );
       if (successEnvs.length) {
         createNotification({
           type: "success",
