@@ -8,6 +8,10 @@ Agent Vault lets an AI agent make authenticated API calls without ever holding t
 
 ## Architecture
 
+<Tip>
+To find the architecture that best fits what you're building, [plan your setup](/documentation/platform/agent-vault/plan-your-setup).
+</Tip>
+
 Every Agent Vault setup has an orchestrator that creates a session and starts the agent. Then, the agent sends every request through the proxy:
 
 ```mermaid
@@ -26,45 +30,44 @@ flowchart LR
   proxy -->|"fetches the credentials"| infisical
 ```
 
-| Piece | What it is | Credentials it holds |
+| Piece | What it does | Credentials it stores |
 |---|---|---|
-| Orchestrator | Whatever creates a session and starts an agent with the session token | Your Infisical login, or a [machine identity](/documentation/platform/identities/machine-identities) that can create sessions |
-| Agent | The AI agent, running in an environment such as a container, a virtual machine (VM), a Kubernetes pod, or a managed sandbox | Only the session token |
-| Proxy | The Agent Vault proxy, running separately from the agent in its own container or on its own machine | The proxy token |
-| Infisical | Where you define services and access bundles | The real credentials |
+| Orchestrator | Creates a session and starts the agent with the session token | Your Infisical login, or a [machine identity](/documentation/platform/identities/machine-identities) that can create sessions |
+| Agent | Does the task, in an environment such as a container, a virtual machine (VM), a Kubernetes pod, or a managed sandbox | Only the session token |
+| Proxy | Attaches the real credentials to the agent's requests, from its own container or machine | The proxy token |
+| Infisical | Stores your services and access bundles | The real credentials |
 
 ### Orchestrators
 
 An orchestrator is the program (or person) that creates a session and starts an agent with the session token. Agent Vault works with any orchestrator, such as:
 
-- **Your own service:** a backend service [uses the Infisical API to create a session](/documentation/platform/agent-vault/sessions-api) and start an agent for each task. For example: an internal coding agent that picks up tickets, or a product feature that starts an agent when a customer asks for something
-- **A scheduled job:** a cron job or CI pipeline [uses the Infisical CLI to create a session](/documentation/platform/agent-vault/sessions-cli) and start the agent. For example: an agent that labels new issues every hour
+- **Your own service:** a backend service [uses the Infisical API to create a session](/documentation/platform/agent-vault/sessions-api) and starts an agent for each task. It can call the API directly or through the [Python SDK](/sdks/languages/python#agent_vault-sessions). For example: an internal coding agent that picks up tickets, or a product feature that starts an agent when a customer asks for something
+- **A scheduled job:** a cron job or CI pipeline [uses the Infisical CLI to create a session](/documentation/platform/agent-vault/sessions-cli) and starts the agent. For example: an agent that labels new issues every hour
 - **You:** a person who [creates a session in the Infisical dashboard](/documentation/platform/agent-vault/sessions#create-a-session) and starts an agent with the session token. For example: a coding agent on a dev box, or an assistant on a home server
 
-The orchestrator chooses the access bundle for each session in its own code, so the agent can't change what it has access to. For example, a service can create sessions with a read-only access bundle for most requests, and with a bundle that includes your deployment API only when the request comes from an on-call engineer.
+The orchestrator decides which access bundle each session gets, and the agent can't change it. For example, a service can give most sessions a read-only access bundle, and give a session the access bundle with your deployment API only when an on-call engineer makes the request.
 
 <Warning>
 Keep the credentials that the orchestrator uses out of the agent's environment. A machine identity can create a session for any access bundle it has access to, so if an agent read the machine identity's credentials, it could give itself more access.
 </Warning>
 
-### Short-lived vs. long-running agents
+### Session duration
 
-An agent can run for one task or keep running:
+How long each session lasts is up to you. A session lasts until it expires or the orchestrator revokes it, so it can last:
 
-- **For one task:** the orchestrator creates a new environment with [its own proxy](#proxy-placement) and a new session for each task, then revokes the session and deletes the environment when the task ends
-- **Long-running:** the agent keeps running and handles requests as they come in, such as a chat assistant, with a session that never expires
-
-If your own code starts agents, we recommend starting a new agent for each task. This prevents a session token from working after its task ends. It also keeps the files and data from one task out of the next task's environment.
+- Until the agent finishes a task, with the orchestrator revoking the session when the task ends
+- For a fixed amount of time that you [set when you create the session](/documentation/platform/agent-vault/sessions-api#choose-how-long-a-session-lasts)
+- With no expiry, until someone revokes it
 
 <Note>
-If you run a long-running agent, it keeps its access until you [revoke its session](/documentation/platform/agent-vault/sessions#revoke-a-session). Revoke the session when you shut the agent down, or if you think its session token leaked.
+An agent keeps its access until its session expires or you revoke it. If a session token leaks, anyone with the token has the same access until then. [Revoke the session](/documentation/platform/agent-vault/sessions#revoke-a-session) when the agent no longer needs it, or if you think the token leaked.
 </Note>
 
 ### Agent environment
 
 The agent can run anywhere: a [Kubernetes pod](/documentation/platform/agent-vault/guides/kubernetes), a [Docker container](/documentation/platform/agent-vault/guides/docker), a managed sandbox such as [Modal](/documentation/platform/agent-vault/guides/modal) or [Daytona](/documentation/platform/agent-vault/guides/daytona), or a VM, such as an Amazon EC2 instance. Wherever it runs, we recommend that:
 
-- The proxy runs separately from the agent, such as in its own container, so the agent can't read the proxy token
+- The proxy [runs separately from the agent](#proxy-placement), such as in its own container, so the agent can't read the proxy token
 - The agent's network only reaches the proxy, so the agent can't skip the proxy and connect to an API directly
 
 <Warning>
@@ -73,23 +76,27 @@ We don't recommend running the agent on your own computer. The proxy would have 
 
 ### Proxy placement
 
-We recommend giving each agent its own proxy. When the orchestrator creates a sandbox or container for a task, it also starts a proxy in a separate container, on a private network that only the agent and its proxy share. When the task ends, the orchestrator deletes both. The guides set this up with each platform's own feature for it:
+You can run one proxy for several agents, or give each agent its own proxy. Which one fits depends on where your agents run.
 
-- **[Modal](/documentation/platform/agent-vault/guides/modal):** a sidecar container in the agent's sandbox
-- **[Daytona](/documentation/platform/agent-vault/guides/daytona):** a second sandbox, linked to the agent's sandbox
-- **[Docker](/documentation/platform/agent-vault/guides/docker):** a second container in each run's Docker Compose project
+#### Common proxy
 
-Giving each agent its own proxy has these advantages:
+In this setup, one proxy runs on its own machine (or in its own [Kubernetes namespace](/documentation/platform/agent-vault/guides/kubernetes)), and every agent sends its requests to that proxy. Use this setup if your agents run on a network you control, such as on your own servers, in a Kubernetes cluster, or on self-hosted CI runners.
 
-- The agent can always reach its proxy, even on a platform like Modal that can place sandboxes on different cloud providers, where a shared proxy on one provider can't reach agents on another
-- Only the agent can reach its proxy, so nothing outside the task can send requests through it
-- You don't have a proxy service to keep running between tasks
+#### One proxy per agent
 
-You can also run one shared proxy that every agent connects to, such as on a server or in its own Kubernetes namespace, as the [Kubernetes guide](/documentation/platform/agent-vault/guides/kubernetes) does. A shared proxy works well if your agents run on a private network you control.
+When the orchestrator creates a sandbox or container for a task, it also starts a proxy in a separate container, on a private network that only the agent and its proxy share. When the task ends, the orchestrator deletes both. Only the agent can reach its proxy, so nothing outside the task can send requests through it.
 
-Either way, you [create the proxy in Infisical](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) once and start every copy with the same proxy token. Infisical shows one proxy, however many copies are running.
+<Note>
+On a managed sandbox platform like Modal or Daytona, each sandboxed agent needs its own proxy. This is because the platform might provision the sandboxes on a different cloud provider than the proxy, which would prevent the agents from reaching the proxy altogether.
+</Note>
 
-To find the setup that fits what you're building, see [Plan your setup](/documentation/platform/agent-vault/plan-your-setup).
+Each platform has its own way to run the proxy:
+
+- **Modal:** a [sidecar](https://modal.com/docs/guide/sandbox-sidecars) in the agent's sandbox (see the [Modal guide](/documentation/platform/agent-vault/guides/modal))
+- **Daytona:** a [linked sandbox](https://www.daytona.io/docs/en/sandboxes/#linked-sandboxes) (see the [Daytona guide](/documentation/platform/agent-vault/guides/daytona))
+- **Docker:** a second container in each run's Docker Compose project (see the [Docker guide](/documentation/platform/agent-vault/guides/docker))
+
+You [create the proxy in Infisical](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) once and start every copy with the same proxy token.
 
 ## Access model
 

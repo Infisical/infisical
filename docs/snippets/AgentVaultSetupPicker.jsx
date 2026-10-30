@@ -58,16 +58,10 @@ export const AgentVaultSetupQuestions = () => {
 
   const BUILDS = [
     {
-      id: "personal",
-      label: "A coding agent for yourself",
-      example: "An agent that you work alongside, on a dev box or in a container.",
-      runs: ["server", "container"],
-    },
-    {
-      id: "assistant",
-      label: "An always-on assistant",
-      example: "An agent that keeps running and answers messages, such as a chat bot.",
-      runs: ["server", "container"],
+      id: "platform",
+      label: "A service that starts agents for tasks",
+      example: "Your own code, such as a backend service, that starts a new agent for each task.",
+      runs: ["server", "container", "kubernetes", "sandbox", "ci"],
     },
     {
       id: "scheduled",
@@ -76,10 +70,16 @@ export const AgentVaultSetupQuestions = () => {
       runs: ["server", "container", "ci"],
     },
     {
-      id: "platform",
-      label: "A service that starts agents for tasks",
-      example: "Your own code, such as a backend service, that starts a new agent for each task.",
-      runs: ["server", "container", "kubernetes", "sandbox", "ci"],
+      id: "assistant",
+      label: "An always-on assistant",
+      example: "An agent that keeps running and answers messages, such as a chat bot.",
+      runs: ["server", "container"],
+    },
+    {
+      id: "personal",
+      label: "A coding agent for yourself",
+      example: "An agent that you work alongside, on a dev box or in a container.",
+      runs: ["server", "container"],
     },
   ];
 
@@ -116,7 +116,7 @@ export const AgentVaultSetupQuestions = () => {
   };
 
   const [selection, setSelection] = useState({
-    building: "personal",
+    building: "platform",
     runs: null,
     agent: null,
   });
@@ -300,7 +300,7 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
     // An own-key check, so a value such as "constructor" doesn't match an inherited property.
     const building = Object.prototype.hasOwnProperty.call(RULES, params.get("building"))
       ? params.get("building")
-      : "personal";
+      : "platform";
     const runs = params.get("runs");
     const agent = params.get("agent");
     return {
@@ -312,8 +312,8 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   };
 
   const [selection, setSelection] = useState({
-    building: "personal",
-    model: "user",
+    building: "platform",
+    model: "orchestrator",
     runs: null,
     agent: null,
   });
@@ -388,9 +388,9 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const sharesHost = selection.model === "job";
 
   const creator = {
-    user: { label: "You", sub: "Infisical dashboard" },
-    job: { label: "Infisical CLI", sub: "Machine identity" },
-    orchestrator: { label: "Orchestrator", sub: "Machine identity" },
+    user: { label: "Orchestrator", sub: "You, in the dashboard" },
+    job: { label: "Orchestrator", sub: "Infisical CLI in your job" },
+    orchestrator: { label: "Orchestrator", sub: "Your service" },
   }[selection.model];
 
   const lanes = [
@@ -639,10 +639,10 @@ export const AgentVaultSetupStep = ({ step, children }) => {
   const readModel = () => {
     const params = new URLSearchParams(window.location.search);
     const building = params.get("building");
-    return Object.prototype.hasOwnProperty.call(MODELS, building) ? MODELS[building] : "user";
+    return Object.prototype.hasOwnProperty.call(MODELS, building) ? MODELS[building] : "orchestrator";
   };
 
-  const [model, setModel] = useState("user");
+  const [model, setModel] = useState("orchestrator");
 
   useEffect(() => {
     const sync = () => setModel(readModel());
@@ -744,7 +744,7 @@ export const AgentVaultSetupSummary = () => {
   const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
     const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
-    const building = has(BUILDS, params.get("building")) ? params.get("building") : "personal";
+    const building = has(BUILDS, params.get("building")) ? params.get("building") : "platform";
     const runs = params.get("runs");
     const agent = params.get("agent");
     return {
@@ -754,7 +754,7 @@ export const AgentVaultSetupSummary = () => {
     };
   };
 
-  const [selection, setSelection] = useState({ building: "personal", runs: null, agent: null });
+  const [selection, setSelection] = useState({ building: "platform", runs: null, agent: null });
 
   useEffect(() => {
     const sync = () => setSelection(readSelection());
@@ -805,7 +805,7 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
     const params = new URLSearchParams(window.location.search);
     const buildingId = Object.prototype.hasOwnProperty.call(RULES, params.get("building"))
       ? params.get("building")
-      : "personal";
+      : "platform";
     const rule = RULES[buildingId];
     const runsId = params.get("runs");
     const agentId = params.get("agent");
@@ -818,8 +818,8 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
   };
 
   const [selection, setSelection] = useState({
-    building: "personal",
-    model: "user",
+    building: "platform",
+    model: "orchestrator",
     runs: null,
     agent: null,
   });
