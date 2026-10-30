@@ -711,7 +711,6 @@ export type TTelemetryInstanceStatsEvent = {
 export type TSecretRequestCreatedEvent = {
   event: PostHogEventTypes.SecretRequestCreated;
   properties: {
-    secretRequestId: string;
     organizationId: string;
     secretRequestName?: string;
   };
@@ -720,7 +719,6 @@ export type TSecretRequestCreatedEvent = {
 export type TSecretRequestDeletedEvent = {
   event: PostHogEventTypes.SecretRequestDeleted;
   properties: {
-    secretRequestId: string;
     organizationId: string;
   };
 };
@@ -802,7 +800,6 @@ export type TSecretSharedEvent = {
 export type TSharedSecretViewedEvent = {
   event: PostHogEventTypes.SharedSecretViewed;
   properties: {
-    sharedSecretId: string;
     accessType: SecretSharingAccessType;
   };
 };
