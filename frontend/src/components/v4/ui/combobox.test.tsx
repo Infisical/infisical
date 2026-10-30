@@ -112,3 +112,44 @@ it("clears every removable chip and keeps locked ones with clearable", async () 
   expect(document.querySelector('[aria-label="Remove Admin"]')).not.toBeNull();
   expect(document.querySelector('[data-slot="combobox-clear"]')).toBeNull();
 });
+
+it.each([
+  [false, undefined, true],
+  [false, true, false],
+  [true, undefined, true],
+  [true, true, false]
+] as const)(
+  "outside focus with defaultOpen (multiple: %s, closeOnFocusOutside: %s) keeps it open: %s",
+  async (multiple, closeOnFocusOutside, staysOpen) => {
+    const options = [
+      { value: "dev", label: "Development" },
+      { value: "prod", label: "Production" }
+    ];
+    await React.act(async () =>
+      root.render(
+        <V4Scope>
+          <input aria-label="Outside" />
+          {multiple ? (
+            <Combobox
+              label="Environments"
+              multiple
+              defaultOpen
+              closeOnFocusOutside={closeOnFocusOutside}
+              options={options}
+            />
+          ) : (
+            <Combobox
+              label="Environment"
+              defaultOpen
+              closeOnFocusOutside={closeOnFocusOutside}
+              options={options}
+            />
+          )}
+        </V4Scope>
+      )
+    );
+    expect(document.querySelectorAll('[role="option"]').length).toBe(2);
+    await React.act(async () => element('[aria-label="Outside"]').focus());
+    expect(document.querySelectorAll('[role="option"]').length).toBe(staysOpen ? 2 : 0);
+  }
+);
