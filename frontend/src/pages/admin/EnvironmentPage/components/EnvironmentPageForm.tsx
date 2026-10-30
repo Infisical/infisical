@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Control, Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { SaveIcon, Search, TriangleAlert } from "lucide-react";
+import { useBlocker } from "@tanstack/react-router";
+import { PencilIcon, SaveIcon, Search, TriangleAlert } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -11,6 +12,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  Badge,
   Button,
   Card,
   CardContent,
@@ -40,7 +42,8 @@ const FORM_ID = "env-overrides-form";
 export const GroupContainer = ({
   group,
   control,
-  search
+  search,
+  unsavedCount
 }: {
   group: {
     fields: {
@@ -53,10 +56,19 @@ export const GroupContainer = ({
   };
   control: Control<TForm, any, TForm>;
   search: string;
+  unsavedCount: number;
 }) => {
   return (
     <AccordionItem value={group.name}>
-      <AccordionTrigger>{group.name}</AccordionTrigger>
+      <AccordionTrigger>
+        {group.name}
+        {unsavedCount > 0 && (
+          <Badge variant="warning" className="ml-auto">
+            <PencilIcon />
+            {unsavedCount} unsaved change{unsavedCount !== 1 ? "s" : ""}
+          </Badge>
+        )}
+      </AccordionTrigger>
       <AccordionContent className="p-6">
         <div className="flex flex-col divide-y divide-border">
           {group.fields.map((field) => (
@@ -190,6 +202,12 @@ export const EnvironmentPageForm = () => {
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty, onDiscard: () => reset() });
 
+  const navigationBlocker = useBlocker({
+    shouldBlockFn: () => isDirty,
+    enableBeforeUnload: isDirty,
+    withResolver: true
+  });
+
   return (
     <Card>
       <CardHeader>
@@ -233,6 +251,15 @@ export const EnvironmentPageForm = () => {
             title="Discard Changes?"
             description="Your unsaved changes to these environment overrides will be lost."
           />
+          <DiscardChangesAlertDialog
+            open={navigationBlocker.status === "blocked"}
+            onOpenChange={(open) => {
+              if (!open) navigationBlocker.reset?.();
+            }}
+            onDiscard={() => navigationBlocker.proceed?.()}
+            title="Discard Changes?"
+            description="You have unsaved changes to these environment overrides. Leaving this page will discard them."
+          />
           <InputGroup>
             <InputGroupAddon>
               <Search />
@@ -249,7 +276,17 @@ export const EnvironmentPageForm = () => {
             value={search ? filteredData.map((group) => group!.name) : undefined}
           >
             {filteredData.map((group) => (
-              <GroupContainer key={group!.name} group={group!} control={control} search={search} />
+              <GroupContainer
+                key={group!.name}
+                group={group!}
+                control={control}
+                search={search}
+                unsavedCount={
+                  Object.values(envOverrides ?? {})
+                    .find(({ name }) => name === group!.name)
+                    ?.fields.filter((field) => dirtyFields[field.key]).length ?? 0
+                }
+              />
             ))}
           </Accordion>
         </form>
