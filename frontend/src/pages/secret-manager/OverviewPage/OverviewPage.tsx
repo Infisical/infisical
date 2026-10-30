@@ -4672,6 +4672,7 @@ const OverviewPageContent = () => {
                             <FolderTableRow
                               folderName={folderName}
                               secretPath={secretPath}
+                              isNavigationDisabled={isOverviewPending}
                               description={description}
                               isFolderPresentInEnv={isFolderPresentInEnv}
                               isSelected={

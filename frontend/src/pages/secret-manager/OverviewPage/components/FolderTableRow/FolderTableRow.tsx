@@ -35,6 +35,7 @@ import {
 type Props = {
   folderName: string;
   secretPath: string;
+  isNavigationDisabled: boolean;
   description?: string;
   environments: { name: string; slug: string }[];
   isFolderPresentInEnv: (name: string, env: string) => boolean;
@@ -57,6 +58,7 @@ type Props = {
 export const FolderTableRow = ({
   folderName,
   secretPath,
+  isNavigationDisabled,
   description,
   environments = [],
   isFolderPresentInEnv,
@@ -132,6 +134,7 @@ export const FolderTableRow = ({
       >
         <div className="flex min-w-0 items-center">
           <RowLink
+            disabled={isNavigationDisabled}
             from={ROUTE_PATHS.SecretManager.OverviewPage.path}
             to="."
             search={(prev) => ({
