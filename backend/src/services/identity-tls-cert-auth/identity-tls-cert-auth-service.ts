@@ -719,6 +719,13 @@ export const identityTlsCertAuthServiceFactory = ({
       return doc;
     });
 
+    // Tokens issued before binding was enabled carry no certificate claim, so they must not outlive the change.
+    if (bindAccessTokenToCertificate && !identityTlsCertAuth.bindAccessTokenToCertificate) {
+      await identityAccessTokenService.revokeTokensForIdentityAuthMethod({
+        identityId,
+        authMethod: IdentityAuthMethod.TLS_CERT_AUTH
+      });
+    }
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TLS_CERT_AUTH);
     return { ...updatedTlsCertAuth, orgId: identityMembershipOrg.scopeOrgId };
   };

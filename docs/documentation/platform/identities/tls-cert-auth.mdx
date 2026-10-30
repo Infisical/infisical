@@ -188,16 +188,16 @@ By default, an access token from TLS Certificate Auth is a bearer token: anyone 
 
 With binding enabled:
 
-- Every API request made with the token, including [token renewal](/api-reference/endpoints/universal-auth/renew-access-token), must present the same client certificate through the TLS-terminating proxy.
-- A request with no client certificate, or a different one, is rejected with `401 Unauthorized` and a message stating which.
-- Renewing the token keeps the binding.
-- After the client certificate rotates, the client must log in again to get a token bound to the new certificate.
+- Every API request made with the token, including [token renewal](/api-reference/endpoints/universal-auth/renew-access-token), must present the same client certificate through the TLS-terminating proxy
+- A request with no client certificate, or a different one, is rejected with `401 Unauthorized`
+- Renewing the token keeps the binding
+- After the client certificate rotates, the client must log in again to get a token bound to the new certificate
 
-The client must present its certificate on every API call, not only on login. A custom client using the login example below must reuse the same HTTPS agent for its later API calls. The [Infisical Issuer for cert-manager](/documentation/platform/pki/guides/applications/k8s-cert-manager-issuer) supports this through the `tlsCert` method.
+The client must present its certificate on every API call, not only on login. A custom client using the [login example](#accessing-the-infisical-api-with-the-identity) must reuse the same HTTPS agent for its later API calls. The [Infisical Issuer for cert-manager](/documentation/platform/pki/guides/applications/k8s-cert-manager-issuer) supports this through the `tlsCert` method.
 
 On Infisical Cloud, send every API request made with a bound token to port `8443`, for example `https://app.infisical.com:8443`. Requests on port `443` carry no client certificate and are rejected.
 
-Turning the setting on or off applies to tokens issued afterwards. Tokens issued earlier keep the behavior they were issued with until they expire.
+Turning the setting on revokes the identity's existing TLS Certificate Auth tokens, which were issued without a binding. Tokens issued while the setting was on stay bound until they expire, even after it's turned off.
 
 ## Security requirements for self-hosted deployments
 
@@ -207,13 +207,15 @@ ALL TLS cert [login](/api-reference/endpoints/tls-cert-auth/login) requests **MU
 - **REQUIRED:** Ensure the load balancer **verifies the client possesses the private key** corresponding to the certificate (standard TLS behavior)
 - **NEVER** allow direct connections to Infisical for TLS cert auth, since this enables header injection attacks
 - **NEVER** forward certificate headers without requiring proper TLS certificate presentation
-- **REQUIRED:** Always overwrite the client certificate header with the certificate from the TLS handshake, or with an empty value when none was presented. Never pass through a value sent by the client: certificates are public, so a client-supplied header lets anyone claim any certificate.
+- **REQUIRED:** Always overwrite the client certificate header with the certificate from the TLS handshake, or with an empty value when none was presented (certificates are public, and a client-supplied header lets anyone claim any certificate)
 
 When **Bind Access Tokens to Client Certificate** is enabled on any identity, the proxy must set the header on **every** API request, not only on the login endpoint. Otherwise bound tokens are rejected on every request after login.
 
 ```nginx
 server {
     listen 443 ssl;
+    ssl_certificate /etc/nginx/tls/server.crt;
+    ssl_certificate_key /etc/nginx/tls/server.key;
     ssl_verify_client optional_no_ca;
 
     location /api {

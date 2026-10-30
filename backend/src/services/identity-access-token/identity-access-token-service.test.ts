@@ -1269,7 +1269,7 @@ describe("certificate-bound access tokens", () => {
     const claims = verifyAccessTokenJwt(signBoundToken());
 
     await expect(service.fnValidateIdentityAccessTokenFast(claims, "10.0.0.1", "%E0%A4%A")).rejects.toThrow(
-      "could not be parsed"
+      "client certificate header could not be read"
     );
   });
 

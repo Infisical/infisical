@@ -446,14 +446,14 @@ export const assertCertificateBinding = ({
 
   if (!clientCertificate) {
     throw new UnauthorizedError({
-      message: `${messagePrefix}: access token is bound to a client certificate, but no client certificate was presented`
+      message: `${messagePrefix}: access token is bound to a client certificate, but no client certificate was presented. Send every request through the TLS-terminating proxy with the same client certificate used to log in`
     });
   }
 
   const leafDer = parsePresentedLeafCertificate(clientCertificate);
   if (!leafDer) {
     throw new UnauthorizedError({
-      message: `${messagePrefix}: the presented client certificate could not be parsed`
+      message: `${messagePrefix}: the client certificate header could not be read. The TLS-terminating proxy must forward the URL-encoded certificate chain`
     });
   }
 

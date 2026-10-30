@@ -459,7 +459,7 @@ export const TLS_CERT_AUTH = {
     verifyClientCertificateChain:
       "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
     bindAccessTokenToCertificate:
-      "When true, access tokens issued by this auth method are bound to the SHA-256 thumbprint of the client certificate used to log in (RFC 8705). Every request and renewal made with the token must present the same client certificate through the TLS-terminating proxy.",
+      "When true, access tokens issued by this auth method are bound to the SHA-256 thumbprint of the client certificate used to log in (RFC 8705). Every request and renewal made with the token must present the same client certificate through the TLS-terminating proxy. Turning this on revokes the identity's existing TLS Certificate Auth access tokens.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",

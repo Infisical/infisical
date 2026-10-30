@@ -139,7 +139,7 @@ Throughout this guide, replace `<namespace>` with the namespace where your workl
         The service account's name and namespace must be allowed by the identity's [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) configuration in Infisical (and the audience there must match), otherwise issuance fails authentication.
       </Tab>
       <Tab title="TLS Certificate Auth">
-        Store the machine identity's **Identity ID**, and the client certificate and private key in a `kubernetes.io/tls` Secret:
+        Store the machine identity's **Identity ID** in a generic Secret, and the client certificate and private key in a `kubernetes.io/tls` Secret:
 
         ```bash
         kubectl create secret generic infisical-identity \
@@ -218,7 +218,7 @@ Throughout this guide, replace `<namespace>` with the namespace where your workl
         ```
       </Tab>
       <Tab title="TLS Certificate Auth">
-        ```yaml issuer-infisical.yaml
+        ```yaml issuer-infisical.yaml expandable
         apiVersion: infisical-issuer.infisical.com/v1alpha1
         kind: Issuer
         metadata:

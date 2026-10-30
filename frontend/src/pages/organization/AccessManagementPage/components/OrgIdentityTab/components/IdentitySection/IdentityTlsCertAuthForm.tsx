@@ -363,7 +363,9 @@ export const IdentityTlsCertAuthForm = ({
                         <TooltipContent className="max-w-md">
                           Issued access tokens only work when the request presents the same client
                           certificate used to log in (RFC 8705). Your TLS-terminating proxy must
-                          forward the client certificate on every API request, not only on login.
+                          forward the client certificate on every API request, not only on login. On
+                          Infisical Cloud, send these requests to port 8443. Turning this on revokes
+                          the identity&apos;s existing TLS Certificate Auth access tokens.
                         </TooltipContent>
                       </Tooltip>
                     </FieldLabel>

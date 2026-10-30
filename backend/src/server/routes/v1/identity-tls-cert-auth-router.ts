@@ -3,7 +3,6 @@ import { z } from "zod";
 import { IdentityAuthMethod, IdentityTlsCertAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TLS_CERT_AUTH } from "@app/lib/api-docs";
-import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -12,6 +11,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { readClientCertificateHeader } from "@app/services/identity-access-token/identity-access-token-fns";
 import {
   isValidAllowedSubjectAltNameEntry,
   parseAllowedSubjectAltNames
@@ -105,8 +105,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     },
     handler: async (req) => {
       try {
-        const appCfg = getConfig();
-        const clientCertificate = req.headers[appCfg.IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY];
+        const clientCertificate = readClientCertificateHeader(req.headers);
         if (!clientCertificate) {
           throw new BadRequestError({ message: "Missing TLS certificate in header" });
         }
@@ -114,7 +113,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         const { identityTlsCertAuth, accessToken, identityAccessToken, identity } =
           await server.services.identityTlsCertAuth.login({
             ...req.body,
-            clientCertificate: clientCertificate as string
+            clientCertificate
           });
 
         await server.services.auditLog.createAuditLog({
