@@ -38,7 +38,7 @@ export const ProjectMembersTab = () => {
   const [menuFor, setMenuFor] = useState<string | undefined>(() =>
     startsWith("row-menu") ? "pm-marcus" : undefined
   );
-  const [adding, setAdding] = useState(() => startsWith("add"));
+  const [adding, setAdding] = useState(() => startsWith("add") || startsWith("add-user-picker"));
   const [removing, setRemoving] = useState<Row | undefined>(() => {
     if (!startsWith("remove")) return undefined;
     const member = data.projectMembers.find((item) => item.id === "pm-diego");
@@ -234,7 +234,12 @@ export const ProjectMembersTab = () => {
         />
         {!loading && list.pagination}
       </Stack>
-      <AddMemberDialog open={adding} onOpenChange={setAdding} prefill={startsWith("add")} />
+      <AddMemberDialog
+        open={adding}
+        onOpenChange={setAdding}
+        prefill={startsWith("add")}
+        openUserPicker={startsWith("add-user-picker")}
+      />
       <RemoveMemberDialog
         name={removing?.user.username}
         onOpenChange={(next) => !next && setRemoving(undefined)}

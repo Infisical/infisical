@@ -105,3 +105,11 @@ button.rowHint {
 .fabDock > * {
   pointer-events: auto;
 }
+.labelHint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+}
+.labelHint .rowHint {
+  opacity: 1;
+}

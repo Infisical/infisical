@@ -18,6 +18,7 @@ import {
 
 import { useAccess } from "../context";
 import type { OrgMember } from "../model";
+import { LabelHint } from "../ui";
 
 const MAX_INVITE_EMAILS = 100;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -167,8 +168,12 @@ export const InviteUsersSheet = ({
                 />
               </Field>
               <Field
-                label="Assign organization role"
-                description="Select which organization role you want to assign to the user."
+                label={
+                  <LabelHint
+                    label="Assign organization role"
+                    hint="Select which organization role you want to assign to the user."
+                  />
+                }
               >
                 <Select
                   label="Assign organization role"
@@ -182,9 +187,13 @@ export const InviteUsersSheet = ({
                 />
               </Field>
               <Field
-                label="Assign users to a product"
+                label={
+                  <LabelHint
+                    label="Assign users to a product"
+                    hint="Select which product to grant the users access to."
+                  />
+                }
                 optional
-                description="Select which product to grant the users access to."
               >
                 <Select
                   label="Assign users to a product"

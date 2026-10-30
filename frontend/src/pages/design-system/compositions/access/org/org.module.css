@@ -55,8 +55,8 @@
 }
 .metadata {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--v4-space-4);
 }
 .typeIcon {

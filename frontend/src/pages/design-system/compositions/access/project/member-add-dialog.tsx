@@ -23,11 +23,13 @@ const userLabel = (member: OrgMember) => displayName(member.user) ?? member.user
 export const AddMemberDialog = ({
   open,
   onOpenChange,
-  prefill
+  prefill,
+  openUserPicker
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   prefill?: boolean;
+  openUserPicker?: boolean;
 }) => {
   const { data, update, saved } = useAccess();
   const [users, setUsers] = useState<string[]>(() => (prefill ? ["tom@acme.dev"] : []));
@@ -104,7 +106,9 @@ export const AddMemberDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
-      <DialogContent>
+      <DialogContent
+        onOpenAutoFocus={openUserPicker ? (event) => event.preventDefault() : undefined}
+      >
         <DialogHeader>
           <DialogTitle>Add users to your project</DialogTitle>
           <DialogDescription>
@@ -121,6 +125,7 @@ export const AddMemberDialog = ({
           <Stack gap={16}>
             <Combobox
               multiple
+              defaultOpen={openUserPicker}
               label="Invite users to project"
               placeholder="Add one or more users..."
               emptyText={

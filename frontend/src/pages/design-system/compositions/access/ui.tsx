@@ -1,5 +1,5 @@
 import { type ReactElement, type ReactNode, useMemo, useState } from "react";
-import { ClockAlertIcon, ClockIcon, FilterIcon } from "lucide-react";
+import { ClockAlertIcon, ClockIcon, FilterIcon, InfoIcon } from "lucide-react";
 
 import { Badge, Count } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
@@ -219,4 +219,15 @@ export const FabDock = ({ active, children }: { active: boolean; children: React
   <div className={styles.fabDock} data-active={active || undefined}>
     {children}
   </div>
+);
+
+export const LabelHint = ({ label, hint }: { label: string; hint: string }) => (
+  <span className={styles.labelHint}>
+    {label}
+    <Tooltip content={hint}>
+      <button type="button" className={styles.rowHint} aria-label={hint}>
+        <Icon icon={InfoIcon} size={12} />
+      </button>
+    </Tooltip>
+  </span>
 );

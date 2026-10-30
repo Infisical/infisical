@@ -148,6 +148,11 @@ export const accessViews: AccessView[] = [
     start: { nav: { scope: "project" }, overlay: "add" }
   },
   {
+    value: "proj-add-member-user-picker",
+    label: "Project: Add users, user picker",
+    start: { nav: { scope: "project" }, overlay: "add-user-picker" }
+  },
+  {
     value: "proj-remove-member",
     label: "Project: Remove user",
     start: { nav: { scope: "project" }, overlay: "remove" }

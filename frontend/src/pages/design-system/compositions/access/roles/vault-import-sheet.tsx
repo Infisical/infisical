@@ -304,6 +304,7 @@ export const VaultImportSheet = ({
                 description="Paste your HCL policy here or select one from the dropdown above."
               >
                 <Textarea
+                  mono
                   id="vault-hcl-policy"
                   rows={16}
                   value={hcl}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LayersIcon, PencilIcon, SaveIcon } from "lucide-react";
 
 import { Accordion } from "@app/components/v4/ui/accordion";
@@ -125,16 +125,9 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
   const [draft, setDraft] = useState<RolePermissions>(stored);
   const [errors, setErrors] = useState<PermissionErrors>();
   const [open, setOpen] = useState<string[]>(() => (startsWith("conditions") ? ["secrets"] : []));
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(() => startsWith("add-policy"));
   const [overlay, setOverlay] = useState<Overlay>();
   const [optionsOpen, setOptionsOpen] = useState(false);
-  useEffect(() => {
-    if (!startsWith("add-policy")) return undefined;
-    // The policy picker is a non-modal popover, so it closes when focus lands outside it. The
-    // workbench view picker hands focus back to itself after this view mounts; open after that.
-    const timer = window.setTimeout(() => setAdding(true), 150);
-    return () => window.clearTimeout(timer);
-  }, []);
   const back = () =>
     navigate(scope === "org" ? { orgTab: "roles" } : { scope: "project", projectTab: "roles" });
 
@@ -249,6 +242,7 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
       menuWidth={288}
       open={adding}
       onOpenChange={setAdding}
+      closeOnFocusOutside={false}
       disabled={!editable}
       options={[...subjects]
         .sort((a, b) => a.title.localeCompare(b.title))

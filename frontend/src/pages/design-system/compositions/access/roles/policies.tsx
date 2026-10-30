@@ -128,6 +128,7 @@ export const PolicyItem = ({
                     <div className={styles.ruleActions}>
                       <Combobox
                         multiple
+                        clearable
                         label={`Rule ${index + 1} actions for ${config.title}`}
                         placeholder="Select actions..."
                         emptyText="No permission actions found."
