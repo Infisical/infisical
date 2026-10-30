@@ -104,7 +104,6 @@ export const ProjectMemberDetail = ({ id }: { id: string }) => {
             {isSelf ? (
               <Tooltip
                 side="right"
-                wrap
                 content="You cannot modify your own membership. Ask a project admin to make changes to your membership."
               >
                 <Badge tone="info">

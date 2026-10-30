@@ -126,7 +126,7 @@ const DetailedView = ({ template }: { template: PolicyTemplate }) => (
             return (
               <li key={action.value}>
                 {action.description ? (
-                  <Tooltip content={action.description} wrap>
+                  <Tooltip content={action.description}>
                     <span className={styles.inlineTrigger}>{badge}</span>
                   </Tooltip>
                 ) : (

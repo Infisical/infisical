@@ -149,7 +149,7 @@ const PartialHint = ({
     items.map((action) => action.label).join(", ");
   const text = `Allowed everywhere: ${list(allowed)}. Not allowed: ${list(actions.filter((action) => !granted.includes(action.value)))}.`;
   return (
-    <Tooltip content={<span className={styles.tipText}>{text}</span>}>
+    <Tooltip content={text}>
       <button type="button" className={styles.mark} data-tone="partial" aria-label={text}>
         <Icon icon={InfoIcon} size={14} />
       </button>

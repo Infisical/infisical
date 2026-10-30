@@ -36,6 +36,8 @@ import { InviteUsersSheet } from "./invite-users-sheet";
 
 import styles from "../access.module.css";
 
+const GROUP_ONLY = "Access is managed through groups";
+
 const usernameOf = (member: OrgMember) => member.user.username;
 
 const GroupAccessPopover = ({
@@ -170,7 +172,6 @@ export const OrgMembersTab = () => {
         <Inline gap={8} wrap={false}>
           <span>{displayName(member.user) ?? <Muted>-</Muted>}</span>
           {member.membership?.isActive === false && <Badge>Deactivated</Badge>}
-          {!member.membership && <Badge>Group access only</Badge>}
           {member.user.superAdmin && (
             <Tooltip content="Server admin">
               <Badge tone="info">
@@ -432,7 +433,7 @@ export const OrgMembersTab = () => {
           selectable
           selectedIds={selected}
           onSelectionChange={setSelected}
-          isSelectable={(member) => Boolean(member.membership)}
+          selectionDisabledReason={(member) => (member.membership ? undefined : GROUP_ONLY)}
           empty={
             searching ? (
               <EmptyState

@@ -496,9 +496,6 @@
   outline: var(--v4-size-focus-ring) solid var(--v4-focus-ring);
   outline-offset: calc(var(--v4-size-focus-ring) * -1);
 }
-.tipText {
-  white-space: normal;
-}
 .legendAbsent {
   display: inline-flex;
   align-items: center;
@@ -523,7 +520,6 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  white-space: normal;
   overflow-wrap: anywhere;
 }
 .popoverTitle {

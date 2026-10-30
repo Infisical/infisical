@@ -130,7 +130,6 @@ export const ProjectMembersTab = () => {
             <DropdownMenuContent align="end">
               <Tooltip
                 side="left"
-                wrap
                 content={
                   can("member", "edit")
                     ? "Assume the privileges of this user, allowing you to replicate their access behavior."
