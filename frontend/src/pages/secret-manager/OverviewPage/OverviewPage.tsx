@@ -616,7 +616,8 @@ const OverviewPageContent = () => {
   );
   const [storedEnvIds, setStoredEnvIds] = useLocalStorageState<string[]>(
     `overview-selected-envs-${projectId}`,
-    userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
+    userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : [],
+    { tabLocal: true }
   );
 
   // Apply one-shot deep-link inputs to local filters, then strip them from the URL in a SINGLE
@@ -640,7 +641,7 @@ const OverviewPageContent = () => {
         .filter((env) => envSlugs.includes(env.slug))
         .map((env) => env.id);
       if (envIds.length > 0) {
-        setStoredEnvIds(envIds);
+        setStoredEnvIds(envIds.length === userAvailableEnvs.length ? [] : envIds);
       }
     }
 
@@ -4670,6 +4671,8 @@ const OverviewPageContent = () => {
                           ) => (
                             <FolderTableRow
                               folderName={folderName}
+                              secretPath={secretPath}
+                              isNavigationDisabled={isOverviewPending}
                               description={description}
                               isFolderPresentInEnv={isFolderPresentInEnv}
                               isSelected={
