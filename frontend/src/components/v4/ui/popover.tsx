@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Popover as PopoverPrimitive, Slot } from "radix-ui";
 
-import { useV4PortalContainer } from "@app/components/v4/scope";
+import { useV4CollisionBoundary, useV4PortalContainer } from "@app/components/v4/scope";
 
 import { useOwnedEscape } from "../lib/use-owned-escape";
 import { cn } from "../lib/utils";
@@ -38,6 +38,7 @@ function PopoverContent({
         ref={escape.ref}
         data-slot="popover-content"
         collisionPadding={collisionPadding}
+        collisionBoundary={useV4CollisionBoundary()}
         align={align}
         sideOffset={sideOffset}
         data-surface={surface}

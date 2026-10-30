@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
+import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
@@ -32,7 +33,7 @@ import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 
-import { Shell, useCrumbs } from "./shared";
+import { Shell, useCrumbs, usePagedRows } from "./shared";
 
 type Status = "active" | "expired" | "revoked" | "renewed";
 type Cert = {
@@ -240,15 +241,31 @@ const revokeBlock = (cert: Cert) => {
 };
 const renewBlock = (cert: Cert) =>
   cert.status === "active" ? undefined : "Only active certificates renew";
+const syncBlock = (cert: Cert) =>
+  cert.status === "active" ? undefined : "Only active certificates sync";
+
+const revocationReasons = [
+  "Unspecified",
+  "Key compromise",
+  "CA compromise",
+  "Affiliation changed",
+  "Superseded",
+  "Cessation of operation",
+  "Certificate hold",
+  "Privilege withdrawn",
+  "A/A compromise"
+].map((label) => ({ value: label, label }));
 
 const CertificateActions = ({
   cert,
   onOpen,
-  onRevoke
+  onRevoke,
+  onDelete
 }: {
   cert: Cert;
   onOpen: () => void;
   onRevoke: () => void;
+  onDelete: () => void;
 }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
@@ -287,6 +304,7 @@ const CertificateActions = ({
         variant="destructive"
         disabled={Boolean(deleteBlock(cert))}
         description={deleteBlock(cert)}
+        onSelect={onDelete}
       >
         <Icon name="trash" />
         Delete certificate
@@ -298,11 +316,13 @@ const CertificateActions = ({
 const Inventory = ({
   certs,
   onOpen,
-  onRevoke
+  onRevoke,
+  onDelete
 }: {
   certs: Cert[];
   onOpen: (id: string) => void;
   onRevoke: (id: string) => void;
+  onDelete: (id: string) => void;
 }) => {
   const [query, setQuery] = useState("");
   const [view, setView] = useState("all");
@@ -331,6 +351,7 @@ const Inventory = ({
       const key = sort.columnId === "cn" ? "cn" : "expires";
       return a[key].localeCompare(b[key]) * (sort.direction === "asc" ? 1 : -1);
     });
+  const { pageRows, pagination } = usePagedRows(rows, "Certificate pages", 25);
   const filtered = Boolean(needle) || statuses.length > 0 || view !== "all";
   const expiring = certs.filter(expiresSoon).length;
   const expired = certs.filter((cert) => cert.status === "expired").length;
@@ -386,7 +407,12 @@ const Inventory = ({
       header: "Actions",
       actions: true,
       render: (r) => (
-        <CertificateActions cert={r} onOpen={() => onOpen(r.id)} onRevoke={() => onRevoke(r.id)} />
+        <CertificateActions
+          cert={r}
+          onOpen={() => onOpen(r.id)}
+          onRevoke={() => onRevoke(r.id)}
+          onDelete={() => onDelete(r.id)}
+        />
       )
     }
   ];
@@ -483,7 +509,9 @@ const Inventory = ({
       </Inline>
       <DataTable
         label="Certificates in internal-pki"
-        rows={rows}
+        rows={pageRows}
+        onRowActivate={(row) => onOpen(row.id)}
+        pagination={rows.length >= 25 ? pagination : undefined}
         columns={columns.filter((column) => !hidden.includes(column.id))}
         getRowId={(r) => r.id}
         rowLabel={(r) => r.cn}
@@ -533,14 +561,85 @@ const ledeOf = (cert: Cert) => {
     : `Expires in ${left} days, and auto renewal is off.`;
 };
 
+export const CertificateHeaderActions = ({
+  cert,
+  onRevoke,
+  onDelete
+}: {
+  cert: Cert;
+  onRevoke: () => void;
+  onDelete: () => void;
+}) => (
+  <>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" icon="more" iconRight="chev-down">
+          More
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem disabled={Boolean(renewBlock(cert))} description={renewBlock(cert)}>
+          <Icon name="sync" />
+          Renew now
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={Boolean(renewBlock(cert))} description={renewBlock(cert)}>
+          <Icon name="clock" />
+          {cert.autoRenew ? "Manage auto renewal" : "Enable auto renewal"}
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={Boolean(syncBlock(cert))} description={syncBlock(cert)}>
+          <Icon name="link" />
+          Manage certificate syncs
+        </DropdownMenuItem>
+        <DropdownMenuItem>
+          <Icon name="apps" />
+          Assign to application
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={Boolean(revokeBlock(cert))}
+          description={revokeBlock(cert)}
+          onSelect={onRevoke}
+        >
+          <Icon name="x" />
+          Revoke certificate
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={Boolean(deleteBlock(cert))}
+          description={deleteBlock(cert)}
+          onSelect={onDelete}
+        >
+          <Icon name="trash" />
+          Delete certificate
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="primary" icon="download" iconRight="chev-down">
+          Download
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem>Certificate (PEM)</DropdownMenuItem>
+        <DropdownMenuItem>Certificate and chain (PEM)</DropdownMenuItem>
+        <DropdownMenuItem>PKCS#12 bundle</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </>
+);
+
 const CertificateDetail = ({
   cert,
   onBack,
-  onRevoke
+  onRevoke,
+  onDelete
 }: {
   cert: Cert;
   onBack: () => void;
   onRevoke: () => void;
+  onDelete: () => void;
 }) => {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -565,56 +664,7 @@ const CertificateDetail = ({
         title={cert.cn}
         badges={<StatusBadge status={cert.status} />}
         description={ledeOf(cert)}
-        actions={
-          <>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" icon="download" iconRight="chev-down">
-                  Download
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>Certificate (PEM)</DropdownMenuItem>
-                <DropdownMenuItem>Certificate and chain (PEM)</DropdownMenuItem>
-                <DropdownMenuItem>PKCS#12 bundle</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              variant="outline"
-              icon="x"
-              disabled={Boolean(revokeBlock(cert))}
-              title={revokeBlock(cert)}
-              onClick={onRevoke}
-            >
-              Revoke
-            </Button>
-            <Button variant="primary" icon="sync" disabled={!live} title={renewBlock(cert)}>
-              Renew now
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" icon="more" iconOnly>
-                  More actions
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem disabled={!live} description={renewBlock(cert)}>
-                  {cert.autoRenew ? "Manage auto renewal" : "Enable auto renewal"}
-                </DropdownMenuItem>
-                <DropdownMenuItem>Manage certificate syncs</DropdownMenuItem>
-                <DropdownMenuItem>Assign to application</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={Boolean(deleteBlock(cert))}
-                  description={deleteBlock(cert)}
-                >
-                  Delete certificate
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        }
+        actions={<CertificateHeaderActions cert={cert} onRevoke={onRevoke} onDelete={onDelete} />}
       />
       <Grid columns={3} gap={24} style={{ alignItems: "start" }}>
         <Stack gap={24}>
@@ -774,13 +824,43 @@ const CertificateDetail = ({
   );
 };
 
+export const DeleteCertificateDialog = ({
+  open,
+  onOpenChange,
+  onDelete
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete: () => void;
+}) => (
+  <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialogContent tone="danger" confirmText="confirm">
+      <AlertDialogHeader>
+        <AlertDialogTitle>Are you sure you want to delete this certificate?</AlertDialogTitle>
+        <AlertDialogDescription>
+          This action cannot be undone. The certificate will be permanently deleted.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogAction variant="destructive" onClick={onDelete}>
+          Delete
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+);
+
 export default function Certificates() {
   const { org, product, project } = useCrumbs({ product: "certs", project: "internal-pki" });
   const [certs, setCerts] = useState(seed);
   const [openId, setOpenId] = useState<string | null>(null);
   const [revokeId, setRevokeId] = useState<string | null>(null);
+  const [reason, setReason] = useState(revocationReasons[0].value);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const open = certs.find((cert) => cert.id === openId);
   const revoking = certs.find((cert) => cert.id === revokeId);
+  const deleting = certs.find((cert) => cert.id === deleteId);
   return (
     <Shell
       level="pki"
@@ -795,11 +875,19 @@ export default function Certificates() {
           cert={open}
           onBack={() => setOpenId(null)}
           onRevoke={() => setRevokeId(open.id)}
+          onDelete={() => setDeleteId(open.id)}
         />
       ) : (
-        <Inventory certs={certs} onOpen={setOpenId} onRevoke={setRevokeId} />
+        <Inventory certs={certs} onOpen={setOpenId} onRevoke={setRevokeId} onDelete={setDeleteId} />
       )}
-      <AlertDialog open={Boolean(revoking)} onOpenChange={(next) => !next && setRevokeId(null)}>
+      <AlertDialog
+        open={Boolean(revoking)}
+        onOpenChange={(next) => {
+          if (next) return;
+          setRevokeId(null);
+          setReason(revocationReasons[0].value);
+        }}
+      >
         <AlertDialogContent tone="danger">
           <AlertDialogHeader>
             <AlertDialogTitle>{`Revoke ${revoking?.cn ?? "certificate"}?`}</AlertDialogTitle>
@@ -808,6 +896,14 @@ export default function Certificates() {
               this.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <Field label="Revocation reason">
+            <Select
+              aria-label="Revocation reason"
+              options={revocationReasons}
+              value={reason}
+              onChange={setReason}
+            />
+          </Field>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction asChild>
@@ -827,6 +923,14 @@ export default function Certificates() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <DeleteCertificateDialog
+        open={Boolean(deleting)}
+        onOpenChange={(next) => !next && setDeleteId(null)}
+        onDelete={() => {
+          setCerts((current) => current.filter((cert) => cert.id !== deleteId));
+          if (openId === deleteId) setOpenId(null);
+        }}
+      />
     </Shell>
   );
 }

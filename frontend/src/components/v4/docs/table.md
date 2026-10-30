@@ -34,7 +34,7 @@ When a table exposes both per-row actions and a bulk selection action.
 
 Do: Name the selected scope and keep each row action distinct from its selection checkbox. Make loaded-row select-all explicit when other pages exist.
 
-Avoid: Use an ambiguous row click for selection and navigation, or claim every result is selected when only loaded ids changed.
+Avoid: Make a row click select the row as well as open it, or claim every result is selected when only loaded ids changed.
 
 Why: The person must know which records an action will affect before committing it.
 
@@ -81,6 +81,43 @@ Source evidence:
 - src/components/v4/ui/data.module.css
 - src/pages/design-system/examples/table/row-actions.tsx
 
+### table-row-activation
+
+Owner: table.
+
+When each row opens one detail page or sheet for its resource.
+
+Do: Pass onRowActivate with the same destination as the link or button in the primary cell, and keep selection on the checkbox and Space.
+
+Avoid: Navigate from a cell's own onClick, give the row a button or link role, or let a row click change the selection.
+
+Why: One handler keeps pointer, Enter and the named control in agreement, while the row's own controls keep their clicks and the row keeps native table semantics.
+
+Checked by: src/components/v4/ui/data-table.test.tsx. Clicks a cell, the row menu, the selection cell and a text selection, then presses Enter and Space on a focused row; only the cell click and Enter activate, and Space selects.
+
+Source evidence:
+- src/components/v4/ui/data-table.tsx
+- src/components/v4/ui/data-table.test.tsx
+- src/pages/design-system/examples/table/row-activation.tsx
+
+### table-loading-geometry
+
+Owner: table.
+
+When a DataTable waits for its first rows or reloads them.
+
+Do: Pass loading and a loadingRows count close to the page size, and declare a width on every column except the one that grows, so the table uses fixed layout.
+
+Avoid: Swap the table for a Loader, or leave columns sized by content so they jump when rows arrive.
+
+Why: Skeleton rows at the loaded row height and column widths keep the page still when the data replaces them.
+
+Checked by: src/components/v4/ui/data-table.test.tsx. Compares each cell's width style between loading and loaded rows and checks fixed layout only when every column has a width or grows.
+
+Source evidence:
+- src/components/v4/ui/data-table.tsx
+- src/pages/design-system/examples/table/loading.tsx
+
 ## State guidance
 
 - hover and focus: Reveal actions appear on hover and on keyboard focus with no change in glyph size or row height. Tab reaches every action while it rests hidden, and an open menu keeps its actions shown and anchored to its trigger.
@@ -100,6 +137,7 @@ Why: Stable lanes support comparison. Counts must describe actual loaded rows an
 - src/components/v4/ui/table.tsx
 - src/components/v4/ui/data-table.tsx
 - src/components/v4/ui/data.module.css
+- src/components/v4/ui/data-table.test.tsx
 - src/components/v4/ui/frame.module.css
 - src/components/v4/tokens.json
 
@@ -118,6 +156,11 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - TableRowIndicators lays standalone row marks in size-target-row slots with size-glyph glyphs and the same pull, so a mark and an action share one glyph size and one end edge. With swap, the indicators hide while the row's reveal actions show, for marks the actions repeat; without it they stay beside the actions.
 - Responsibilities: tokens own the numbers (size-row, size-target-row, size-glyph, space-row-inline, space-row-actions-gap); Button icon-row, TableRowActions and TableRowIndicators own geometry and reveal behavior; a composite chooses which actions and indicators a row shows and their order, and sets no sizes, gaps or offsets.
 - With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.
+- onRowActivate makes every row a pointer target with the ordinary hover overlay. A click anywhere in the row activates it unless it lands on a link, button, input, checkbox, menu item, tooltip trigger, the selection cell, the actions cell or anything marked data-row-interactive, or it ends a text selection inside the row. Menu items rendered in a portal never reach the row.
+- pagination renders its node in a foot inside the tint frame, below the rows. It stays in view while a wide table scrolls sideways and, with a fixed height, while the rows scroll.
+- loading replaces the rows with loadingRows (default 5) skeleton rows at the same row height: a square for the selection and actions cells and a size-skeleton-text bar for each value, shorter in the primary column. Empty and load-more stay hidden while loading.
+- When every column declares a width, or grows to fill the rest, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.
+- actionBar hosts the table's FloatingActionBar. While the bar shows, the table reserves size-action-bar plus the bar's offset (space-action-bar-offset, or space-action-bar-offset-contained) below itself, so the last row can scroll clear of the bar.
 
 ## Accessibility
 
@@ -125,6 +168,8 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - With virtual rows, screen readers still hear the total row count and each row's real position.
 - Focus remains on native controls; loading and selected totals announced politely.
 - After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived.
+- With onRowActivate, rows join the tab order without an interactive role, so the table keeps native row semantics and never nests a button or link role around the row's own controls. Enter activates the focused row and Space toggles its selection when the table is selectable. Keep a real link or button for the same destination in the primary cell, so screen reader users meet a named control.
+- Loading rows are hidden from assistive technology; the table is aria-busy and the polite status says Loading rows.
 
 ## Use cases
 
@@ -137,6 +182,9 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.
 - Use text(row) for full hover text when render returns truncated complex content.
 - The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows.
+- onRowActivate is a pointer and keyboard shortcut. It cannot open a new tab or be copied as a link; navigation that needs those belongs on the link in the primary cell.
+- The pagination slot takes any node. The host slices rows, owns page and page size, and resets the page when filters change.
+- Only a FloatingActionBar passed through actionBar reserves space. A bar rendered elsewhere on the page cannot reach the table.
 
 ## Declared example coverage
 
@@ -161,6 +209,9 @@ Source declarations and review criteria only. Generation checks references and c
 - protected-selection: example `states`, visible label "Protected selection".
 - virtual: example `data-table`, visible label "Example resource table".
 - load-more: example `load-more`, visible label "Example event log".
+- row-activation: example `row-activation`, visible label "Certificates".
+- paginated: example `pagination`, visible label "Audit events".
+- loading: example `loading`, visible label "Keys, loading".
 
 ### column layout
 
@@ -632,6 +683,193 @@ export default function RowActions() {
       </p>
     </>
   );
+}
+```
+
+### Row activation
+
+Save this example at `src/pages/design-system/examples/table/row-activation.tsx`; its relative imports are generated for that exact path. States: default, keyboard, controlled.
+
+Registry items used: @infisical/button, @infisical/data-table, @infisical/dropdown-menu, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+import { Button } from "../../../../components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../../components/v4/ui/dropdown-menu";
+import { Meta } from "../../../../components/v4/ui/text";
+type Cert = {
+    id: string;
+    cn: string;
+    serial: string;
+    expires: string;
+};
+const certs: Cert[] = [
+    { id: "api", cn: "api.example.com", serial: "4f:1c:9a:02", expires: "2026-12-04" },
+    { id: "auth", cn: "auth.example.com", serial: "7b:20:e1:5d", expires: "2027-02-18" },
+    { id: "billing", cn: "billing.example.com", serial: "0e:93:44:c8", expires: "2027-05-30" }
+];
+export default function RowActivation() {
+    const [status, setStatus] = React.useState("Nothing opened yet.");
+    const [selected, setSelected] = React.useState<string[]>([]);
+    const open = (cert: Cert) => setStatus(`Opened ${cert.cn}.`);
+    const columns: DataTableColumn<Cert>[] = [
+        {
+            id: "cn",
+            header: "Common name",
+            primary: true,
+            grow: true,
+            text: (row) => row.cn,
+            render: (row) => (<Button variant="link" onClick={() => open(row)}>
+          {row.cn}
+        </Button>)
+        },
+        { id: "serial", header: "Serial", width: 136, render: (row) => row.serial },
+        { id: "expires", header: "Expires", width: 120, render: (row) => row.expires },
+        {
+            id: "actions",
+            header: "Actions",
+            actions: true,
+            width: 52,
+            render: (row) => (<DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
+              {`Actions for ${row.cn}`}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => setStatus(`Renewal requested for ${row.cn}.`)}>
+              Renew
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>)
+        }
+    ];
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <DataTable label="Certificates" rows={certs} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.cn} selectable selectedIds={selected} onSelectionChange={setSelected} onRowActivate={open} footer={<Meta mono={false}>{status}</Meta>}/>
+      </div><figcaption className="text-muted-foreground text-xs">{"Whole row opens the certificate"}</figcaption></figure>
+    </div>);
+}
+```
+
+### Pagination
+
+Save this example at `src/pages/design-system/examples/table/pagination.tsx`; its relative imports are generated for that exact path. States: default, controlled.
+
+Registry items used: @infisical/data-table, @infisical/pagination. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
+import { Pagination } from "../../../../components/v4/ui/pagination";
+type Event = {
+    id: string;
+    actor: string;
+    action: string;
+    at: string;
+};
+const actors = ["ci-deployer", "sarah@acme.dev", "rotation-worker", "k8s-operator"];
+const actions = ["secret.read", "secret.update", "identity.login", "key.rotate"];
+const events: Event[] = Array.from({ length: 132 }, (_, index) => ({
+    id: `event-${index + 1}`,
+    actor: actors[index % actors.length],
+    action: actions[(index * 3) % actions.length],
+    at: `2026-10-${String(28 - (index % 28)).padStart(2, "0")}`
+}));
+const columns: DataTableColumn<Event>[] = [
+    { id: "actor", header: "Actor", primary: true, grow: true, render: (row) => row.actor },
+    { id: "action", header: "Action", width: 160, render: (row) => row.action },
+    { id: "at", header: "Date", width: 120, render: (row) => row.at }
+];
+export default function PaginationSlot() {
+    const [page, setPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(20);
+    const rows = events.slice((page - 1) * pageSize, page * pageSize);
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <DataTable label="Audit events" rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => `${row.actor} ${row.action}`} pagination={<Pagination label="Audit event pages" variant="compact" page={page} onPageChange={setPage} total={events.length} pageSize={pageSize} pageSizeOptions={[10, 20, 50, 100]} onPageSizeChange={setPageSize}/>}/>
+      </div><figcaption className="text-muted-foreground text-xs">{"Rows per page, range and previous and next"}</figcaption></figure>
+    </div>);
+}
+```
+
+### Loading rows
+
+Save this example at `src/pages/design-system/examples/table/loading.tsx`; its relative imports are generated for that exact path. States: loading, default.
+
+Registry items used: @infisical/badge, @infisical/button, @infisical/data-table, @infisical/layout. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+import { Badge } from "../../../../components/v4/ui/badge";
+import { Button } from "../../../../components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
+import { Stack } from "../../../../components/v4/ui/layout";
+type Key = {
+    id: string;
+    name: string;
+    algorithm: string;
+    status: "active" | "disabled";
+};
+const keys: Key[] = [
+    { id: "backup", name: "backup-signing", algorithm: "AES-256-GCM", status: "active" },
+    { id: "billing", name: "billing-pii", algorithm: "AES-256-GCM", status: "active" },
+    { id: "legacy", name: "legacy-exports", algorithm: "AES-128-GCM", status: "disabled" }
+];
+const columns: DataTableColumn<Key>[] = [
+    { id: "name", header: "Name", primary: true, grow: true, render: (row) => row.name },
+    { id: "algorithm", header: "Algorithm", width: 136, render: (row) => row.algorithm },
+    {
+        id: "status",
+        header: "Status",
+        width: 112,
+        render: (row) => row.status === "active" ? (<Badge tone="ok" dot>
+          Active
+        </Badge>) : (<Badge tone="outline">Disabled</Badge>)
+    },
+    {
+        id: "actions",
+        header: "Actions",
+        actions: true,
+        width: 52,
+        render: (row) => (<Button variant="ghost" size="icon-row" icon="more" iconOnly>
+        {`Actions for ${row.name}`}
+      </Button>)
+    }
+];
+function KeyTable({ label, loading }: {
+    label: string;
+    loading?: boolean;
+}) {
+    return (<DataTable label={label} rows={keys} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} selectable loading={loading} loadingRows={3}/>);
+}
+export default function Loading() {
+    const [reloading, setReloading] = React.useState(false);
+    React.useEffect(() => {
+        if (!reloading)
+            return undefined;
+        const timer = window.setTimeout(() => setReloading(false), 1200);
+        return () => window.clearTimeout(timer);
+    }, [reloading]);
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <KeyTable label="Keys, loading" loading/>
+      </div><figcaption className="text-muted-foreground text-xs">{"Loading"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <KeyTable label="Keys, loaded"/>
+      </div><figcaption className="text-muted-foreground text-xs">{"Loaded"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <Stack gap={12}>
+          <div>
+            <Button variant="outline" disabled={reloading} onClick={() => setReloading(true)}>
+              Reload keys
+            </Button>
+          </div>
+          <KeyTable label="Keys, reloadable" loading={reloading}/>
+        </Stack>
+      </div><figcaption className="text-muted-foreground text-xs">{"Reload in place"}</figcaption></figure>
+    </div>);
 }
 ```
 

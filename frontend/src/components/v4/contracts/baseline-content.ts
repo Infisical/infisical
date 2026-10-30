@@ -2315,6 +2315,7 @@ export const baselineContent = [
     referenceNames: ["Skeleton"],
     behavior: [
       "Skeleton reserves measured lines or a shape while the owner loads data. It does not start or finish a request.",
+      "Without a height, a Skeleton and each of its lines is size-skeleton-text (12px) tall, one line of text; pass a height for media or badges.",
       "When the shape of the loaded content is known, the loading state is a Skeleton shaped like it (same row height, media, text lines and trailing badge), not a blanket Loader. Loader stays for content whose shape is unknown."
     ],
     accessibility: [

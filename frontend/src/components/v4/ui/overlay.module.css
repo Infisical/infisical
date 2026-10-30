@@ -74,6 +74,17 @@
 }
 .sheet {
   --v4-sheet-from: 100% 0;
+  --v4-sheet-size: var(--v4-size-sheet-sm);
+}
+.sheet[data-size="md"] {
+  --v4-sheet-size: var(--v4-size-sheet-md);
+}
+.sheet[data-size="lg"] {
+  --v4-sheet-size: var(--v4-size-sheet-lg);
+}
+.sheet[data-side="left"],
+.sheet[data-side="right"] {
+  max-width: min(var(--v4-sheet-size), 100vw);
 }
 .sheet[data-side="left"] {
   --v4-sheet-from: -100% 0;

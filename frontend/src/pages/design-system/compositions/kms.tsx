@@ -15,11 +15,12 @@ import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { MiddleTruncate } from "@app/components/v4/ui/middle-truncate";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 
-import { Shell, useCrumbs } from "./shared";
+import { Shell, useCrumbs, usePagedRows } from "./shared";
 
 type Usage = "encrypt" | "sign" | "mac";
 type Key = {
@@ -191,11 +192,15 @@ const KeyActions = ({
   );
 };
 
-const CopyId = ({ id }: { id: string }) => {
+export const KeyId = ({ id }: { id: string }) => {
   const [copied, setCopied] = useState(false);
   return (
-    <Inline gap={4} align="center">
-      <code>{`${id.slice(0, 8)}…`}</code>
+    <Inline gap={4} align="center" wrap={false}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Tooltip content={<code>{id}</code>} side="top">
+          <MiddleTruncate mono keepEnd={4} text={id} title={false} tabIndex={0} />
+        </Tooltip>
+      </div>
       <Tooltip content={copied ? "Copied" : "Copy key ID"} side="top">
         <Button
           variant="ghost"
@@ -234,6 +239,7 @@ export default function Kms() {
     .filter((item) => !needle || item.name.includes(needle) || item.id.includes(needle))
     .filter((item) => usage === "all" || item.usage === usage)
     .sort((a, b) => a.name.localeCompare(b.name) * (sort.direction === "asc" ? 1 : -1));
+  const { pageRows, pagination } = usePagedRows(rows, "Key pages");
   const eligible = (item: Key) => !item.disabled && item.exportable;
   const disabledCount = keys.filter((item) => item.disabled).length;
   const columns: DataTableColumn<Key>[] = [
@@ -257,7 +263,14 @@ export default function Kms() {
         </Inline>
       )
     },
-    { id: "id", header: "Key ID", width: 140, render: (r) => <CopyId id={r.id} /> },
+    {
+      id: "id",
+      header: "Key ID",
+      width: 196,
+      maxWidth: 196,
+      text: (r) => r.id,
+      render: (r) => <KeyId id={r.id} />
+    },
     { id: "usage", header: "Key usage", width: 172, render: (r) => usageLabel[r.usage] },
     { id: "algorithm", header: "Algorithm", width: 128, render: (r) => r.algorithm },
     {
@@ -341,7 +354,7 @@ export default function Kms() {
           </Inline>
           <DataTable
             label="Keys in kms-keys"
-            rows={rows}
+            rows={pageRows}
             columns={columns}
             getRowId={(r) => r.id}
             rowLabel={(r) => r.name}
@@ -375,15 +388,18 @@ export default function Kms() {
                 ? `${keys.length} keys`
                 : `${rows.length} of ${keys.length} keys`
             }
-          />
-          <FloatingActionBar
-            placement="fixed"
-            count={selected.length}
-            total={keys.filter(eligible).length}
-            onSelectAll={() => setSelected(keys.filter(eligible).map((item) => item.id))}
-            onClear={() => setSelected([])}
-            noun="keys"
-            actions={[{ label: "Export", icon: "download", onClick: () => setSelected([]) }]}
+            pagination={rows.length > 0 ? pagination : undefined}
+            actionBar={
+              <FloatingActionBar
+                placement="fixed"
+                count={selected.length}
+                total={keys.filter(eligible).length}
+                onSelectAll={() => setSelected(keys.filter(eligible).map((item) => item.id))}
+                onClear={() => setSelected([])}
+                noun="keys"
+                actions={[{ label: "Export", icon: "download", onClick: () => setSelected([]) }]}
+              />
+            }
           />
         </Stack>
       </TooltipProvider>

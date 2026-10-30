@@ -71,6 +71,7 @@ Exports: MultiStep, Steps. Source TypeScript defines the API.
 - Moving to a step focuses its first field, and Enter in a text field continues.
 - The page variant shows a vertical step list beside a card; under 640px the list becomes the step bar above the card.
 - In the dialog and sheet the step bar sits in the overlay subheader, full width under the title, and the footer stays pinned at the bottom with Step 2 of 3, or what failed, on the left as in the reference.
+- size passes through to SheetContent in the sheet variant (sm, md or lg); the dialog and page variants ignore it. Use lg for a form sheet like New connection.
 
 ## Accessibility
 
@@ -94,6 +95,13 @@ Exports: MultiStep, Steps. Source TypeScript defines the API.
 ## Declared example coverage
 
 Source declarations and review criteria only. Generation checks references and completeness, not rendered behavior or API parity.
+
+### size
+
+
+- sm: omitted. size is passed to SheetContent unchanged; the Sheet sizes example shows each width.
+- md: omitted. size is passed to SheetContent unchanged; the Sheet sizes example shows each width.
+- lg: omitted. size is passed to SheetContent unchanged; the Sheet sizes example shows each width and the App connections comparison opens New connection at lg.
 
 ### variant
 

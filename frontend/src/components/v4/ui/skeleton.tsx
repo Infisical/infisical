@@ -30,7 +30,7 @@ function Skeleton({
         {Array.from({ length: Math.min(100, Math.max(1, Math.floor(lines))) }, (_, index) => (
           <Skeleton
             key={index}
-            height={height ?? 12}
+            height={height}
             width={index === lines - 1 && lines > 1 ? "60%" : "100%"}
             className={className}
           />
@@ -42,7 +42,7 @@ function Skeleton({
       ref={ref}
       data-slot="skeleton"
       aria-hidden="true"
-      style={{ width, height, ...style }}
+      style={{ width, height: height ?? "var(--v4-size-skeleton-text)", ...style }}
       className={cn(
         controlStyles.skeleton,
         "animate-pulse bg-[color:var(--v4-line-soft)] motion-reduce:animate-none",

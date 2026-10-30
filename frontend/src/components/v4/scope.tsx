@@ -8,8 +8,10 @@ import { cn } from "./lib/utils";
 type Theme = "light" | "dark";
 const PortalContainerContext = React.createContext<HTMLElement | null | undefined>(undefined);
 const ThemeContext = React.createContext<Theme | undefined>(undefined);
+const CollisionBoundaryContext = React.createContext<HTMLElement | undefined>(undefined);
 
 export const useV4PortalContainer = () => React.useContext(PortalContainerContext);
+export const useV4CollisionBoundary = () => React.useContext(CollisionBoundaryContext);
 export const useV4Theme = () => React.useContext(ThemeContext);
 
 function inheritedTheme(node: HTMLElement, fallback: Theme | undefined): Theme {
@@ -26,9 +28,13 @@ export function V4Scope({
   children,
   className,
   theme,
+  portalContainer,
   ref: forwardedRef,
   ...props
-}: React.ComponentPropsWithoutRef<"div"> & { theme?: Theme } & {
+}: React.ComponentPropsWithoutRef<"div"> & {
+  theme?: Theme;
+  portalContainer?: HTMLElement | null;
+} & {
   ref?: React.Ref<HTMLDivElement>;
 }) {
   const parentTheme = useV4Theme();
@@ -80,18 +86,21 @@ export function V4Scope({
     <MotionConfig reducedMotion="user">
       <ThemeContext value={resolvedTheme}>
         <PortalContainerContext value={container}>
-          <div
-            {...props}
-            ref={assignWrapper}
-            className={cn("v4", className)}
-            data-theme={resolvedTheme}
-          >
-            {children}
-          </div>
-          {createPortal(
-            <div ref={setContainer} className="v4" data-theme={resolvedTheme} />,
-            document.body
-          )}
+          <CollisionBoundaryContext value={portalContainer ?? undefined}>
+            <div
+              {...props}
+              ref={assignWrapper}
+              className={cn("v4", className)}
+              data-theme={resolvedTheme}
+            >
+              {children}
+            </div>
+            {portalContainer !== null &&
+              createPortal(
+                <div ref={setContainer} className="v4" data-theme={resolvedTheme} />,
+                portalContainer ?? document.body
+              )}
+          </CollisionBoundaryContext>
         </PortalContainerContext>
       </ThemeContext>
     </MotionConfig>

@@ -31,7 +31,7 @@ import {
 import { Snippet } from "@app/components/v4/ui/snippet";
 import { Tabs } from "@app/components/v4/ui/tabs";
 
-import { Shell, useCrumbs } from "./shared";
+import { Shell, useCrumbs, usePagedRows } from "./shared";
 
 type AuthKind = "universal" | "kubernetes" | "oidc" | "token" | "aws";
 const authNames: Record<AuthKind, string> = {
@@ -207,7 +207,7 @@ const AuthSheet = ({
   ]);
   return (
     <Sheet open={Boolean(kind)} onOpenChange={onOpenChange}>
-      <SheetContent>
+      <SheetContent size="lg">
         {kind && (
           <>
             <SheetHeader>
@@ -219,7 +219,7 @@ const AuthSheet = ({
             <SheetBody>
               <Stack gap={24}>
                 {kind === "universal" && (
-                  <Field label="Client ID">
+                  <Field label="Client ID" wide>
                     <Snippet label="Client ID" value="b7f1d2c4-58e3-4a0f-9e6b-2c8d1a7f3e05" />
                   </Field>
                 )}
@@ -537,6 +537,7 @@ export default function Identities() {
         return a[key].localeCompare(b[key]) * (sort.direction === "asc" ? 1 : -1);
       });
   }, [scope, query, sort]);
+  const { pageRows, pagination } = usePagedRows(rows, "Machine identity pages", 10);
   const columns: DataTableColumn<Identity>[] = [
     {
       id: "name",
@@ -687,7 +688,9 @@ export default function Identities() {
           </Inline>
           <DataTable
             label="Machine identities"
-            rows={rows}
+            rows={pageRows}
+            onRowActivate={(row) => setOpenId(row.id)}
+            pagination={rows.length > 0 ? pagination : undefined}
             columns={columns}
             getRowId={(r) => r.id}
             rowLabel={(r) => r.name}

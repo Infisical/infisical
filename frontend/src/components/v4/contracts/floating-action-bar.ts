@@ -8,15 +8,17 @@ export const floatingActionBarDefinition = {
     "Bulk actions for the current selection, floating over the bottom of the view while anything is selected.",
   sourceFiles: [
     "src/components/v4/ui/floating-action-bar.tsx",
-    "src/components/v4/ui/floating-action-bar.module.css"
+    "src/components/v4/ui/floating-action-bar.module.css",
+    "src/components/v4/ui/data-table.tsx"
   ],
-  exports: ["FloatingActionBar"],
+  exports: ["FloatingActionBar", "FloatingActionBarHostContext"],
   referenceNames: ["FloatingActionBar"],
   behavior: [
     "The bar shows while count is above zero and keeps the last count while it leaves. It enters and leaves on the motion springs; reduced motion jumps.",
     "Select all appears while fewer than total are selected.",
     "moreActions always sit in the More menu. Under 400px wide, Select all hides and the noun after the count moves to screen readers only.",
-    "fixed sits 24px above the viewport's bottom; contained sits 16px above the nearest positioned ancestor's bottom."
+    "fixed sits space-action-bar-offset (24px) above the viewport's bottom; contained sits space-action-bar-offset-contained (16px) above the nearest positioned ancestor's bottom. The bar is size-action-bar (48px) tall.",
+    "Passed to a DataTable through actionBar, the bar tells the table while it shows, and the table reserves the bar's height plus its offset below its rows so the last row can scroll clear of it."
   ],
   accessibility: [
     "The bar is a named toolbar: Left and Right move between its buttons, Home and End jump, and Escape clears the selection.",

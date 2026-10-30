@@ -806,6 +806,65 @@ button.rowTitle::after {
   outline: var(--v4-size-focus-ring) solid var(--v4-focus-ring);
   outline-offset: calc(-1 * var(--v4-size-focus-ring));
 }
+/* Drawn on the cells because the pinned action cell paints over a row outline. */
+.tableScroll tbody tr[data-activatable] {
+  --v4-row-ring-side: calc(var(--v4-size-focus-ring) + var(--v4-size-control-border));
+  --v4-row-ring-top: inset 0 var(--v4-size-focus-ring) 0 var(--v4-ink);
+  --v4-row-ring-bottom: inset 0 calc(-1 * var(--v4-size-focus-ring)) 0 var(--v4-ink);
+}
+.tableScroll tbody tr[data-activatable]:focus-visible {
+  outline: none;
+}
+.tableScroll tbody tr[data-activatable]:focus-visible > td {
+  box-shadow: var(--v4-row-ring-top), var(--v4-row-ring-bottom);
+}
+.tableScroll tbody tr[data-activatable]:focus-visible > td:first-child {
+  box-shadow:
+    inset var(--v4-row-ring-side) 0 0 var(--v4-ink),
+    var(--v4-row-ring-top),
+    var(--v4-row-ring-bottom);
+}
+.tableScroll tbody tr[data-activatable]:focus-visible > td:last-child {
+  box-shadow:
+    inset calc(-1 * var(--v4-row-ring-side)) 0 0 var(--v4-ink),
+    var(--v4-row-ring-top),
+    var(--v4-row-ring-bottom);
+}
+.tableScroll tbody tr[data-activatable]:focus-visible > td[data-pin="true"]:last-child {
+  box-shadow:
+    inset calc(-1 * var(--v4-row-ring-side)) 0 0 var(--v4-ink),
+    var(--v4-row-ring-top),
+    var(--v4-row-ring-bottom),
+    var(--v4-frame-pad) 0 0 var(--v4-tint);
+}
+.tableScroll tbody tr[data-activatable] {
+  cursor: pointer;
+}
+.tableScroll tbody tr[data-loading] {
+  background: none;
+}
+.tableScroll table[data-layout="fixed"] {
+  table-layout: fixed;
+}
+.tableSkeleton {
+  width: 80%;
+}
+.tableSkeleton[data-primary] {
+  width: 60%;
+}
+.tablePagination {
+  position: sticky;
+  inset-inline-start: 0;
+  inset-block-end: 0;
+  z-index: 4;
+  background: var(--v4-tint);
+}
+.tableShell[data-action-bar="fixed"] {
+  padding-bottom: calc(var(--v4-size-action-bar) + var(--v4-space-action-bar-offset));
+}
+.tableShell[data-action-bar="contained"] {
+  padding-bottom: calc(var(--v4-size-action-bar) + var(--v4-space-action-bar-offset-contained));
+}
 .tableScroll table {
   position: relative;
   isolation: isolate;

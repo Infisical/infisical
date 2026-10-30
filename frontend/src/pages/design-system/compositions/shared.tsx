@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 
 import { type BreadcrumbCrumb } from "@app/components/v4/ui/breadcrumb";
 import { Button } from "@app/components/v4/ui/button";
+import { Pagination } from "@app/components/v4/ui/pagination";
 import { Sidebar, type SidebarProps } from "@app/components/v4/ui/sidebar";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
@@ -147,6 +148,26 @@ const projects = [
 const labelOf = (options: { value: string; label: string }[], value: string) =>
   options.find((option) => option.value === value)?.label ?? value;
 
+export const usePagedRows = <Row,>(rows: readonly Row[], label: string, initialPageSize = 20) => {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialPageSize);
+  const current = Math.min(page, Math.max(1, Math.ceil(rows.length / pageSize)));
+  return {
+    pageRows: rows.slice((current - 1) * pageSize, current * pageSize),
+    pagination: (
+      <Pagination
+        label={label}
+        variant="compact"
+        page={current}
+        onPageChange={setPage}
+        total={rows.length}
+        pageSize={pageSize}
+        pageSizeOptions={[10, 20, 50, 100]}
+        onPageSizeChange={setPageSize}
+      />
+    )
+  };
+};
 export const useCrumbs = (initial: { product?: string; project?: string } = {}) => {
   const [org, setOrg] = useState("acme");
   const [product, setProduct] = useState(initial.product ?? "secrets");

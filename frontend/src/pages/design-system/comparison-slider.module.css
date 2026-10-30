@@ -113,7 +113,11 @@
   border: var(--v4-size-control-border) solid var(--v4-line);
   border-radius: 0;
 }
-.full > div {
+.frame {
   width: 100%;
   height: min(100dvh, 971px);
+  contain: layout;
+}
+.scope {
+  height: 100%;
 }

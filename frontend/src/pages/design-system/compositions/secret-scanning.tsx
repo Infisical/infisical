@@ -258,8 +258,6 @@ const initialFindings: Finding[] = [
 
 const fingerprintOf = (finding: Finding) =>
   `${finding.commit}:${finding.file}:${finding.rule}:${finding.line}`;
-const pageSize = 20;
-
 export default function SecretScanning() {
   const { org, product } = useCrumbs({ product: "scanning" });
   const [findings, setFindings] = useState(initialFindings);
@@ -267,6 +265,7 @@ export default function SecretScanning() {
   const [source, setSource] = useState("all");
   const [repo, setRepo] = useState("all");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [selected, setSelected] = useState<string[]>([]);
   const [opened, setOpened] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
@@ -465,6 +464,7 @@ export default function SecretScanning() {
             selectable
             selectedIds={selected}
             onSelectionChange={setSelected}
+            onRowActivate={(row) => setOpened(row.id)}
             footer={
               rows.length > pageSize
                 ? undefined
@@ -492,46 +492,53 @@ export default function SecretScanning() {
                 }
               />
             }
+            pagination={
+              rows.length > 0 ? (
+                <Pagination
+                  label="Findings pages"
+                  variant="compact"
+                  page={page}
+                  onPageChange={(next) => {
+                    setPage(next);
+                    setSelected([]);
+                  }}
+                  total={rows.length}
+                  pageSize={pageSize}
+                  pageSizeOptions={[10, 20, 50, 100]}
+                  onPageSizeChange={(next) => refilter(() => setPageSize(next))}
+                />
+              ) : undefined
+            }
+            actionBar={
+              <FloatingActionBar
+                count={selected.length}
+                total={pageRows.length}
+                onSelectAll={() => setSelected(pageRows.map((row) => row.id))}
+                onClear={() => setSelected([])}
+                noun={selected.length === 1 ? "finding" : "findings"}
+                actions={[
+                  {
+                    label: "Mark resolved",
+                    icon: "check-c",
+                    onClick: () => setStatusFor(selected, "resolved")
+                  },
+                  {
+                    label: "False positive",
+                    icon: "x",
+                    onClick: () => setStatusFor(selected, "false-positive")
+                  }
+                ]}
+                moreActions={[
+                  { label: "Ignore", onClick: () => setStatusFor(selected, "ignored") },
+                  { label: "Reopen", onClick: () => setStatusFor(selected, "unresolved") }
+                ]}
+              />
+            }
           />
-          {rows.length > pageSize && (
-            <Pagination
-              label="Findings pages"
-              page={page}
-              onPageChange={(next) => {
-                setPage(next);
-                setSelected([]);
-              }}
-              total={rows.length}
-              pageSize={pageSize}
-            />
-          )}
         </Stack>
       </Stack>
-      <FloatingActionBar
-        count={selected.length}
-        total={pageRows.length}
-        onSelectAll={() => setSelected(pageRows.map((row) => row.id))}
-        onClear={() => setSelected([])}
-        noun={selected.length === 1 ? "finding" : "findings"}
-        actions={[
-          {
-            label: "Mark resolved",
-            icon: "check-c",
-            onClick: () => setStatusFor(selected, "resolved")
-          },
-          {
-            label: "False positive",
-            icon: "x",
-            onClick: () => setStatusFor(selected, "false-positive")
-          }
-        ]}
-        moreActions={[
-          { label: "Ignore", onClick: () => setStatusFor(selected, "ignored") },
-          { label: "Reopen", onClick: () => setStatusFor(selected, "unresolved") }
-        ]}
-      />
       <Sheet open={Boolean(openFinding)} onOpenChange={(next) => !next && setOpened(null)}>
-        <SheetContent>
+        <SheetContent size="lg">
           {openFinding && (
             <>
               <SheetHeader>

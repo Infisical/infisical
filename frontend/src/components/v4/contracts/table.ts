@@ -9,6 +9,7 @@ export const tableDefinition = {
     "src/components/v4/ui/table.tsx",
     "src/components/v4/ui/data-table.tsx",
     "src/components/v4/ui/data.module.css",
+    "src/components/v4/ui/data-table.test.tsx",
     "src/components/v4/ui/frame.module.css",
     "src/components/v4/tokens.json"
   ],
@@ -40,20 +41,30 @@ export const tableDefinition = {
     "TableRowActions owns row action layout: targets touch (space-row-actions-gap, 0), and a trailing icon-row target pulls into the cell padding by (size-target-row - size-glyph) / 2, so its 16px glyph lands on the 12px content edge. With reveal, the actions rest visually hidden but stay in the tab order, show while their leaf row is hovered or holds focus, and stay shown while a menu or popover they opened is open (aria-expanded true, or open on the slot). A row that hosts a nested table never reveals the nested rows' actions. TableRowActionsSeparator divides groups of actions with a glyph-tall line.",
     "TableRowIndicators lays standalone row marks in size-target-row slots with size-glyph glyphs and the same pull, so a mark and an action share one glyph size and one end edge. With swap, the indicators hide while the row's reveal actions show, for marks the actions repeat; without it they stay beside the actions.",
     "Responsibilities: tokens own the numbers (size-row, size-target-row, size-glyph, space-row-inline, space-row-actions-gap); Button icon-row, TableRowActions and TableRowIndicators own geometry and reveal behavior; a composite chooses which actions and indicators a row shows and their order, and sets no sizes, gaps or offsets.",
-    "With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot."
+    "With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.",
+    "onRowActivate makes every row a pointer target with the ordinary hover overlay. A click anywhere in the row activates it unless it lands on a link, button, input, checkbox, menu item, tooltip trigger, the selection cell, the actions cell or anything marked data-row-interactive, or it ends a text selection inside the row. Menu items rendered in a portal never reach the row.",
+    "pagination renders its node in a foot inside the tint frame, below the rows. It stays in view while a wide table scrolls sideways and, with a fixed height, while the rows scroll.",
+    "loading replaces the rows with loadingRows (default 5) skeleton rows at the same row height: a square for the selection and actions cells and a size-skeleton-text bar for each value, shorter in the primary column. Empty and load-more stay hidden while loading.",
+    "When every column declares a width, or grows to fill the rest, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.",
+    "actionBar hosts the table's FloatingActionBar. While the bar shows, the table reserves size-action-bar plus the bar's offset (space-action-bar-offset, or space-action-bar-offset-contained) below itself, so the last row can scroll clear of the bar."
   ],
   accessibility: [
     "Native table/header/cell semantics, labelled selection and aria-sort buttons.",
     "With virtual rows, screen readers still hear the total row count and each row's real position.",
     "Focus remains on native controls; loading and selected totals announced politely.",
-    "After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived."
+    "After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived.",
+    "With onRowActivate, rows join the tab order without an interactive role, so the table keeps native row semantics and never nests a button or link role around the row's own controls. Enter activates the focused row and Space toggles its selection when the table is selectable. Keep a real link or button for the same destination in the primary cell, so screen reader users meet a named control.",
+    "Loading rows are hidden from assistive technology; the table is aria-busy and the polite status says Loading rows."
   ],
   limitations: [
     "The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.",
     "Virtual tables use one uniform effective row height. rowHeight defaults to the size-row token (40px) as a requested minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.",
     "Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.",
     "Use text(row) for full hover text when render returns truncated complex content.",
-    "The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows."
+    "The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows.",
+    "onRowActivate is a pointer and keyboard shortcut. It cannot open a new tab or be copied as a link; navigation that needs those belongs on the link in the primary cell.",
+    "The pagination slot takes any node. The host slices rows, owns page and page size, and resets the page when filters change.",
+    "Only a FloatingActionBar passed through actionBar reserves space. A bar rendered elsewhere on the page cannot reach the table."
   ],
   related: ["data-grid", "pagination"],
   examples: [
@@ -98,6 +109,24 @@ export const tableDefinition = {
       title: "Row actions and indicators",
       module: "./examples/table/row-actions.tsx",
       states: ["default", "keyboard"]
+    },
+    {
+      id: "row-activation",
+      title: "Row activation",
+      module: "./examples/table/row-activation.tsx",
+      states: ["default", "keyboard", "controlled"]
+    },
+    {
+      id: "pagination",
+      title: "Pagination",
+      module: "./examples/table/pagination.tsx",
+      states: ["default", "controlled"]
+    },
+    {
+      id: "loading",
+      title: "Loading rows",
+      module: "./examples/table/loading.tsx",
+      states: ["loading", "default"]
     }
   ],
   coverage: [
@@ -145,7 +174,16 @@ export const tableDefinition = {
     },
     {
       axis: "collection",
-      expected: ["native", "empty", "protected-selection", "virtual", "load-more"],
+      expected: [
+        "native",
+        "empty",
+        "protected-selection",
+        "virtual",
+        "load-more",
+        "row-activation",
+        "paginated",
+        "loading"
+      ],
       shown: [
         {
           value: "native",
@@ -171,6 +209,21 @@ export const tableDefinition = {
           value: "load-more",
           exampleId: "load-more",
           label: "Example event log"
+        },
+        {
+          value: "row-activation",
+          exampleId: "row-activation",
+          label: "Certificates"
+        },
+        {
+          value: "paginated",
+          exampleId: "pagination",
+          label: "Audit events"
+        },
+        {
+          value: "loading",
+          exampleId: "loading",
+          label: "Keys, loading"
         }
       ]
     },
@@ -223,7 +276,7 @@ export const tableDefinition = {
         when: "A table exposes both per-row actions and a bulk selection action.",
         do: "Name the selected scope and keep each row action distinct from its selection checkbox. Make loaded-row select-all explicit when other pages exist.",
         avoid:
-          "Use an ambiguous row click for selection and navigation, or claim every result is selected when only loaded ids changed.",
+          "Make a row click select the row as well as open it, or claim every result is selected when only loaded ids changed.",
         reason: "The person must know which records an action will affect before committing it.",
         evidence: [
           "src/components/v4/ui/table.tsx",
@@ -266,6 +319,43 @@ export const tableDefinition = {
         detect: {
           by: "review",
           how: "Measure a row at rest, on hover and with keyboard focus: row 40, targets 28 that touch without overlapping, glyphs 16 with the last glyph 12px from the cell edge, and a 36px focus box fully inside the row. Tab reaches every action, and an open menu keeps its actions shown."
+        }
+      },
+      {
+        id: "table-row-activation",
+        when: "Each row opens one detail page or sheet for its resource.",
+        do: "Pass onRowActivate with the same destination as the link or button in the primary cell, and keep selection on the checkbox and Space.",
+        avoid:
+          "Navigate from a cell's own onClick, give the row a button or link role, or let a row click change the selection.",
+        reason:
+          "One handler keeps pointer, Enter and the named control in agreement, while the row's own controls keep their clicks and the row keeps native table semantics.",
+        evidence: [
+          "src/components/v4/ui/data-table.tsx",
+          "src/components/v4/ui/data-table.test.tsx",
+          "src/pages/design-system/examples/table/row-activation.tsx"
+        ],
+        detect: {
+          by: "test",
+          test: "src/components/v4/ui/data-table.test.tsx",
+          how: "Clicks a cell, the row menu, the selection cell and a text selection, then presses Enter and Space on a focused row; only the cell click and Enter activate, and Space selects."
+        }
+      },
+      {
+        id: "table-loading-geometry",
+        when: "A DataTable waits for its first rows or reloads them.",
+        do: "Pass loading and a loadingRows count close to the page size, and declare a width on every column except the one that grows, so the table uses fixed layout.",
+        avoid:
+          "Swap the table for a Loader, or leave columns sized by content so they jump when rows arrive.",
+        reason:
+          "Skeleton rows at the loaded row height and column widths keep the page still when the data replaces them.",
+        evidence: [
+          "src/components/v4/ui/data-table.tsx",
+          "src/pages/design-system/examples/table/loading.tsx"
+        ],
+        detect: {
+          by: "test",
+          test: "src/components/v4/ui/data-table.test.tsx",
+          how: "Compares each cell's width style between loading and loaded rows and checks fixed layout only when every column has a width or grows."
         }
       }
     ],

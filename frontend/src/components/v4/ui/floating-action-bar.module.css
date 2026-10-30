@@ -1,13 +1,13 @@
 .bar {
   position: fixed;
-  bottom: var(--v4-space-24);
+  bottom: var(--v4-space-action-bar-offset);
   left: 50%;
   z-index: 40;
   display: flex;
   align-items: center;
   gap: var(--v4-space-8);
   max-width: calc(100% - 2 * var(--v4-space-16));
-  height: var(--v4-space-48);
+  height: var(--v4-size-action-bar);
   margin-inline: auto;
   padding: 0 var(--v4-space-8) 0 var(--v4-space-16);
   translate: -50% 0;
@@ -20,7 +20,7 @@
 }
 .bar[data-placement="contained"] {
   position: absolute;
-  bottom: var(--v4-space-16);
+  bottom: var(--v4-space-action-bar-offset-contained);
 }
 .count {
   display: inline-flex;
