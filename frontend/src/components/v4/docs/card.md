@@ -132,10 +132,10 @@ export default function Example() {
         </Card>
       </div><figcaption className="text-muted-foreground text-xs">{"framed footer"}</figcaption></figure>
       {([
-            ["w-60", "narrow, 240px"],
-            ["w-80", "narrow, 320px"],
-            ["w-96", "narrow, 384px"]
-        ] as const).map(([width, label]) => (<figure key={width} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
+        ["w-60", "narrow, 240px"],
+        ["w-80", "narrow, 320px"],
+        ["w-96", "narrow, 384px"]
+    ] as const).map(([width, label]) => (<figure key={width} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
           <div className={`${width} max-w-full min-w-0`} data-narrow-card>
             <Card title="Posture" description="Rotation and drift for the payments project" action={<a href="#card">View report</a>} footer="Updated today">
               412 secrets across 3 environments.

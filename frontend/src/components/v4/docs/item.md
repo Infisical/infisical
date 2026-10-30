@@ -170,10 +170,10 @@ export default function Example() {
           <Item variant={variant} title="Deployment service" description="Read access to staging"/>
         </div><figcaption className="text-muted-foreground text-xs">{variant}</figcaption></figure>))}
       {([
-            ["default", "default, md"],
-            ["sm", "sm"],
-            ["xs", "xs"]
-        ] as const).map(([size, label]) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        ["default", "default, md"],
+        ["sm", "sm"],
+        ["xs", "xs"]
+    ] as const).map(([size, label]) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
           <Item size={size} title="Deployment service" description="Read access to staging"/>
         </div><figcaption className="text-muted-foreground text-xs">{label}</figcaption></figure>))}
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
@@ -232,7 +232,7 @@ export default function Example() {
                 {variant === "default" && <span>ENV</span>}
                 {variant === "icon" && <Icon name="file"/>}
                 {variant === "image" &&
-                (imageAvailable ? (<img src={manifestImage} alt="Staging deployment manifest thumbnail" onError={() => setImageAvailable(false)}/>) : (<Icon name="file" label="Manifest preview unavailable"/>))}
+            (imageAvailable ? (<img src={manifestImage} alt="Staging deployment manifest thumbnail" onError={() => setImageAvailable(false)}/>) : (<Icon name="file" label="Manifest preview unavailable"/>))}
               </ItemMedia>
               <ItemContent>
                 <ItemTitle>Staging deployment manifest</ItemTitle>

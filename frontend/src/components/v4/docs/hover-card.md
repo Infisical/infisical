@@ -139,9 +139,9 @@ export default function Example() {
           <UI.HoverCard>
             <UI.HoverCardTrigger asChild>
               <a href="#hover-card" aria-label={`Staging connection / ${side} / ${align}`} onClick={(event) => {
-                event.preventDefault();
-                setSelected(`${side} / ${align}`);
-            }}>
+            event.preventDefault();
+            setSelected(`${side} / ${align}`);
+        }}>
                 Staging connection
               </a>
             </UI.HoverCardTrigger>

@@ -2,7 +2,21 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { format } from "oxfmt";
-import ts from "typescript-5";
+import * as factory from "typescript/unstable/ast/factory";
+import * as ts from "typescript/unstable/ast/is";
+import { visitEachChild, visitNodes } from "typescript/unstable/ast/visitor";
+import type * as tsast from "typescript/unstable/ast";
+import { SyntaxKind, TokenFlags } from "typescript/unstable/ast";
+import {
+  API,
+  type Project,
+  SignatureKind,
+  type StringLiteralType,
+  SymbolFlags,
+  type Type,
+  TypeFlags,
+  type UnionType
+} from "typescript/unstable/sync";
 import { z } from "zod";
 
 import type { ComponentDefinition, RuleDetect } from "../src/components/v4/contracts/types";
@@ -25,6 +39,33 @@ const pendingOutputs = new Map<string, string>();
 const obsoleteOutputs = new Set<string>();
 const read = (file: string) =>
   emittedOutputs.get(file) ?? readFileSync(path.join(root, file), "utf8");
+let typeApi: API | undefined;
+let typeProject: Project | undefined;
+const projectConfig = path.join(root, "tsconfig.generate-ui.json");
+const project = () => {
+  if (!typeProject) {
+    const config = JSON.stringify({
+      ...(existsSync(path.join(root, "tsconfig.app.json")) && { extends: "./tsconfig.app.json" }),
+      compilerOptions: { noEmit: true, incremental: false, jsx: "react-jsx" },
+      include: ["src/components/v4/**/*", "src/pages/design-system/examples/**/*"]
+    });
+    typeApi = new API({
+      cwd: root,
+      fs: {
+        fileExists: (name) => (name === projectConfig ? true : undefined),
+        readFile: (name) =>
+          name === projectConfig ? config : emittedOutputs.get(path.relative(root, name))
+      }
+    });
+    [typeProject] = typeApi.updateSnapshot({ openProjects: [projectConfig] }).getProjects();
+  }
+  return typeProject;
+};
+const parse = (file: string) => {
+  const source = project().program.getSourceFile(path.join(root, file));
+  if (!source) throw new Error(`${file} is outside src/components/v4 and the design system examples, so it cannot be parsed`);
+  return source;
+};
 const packageManifest: {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
@@ -219,7 +260,7 @@ const coverage = {
 emit(`${componentRoot}/docs/coverage.json`, json(coverage));
 const actualExports = (file: string) => {
   if (!file.endsWith(".ts") && !file.endsWith(".tsx")) return [];
-  const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
+  const source = parse(file);
   const names: string[] = [];
   source.statements.forEach((statement) => {
     if (
@@ -229,8 +270,10 @@ const actualExports = (file: string) => {
     )
       names.push(...statement.exportClause.elements.map((entry) => entry.name.text));
     if (
-      ts.canHaveModifiers(statement) &&
-      ts.getModifiers(statement)?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)
+      "modifiers" in statement &&
+      (statement.modifiers as tsast.NodeArray<tsast.Node> | undefined)?.some(
+        (modifier) => modifier.kind === SyntaxKind.ExportKeyword
+      )
     ) {
       if (
         (ts.isFunctionDeclaration(statement) ||
@@ -250,29 +293,31 @@ const actualExports = (file: string) => {
   });
   return names;
 };
-const propertyText = (name: ts.PropertyName | undefined) =>
+const propertyText = (name: tsast.PropertyName | undefined) =>
   name && (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name))
     ? name.text
     : undefined;
-const objectProperty = (node: ts.Expression | undefined, key: string) =>
+const elementName = (element: tsast.ObjectLiteralElementLike) =>
+  "name" in element ? (element.name as tsast.PropertyName) : undefined;
+const objectProperty = (node: tsast.Expression | undefined, key: string) =>
   node && ts.isObjectLiteralExpression(node)
     ? node.properties.find(
-        (property): property is ts.PropertyAssignment =>
+        (property): property is tsast.PropertyAssignment =>
           ts.isPropertyAssignment(property) && propertyText(property.name) === key
       )?.initializer
     : undefined;
 const cvaAxes = (file: string) => {
   if (!/\.tsx?$/.test(file)) return [];
-  const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
+  const source = parse(file);
   const found: { component: string; axis: string; keys: string[] }[] = [];
-  const visit = (node: ts.Node) => {
+  const visit = (node: tsast.Node): undefined => {
     if (ts.isIdentifier(node) && node.text === "cva") {
       const direct =
         (ts.isCallExpression(node.parent) && node.parent.expression === node) ||
         (ts.isImportSpecifier(node.parent) && !node.parent.propertyName);
       if (!direct)
         failures.push(
-          `Unparsed cva call: ${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}`
+          `Unparsed cva call: ${file}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1}`
         );
     }
     if (
@@ -287,7 +332,7 @@ const cvaAxes = (file: string) => {
       const variants = objectProperty(node.arguments[1], "variants");
       if (variants && ts.isObjectLiteralExpression(variants))
         variants.properties.forEach((axis) => {
-          const axisName = propertyText(axis.name);
+          const axisName = propertyText(elementName(axis));
           if (
             !axisName ||
             !ts.isPropertyAssignment(axis) ||
@@ -297,68 +342,52 @@ const cvaAxes = (file: string) => {
           found.push({
             component: owner.charAt(0).toUpperCase() + owner.slice(1),
             axis: axisName,
-            keys: axis.initializer.properties.flatMap((key) => propertyText(key.name) ?? [])
+            keys: axis.initializer.properties.flatMap((key) => propertyText(elementName(key)) ?? [])
           });
         });
     }
-    ts.forEachChild(node, visit);
+    node.forEachChild(visit);
   };
   visit(source);
   return found;
 };
 const typedAxisNames = ["variant", "size", "tone", "side", "collapsible"];
-let typeProgram: ts.Program | undefined;
 const typedAxes = (definition: ComponentDefinition) => {
-  if (!typeProgram) {
-    const config = ts.readConfigFile(path.join(root, "tsconfig.app.json"), ts.sys.readFile);
-    const { options } = ts.parseJsonConfigFileContent(config.config, ts.sys, root);
-    typeProgram = ts.createProgram(
-      componentCatalog
-        .flatMap((entry) => entry.sourceFiles)
-        .filter((file) => /\.tsx?$/.test(file) && existsSync(path.join(root, file)))
-        .map((file) => path.join(root, file)),
-      { ...options, incremental: false, tsBuildInfoFile: undefined, noEmit: true }
-    );
-  }
-  const program = typeProgram;
-  const checker = program.getTypeChecker();
+  const { checker } = project();
   const owned = new Set(definition.sourceFiles.map((file) => path.join(root, file)));
   const found: { component: string; axis: string; keys: string[]; wide: string[] }[] = [];
   definition.sourceFiles.forEach((file) => {
-    const source = program.getSourceFile(path.join(root, file));
-    const moduleSymbol = source && checker.getSymbolAtLocation(source);
-    if (!source || !moduleSymbol) return;
+    if (!/\.tsx?$/.test(file) || !existsSync(path.join(root, file))) return;
+    const source = parse(file);
+    const moduleSymbol = checker.getSymbolAtLocation(source);
+    if (!moduleSymbol) return;
     checker.getExportsOfModule(moduleSymbol).forEach((exported) => {
       if (!definition.exports.includes(exported.name)) return;
       const symbol =
-        exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
-      if (!(symbol.flags & ts.SymbolFlags.Value)) return;
+        exported.flags & SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
+      if (!(symbol.flags & SymbolFlags.Value)) return;
       const props = checker
-        .getTypeOfSymbolAtLocation(symbol, source)
-        .getCallSignatures()[0]
+        .getSignaturesOfType(checker.getTypeOfSymbolAtLocation(symbol, source), SignatureKind.Call)[0]
         ?.getParameters()[0];
       if (!props) return;
       const propsType = checker.getTypeOfSymbolAtLocation(props, source);
       typedAxisNames.forEach((axis) => {
         const property = checker.getPropertyOfType(propsType, axis);
-        if (
-          !property?.declarations?.some((declaration) =>
-            owned.has(declaration.getSourceFile().fileName)
-          )
-        )
-          return;
-        const type = checker.getNonNullableType(
-          checker.getTypeOfSymbolAtLocation(property, source)
-        );
-        const members = type.isUnion() ? type.types : [type];
-        const keys = members.flatMap((member) => (member.isStringLiteral() ? [member.value] : []));
+        if (!property?.declarations.some((declaration) => owned.has(declaration.path))) return;
+        const type = checker.getNonNullableType(checker.getTypeOfSymbolAtLocation(property, source));
+        if (!type) return;
+        const members =
+          type.flags & TypeFlags.Union ? (type as UnionType).getTypes() : [type];
+        const stringLiteral = (member: Type): member is StringLiteralType =>
+          Boolean(member.flags & TypeFlags.StringLiteral);
+        const keys = members.flatMap((member) => (stringLiteral(member) ? [member.value] : []));
         if (!keys.length) return;
         found.push({
           component: exported.name,
           axis,
           keys,
           wide: members
-            .filter((member) => !member.isStringLiteral())
+            .filter((member) => !stringLiteral(member))
             .map((member) => checker.typeToString(member))
         });
       });
@@ -367,18 +396,12 @@ const typedAxes = (definition: ComponentDefinition) => {
   return found;
 };
 const exampleLiterals = (file: string) => {
-  const source = ts.createSourceFile(
-    file,
-    read(file),
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TSX
-  );
+  const source = parse(file);
   const literals = new Set<string>();
-  const visit = (node: ts.Node) => {
+  const visit = (node: tsast.Node): undefined => {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
       literals.add(node.text);
-    ts.forEachChild(node, visit);
+    node.forEachChild(visit);
   };
   visit(source);
   return literals;
@@ -713,7 +736,7 @@ const importsFrom = (file: string) => {
       (match) => match[1]
     );
   if (!/\.[cm]?[jt]sx?$/.test(file)) return [];
-  const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
+  const source = parse(file);
   return source.statements.flatMap((statement) =>
     (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) &&
     statement.moduleSpecifier &&
@@ -725,132 +748,126 @@ const importsFrom = (file: string) => {
 const portablePresentation = (file: string) => {
   const code = read(file);
   if (!code.includes('from "../../example-presentation"')) return code;
-  const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const result = ts.transform(source, [
-    (context) => {
-      const visit: ts.Visitor = (node) => {
-        if (
-          ts.isImportDeclaration(node) &&
-          ts.isStringLiteral(node.moduleSpecifier) &&
-          node.moduleSpecifier.text === "../../example-presentation"
-        )
-          return undefined;
-        if (ts.isJsxElement(node)) {
-          const name = node.openingElement.tagName.getText(source);
-          if (["ExampleCell", "ExampleGrid", "ExampleStack", "ExampleStage"].includes(name)) {
-            const attributes = node.openingElement.attributes.properties;
-            const findAttribute = (key: string) =>
-              attributes.find(
-                (attribute): attribute is ts.JsxAttribute =>
-                  ts.isJsxAttribute(attribute) && attribute.name.getText(source) === key
-              );
-            const width = findAttribute("width")?.initializer;
-            const height = findAttribute("height")?.initializer;
-            const alignment = findAttribute("align")?.initializer;
-            const align = alignment && ts.isStringLiteral(alignment) ? alignment.text : undefined;
-            const label = findAttribute("label")?.initializer;
-            const labelContent = label && ts.isJsxExpression(label) ? label.expression : label;
-            let compactCell = false;
-            let parentGridWidth: string | undefined;
-            let ancestor = node.parent;
-            while (ancestor) {
-              if (
-                ts.isJsxElement(ancestor) &&
-                ancestor.openingElement.tagName.getText(source) === "ExampleGrid"
-              ) {
-                const widthAttribute = ancestor.openingElement.attributes.properties.find(
-                  (attribute): attribute is ts.JsxAttribute =>
-                    ts.isJsxAttribute(attribute) && attribute.name.getText(source) === "width"
-                );
-                parentGridWidth =
-                  widthAttribute?.initializer && ts.isStringLiteral(widthAttribute.initializer)
-                    ? widthAttribute.initializer.text
-                    : "field";
-                compactCell = parentGridWidth === "compact";
-                break;
-              }
-              ancestor = ancestor.parent;
-            }
-            const cellAlignment = compactCell
-              ? "center"
-              : (align ?? (parentGridWidth === "field" ? "stretch" : "start"));
-            const gridWidth = width && ts.isStringLiteral(width) ? width.text : "field";
-            const stageHeight = height && ts.isStringLiteral(height) ? height.text : "auto";
-            const className =
-              name === "ExampleGrid"
-                ? `grid min-w-0 w-full items-start gap-x-6 gap-y-8 ${gridWidth === "full" ? "grid-cols-1" : gridWidth === "compact" ? "justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]" : gridWidth === "wide" ? "grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]" : "grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]"}`
-                : name === "ExampleStage"
-                  ? `relative min-w-0 w-full overflow-auto${stageHeight === "shell" ? " h-[360px] isolate [transform:translateZ(0)]" : stageHeight === "app" ? " h-[600px] isolate [transform:translateZ(0)]" : stageHeight === "compact" ? " h-40 isolate [transform:translateZ(0)]" : stageHeight === "medium" ? " h-60 isolate [transform:translateZ(0)]" : stageHeight === "data" ? " max-h-[400px]" : ""}`
-                  : name === "ExampleCell"
-                    ? `m-0 flex min-w-0 w-full flex-col gap-3${cellAlignment === "center" ? " items-center text-center" : ""}`
-                    : "flex min-w-0 w-full flex-col items-start gap-6";
-            const tag = ts.factory.createIdentifier(name === "ExampleCell" ? "figure" : "div");
-            const props = attributes.filter(
-              (attribute) =>
-                !ts.isJsxAttribute(attribute) ||
-                !["label", "width", "height", "align"].includes(attribute.name.getText(source))
+  const source = parse(file);
+  const visit = (node: tsast.Node): tsast.Node | undefined => {
+    if (
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteral(node.moduleSpecifier) &&
+      node.moduleSpecifier.text === "../../example-presentation"
+    )
+      return undefined;
+    if (ts.isJsxElement(node)) {
+      const name = node.openingElement.tagName.getText(source);
+      if (["ExampleCell", "ExampleGrid", "ExampleStack", "ExampleStage"].includes(name)) {
+        const attributes = node.openingElement.attributes.properties;
+        const findAttribute = (key: string) =>
+          attributes.find(
+            (attribute): attribute is tsast.JsxAttribute =>
+              ts.isJsxAttribute(attribute) && attribute.name.getText(source) === key
+          );
+        const width = findAttribute("width")?.initializer;
+        const height = findAttribute("height")?.initializer;
+        const alignment = findAttribute("align")?.initializer;
+        const align = alignment && ts.isStringLiteral(alignment) ? alignment.text : undefined;
+        const label = findAttribute("label")?.initializer;
+        const labelContent = label && ts.isJsxExpression(label) ? label.expression : label;
+        let compactCell = false;
+        let parentGridWidth: string | undefined;
+        let ancestor = node.parent;
+        while (ancestor) {
+          if (
+            ts.isJsxElement(ancestor) &&
+            ancestor.openingElement.tagName.getText(source) === "ExampleGrid"
+          ) {
+            const widthAttribute = ancestor.openingElement.attributes.properties.find(
+              (attribute): attribute is tsast.JsxAttribute =>
+                ts.isJsxAttribute(attribute) && attribute.name.getText(source) === "width"
             );
-            const updatedChildren = ts.visitNodes(node.children, visit, ts.isJsxChild);
-            const children =
-              name === "ExampleCell" && labelContent
-                ? [
-                    ts.factory.createJsxElement(
-                      ts.factory.createJsxOpeningElement(
-                        ts.factory.createIdentifier("div"),
-                        undefined,
-                        ts.factory.createJsxAttributes([
-                          ts.factory.createJsxAttribute(
-                            ts.factory.createIdentifier("className"),
-                            ts.factory.createStringLiteral(
-                              `flex min-h-8 min-w-0 w-full flex-col gap-3 ${cellAlignment === "center" ? "items-center" : cellAlignment === "stretch" ? "items-stretch" : "items-start"}`
-                            )
-                          )
-                        ])
-                      ),
-                      updatedChildren,
-                      ts.factory.createJsxClosingElement(ts.factory.createIdentifier("div"))
-                    ),
-                    ts.factory.createJsxElement(
-                      ts.factory.createJsxOpeningElement(
-                        ts.factory.createIdentifier("figcaption"),
-                        undefined,
-                        ts.factory.createJsxAttributes([
-                          ts.factory.createJsxAttribute(
-                            ts.factory.createIdentifier("className"),
-                            ts.factory.createStringLiteral("text-muted-foreground text-xs")
-                          )
-                        ])
-                      ),
-                      [ts.factory.createJsxExpression(undefined, labelContent)],
-                      ts.factory.createJsxClosingElement(ts.factory.createIdentifier("figcaption"))
-                    )
-                  ]
-                : updatedChildren;
-            return ts.factory.createJsxElement(
-              ts.factory.createJsxOpeningElement(
-                tag,
-                undefined,
-                ts.factory.createJsxAttributes([
-                  ...props,
-                  ts.factory.createJsxAttribute(
-                    ts.factory.createIdentifier("className"),
-                    ts.factory.createStringLiteral(className)
-                  )
-                ])
-              ),
-              children,
-              ts.factory.createJsxClosingElement(tag)
-            );
+            parentGridWidth =
+              widthAttribute?.initializer && ts.isStringLiteral(widthAttribute.initializer)
+                ? widthAttribute.initializer.text
+                : "field";
+            compactCell = parentGridWidth === "compact";
+            break;
           }
+          ancestor = ancestor.parent;
         }
-        return ts.visitEachChild(node, visit, context);
-      };
-      return (node) => ts.visitEachChild(node, visit, context);
+        const cellAlignment = compactCell
+          ? "center"
+          : (align ?? (parentGridWidth === "field" ? "stretch" : "start"));
+        const gridWidth = width && ts.isStringLiteral(width) ? width.text : "field";
+        const stageHeight = height && ts.isStringLiteral(height) ? height.text : "auto";
+        const className =
+          name === "ExampleGrid"
+            ? `grid min-w-0 w-full items-start gap-x-6 gap-y-8 ${gridWidth === "full" ? "grid-cols-1" : gridWidth === "compact" ? "justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]" : gridWidth === "wide" ? "grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]" : "grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]"}`
+            : name === "ExampleStage"
+              ? `relative min-w-0 w-full overflow-auto${stageHeight === "shell" ? " h-[360px] isolate [transform:translateZ(0)]" : stageHeight === "app" ? " h-[600px] isolate [transform:translateZ(0)]" : stageHeight === "compact" ? " h-40 isolate [transform:translateZ(0)]" : stageHeight === "medium" ? " h-60 isolate [transform:translateZ(0)]" : stageHeight === "data" ? " max-h-[400px]" : ""}`
+              : name === "ExampleCell"
+                ? `m-0 flex min-w-0 w-full flex-col gap-3${cellAlignment === "center" ? " items-center text-center" : ""}`
+                : "flex min-w-0 w-full flex-col items-start gap-6";
+        const tag = factory.createIdentifier(name === "ExampleCell" ? "figure" : "div");
+        const props = attributes.filter(
+          (attribute) =>
+            !ts.isJsxAttribute(attribute) ||
+            !["label", "width", "height", "align"].includes(attribute.name.getText(source))
+        );
+        const updatedChildren = visitNodes(node.children, visit);
+        const children =
+          name === "ExampleCell" && labelContent
+            ? [
+                factory.createJsxElement(
+                  factory.createJsxOpeningElement(
+                    factory.createIdentifier("div"),
+                    undefined,
+                    factory.createJsxAttributes([
+                      factory.createJsxAttribute(
+                        factory.createIdentifier("className"),
+                        factory.createStringLiteral(
+                          `flex min-h-8 min-w-0 w-full flex-col gap-3 ${cellAlignment === "center" ? "items-center" : cellAlignment === "stretch" ? "items-stretch" : "items-start"}`,
+                          TokenFlags.None
+                        )
+                      )
+                    ])
+                  ),
+                  updatedChildren,
+                  factory.createJsxClosingElement(factory.createIdentifier("div"))
+                ),
+                factory.createJsxElement(
+                  factory.createJsxOpeningElement(
+                    factory.createIdentifier("figcaption"),
+                    undefined,
+                    factory.createJsxAttributes([
+                      factory.createJsxAttribute(
+                        factory.createIdentifier("className"),
+                        factory.createStringLiteral("text-muted-foreground text-xs", TokenFlags.None)
+                      )
+                    ])
+                  ),
+                  [factory.createJsxExpression(undefined, labelContent)],
+                  factory.createJsxClosingElement(factory.createIdentifier("figcaption"))
+                )
+              ]
+            : updatedChildren;
+        return factory.createJsxElement(
+          factory.createJsxOpeningElement(
+            tag,
+            undefined,
+            factory.createJsxAttributes([
+              ...props,
+              factory.createJsxAttribute(
+                factory.createIdentifier("className"),
+                factory.createStringLiteral(className, TokenFlags.None)
+              )
+            ])
+          ),
+          children,
+          factory.createJsxClosingElement(tag)
+        );
+      }
     }
-  ]);
-  const printed = ts.createPrinter().printFile(result.transformed[0]);
-  result.dispose();
-  return printed;
+    return visitEachChild(node, visit);
+  };
+  return project().emitter.printNode(visitEachChild(source, visit), { neverAsciiEscape: true });
 };
 
 const portable = (file: string) =>
@@ -1069,6 +1086,7 @@ v4Checks.forEach((v4Check) => {
       `Lint check ${v4Check.id} enforces ${v4Check.rule}, whose detect does not name it`
     );
 });
+typeApi?.close();
 if (failures.length) throw new Error(failures.join("\n"));
 pendingOutputs.forEach((text, file) => {
   mkdirSync(path.dirname(path.join(root, file)), { recursive: true });

@@ -205,9 +205,9 @@ export default function Example() {
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
       {(["sm", "md"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
           <MultiSelect size={size} label="Role" options={[
-                { value: "read", label: "Read" },
-                { value: "write", label: "Write" }
-            ]} defaultValue={["read"]}/>
+            { value: "read", label: "Read" },
+            { value: "write", label: "Write" }
+        ]} defaultValue={["read"]}/>
         </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
     </div>);
 }

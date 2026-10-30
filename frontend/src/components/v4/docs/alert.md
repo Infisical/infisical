@@ -139,7 +139,8 @@ export default function Example() {
           Replace the token before it expires in 7 days.
         </Alert>
       </div><figcaption className="text-muted-foreground text-xs">{"warn"}</figcaption></figure>
-      {visible && (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+      {visible &&
+        (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
           <Alert tone="bad" title="Connection failed" onDismiss={() => setVisible(false)}>
             The provider rejected the token. Check its access scope and try again.
           </Alert>

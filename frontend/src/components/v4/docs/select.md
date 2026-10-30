@@ -183,9 +183,9 @@ export default function Example() {
       {(["default", "md", "lg"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
           <Field label={`${size} region`}>
             <Select size={size} options={[
-                { value: "west", label: "West" },
-                { value: "east", label: "East" }
-            ]} defaultValue="west"/>
+            { value: "west", label: "West" },
+            { value: "east", label: "East" }
+        ]} defaultValue="west"/>
           </Field>
         </div><figcaption className="text-muted-foreground text-xs">{size === "default" ? "default, sm" : size}</figcaption></figure>))}
     </div>);
