@@ -1,13 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import {
-  CSSProperties,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState
-} from "react";
+import { ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
@@ -110,7 +102,6 @@ import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/
 import { OverviewFlowHandle, useOverviewTelemetry } from "../../OverviewTelemetry";
 import { CreateSecretForm, TSecretEditChanges } from "../CreateSecretForm/CreateSecretForm";
 import {
-  TABLE_CELL_ACTION_BAR_VISIBILITY_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME
@@ -123,6 +114,8 @@ import { SecretReminderForm } from "./SecretReminderForm";
 import { SecretTagForm } from "./SecretTagForm";
 import { SecretVersionHistory } from "./SecretVersionHistory";
 import { useDraggablePopover } from "./useDraggablePopover";
+
+export type EnvironmentSecretAction = "value" | "comment" | "tags" | "reminder" | "metadata";
 
 type Props = {
   defaultValue?: string | null;
@@ -196,10 +189,8 @@ type Props = {
   lastEdited?: Pick<SecretV3RawSanitized, "createdAt" | "updatedAt" | "version">;
   timestampField?: "createdAt" | "updatedAt";
   nameCellContent?: ReactNode;
-  variant?: "row" | "cell";
-  onRequestEditValue?: () => void;
-  autoFocusValue?: boolean;
-  onValueAutoFocused?: () => void;
+  initialAction?: EnvironmentSecretAction;
+  onInitialActionHandled?: () => void;
 };
 
 export const SecretEditTableRow = ({
@@ -245,12 +236,9 @@ export const SecretEditTableRow = ({
   onAccessInsightsUpgrade,
   onExpandedChange,
   nameCellContent,
-  variant = "row",
-  onRequestEditValue,
-  autoFocusValue,
-  onValueAutoFocused
+  initialAction,
+  onInitialActionHandled
 }: Props) => {
-  const isCellVariant = variant === "cell";
   const telemetry = useOverviewTelemetry();
   const valueSheetFlow = useRef<OverviewFlowHandle>(undefined);
   const valueSheetOwner = useRef({});
@@ -1080,10 +1068,14 @@ export const SecretEditTableRow = ({
     })
   );
   useEffect(() => {
-    if (!autoFocusValue) return;
-    setFocus("value", { shouldSelect: true });
-    onValueAutoFocused?.();
-  }, [autoFocusValue, onValueAutoFocused, setFocus]);
+    if (!initialAction) return;
+    if (initialAction === "value") setFocus("value", { shouldSelect: true });
+    else if (initialAction === "comment") setIsCommentOpen(true);
+    else if (initialAction === "tags") setIsTagOpen(true);
+    else if (initialAction === "reminder") setIsReminderOpen(true);
+    else if (initialAction === "metadata") setIsMetadataOpen(true);
+    onInitialActionHandled?.();
+  }, [initialAction, onInitialActionHandled, setFocus]);
 
   const handleEditShortcut = useSecretInputActionShortcuts({
     isActive: isBatchMode ? isPendingBatchChange || isDirty : isDirtyState,
@@ -1576,129 +1568,125 @@ export const SecretEditTableRow = ({
         onConfirm={handleDeleteSecret}
       />
 
-      {!isCellVariant && (
-        <>
-          <div className="flex w-full cursor-text items-center space-x-2">
-            {secretValueHidden && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <EyeOffIcon className="size-4 text-secret" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  You do not have access to view the current value
-                  {canEditSecretValue && !isManagedSecret ? ", but you can set a new one" : "."}
-                </TooltipContent>
-              </Tooltip>
-            )}
-            <div
-              className={twMerge(
-                "relative grow pr-2",
-                isFieldActive && !isBatchMode && "pr-16",
-                isFieldActive && isBatchMode && "pr-6"
-              )}
-              style={isFieldActive && actionBarWidth ? { paddingRight: actionBarWidth } : undefined}
-            >
-              {isFieldActive && !secretValueHidden && !isCreatable && secretHasReference && (
-                <ResolvedSecretValuePopover
-                  environment={environment}
-                  secretPath={secretPath}
-                  secretKey={secretName}
-                  open={isResolvedValueOpen}
-                  onOpenChange={setIsResolvedValueOpen.toggle}
-                  isDisabled={isDirtyState || hasPendingValueChange}
-                />
-              )}
-              <Controller
-                control={control}
-                name="value"
-                render={({ field }) => (
-                  <InfisicalSecretInput
-                    {...field}
-                    variant="plain"
-                    isReadOnly={isReadOnly}
-                    value={
-                      secretValueHidden
-                        ? ((field.value as string) ?? "")
-                        : isFetchingSharedValue
-                          ? HIDDEN_SECRET_VALUE
-                          : isErrorFetchingSharedValue
-                            ? "Error fetching secret value..."
-                            : (field.value as string)
-                    }
-                    key="secret-input-shared"
-                    isVisible={isVisible || isResolvedValueOpen}
-                    secretPath={secretPath}
-                    environment={environment}
-                    isImport={isImportedSecret}
-                    canEditButNotView={secretValueHidden && !isManagedSecret}
-                    onFocus={() => setIsFieldFocused.on()}
-                    containerClassName={secretHasReference && isFieldActive ? "pl-6" : ""}
-                    onBlur={() => {
-                      field.onBlur();
-                      setIsFieldFocused.off();
-                    }}
-                    onKeyDown={handleEditShortcut}
-                  />
-                )}
-              />
-            </div>
-            {!isDirtyState && !isFieldActive && (
-              <div className="pointer-events-none flex w-fit items-start justify-end self-start pl-2 opacity-0 transition-opacity duration-300 motion-reduce:transition-none [@media(hover:hover)]:pointer-events-auto [@media(hover:hover)]:opacity-100 [@media(hover:hover)]:group-focus-within:pointer-events-none [@media(hover:hover)]:group-focus-within:opacity-0 [@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0">
-                <div className="flex items-center gap-1">
-                  {skipMultilineEncoding && !isImportedSecret && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="flex size-5 items-center justify-center text-muted">
-                          <WrapTextIcon className="size-3.5" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>Multi-line encoding disabled</TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-              </div>
-            )}
-            {revokedProjectFolderGrant && !isDirtyState && (
-              <div
-                className={twMerge(
-                  "ml-auto flex shrink-0 items-center",
-                  isSingleEnvView &&
-                    "mr-16 transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16",
-                  isSingleEnvView && isFieldActive && "mr-8"
-                )}
-              >
-                <Badge variant="danger">
-                  <BanIcon className="size-3.5" />
-                  Secret share revoked
-                </Badge>
-              </div>
-            )}
-          </div>
-          {isDirtyState && (
-            <ProjectPermissionCan
-              I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
-              a={subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName,
-                secretTags: ["*"]
-              })}
-            >
-              {(isAllowed) => (
-                <SecretInputActions
-                  className={twMerge(
-                    "absolute z-20 px-0.5 py-0.5",
-                    isSingleEnvView ? "top-1 right-1" : "top-[0.25px] -right-1.5"
-                  )}
-                  isSaveDisabled={isSubmitting || !isAllowed}
-                  isUndoDisabled={isSubmitting}
-                  onSave={submitForm}
-                  onUndo={handleFormReset}
-                />
-              )}
-            </ProjectPermissionCan>
+      <div className="flex w-full cursor-text items-center space-x-2">
+        {secretValueHidden && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <EyeOffIcon className="size-4 text-secret" />
+            </TooltipTrigger>
+            <TooltipContent>
+              You do not have access to view the current value
+              {canEditSecretValue && !isManagedSecret ? ", but you can set a new one" : "."}
+            </TooltipContent>
+          </Tooltip>
+        )}
+        <div
+          className={twMerge(
+            "relative grow pr-2",
+            isFieldActive && !isBatchMode && "pr-16",
+            isFieldActive && isBatchMode && "pr-6"
           )}
-        </>
+          style={isFieldActive && actionBarWidth ? { paddingRight: actionBarWidth } : undefined}
+        >
+          {isFieldActive && !secretValueHidden && !isCreatable && secretHasReference && (
+            <ResolvedSecretValuePopover
+              environment={environment}
+              secretPath={secretPath}
+              secretKey={secretName}
+              open={isResolvedValueOpen}
+              onOpenChange={setIsResolvedValueOpen.toggle}
+              isDisabled={isDirtyState || hasPendingValueChange}
+            />
+          )}
+          <Controller
+            control={control}
+            name="value"
+            render={({ field }) => (
+              <InfisicalSecretInput
+                {...field}
+                variant="plain"
+                isReadOnly={isReadOnly}
+                value={
+                  secretValueHidden
+                    ? ((field.value as string) ?? "")
+                    : isFetchingSharedValue
+                      ? HIDDEN_SECRET_VALUE
+                      : isErrorFetchingSharedValue
+                        ? "Error fetching secret value..."
+                        : (field.value as string)
+                }
+                key="secret-input-shared"
+                isVisible={isVisible || isResolvedValueOpen}
+                secretPath={secretPath}
+                environment={environment}
+                isImport={isImportedSecret}
+                canEditButNotView={secretValueHidden && !isManagedSecret}
+                onFocus={() => setIsFieldFocused.on()}
+                containerClassName={secretHasReference && isFieldActive ? "pl-6" : ""}
+                onBlur={() => {
+                  field.onBlur();
+                  setIsFieldFocused.off();
+                }}
+                onKeyDown={handleEditShortcut}
+              />
+            )}
+          />
+        </div>
+        {!isDirtyState && !isFieldActive && (
+          <div className="pointer-events-none flex w-fit items-start justify-end self-start pl-2 opacity-0 transition-opacity duration-300 motion-reduce:transition-none [@media(hover:hover)]:pointer-events-auto [@media(hover:hover)]:opacity-100 [@media(hover:hover)]:group-focus-within:pointer-events-none [@media(hover:hover)]:group-focus-within:opacity-0 [@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0">
+            <div className="flex items-center gap-1">
+              {skipMultilineEncoding && !isImportedSecret && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex size-5 items-center justify-center text-muted">
+                      <WrapTextIcon className="size-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Multi-line encoding disabled</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          </div>
+        )}
+        {revokedProjectFolderGrant && !isDirtyState && (
+          <div
+            className={twMerge(
+              "ml-auto flex shrink-0 items-center",
+              isSingleEnvView &&
+                "mr-16 transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16",
+              isSingleEnvView && isFieldActive && "mr-8"
+            )}
+          >
+            <Badge variant="danger">
+              <BanIcon className="size-3.5" />
+              Secret share revoked
+            </Badge>
+          </div>
+        )}
+      </div>
+      {isDirtyState && (
+        <ProjectPermissionCan
+          I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
+          a={subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath,
+            secretName,
+            secretTags: ["*"]
+          })}
+        >
+          {(isAllowed) => (
+            <SecretInputActions
+              className={twMerge(
+                "absolute z-20 px-0.5 py-0.5",
+                isSingleEnvView ? "top-1 right-1" : "top-[0.25px] -right-1.5"
+              )}
+              isSaveDisabled={isSubmitting || !isAllowed}
+              isUndoDisabled={isSubmitting}
+              onSave={submitForm}
+              onUndo={handleFormReset}
+            />
+          )}
+        </ProjectPermissionCan>
       )}
       {!(
         isDirty &&
@@ -1712,15 +1700,9 @@ export const SecretEditTableRow = ({
           className={twMerge(
             "absolute z-20",
             "flex items-center gap-0.5 rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-            isCellVariant
-              ? TABLE_CELL_ACTION_BAR_VISIBILITY_CLASS_NAME
-              : TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
+            TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
             (isDropdownOpen || isAnnotateMenuOpen) && TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
-            isCellVariant
-              ? "top-1/2 right-1 -translate-y-1/2"
-              : isSingleEnvView
-                ? "top-[3px] right-0.5"
-                : "-top-px -right-1.5"
+            isSingleEnvView ? "top-[3px] right-0.5" : "-top-px -right-1.5"
           )}
         >
           {isPendingBatchChange && onPendingSave && (
@@ -1792,10 +1774,6 @@ export const SecretEditTableRow = ({
                   className="size-7 border-0"
                   isDisabled={isEditValueDisabled}
                   onClick={() => {
-                    if (onRequestEditValue) {
-                      onRequestEditValue();
-                      return;
-                    }
                     if (isSingleEnvView && !isCreatable && !isOverride) {
                       handleOpenValueSheet();
                       return;
@@ -2342,24 +2320,6 @@ export const SecretEditTableRow = ({
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </>
   );
-
-  if (isCellVariant) {
-    const isActionBarForced = isDropdownOpen || isAnnotateMenuOpen;
-    return (
-      <>
-        <div
-          className={twMerge(
-            "flex items-center pr-(--action-bar-width) transition-[padding] duration-300 motion-reduce:transition-none [@media(hover:hover)]:pr-0 [@media(hover:hover)]:group-focus-within/cell:pr-(--action-bar-width) [@media(hover:hover)]:group-hover/cell:pr-(--action-bar-width)",
-            isActionBarForced && "[@media(hover:hover)]:pr-(--action-bar-width)"
-          )}
-          style={{ "--action-bar-width": `${actionBarWidth}px` } as CSSProperties}
-        >
-          {annotationSlot}
-        </div>
-        {valueContent}
-      </>
-    );
-  }
 
   if (isSingleEnvView) {
     return (

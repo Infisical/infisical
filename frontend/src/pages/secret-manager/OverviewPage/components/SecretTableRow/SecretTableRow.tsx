@@ -1,9 +1,11 @@
-import { ComponentProps, Fragment, useCallback, useEffect, useState } from "react";
+import { ComponentProps, Fragment, ReactNode, useCallback, useEffect, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   BanIcon,
+  BellIcon,
   ChevronDownIcon,
   ClipboardCheckIcon,
+  CodeXmlIcon,
   CopyIcon,
   EditIcon,
   EyeIcon,
@@ -12,8 +14,10 @@ import {
   HexagonIcon,
   ImportIcon,
   KeyIcon,
+  MessageSquareIcon,
   RefreshCcwIcon,
-  RefreshCwIcon
+  RefreshCwIcon,
+  TagsIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -39,7 +43,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
-import { useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionActions, useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
@@ -49,6 +53,7 @@ import { useUpdateSecretV3 } from "@app/hooks/api";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { useOverviewTelemetry } from "../../OverviewTelemetry";
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
@@ -62,7 +67,7 @@ import {
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
-import { SecretEditTableRow } from "./SecretEditTableRow";
+import { EnvironmentSecretAction, SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
 
@@ -170,11 +175,14 @@ export const SecretTableRow = ({
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
   const [expandedTableSort, setExpandedTableSort] = useState<ExpandedTableSort | null>(null);
   const [activeEnvSlugs, setActiveEnvSlugs] = useState<Set<string>>(new Set());
-  const [focusEnvSlug, setFocusEnvSlug] = useState<string | null>(null);
-  const clearFocusEnvSlug = useCallback(() => setFocusEnvSlug(null), []);
+  const [pendingEnvAction, setPendingEnvAction] = useState<{
+    slug: string;
+    action: EnvironmentSecretAction;
+  } | null>(null);
+  const clearPendingEnvAction = useCallback(() => setPendingEnvAction(null), []);
 
-  const openEnvironmentValue = (slug: string) => {
-    setFocusEnvSlug(slug);
+  const openEnvironment = (slug: string, action: EnvironmentSecretAction) => {
+    setPendingEnvAction({ slug, action });
     if (!isExpanded) onToggleExpand(secretKey);
   };
 
@@ -190,7 +198,7 @@ export const SecretTableRow = ({
   const isSingleEnvView = environments.length === 1;
   const isRowActive = isSingleEnvView
     ? isSingleEnvBaseActive || isSingleEnvOverrideActive
-    : isExpanded || activeEnvSlugs.size > 0;
+    : isExpanded;
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
 
@@ -312,6 +320,78 @@ export const SecretTableRow = ({
   };
 
   const sortedEnvironments = [...environments];
+
+  const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
+  const renderEnvironmentAnnotations = (slug: string) => {
+    const secret = getSecretByKey(slug, secretKey);
+    if (!secret) return null;
+    const canDescribeSecret = hasSecretReadValueOrDescribePermission(
+      permission,
+      ProjectPermissionSecretActions.DescribeSecret,
+      {
+        environment: slug,
+        secretPath,
+        secretName: secretKey,
+        secretTags: secret.tags?.map(({ slug: tagSlug }) => tagSlug) ?? []
+      }
+    );
+    const comment =
+      canDescribeSecret && !secret.revokedProjectFolderGrant ? secret.comment : undefined;
+    const tagSlugs = canReadTags ? (secret.tags?.map(({ slug: tagSlug }) => tagSlug) ?? []) : [];
+    const metadataCount = secret.secretMetadata?.length ?? 0;
+    const annotations = [
+      comment && {
+        action: "comment" as const,
+        label: "View secret comment",
+        icon: <MessageSquareIcon />,
+        tooltip: <p className="line-clamp-2 break-words whitespace-pre-wrap">{comment}</p>
+      },
+      tagSlugs.length > 0 && {
+        action: "tags" as const,
+        label: "View secret tags",
+        icon: <TagsIcon />,
+        tooltip: tagSlugs.join(", ")
+      },
+      secret.reminder && {
+        action: "reminder" as const,
+        label: "View secret reminder",
+        icon: <BellIcon />,
+        tooltip: "Rotation reminder"
+      },
+      metadataCount > 0 && {
+        action: "metadata" as const,
+        label: "View secret metadata",
+        icon: <CodeXmlIcon />,
+        tooltip: `${metadataCount} metadata ${metadataCount === 1 ? "entry" : "entries"}`
+      }
+    ].filter((annotation) => Boolean(annotation)) as {
+      action: EnvironmentSecretAction;
+      label: string;
+      icon: ReactNode;
+      tooltip: ReactNode;
+    }[];
+    if (!annotations.length) return null;
+
+    return (
+      <span className="flex shrink-0 items-center gap-0.5">
+        {annotations.map(({ action, label, icon, tooltip }) => (
+          <Tooltip key={action}>
+            <TooltipTrigger asChild>
+              <IconButton
+                aria-label={label}
+                variant="ghost-muted"
+                size="2xs"
+                onClick={() => openEnvironment(slug, action)}
+              >
+                {icon}
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72 break-words">{tooltip}</TooltipContent>
+          </Tooltip>
+        ))}
+      </span>
+    );
+  };
 
   const getEnvironmentSecretRowProps = (
     slug: string,
@@ -610,7 +690,7 @@ export const SecretTableRow = ({
         )}
         {environments.length > 1 &&
           !isExpanded &&
-          environments.map(({ slug, name }, i) => {
+          environments.map(({ slug }, i) => {
             const secret = getSecretByKey(slug, secretKey);
 
             const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
@@ -640,14 +720,10 @@ export const SecretTableRow = ({
                   event.stopPropagation();
                   const target = event.target as HTMLElement;
                   if (!event.currentTarget.contains(target) || target.closest("button")) return;
-                  openEnvironmentValue(slug);
+                  openEnvironment(slug, "value");
                 }}
               >
-                <SecretEditTableRow
-                  variant="cell"
-                  onRequestEditValue={() => openEnvironmentValue(slug)}
-                  {...getEnvironmentSecretRowProps(slug, name)}
-                />
+                {renderEnvironmentAnnotations(slug)}
               </ResourceEnvironmentStatusCell>
             );
           })}
@@ -848,8 +924,10 @@ export const SecretTableRow = ({
                               </>
                             }
                             isVisible={isSecretVisible}
-                            autoFocusValue={focusEnvSlug === slug}
-                            onValueAutoFocused={clearFocusEnvSlug}
+                            initialAction={
+                              pendingEnvAction?.slug === slug ? pendingEnvAction.action : undefined
+                            }
+                            onInitialActionHandled={clearPendingEnvAction}
                             {...getEnvironmentSecretRowProps(slug, name)}
                           />
                         </TableRow>
