@@ -1,6 +1,5 @@
 import { Fragment } from "react";
 
-import { AccordionContent, AccordionItem, AccordionTrigger } from "@app/components/v4/ui/accordion";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Combobox } from "@app/components/v4/ui/combobox";
@@ -11,7 +10,7 @@ import type { Scope } from "../model";
 import { Gate } from "../ui";
 import type { PermissionSubject } from "./catalog";
 import { ConditionsFields } from "./conditions";
-import { emptyRule, type Rule, type RuleErrors } from "./permissions-model";
+import type { Rule, RuleErrors } from "./permissions-model";
 
 import styles from "./roles.module.css";
 
@@ -190,53 +189,5 @@ export const RuleList = ({
         );
       })}
     </div>
-  );
-};
-
-export const PolicyItem = ({
-  scope,
-  config,
-  rules,
-  open,
-  disabled,
-  reason,
-  errors,
-  onChange,
-  onRemovePolicy
-}: RuleListProps & { open: boolean }) => {
-  const conditional = scope === "project" && Boolean(config.conditional);
-  return (
-    <AccordionItem value={config.subject}>
-      <div className={styles.policyHead}>
-        <AccordionTrigger>
-          <span className={styles.policyText}>
-            <span className={styles.policyTitle}>{config.title}</span>
-            <span className={styles.policyDescription}>{config.description}</span>
-          </span>
-          {rules.length > 1 && <Badge tone="soft">{`${rules.length} rules`}</Badge>}
-        </AccordionTrigger>
-        {open && (conditional || VISUALIZABLE.includes(config.subject)) && (
-          <SubjectActions
-            scope={scope}
-            config={config}
-            disabled={disabled}
-            reason={reason}
-            onAddRule={() => onChange([...rules, emptyRule()])}
-          />
-        )}
-      </div>
-      <AccordionContent>
-        <RuleList
-          scope={scope}
-          config={config}
-          rules={rules}
-          disabled={disabled}
-          reason={reason}
-          errors={errors}
-          onChange={onChange}
-          onRemovePolicy={onRemovePolicy}
-        />
-      </AccordionContent>
-    </AccordionItem>
   );
 };

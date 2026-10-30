@@ -12,21 +12,10 @@ import {
   SheetTitle
 } from "@app/components/v4/ui/sheet";
 
-import type { Scope } from "../../model";
-import type { PermissionSubject } from "../catalog";
-import { emptyRule, type PermissionErrors, type RolePermissions } from "../permissions-model";
-import { RuleList, SubjectActions } from "../policies";
-
-export type LayoutProps = {
-  scope: Scope;
-  draft: RolePermissions;
-  subjects: readonly PermissionSubject[];
-  editable: boolean;
-  reason: string;
-  errors?: PermissionErrors;
-  onChange: (next: RolePermissions) => void;
-  initialSubject?: string;
-};
+import type { PermissionSubject } from "./catalog";
+import type { MatrixProps } from "./permission-matrix";
+import { emptyRule, type RolePermissions } from "./permissions-model";
+import { RuleList, SubjectActions } from "./policies";
 
 export const setRules = (
   draft: RolePermissions,
@@ -42,7 +31,7 @@ export const SubjectRulesSheet = ({
   config,
   onOpenChange
 }: {
-  props: LayoutProps;
+  props: MatrixProps;
   config?: PermissionSubject;
   onOpenChange: (open: boolean) => void;
 }) => {

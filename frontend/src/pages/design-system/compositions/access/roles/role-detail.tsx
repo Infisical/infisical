@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { LayersIcon, PencilIcon, SaveIcon } from "lucide-react";
 
-import { Accordion } from "@app/components/v4/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +12,6 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
-import { ButtonGroup } from "@app/components/v4/ui/button-group";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,28 +21,20 @@ import {
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
-import { MultiSelect } from "@app/components/v4/ui/multi-select";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
 
 import { useAccess } from "../context";
 import type { AccessData, Role, Scope } from "../model";
 import { Gate, RESTRICTED, useCan } from "../ui";
-import { usePolicyLayout } from "./layouts/context";
-import { MasterDetail } from "./layouts/master-detail";
-import { PermissionMatrix } from "./layouts/matrix";
-import { RuleTable } from "./layouts/rule-table";
-import type { LayoutProps } from "./layouts/shared";
+import { type MatrixProps, PermissionMatrix } from "./permission-matrix";
 import {
-  emptyRule,
-  hasPolicies,
   type PermissionErrors,
   type RolePermissions,
   ruleId,
   subjectsFor,
   validatePermissions
 } from "./permissions-model";
-import { PolicyItem } from "./policies";
 import { PolicyTemplateSheet } from "./policy-template-sheet";
 import { OrgRoleDialog, ProjectRoleSheet, type RoleDraft } from "./role-dialogs";
 import { VAULT_CONNECTIONS, VaultImportSheet } from "./vault-import-sheet";
@@ -124,14 +114,11 @@ const renameSlug = (data: AccessData, scope: Scope, from: string, to: string): A
 const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
   const { data, update, saved, toast, navigate, startsWith, loading } = useAccess();
   const can = useCan(scope);
-  const layout = usePolicyLayout();
   const roles = data[rolesKey(scope)];
   const role = roles.find((item) => item.id === id);
   const stored = data.rolePermissions[id] ?? {};
   const [draft, setDraft] = useState<RolePermissions>(stored);
   const [errors, setErrors] = useState<PermissionErrors>();
-  const [open, setOpen] = useState<string[]>(() => (startsWith("conditions") ? ["secrets"] : []));
-  const [adding, setAdding] = useState(() => startsWith("add-policy"));
   const [overlay, setOverlay] = useState<Overlay>();
   const [optionsOpen, setOptionsOpen] = useState(false);
   const back = () =>
@@ -159,17 +146,15 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
   const subjects = subjectsFor(scope);
   const kind = scope === "org" ? "org-role" : "project-role";
 
-  const change = (next: RolePermissions, added: string[] = []) => {
+  const change = (next: RolePermissions) => {
     setDraft(next);
     if (errors) setErrors(validatePermissions(scope, next));
-    if (added.length) setOpen((current) => [...new Set([...current, ...added])]);
   };
 
   const save = () => {
     const found = validatePermissions(scope, draft);
     if (Object.keys(found).length) {
       setErrors(found);
-      setOpen((current) => [...new Set([...current, ...Object.keys(found)])]);
       return;
     }
     setErrors(undefined);
@@ -239,79 +224,6 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
     back();
   };
 
-  const policySelect = (
-    <MultiSelect
-      label="Add policies"
-      searchable
-      quickActions={false}
-      align="end"
-      menuWidth={288}
-      open={adding}
-      onOpenChange={setAdding}
-      closeOnFocusOutside={false}
-      disabled={!editable}
-      options={[...subjects]
-        .sort((a, b) => a.title.localeCompare(b.title))
-        .map((subject) => ({ value: subject.subject, label: subject.title }))}
-      value={subjects.filter((s) => draft[s.subject]?.length).map((s) => s.subject)}
-      onChange={(selected) => {
-        const next = { ...draft };
-        const added: string[] = [];
-        subjects.forEach(({ subject }) => {
-          const has = Boolean(draft[subject]?.length);
-          if (selected.includes(subject) && !has) {
-            next[subject] = [emptyRule()];
-            added.push(subject);
-          } else if (!selected.includes(subject) && has) delete next[subject];
-        });
-        change(next, added);
-      }}
-      trigger={
-        <Button type="button" variant="outline" icon="plus">
-          Add policies
-        </Button>
-      }
-    />
-  );
-
-  const addPolicies =
-    scope === "org" ? (
-      <Gate allowed={editable} reason={reason}>
-        {policySelect}
-      </Gate>
-    ) : (
-      <Gate allowed={editable} reason={reason}>
-        <ButtonGroup label="Add policies">
-          {policySelect}
-          <DropdownMenu defaultOpen={startsWith("add-from-template")}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                icon="chev-down"
-                iconOnly
-                disabled={!editable}
-              >
-                Open policy options
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem disabled={!editable} onSelect={() => setOverlay("template")}>
-                <Icon icon={LayersIcon} />
-                Add from template
-              </DropdownMenuItem>
-              {VAULT_CONNECTIONS.length > 0 && (
-                <DropdownMenuItem disabled={!editable} onSelect={() => setOverlay("vault")}>
-                  <Icon name="download" />
-                  Add from HashiCorp Vault
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </ButtonGroup>
-      </Gate>
-    );
-
   const builtInNote = isCustom ? undefined : BUILT_IN;
   const importMenu = scope === "project" && (
     <Gate allowed={editable} reason={reason}>
@@ -336,7 +248,7 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
       </DropdownMenu>
     </Gate>
   );
-  const layoutProps: LayoutProps = {
+  const matrixProps: MatrixProps = {
     scope,
     draft,
     subjects,
@@ -344,7 +256,8 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
     reason,
     errors,
     onChange: (next) => change(next),
-    initialSubject: startsWith("conditions") ? "secrets" : undefined
+    initialSubject: startsWith("conditions") ? "secrets" : undefined,
+    initialShow: startsWith("add-policy") ? "all" : "granted"
   };
 
   return (
@@ -428,49 +341,12 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
                 Save
               </Button>
             </Gate>
-            {layout === "accordion" && scope === "org" && <span className={styles.actionDivider} />}
-            {layout === "accordion" ? addPolicies : importMenu}
+            {importMenu}
           </div>
         </header>
         <div className={styles.panelBody}>
           {loading && <Skeleton lines={3} height={48} />}
-          {!loading && layout === "matrix" && <PermissionMatrix {...layoutProps} />}
-          {!loading && layout === "master" && <MasterDetail {...layoutProps} />}
-          {!loading && layout === "rules" && <RuleTable {...layoutProps} />}
-          {!loading &&
-            layout === "accordion" &&
-            (hasPolicies(draft) ? (
-              <div className={styles.policies}>
-                <Accordion type="multiple" value={open} onValueChange={setOpen}>
-                  {subjects
-                    .filter((subject) => draft[subject.subject]?.length)
-                    .map((subject) => (
-                      <PolicyItem
-                        key={subject.subject}
-                        scope={scope}
-                        config={subject}
-                        rules={draft[subject.subject]}
-                        open={open.includes(subject.subject)}
-                        disabled={!editable}
-                        reason={reason}
-                        errors={errors?.[subject.subject]}
-                        onChange={(rules) => change({ ...draft, [subject.subject]: rules })}
-                        onRemovePolicy={() => {
-                          const { [subject.subject]: _removed, ...rest } = draft;
-                          change(rest);
-                        }}
-                      />
-                    ))}
-                </Accordion>
-              </div>
-            ) : (
-              <EmptyState
-                size="sm"
-                icon="lock"
-                title="No policies applied"
-                description="Add policies to configure permissions for this role."
-              />
-            ))}
+          {!loading && <PermissionMatrix {...matrixProps} />}
         </div>
       </section>
       {overlay === "edit" &&

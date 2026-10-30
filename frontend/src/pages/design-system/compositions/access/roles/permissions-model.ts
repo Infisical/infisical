@@ -144,9 +144,6 @@ export const seedRolePermissions = (): Record<string, RolePermissions> => ({
 
 export const PROJECT_TAGS = ["api", "billing", "pci"];
 
-export const hasPolicies = (permissions: RolePermissions) =>
-  Object.values(permissions).some((rules) => rules.length > 0);
-
 export const disallowingActions = (subject: string, lhs: string, actions: readonly string[]) => {
   const map = ACTION_ALLOWED_CONDITIONS[subject];
   if (!map) return [];

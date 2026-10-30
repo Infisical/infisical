@@ -14,11 +14,6 @@
   font-weight: var(--v4-type-small-font-weight);
   letter-spacing: var(--v4-type-small-letter-spacing);
 }
-.hintText {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--v4-space-6);
-}
 .inlineTrigger {
   display: inline-flex;
 }
@@ -75,52 +70,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--v4-space-8);
-}
-.actionDivider {
-  align-self: stretch;
-  margin-inline: var(--v4-space-4);
-  border-inline-start: var(--v4-size-control-border) solid var(--v4-line);
-}
-.policies {
-  border: var(--v4-size-control-border) solid var(--v4-line);
-}
-.policyHead {
-  display: flex;
-  align-items: center;
-  gap: var(--v4-space-8);
-  padding-inline: var(--v4-space-16);
-}
-.policyHead > :first-child {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.policyHead:hover {
-  background: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover), transparent);
-}
-:global(.v4[data-theme="dark"]) .policyHead:hover {
-  background: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-hover-dark), transparent);
-}
-.policyText {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: var(--v4-space-2);
-  min-width: 0;
-}
-.policyTitle {
-  font-family: var(--v4-type-row-title-font-family);
-  font-size: var(--v4-type-row-title-font-size);
-  line-height: var(--v4-type-row-title-line-height);
-  font-weight: var(--v4-type-row-title-font-weight);
-  letter-spacing: var(--v4-type-row-title-letter-spacing);
-}
-.policyDescription {
-  color: var(--v4-muted);
-  font-family: var(--v4-type-small-font-family);
-  font-size: var(--v4-type-small-font-size);
-  line-height: var(--v4-type-small-line-height);
-  font-weight: var(--v4-type-small-font-weight);
-  letter-spacing: var(--v4-type-small-letter-spacing);
 }
 .policyActions {
   display: flex;
@@ -506,9 +455,12 @@
 }
 .legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--v4-space-6);
+  gap: var(--v4-space-16);
   margin: 0;
+  padding: 0;
+  list-style: none;
   color: var(--v4-muted);
   font-family: var(--v4-type-small-font-family);
   font-size: var(--v4-type-small-font-size);
@@ -521,43 +473,86 @@
   text-overflow: ellipsis;
 }
 .matrixCheck,
-.matrixMark {
-  display: inline-flex;
-  align-items: center;
-}
-.matrixMark {
-  color: var(--v4-muted);
-}
-.rowBadges {
+.matrixCell {
   display: inline-flex;
   align-items: center;
   gap: var(--v4-space-4);
 }
-.masterDetail {
-  display: grid;
-  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
-  align-items: start;
-  gap: var(--v4-space-16);
+.mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-space-24);
+  height: var(--v4-space-24);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
 }
-.masterList {
-  max-height: 720px;
-  overflow-y: auto;
+.mark:focus-visible {
+  outline: var(--v4-size-focus-ring) solid var(--v4-focus-ring);
+  outline-offset: calc(var(--v4-size-focus-ring) * -1);
 }
-.detailPane {
+.mark[data-tone="conditional"] {
+  color: var(--v4-warn);
+}
+.mark[data-tone="forbid"] {
+  color: var(--v4-bad);
+}
+.markList {
   display: flex;
   flex-direction: column;
-  gap: var(--v4-space-12);
-  min-width: 0;
+  gap: var(--v4-space-2);
+  max-width: 320px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
-.detailHead {
+.popoverTitle {
+  font-family: var(--v4-type-label-font-family);
+  font-size: var(--v4-type-label-font-size);
+  line-height: var(--v4-type-label-line-height);
+  font-weight: var(--v4-type-label-font-weight);
+}
+.otherList {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--v4-space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.otherRow {
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--v4-space-12);
+  gap: var(--v4-space-8);
 }
-.ruleSheetRow {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: var(--v4-space-12);
+.otherLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--v4-space-8);
+  cursor: pointer;
+}
+.otherLabel > label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-2);
+}
+.otherHint {
+  color: var(--v4-muted);
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+}
+.legend > li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+}
+.legend .mark {
+  width: auto;
+  height: auto;
 }
