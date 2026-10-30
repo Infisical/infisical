@@ -50,6 +50,15 @@ const getAssumeRoleSessionPolicyParams = (providerInputs: {
   };
 };
 
+// Allow instances to disable automatic service account token fetching (e.g. for shared cloud)
+const assertIrsaEnabled = () => {
+  if (!getConfig().KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN) {
+    throw new UnauthorizedError({
+      message: "Failed to get AWS credentials via IRSA: KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN is not enabled."
+    });
+  }
+};
+
 export const AwsIamProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretAwsIamSchema.parseAsync(inputs);
@@ -98,12 +107,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
     }
 
     if (providerInputs.method === AwsIamAuthType.IRSA) {
-      // Allow instances to disable automatic service account token fetching (e.g. for shared cloud)
-      if (!appCfg.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN) {
-        throw new UnauthorizedError({
-          message: "Failed to get AWS credentials via IRSA: KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN is not enabled."
-        });
-      }
+      assertIrsaEnabled();
 
       // The SDK will automatically pick up credentials from the environment
       const client = new IAMClient({
@@ -173,6 +177,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
           return true;
         }
         if (providerInputs.method === AwsIamAuthType.IRSA) {
+          assertIrsaEnabled();
           const stsClient = new STSClient({
             region: providerInputs.region,
             useFipsEndpoint: crypto.isFipsModeEnabled(),
@@ -325,6 +330,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
           };
         }
         if (providerInputs.method === AwsIamAuthType.IRSA) {
+          assertIrsaEnabled();
           durationSeconds = requestedDuration;
           stsClient = new STSClient({
             region: providerInputs.region,
