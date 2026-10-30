@@ -13,6 +13,7 @@ import { CertificateSyncStatus } from "@app/services/certificate-sync/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { certificateNameSchemaHasFreeTextPlaceholder } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
@@ -65,6 +66,7 @@ type TAzureKeyVaultPkiSyncFactoryDeps = {
     | "claimExternalIdentifier"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 const parseCertificateX509Props = (certPem: string) => {
@@ -211,7 +213,8 @@ export const azureKeyVaultPkiSyncFactory = ({
   kmsService,
   appConnectionDAL,
   certificateSyncDAL,
-  certificateDAL
+  certificateDAL,
+  oidcIssuerService
 }: TAzureKeyVaultPkiSyncFactoryDeps) => {
   const $getAzureKeyVaultCertificates = async (accessToken: string, vaultBaseUrl: string, syncId = "unknown") => {
     await blockLocalAndPrivateIpAddresses(vaultBaseUrl);
@@ -340,7 +343,12 @@ export const azureKeyVaultPkiSyncFactory = ({
   };
 
   const syncCertificates = async (pkiSync: TPkiSyncWithCredentials, certificateMap: TCertificateMap) => {
-    const { accessToken } = await getAzureConnectionAccessToken(pkiSync.connection.id, appConnectionDAL, kmsService);
+    const { accessToken } = await getAzureConnectionAccessToken(
+      pkiSync.connection.id,
+      appConnectionDAL,
+      kmsService,
+      oidcIssuerService
+    );
 
     // Cast destination config to Azure Key Vault config
     const destinationConfig = pkiSync.destinationConfig as TAzureKeyVaultPkiSyncConfig;
@@ -752,7 +760,12 @@ export const azureKeyVaultPkiSyncFactory = ({
     certificateNames: string[],
     deps?: { certificateSyncDAL?: TCertificateSyncDALFactory; certificateMap?: TCertificateMap }
   ) => {
-    const { accessToken } = await getAzureConnectionAccessToken(pkiSync.connection.id, appConnectionDAL, kmsService);
+    const { accessToken } = await getAzureConnectionAccessToken(
+      pkiSync.connection.id,
+      appConnectionDAL,
+      kmsService,
+      oidcIssuerService
+    );
 
     // Cast destination config to Azure Key Vault config
     const destinationConfig = pkiSync.destinationConfig as TAzureKeyVaultPkiSyncConfig;

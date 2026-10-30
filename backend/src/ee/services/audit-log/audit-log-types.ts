@@ -967,6 +967,9 @@ export enum EventType {
   OAUTH_CLIENT_AUTHORIZE = "oauth-client-authorize",
   OAUTH_CLIENT_TOKEN_EXCHANGE = "oauth-client-token-exchange",
 
+  // OIDC Issuer
+  ISSUE_OIDC_TOKEN = "issue-oidc-token",
+
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
   VERIFY_EMAIL_DOMAIN = "verify-email-domain",
@@ -7977,6 +7980,15 @@ interface OauthClientTokenExchangeEvent {
   };
 }
 
+interface IssueOidcTokenEvent {
+  type: EventType.ISSUE_OIDC_TOKEN;
+  metadata: {
+    connectionId: string;
+    connectionName: string;
+    audience: string;
+  };
+}
+
 interface CreateEmailDomainEvent {
   type: EventType.CREATE_EMAIL_DOMAIN;
   metadata: {
@@ -9048,6 +9060,7 @@ export type Event =
   | RotateOauthClientSecretEvent
   | OauthClientAuthorizeEvent
   | OauthClientTokenExchangeEvent
+  | IssueOidcTokenEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent

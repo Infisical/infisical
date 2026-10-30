@@ -29,6 +29,7 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
+  addAppConnectionFederatedCredential,
   decryptAppConnection,
   decryptAppConnectionCredentials,
   encryptAppConnectionConfiguration,
@@ -44,6 +45,7 @@ import {
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -243,6 +245,7 @@ export type TAppConnectionServiceFactoryDep = {
     TKeyStoreFactory,
     "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry" | "acquireLock"
   >;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -357,7 +360,8 @@ export const appConnectionServiceFactory = ({
   appConnectionCredentialRotationService,
   identityUaDAL,
   gitHubAppDAL,
-  keyStore
+  keyStore,
+  oidcIssuerService
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnections = async (actor: OrgServiceActor, app?: AppConnection, projectId?: string) => {
     let appConnections: TAppConnections[];
@@ -416,11 +420,13 @@ export const appConnectionServiceFactory = ({
       );
     }
 
-    return Promise.all(
+    const decryptedAppConnections = await Promise.all(
       appConnections
         .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
         .map((appConnection) => decryptAppConnection(appConnection, kmsService))
     );
+
+    return decryptedAppConnections.map(addAppConnectionFederatedCredential);
   };
 
   const findAppConnectionById = async (
@@ -468,7 +474,7 @@ export const appConnectionServiceFactory = ({
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
-    return decryptAppConnection(appConnection, kmsService);
+    return addAppConnectionFederatedCredential(await decryptAppConnection(appConnection, kmsService));
   };
 
   const findAppConnectionByName = async (
@@ -519,7 +525,7 @@ export const appConnectionServiceFactory = ({
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with name ${connectionName} is not for App "${app}"` });
 
-    return decryptAppConnection(appConnection, kmsService);
+    return addAppConnectionFederatedCredential(await decryptAppConnection(appConnection, kmsService));
   };
 
   // In project scope, an org-managed GitHub App can only be referenced by actors who can also
@@ -659,7 +665,7 @@ export const appConnectionServiceFactory = ({
           projectType: project?.type
         } as TAppConnectionConfig,
         gatewayV2Service,
-        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, oidcIssuerService, actorId: actor.id }
       );
 
     // Validation only dials the target and reads back, so retrying it on another member is safe.
@@ -752,12 +758,12 @@ export const appConnectionServiceFactory = ({
         connection = await createConnection(validatedCredentials);
       }
 
-      return {
+      return addAppConnectionFederatedCredential({
         ...connection,
         credentialsHash: crypto.nativeCrypto.createHash("sha256").update(connection.encryptedCredentials).digest("hex"),
         credentials: validatedCredentials,
         configuration
-      } as TAppConnection;
+      } as TAppConnection);
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
@@ -946,6 +952,7 @@ export const appConnectionServiceFactory = ({
             app,
             orgId: actor.orgId,
             projectId: appConnection.projectId,
+            connection: { id: appConnection.id, name: appConnection.name },
             version: appConnection.version,
             credentials: credentialsToValidate,
             method,
@@ -953,7 +960,7 @@ export const appConnectionServiceFactory = ({
             projectType: updateProject?.type
           } as TAppConnectionConfig,
           gatewayV2Service,
-          { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+          { identityUaDAL, gitHubAppDAL, kmsService, keyStore, oidcIssuerService, actorId: actor.id }
         );
 
       // Validation only dials the target and reads back, so retrying it on another member is safe.
@@ -1136,7 +1143,7 @@ export const appConnectionServiceFactory = ({
         return connection;
       });
 
-      return await decryptAppConnection(updatedConnection, kmsService);
+      return addAppConnectionFederatedCredential(await decryptAppConnection(updatedConnection, kmsService));
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({ message: `An App Connection with the name "${params.name}" already exists` });
@@ -1207,7 +1214,7 @@ export const appConnectionServiceFactory = ({
     try {
       const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);
 
-      return await decryptAppConnection(deletedAppConnection, kmsService);
+      return addAppConnectionFederatedCredential(await decryptAppConnection(deletedAppConnection, kmsService));
     } catch (err) {
       if (
         err instanceof DatabaseError &&

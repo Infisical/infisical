@@ -12,6 +12,7 @@ import {
 import { useDiscardChangesGuard } from "@app/hooks";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AppConnectionForm } from "./AppConnectionForm";
@@ -40,6 +41,7 @@ export const AddAppConnectionModal = ({
   // When `app` is preset (inline create from another flow, or an OAuth reopen) we skip the provider
   // select screen and go straight to that app's form. Otherwise the user picks a provider first.
   const [selectedApp, setSelectedApp] = useState<AppConnection | null>(app ?? null);
+  const [createdConnection, setCreatedConnection] = useState<TAppConnection | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const discardActionRef = useRef<VoidFunction>(() => {});
 
@@ -50,6 +52,7 @@ export const AddAppConnectionModal = ({
   useEffect(() => {
     if (isOpen) {
       setSelectedApp(app ?? null);
+      setCreatedConnection(null);
       setIsDirty(false);
     }
   }, [isOpen, app]);
@@ -57,6 +60,7 @@ export const AddAppConnectionModal = ({
   const closeSheet = useCallback(() => {
     setIsDirty(false);
     setSelectedApp(null);
+    setCreatedConnection(null);
     onOpenChange(false);
   }, [onOpenChange]);
 
@@ -78,6 +82,15 @@ export const AddAppConnectionModal = ({
 
   const handleComplete = (appConnection: TAppConnection) => {
     onComplete?.(appConnection);
+
+    // Azure can only be told to trust a managed identity connection once it has an ID, so the sheet stays open on
+    // its credentials, which show the federated credential values and verify the setup on reconnect
+    if (appConnection.method === AzureKeyVaultConnectionMethod.ManagedIdentity) {
+      setIsDirty(false);
+      setCreatedConnection(appConnection);
+      return;
+    }
+
     closeSheet();
   };
 
@@ -90,7 +103,7 @@ export const AddAppConnectionModal = ({
   };
 
   // Only offer "back to select" when the user navigated here from the select screen (no preset app).
-  const showBack = !app && Boolean(selectedApp);
+  const showBack = !app && Boolean(selectedApp) && !createdConnection;
 
   return (
     <>
@@ -110,7 +123,7 @@ export const AddAppConnectionModal = ({
                   </button>
                 )}
                 <SheetTitle>
-                  <AppConnectionHeader app={selectedApp} isConnected={false} />
+                  <AppConnectionHeader app={selectedApp} isConnected={Boolean(createdConnection)} />
                 </SheetTitle>
               </>
             ) : (
@@ -122,14 +135,24 @@ export const AddAppConnectionModal = ({
           </SheetHeader>
           {selectedApp ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-              <AppConnectionForm
-                app={selectedApp}
-                projectId={projectId}
-                projectType={projectType}
-                onComplete={handleComplete}
-                onCancel={() => requestDiscardAction(closeSheet)}
-                onDirtyChange={setIsDirty}
-              />
+              {createdConnection ? (
+                <AppConnectionForm
+                  appConnection={createdConnection}
+                  isNewConnection
+                  onComplete={closeSheet}
+                  onCancel={() => requestDiscardAction(closeSheet)}
+                  onDirtyChange={setIsDirty}
+                />
+              ) : (
+                <AppConnectionForm
+                  app={selectedApp}
+                  projectId={projectId}
+                  projectType={projectType}
+                  onComplete={handleComplete}
+                  onCancel={() => requestDiscardAction(closeSheet)}
+                  onDirtyChange={setIsDirty}
+                />
+              )}
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">

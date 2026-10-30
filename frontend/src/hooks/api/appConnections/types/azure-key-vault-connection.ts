@@ -4,7 +4,8 @@ import { TRootAppConnection } from "@app/hooks/api/appConnections/types/root-con
 export enum AzureKeyVaultConnectionMethod {
   OAuth = "oauth",
   ClientSecret = "client-secret",
-  Certificate = "certificate"
+  Certificate = "certificate",
+  ManagedIdentity = "managed-identity"
 }
 
 export type TAzureKeyVaultConnection = TRootAppConnection & { app: AppConnection.AzureKeyVault } & (
@@ -30,6 +31,18 @@ export type TAzureKeyVaultConnection = TRootAppConnection & { app: AppConnection
           tenantId: string;
           certificateBody: string;
           privateKey: string;
+        };
+      }
+    | {
+        method: AzureKeyVaultConnectionMethod.ManagedIdentity;
+        credentials: {
+          clientId: string;
+          tenantId: string;
+          federatedCredential?: {
+            issuerUrl: string | null;
+            subjectIdentifier: string;
+            audience: string;
+          };
         };
       }
   );

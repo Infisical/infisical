@@ -1217,6 +1217,19 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP.
 - **Fresh keys are read on the primary.** Signing and the JWKS a rotation caches pass a `tx` to
   `getPublicKey` and `signWithKmsKey`, because a read replica may not have a key created moments earlier.
+- **Every signed token is audit logged** (`issue-oidc-token`, with the connection's ID and name) inside
+  `signToken`, so a new consumer gets it for free and never logs on its own.
+- **Connections sign for their own ID only.** `signToken` takes the connection, not a subject, and builds
+  `app-connection:<id>` itself, and the token is only ever sent to the provider's token endpoint, never
+  returned to a caller. Never let a caller choose the ID: a deleted connection's ID would
+  regain whatever the provider still trusts. So the connection is created first, without a token exchange,
+  and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
+  `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which
+  caches the provider's access token in the credentials like the secret-based methods do.
+- **The API returns the values the customer copies.** Connection responses carry
+  `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
+  `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.
+  The issuer is null when `SITE_URL` is unset, so reading a connection never fails on it.
 
 ### Enterprise (EE) Features
 

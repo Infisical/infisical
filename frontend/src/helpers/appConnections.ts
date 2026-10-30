@@ -884,6 +884,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureClientSecretsConnectionMethod.Certificate:
     case AzureKeyVaultConnectionMethod.Certificate:
       return { name: "Certificate", icon: FileBadgeIcon };
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+      return { name: "Managed Identity", icon: IdCardIcon };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
     case SpaceliftConnectionMethod.ApiKeySecret:
       return { name: "API Key & Secret", icon: KeyRoundIcon };
