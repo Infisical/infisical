@@ -18,6 +18,7 @@ const SESSION_END_TIMEOUT_MS = 3000;
 const MAX_MESSAGE_BYTES = 4 * 1024 * 1024;
 const MAX_STREAM_BYTES = 16 * 1024 * 1024;
 const MAX_DESCRIPTION_LENGTH = 1000;
+const MAX_PING_REPLIES = 20;
 
 type TMcpHttpMethod = AgentVaultHttpMethod.Get | AgentVaultHttpMethod.Post | AgentVaultHttpMethod.Delete;
 
@@ -65,21 +66,6 @@ type TJsonRpcMessage = { id?: unknown; method?: unknown; result?: unknown; error
 
 // A server request can reuse a client request's id (ids are unique per sender), so only a response answers one.
 const isResponseTo = (id: number) => (message: TJsonRpcMessage) => message.id === id && message.method === undefined;
-
-// MCP has the receiver answer a ping promptly, and a server may drop a client that doesn't. Not awaited, so the
-// pending response is still read while the answer is in flight.
-const answerPings = (
-  messages: TJsonRpcMessage[],
-  reply: (message: Record<string, unknown>) => Promise<TMcpHttpResponse>
-) => {
-  messages
-    .filter((message) => message.method === "ping" && message.id !== undefined)
-    .forEach((message) => {
-      void reply({ jsonrpc: "2.0", id: message.id, result: {} })
-        .then((response) => response.body.destroy())
-        .catch(() => {});
-    });
-};
 
 const toMessages = (parsed: unknown): TJsonRpcMessage[] =>
   (Array.isArray(parsed) ? parsed : [parsed]).filter(
@@ -231,6 +217,26 @@ export const listMcpServerTools = async ({
       });
     }
     return message.result;
+  };
+
+  // MCP has the receiver answer a ping promptly, and a server may drop a client that doesn't. Not awaited, so the
+  // pending response is still read while the answer is in flight. Capped per load, since one batch can hold any
+  // number of pings and each answer is a request.
+  let pingsAnswered = 0;
+  const answerPings = (
+    messages: TJsonRpcMessage[],
+    reply: (message: Record<string, unknown>) => Promise<TMcpHttpResponse>
+  ) => {
+    const pings = messages.filter((message) => message.method === "ping" && message.id !== undefined);
+    pingsAnswered += pings.length;
+    if (pingsAnswered > MAX_PING_REPLIES) {
+      throw new McpListError({ message: `'${server}' sent too many pings while listing its tools.` });
+    }
+    pings.forEach((message) => {
+      void reply({ jsonrpc: "2.0", id: message.id, result: {} })
+        .then((response) => response.body.destroy())
+        .catch(() => {});
+    });
   };
 
   const parseJson = (text: string) => {

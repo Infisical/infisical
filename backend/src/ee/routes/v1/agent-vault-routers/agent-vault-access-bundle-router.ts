@@ -11,6 +11,7 @@ import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { pick } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -49,6 +50,13 @@ const AccessBundleSchema = AgentVaultAccessBundlesSchema.pick({
   createdAt: true,
   updatedAt: true
 });
+
+// Copied into the audit metadata as they are. The other fields are derived or reduced to names, so they stay explicit.
+const SERVICE_RULE_AUDIT_FIELDS: ("allowedMethods" | "allowedPathPrefixes" | "allowedTools")[] = [
+  "allowedMethods",
+  "allowedPathPrefixes",
+  "allowedTools"
+];
 
 const variableKeysOf = (service: { variableReferences: { key: string }[] }) => [
   ...new Set(service.variableReferences.map((reference) => reference.key))
@@ -334,9 +342,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.issuer : undefined,
             oauthScopes:
               service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.grantedScopes : undefined,
-            allowedMethods: service.allowedMethods,
-            allowedPathPrefixes: service.allowedPathPrefixes,
-            allowedTools: service.allowedTools,
+            ...pick(service, SERVICE_RULE_AUDIT_FIELDS),
             memberProvidedFields:
               service.credential.type === AgentVaultCredentialType.Bearer ||
               service.credential.type === AgentVaultCredentialType.Basic
@@ -434,9 +440,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
                 ? service.credential.grantedScopes
                 : undefined,
-            allowedMethods: update.allowedMethods,
-            allowedPathPrefixes: update.allowedPathPrefixes,
-            allowedTools: update.allowedTools,
+            ...pick(update, SERVICE_RULE_AUDIT_FIELDS),
             // The setting after the update, present whenever the update touched the credential.
             memberProvidedFields:
               req.body.credential &&

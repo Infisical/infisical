@@ -167,6 +167,21 @@ describe("listing an MCP server's tools", () => {
     expect(pong!.headers).toMatchObject({ "Mcp-Session-Id": "session-1" });
   });
 
+  test("a server that sends a flood of pings fails the load before any of that batch is answered", async () => {
+    const pings = Array.from({ length: 21 }, (_, index) => ({ jsonrpc: "2.0", id: `ping-${index}`, method: "ping" }));
+    const { http, requests } = streamableServer(() => sse([pings]));
+    await expect(
+      listMcpServerTools({
+        serverUrl: SERVER_URL,
+        transport: AgentVaultMcpTransport.StreamableHttp,
+        headers: AUTH,
+        secrets: SECRETS,
+        http
+      })
+    ).rejects.toThrow("'mcp.example.com' sent too many pings while listing its tools.");
+    expect(requests.some((request) => request.body?.includes('"result"'))).toBe(false);
+  });
+
   test("a temporary server failure asks to try again and still ends the session", async () => {
     const { http, requests } = streamableServer(() => json(503, {}));
     await expect(
