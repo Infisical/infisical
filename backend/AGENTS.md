@@ -316,7 +316,10 @@ the only reader of the setting. Rules that must hold:
 - The proof only counts for the root org whose IdP produced it. A user in two orgs could otherwise tune one
   org's allowlist to accept a single factor and carry that verdict into the other, so the token stores the org
   id rather than a boolean and selection requires it to equal the selected root org.
-- The trust only applies while `enforceMfa` is on. A user's own account-level MFA is still prompted. The
+- The trust only applies while `enforceMfa` is on, and then it waives the whole challenge, including the user's
+  personal `isMfaEnabled`: passing an enforced challenge turns that flag on (`Mfa.tsx` calls `activateMfa`), so
+  honoring it would make the trust dead for anyone who ever logged in before it was enabled. Personal MFA in an
+  org that does not enforce it is still prompted. The
   setting can be stored before enforcement is turned on; `updateOrg` refuses any value but `none` only while
   the org has no active SAML or OIDC config.
 - `isMfaVerified` is never set from the IdP. It still means "proved a factor to Infisical", so step-up

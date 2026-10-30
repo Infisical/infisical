@@ -233,6 +233,18 @@ describe("Auth MFA V3", () => {
       expect(res.json().message).toMatch(/SAML or OIDC/);
     });
 
+    test("the signal also covers personal MFA when the org enforces it", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+      await db()(TableName.Users).where({ id: seedData1.id }).update({ isMfaEnabled: true });
+      try {
+        const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId), rootOrgId);
+
+        expect(payload.isMfaEnabled).toBe(false);
+      } finally {
+        await db()(TableName.Users).where({ id: seedData1.id }).update({ isMfaEnabled: false });
+      }
+    });
+
     test("a user's own MFA is still prompted when only the user, not the org, requires it", async () => {
       await setSsoMfaTrust(SsoMfaTrust.Signal);
       await db()(TableName.Organization).where({ id: rootOrgId }).update({ enforceMfa: false });

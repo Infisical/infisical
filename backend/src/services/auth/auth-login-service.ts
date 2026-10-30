@@ -1329,8 +1329,10 @@ export const authLoginServiceFactory = ({
     // The MFA policy belongs to the root org, so switching between it and its sub-orgs is not a change.
     const hasOrganizationChanged = actorRootOrgId ? actorRootOrgId !== rootOrg.id : false;
     const hasMfaMethodChanged = mfaMethod !== requiredMfaMethod;
-    // Checked on every selection so turning the trust off applies at the next switch. It only waives the
-    // org's enforcement, never MFA a user turned on for their own account.
+    // Checked on every selection so turning the trust off applies at the next switch. While the org enforces
+    // MFA it waives the whole challenge, personal flag included: passing an enforced challenge turns personal
+    // MFA on (the login MFA page activates it), so the two cannot be told apart. Personal MFA in an org that
+    // does not enforce it still prompts.
     const isMfaSatisfiedByIdp =
       Boolean(rootOrg.enforceMfa) &&
       isIdpMfaTrusted({
