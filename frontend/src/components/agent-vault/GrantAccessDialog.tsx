@@ -177,6 +177,9 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
         </Field>
 
         <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button
             variant="av"
             isDisabled={!selected.length}
@@ -184,9 +187,6 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
             onClick={async () => handleAdd()}
           >
             Grant Access
-          </Button>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
           </Button>
         </DialogFooter>
       </DialogContent>

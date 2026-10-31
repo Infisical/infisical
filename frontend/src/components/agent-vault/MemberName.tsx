@@ -1,11 +1,7 @@
 import { BotIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
-import {
-  TAgentVaultActor,
-  TAgentVaultMember,
-  TAgentVaultSessionActor
-} from "@app/hooks/api/agentVault/types";
+import { TAgentVaultActor, TAgentVaultSessionActor } from "@app/hooks/api/agentVault/types";
 
 export const MEMBER_KIND: Record<AgentVaultMemberType, { label: string; icon: typeof UserIcon }> = {
   [AgentVaultMemberType.User]: { label: "User", icon: UserIcon },
@@ -25,7 +21,7 @@ export const memberSubtitle = (actor: TAgentVaultActor | TAgentVaultSessionActor
   return actor.email || actor.username;
 };
 
-export const MemberName = ({ member }: { member: TAgentVaultMember }) => {
+export const MemberName = ({ member }: { member: TAgentVaultActor }) => {
   const { label, icon: Icon } = MEMBER_KIND[member.type];
 
   return (

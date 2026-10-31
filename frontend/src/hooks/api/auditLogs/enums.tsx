@@ -505,6 +505,8 @@ export enum EventType {
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
   AGENT_VAULT_SESSION_UPDATE = "agent-vault-session-update",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_DELEGATION_SET = "agent-vault-delegation-set",
+  AGENT_VAULT_DELEGATION_DELETE = "agent-vault-delegation-delete",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
   AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",

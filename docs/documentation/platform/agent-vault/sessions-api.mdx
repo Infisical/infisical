@@ -59,6 +59,10 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 - `ttl` accepts a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never`, and defaults to `7d` (see [Choose how long a session lasts](#choose-how-long-a-session-lasts) to pick a value)
 - `label` is optional and describes what the session is for, in up to 128 characters (see [Label a session](/documentation/platform/agent-vault/sessions#label-a-session))
 
+<Tip>
+  If your code runs agents for other people, as a chat bot does, the machine identity can create each session [on behalf of the person who asked](/documentation/platform/agent-vault/sessions-on-behalf-of-users), so the session uses that person's personal values and gets no more access than that person.
+</Tip>
+
 The response includes the session's ID, its label, the session token, and when the session expires:
 
 ```json

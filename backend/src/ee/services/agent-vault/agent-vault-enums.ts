@@ -70,6 +70,12 @@ export enum AgentVaultSessionScope {
   All = "all"
 }
 
+/** Which users a machine identity may start sessions on behalf of. */
+export enum AgentVaultDelegationScope {
+  AllMembers = "all-members",
+  Selected = "selected"
+}
+
 /** Which part of a service a variable reference sits in. A basic credential's password is its value. */
 export enum AgentVaultVariableReferenceField {
   CredentialValue = "credential-value",

@@ -3,8 +3,15 @@ import { describe, expect, test, vi } from "vitest";
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { ActorType } from "@app/services/auth/auth-type";
+import { lockMembershipsById } from "@app/services/membership/membership-dal";
 
 import { agentVaultMembershipServiceFactory } from "./agent-vault-membership-service";
+
+// The real lock queries the database. Here only when the removal takes it matters.
+vi.mock("@app/services/membership/membership-dal", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/services/membership/membership-dal")>()),
+  lockMembershipsById: vi.fn(async () => [])
+}));
 
 const ORG_ID = "org-1";
 const PROJECT_ID = "project-1";
@@ -212,9 +219,15 @@ describe("agentVaultMembership guards", () => {
       adminMembershipIds: ["mem-other"]
     });
 
+    vi.mocked(lockMembershipsById).mockClear();
     await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
 
     expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: ["mem-1"] } }, expect.anything());
+    // Locked in id order before anything is deleted, the order a delegation save takes them in.
+    expect(lockMembershipsById).toHaveBeenCalledWith(["mem-1"], expect.anything());
+    expect(vi.mocked(lockMembershipsById).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(deps.membershipDAL.delete).mock.invocationCallOrder[0]
+    );
     // Leaving Agent Vault loses every bundle, so the cleanup covers the whole project for this identity.
     expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
       { projectId: PROJECT_ID, accessBundleId: undefined, userIds: [], identityIds: [IDENTITY_ID] },

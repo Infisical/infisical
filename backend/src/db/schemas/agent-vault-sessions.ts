@@ -23,6 +23,9 @@ export const AgentVaultSessionsSchema = z.object({
   updatedAt: z.date(),
   encryptedSessionLogKey: zodBuffer.nullable().optional(),
   actorType: z.string().nullable().optional(),
+  onBehalfOfUserId: z.string().uuid().nullable().optional(),
+  onBehalfOfUserName: z.string().nullable().optional(),
+  onBehalfOfUserEmail: z.string().nullable().optional(),
   label: z.string().nullable().optional()
 });
 

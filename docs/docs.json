@@ -758,6 +758,7 @@
                     "pages": [
                       "documentation/platform/agent-vault/sessions-cli",
                       "documentation/platform/agent-vault/sessions-api",
+                      "documentation/platform/agent-vault/sessions-on-behalf-of-users",
                       "documentation/platform/agent-vault/session-logs"
                     ]
                   },
@@ -4610,6 +4611,18 @@
                       "api-reference/endpoints/agent-vault-members/add",
                       "api-reference/endpoints/agent-vault-members/update-role",
                       "api-reference/endpoints/agent-vault-members/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Delegations",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-delegations/list",
+                      "api-reference/endpoints/agent-vault-delegations/get",
+                      "api-reference/endpoints/agent-vault-delegations/set",
+                      "api-reference/endpoints/agent-vault-delegations/add-subjects",
+                      "api-reference/endpoints/agent-vault-delegations/remove-subjects",
+                      "api-reference/endpoints/agent-vault-delegations/list-available-subjects",
+                      "api-reference/endpoints/agent-vault-delegations/delete"
                     ]
                   },
                   {

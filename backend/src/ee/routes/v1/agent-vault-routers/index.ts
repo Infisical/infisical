@@ -1,5 +1,6 @@
 import { registerAgentVaultAccessBundleRouter } from "./agent-vault-access-bundle-router";
 import { registerAgentVaultAppConnectionRouter } from "./agent-vault-app-connection-router";
+import { registerAgentVaultDelegationRouter } from "./agent-vault-delegation-router";
 import { registerAgentVaultMembershipRouter } from "./agent-vault-membership-router";
 import { registerAgentVaultOauthRouter } from "./agent-vault-oauth-router";
 import { registerAgentVaultProjectRouter } from "./agent-vault-project-router";
@@ -29,6 +30,7 @@ export const registerAgentVaultRouters = async (server: FastifyZodProvider) => {
   await server.register(registerAgentVaultAppConnectionRouter, { prefix: "/app-connections/aws" });
   await server.register(registerAgentVaultProxyRouter, { prefix: "/proxies" });
   await server.register(registerAgentVaultMembershipRouter, { prefix: "/members" });
+  await server.register(registerAgentVaultDelegationRouter, { prefix: "/delegations" });
   await server.register(registerAgentVaultOauthRouter, { prefix: "/oauth" });
   // Separate prefix so the preValidation project hook still matches while these routes authenticate as the proxy.
   await server.register(registerAgentVaultProxyAgentRouter, { prefix: "/proxy" });
