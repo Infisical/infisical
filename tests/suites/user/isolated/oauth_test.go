@@ -10,6 +10,7 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +21,7 @@ func TestOAuth_InstanceSignup(t *testing.T) {
 	t.Run("should refuse signup by OAuth when signups are disabled, and create no account", func(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
-		configure(t, h, `{"allowSignUp": false}`, `{"allowSignUp": true}`)
+		configure(t, tn, `{"allowSignUp": false}`, `{"allowSignUp": true}`)
 		p := fixture.NewOAuthPerson(tn, true)
 
 		// Action
@@ -30,14 +31,14 @@ func TestOAuth_InstanceSignup(t *testing.T) {
 		require.Equalf(t, http.StatusBadRequest, res.Status, "body: %s", apierr.Body(res.Body))
 		require.Equal(t, "Sign up disabled", apierr.Message(res.Body))
 		require.Nil(t, refreshCookie(res))
-		configure(t, h, `{"allowSignUp": true}`, `{"allowSignUp": true}`)
+		configure(t, tn, `{"allowSignUp": true}`, `{"allowSignUp": true}`)
 		require.Equal(t, "true", fixture.OAuthLogin(t, tn, fixture.OAuthGitHub, p).Redirect(t).Query().Get("signup_completed"))
 	})
 
 	t.Run("should refuse signup by OAuth when the email domain is not allowed", func(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
-		configure(t, h, `{"allowedSignUpDomain": "allowed.test"}`, `{"allowedSignUpDomain": null}`)
+		configure(t, tn, `{"allowedSignUpDomain": "allowed.test"}`, `{"allowedSignUpDomain": null}`)
 		p := fixture.NewOAuthPerson(tn, true)
 		domain := strings.SplitN(p.Email, "@", 2)[1]
 
@@ -58,7 +59,7 @@ func TestOAuth_DisabledProvider(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		member := tn.NewUser(t)
-		disableGitHub(t, h)
+		disableGitHub(t, tn)
 		p := fixture.NewOAuthPerson(tn, true)
 		p.Email = member.Email
 
@@ -77,7 +78,7 @@ func TestOAuth_DisabledProvider(t *testing.T) {
 	t.Run("should let an org admin log in with a provider the admin disabled", func(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
-		disableGitHub(t, h)
+		disableGitHub(t, tn)
 		p := fixture.NewOAuthPerson(tn, true)
 		p.Email = tn.Admin.Email
 
@@ -95,9 +96,9 @@ func TestOAuth_DisabledProvider(t *testing.T) {
 //
 // A user writes it rather than h.InstanceAdmin: updateServerCfg reads the caller as a
 // user to check it keeps a login method, and answers 500 for the bootstrap identity.
-func configure(t *testing.T, h *harness.Stack, set, restore string) {
+func configure(t *testing.T, tn *harness.Tenant, set, restore string) {
 	t.Helper()
-	admin := serverAdminUser(t, h)
+	admin := serverAdminUser(t, tn)
 	write := func(ctx context.Context, body string) *api.UpdateAdminConfigResponse {
 		res, err := admin.API.UpdateAdminConfigWithBodyWithResponse(ctx, "application/json", bytes.NewReader([]byte(body)))
 		require.NoError(t, err)
@@ -112,19 +113,33 @@ func configure(t *testing.T, h *harness.Stack, set, restore string) {
 	})
 }
 
-// serverAdminUser is a user, outside the tenant under test, promoted to server admin.
-func serverAdminUser(t *testing.T, h *harness.Stack) *harness.Principal {
+// serverAdminUser is the instance's root user, from the tenant's address, with a session in its own organization.
+// Granting server admin to another user is an instance plan feature this instance does
+// not have, so the root is the only user who can write the configuration.
+func serverAdminUser(t *testing.T, tn *harness.Tenant) *harness.Principal {
 	t.Helper()
-	ops := h.NewTenant(t).Admin
-	res, err := h.InstanceAdmin(t).API.GrantAdminAccessToUserWithResponse(t.Context(), ops.ID.String())
+	login, err := tn.Anonymous(t).LoginV3WithResponse(t.Context(), api.LoginV3JSONRequestBody{
+		Email:    infisical.RootEmail,
+		Password: infisical.RootPassword,
+	})
 	require.NoError(t, err)
-	require.Equalf(t, http.StatusOK, res.StatusCode(), "granting server admin: %s", apierr.Body(res.Body))
-	return ops
+	require.Equalf(t, http.StatusOK, login.StatusCode(), "logging in as the root: %s", apierr.Body(login.Body))
+	unscoped := tn.Client(t, login.JSON200.AccessToken)
+	orgs, err := unscoped.ListOrganizationsWithResponse(t.Context())
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, orgs.StatusCode(), "listing the root's organizations: %s", apierr.Body(orgs.Body))
+	require.NotEmpty(t, orgs.JSON200.Organizations)
+	selected, err := unscoped.SelectOrganizationV3WithResponse(t.Context(),
+		api.SelectOrganizationV3JSONRequestBody{OrganizationId: orgs.JSON200.Organizations[0].Id.String()})
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, selected.StatusCode(), "selecting the root's organization: %s", apierr.Body(selected.Body))
+	return &harness.Principal{Kind: harness.User, Email: infisical.RootEmail, Token: selected.JSON200.Token,
+		API: tn.Client(t, selected.JSON200.Token)}
 }
 
-func disableGitHub(t *testing.T, h *harness.Stack) {
+func disableGitHub(t *testing.T, tn *harness.Tenant) {
 	t.Helper()
-	configure(t, h,
+	configure(t, tn,
 		`{"enabledLoginMethods": ["email", "google", "gitlab", "saml", "oidc", "ldap"]}`,
 		`{"enabledLoginMethods": ["email", "google", "github", "gitlab", "saml", "oidc", "ldap"]}`)
 }

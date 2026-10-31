@@ -116,7 +116,7 @@ func signIn(t *testing.T, tn *harness.Tenant, email string) session {
 	}
 }
 
-// orgReachable reports the status of a read every member may make.
+// orgStatus is the status of a read every member may make.
 func orgStatus(t *testing.T, c *api.ClientWithResponses, orgID string) int {
 	t.Helper()
 	res, err := c.GetOrganizationByIdWithResponse(t.Context(), orgID)
@@ -164,14 +164,6 @@ func postJSON(t *testing.T, v any) *bytes.Reader {
 	raw, err := json.Marshal(v)
 	require.NoError(t, err)
 	return bytes.NewReader(raw)
-}
-
-func errorName(body []byte) string {
-	var e struct {
-		Error string `json:"error"`
-	}
-	_ = json.Unmarshal(body, &e)
-	return e.Error
 }
 
 func updateOrg(t *testing.T, tn *harness.Tenant, body api.UpdateOrganizationJSONRequestBody) *api.UpdateOrganizationResponse {

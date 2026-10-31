@@ -256,10 +256,11 @@ func rootUser(t *testing.T, h *harness.Stack) *harness.Principal {
 	requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 	ip := sourceIP()
 	unscoped := tn.Client(t, res.JSON200.AccessToken, infisical.ForwardedFor(ip))
-	orgs, err := unscoped.ListUserOrganizationsWithResponse(t.Context())
+	orgs, err := h.InstanceAdmin(t).API.ListAdminOrganizationsWithResponse(t.Context(),
+		&api.ListAdminOrganizationsParams{SearchTerm: new(infisical.RootOrgName)})
 	require.NoError(t, err)
 	requireStatus(t, http.StatusOK, orgs.StatusCode(), orgs.Body)
-	require.NotEmpty(t, orgs.JSON200.Organizations)
+	require.Len(t, orgs.JSON200.Organizations, 1)
 	selected, err := unscoped.SelectOrganizationV3WithResponse(t.Context(),
 		api.SelectOrganizationV3JSONRequestBody{OrganizationId: orgs.JSON200.Organizations[0].Id.String()})
 	require.NoError(t, err)
