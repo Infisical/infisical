@@ -88,7 +88,11 @@ func ResolveImage(ctx context.Context, repoRoot string, log infra.Logger) (Image
 	}
 
 	iid := filepath.Join(dir, "iid")
-	dockerBuild := exec.CommandContext(ctx, "docker", "build",
+	// --provenance=false: with the containerd image store the image id covers the
+	// provenance attestation, which carries build timestamps, so an identical binary
+	// would get a new id on every build and each test binary would replace the
+	// running fakenet under the others.
+	dockerBuild := exec.CommandContext(ctx, "docker", "build", "--provenance=false",
 		"-f", filepath.Join(tests, "cmd", "fakenet", "Dockerfile"),
 		"-t", localTag, "--iidfile", iid, dir)
 	dockerBuild.Stdout = os.Stderr
