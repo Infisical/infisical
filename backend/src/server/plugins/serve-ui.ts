@@ -141,6 +141,13 @@ export const registerServeUI = async (
       }
     }
 
+    server.addHook("onSend", async (request, reply, payload) => {
+      if (request.url.startsWith("/locales/")) {
+        void reply.header("Cache-Control", "no-cache");
+      }
+      return payload;
+    });
+
     await server.register(staticServe, {
       root: frontendPath,
       wildcard: false,
