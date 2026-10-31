@@ -1,4 +1,5 @@
 import {
+  extractSamlAuthnContextClassRefs,
   getSamlAssertionReplayDetails,
   getSamlAssertionReplayWindow,
   SAML_ASSERTION_FALLBACK_WINDOW_MS
@@ -115,5 +116,33 @@ describe("getSamlAssertionReplayWindow", () => {
 
   test("refuses an assertion with neither NotOnOrAfter nor IssueInstant", () => {
     expect(getSamlAssertionReplayWindow({}, now)).toEqual({ accepted: false, reason: "missing-timestamps" });
+  });
+});
+
+describe("extractSamlAuthnContextClassRefs", () => {
+  const classRef = "urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken";
+
+  test("walks the xml2js shape node-saml produces for an assertion", () => {
+    const parsed = {
+      Assertion: {
+        $: { ID: "_abc" },
+        AuthnStatement: [
+          { $: { AuthnInstant: "2026-10-29T00:00:00Z" }, AuthnContext: [{ AuthnContextClassRef: [{ _: classRef }] }] }
+        ]
+      }
+    };
+    expect(extractSamlAuthnContextClassRefs(parsed)).toEqual([classRef]);
+  });
+
+  test("walks an assertion wrapped in a response", () => {
+    const parsed = {
+      Response: { Assertion: [{ AuthnStatement: [{ AuthnContext: [{ AuthnContextClassRef: [classRef] }] }] }] }
+    };
+    expect(extractSamlAuthnContextClassRefs(parsed)).toEqual([classRef]);
+  });
+
+  test("returns nothing for an assertion without an authentication statement", () => {
+    expect(extractSamlAuthnContextClassRefs({ Assertion: { Subject: [{}] } })).toEqual([]);
+    expect(extractSamlAuthnContextClassRefs(undefined)).toEqual([]);
   });
 });

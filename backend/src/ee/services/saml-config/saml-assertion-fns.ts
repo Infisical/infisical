@@ -1,6 +1,6 @@
 // node-saml parses with xml2js explicitArray and explicitCharkey: every child is an array, a text node is
 // { _: "value" }, XML attributes sit under "$", and the root is either the Assertion or a Response wrapping one.
-export const samlXmlChildren = (node: unknown, name: string): unknown[] => {
+const samlXmlChildren = (node: unknown, name: string): unknown[] => {
   if (!node || typeof node !== "object") return [];
   const value = (node as Record<string, unknown>)[name];
   if (value === undefined || value === null) return [];
@@ -13,10 +13,25 @@ const xmlAttribute = (node: unknown, name: string): string | undefined => {
   return typeof value === "string" ? value : undefined;
 };
 
-export const getSamlAssertionNode = (parsedAssertion: unknown): unknown =>
+const getSamlAssertionNode = (parsedAssertion: unknown): unknown =>
   samlXmlChildren(parsedAssertion, "Assertion")[0] ??
   samlXmlChildren(samlXmlChildren(parsedAssertion, "Response")[0], "Assertion")[0] ??
   parsedAssertion;
+
+const textOf = (node: unknown): string | undefined => {
+  if (typeof node === "string") return node;
+  if (node && typeof node === "object" && "_" in node && typeof (node as { _: unknown })._ === "string") {
+    return (node as { _: string })._;
+  }
+  return undefined;
+};
+
+export const extractSamlAuthnContextClassRefs = (parsedAssertion: unknown): string[] =>
+  samlXmlChildren(getSamlAssertionNode(parsedAssertion), "AuthnStatement")
+    .flatMap((statement) => samlXmlChildren(statement, "AuthnContext"))
+    .flatMap((context) => samlXmlChildren(context, "AuthnContextClassRef"))
+    .map(textOf)
+    .filter((value): value is string => Boolean(value));
 
 const parseTimestamp = (value: string | undefined) => {
   const timestamp = Date.parse(value ?? "");

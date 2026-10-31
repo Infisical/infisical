@@ -14,6 +14,7 @@ import { AuthenticateOptions } from "@node-saml/passport-saml/lib/types";
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
+import { extractSamlAuthnContextClassRefs } from "@app/ee/services/saml-config/saml-assertion-fns";
 import { SamlProviders, TGetSamlCfgDTO } from "@app/ee/services/saml-config/saml-config-types";
 import { ApiDocsTags, SamlSso } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
@@ -32,7 +33,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedSamlConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
 import { AuthMode, ProviderAuthResult, TProviderAuthCallback } from "@app/services/auth/auth-type";
-import { extractSamlAuthnContextClassRefs, matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
+import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SamlMfaSignalAttributeSchema = z.string().trim().min(1).max(512).nullable().optional();
@@ -209,8 +210,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             firstName,
             lastName: lastName as string,
             callbackPort: callbackPort || undefined,
-            authProvider: ssoConfig?.authProvider,
-            orgId: ssoConfig?.orgId,
+            authProvider: ssoConfig.authProvider,
+            orgId: ssoConfig.orgId,
             ip: requestContext.get("ip") || "",
             userAgent: requestContext.get("userAgent") || "",
             metadata: userMetadata,

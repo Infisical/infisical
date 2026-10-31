@@ -1,4 +1,4 @@
-import { extractSamlAuthnContextClassRefs, matchIdpMfaSignal } from "./idp-mfa-signal";
+import { matchIdpMfaSignal } from "./idp-mfa-signal";
 
 const MULTIPLEAUTHN = "http://schemas.microsoft.com/claims/multipleauthn";
 const AUTHN_METHODS_REFERENCES = "http://schemas.microsoft.com/claims/authnmethodsreferences";
@@ -161,33 +161,5 @@ describe("matchIdpMfaSignal received values", () => {
   test("bounds the received list like the matched one", () => {
     const amr = Array.from({ length: 60 }, (_, index) => `method-${index}`);
     expect(oidc({ amr }).received).toHaveLength(50);
-  });
-});
-
-describe("extractSamlAuthnContextClassRefs", () => {
-  const classRef = "urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken";
-
-  test("walks the xml2js shape node-saml produces for an assertion", () => {
-    const parsed = {
-      Assertion: {
-        $: { ID: "_abc" },
-        AuthnStatement: [
-          { $: { AuthnInstant: "2026-10-29T00:00:00Z" }, AuthnContext: [{ AuthnContextClassRef: [{ _: classRef }] }] }
-        ]
-      }
-    };
-    expect(extractSamlAuthnContextClassRefs(parsed)).toEqual([classRef]);
-  });
-
-  test("walks an assertion wrapped in a response", () => {
-    const parsed = {
-      Response: { Assertion: [{ AuthnStatement: [{ AuthnContext: [{ AuthnContextClassRef: [classRef] }] }] }] }
-    };
-    expect(extractSamlAuthnContextClassRefs(parsed)).toEqual([classRef]);
-  });
-
-  test("returns nothing for an assertion without an authentication statement", () => {
-    expect(extractSamlAuthnContextClassRefs({ Assertion: { Subject: [{}] } })).toEqual([]);
-    expect(extractSamlAuthnContextClassRefs(undefined)).toEqual([]);
   });
 });

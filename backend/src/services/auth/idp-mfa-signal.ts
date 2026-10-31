@@ -1,5 +1,3 @@
-import { getSamlAssertionNode, samlXmlChildren } from "@app/ee/services/saml-config/saml-assertion-fns";
-
 // "amr" is the OIDC Core claim name. SAML has no standard attribute name, so the Okta convention is the default.
 const DEFAULT_MFA_CLAIM_NAME = "amr";
 
@@ -113,20 +111,4 @@ export const matchIdpMfaSignal = (input: TIdpMfaSignalInput): TIdpMfaSignal => {
   );
 
   return { verified: evidence.length > 0, evidence, received };
-};
-
-const textOf = (node: unknown): string | undefined => {
-  if (typeof node === "string") return node;
-  if (node && typeof node === "object" && "_" in node && typeof (node as { _: unknown })._ === "string") {
-    return (node as { _: string })._;
-  }
-  return undefined;
-};
-
-export const extractSamlAuthnContextClassRefs = (parsedAssertion: unknown): string[] => {
-  return samlXmlChildren(getSamlAssertionNode(parsedAssertion), "AuthnStatement")
-    .flatMap((statement) => samlXmlChildren(statement, "AuthnContext"))
-    .flatMap((context) => samlXmlChildren(context, "AuthnContextClassRef"))
-    .map(textOf)
-    .filter((value): value is string => Boolean(value));
 };
