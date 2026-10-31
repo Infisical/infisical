@@ -135,8 +135,6 @@ How the agent proxy handles the lease:
 
 ## Example: API request
 
-You can also edit existing proxied services with the API. For example, to replace the credential rules of a proxied service for Telegram, call [the update endpoint for proxied services](/api-reference/endpoints/proxied-services/update):
-
 ```bash
 curl -X PATCH https://app.infisical.com/api/v1/proxied-services/<service-id> \
   -H "Authorization: Bearer $INFISICAL_TOKEN" \
