@@ -60,6 +60,9 @@ func (s service) Host() string { return s.host }
 // the same code) on profile calls. GCP certificate lookups are scoped by the service
 // account they name.
 func (s service) Scope(r *http.Request) (string, bool) {
+	if r.URL.Path == "/oauth2/v1/certs" {
+		return googleSignOnScope, true
+	}
 	if sa, ok := strings.CutPrefix(r.URL.Path, "/service_accounts/v1/metadata/x509/"); ok {
 		return sa, sa != ""
 	}
@@ -135,6 +138,9 @@ func (g *Grant) routes() *http.ServeMux {
 		mux.HandleFunc("POST /token", g.token(GoogleClientID, GoogleClientSecret))
 		mux.HandleFunc("GET /oauth2/v3/userinfo", g.googleUserinfo)
 		mux.HandleFunc("GET /service_accounts/v1/metadata/x509/{sa}", g.certs)
+		mux.HandleFunc("GET /oauth2/v1/certs", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, http.StatusOK, map[string]string{GoogleSignOnKeyID: googleSignOnCertPEM})
+		})
 	case providerGitHub:
 		mux.HandleFunc("POST /login/oauth/access_token", g.token(GitHubClientID, GitHubClientSecret))
 	case providerGitLab:
