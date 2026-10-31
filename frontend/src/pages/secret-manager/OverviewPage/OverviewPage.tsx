@@ -300,6 +300,10 @@ import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection"
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 import {
+  TABLE_BODY_ROW_FILTER_CLASS_NAME,
+  TABLE_BODY_ROW_FILTER_DIMMED_CLASS_NAME
+} from "./components/tableRowActionStyles";
+import {
   getTableRowActivityId,
   type TableRowActivityChangeHandler,
   type TableRowActivityId
@@ -4264,7 +4268,7 @@ const OverviewPageContent = () => {
                         visibleEnvs?.map(({ name, slug, id }, index) => {
                           return (
                             <TableHead
-                              className="relative min-w-[240px] border-r p-0 text-center whitespace-nowrap last:border-r-0"
+                              className="relative min-w-[240px] border-r p-0 text-left whitespace-nowrap last:border-r-0"
                               key={`secret-overview-${name}-${index + 1}`}
                             >
                               <DropdownMenu>
@@ -4277,7 +4281,7 @@ const OverviewPageContent = () => {
                                         ? `. Currently sorting by ${activeSecretSort?.label ?? "recency"}`
                                         : ""
                                     }`}
-                                    className="flex h-full w-full min-w-[240px] cursor-pointer items-center justify-center gap-x-2 px-3 text-sm font-medium text-muted hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                                    className="flex h-full w-full min-w-[240px] cursor-pointer items-center justify-between gap-x-2 px-3 text-sm font-medium text-muted hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                                   >
                                     <span
                                       className={twMerge(
@@ -4503,9 +4507,10 @@ const OverviewPageContent = () => {
                   </TableHeader>
                   <TableBody
                     className={twMerge(
-                      "transition-all duration-500 [&>tr>td>*:not([data-table-row-filter-contents])]:transition-[filter] [&>tr>td>*:not([data-table-row-filter-contents])]:duration-200 motion-reduce:[&>tr>td>*:not([data-table-row-filter-contents])]:transition-none [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-none [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-none [@media(hover:hover)]:[&>tr:hover>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:!filter-none",
+                      "transition-all duration-500",
+                      TABLE_BODY_ROW_FILTER_CLASS_NAME,
                       (activeTableRows.size > 0 || hasSelectedEntriesOnPage) &&
-                        "[&>tr>td>*:not([data-table-row-filter-contents])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:filter-[opacity(40%)]"
+                        TABLE_BODY_ROW_FILTER_DIMMED_CLASS_NAME
                     )}
                   >
                     {tableView !== "table" && (
