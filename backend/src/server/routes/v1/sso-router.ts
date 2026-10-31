@@ -560,6 +560,13 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/google",
     method: "GET",
+    schema: {
+      hide: true,
+      operationId: "googleLoginCallback",
+      querystring: z
+        .object({ code: z.string().optional(), state: z.string().optional(), error: z.string().optional() })
+        .passthrough()
+    },
     preValidation: [
       async (req, res) => {
         return (
@@ -659,6 +666,13 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/github",
     method: "GET",
+    schema: {
+      hide: true,
+      operationId: "githubLoginCallback",
+      querystring: z
+        .object({ code: z.string().optional(), state: z.string().optional(), error: z.string().optional() })
+        .passthrough()
+    },
     preValidation: [
       async (req: any, res: any) => {
         return (
@@ -731,6 +745,13 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/gitlab",
     method: "GET",
+    schema: {
+      hide: true,
+      operationId: "gitlabLoginCallback",
+      querystring: z
+        .object({ code: z.string().optional(), state: z.string().optional(), error: z.string().optional() })
+        .passthrough()
+    },
     preValidation: [
       async (req: any, res: any) => {
         return (
