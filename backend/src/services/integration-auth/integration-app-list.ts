@@ -638,7 +638,8 @@ const getAppsGitlab = async ({
     while (hasMorePages) {
       const params = new URLSearchParams({
         page: String(page),
-        per_page: String(perPage)
+        per_page: String(perPage),
+        include_subgroups: "true"
       });
 
       const { data } = await request.get<{ name: string; id: string }[]>(
