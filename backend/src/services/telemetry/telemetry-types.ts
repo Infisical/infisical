@@ -23,7 +23,6 @@ import {
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
 import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
-import { ProxiedServiceSubstitutionSurface } from "@app/ee/services/proxied-service/proxied-service-enums";
 import { TSettableAuthMethod } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
@@ -315,9 +314,6 @@ export enum PostHogEventTypes {
   BillingCheckoutSessionCreated = "Billing Checkout Session Created",
   BillingProductActivated = "Billing Product Activated",
   BillingPlanUpgraded = "Billing Plan Upgraded",
-
-  // Agent Proxy
-  ProxiedServiceCreated = "Proxied Service Created",
 
   // Agent Vault
   AgentVaultAccessBundleCreated = "Agent Vault Access Bundle Created",
@@ -2402,20 +2398,6 @@ export type TSecretRotationV2FailedEvent = {
   };
 };
 
-export type TProxiedServiceCreatedEvent = {
-  event: PostHogEventTypes.ProxiedServiceCreated;
-  properties: {
-    projectId: string;
-    headerRewriteCount: number;
-    substitutionCount: number;
-    substitutionSurfaces: ProxiedServiceSubstitutionSurface[];
-    hostPatternCount: number;
-    usesDynamicSecret: boolean;
-    usesBasicAuth: boolean;
-    isEnabled: boolean;
-  };
-};
-
 export type TBillingCheckoutSessionCreatedEvent = {
   event: PostHogEventTypes.BillingCheckoutSessionCreated;
   properties: {
@@ -2960,7 +2942,6 @@ export type TPostHogEvent = {
   | TSecretApprovalPolicyUpdatedEvent
   | TAccessApprovalPolicyUpdatedEvent
   | TSecretRotationV2FailedEvent
-  | TProxiedServiceCreatedEvent
   | TBillingCheckoutSessionCreatedEvent
   | TBillingProductActivatedEvent
   | TBillingPlanUpgradedEvent
