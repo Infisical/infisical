@@ -51,11 +51,13 @@ const createService = ({
     allowedAudience: ""
   },
   templateGatewayColumns = NO_GATEWAY,
-  identityAuthMethods = [] as string[]
+  identityAuthMethods = [] as string[],
+  storedAuthOverrides = {} as Record<string, unknown>
 }: {
   templateBlobFields?: TKubernetesTemplateFields;
   templateGatewayColumns?: typeof NO_GATEWAY;
   identityAuthMethods?: string[];
+  storedAuthOverrides?: Record<string, unknown>;
 } = {}) => {
   const templateRow = {
     id: TEMPLATE_ID,
@@ -88,7 +90,8 @@ const createService = ({
     verifyTlsCertificate: false,
     encryptedKubernetesCaCertificate: null,
     encryptedKubernetesTokenReviewerJwt: null,
-    ...NO_GATEWAY
+    ...NO_GATEWAY,
+    ...storedAuthOverrides
   };
 
   const identityKubernetesAuthDAL = {
@@ -310,5 +313,74 @@ describe("identityKubernetesAuthServiceFactory template lock", () => {
     } as unknown as Parameters<typeof service.updateKubernetesAuth>[0]);
 
     expect(identityAuthTemplateDAL.findByIdForShare).not.toHaveBeenCalled();
+  });
+});
+
+describe("identityKubernetesAuthServiceFactory stored reviewer JWT", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const withStoredJwt = (overrides: Record<string, unknown> = {}) =>
+    createService({
+      identityAuthMethods: [IdentityAuthMethod.KUBERNETES_AUTH],
+      storedAuthOverrides: { encryptedKubernetesTokenReviewerJwt: Buffer.from("stored-reviewer-jwt"), ...overrides }
+    });
+
+  it("reports a stored JWT without returning it", async () => {
+    const { service } = withStoredJwt();
+
+    const config = await service.getKubernetesAuth({
+      ...baseActor,
+      identityId: IDENTITY_ID
+    } as unknown as Parameters<typeof service.getKubernetesAuth>[0]);
+
+    expect(config.tokenReviewerJwt).toBe("");
+    expect(config.hasTokenReviewerJwt).toBe(true);
+  });
+
+  it("attaches without returning the JWT", async () => {
+    const { service } = createService();
+
+    const config = await attachWithTemplate(service);
+
+    expect(config.tokenReviewerJwt).toBe("");
+    expect(config.hasTokenReviewerJwt).toBe(true);
+  });
+
+  it.each([
+    { name: "a blank JWT keeps it", tokenReviewerJwt: "", hasTokenReviewerJwt: true },
+    { name: "a new JWT replaces it", tokenReviewerJwt: "new-reviewer-jwt", hasTokenReviewerJwt: true },
+    { name: "null removes it", tokenReviewerJwt: null, hasTokenReviewerJwt: false }
+  ])("updates without returning the JWT: $name", async ({ tokenReviewerJwt, hasTokenReviewerJwt }) => {
+    const { service } = withStoredJwt();
+
+    const config = await service.updateKubernetesAuth({
+      ...baseActor,
+      identityId: IDENTITY_ID,
+      tokenReviewerJwt
+    } as unknown as Parameters<typeof service.updateKubernetesAuth>[0]);
+
+    expect(config.tokenReviewerJwt).toBe("");
+    expect(config.hasTokenReviewerJwt).toBe(hasTokenReviewerJwt);
+  });
+
+  it.each([
+    { name: "a host change", stored: {}, change: { kubernetesHost: "https://1.1.1.1" } },
+    {
+      name: "a gateway cleared by the pool field",
+      stored: { gatewayV2Id: "gateway-id" },
+      change: { gatewayPoolId: null }
+    },
+    { name: "a pool cleared by the gateway field", stored: { gatewayPoolId: "pool-id" }, change: { gatewayId: null } }
+  ])("rejects $name that does not resupply the stored JWT", async ({ stored, change }) => {
+    const { service, identityKubernetesAuthDAL } = withStoredJwt(stored);
+
+    await expect(
+      service.updateKubernetesAuth({
+        ...baseActor,
+        identityId: IDENTITY_ID,
+        ...change
+      } as unknown as Parameters<typeof service.updateKubernetesAuth>[0])
+    ).rejects.toThrow("requires supplying tokenReviewerJwt");
+    expect(identityKubernetesAuthDAL.updateById).not.toHaveBeenCalled();
   });
 });
