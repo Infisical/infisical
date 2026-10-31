@@ -26,7 +26,7 @@ Infisical trusts a login only if the identity provider's signed response says MF
 - For OIDC, the ID token's `amr` claim includes `mfa`
 - For SAML, the assertion's authentication context is a two-factor class, such as `MobileTwoFactorContract` or `TimeSyncToken`, or the `amr` attribute statement includes `mfa`
 
-Without a signal, Infisical prompts as usual. The login event in the audit log shows the values the identity provider sent, so you can see why a login was or wasn't prompted.
+Without a signal, Infisical prompts as usual. The `user-login` event in the [audit log](/documentation/platform/audit-logs#event-types) shows the values the identity provider sent, so you can see why a login was or wasn't prompted.
 
 <Steps>
   <Step>
