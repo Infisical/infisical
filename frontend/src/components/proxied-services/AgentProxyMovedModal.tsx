@@ -29,7 +29,13 @@ type Props = {
 };
 
 export const AgentProxyMovedModal = ({ isOpen, onOpenChange }: Props) => {
-  const { enterAgentVault, isEntering, agentVaultAccessRequest } = useEnterAgentVault();
+  const {
+    enterAgentVault,
+    requestAgentVaultAccess,
+    needsAccessRequest,
+    isEntering,
+    agentVaultAccessRequest
+  } = useEnterAgentVault();
 
   return (
     <>
@@ -51,13 +57,23 @@ export const AgentProxyMovedModal = ({ isOpen, onOpenChange }: Props) => {
               className="w-full"
               isPending={isEntering}
               onClick={async () => {
+                if (needsAccessRequest) {
+                  if (await requestAgentVaultAccess()) onOpenChange(false);
+                  return;
+                }
                 // A toast explains a blocked entry, so the notice stays open behind it.
                 const outcome = await enterAgentVault();
                 if (outcome !== "blocked") onOpenChange(false);
               }}
             >
-              Go to Agent Vault
-              <ArrowRightIcon />
+              {needsAccessRequest ? (
+                "Request Access"
+              ) : (
+                <>
+                  Go to Agent Vault
+                  <ArrowRightIcon />
+                </>
+              )}
             </Button>
           }
         >

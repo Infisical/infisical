@@ -9,7 +9,7 @@ import {
   OrgPermissionProjectActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { useGetUserProjects } from "@app/hooks/api";
+import { useGetUserProjects, useRequestProjectAccess } from "@app/hooks/api";
 import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { Project } from "@app/hooks/api/projects/types";
@@ -25,6 +25,7 @@ export const useEnterAgentVault = () => {
   const { permission } = useOrgPermission();
   const { data: projects = [] } = useGetUserProjects();
   const orgAdminAccessProject = useOrgAdminAccessProject();
+  const requestProjectAccess = useRequestProjectAccess();
   const [isEntering, setIsEntering] = useState(false);
   const [requestAccessProjectId, setRequestAccessProjectId] = useState<string | null>(null);
 
@@ -36,6 +37,10 @@ export const useEnterAgentVault = () => {
     OrgPermissionProjectActions.RequestAccess,
     OrgPermissionSubjects.Project
   );
+  const isAgentVaultMember = Boolean(
+    currentOrg?.agentVaultProjectId && projects.some((p) => p.id === currentOrg.agentVaultProjectId)
+  );
+  const needsAccessRequest = !isAgentVaultMember && !isOrgAdmin && canRequestAccess;
 
   const navigateToAgentVault = () => {
     navigate({
@@ -44,17 +49,21 @@ export const useEnterAgentVault = () => {
     });
   };
 
-  const resolveOutcome = async (): Promise<TEnterAgentVaultOutcome> => {
-    let agentVaultProjectId: string;
+  const resolveAgentVaultProjectId = async () => {
     try {
-      agentVaultProjectId = currentOrg?.agentVaultProjectId ?? (await fetchAgentVaultProjectId());
+      return currentOrg?.agentVaultProjectId ?? (await fetchAgentVaultProjectId());
     } catch (err) {
       createNotification({
         type: "error",
         text: err instanceof Error ? err.message : "Failed to resolve the Agent Vault project."
       });
-      return "blocked";
+      return null;
     }
+  };
+
+  const resolveOutcome = async (): Promise<TEnterAgentVaultOutcome> => {
+    const agentVaultProjectId = await resolveAgentVaultProjectId();
+    if (!agentVaultProjectId) return "blocked";
 
     if (projects.some((p) => p.id === agentVaultProjectId)) {
       navigateToAgentVault();
@@ -96,6 +105,27 @@ export const useEnterAgentVault = () => {
     }
   };
 
+  // Sends the request with no note, for entry points that skip the request dialog.
+  const requestAgentVaultAccess = async () => {
+    setIsEntering(true);
+    try {
+      const agentVaultProjectId = await resolveAgentVaultProjectId();
+      if (!agentVaultProjectId) return false;
+      await requestProjectAccess.mutateAsync({ projectId: agentVaultProjectId });
+      createNotification({
+        type: "success",
+        title: "Access Request Sent",
+        text: "Admins will receive an email of your request"
+      });
+      return true;
+    } catch {
+      // The global mutation error handler already reports the failure.
+      return false;
+    } finally {
+      setIsEntering(false);
+    }
+  };
+
   const agentVaultAccessRequest = (
     <RequestProjectAccessModal
       isOpen={Boolean(requestAccessProjectId)}
@@ -111,5 +141,11 @@ export const useEnterAgentVault = () => {
     />
   );
 
-  return { enterAgentVault, isEntering, agentVaultAccessRequest };
+  return {
+    enterAgentVault,
+    requestAgentVaultAccess,
+    needsAccessRequest,
+    isEntering,
+    agentVaultAccessRequest
+  };
 };
