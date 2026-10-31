@@ -108,6 +108,11 @@ export type TDeleteProjectDTO = {
   actor: ActorType;
   actorId: string;
   actorOrgId: string | undefined;
+  hardDelete?: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TListDeletedProjectsDTO = {
+  type?: ProjectType;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListProjectsDTO = {

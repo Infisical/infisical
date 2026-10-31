@@ -34,6 +34,33 @@ import {
 } from "../secret-v2-bridge/secret-tree-hard-delete-fns";
 import { Filter, ProjectFilterType, SearchProjectSortBy } from "./project-types";
 
+type TDeletedByRow = {
+  deletedByUserId: string | null;
+  deletedByIdentityId: string | null;
+  deletedByUserEmail: string | null;
+  deletedByUserUsername: string | null;
+  deletedByUserFirstName: string | null;
+  deletedByUserLastName: string | null;
+  deletedByIdentityName: string | null;
+};
+
+const toDeletedBy = (row: TDeletedByRow) => {
+  if (row.deletedByUserId) {
+    return {
+      type: "user" as const,
+      id: row.deletedByUserId,
+      email: row.deletedByUserEmail,
+      username: row.deletedByUserUsername,
+      firstName: row.deletedByUserFirstName,
+      lastName: row.deletedByUserLastName
+    };
+  }
+  if (row.deletedByIdentityId) {
+    return { type: "identity" as const, id: row.deletedByIdentityId, name: row.deletedByIdentityName ?? "" };
+  }
+  return null;
+};
+
 export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 
 export const projectDALFactory = (db: TDbClient) => {
@@ -128,6 +155,38 @@ export const projectDALFactory = (db: TDbClient) => {
       return doc as TProjects | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Soft delete project" });
+    }
+  };
+
+  const expireSoftDeletedById = async (id: string, slug: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Project)
+        .where({ id })
+        .whereNotNull("deleteAfter")
+        .update({ deleteAfter: new Date(), slug })
+        .returning("*");
+      return doc as TProjects | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Expire soft-deleted project" });
+    }
+  };
+
+  const restoreById = async (id: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Project)
+        .where({ id })
+        .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", ">", new Date())
+        .update({
+          deleteAfter: null,
+          softDeletedAt: null,
+          deletedByActorType: null,
+          deletedByActorId: null
+        })
+        .returning("*");
+      return doc as TProjects | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Restore project" });
     }
   };
 
@@ -937,19 +996,12 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findProjectDeletedEnvironments = async (projectId: string, tx?: Knex) => {
     try {
-      type DeletedEnvironmentRow = {
+      type DeletedEnvironmentRow = TDeletedByRow & {
         id: string;
         slug: string;
         name: string;
         deleteAfter: Date;
         softDeletedAt: Date;
-        deletedByUserId: string | null;
-        deletedByIdentityId: string | null;
-        deletedByUserEmail: string | null;
-        deletedByUserUsername: string | null;
-        deletedByUserFirstName: string | null;
-        deletedByUserLastName: string | null;
-        deletedByIdentityName: string | null;
       };
 
       const rows = (await (tx || db.replicaNode())(TableName.Environment)
@@ -974,47 +1026,87 @@ export const projectDALFactory = (db: TDbClient) => {
         )
         .orderBy(`${TableName.Environment}.position`, "asc")) as DeletedEnvironmentRow[];
 
-      return rows.map((row) => {
-        let deletedBy:
-          | {
-              type: "user";
-              id: string;
-              email: string | null;
-              username: string | null;
-              firstName: string | null;
-              lastName: string | null;
-            }
-          | { type: "identity"; id: string; name: string }
-          | null = null;
-
-        if (row.deletedByUserId) {
-          deletedBy = {
-            type: "user",
-            id: row.deletedByUserId,
-            email: row.deletedByUserEmail,
-            username: row.deletedByUserUsername,
-            firstName: row.deletedByUserFirstName,
-            lastName: row.deletedByUserLastName
-          };
-        } else if (row.deletedByIdentityId) {
-          deletedBy = {
-            type: "identity",
-            id: row.deletedByIdentityId,
-            name: row.deletedByIdentityName ?? ""
-          };
-        }
-
-        return {
-          id: row.id,
-          slug: row.slug,
-          name: row.name,
-          deleteAfter: row.deleteAfter,
-          softDeletedAt: row.softDeletedAt,
-          deletedBy
-        };
-      });
+      return rows.map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        deleteAfter: row.deleteAfter,
+        softDeletedAt: row.softDeletedAt,
+        deletedBy: toDeletedBy(row)
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find project deleted environments" });
+    }
+  };
+
+  const findDeletedProjects = async (orgId: string, type?: ProjectType, tx?: Knex) => {
+    try {
+      type DeletedProjectRow = TDeletedByRow & {
+        id: string;
+        name: string;
+        type: string;
+        deleteAfter: Date;
+        softDeletedAt: Date;
+      };
+
+      const query = (tx || db.replicaNode())(TableName.Project)
+        .leftJoin(TableName.Users, `${TableName.Project}.deletedByActorId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Identity, `${TableName.Project}.deletedByActorId`, `${TableName.Identity}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.Project}.deleteAfter`, ">", new Date())
+        .whereNotNull(`${TableName.Project}.softDeletedAt`)
+        .select(
+          `${TableName.Project}.id`,
+          `${TableName.Project}.name`,
+          `${TableName.Project}.type`,
+          `${TableName.Project}.deleteAfter`,
+          `${TableName.Project}.softDeletedAt`,
+          db.ref("id").withSchema(TableName.Users).as("deletedByUserId"),
+          db.ref("id").withSchema(TableName.Identity).as("deletedByIdentityId"),
+          db.ref("email").withSchema(TableName.Users).as("deletedByUserEmail"),
+          db.ref("username").withSchema(TableName.Users).as("deletedByUserUsername"),
+          db.ref("firstName").withSchema(TableName.Users).as("deletedByUserFirstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("deletedByUserLastName"),
+          db.ref("name").withSchema(TableName.Identity).as("deletedByIdentityName")
+        )
+        .orderBy(`${TableName.Project}.deleteAfter`, "asc");
+      if (type) void query.where(`${TableName.Project}.type`, type);
+
+      const rows = (await query) as DeletedProjectRow[];
+
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        type: row.type,
+        deleteAfter: row.deleteAfter,
+        softDeletedAt: row.softDeletedAt,
+        deletedBy: toDeletedBy(row)
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find deleted projects" });
+    }
+  };
+
+  // Other live projects with a secret import pointing at one of this project's live environments.
+  const findProjectsImportingFrom = async (projectId: string, tx?: Knex) => {
+    try {
+      const sourceEnvIds = db
+        .replicaNode()(TableName.Environment)
+        .where({ projectId })
+        .whereNull("deleteAfter")
+        .select("id");
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+        .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereIn(`${TableName.SecretImport}.importEnv`, sourceEnvIds)
+        .whereNot(`${TableName.Project}.id`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .distinct(db.ref("id").withSchema(TableName.Project), db.ref("name").withSchema(TableName.Project));
+      return docs as { id: string; name: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find projects importing from project" });
     }
   };
 
@@ -1054,6 +1146,8 @@ export const projectDALFactory = (db: TDbClient) => {
     findByIdIncludingExpired,
     findIncludingExpired,
     softDeleteById,
+    expireSoftDeletedById,
+    restoreById,
     findExpiredForHardDelete,
     hardDeleteProjectSecretVersionsInBatches,
     hardDeleteProjectSecretReferencesInBatches,
@@ -1079,6 +1173,8 @@ export const projectDALFactory = (db: TDbClient) => {
     searchProjects,
     findProjectByEnvId,
     findProjectDeletedEnvironments,
+    findDeletedProjects,
+    findProjectsImportingFrom,
     countOfBillableOrgProjects
   };
 };

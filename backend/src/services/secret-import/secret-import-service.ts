@@ -404,7 +404,7 @@ export const secretImportServiceFactory = ({
           const pairIds = new Set([secImp.id, ...(reservedImport ? [reservedImport.id] : [])]);
 
           // Fetch all imports for this folder in position order.
-          const allImports = await secretImportDAL.find({ folderId: folder.id }, tx);
+          const allImports = await secretImportDAL.findIncludingExpired(folder.id, tx);
           const otherImports = allImports
             .filter((imp) => !pairIds.has(imp.id))
             .sort((a, b) => Number(a.position) - Number(b.position));

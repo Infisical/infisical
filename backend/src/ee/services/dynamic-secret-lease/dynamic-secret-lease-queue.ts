@@ -40,12 +40,18 @@ type TDynamicSecretLeaseQueueServiceFactoryDep = {
 
 export type TDynamicSecretLeaseQueueServiceFactory = {
   pruneDynamicSecret: (dynamicSecretCfgId: string) => Promise<void>;
-  setLeaseRevocation: (leaseId: string, dynamicSecretId: string, expiryAt: Date) => Promise<void>;
+  setLeaseRevocation: (leaseId: string, dynamicSecretId: string, expiryAt: Date, jobId?: string) => Promise<void>;
   unsetLeaseRevocation: (leaseId: string) => Promise<void>;
+  unsetRestoredLeaseRevocation: (leaseId: string) => Promise<void>;
   queueFailedRevocation: (leaseId: string, dynamicSecretId: string) => Promise<void>;
 };
 
 const MAX_REVOCATION_RETRY_COUNT = 3;
+
+// Restoring a project re-queues revocation of its expired leases under this id, so an older retry, which stops the
+// job under the lease id when it gives up, can't cancel it. Only renewal cancels it: pruning keeps it in case its own
+// revoke fails.
+export const getRestoredLeaseRevocationJobId = (leaseId: string) => `${leaseId}-restore`;
 
 export const dynamicSecretLeaseQueueServiceFactory = ({
   queueService,
@@ -74,13 +80,13 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
     );
   };
 
-  const setLeaseRevocation = async (leaseId: string, dynamicSecretId: string, expiryAt: Date) => {
+  const setLeaseRevocation = async (leaseId: string, dynamicSecretId: string, expiryAt: Date, jobId = leaseId) => {
     await queueService.queue(
       QueueName.DynamicSecretRevocation,
       QueueJobs.DynamicSecretRevocation,
       { leaseId, dynamicSecretId },
       {
-        jobId: leaseId,
+        jobId,
         delay: Number(expiryAt) - Date.now(),
         attempts: 3,
         backoff: {
@@ -93,6 +99,10 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
 
   const unsetLeaseRevocation = async (leaseId: string) => {
     await queueService.stopJobById(QueueName.DynamicSecretRevocation, leaseId);
+  };
+
+  const unsetRestoredLeaseRevocation = async (leaseId: string) => {
+    await queueService.stopJobById(QueueName.DynamicSecretRevocation, getRestoredLeaseRevocationJobId(leaseId));
   };
 
   const queueFailedRevocation = async (leaseId: string, dynamicSecretId: string) => {
@@ -443,6 +453,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
     pruneDynamicSecret,
     setLeaseRevocation,
     unsetLeaseRevocation,
+    unsetRestoredLeaseRevocation,
     queueFailedRevocation
   };
 };

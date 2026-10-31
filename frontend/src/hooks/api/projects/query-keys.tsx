@@ -1,6 +1,6 @@
 import type { CaStatus } from "../ca";
 import { WorkflowIntegrationPlatform } from "../workflowIntegrations/types";
-import { TListProjectIdentitiesDTO, TSearchProjectsDTO } from "./types";
+import { ProjectType, TListProjectIdentitiesDTO, TSearchProjectsDTO } from "./types";
 
 export const projectKeys = {
   allProjectQueries: () => ["projects"] as const,
@@ -17,6 +17,8 @@ export const projectKeys = {
     [...projectKeys.getAllUserProjects(), "with-sub-orgs", { orgId }] as const,
   getMyPendingProjectAccessRequests: () =>
     [...projectKeys.allProjectQueries(), "my-pending-access-requests"] as const,
+  getDeletedProjects: (type?: ProjectType) =>
+    [...projectKeys.allProjectQueries(), "deleted", { type }] as const,
   getProjectAuditLogs: (projectId: string) => [{ projectId }, "project-audit-logs"] as const,
   getProjectUsers: (
     projectId: string,

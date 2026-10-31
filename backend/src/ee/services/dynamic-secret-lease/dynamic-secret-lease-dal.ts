@@ -8,6 +8,10 @@ import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.DynamicSecretLease>, "findById"> {
   countLeasesForDynamicSecret: (dynamicSecretId: string, tx?: Knex) => Promise<number>;
   countLeasesForOrg: (orgId: string, tx?: Knex) => Promise<number>;
+  findExpiredByProjectId: (
+    projectId: string,
+    tx?: Knex
+  ) => Promise<{ id: string; dynamicSecretId: string; expireAt: Date }[]>;
   findById: (
     id: string,
     tx?: Knex
@@ -86,6 +90,29 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findExpiredByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.DynamicSecretLease)
+        .join(
+          TableName.DynamicSecret,
+          `${TableName.DynamicSecretLease}.dynamicSecretId`,
+          `${TableName.DynamicSecret}.id`
+        )
+        .join(TableName.SecretFolder, `${TableName.DynamicSecret}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .where(`${TableName.DynamicSecretLease}.expireAt`, "<=", new Date())
+        .select(
+          db.ref("id").withSchema(TableName.DynamicSecretLease),
+          db.ref("dynamicSecretId").withSchema(TableName.DynamicSecretLease),
+          db.ref("expireAt").withSchema(TableName.DynamicSecretLease)
+        );
+      return docs as { id: string; dynamicSecretId: string; expireAt: Date }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DynamicSecretLeaseFindExpiredByProjectId" });
+    }
+  };
+
   const findById = async (id: string, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.DynamicSecretLease)
@@ -137,5 +164,5 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findById, countLeasesForDynamicSecret, countLeasesForOrg };
+  return { ...orm, findById, countLeasesForDynamicSecret, countLeasesForOrg, findExpiredByProjectId };
 };
