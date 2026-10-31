@@ -694,3 +694,11 @@ output-options:
     - verifyMfaSession
     - verifyUserTotpConfig
     - enrollUserMfa
+    - loginWithLdapSso
+    - getLdapConfig
+    - createLdapConfig
+    - updateLdapConfig
+    - listLdapGroupMaps
+    - createLdapGroupMap
+    - deleteLdapGroupMap
+    - testLdapConnection
