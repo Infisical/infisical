@@ -3,7 +3,6 @@ import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   BanIcon,
-  BotIcon,
   CircleAlertIcon,
   FilterIcon,
   IdCardIcon,
@@ -13,12 +12,10 @@ import {
   PencilIcon,
   PlusIcon,
   SearchIcon,
-  TriangleAlertIcon,
-  UserIcon
+  TriangleAlertIcon
 } from "lucide-react";
 
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
-import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import {
   useAgentVaultSetupProgress,
   useOpenAgentVaultSetupStep
@@ -76,7 +73,6 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
-  AgentVaultMemberType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
   useGetAgentVaultSession,
@@ -101,6 +97,7 @@ import { SampleSessionSheet, SampleSessionTable } from "./components/SampleSessi
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
+import { SessionIdentity } from "./components/SessionIdentity";
 import { SessionLabel } from "./components/SessionLabel";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
@@ -455,23 +452,7 @@ export const AgentVaultSessionsPage = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex w-fit items-center gap-2">
-                              {session.actor.type === AgentVaultMemberType.MachineIdentity ? (
-                                <BotIcon className="size-4 text-muted" />
-                              ) : (
-                                <UserIcon className="size-4 text-muted" />
-                              )}
-                              {memberDisplayName(session.actor)}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {session.actor.type === AgentVaultMemberType.MachineIdentity
-                              ? `${session.actor.id ?? "Deleted"} (machine identity)`
-                              : memberSubtitle(session.actor)}
-                          </TooltipContent>
-                        </Tooltip>
+                        <SessionIdentity session={session} />
                       </TableCell>
                       <TableCell>
                         <div className="max-w-72">
@@ -499,7 +480,11 @@ export const AgentVaultSessionsPage = () => {
                         {format(new Date(session.createdAt), "MMM dd, yyyy hh:mm a")}
                       </TableCell>
                       <TableCell>
-                        <SessionExpiry expiresAt={session.expiresAt} />
+                        {session.status === AgentVaultSessionStatus.Revoked ? (
+                          <span className="text-muted">—</span>
+                        ) : (
+                          <SessionExpiry expiresAt={session.expiresAt} />
+                        )}
                       </TableCell>
                       <TableCell>
                         <SessionStatusBadge status={session.status} />
@@ -542,8 +527,8 @@ export const AgentVaultSessionsPage = () => {
                                 <LogsIcon />
                                 View Session Logs
                               </DropdownMenuItem>
-                              {/* The API refuses label edits once the session's owner is deleted */}
-                              {session.actor.id !== null && (
+                              {/* The API refuses label edits once the session's owner, or the user it acts on behalf of, is deleted */}
+                              {session.actor.id !== null && session.onBehalfOf?.id !== null && (
                                 <DropdownMenuItem onClick={() => setSessionToLabel(session)}>
                                   <PencilIcon />
                                   {session.label ? "Edit Label" : "Add Label"}

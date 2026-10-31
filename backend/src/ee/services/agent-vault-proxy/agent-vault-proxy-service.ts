@@ -33,6 +33,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import {
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
   TAgentVaultOauthServiceFactory
@@ -61,7 +62,11 @@ import {
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
+import {
+  findReachableAccessBundleIds,
+  intersectAccessBundleIds,
+  liveGroupIdsFrom
+} from "../agent-vault/agent-vault-permission";
 import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
 import {
@@ -105,6 +110,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "findForResolve">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
+  agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "identityCoversUser">;
   agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
@@ -118,6 +124,16 @@ type TAgentVaultProxyServiceFactoryDep = {
 };
 
 export type TAgentVaultProxyServiceFactory = ReturnType<typeof agentVaultProxyServiceFactory>;
+
+// A session on a user's behalf uses that user's personal values, never those of the identity that owns it. Called only
+// after the session is authorized, which refuses one whose owner or user is gone.
+const personalValuesOwner = (
+  session: Pick<TAgentVaultSessions, "userId" | "identityId" | "onBehalfOfUserId">
+): TAgentVaultOwner => {
+  if (session.onBehalfOfUserId) return { userId: session.onBehalfOfUserId };
+  if (session.userId) return { userId: session.userId };
+  return { identityId: session.identityId! };
+};
 
 // Opens each variable at most once per resolve. An id with no row stays as text, and the service that used it is
 // recorded so one log line can name every service affected.
@@ -152,6 +168,7 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultVariableDAL,
   agentVaultPersonalValueDAL,
   agentVaultSessionDAL,
+  agentVaultDelegationDAL,
   agentVaultSessionLogConfigDAL,
   membershipDAL,
   orgDAL,
@@ -566,10 +583,10 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   /**
-   * A member-provided field comes from what the session's actor saved for the service, expanded against their own
-   * personal variables only, after the admin's fields were expanded against the global ones: a value is never
-   * expanded twice. A service whose actor hasn't set every field the admin leaves to them goes out flagged and
-   * without a credential, so the proxy refuses it instead of sending a half-built one.
+   * A member-provided field comes from what the session's owner saved for the service, or, on a user's behalf, what
+   * that user saved, expanded against their own personal variables only, after the admin's fields were expanded
+   * against the global ones: a value is never expanded twice. If they haven't set every field the admin leaves to them,
+   * the service goes out flagged and without a credential, so the proxy refuses it instead of sending a half-built one.
    */
   const $applyPersonalValues = async ({
     sessionId,
@@ -665,8 +682,71 @@ export const agentVaultProxyServiceFactory = ({
     return resolved;
   };
 
+  // The user a session was started on behalf of has to still be in the org and in Agent Vault, and the delegation of the
+  // identity that owns the session has to still cover them. Read on every resolve, so taking any of them away ends the
+  // session on the proxy's next poll. Returns the bundles the user reaches (null for every bundle), since the session
+  // reaches only what both the identity and the user reach.
+  const $getOnBehalfOfUserReach = async ({
+    projectId,
+    orgId,
+    identityId,
+    userId
+  }: {
+    projectId: string;
+    orgId: string;
+    identityId: string | null;
+    userId: string | null;
+  }): Promise<string[] | null> => {
+    const refused = () =>
+      new UnauthorizedError({
+        message: "The machine identity that owns this session is no longer allowed to act on behalf of its user"
+      });
+    if (!identityId || !userId) throw refused();
+
+    const orgMembership = await orgDAL.findEffectiveOrgMembership({
+      actorType: ActorType.USER,
+      actorId: userId,
+      orgId,
+      status: OrgMembershipStatus.Accepted
+    });
+    if (!orgMembership?.isActive) throw refused();
+
+    let isAdmin: boolean;
+    let liveGroupIds: string[];
+    try {
+      const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
+        actor: ActorType.USER,
+        actorId: userId,
+        projectId,
+        actorAuthMethod: null,
+        actorOrgId: orgId,
+        actionProjectType: ActionProjectType.AgentVault
+      });
+      if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
+        throw refused();
+      }
+      isAdmin = hasRole(ProjectMembershipRole.Admin);
+      liveGroupIds = liveGroupIdsFrom(memberships);
+    } catch (error) {
+      if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") throw refused();
+      throw error;
+    }
+
+    if (!(await agentVaultDelegationDAL.identityCoversUser({ projectId, identityId, userId }))) {
+      throw refused();
+    }
+
+    if (isAdmin) return null;
+    return findReachableAccessBundleIds(membershipDAL, {
+      projectId,
+      actor: { type: ActorType.USER, id: userId },
+      groupIds: liveGroupIds
+    });
+  };
+
   // Shared by the proxy's session routes and the CLI's skills fetch, so none of them can reach a bundle resolve
-  // would not. Returns the bundles the session's owner reaches now, null for an admin.
+  // would not. Returns the bundles the session reaches now, null for every bundle: its owner's, and on a user's behalf
+  // only those the user reaches too.
   const $authorizeSessionOwner = async (session: TAgentVaultSessions, orgId: string) => {
     if (session.revokedAt) throw new UnauthorizedError({ message: "This session has been revoked" });
     if (session.expiresAt && session.expiresAt <= new Date()) {
@@ -678,6 +758,18 @@ export const agentVaultProxyServiceFactory = ({
     if (!session.userId && !session.identityId) {
       throw new UnauthorizedError({ message: "The identity this session belonged to has been deleted" });
     }
+    // The name marks an on-behalf-of session, even after deleting the user nulls its id.
+    const onBehalfOf =
+      session.onBehalfOfUserName != null
+        ? {
+            reach: await $getOnBehalfOfUserReach({
+              projectId: session.projectId,
+              orgId,
+              identityId: session.identityId ?? null,
+              userId: session.onBehalfOfUserId ?? null
+            })
+          }
+        : null;
 
     const actor = session.userId
       ? { type: ActorType.USER as const, id: session.userId }
@@ -724,13 +816,14 @@ export const agentVaultProxyServiceFactory = ({
       throw error;
     }
 
-    return isAdmin
+    const actorReach = isAdmin
       ? null
-      : findReachableAccessBundleIds(membershipDAL, {
+      : await findReachableAccessBundleIds(membershipDAL, {
           projectId: session.projectId,
           actor,
           groupIds: liveGroupIds
         });
+    return onBehalfOf ? intersectAccessBundleIds(actorReach, onBehalfOf.reach) : actorReach;
   };
 
   const $authorizeSession = async ({ proxyId, orgId, sessionToken }: TAuthorizeSessionDTO) => {
@@ -887,7 +980,7 @@ export const agentVaultProxyServiceFactory = ({
     const services = await $applyPersonalValues({
       sessionId: session.id,
       projectId: session.projectId,
-      owner: session.userId ? { userId: session.userId } : { identityId: session.identityId! },
+      owner: personalValuesOwner(session),
       rows,
       services: await $expandVariableReferences({
         sessionId: session.id,
@@ -1034,7 +1127,20 @@ export const agentVaultProxyServiceFactory = ({
         : { username: session.actorEmail ?? session.actorName, email: session.actorEmail ?? null };
     }
 
-    return { skills, session, ownerUser, orgId: project.orgId };
+    // The user a session acts for is named the same way, so the audit event can say whose session it was.
+    let onBehalfOfUser: { id: string | null; username: string; email: string | null } | null = null;
+    if (session.onBehalfOfUserName != null) {
+      const user = session.onBehalfOfUserId ? await userDAL.findById(session.onBehalfOfUserId) : undefined;
+      onBehalfOfUser = user
+        ? { id: user.id, username: user.username, email: user.email ?? null }
+        : {
+            id: null,
+            username: session.onBehalfOfUserEmail ?? session.onBehalfOfUserName,
+            email: session.onBehalfOfUserEmail ?? null
+          };
+    }
+
+    return { skills, session, ownerUser, onBehalfOfUser, orgId: project.orgId };
   };
 
   return {

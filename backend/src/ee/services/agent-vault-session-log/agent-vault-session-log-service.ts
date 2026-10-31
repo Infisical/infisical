@@ -26,7 +26,7 @@ import { ObjectStorageType } from "@app/services/object-storage/object-storage-t
 
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
-import { isOwnerlessSession, isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
+import { isOrphanedSession, isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
 import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionLogConfigDALFactory } from "./agent-vault-session-log-config-dal";
 import {
@@ -189,7 +189,7 @@ export const agentVaultSessionLogServiceFactory = ({
     const retirements = [
       session.revokedAt,
       session.expiresAt && session.expiresAt <= now ? session.expiresAt : null,
-      isOwnerlessSession(session) ? session.updatedAt : null
+      isOrphanedSession(session) ? session.updatedAt : null
     ]
       .filter((at): at is Date => Boolean(at))
       .map((at) => at.getTime());

@@ -6,6 +6,8 @@ export * from "./access-approval-requests-reviewers";
 export * from "./additional-privileges";
 export * from "./agent-vault-access-bundle-skills";
 export * from "./agent-vault-access-bundles";
+export * from "./agent-vault-delegation-subjects";
+export * from "./agent-vault-delegations";
 export * from "./agent-vault-personal-value-references";
 export * from "./agent-vault-personal-values";
 export * from "./agent-vault-proxies";

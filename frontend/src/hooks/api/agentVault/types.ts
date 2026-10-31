@@ -1,5 +1,6 @@
 import {
   AgentVaultCredentialType,
+  AgentVaultDelegationScope,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
   AgentVaultMemberType,
@@ -259,15 +260,62 @@ export type TAgentVaultSessionActor =
       id: string | null;
     });
 
+/** The user a machine identity started a session on behalf of. `id` is null once the user is deleted. */
+export type TAgentVaultSessionOnBehalfOf = Extract<
+  TAgentVaultSessionActor,
+  { type: AgentVaultMemberType.User }
+>;
+
 export type TAgentVaultSession = {
   id: string;
   label: string | null;
   actor: TAgentVaultSessionActor;
+  onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
   status: AgentVaultSessionStatus;
   expiresAt: string | null;
   revokedAt: string | null;
   createdAt: string;
   accessBundles: TAgentVaultSessionAccessBundle[];
+};
+
+export type TAgentVaultDelegation = {
+  machineIdentity: { id: string; name: string };
+  scope: AgentVaultDelegationScope;
+  users: (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "type"> & {
+    addedAt: string;
+  })[];
+  groups: (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>, "type"> & {
+    addedAt: string;
+  })[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TAgentVaultMissingAccessBundle = { id: string; name: string };
+
+// Reading or writing one delegation also says which bundles its machine identity can't act on: the ones each user and
+// group can use and the identity can't.
+export type TAgentVaultDelegationDetail = Omit<TAgentVaultDelegation, "users" | "groups"> & {
+  users: (TAgentVaultDelegation["users"][number] & {
+    missingAccessBundles: TAgentVaultMissingAccessBundle[];
+  })[];
+  groups: (TAgentVaultDelegation["groups"][number] & {
+    missingAccessBundles: TAgentVaultMissingAccessBundle[];
+  })[];
+  missingAccessBundles: TAgentVaultMissingAccessBundle[];
+};
+
+export type TChangeAgentVaultDelegationSubjectsDTO = {
+  machineIdentityId: string;
+  userIds?: string[];
+  groupIds?: string[];
+};
+
+export type TSetAgentVaultDelegationDTO = {
+  machineIdentityId: string;
+  scope: AgentVaultDelegationScope;
+  userIds?: string[];
+  groupIds?: string[];
 };
 
 export type TAgentVaultMintedSession = {

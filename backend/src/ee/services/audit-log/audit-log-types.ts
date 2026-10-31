@@ -845,6 +845,8 @@ export enum EventType {
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
   AGENT_VAULT_SESSION_UPDATE = "agent-vault-session-update",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_DELEGATION_SET = "agent-vault-delegation-set",
+  AGENT_VAULT_DELEGATION_DELETE = "agent-vault-delegation-delete",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
   AGENT_VAULT_PROXY_TOKEN_ROTATE = "agent-vault-proxy-token-rotate",
@@ -6830,6 +6832,10 @@ interface AgentVaultSkillsDeliveredEvent {
     accessBundleId: string;
     accessBundleName: string;
     skills: { skillId: string; skillName: string; version: number; sha256: string }[];
+    // Set when the machine identity in the actor started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 
@@ -6912,6 +6918,10 @@ interface AgentVaultSessionMintEvent {
     accessBundleId: string;
     accessBundleName: string;
     expiresAt: string | null;
+    // Set when a machine identity started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 
@@ -6923,6 +6933,10 @@ interface AgentVaultSessionUpdateEvent {
     previousLabel: string | null;
     sessionOwner: string;
     accessBundleName: string | null;
+    // Set when the machine identity in sessionOwner started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 
@@ -6933,6 +6947,32 @@ interface AgentVaultSessionRevokeEvent {
     label: string | null;
     sessionOwner: string;
     accessBundleName: string | null;
+    // Set when the machine identity in sessionOwner started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
+  };
+}
+
+interface AgentVaultDelegationSetEvent {
+  type: EventType.AGENT_VAULT_DELEGATION_SET;
+  metadata: {
+    machineIdentityId: string;
+    machineIdentityName: string;
+    scope: string;
+    users: { userId: string; userName: string }[];
+    groups: { groupId: string; groupName: string }[];
+  };
+}
+
+interface AgentVaultDelegationDeleteEvent {
+  type: EventType.AGENT_VAULT_DELEGATION_DELETE;
+  metadata: {
+    machineIdentityId: string;
+    machineIdentityName: string;
+    scope: string;
+    users: { userId: string; userName: string }[];
+    groups: { groupId: string; groupName: string }[];
   };
 }
 
@@ -8953,6 +8993,8 @@ export type Event =
   | AgentVaultAccessBundleMemberAddEvent
   | AgentVaultAccessBundleMemberRemoveEvent
   | AgentVaultSessionMintEvent
+  | AgentVaultDelegationSetEvent
+  | AgentVaultDelegationDeleteEvent
   | AgentVaultSessionUpdateEvent
   | AgentVaultSessionRevokeEvent
   | AgentVaultProxyRegisterEvent
