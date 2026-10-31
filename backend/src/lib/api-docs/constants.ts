@@ -3016,6 +3016,15 @@ export const AppConnections = {
   ROTATE_CREDENTIALS: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
   }),
+  CONVEX: {
+    LIST_DEPLOYMENTS: {
+      connectionId: "The ID of the Convex Connection to list deployments from.",
+      deploymentUrl: "The URL of the Convex deployment.",
+      name: "The name of the Convex deployment.",
+      deploymentType:
+        "The type of the Convex deployment, as reported by Convex. Falls back to custom when none is reported."
+    }
+  },
   KEEPER: {
     LIST_SHARED_FOLDERS: {
       connectionId: "The ID of the Keeper Connection to list shared folders from.",

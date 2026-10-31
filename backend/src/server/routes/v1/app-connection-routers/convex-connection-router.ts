@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AppConnections } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -30,14 +31,14 @@ export const registerConvexConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listConvexDeployments",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().uuid().describe(AppConnections.CONVEX.LIST_DEPLOYMENTS.connectionId)
       }),
       response: {
         200: z
           .object({
-            deploymentUrl: z.string(),
-            name: z.string(),
-            deploymentType: z.string()
+            deploymentUrl: z.string().describe(AppConnections.CONVEX.LIST_DEPLOYMENTS.deploymentUrl),
+            name: z.string().describe(AppConnections.CONVEX.LIST_DEPLOYMENTS.name),
+            deploymentType: z.string().describe(AppConnections.CONVEX.LIST_DEPLOYMENTS.deploymentType)
           })
           .array()
       }
