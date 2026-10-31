@@ -695,6 +695,22 @@ export const oidcConfigServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
     }
 
+    const isMfaSignalOnlyUpdate = [
+      allowedEmailDomains,
+      configurationType,
+      discoveryURL,
+      issuer,
+      authorizationEndpoint,
+      tokenEndpoint,
+      userinfoEndpoint,
+      jwksUri,
+      isActive,
+      clientId,
+      clientSecret,
+      manageGroupMemberships,
+      jwtSignatureAlgorithm
+    ].every((value) => value === undefined);
+
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
       configurationType,
@@ -705,7 +721,7 @@ export const oidcConfigServiceFactory = ({
       userinfoEndpoint,
       jwksUri,
       isActive,
-      lastUsed: null,
+      ...(!isMfaSignalOnlyUpdate && { lastUsed: null }),
       manageGroupMemberships,
       jwtSignatureAlgorithm,
       mfaClaimName,
@@ -721,7 +737,9 @@ export const oidcConfigServiceFactory = ({
     }
 
     const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
-    await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
+    if (!isMfaSignalOnlyUpdate) {
+      await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
+    }
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Update, orgId: org.id });
     return ssoConfig;
   };

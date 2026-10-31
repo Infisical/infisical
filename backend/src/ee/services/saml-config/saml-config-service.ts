@@ -422,10 +422,14 @@ export const samlConfigServiceFactory = ({
       });
     }
 
+    const isMfaSignalOnlyUpdate = [authProvider, isActive, entryPoint, issuer, idpCert, enableGroupSync].every(
+      (value) => value === undefined
+    );
+
     const updateQuery: TSamlConfigsUpdate = {
       authProvider,
       isActive,
-      lastUsed: null
+      ...(!isMfaSignalOnlyUpdate && { lastUsed: null })
     };
 
     if (enableGroupSync !== undefined) {
@@ -455,7 +459,9 @@ export const samlConfigServiceFactory = ({
     }
 
     const [ssoConfig] = await samlConfigDAL.update({ orgId }, updateQuery);
-    await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false });
+    if (!isMfaSignalOnlyUpdate) {
+      await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false });
+    }
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Update, orgId });
 

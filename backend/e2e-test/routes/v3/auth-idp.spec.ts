@@ -5,7 +5,7 @@ import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";
@@ -122,6 +122,86 @@ describe("Auth IdP Service-Level Tests", () => {
         sessionClaims(await login({ verified: true, evidence: ["mfa"], received: ["pwd", "mfa"] })).idpMfaOrgId
       ).toBe(TEST_ORG_ID);
       expect(sessionClaims(await login()).idpMfaOrgId).toBeUndefined();
+    });
+  });
+
+  describe("SSO config updates", () => {
+    const actor = {
+      actor: ActorType.USER,
+      actorId: seedData1.id,
+      actorOrgId: TEST_ORG_ID,
+      actorAuthMethod: AuthMethod.OKTA_SAML
+    };
+
+    const enforceSsoAndScim = () =>
+      getDb()(TableName.Organization).where({ id: TEST_ORG_ID }).update({ authEnforced: true, scimEnabled: true });
+
+    const orgFlags = () =>
+      getDb()(TableName.Organization).where({ id: TEST_ORG_ID }).first("authEnforced", "scimEnabled");
+
+    afterEach(async () => {
+      await getDb()(TableName.SamlConfig).where({ orgId: TEST_ORG_ID }).del();
+      await getDb()(TableName.OidcConfig).where({ orgId: TEST_ORG_ID }).del();
+      await getDb()(TableName.Organization)
+        .where({ id: TEST_ORG_ID })
+        .update({ authEnforced: false, scimEnabled: false });
+    });
+
+    test("editing only the SAML MFA signal keeps SSO enforcement, SCIM and the active config", async () => {
+      await getDb()(TableName.SamlConfig).insert({
+        orgId: TEST_ORG_ID,
+        authProvider: AuthMethod.OKTA_SAML,
+        isActive: true,
+        lastUsed: new Date(),
+        encryptedSamlEntryPoint: Buffer.from("entry-point"),
+        encryptedSamlIssuer: Buffer.from("issuer"),
+        encryptedSamlCertificate: Buffer.from("cert")
+      });
+      await enforceSsoAndScim();
+
+      await getServices().saml.updateSamlCfg({
+        ...actor,
+        orgId: TEST_ORG_ID,
+        mfaSignalAttribute: "session_amr",
+        mfaAuthnContexts: ["urn:example:mfa"]
+      });
+
+      expect(await orgFlags()).toEqual({ authEnforced: true, scimEnabled: true });
+      const cfg = await getDb()(TableName.SamlConfig).where({ orgId: TEST_ORG_ID }).first();
+      expect(cfg).toMatchObject({ isActive: true, mfaSignalAttribute: "session_amr" });
+      expect(cfg?.lastUsed).not.toBeNull();
+
+      await getServices().saml.updateSamlCfg({ ...actor, orgId: TEST_ORG_ID, isActive: false });
+
+      expect(await orgFlags()).toEqual({ authEnforced: false, scimEnabled: false });
+    });
+
+    test("editing only the OIDC MFA signal keeps SSO enforcement and SCIM", async () => {
+      await getDb()(TableName.OidcConfig).insert({
+        orgId: TEST_ORG_ID,
+        configurationType: "discoveryURL",
+        isActive: true,
+        lastUsed: new Date(),
+        encryptedOidcClientId: Buffer.from("client-id"),
+        encryptedOidcClientSecret: Buffer.from("client-secret")
+      });
+      await enforceSsoAndScim();
+
+      await getServices().oidc.updateOidcCfg({
+        ...actor,
+        organizationId: TEST_ORG_ID,
+        mfaClaimName: "acr",
+        mfaAmrValues: ["phr"]
+      });
+
+      expect(await orgFlags()).toEqual({ authEnforced: true, scimEnabled: true });
+      const cfg = await getDb()(TableName.OidcConfig).where({ orgId: TEST_ORG_ID }).first();
+      expect(cfg).toMatchObject({ isActive: true, mfaClaimName: "acr", mfaAmrValues: ["phr"] });
+      expect(cfg?.lastUsed).not.toBeNull();
+
+      await getServices().oidc.updateOidcCfg({ ...actor, organizationId: TEST_ORG_ID, allowedEmailDomains: "" });
+
+      expect(await orgFlags()).toEqual({ authEnforced: false, scimEnabled: false });
     });
   });
 

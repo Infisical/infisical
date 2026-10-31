@@ -220,6 +220,10 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   }: OIDCFormData) => {
     if (!currentOrg) return;
 
+    const mfaSignal = {
+      mfaClaimName,
+      mfaAmrValues: mfaAmrValues && mfaAmrValues.length > 0 ? mfaAmrValues : null
+    };
     const payload = {
       issuer,
       configurationType,
@@ -233,9 +237,22 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       isActive: true,
       organizationId: currentOrg.id,
       jwtSignatureAlgorithm,
-      mfaClaimName,
-      mfaAmrValues: mfaAmrValues && mfaAmrValues.length > 0 ? mfaAmrValues : null
+      ...mfaSignal
     };
+
+    const isConnectionUnchanged =
+      data?.isActive &&
+      !clientSecret &&
+      configurationType === data.configurationType &&
+      (issuer ?? "") === (data.issuer ?? "") &&
+      (discoveryURL ?? "") === (data.discoveryURL ?? "") &&
+      (authorizationEndpoint ?? "") === (data.authorizationEndpoint ?? "") &&
+      (jwksUri ?? "") === (data.jwksUri ?? "") &&
+      (tokenEndpoint ?? "") === (data.tokenEndpoint ?? "") &&
+      (userinfoEndpoint ?? "") === (data.userinfoEndpoint ?? "") &&
+      (allowedEmailDomains ?? "") === (data.allowedEmailDomains ?? "") &&
+      clientId === data.clientId &&
+      jwtSignatureAlgorithm === data.jwtSignatureAlgorithm;
 
     // Switching providers keeps the row but blanks its secret, so an existing row is not proof one is stored.
     if (!hasStoredSecret && !clientSecret) {
@@ -245,6 +262,8 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
 
     if (!data) {
       await createMutateAsync({ ...payload, clientSecret: clientSecret as string });
+    } else if (isConnectionUnchanged) {
+      await updateMutateAsync({ organizationId: currentOrg.id, ...mfaSignal });
     } else {
       await updateMutateAsync({ ...payload, ...(clientSecret ? { clientSecret } : {}) });
     }

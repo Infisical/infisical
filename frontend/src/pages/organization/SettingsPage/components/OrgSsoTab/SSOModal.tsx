@@ -248,6 +248,10 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
   }: AddSSOFormData) => {
     if (!currentOrg) return;
 
+    const mfaSignal = {
+      mfaSignalAttribute,
+      mfaAuthnContexts: mfaAuthnContexts.length > 0 ? mfaAuthnContexts : null
+    };
     const payload = {
       organizationId: currentOrg.id,
       authProvider,
@@ -255,12 +259,20 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
       entryPoint,
       issuer,
       cert,
-      mfaSignalAttribute,
-      mfaAuthnContexts: mfaAuthnContexts.length > 0 ? mfaAuthnContexts : null
+      ...mfaSignal
     };
+
+    const isConnectionUnchanged =
+      data?.isActive &&
+      authProvider === data.authProvider &&
+      entryPoint === data.entryPoint &&
+      issuer === data.issuer &&
+      cert === (data.cert ?? "");
 
     if (!data) {
       await createMutateAsync(payload);
+    } else if (isConnectionUnchanged) {
+      await updateMutateAsync({ organizationId: currentOrg.id, ...mfaSignal });
     } else {
       await updateMutateAsync(payload);
     }
