@@ -1,9 +1,8 @@
-import { useNavigate } from "@tanstack/react-router";
 import { ArrowRightIcon, CheckIcon, VaultIcon } from "lucide-react";
 
+import { useEnterAgentVault } from "@app/components/agent-vault/useEnterAgentVault";
 import { UpgradeDialogLayout } from "@app/components/license/UpgradeGate/UpgradeDialogLayout";
 import { Button, DocumentationLinkBadge } from "@app/components/v3";
-import { useOrganization } from "@app/context";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 const CHANGES = [
@@ -30,57 +29,58 @@ type Props = {
 };
 
 export const AgentProxyMovedModal = ({ isOpen, onOpenChange }: Props) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
-
-  if (!isOpen) return null;
+  const { enterAgentVault, isEntering, agentVaultAccessRequest } = useEnterAgentVault();
 
   return (
-    <UpgradeDialogLayout
-      scopeName="Agent Vault"
-      icon={
-        <div className="flex size-16 items-center justify-center rounded-md border border-product-av/30 bg-gradient-to-br from-product-av/20 to-product-av/5">
-          <VaultIcon className="size-8 text-product-av" />
-        </div>
-      }
-      title="Agent Proxy Is Moving to Agent Vault"
-      description="Set up agent access to external services in Agent Vault."
-      onOpenChange={onOpenChange}
-      footer={
-        <Button
-          data-upgrade-cta
-          variant="av"
-          className="w-full"
-          onClick={() => {
-            onOpenChange(false);
-            navigate({
-              to: "/organizations/$orgId/agent-vault",
-              params: { orgId: currentOrg.id }
-            });
-          }}
+    <>
+      {isOpen && (
+        <UpgradeDialogLayout
+          scopeName="Agent Vault"
+          icon={
+            <div className="flex size-16 items-center justify-center rounded-md border border-product-av/30 bg-gradient-to-br from-product-av/20 to-product-av/5">
+              <VaultIcon className="size-8 text-product-av" />
+            </div>
+          }
+          title="Agent Proxy Is Moving to Agent Vault"
+          description="Set up agent access to external services in Agent Vault."
+          onOpenChange={onOpenChange}
+          footer={
+            <Button
+              data-upgrade-cta
+              variant="av"
+              className="w-full"
+              isPending={isEntering}
+              onClick={async () => {
+                // A toast explains a blocked entry, so the notice stays open behind it.
+                const outcome = await enterAgentVault();
+                if (outcome !== "blocked") onOpenChange(false);
+              }}
+            >
+              Go to Agent Vault
+              <ArrowRightIcon />
+            </Button>
+          }
         >
-          Go to Agent Vault
-          <ArrowRightIcon />
-        </Button>
-      }
-    >
-      <section aria-label="What is changing" className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-medium">What Is Changing</h3>
-          <DocumentationLinkBadge href={AgentVaultDocsUrls.overview} />
-        </div>
-        <ul className="flex flex-col gap-4">
-          {CHANGES.map(({ title, description }) => (
-            <li key={title} className="flex items-start gap-3">
-              <CheckIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
-              <div className="text-sm">
-                <p className="font-medium">{title}</p>
-                <p className="mt-1 text-muted">{description}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </UpgradeDialogLayout>
+          <section aria-label="What is changing" className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-normal">What Is Changing</h3>
+              <DocumentationLinkBadge href={AgentVaultDocsUrls.overview} />
+            </div>
+            <ul className="flex flex-col gap-4">
+              {CHANGES.map(({ title, description }) => (
+                <li key={title} className="flex items-start gap-3">
+                  <CheckIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
+                  <div className="text-sm">
+                    <p className="font-medium">{title}</p>
+                    <p className="mt-1 text-muted">{description}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </UpgradeDialogLayout>
+      )}
+      {agentVaultAccessRequest}
+    </>
   );
 };

@@ -4,6 +4,10 @@ sidebarTitle: "Standalone proxy"
 description: "Run an Agent Proxy on a host of its own and launch agents behind it."
 ---
 
+import AgentProxyMovedCallout from "/snippets/agent-proxy-moved-callout.mdx";
+
+<AgentProxyMovedCallout />
+
 A standalone proxy runs as a long-lived process on a machine of its own, and your agents run elsewhere. Each agent is launched so that its outbound requests route through the proxy, which applies the real credentials on the way out and leaves everything else untouched. This is the setup for agents that run unattended, and for one proxy shared across a team.
 
 The agent is on a different host from the proxy, so it has no access at all to the process holding the real credentials. The two authenticate as **two separate machine identities with opposite access**: the proxy can read your secrets, the agent never can. That split is the security model, and it's why this page creates two identities rather than one.
