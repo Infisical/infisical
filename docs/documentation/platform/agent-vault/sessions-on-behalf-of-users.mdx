@@ -96,6 +96,10 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 
 Start the agent with the session token from the response, and revoke the session when the agent finishes, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes.
 
+<Tip>
+  You can also create the session with [the Python SDK](/sdks/languages/python#create-a-session-on-behalf-of-a-user).
+</Tip>
+
 ### Find the access bundles a session can use
 
 To choose an access bundle for the user, call [the endpoint that lists access bundles](/api-reference/endpoints/agent-vault-access-bundles/list) as the machine identity, and name the user in `onBehalfOfUserEmail` or `onBehalfOfUserId`:
