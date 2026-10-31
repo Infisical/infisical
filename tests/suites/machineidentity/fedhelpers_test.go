@@ -1,4 +1,4 @@
-package machineidentityfed_test
+package machineidentity_test
 
 import (
 	"bytes"

@@ -238,36 +238,45 @@ func setConfig(t *testing.T, admin *harness.Principal, body api.UpdateAdminConfi
 	})
 }
 
-// setLoginMethods writes the enabled login methods as a user server admin who can
-// also sign in with Google, so the lockout guard lets email be switched off. The
-// machine identity instance admin cannot do it (see TestAdminConfig_KnownIssues).
+// setLoginMethods writes the enabled login methods as the root user, after letting it
+// sign in with Google too so the lockout guard allows email to be switched off. The
+// machine identity instance admin cannot write them (see TestAdminConfig_KnownIssues),
+// and granting server admin to another user needs an instance license.
 func setLoginMethods(t *testing.T, h *harness.Stack, methods ...api.UpdateAdminConfigJSONBodyEnabledLoginMethods) {
 	t.Helper()
-	setConfig(t, userServerAdmin(t, h), api.UpdateAdminConfigJSONRequestBody{EnabledLoginMethods: &methods})
+	setConfig(t, rootUser(t, h), api.UpdateAdminConfigJSONRequestBody{EnabledLoginMethods: &methods})
 }
 
-// userServerAdmin is a user in its own tenant, granted server admin for the test.
-func userServerAdmin(t *testing.T, h *harness.Stack) *harness.Principal {
+func rootUser(t *testing.T, h *harness.Stack) *harness.Principal {
 	t.Helper()
-	admin := h.InstanceAdmin(t)
-	operator := h.NewTenant(t).Admin
-
-	methods, err := operator.API.UpdateUserAuthMethodsWithResponse(t.Context(), api.UpdateUserAuthMethodsJSONRequestBody{
-		AuthMethods: []api.UpdateUserAuthMethodsJSONBodyAuthMethods{
-			api.UpdateUserAuthMethodsJSONBodyAuthMethodsEmail,
-			api.UpdateUserAuthMethodsJSONBodyAuthMethodsGoogle,
-		},
-	})
+	tn := h.NewTenant(t)
+	res, err := tn.Anonymous(t, infisical.ForwardedFor(sourceIP())).LoginV3WithResponse(t.Context(),
+		api.LoginV3JSONRequestBody{Email: infisical.RootEmail, Password: infisical.RootPassword})
 	require.NoError(t, err)
-	requireStatus(t, http.StatusOK, methods.StatusCode(), methods.Body)
-
-	granted, err := admin.API.GrantAdminAccessToUserWithResponse(t.Context(), operator.ID.String())
+	requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+	ip := sourceIP()
+	unscoped := tn.Client(t, res.JSON200.AccessToken, infisical.ForwardedFor(ip))
+	orgs, err := unscoped.ListUserOrganizationsWithResponse(t.Context())
 	require.NoError(t, err)
-	requireStatus(t, http.StatusOK, granted.StatusCode(), granted.Body)
+	requireStatus(t, http.StatusOK, orgs.StatusCode(), orgs.Body)
+	require.NotEmpty(t, orgs.JSON200.Organizations)
+	selected, err := unscoped.SelectOrganizationV3WithResponse(t.Context(),
+		api.SelectOrganizationV3JSONRequestBody{OrganizationId: orgs.JSON200.Organizations[0].Id.String()})
+	require.NoError(t, err)
+	requireStatus(t, http.StatusOK, selected.StatusCode(), selected.Body)
+	root := &harness.Principal{Kind: harness.User, Email: infisical.RootEmail, Token: selected.JSON200.Token}
+	root.API = tn.Client(t, root.Token, infisical.ForwardedFor(ip))
+
+	setAuthMethods := func(ctx context.Context, methods ...api.UpdateUserAuthMethodsJSONBodyAuthMethods) {
+		res, err := root.API.UpdateUserAuthMethodsWithResponse(ctx, api.UpdateUserAuthMethodsJSONRequestBody{AuthMethods: methods})
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+	}
+	setAuthMethods(t.Context(), api.UpdateUserAuthMethodsJSONBodyAuthMethodsEmail, api.UpdateUserAuthMethodsJSONBodyAuthMethodsGoogle)
 	t.Cleanup(func() {
-		_, _ = admin.API.RevokeAdminAccessFromUserWithResponse(context.WithoutCancel(t.Context()), operator.ID.String())
+		setAuthMethods(context.WithoutCancel(t.Context()), api.UpdateUserAuthMethodsJSONBodyAuthMethodsEmail)
 	})
-	return operator
+	return root
 }
 
 func allLoginMethods() []api.UpdateAdminConfigJSONBodyEnabledLoginMethods {

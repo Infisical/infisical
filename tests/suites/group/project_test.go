@@ -120,6 +120,7 @@ func TestGroup_Project(t *testing.T) {
 		projectID := sub.NewProject(t)
 
 		// Action
+		//lint:ignore SA1019 the deprecated route is the only one that resolves a group by name
 		res, err := sub.Admin.API.AddGroupToProjectWithBodyWithResponse(t.Context(), projectID, rootGroup.Name,
 			"application/json", jsonBody(t, map[string]any{"role": "viewer"}))
 

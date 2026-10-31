@@ -92,9 +92,12 @@ func TestOAuth_DisabledProvider(t *testing.T) {
 
 // configure writes instance configuration as raw JSON, since the typed body cannot send
 // null, and restores it when the test ends.
+//
+// A user writes it rather than h.InstanceAdmin: updateServerCfg reads the caller as a
+// user to check it keeps a login method, and answers 500 for the bootstrap identity.
 func configure(t *testing.T, h *harness.Stack, set, restore string) {
 	t.Helper()
-	admin := h.InstanceAdmin(t)
+	admin := serverAdminUser(t, h)
 	write := func(ctx context.Context, body string) *api.UpdateAdminConfigResponse {
 		res, err := admin.API.UpdateAdminConfigWithBodyWithResponse(ctx, "application/json", bytes.NewReader([]byte(body)))
 		require.NoError(t, err)
@@ -107,6 +110,16 @@ func configure(t *testing.T, h *harness.Stack, set, restore string) {
 		res := write(context.Background(), restore)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "restoring the instance: %s", apierr.Body(res.Body))
 	})
+}
+
+// serverAdminUser is a user, outside the tenant under test, promoted to server admin.
+func serverAdminUser(t *testing.T, h *harness.Stack) *harness.Principal {
+	t.Helper()
+	ops := h.NewTenant(t).Admin
+	res, err := h.InstanceAdmin(t).API.GrantAdminAccessToUserWithResponse(t.Context(), ops.ID.String())
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, res.StatusCode(), "granting server admin: %s", apierr.Body(res.Body))
+	return ops
 }
 
 func disableGitHub(t *testing.T, h *harness.Stack) {

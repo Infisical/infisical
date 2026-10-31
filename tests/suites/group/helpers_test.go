@@ -217,4 +217,3 @@ func groupUsernames(t *testing.T, tn *harness.Tenant, groupID uuid.UUID) []strin
 	}
 	return out
 }
-
