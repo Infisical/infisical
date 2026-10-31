@@ -190,7 +190,7 @@ Specify a list of request headers that cross-origin requests to the Infisical AP
 
 An example value would be `CORS_ALLOWED_HEADERS=["Authorization","Content-Type"]`.
 
-If you don't set this variable, Infisical accepts any headers that a cross-origin request asks to include.
+Defaults to reflecting the headers specified in the request's `Access-Control-Request-Headers` header.
 
 </ParamField>
 
