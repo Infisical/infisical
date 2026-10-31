@@ -702,3 +702,25 @@ output-options:
     - createLdapGroupMap
     - deleteLdapGroupMap
     - testLdapConnection
+    - createExternalKms
+    - updateExternalKms
+    - deleteExternalKms
+    - getExternalKmsById
+    - listExternalKms
+    - getExternalKmsByName
+    - createAwsExternalKms
+    - getAwsExternalKms
+    - updateAwsExternalKms
+    - deleteAwsExternalKms
+    - createGithubOrgSyncConfig
+    - updateGithubOrgSyncConfig
+    - deleteGithubOrgSyncConfig
+    - getGithubOrgSyncConfig
+    - syncAllGithubOrgTeams
+    - listWorkflowIntegrations
+    - listSlackIntegrations
+    - getSlackInstallUrl
+    - getSlackIntegration
+    - deleteSlackIntegration
+    - listMicrosoftTeamsIntegrations
+    - getMicrosoftTeamsClientId
