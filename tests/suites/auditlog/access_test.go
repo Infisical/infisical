@@ -50,9 +50,9 @@ func TestAuditLog_Access(t *testing.T) {
 		orgWide := events(t, tn.Admin, filter{EventType: new("create-secret")})
 
 		// Assert
-		t.Logf("PROBE %d %s", byProject.StatusCode(), byProject.Body)
 		require.Error(t, byProjectErr)
-		require.Containsf(t, []int{http.StatusForbidden, http.StatusNotFound}, byProject.StatusCode(), "%s", apierr.Body(byProject.Body))
+		require.Equalf(t, http.StatusForbidden, byProject.StatusCode(), "%s", apierr.Body(byProject.Body))
+		require.Equal(t, "This project does not belong to your selected organization.", apierr.Message(byProject.Body))
 		require.NotContains(t, string(byProject.Body), "THEIRS")
 		require.Empty(t, orgWide)
 	})

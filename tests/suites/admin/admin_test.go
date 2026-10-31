@@ -3,8 +3,8 @@ package admin_test
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 

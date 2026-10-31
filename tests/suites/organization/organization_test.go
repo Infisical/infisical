@@ -66,7 +66,9 @@ func TestOrganization_Create(t *testing.T) {
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 		orgID := res.JSON200.Organization.Id
 		scoped := selectOrg(t, tn, creator, orgID)
-		t.Cleanup(func() { _, _ = scoped.DeleteOrganizationWithResponse(context.WithoutCancel(t.Context()), orgID.String()) })
+		t.Cleanup(func() {
+			_, _ = scoped.DeleteOrganizationWithResponse(context.WithoutCancel(t.Context()), orgID.String())
+		})
 		perms, err := scoped.GetOrganizationPermissionsWithResponse(t.Context())
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, perms.StatusCode(), perms.Body)
