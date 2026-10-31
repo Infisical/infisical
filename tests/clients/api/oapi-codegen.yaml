@@ -724,3 +724,6 @@ output-options:
     - deleteSlackIntegration
     - listMicrosoftTeamsIntegrations
     - getMicrosoftTeamsClientId
+    - createAzureKeyVaultAppConnection
+    - updateAzureKeyVaultAppConnection
+    - deleteAzureKeyVaultAppConnection

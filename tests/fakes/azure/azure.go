@@ -30,13 +30,20 @@ func (service) New(_ fakenet.Emitter) fakenet.Fake {
 	t := &Tenant{}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{tenant}/discovery/keys", t.keys)
+	mux.HandleFunc("POST /{tenant}/oauth2/v2.0/token", t.token)
 	t.mux = mux
 	return t
 }
 
-// Tenant is one Entra tenant's published signing keys.
+// Tenant is one Entra tenant's published signing keys, and the client assertions
+// presented to its token endpoint.
 type Tenant struct {
 	Keys []Key `json:"keys"`
+
+	// Assertions are the client assertions workload identity federation presented, in
+	// order. Entra would verify each against the federated credential's issuer; the
+	// test does that itself against the issuer's JWKS.
+	Assertions []Assertion `json:"assertions"`
 
 	mu  sync.Mutex
 	mux *http.ServeMux
@@ -50,7 +57,37 @@ type Key struct {
 	X5c []string `json:"x5c"`
 }
 
+// Assertion is one client credentials request with a federated client assertion.
+type Assertion struct {
+	ClientID  string `json:"clientId"`
+	Scope     string `json:"scope"`
+	Assertion string `json:"assertion"`
+}
+
 func (t *Tenant) ServeHTTP(w http.ResponseWriter, r *http.Request) { t.mux.ServeHTTP(w, r) }
+
+func (t *Tenant) token(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request"})
+		return
+	}
+	if r.PostForm.Get("client_assertion_type") != "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" || r.PostForm.Get("client_assertion") == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_client", "error_description": "AADSTS700016: no client assertion"})
+		return
+	}
+	t.mu.Lock()
+	t.Assertions = append(t.Assertions, Assertion{
+		ClientID: r.PostForm.Get("client_id"), Scope: r.PostForm.Get("scope"), Assertion: r.PostForm.Get("client_assertion"),
+	})
+	t.mu.Unlock()
+	writeJSON(w, http.StatusOK, map[string]any{"token_type": "Bearer", "expires_in": 3599, "access_token": "azure-" + r.PostForm.Get("client_id")})
+}
+
+func writeJSON(w http.ResponseWriter, status int, body any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
+}
 
 func (t *Tenant) keys(w http.ResponseWriter, _ *http.Request) {
 	t.mu.Lock()
@@ -67,8 +104,9 @@ func (t *Tenant) Snapshot() ([]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return json.Marshal(struct {
-		Keys []Key `json:"keys"`
-	}{t.Keys})
+		Keys       []Key       `json:"keys"`
+		Assertions []Assertion `json:"assertions"`
+	}{t.Keys, t.Assertions})
 }
 
 func (t *Tenant) Seed(raw []byte) error {

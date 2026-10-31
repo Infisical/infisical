@@ -6930,6 +6930,942 @@ func (e UpdateAwsAppConnection500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnectionJSONBody0Method.
+const (
+	CreateAzureKeyVaultAppConnectionJSONBody0MethodOauth CreateAzureKeyVaultAppConnectionJSONBody0Method = "oauth"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnectionJSONBody0Method enum.
+func (e CreateAzureKeyVaultAppConnectionJSONBody0Method) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnectionJSONBody0MethodOauth:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnectionJSONBody1Method.
+const (
+	CreateAzureKeyVaultAppConnectionJSONBody1MethodClientSecret CreateAzureKeyVaultAppConnectionJSONBody1Method = "client-secret"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnectionJSONBody1Method enum.
+func (e CreateAzureKeyVaultAppConnectionJSONBody1Method) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnectionJSONBody1MethodClientSecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnectionJSONBody2Method.
+const (
+	CreateAzureKeyVaultAppConnectionJSONBody2MethodCertificate CreateAzureKeyVaultAppConnectionJSONBody2Method = "certificate"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnectionJSONBody2Method enum.
+func (e CreateAzureKeyVaultAppConnectionJSONBody2Method) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnectionJSONBody2MethodCertificate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnectionJSONBody3Method.
+const (
+	CreateAzureKeyVaultAppConnectionJSONBody3MethodManagedIdentity CreateAzureKeyVaultAppConnectionJSONBody3Method = "managed-identity"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnectionJSONBody3Method enum.
+func (e CreateAzureKeyVaultAppConnectionJSONBody3Method) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnectionJSONBody3MethodManagedIdentity:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0AppAzureKeyVault CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0MethodOauth CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method = "oauth"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0MethodOauth:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1AppAzureKeyVault CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1MethodClientSecret CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method = "client-secret"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1MethodClientSecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed  CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "failed"
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed:
+		return true
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2AppAzureKeyVault CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2MethodCertificate CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method = "certificate"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2MethodCertificate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusFailed  CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus = "failed"
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusSuccess CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusFailed:
+		return true
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3AppAzureKeyVault CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3MethodManagedIdentity CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method = "managed-identity"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3MethodManagedIdentity:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus.
+const (
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusFailed  CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus = "failed"
+	CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusSuccess CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus enum.
+func (e CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusFailed:
+		return true
+	case CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode.
+const (
+	CreateAzureKeyVaultAppConnection400JSONResponseBodyStatusCodeN400 CreateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode enum.
+func (e CreateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode.
+const (
+	CreateAzureKeyVaultAppConnection401JSONResponseBodyStatusCodeN401 CreateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode enum.
+func (e CreateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode.
+const (
+	CreateAzureKeyVaultAppConnection403JSONResponseBodyStatusCodeN403 CreateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode enum.
+func (e CreateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode.
+const (
+	CreateAzureKeyVaultAppConnection404JSONResponseBodyStatusCodeN404 CreateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode enum.
+func (e CreateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode.
+const (
+	CreateAzureKeyVaultAppConnection422JSONResponseBodyStatusCodeN422 CreateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode enum.
+func (e CreateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode.
+const (
+	CreateAzureKeyVaultAppConnection500JSONResponseBodyStatusCodeN500 CreateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode enum.
+func (e CreateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureKeyVaultAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0AppAzureKeyVault DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0MethodOauth DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method = "oauth"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0MethodOauth:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1AppAzureKeyVault DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1MethodClientSecret DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method = "client-secret"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1MethodClientSecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed  DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "failed"
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed:
+		return true
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2AppAzureKeyVault DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2MethodCertificate DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method = "certificate"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2MethodCertificate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusFailed  DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus = "failed"
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusSuccess DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusFailed:
+		return true
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3AppAzureKeyVault DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3MethodManagedIdentity DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method = "managed-identity"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3MethodManagedIdentity:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus.
+const (
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusFailed  DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus = "failed"
+	DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusSuccess DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus enum.
+func (e DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusFailed:
+		return true
+	case DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection400JSONResponseBodyStatusCode.
+const (
+	DeleteAzureKeyVaultAppConnection400JSONResponseBodyStatusCodeN400 DeleteAzureKeyVaultAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection400JSONResponseBodyStatusCode enum.
+func (e DeleteAzureKeyVaultAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection401JSONResponseBodyStatusCode.
+const (
+	DeleteAzureKeyVaultAppConnection401JSONResponseBodyStatusCodeN401 DeleteAzureKeyVaultAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection401JSONResponseBodyStatusCode enum.
+func (e DeleteAzureKeyVaultAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection403JSONResponseBodyStatusCode.
+const (
+	DeleteAzureKeyVaultAppConnection403JSONResponseBodyStatusCodeN403 DeleteAzureKeyVaultAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection403JSONResponseBodyStatusCode enum.
+func (e DeleteAzureKeyVaultAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection404JSONResponseBodyStatusCode.
+const (
+	DeleteAzureKeyVaultAppConnection404JSONResponseBodyStatusCodeN404 DeleteAzureKeyVaultAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection404JSONResponseBodyStatusCode enum.
+func (e DeleteAzureKeyVaultAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection422JSONResponseBodyStatusCode.
+const (
+	DeleteAzureKeyVaultAppConnection422JSONResponseBodyStatusCodeN422 DeleteAzureKeyVaultAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection422JSONResponseBodyStatusCode enum.
+func (e DeleteAzureKeyVaultAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAzureKeyVaultAppConnection500JSONResponseBodyStatusCode.
+const (
+	DeleteAzureKeyVaultAppConnection500JSONResponseBodyStatusCodeN500 DeleteAzureKeyVaultAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteAzureKeyVaultAppConnection500JSONResponseBodyStatusCode enum.
+func (e DeleteAzureKeyVaultAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAzureKeyVaultAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	UpdateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentialsFalse UpdateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e UpdateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0AppAzureKeyVault UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0MethodOauth UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method = "oauth"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0MethodOauth:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1AppAzureKeyVault UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1MethodClientSecret UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method = "client-secret"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1MethodClientSecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed  UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "failed"
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusFailed:
+		return true
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2AppAzureKeyVault UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2MethodCertificate UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method = "certificate"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2MethodCertificate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusFailed  UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus = "failed"
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusSuccess UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusFailed:
+		return true
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3AppAzureKeyVault UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App = "azure-key-vault"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3AppAzureKeyVault:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3MethodManagedIdentity UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method = "managed-identity"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3MethodManagedIdentity:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus.
+const (
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusFailed  UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus = "failed"
+	UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusSuccess UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus enum.
+func (e UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusFailed:
+		return true
+	case UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode.
+const (
+	UpdateAzureKeyVaultAppConnection400JSONResponseBodyStatusCodeN400 UpdateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode enum.
+func (e UpdateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode.
+const (
+	UpdateAzureKeyVaultAppConnection401JSONResponseBodyStatusCodeN401 UpdateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode enum.
+func (e UpdateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode.
+const (
+	UpdateAzureKeyVaultAppConnection403JSONResponseBodyStatusCodeN403 UpdateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode enum.
+func (e UpdateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode.
+const (
+	UpdateAzureKeyVaultAppConnection404JSONResponseBodyStatusCodeN404 UpdateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode enum.
+func (e UpdateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode.
+const (
+	UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCodeN422 UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode enum.
+func (e UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode.
+const (
+	UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCodeN500 UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode enum.
+func (e UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListGitHubAppConnections200JSONResponseBodyAppConnections0App.
 const (
 	ListGitHubAppConnections200JSONResponseBodyAppConnections0AppGithub ListGitHubAppConnections200JSONResponseBodyAppConnections0App = "github"
@@ -89952,6 +90888,1021 @@ type UpdateAwsAppConnection422JSONResponseBodyStatusCode float32
 // UpdateAwsAppConnection500JSONResponseBodyStatusCode defines parameters for UpdateAwsAppConnection.
 type UpdateAwsAppConnection500JSONResponseBodyStatusCode float32
 
+// CreateAzureKeyVaultAppConnectionJSONBody defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnectionJSONBody struct {
+	// Description An optional description for the Azure Key Vault Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId The Gateway ID to use for this connection.
+	GatewayId *openapi_types.UUID `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId The Gateway Pool ID to use for this connection.
+	GatewayPoolId *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Whether or not automatic credential rotation is enabled for the Azure Key Vault Connection.
+	IsAutoRotationEnabled *bool `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for Azure Key Vault Connections.
+	IsPlatformManagedCredentials *CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The name of the Azure Key Vault Connection to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the Azure Key Vault Connection in.
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration for the Azure Key Vault Connection.
+	Rotation *struct {
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate (UTC timezone).
+			Hours int `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate (UTC timezone).
+			Minutes int `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval int `json:"rotationInterval"`
+	} `json:"rotation,omitempty"`
+	union json.RawMessage
+}
+
+// CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// CreateAzureKeyVaultAppConnectionJSONBody0 defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnectionJSONBody0 struct {
+	// Credentials The credentials used to connect with Azure Key Vault.
+	Credentials struct {
+		Code     string  `json:"code"`
+		TenantId *string `json:"tenantId,omitempty"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with Azure Key Vault.
+	Method CreateAzureKeyVaultAppConnectionJSONBody0Method `json:"method"`
+}
+
+// CreateAzureKeyVaultAppConnectionJSONBody0Method defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnectionJSONBody0Method string
+
+// CreateAzureKeyVaultAppConnectionJSONBody1 defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnectionJSONBody1 struct {
+	// Credentials The credentials used to connect with Azure Key Vault.
+	Credentials struct {
+		ClientId     openapi_types.UUID `json:"clientId"`
+		ClientSecret string             `json:"clientSecret"`
+
+		// ClientSecretKeyId The Key ID of the client secret in Azure AD. Required when enabling credential rotation so the original secret can be revoked.
+		ClientSecretKeyId *openapi_types.UUID `json:"clientSecretKeyId,omitempty"`
+		TenantId          openapi_types.UUID  `json:"tenantId"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with Azure Key Vault.
+	Method CreateAzureKeyVaultAppConnectionJSONBody1Method `json:"method"`
+}
+
+// CreateAzureKeyVaultAppConnectionJSONBody1Method defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnectionJSONBody1Method string
+
+// CreateAzureKeyVaultAppConnectionJSONBody2 defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnectionJSONBody2 struct {
+	// Credentials The credentials used to connect with Azure Key Vault.
+	Credentials struct {
+		CertificateBody string             `json:"certificateBody"`
+		ClientId        openapi_types.UUID `json:"clientId"`
+		PrivateKey      string             `json:"privateKey"`
+		TenantId        openapi_types.UUID `json:"tenantId"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with Azure Key Vault.
+	Method CreateAzureKeyVaultAppConnectionJSONBody2Method `json:"method"`
+}
+
+// CreateAzureKeyVaultAppConnectionJSONBody2Method defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnectionJSONBody2Method string
+
+// CreateAzureKeyVaultAppConnectionJSONBody3 defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnectionJSONBody3 struct {
+	// Credentials The credentials used to connect with Azure Key Vault.
+	Credentials struct {
+		ClientId openapi_types.UUID `json:"clientId"`
+		TenantId openapi_types.UUID `json:"tenantId"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with Azure Key Vault.
+	Method CreateAzureKeyVaultAppConnectionJSONBody3Method `json:"method"`
+}
+
+// CreateAzureKeyVaultAppConnectionJSONBody3Method defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnectionJSONBody3Method string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 struct {
+	App         CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		TenantId *string `json:"tenantId,omitempty"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 struct {
+	App         CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		ClientId string `json:"clientId"`
+		TenantId string `json:"tenantId"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 struct {
+	App         CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		ClientId string `json:"clientId"`
+		TenantId string `json:"tenantId"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 struct {
+	App         CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		ClientId string `json:"clientId"`
+
+		// FederatedCredential The values to add to a federated credential on the managed identity. The issuer is null when SITE_URL is not set.
+		FederatedCredential struct {
+			Audience          string  `json:"audience"`
+			IssuerUrl         *string `json:"issuerUrl"`
+			SubjectIdentifier string  `json:"subjectIdentifier"`
+		} `json:"federatedCredential"`
+		TenantId string `json:"tenantId"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus string
+
+// CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// CreateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode float32
+
+// CreateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode float32
+
+// CreateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode float32
+
+// CreateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode float32
+
+// CreateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode float32
+
+// CreateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode defines parameters for CreateAzureKeyVaultAppConnection.
+type CreateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode float32
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 struct {
+	App         DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		TenantId *string `json:"tenantId,omitempty"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 struct {
+	App         DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		ClientId string `json:"clientId"`
+		TenantId string `json:"tenantId"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 struct {
+	App         DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		ClientId string `json:"clientId"`
+		TenantId string `json:"tenantId"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 struct {
+	App         DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		ClientId string `json:"clientId"`
+
+		// FederatedCredential The values to add to a federated credential on the managed identity. The issuer is null when SITE_URL is not set.
+		FederatedCredential struct {
+			Audience          string  `json:"audience"`
+			IssuerUrl         *string `json:"issuerUrl"`
+			SubjectIdentifier string  `json:"subjectIdentifier"`
+		} `json:"federatedCredential"`
+		TenantId string `json:"tenantId"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus string
+
+// DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// DeleteAzureKeyVaultAppConnection400JSONResponseBodyStatusCode defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection400JSONResponseBodyStatusCode float32
+
+// DeleteAzureKeyVaultAppConnection401JSONResponseBodyStatusCode defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection401JSONResponseBodyStatusCode float32
+
+// DeleteAzureKeyVaultAppConnection403JSONResponseBodyStatusCode defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection403JSONResponseBodyStatusCode float32
+
+// DeleteAzureKeyVaultAppConnection404JSONResponseBodyStatusCode defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection404JSONResponseBodyStatusCode float32
+
+// DeleteAzureKeyVaultAppConnection422JSONResponseBodyStatusCode defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection422JSONResponseBodyStatusCode float32
+
+// DeleteAzureKeyVaultAppConnection500JSONResponseBodyStatusCode defines parameters for DeleteAzureKeyVaultAppConnection.
+type DeleteAzureKeyVaultAppConnection500JSONResponseBodyStatusCode float32
+
+// UpdateAzureKeyVaultAppConnectionJSONBody defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnectionJSONBody struct {
+	// Credentials The credentials used to connect with Azure Key Vault.
+	Credentials *UpdateAzureKeyVaultAppConnectionJSONBody_Credentials `json:"credentials,omitempty"`
+
+	// Description The updated description of the Azure Key Vault Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId The Gateway ID to use for this connection.
+	GatewayId *openapi_types.UUID `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId The Gateway Pool ID to use for this connection.
+	GatewayPoolId *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Whether or not automatic credential rotation is enabled for the Azure Key Vault Connection.
+	IsAutoRotationEnabled *bool `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for Azure Key Vault Connections.
+	IsPlatformManagedCredentials *UpdateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The updated name of the Azure Key Vault Connection. Must be slug-friendly.
+	Name *string `json:"name,omitempty"`
+
+	// Rotation The updated credential rotation configuration for the Azure Key Vault Connection.
+	Rotation *struct {
+		RotateAtUtc *struct {
+			// Hours The hour (0-23) at which to rotate (UTC timezone).
+			Hours int `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate (UTC timezone).
+			Minutes int `json:"minutes"`
+		} `json:"rotateAtUtc,omitempty"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval *int `json:"rotationInterval,omitempty"`
+	} `json:"rotation,omitempty"`
+}
+
+// UpdateAzureKeyVaultAppConnectionJSONBodyCredentials0 defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnectionJSONBodyCredentials0 struct {
+	Code     string  `json:"code"`
+	TenantId *string `json:"tenantId,omitempty"`
+}
+
+// UpdateAzureKeyVaultAppConnectionJSONBodyCredentials1 defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnectionJSONBodyCredentials1 struct {
+	ClientId     openapi_types.UUID `json:"clientId"`
+	ClientSecret string             `json:"clientSecret"`
+
+	// ClientSecretKeyId The Key ID of the client secret in Azure AD. Required when enabling credential rotation so the original secret can be revoked.
+	ClientSecretKeyId *openapi_types.UUID `json:"clientSecretKeyId,omitempty"`
+	TenantId          openapi_types.UUID  `json:"tenantId"`
+}
+
+// UpdateAzureKeyVaultAppConnectionJSONBodyCredentials2 defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnectionJSONBodyCredentials2 struct {
+	CertificateBody string             `json:"certificateBody"`
+	ClientId        openapi_types.UUID `json:"clientId"`
+	PrivateKey      string             `json:"privateKey"`
+	TenantId        openapi_types.UUID `json:"tenantId"`
+}
+
+// UpdateAzureKeyVaultAppConnectionJSONBodyCredentials3 defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnectionJSONBodyCredentials3 struct {
+	ClientId openapi_types.UUID `json:"clientId"`
+	TenantId openapi_types.UUID `json:"tenantId"`
+}
+
+// UpdateAzureKeyVaultAppConnectionJSONBody_Credentials defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnectionJSONBody_Credentials struct {
+	union json.RawMessage
+}
+
+// UpdateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 struct {
+	App         UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		TenantId *string `json:"tenantId,omitempty"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0App string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0Method string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 struct {
+	App         UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		ClientId string `json:"clientId"`
+		TenantId string `json:"tenantId"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1App string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1Method string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1RotationRotationStatus string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 struct {
+	App         UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		ClientId string `json:"clientId"`
+		TenantId string `json:"tenantId"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2App string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2Method string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2RotationRotationStatus string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 struct {
+	App         UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App `json:"app"`
+	CreatedAt   time.Time                                                            `json:"createdAt"`
+	Credentials struct {
+		ClientId string `json:"clientId"`
+
+		// FederatedCredential The values to add to a federated credential on the managed identity. The issuer is null when SITE_URL is not set.
+		FederatedCredential struct {
+			Audience          string  `json:"audience"`
+			IssuerUrl         *string `json:"issuerUrl"`
+			SubjectIdentifier string  `json:"subjectIdentifier"`
+		} `json:"federatedCredential"`
+		TenantId string `json:"tenantId"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                                 `json:"credentialsHash,omitempty"`
+	Description                  *string                                                                 `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                     `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                     `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                      `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                   `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                   `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method `json:"method"`
+	Name                         string                                                                  `json:"name"`
+	OrgId                        openapi_types.UUID                                                      `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3App string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3Method string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3RotationRotationStatus string
+
+// UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// UpdateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode float32
+
+// UpdateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode float32
+
+// UpdateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode float32
+
+// UpdateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode float32
+
+// UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode float32
+
+// UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode defines parameters for UpdateAzureKeyVaultAppConnection.
+type UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode float32
+
 // ListGitHubAppConnectionsParams defines parameters for ListGitHubAppConnections.
 type ListGitHubAppConnectionsParams struct {
 	// ProjectId The ID of the project to list GitHub Connections from.
@@ -124713,6 +126664,12 @@ type CreateAwsAppConnectionJSONRequestBody CreateAwsAppConnectionJSONBody
 // UpdateAwsAppConnectionJSONRequestBody defines body for UpdateAwsAppConnection for application/json ContentType.
 type UpdateAwsAppConnectionJSONRequestBody UpdateAwsAppConnectionJSONBody
 
+// CreateAzureKeyVaultAppConnectionJSONRequestBody defines body for CreateAzureKeyVaultAppConnection for application/json ContentType.
+type CreateAzureKeyVaultAppConnectionJSONRequestBody CreateAzureKeyVaultAppConnectionJSONBody
+
+// UpdateAzureKeyVaultAppConnectionJSONRequestBody defines body for UpdateAzureKeyVaultAppConnection for application/json ContentType.
+type UpdateAzureKeyVaultAppConnectionJSONRequestBody UpdateAzureKeyVaultAppConnectionJSONBody
+
 // CreateGitHubAppConnectionJSONRequestBody defines body for CreateGitHubAppConnection for application/json ContentType.
 type CreateGitHubAppConnectionJSONRequestBody CreateGitHubAppConnectionJSONBody
 
@@ -127721,6 +129678,706 @@ func (t UpdateAwsAppConnection200JSONResponseBody_AppConnection) MarshalJSON() (
 }
 
 func (t *UpdateAwsAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateAzureKeyVaultAppConnectionJSONBody0 returns the union data inside the CreateAzureKeyVaultAppConnectionJSONBody as a CreateAzureKeyVaultAppConnectionJSONBody0
+func (t CreateAzureKeyVaultAppConnectionJSONBody) AsCreateAzureKeyVaultAppConnectionJSONBody0() (CreateAzureKeyVaultAppConnectionJSONBody0, error) {
+	var body CreateAzureKeyVaultAppConnectionJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureKeyVaultAppConnectionJSONBody0 overwrites any union data inside the CreateAzureKeyVaultAppConnectionJSONBody as the provided CreateAzureKeyVaultAppConnectionJSONBody0
+func (t *CreateAzureKeyVaultAppConnectionJSONBody) FromCreateAzureKeyVaultAppConnectionJSONBody0(v CreateAzureKeyVaultAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureKeyVaultAppConnectionJSONBody0 performs a merge with any union data inside the CreateAzureKeyVaultAppConnectionJSONBody, using the provided CreateAzureKeyVaultAppConnectionJSONBody0
+func (t *CreateAzureKeyVaultAppConnectionJSONBody) MergeCreateAzureKeyVaultAppConnectionJSONBody0(v CreateAzureKeyVaultAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateAzureKeyVaultAppConnectionJSONBody1 returns the union data inside the CreateAzureKeyVaultAppConnectionJSONBody as a CreateAzureKeyVaultAppConnectionJSONBody1
+func (t CreateAzureKeyVaultAppConnectionJSONBody) AsCreateAzureKeyVaultAppConnectionJSONBody1() (CreateAzureKeyVaultAppConnectionJSONBody1, error) {
+	var body CreateAzureKeyVaultAppConnectionJSONBody1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureKeyVaultAppConnectionJSONBody1 overwrites any union data inside the CreateAzureKeyVaultAppConnectionJSONBody as the provided CreateAzureKeyVaultAppConnectionJSONBody1
+func (t *CreateAzureKeyVaultAppConnectionJSONBody) FromCreateAzureKeyVaultAppConnectionJSONBody1(v CreateAzureKeyVaultAppConnectionJSONBody1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureKeyVaultAppConnectionJSONBody1 performs a merge with any union data inside the CreateAzureKeyVaultAppConnectionJSONBody, using the provided CreateAzureKeyVaultAppConnectionJSONBody1
+func (t *CreateAzureKeyVaultAppConnectionJSONBody) MergeCreateAzureKeyVaultAppConnectionJSONBody1(v CreateAzureKeyVaultAppConnectionJSONBody1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateAzureKeyVaultAppConnectionJSONBody2 returns the union data inside the CreateAzureKeyVaultAppConnectionJSONBody as a CreateAzureKeyVaultAppConnectionJSONBody2
+func (t CreateAzureKeyVaultAppConnectionJSONBody) AsCreateAzureKeyVaultAppConnectionJSONBody2() (CreateAzureKeyVaultAppConnectionJSONBody2, error) {
+	var body CreateAzureKeyVaultAppConnectionJSONBody2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureKeyVaultAppConnectionJSONBody2 overwrites any union data inside the CreateAzureKeyVaultAppConnectionJSONBody as the provided CreateAzureKeyVaultAppConnectionJSONBody2
+func (t *CreateAzureKeyVaultAppConnectionJSONBody) FromCreateAzureKeyVaultAppConnectionJSONBody2(v CreateAzureKeyVaultAppConnectionJSONBody2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureKeyVaultAppConnectionJSONBody2 performs a merge with any union data inside the CreateAzureKeyVaultAppConnectionJSONBody, using the provided CreateAzureKeyVaultAppConnectionJSONBody2
+func (t *CreateAzureKeyVaultAppConnectionJSONBody) MergeCreateAzureKeyVaultAppConnectionJSONBody2(v CreateAzureKeyVaultAppConnectionJSONBody2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateAzureKeyVaultAppConnectionJSONBody3 returns the union data inside the CreateAzureKeyVaultAppConnectionJSONBody as a CreateAzureKeyVaultAppConnectionJSONBody3
+func (t CreateAzureKeyVaultAppConnectionJSONBody) AsCreateAzureKeyVaultAppConnectionJSONBody3() (CreateAzureKeyVaultAppConnectionJSONBody3, error) {
+	var body CreateAzureKeyVaultAppConnectionJSONBody3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureKeyVaultAppConnectionJSONBody3 overwrites any union data inside the CreateAzureKeyVaultAppConnectionJSONBody as the provided CreateAzureKeyVaultAppConnectionJSONBody3
+func (t *CreateAzureKeyVaultAppConnectionJSONBody) FromCreateAzureKeyVaultAppConnectionJSONBody3(v CreateAzureKeyVaultAppConnectionJSONBody3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureKeyVaultAppConnectionJSONBody3 performs a merge with any union data inside the CreateAzureKeyVaultAppConnectionJSONBody, using the provided CreateAzureKeyVaultAppConnectionJSONBody3
+func (t *CreateAzureKeyVaultAppConnectionJSONBody) MergeCreateAzureKeyVaultAppConnectionJSONBody3(v CreateAzureKeyVaultAppConnectionJSONBody3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateAzureKeyVaultAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Description != nil {
+		object["description"], err = json.Marshal(t.Description)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'description': %w", err)
+		}
+	}
+
+	if t.GatewayId != nil {
+		object["gatewayId"], err = json.Marshal(t.GatewayId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayId': %w", err)
+		}
+	}
+
+	if t.GatewayPoolId != nil {
+		object["gatewayPoolId"], err = json.Marshal(t.GatewayPoolId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if t.IsAutoRotationEnabled != nil {
+		object["isAutoRotationEnabled"], err = json.Marshal(t.IsAutoRotationEnabled)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if t.IsPlatformManagedCredentials != nil {
+		object["isPlatformManagedCredentials"], err = json.Marshal(t.IsPlatformManagedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	object["name"], err = json.Marshal(t.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'name': %w", err)
+	}
+
+	if t.ProjectId != nil {
+		object["projectId"], err = json.Marshal(t.ProjectId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'projectId': %w", err)
+		}
+	}
+
+	if t.Rotation != nil {
+		object["rotation"], err = json.Marshal(t.Rotation)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'rotation': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *CreateAzureKeyVaultAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["description"]; found {
+		err = json.Unmarshal(raw, &t.Description)
+		if err != nil {
+			return fmt.Errorf("error reading 'description': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayId': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayPoolId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayPoolId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if raw, found := object["isAutoRotationEnabled"]; found {
+		err = json.Unmarshal(raw, &t.IsAutoRotationEnabled)
+		if err != nil {
+			return fmt.Errorf("error reading 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if raw, found := object["isPlatformManagedCredentials"]; found {
+		err = json.Unmarshal(raw, &t.IsPlatformManagedCredentials)
+		if err != nil {
+			return fmt.Errorf("error reading 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	if raw, found := object["name"]; found {
+		err = json.Unmarshal(raw, &t.Name)
+		if err != nil {
+			return fmt.Errorf("error reading 'name': %w", err)
+		}
+	}
+
+	if raw, found := object["projectId"]; found {
+		err = json.Unmarshal(raw, &t.ProjectId)
+		if err != nil {
+			return fmt.Errorf("error reading 'projectId': %w", err)
+		}
+	}
+
+	if raw, found := object["rotation"]; found {
+		err = json.Unmarshal(raw, &t.Rotation)
+		if err != nil {
+			return fmt.Errorf("error reading 'rotation': %w", err)
+		}
+	}
+
+	return err
+}
+
+// AsCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+func (t CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0() (CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0(v CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0(v CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 returns the union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+func (t CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1() (CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1, error) {
+	var body CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 overwrites any union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+func (t *CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1(v CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 performs a merge with any union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+func (t *CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1(v CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 returns the union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+func (t CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2() (CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2, error) {
+	var body CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 overwrites any union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+func (t *CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2(v CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 performs a merge with any union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+func (t *CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2(v CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 returns the union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+func (t CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3() (CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3, error) {
+	var body CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 overwrites any union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+func (t *CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3(v CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 performs a merge with any union data inside the CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+func (t *CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeCreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3(v CreateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+func (t DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0() (DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+func (t *DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0(v DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+func (t *DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0(v DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 returns the union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+func (t DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1() (DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1, error) {
+	var body DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 overwrites any union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+func (t *DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1(v DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 performs a merge with any union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+func (t *DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1(v DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 returns the union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+func (t DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2() (DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2, error) {
+	var body DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 overwrites any union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+func (t *DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2(v DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 performs a merge with any union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+func (t *DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2(v DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 returns the union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+func (t DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3() (DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3, error) {
+	var body DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 overwrites any union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+func (t *DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3(v DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 performs a merge with any union data inside the DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+func (t *DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeDeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3(v DeleteAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateAzureKeyVaultAppConnectionJSONBodyCredentials0 returns the union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials as a UpdateAzureKeyVaultAppConnectionJSONBodyCredentials0
+func (t UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) AsUpdateAzureKeyVaultAppConnectionJSONBodyCredentials0() (UpdateAzureKeyVaultAppConnectionJSONBodyCredentials0, error) {
+	var body UpdateAzureKeyVaultAppConnectionJSONBodyCredentials0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAzureKeyVaultAppConnectionJSONBodyCredentials0 overwrites any union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials as the provided UpdateAzureKeyVaultAppConnectionJSONBodyCredentials0
+func (t *UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) FromUpdateAzureKeyVaultAppConnectionJSONBodyCredentials0(v UpdateAzureKeyVaultAppConnectionJSONBodyCredentials0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAzureKeyVaultAppConnectionJSONBodyCredentials0 performs a merge with any union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials, using the provided UpdateAzureKeyVaultAppConnectionJSONBodyCredentials0
+func (t *UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) MergeUpdateAzureKeyVaultAppConnectionJSONBodyCredentials0(v UpdateAzureKeyVaultAppConnectionJSONBodyCredentials0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateAzureKeyVaultAppConnectionJSONBodyCredentials1 returns the union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials as a UpdateAzureKeyVaultAppConnectionJSONBodyCredentials1
+func (t UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) AsUpdateAzureKeyVaultAppConnectionJSONBodyCredentials1() (UpdateAzureKeyVaultAppConnectionJSONBodyCredentials1, error) {
+	var body UpdateAzureKeyVaultAppConnectionJSONBodyCredentials1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAzureKeyVaultAppConnectionJSONBodyCredentials1 overwrites any union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials as the provided UpdateAzureKeyVaultAppConnectionJSONBodyCredentials1
+func (t *UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) FromUpdateAzureKeyVaultAppConnectionJSONBodyCredentials1(v UpdateAzureKeyVaultAppConnectionJSONBodyCredentials1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAzureKeyVaultAppConnectionJSONBodyCredentials1 performs a merge with any union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials, using the provided UpdateAzureKeyVaultAppConnectionJSONBodyCredentials1
+func (t *UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) MergeUpdateAzureKeyVaultAppConnectionJSONBodyCredentials1(v UpdateAzureKeyVaultAppConnectionJSONBodyCredentials1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateAzureKeyVaultAppConnectionJSONBodyCredentials2 returns the union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials as a UpdateAzureKeyVaultAppConnectionJSONBodyCredentials2
+func (t UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) AsUpdateAzureKeyVaultAppConnectionJSONBodyCredentials2() (UpdateAzureKeyVaultAppConnectionJSONBodyCredentials2, error) {
+	var body UpdateAzureKeyVaultAppConnectionJSONBodyCredentials2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAzureKeyVaultAppConnectionJSONBodyCredentials2 overwrites any union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials as the provided UpdateAzureKeyVaultAppConnectionJSONBodyCredentials2
+func (t *UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) FromUpdateAzureKeyVaultAppConnectionJSONBodyCredentials2(v UpdateAzureKeyVaultAppConnectionJSONBodyCredentials2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAzureKeyVaultAppConnectionJSONBodyCredentials2 performs a merge with any union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials, using the provided UpdateAzureKeyVaultAppConnectionJSONBodyCredentials2
+func (t *UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) MergeUpdateAzureKeyVaultAppConnectionJSONBodyCredentials2(v UpdateAzureKeyVaultAppConnectionJSONBodyCredentials2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateAzureKeyVaultAppConnectionJSONBodyCredentials3 returns the union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials as a UpdateAzureKeyVaultAppConnectionJSONBodyCredentials3
+func (t UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) AsUpdateAzureKeyVaultAppConnectionJSONBodyCredentials3() (UpdateAzureKeyVaultAppConnectionJSONBodyCredentials3, error) {
+	var body UpdateAzureKeyVaultAppConnectionJSONBodyCredentials3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAzureKeyVaultAppConnectionJSONBodyCredentials3 overwrites any union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials as the provided UpdateAzureKeyVaultAppConnectionJSONBodyCredentials3
+func (t *UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) FromUpdateAzureKeyVaultAppConnectionJSONBodyCredentials3(v UpdateAzureKeyVaultAppConnectionJSONBodyCredentials3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAzureKeyVaultAppConnectionJSONBodyCredentials3 performs a merge with any union data inside the UpdateAzureKeyVaultAppConnectionJSONBody_Credentials, using the provided UpdateAzureKeyVaultAppConnectionJSONBodyCredentials3
+func (t *UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) MergeUpdateAzureKeyVaultAppConnectionJSONBodyCredentials3(v UpdateAzureKeyVaultAppConnectionJSONBodyCredentials3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateAzureKeyVaultAppConnectionJSONBody_Credentials) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+func (t UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0() (UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+func (t *UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0(v UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0
+func (t *UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0(v UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 returns the union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+func (t UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1() (UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1, error) {
+	var body UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 overwrites any union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+func (t *UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1(v UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1 performs a merge with any union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1
+func (t *UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1(v UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 returns the union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+func (t UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2() (UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2, error) {
+	var body UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 overwrites any union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+func (t *UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2(v UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2 performs a merge with any union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2
+func (t *UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2(v UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 returns the union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as a UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+func (t UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) AsUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3() (UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3, error) {
+	var body UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 overwrites any union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection as the provided UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+func (t *UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) FromUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3(v UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3 performs a merge with any union data inside the UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection, using the provided UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3
+func (t *UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MergeUpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3(v UpdateAzureKeyVaultAppConnection200JSONResponseBodyAppConnection3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -151678,6 +154335,35 @@ type ClientInterface interface {
 	// Update the specified AWS Connection.
 	UpdateAwsAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateAwsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateAzureKeyVaultAppConnectionWithBody performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create an Azure Key Vault Connection.
+	CreateAzureKeyVaultAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAzureKeyVaultAppConnection performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create an Azure Key Vault Connection.
+	CreateAzureKeyVaultAppConnection(ctx context.Context, body CreateAzureKeyVaultAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAzureKeyVaultAppConnection performs a DELETE /api/v1/app-connections/azure-key-vault/{connectionId} (the `DeleteAzureKeyVaultAppConnection` operationId) request.
+	//
+	// Delete the specified Azure Key Vault Connection.
+	DeleteAzureKeyVaultAppConnection(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAzureKeyVaultAppConnectionWithBody performs a PATCH /api/v1/app-connections/azure-key-vault/{connectionId} (the `UpdateAzureKeyVaultAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the specified Azure Key Vault Connection.
+	UpdateAzureKeyVaultAppConnectionWithBody(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAzureKeyVaultAppConnection performs a PATCH /api/v1/app-connections/azure-key-vault/{connectionId} (the `UpdateAzureKeyVaultAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update the specified Azure Key Vault Connection.
+	UpdateAzureKeyVaultAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateAzureKeyVaultAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListGitHubAppConnections performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
 	//
 	// List the GitHub Connections for the current organization or project.
@@ -157042,6 +159728,85 @@ func (c *Client) UpdateAwsAppConnectionWithBody(ctx context.Context, connectionI
 // Update the specified AWS Connection.
 func (c *Client) UpdateAwsAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateAwsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateAwsAppConnectionRequest(c.Server, connectionId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAzureKeyVaultAppConnectionWithBody performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create an Azure Key Vault Connection.
+func (c *Client) CreateAzureKeyVaultAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAzureKeyVaultAppConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAzureKeyVaultAppConnection performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create an Azure Key Vault Connection.
+func (c *Client) CreateAzureKeyVaultAppConnection(ctx context.Context, body CreateAzureKeyVaultAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAzureKeyVaultAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteAzureKeyVaultAppConnection performs a DELETE /api/v1/app-connections/azure-key-vault/{connectionId} (the `DeleteAzureKeyVaultAppConnection` operationId) request.
+//
+// Delete the specified Azure Key Vault Connection.
+func (c *Client) DeleteAzureKeyVaultAppConnection(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAzureKeyVaultAppConnectionRequest(c.Server, connectionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAzureKeyVaultAppConnectionWithBody performs a PATCH /api/v1/app-connections/azure-key-vault/{connectionId} (the `UpdateAzureKeyVaultAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the specified Azure Key Vault Connection.
+func (c *Client) UpdateAzureKeyVaultAppConnectionWithBody(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAzureKeyVaultAppConnectionRequestWithBody(c.Server, connectionId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAzureKeyVaultAppConnection performs a PATCH /api/v1/app-connections/azure-key-vault/{connectionId} (the `UpdateAzureKeyVaultAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update the specified Azure Key Vault Connection.
+func (c *Client) UpdateAzureKeyVaultAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateAzureKeyVaultAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAzureKeyVaultAppConnectionRequest(c.Server, connectionId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -172921,6 +175686,127 @@ func NewUpdateAwsAppConnectionRequestWithBody(server string, connectionId openap
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/app-connections/aws/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateAzureKeyVaultAppConnectionRequest calls the generic CreateAzureKeyVaultAppConnection builder with application/json body
+func NewCreateAzureKeyVaultAppConnectionRequest(server string, body CreateAzureKeyVaultAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateAzureKeyVaultAppConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateAzureKeyVaultAppConnectionRequestWithBody constructs an http.Request for the CreateAzureKeyVaultAppConnection method, with any body, and a specified content type
+func NewCreateAzureKeyVaultAppConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/azure-key-vault")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteAzureKeyVaultAppConnectionRequest constructs an http.Request for the DeleteAzureKeyVaultAppConnection method
+func NewDeleteAzureKeyVaultAppConnectionRequest(server string, connectionId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "connectionId", connectionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/azure-key-vault/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateAzureKeyVaultAppConnectionRequest calls the generic UpdateAzureKeyVaultAppConnection builder with application/json body
+func NewUpdateAzureKeyVaultAppConnectionRequest(server string, connectionId openapi_types.UUID, body UpdateAzureKeyVaultAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAzureKeyVaultAppConnectionRequestWithBody(server, connectionId, "application/json", bodyReader)
+}
+
+// NewUpdateAzureKeyVaultAppConnectionRequestWithBody constructs an http.Request for the UpdateAzureKeyVaultAppConnection method, with any body, and a specified content type
+func NewUpdateAzureKeyVaultAppConnectionRequestWithBody(server string, connectionId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "connectionId", connectionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/azure-key-vault/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -203381,6 +206267,41 @@ type ClientWithResponsesInterface interface {
 	// Update the specified AWS Connection.
 	UpdateAwsAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdateAwsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAwsAppConnectionResponse, error)
 
+	// CreateAzureKeyVaultAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create an Azure Key Vault Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateAzureKeyVaultAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAzureKeyVaultAppConnectionResponse, error)
+
+	// CreateAzureKeyVaultAppConnectionWithResponse performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create an Azure Key Vault Connection.
+	CreateAzureKeyVaultAppConnectionWithResponse(ctx context.Context, body CreateAzureKeyVaultAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAzureKeyVaultAppConnectionResponse, error)
+
+	// DeleteAzureKeyVaultAppConnectionWithResponse performs a DELETE /api/v1/app-connections/azure-key-vault/{connectionId} (the `DeleteAzureKeyVaultAppConnection` operationId) request.
+	//
+	// Delete the specified Azure Key Vault Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteAzureKeyVaultAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteAzureKeyVaultAppConnectionResponse, error)
+
+	// UpdateAzureKeyVaultAppConnectionWithBodyWithResponse performs a PATCH /api/v1/app-connections/azure-key-vault/{connectionId} (the `UpdateAzureKeyVaultAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update the specified Azure Key Vault Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateAzureKeyVaultAppConnectionWithBodyWithResponse(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAzureKeyVaultAppConnectionResponse, error)
+
+	// UpdateAzureKeyVaultAppConnectionWithResponse performs a PATCH /api/v1/app-connections/azure-key-vault/{connectionId} (the `UpdateAzureKeyVaultAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update the specified Azure Key Vault Connection.
+	UpdateAzureKeyVaultAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdateAzureKeyVaultAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAzureKeyVaultAppConnectionResponse, error)
+
 	// ListGitHubAppConnectionsWithResponse performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
 	//
 	// List the GitHub Connections for the current organization or project.
@@ -219098,6 +222019,459 @@ func (r UpdateAwsAppConnectionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateAwsAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateAzureKeyVaultAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                        `json:"error"`
+		Message    interface{}                                                   `json:"message,omitempty"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode CreateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateAzureKeyVaultAppConnectionResponse) GetJSON200() *struct {
+	AppConnection CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateAzureKeyVaultAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateAzureKeyVaultAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateAzureKeyVaultAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateAzureKeyVaultAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateAzureKeyVaultAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                        `json:"error"`
+	Message    interface{}                                                   `json:"message,omitempty"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateAzureKeyVaultAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode CreateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateAzureKeyVaultAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateAzureKeyVaultAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateAzureKeyVaultAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAzureKeyVaultAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAzureKeyVaultAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode DeleteAzureKeyVaultAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode DeleteAzureKeyVaultAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode DeleteAzureKeyVaultAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode DeleteAzureKeyVaultAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                        `json:"error"`
+		Message    interface{}                                                   `json:"message,omitempty"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode DeleteAzureKeyVaultAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode DeleteAzureKeyVaultAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteAzureKeyVaultAppConnectionResponse) GetJSON200() *struct {
+	AppConnection DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteAzureKeyVaultAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode DeleteAzureKeyVaultAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteAzureKeyVaultAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode DeleteAzureKeyVaultAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteAzureKeyVaultAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode DeleteAzureKeyVaultAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAzureKeyVaultAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode DeleteAzureKeyVaultAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteAzureKeyVaultAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                        `json:"error"`
+	Message    interface{}                                                   `json:"message,omitempty"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode DeleteAzureKeyVaultAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteAzureKeyVaultAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode DeleteAzureKeyVaultAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAzureKeyVaultAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAzureKeyVaultAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAzureKeyVaultAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAzureKeyVaultAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateAzureKeyVaultAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode UpdateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode UpdateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                   `json:"details,omitempty"`
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode UpdateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode UpdateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                        `json:"error"`
+		Message    interface{}                                                   `json:"message,omitempty"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                        `json:"error"`
+		Message    string                                                        `json:"message"`
+		ReqId      string                                                        `json:"reqId"`
+		StatusCode UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateAzureKeyVaultAppConnectionResponse) GetJSON200() *struct {
+	AppConnection UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateAzureKeyVaultAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode UpdateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateAzureKeyVaultAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode UpdateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateAzureKeyVaultAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                                   `json:"details,omitempty"`
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode UpdateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateAzureKeyVaultAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode UpdateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateAzureKeyVaultAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                        `json:"error"`
+	Message    interface{}                                                   `json:"message,omitempty"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateAzureKeyVaultAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                        `json:"error"`
+	Message    string                                                        `json:"message"`
+	ReqId      string                                                        `json:"reqId"`
+	StatusCode UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateAzureKeyVaultAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAzureKeyVaultAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAzureKeyVaultAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAzureKeyVaultAppConnectionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -337047,6 +340421,71 @@ func (c *ClientWithResponses) UpdateAwsAppConnectionWithResponse(ctx context.Con
 	return ParseUpdateAwsAppConnectionResponse(rsp)
 }
 
+// CreateAzureKeyVaultAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create an Azure Key Vault Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateAzureKeyVaultAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAzureKeyVaultAppConnectionResponse, error) {
+	rsp, err := c.CreateAzureKeyVaultAppConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAzureKeyVaultAppConnectionResponse(rsp)
+}
+
+// CreateAzureKeyVaultAppConnectionWithResponse performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create an Azure Key Vault Connection.
+func (c *ClientWithResponses) CreateAzureKeyVaultAppConnectionWithResponse(ctx context.Context, body CreateAzureKeyVaultAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAzureKeyVaultAppConnectionResponse, error) {
+	rsp, err := c.CreateAzureKeyVaultAppConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAzureKeyVaultAppConnectionResponse(rsp)
+}
+
+// DeleteAzureKeyVaultAppConnectionWithResponse performs a DELETE /api/v1/app-connections/azure-key-vault/{connectionId} (the `DeleteAzureKeyVaultAppConnection` operationId) request.
+//
+// Delete the specified Azure Key Vault Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteAzureKeyVaultAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteAzureKeyVaultAppConnectionResponse, error) {
+	rsp, err := c.DeleteAzureKeyVaultAppConnection(ctx, connectionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAzureKeyVaultAppConnectionResponse(rsp)
+}
+
+// UpdateAzureKeyVaultAppConnectionWithBodyWithResponse performs a PATCH /api/v1/app-connections/azure-key-vault/{connectionId} (the `UpdateAzureKeyVaultAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update the specified Azure Key Vault Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateAzureKeyVaultAppConnectionWithBodyWithResponse(ctx context.Context, connectionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAzureKeyVaultAppConnectionResponse, error) {
+	rsp, err := c.UpdateAzureKeyVaultAppConnectionWithBody(ctx, connectionId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAzureKeyVaultAppConnectionResponse(rsp)
+}
+
+// UpdateAzureKeyVaultAppConnectionWithResponse performs a PATCH /api/v1/app-connections/azure-key-vault/{connectionId} (the `UpdateAzureKeyVaultAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update the specified Azure Key Vault Connection.
+func (c *ClientWithResponses) UpdateAzureKeyVaultAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdateAzureKeyVaultAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAzureKeyVaultAppConnectionResponse, error) {
+	rsp, err := c.UpdateAzureKeyVaultAppConnection(ctx, connectionId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAzureKeyVaultAppConnectionResponse(rsp)
+}
+
 // ListGitHubAppConnectionsWithResponse performs a GET /api/v1/app-connections/github (the `ListGitHubAppConnections` operationId) request.
 //
 // List the GitHub Connections for the current organization or project.
@@ -354571,6 +358010,312 @@ func ParseUpdateAwsAppConnectionResponse(rsp *http.Response) (*UpdateAwsAppConne
 			Message    string                                              `json:"message"`
 			ReqId      string                                              `json:"reqId"`
 			StatusCode UpdateAwsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateAzureKeyVaultAppConnectionResponse parses an HTTP response from a CreateAzureKeyVaultAppConnectionWithResponse call
+func ParseCreateAzureKeyVaultAppConnectionResponse(rsp *http.Response) (*CreateAzureKeyVaultAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateAzureKeyVaultAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection CreateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    interface{}                                                   `json:"message,omitempty"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode CreateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAzureKeyVaultAppConnectionResponse parses an HTTP response from a DeleteAzureKeyVaultAppConnectionWithResponse call
+func ParseDeleteAzureKeyVaultAppConnectionResponse(rsp *http.Response) (*DeleteAzureKeyVaultAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAzureKeyVaultAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection DeleteAzureKeyVaultAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode DeleteAzureKeyVaultAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode DeleteAzureKeyVaultAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode DeleteAzureKeyVaultAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode DeleteAzureKeyVaultAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    interface{}                                                   `json:"message,omitempty"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode DeleteAzureKeyVaultAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode DeleteAzureKeyVaultAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAzureKeyVaultAppConnectionResponse parses an HTTP response from a UpdateAzureKeyVaultAppConnectionWithResponse call
+func ParseUpdateAzureKeyVaultAppConnectionResponse(rsp *http.Response) (*UpdateAzureKeyVaultAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAzureKeyVaultAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection UpdateAzureKeyVaultAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode UpdateAzureKeyVaultAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode UpdateAzureKeyVaultAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                   `json:"details,omitempty"`
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode UpdateAzureKeyVaultAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode UpdateAzureKeyVaultAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    interface{}                                                   `json:"message,omitempty"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode UpdateAzureKeyVaultAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                        `json:"error"`
+			Message    string                                                        `json:"message"`
+			ReqId      string                                                        `json:"reqId"`
+			StatusCode UpdateAzureKeyVaultAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
