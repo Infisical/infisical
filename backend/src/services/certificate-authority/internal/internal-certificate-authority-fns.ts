@@ -28,14 +28,15 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "../certificate-authority-cross-signed-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus } from "../certificate-authority-enums";
 import {
   buildCrlDistributionPointUrls,
   createDistinguishedName,
   createSerialNumber,
-  getCaCertChain,
   getCaCredentials,
+  getIssuedCaCertChain,
   keyAlgorithmToAlgCfg
 } from "../certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
@@ -48,6 +49,10 @@ type TInternalCertificateAuthorityFnsDeps = {
     "findByIdWithAssociatedCa" | "findById" | "create" | "transaction" | "updateById" | "findWithAssociatedCa"
   >;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
+  certificateAuthorityCrossSignedCertDAL: Pick<
+    TCertificateAuthorityCrossSignedCertDALFactory,
+    "findValidByPublicKeyFingerprints"
+  >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "transaction" | "findOne" | "updateById">;
@@ -65,6 +70,7 @@ type TInternalCertificateAuthorityFnsDeps = {
 export const InternalCertificateAuthorityFns = ({
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
+  certificateAuthorityCrossSignedCertDAL,
   projectDAL,
   kmsService,
   certificateAuthoritySecretDAL,
@@ -233,15 +239,15 @@ export const InternalCertificateAuthorityFns = ({
       plainText: Buffer.from(skLeaf)
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+    const { caCert: issuingCaCertificate, certificateChainPem } = await getIssuedCaCertChain({
       caCertId: caCert.id,
+      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
+      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
-
-    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
       plainText: Buffer.from(certificateChainPem)
@@ -521,15 +527,15 @@ export const InternalCertificateAuthorityFns = ({
       plainText: Buffer.from(skLeaf)
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+    const { caCert: issuingCaCertificate, certificateChainPem } = await getIssuedCaCertChain({
       caCertId: caCert.id,
+      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
+      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
-
-    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
       plainText: Buffer.from(certificateChainPem)

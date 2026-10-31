@@ -659,6 +659,29 @@ interface ImportCaCert {
   };
 }
 
+interface ImportCaCrossSignedCert {
+  type: EventType.IMPORT_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
+    replacedSerialNumber?: string;
+  };
+}
+
+interface DeleteCaCrossSignedCert {
+  type: EventType.DELETE_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
+  };
+}
+
 interface GetCaCrl {
   type: EventType.GET_CA_CRL;
   metadata: {
@@ -1104,6 +1127,8 @@ export type Event =
   | GetCaCert
   | SignIntermediate
   | ImportCaCert
+  | ImportCaCrossSignedCert
+  | DeleteCaCrossSignedCert
   | GetCaCrl
   | IssueCert
   | ImportCert

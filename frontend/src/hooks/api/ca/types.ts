@@ -277,6 +277,26 @@ export type TImportCaCertificateResponse = {
   caId: string;
 };
 
+export type TCaCrossSignedCertificate = {
+  caId: string;
+  certificate: string;
+  certificateChain: string | null;
+  issuer: string;
+  serialNumber: string;
+  notBefore: string;
+  notAfter: string;
+};
+
+export type TImportCaCrossSignedCertificateDTO = {
+  caId: string;
+  certificate: string;
+  certificateChain?: string;
+};
+
+export type TDeleteCaCrossSignedCertificateDTO = {
+  caId: string;
+};
+
 export type TCreateCertificateDTO = {
   caId?: string;
   certificateTemplateId?: string;

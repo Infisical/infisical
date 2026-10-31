@@ -11,6 +11,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { CERT_CLOCK_SKEW_MS, DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
+import { parsePemCertificateChain } from "../certificate/certificate-fns";
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { isExternalCaKeySource } from "./ca-key-source/ca-key-source-fns";
 import type { TCaKeySourceServiceFactory } from "./ca-key-source/ca-key-source-service";
@@ -19,6 +20,7 @@ import { buildLocalCaSigner, TCaSigner } from "./ca-signer";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import {
+  TBuildIssuedCertificateChainDTO,
   TDNParts,
   TGetCaCertChainDTO,
   TGetCaCertChainsDTO,
@@ -184,6 +186,112 @@ export const validateImportedCertificate = (
       message: `Imported certificate does not match CA configuration: ${mismatches.join("; ")}`
     });
   }
+};
+
+export const getPublicKeyFingerprint = (cert: x509.X509Certificate) =>
+  crypto.nativeCrypto.createHash("sha256").update(Buffer.from(cert.publicKey.rawData)).digest("hex");
+
+const hasSamePublicKey = (a: x509.X509Certificate, b: x509.X509Certificate) =>
+  Buffer.from(a.publicKey.rawData).equals(Buffer.from(b.publicKey.rawData));
+
+const isSameCertificateIdentity = (a: x509.X509Certificate, b: x509.X509Certificate) =>
+  a.subject === b.subject && hasSamePublicKey(a, b);
+
+export const validateCrossSignedCertificate = async ({
+  caCertificate,
+  certificate,
+  certificateChain
+}: {
+  caCertificate: string;
+  certificate: string;
+  certificateChain?: string;
+}) => {
+  const parsedCertificates = parsePemCertificateChain(certificate);
+  if (!parsedCertificates || parsedCertificates.length !== 1) {
+    throw new BadRequestError({
+      message: "Paste a single PEM-encoded certificate, including its BEGIN and END lines."
+    });
+  }
+  const [crossSignedCertObj] = parsedCertificates;
+
+  const chainCertObjs = parsePemCertificateChain(certificateChain ?? "");
+  if (!chainCertObjs || (certificateChain && !chainCertObjs.length)) {
+    throw new BadRequestError({
+      message:
+        "The certificate chain contains a block that is not a valid certificate. Paste each certificate in full, including its BEGIN and END lines."
+    });
+  }
+
+  const caCertObj = new x509.X509Certificate(caCertificate);
+
+  if (!isSameCertificateIdentity(crossSignedCertObj, caCertObj)) {
+    throw new BadRequestError({
+      message: hasSamePublicKey(crossSignedCertObj, caCertObj)
+        ? "This certificate's subject doesn't match this CA. Have the old CA sign the CSR from this CA."
+        : "This certificate's key doesn't match this CA. Have the old CA sign the CSR from this CA."
+    });
+  }
+
+  const subjectKeyIdentifier = crossSignedCertObj.getExtension(x509.SubjectKeyIdentifierExtension);
+  if (subjectKeyIdentifier) {
+    const { keyId: caKeyIdentifier } = await x509.SubjectKeyIdentifierExtension.create(caCertObj.publicKey);
+    if (subjectKeyIdentifier.keyId.toLowerCase() !== caKeyIdentifier.toLowerCase()) {
+      throw new BadRequestError({
+        message:
+          "This certificate's key identifier doesn't match this CA. Have the old CA keep the key identifier from the CSR."
+      });
+    }
+  }
+
+  if (crossSignedCertObj.issuer === crossSignedCertObj.subject) {
+    throw new BadRequestError({
+      message: "This certificate is self-signed. Have the old CA sign the CSR from this CA."
+    });
+  }
+
+  if (crossSignedCertObj.issuer === caCertObj.issuer) {
+    throw new BadRequestError({
+      message: "This is the CA's own certificate. Import the cross-signed certificate your old CA signed."
+    });
+  }
+
+  if (!crossSignedCertObj.getExtension(x509.BasicConstraintsExtension)?.ca) {
+    throw new BadRequestError({
+      message: "This isn't a CA certificate. Have the old CA sign the CSR as a CA certificate."
+    });
+  }
+
+  if (crossSignedCertObj.notAfter.getTime() <= Date.now()) {
+    throw new BadRequestError({
+      message: `This certificate expired on ${crossSignedCertObj.notAfter.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC"
+      })}. Have the old CA sign a new one.`
+    });
+  }
+
+  if (chainCertObjs.length) {
+    const [issuerCertObj] = chainCertObjs;
+    const isSignedByIssuer =
+      issuerCertObj.subject === crossSignedCertObj.issuer &&
+      (await crossSignedCertObj.verify({ publicKey: issuerCertObj.publicKey, signatureOnly: true }).catch(() => false));
+
+    if (!isSignedByIssuer) {
+      throw new BadRequestError({
+        message:
+          "The first certificate in the chain didn't sign this certificate. Start the chain with the old CA that signed it."
+      });
+    }
+  }
+
+  return {
+    crossSignedCertObj,
+    crossSignedCertChainPem: chainCertObjs.length
+      ? chainCertObjs.map((chainCertObj) => chainCertObj.toString("pem")).join("\n")
+      : null
+  };
 };
 
 export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
@@ -561,6 +669,86 @@ export const getCaCertChain = async ({
     caCertChain: decryptedChain.toString("utf-8"),
     serialNumber: caCertObj.serialNumber
   };
+};
+
+export const buildIssuedCertificateChain = async ({
+  caCert,
+  caCertChain,
+  projectId,
+  certificateAuthorityCrossSignedCertDAL,
+  projectDAL,
+  kmsService
+}: TBuildIssuedCertificateChainDTO) => {
+  const defaultChain = `${caCert}\n${caCertChain}`.trim();
+
+  const chainCertObjs = parsePemCertificateChain(defaultChain) ?? [];
+
+  const crossSignedCerts = await certificateAuthorityCrossSignedCertDAL.findValidByPublicKeyFingerprints(
+    projectId,
+    chainCertObjs.map(getPublicKeyFingerprint)
+  );
+  if (!crossSignedCerts.length) return defaultChain;
+
+  const keyId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
+  const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
+
+  const crossSignedCertObjs = await Promise.all(
+    crossSignedCerts.map(async (crossSignedCert) => ({
+      crossSignedCert,
+      certObj: new x509.X509Certificate(await kmsDecryptor({ cipherTextBlob: crossSignedCert.encryptedCertificate }))
+    }))
+  );
+
+  let matchedChainIndex = -1;
+  let match: (typeof crossSignedCertObjs)[number] | undefined;
+  for (let index = 0; index < chainCertObjs.length && !match; index += 1) {
+    match = crossSignedCertObjs.find(({ certObj }) => isSameCertificateIdentity(certObj, chainCertObjs[index]));
+    if (match) matchedChainIndex = index;
+  }
+
+  if (!match) return defaultChain;
+
+  const legacyChain = match.crossSignedCert.encryptedCertificateChain
+    ? (await kmsDecryptor({ cipherTextBlob: match.crossSignedCert.encryptedCertificateChain })).toString("utf-8")
+    : "";
+
+  return [
+    ...chainCertObjs.slice(0, matchedChainIndex).map((chainCertObj) => chainCertObj.toString("pem")),
+    match.certObj.toString("pem"),
+    legacyChain
+  ]
+    .map((pem) => pem.trim())
+    .filter(Boolean)
+    .join("\n");
+};
+
+export const getIssuedCaCertChain = async ({
+  caCertId,
+  projectId,
+  certificateAuthorityDAL,
+  certificateAuthorityCertDAL,
+  certificateAuthorityCrossSignedCertDAL,
+  projectDAL,
+  kmsService
+}: TGetCaCertChainDTO & Omit<TBuildIssuedCertificateChainDTO, "caCert" | "caCertChain">) => {
+  const { caCert, caCertChain } = await getCaCertChain({
+    caCertId,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    projectDAL,
+    kmsService
+  });
+
+  const certificateChainPem = await buildIssuedCertificateChain({
+    caCert,
+    caCertChain,
+    projectId,
+    certificateAuthorityCrossSignedCertDAL,
+    projectDAL,
+    kmsService
+  });
+
+  return { caCert, caCertChain, certificateChainPem };
 };
 
 /**

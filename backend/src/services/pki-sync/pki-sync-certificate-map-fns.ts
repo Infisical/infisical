@@ -11,7 +11,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { getCaCertChain } from "../certificate-authority/certificate-authority-fns";
-import { extractRootCaFromChain, removeRootCaFromChain } from "../certificate-common/certificate-utils";
+import { extractSelfSignedRootCaFromChain, removeRootCaFromChain } from "../certificate-common/certificate-utils";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -149,7 +149,9 @@ export const buildCertificateMap = async (
               if (!certBody.encryptedCertificateChain) {
                 certificateChain = `${caCert}\n${caCertChain}`.trim();
               }
-              caCertificate = certificateChain ? extractRootCaFromChain(certificateChain) : caCert;
+              caCertificate = certificateChain
+                ? extractSelfSignedRootCaFromChain(certificateChain, `${caCert}\n${caCertChain}`)
+                : caCert;
             }
           } catch (chainError) {
             logger.warn(

@@ -430,6 +430,8 @@ export enum EventType {
   GET_CA_CERT = "get-certificate-authority-cert",
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
+  IMPORT_CA_CROSS_SIGNED_CERT = "import-ca-cross-signed-cert",
+  DELETE_CA_CROSS_SIGNED_CERT = "delete-ca-cross-signed-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
   GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
   INSTALL_CA_CERT_VENAFI = "install-ca-cert-venafi",
@@ -3172,6 +3174,29 @@ interface ImportCaCert {
   metadata: {
     caId: string;
     dn: string;
+  };
+}
+
+interface ImportCaCrossSignedCert {
+  type: EventType.IMPORT_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
+    replacedSerialNumber?: string;
+  };
+}
+
+interface DeleteCaCrossSignedCert {
+  type: EventType.DELETE_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
   };
 }
 
@@ -8567,6 +8592,8 @@ export type Event =
   | GetCaCert
   | SignIntermediate
   | ImportCaCert
+  | ImportCaCrossSignedCert
+  | DeleteCaCrossSignedCert
   | GetCaCrls
   | GenerateCaCertificate
   | InstallCaCertVenafi

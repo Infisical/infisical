@@ -52,6 +52,7 @@ export * from "./ca-signing-configs";
 export * from "./certificate-authorities";
 export * from "./certificate-authority-certs";
 export * from "./certificate-authority-crl";
+export * from "./certificate-authority-cross-signed-certs";
 export * from "./certificate-authority-secret";
 export * from "./certificate-bodies";
 export * from "./certificate-cleanup-configs";

@@ -7,6 +7,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
 import { isExternalCaKeySource } from "@app/services/certificate-authority/ca-key-source/ca-key-source-fns";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cross-signed-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TInternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-dal";
@@ -27,6 +28,7 @@ type TCertManagerExportServiceFactoryDep = {
   >;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "create">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "create">;
+  certificateAuthorityCrossSignedCertDAL: Pick<TCertificateAuthorityCrossSignedCertDALFactory, "findOne" | "create">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "find" | "create">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne" | "create">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "find">;
@@ -43,6 +45,7 @@ export const certManagerExportServiceFactory = ({
   certificateAuthorityDAL,
   internalCertificateAuthorityDAL,
   certificateAuthorityCertDAL,
+  certificateAuthorityCrossSignedCertDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
   certificatePolicyDAL,
@@ -294,6 +297,25 @@ export const certManagerExportServiceFactory = ({
           },
           tx
         );
+
+        const sourceCrossSignedCert = await certificateAuthorityCrossSignedCertDAL.findOne({ caId: sourceCa.id }, tx);
+        if (sourceCrossSignedCert) {
+          await certificateAuthorityCrossSignedCertDAL.create(
+            {
+              caId: newCa.id,
+              encryptedCertificate: await reencrypt(sourceCrossSignedCert.encryptedCertificate),
+              encryptedCertificateChain: sourceCrossSignedCert.encryptedCertificateChain
+                ? await reencrypt(sourceCrossSignedCert.encryptedCertificateChain)
+                : null,
+              issuer: sourceCrossSignedCert.issuer,
+              serialNumber: sourceCrossSignedCert.serialNumber,
+              publicKeyFingerprint: sourceCrossSignedCert.publicKeyFingerprint,
+              notBefore: sourceCrossSignedCert.notBefore,
+              notAfter: sourceCrossSignedCert.notAfter
+            },
+            tx
+          );
+        }
 
         const sourceCrl = await certificateAuthorityCrlDAL.findOne({ caId: sourceCa.id }, tx);
         if (sourceCrl) {

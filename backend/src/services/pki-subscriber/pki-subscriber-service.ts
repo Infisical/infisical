@@ -15,6 +15,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cross-signed-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
@@ -23,6 +24,7 @@ import {
   expandInternalCa,
   getCaCertChain,
   getCaCredentials,
+  getIssuedCaCertChain,
   keyAlgorithmToAlgCfg,
   parseDistinguishedName
 } from "@app/services/certificate-authority/certificate-authority-fns";
@@ -72,6 +74,10 @@ type TPkiSubscriberServiceFactoryDep = {
     "findByIdWithAssociatedCa" | "findById" | "transaction" | "create" | "updateById" | "findWithAssociatedCa"
   >;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
+  certificateAuthorityCrossSignedCertDAL: Pick<
+    TCertificateAuthorityCrossSignedCertDALFactory,
+    "findValidByPublicKeyFingerprints"
+  >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityQueue: Pick<TCertificateAuthorityQueueFactory, "orderCertificateForSubscriber">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
@@ -95,6 +101,7 @@ export const pkiSubscriberServiceFactory = ({
   pkiSubscriberDAL,
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
+  certificateAuthorityCrossSignedCertDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
   certificateDAL,
@@ -645,15 +652,15 @@ export const pkiSubscriberServiceFactory = ({
       plainText: Buffer.from(new Uint8Array(leafCert.rawData))
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+    const { caCert: issuingCaCertificate, certificateChainPem } = await getIssuedCaCertChain({
       caCertId: ca.internalCa.activeCaCertId,
+      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
+      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
-
-    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
       plainText: Buffer.from(certificateChainPem)
@@ -696,7 +703,7 @@ export const pkiSubscriberServiceFactory = ({
 
     return {
       certificate: leafCert.toString("pem"),
-      certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
+      certificateChain: certificateChainPem,
       issuingCaCertificate,
       serialNumber,
       ca: expandInternalCa(ca),

@@ -1,11 +1,13 @@
 import * as x509 from "@peculiar/x509";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
+import { TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import {
   buildAuthorityInfoAccessExtension,
   buildCrlDistributionPointUrls,
+  buildIssuedCertificateChain,
   buildOcspResponderUrl,
   createDistinguishedName,
   extractDnParts,
@@ -352,5 +354,223 @@ describe("buildAuthorityInfoAccessExtension", () => {
     );
 
     expect(parsed.ocsp ?? []).toHaveLength(0);
+  });
+});
+
+describe("buildIssuedCertificateChain", () => {
+  const SIGNING_ALGORITHM = { name: "ECDSA", hash: "SHA-256" };
+  const PROJECT_ID = "project-1";
+
+  const generateKeys = () =>
+    crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+      "sign",
+      "verify"
+    ]) as Promise<CryptoKeyPair>;
+
+  const notBefore = new Date(Date.now() - 60 * 1000);
+  const notAfter = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  const createCaCert = async ({
+    subject,
+    issuer,
+    publicKey,
+    signingKey
+  }: {
+    subject: string;
+    issuer: string;
+    publicKey: CryptoKey;
+    signingKey: CryptoKey;
+  }) =>
+    (
+      await x509.X509CertificateGenerator.create({
+        serialNumber: "01",
+        subject,
+        issuer,
+        notBefore,
+        notAfter,
+        publicKey,
+        signingKey,
+        signingAlgorithm: SIGNING_ALGORITHM,
+        extensions: [new x509.BasicConstraintsExtension(true, undefined, true)]
+      })
+    ).toString("pem");
+
+  let infisicalRoot: string;
+  let intermediate: string;
+  let legacyRoot: string;
+  let legacyIntermediate: string;
+  let crossSignedRoot: string;
+  let crossSignedIntermediate: string;
+  let crossSignedOtherKey: string;
+
+  beforeAll(async () => {
+    const rootKeys = await generateKeys();
+    const intermediateKeys = await generateKeys();
+    const legacyRootKeys = await generateKeys();
+    const legacyIntermediateKeys = await generateKeys();
+    const otherKeys = await generateKeys();
+
+    infisicalRoot = await createCaCert({
+      subject: "CN=Corp Root CA",
+      issuer: "CN=Corp Root CA",
+      publicKey: rootKeys.publicKey,
+      signingKey: rootKeys.privateKey
+    });
+    intermediate = await createCaCert({
+      subject: "CN=Corp Issuing CA",
+      issuer: "CN=Corp Root CA",
+      publicKey: intermediateKeys.publicKey,
+      signingKey: rootKeys.privateKey
+    });
+    legacyRoot = await createCaCert({
+      subject: "CN=Legacy Root CA G2",
+      issuer: "CN=Legacy Root CA G2",
+      publicKey: legacyRootKeys.publicKey,
+      signingKey: legacyRootKeys.privateKey
+    });
+    legacyIntermediate = await createCaCert({
+      subject: "CN=Legacy Issuing CA",
+      issuer: "CN=Legacy Root CA G2",
+      publicKey: legacyIntermediateKeys.publicKey,
+      signingKey: legacyRootKeys.privateKey
+    });
+    crossSignedRoot = await createCaCert({
+      subject: "CN=Corp Root CA",
+      issuer: "CN=Legacy Issuing CA",
+      publicKey: rootKeys.publicKey,
+      signingKey: legacyIntermediateKeys.privateKey
+    });
+    crossSignedIntermediate = await createCaCert({
+      subject: "CN=Corp Issuing CA",
+      issuer: "CN=Legacy Root CA G2",
+      publicKey: intermediateKeys.publicKey,
+      signingKey: legacyRootKeys.privateKey
+    });
+    crossSignedOtherKey = await createCaCert({
+      subject: "CN=Corp Root CA",
+      issuer: "CN=Legacy Root CA G2",
+      publicKey: otherKeys.publicKey,
+      signingKey: legacyRootKeys.privateKey
+    });
+  });
+
+  const toCrossSignedRow = (caId: string, certificate: string, certificateChain?: string) =>
+    ({
+      id: `${caId}-cross-signed`,
+      caId,
+      encryptedCertificate: Buffer.from(certificate),
+      encryptedCertificateChain: certificateChain ? Buffer.from(certificateChain) : null,
+      issuer: new x509.X509Certificate(certificate).issuer,
+      serialNumber: "01",
+      notBefore,
+      notAfter,
+      createdAt: notBefore,
+      updatedAt: notBefore
+    }) as TCertificateAuthorityCrossSignedCerts;
+
+  const buildChain = async ({
+    caCert,
+    caCertChain,
+    crossSignedCerts
+  }: {
+    caCert: string;
+    caCertChain: string;
+    crossSignedCerts: TCertificateAuthorityCrossSignedCerts[];
+  }) => {
+    const findValidByPublicKeyFingerprints = vi.fn().mockResolvedValue(crossSignedCerts);
+    const decryptWithKmsKey = vi
+      .fn()
+      .mockResolvedValue(async ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => Buffer.from(cipherTextBlob));
+
+    const chain = await buildIssuedCertificateChain({
+      caCert,
+      caCertChain,
+      projectId: PROJECT_ID,
+      certificateAuthorityCrossSignedCertDAL: { findValidByPublicKeyFingerprints },
+      projectDAL: {
+        findOne: vi.fn().mockResolvedValue({
+          id: PROJECT_ID,
+          orgId: "org-1",
+          kmsCertificateKeyId: "kms-key-1"
+        }),
+        updateById: vi.fn(),
+        transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(undefined))
+      } as never,
+      kmsService: { decryptWithKmsKey, generateKmsKey: vi.fn() } as never
+    });
+
+    return { chain, findValidByPublicKeyFingerprints, decryptWithKmsKey };
+  };
+
+  const subjectsOf = (chain: string) =>
+    chain
+      .split(/(?<=-----END CERTIFICATE-----)\s*/)
+      .filter(Boolean)
+      .map((pem) => {
+        const cert = new x509.X509Certificate(pem);
+        return `${cert.subject} <- ${cert.issuer}`;
+      });
+
+  it("returns the default chain without decrypting when no cross-signed certificate exists", async () => {
+    const intermediateResult = await buildChain({
+      caCert: intermediate,
+      caCertChain: infisicalRoot,
+      crossSignedCerts: []
+    });
+    const rootResult = await buildChain({ caCert: infisicalRoot, caCertChain: "", crossSignedCerts: [] });
+
+    expect(intermediateResult.chain).toBe(`${intermediate}\n${infisicalRoot}`.trim());
+    expect(rootResult.chain).toBe(infisicalRoot.trim());
+    expect(intermediateResult.findValidByPublicKeyFingerprints).toHaveBeenCalledWith(PROJECT_ID, expect.any(Array));
+    expect(intermediateResult.decryptWithKmsKey).not.toHaveBeenCalled();
+  });
+
+  it("replaces a cross-signed intermediate and drops everything Infisical issued above it", async () => {
+    const { chain } = await buildChain({
+      caCert: intermediate,
+      caCertChain: infisicalRoot,
+      crossSignedCerts: [toCrossSignedRow("intermediate-ca", crossSignedIntermediate, legacyRoot)]
+    });
+
+    expect(subjectsOf(chain)).toEqual([
+      "CN=Corp Issuing CA <- CN=Legacy Root CA G2",
+      "CN=Legacy Root CA G2 <- CN=Legacy Root CA G2"
+    ]);
+  });
+
+  it("uses the copy nearest the issuing CA when several CAs in the chain have one", async () => {
+    const { chain } = await buildChain({
+      caCert: intermediate,
+      caCertChain: infisicalRoot,
+      crossSignedCerts: [
+        toCrossSignedRow("root-ca", crossSignedRoot, `${legacyIntermediate}\n${legacyRoot}`),
+        toCrossSignedRow("intermediate-ca", crossSignedIntermediate, legacyRoot)
+      ]
+    });
+
+    expect(subjectsOf(chain)).toEqual([
+      "CN=Corp Issuing CA <- CN=Legacy Root CA G2",
+      "CN=Legacy Root CA G2 <- CN=Legacy Root CA G2"
+    ]);
+  });
+
+  it("ignores a copy with the same subject but a different key", async () => {
+    const { chain } = await buildChain({
+      caCert: intermediate,
+      caCertChain: infisicalRoot,
+      crossSignedCerts: [toCrossSignedRow("other-ca", crossSignedOtherKey, legacyRoot)]
+    });
+
+    expect(chain).toBe(`${intermediate}\n${infisicalRoot}`.trim());
+  });
+
+  it("ignores copies of CAs outside the issuing chain", async () => {
+    const { chain } = await buildChain({
+      caCert: infisicalRoot,
+      caCertChain: "",
+      crossSignedCerts: [toCrossSignedRow("intermediate-ca", crossSignedIntermediate, legacyRoot)]
+    });
+
+    expect(chain).toBe(infisicalRoot.trim());
   });
 });

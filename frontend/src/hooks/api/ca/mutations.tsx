@@ -1,20 +1,24 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { ApiErrorTypes } from "@app/hooks/api/types";
 
 import { certificateProfileKeys } from "../certificateProfiles/queries";
 import { projectKeys } from "../projects";
 import { CaRenewalStatus, CaType } from "./enums";
 import { caKeys } from "./queries";
 import {
+  TCaCrossSignedCertificate,
   TCreateCertificateAuthorityDTO,
   TCreateCertificateDTO,
   TCreateCertificateResponse,
   TCreateCertificateV3DTO,
   TCreateCertificateV3Response,
+  TDeleteCaCrossSignedCertificateDTO,
   TDeleteCertificateAuthorityDTO,
   TImportCaCertificateDTO,
   TImportCaCertificateResponse,
+  TImportCaCrossSignedCertificateDTO,
   TOrderCertificateDTO,
   TOrderCertificateResponse,
   TRenewCaDTO,
@@ -143,6 +147,42 @@ export const useImportCaCertificate = () => {
       queryClient.invalidateQueries({
         predicate: (query) => query.queryKey.includes("project-cas")
       });
+    }
+  });
+};
+
+export const useImportCaCrossSignedCert = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCaCrossSignedCertificate, object, TImportCaCrossSignedCertificateDTO>({
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    mutationFn: async ({ caId, ...body }) => {
+      const {
+        data: { crossSignedCertificate }
+      } = await apiRequest.put<{ crossSignedCertificate: TCaCrossSignedCertificate }>(
+        `/api/v1/cert-manager/ca/internal/${caId}/cross-signed-certificate`,
+        body
+      );
+      return crossSignedCertificate;
+    },
+    onSuccess: (_, { caId }) => {
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCrossSignedCert(caId) });
+    }
+  });
+};
+
+export const useDeleteCaCrossSignedCert = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCaCrossSignedCertificate, object, TDeleteCaCrossSignedCertificateDTO>({
+    mutationFn: async ({ caId }) => {
+      const {
+        data: { crossSignedCertificate }
+      } = await apiRequest.delete<{ crossSignedCertificate: TCaCrossSignedCertificate }>(
+        `/api/v1/cert-manager/ca/internal/${caId}/cross-signed-certificate`
+      );
+      return crossSignedCertificate;
+    },
+    onSuccess: (_, { caId }) => {
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCrossSignedCert(caId) });
     }
   });
 };

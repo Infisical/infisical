@@ -73,6 +73,7 @@ import { buildLocalCaSigner, TCaSigner } from "../ca-signer";
 import { TCaSigningConfigDALFactory } from "../ca-signing-config/ca-signing-config-dal";
 import { CaSigningConfigType } from "../ca-signing-config/ca-signing-config-enums";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "../certificate-authority-cross-signed-cert-dal";
 import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa } from "../certificate-authority-dal";
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
 import {
@@ -88,6 +89,7 @@ import {
   getCaCertChain, // TODO: consider rename
   getCaCertChains,
   getCaSigner,
+  getIssuedCaCertChain,
   keyAlgorithmToAlgCfg,
   signatureAlgorithmToAlgCfg,
   validateImportedCertificate
@@ -138,6 +140,10 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
     TCertificateAuthorityCertDALFactory,
     "create" | "findOne" | "transaction" | "find" | "findById"
   >;
+  certificateAuthorityCrossSignedCertDAL: Pick<
+    TCertificateAuthorityCrossSignedCertDALFactory,
+    "findValidByPublicKeyFingerprints"
+  >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne" | "primaryNode">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById" | "find">;
@@ -165,6 +171,7 @@ export type TInternalCertificateAuthorityServiceFactory = ReturnType<typeof inte
 export const internalCertificateAuthorityServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthorityCertDAL,
+  certificateAuthorityCrossSignedCertDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCrlDAL,
   certificateTemplateDAL,
@@ -795,9 +802,6 @@ export const internalCertificateAuthorityServiceFactory = ({
         subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
       );
     }
-
-    if (ca.internalCa.type === InternalCaType.ROOT)
-      throw new BadRequestError({ message: "Root CA cannot generate CSR" });
 
     await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 
@@ -2241,15 +2245,15 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.from(skLeaf)
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+    const { caCert: issuingCaCertificate, certificateChainPem } = await getIssuedCaCertChain({
       caCertId: caCert.id,
+      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
+      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
-
-    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
       plainText: Buffer.from(certificateChainPem)
@@ -2738,15 +2742,15 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.from(new Uint8Array(leafCert.rawData))
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+    const { caCert: issuingCaCertificate, certificateChainPem } = await getIssuedCaCertChain({
       caCertId: ca.internalCa.activeCaCertId,
+      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
+      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
-
-    const certificateChainPem = `${issuingCaCertificate}\n${caCertChain}`.trim();
 
     const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
       plainText: Buffer.from(certificateChainPem)
