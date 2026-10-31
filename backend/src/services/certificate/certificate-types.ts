@@ -142,6 +142,8 @@ export type TRevokeCertDTO = {
 export type TAssignCertToApplicationDTO = {
   certificateId: string;
   applicationId: string;
+  profileId?: string;
+  externalMetadata?: TImportExternalMetadata;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertBodyDTO = {

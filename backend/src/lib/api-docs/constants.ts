@@ -2466,6 +2466,12 @@ export const CERTIFICATES = {
     privateKey:
       "The PEM-encoded private key associated with the imported certificate. Returned only when a private key was supplied at import.",
     serialNumber: "The serial number of the imported certificate."
+  },
+  ASSIGN_TO_APPLICATION: {
+    profileId:
+      "Optional certificate profile, attached to the Application, that will manage this certificate's lifecycle. Only certificates without a profile accept one, and it cannot be changed afterwards. The certificate must satisfy the profile's certificate policy.",
+    externalMetadata:
+      'Identifies this certificate at the provider that issued it. Required when the chosen profile issues from an external certificate authority. For DigiCert, pass the CertCentral order ID as { type: "digicert", orderId: 2081714 }; Infisical checks that the order holds this certificate.'
   }
 };
 

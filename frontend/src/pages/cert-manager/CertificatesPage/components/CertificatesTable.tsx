@@ -294,7 +294,9 @@ export const CertificatesTable = ({
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() =>
     getDefaultVisibleColumns(projectId)
   );
-  const [assignTargetId, setAssignTargetId] = useState<string | null>(null);
+  const [assignTarget, setAssignTarget] = useState<{ id: string; hasProfile: boolean } | null>(
+    null
+  );
 
   const { data: profilesData } = useListCertificateProfiles({
     limit: 100,
@@ -1294,7 +1296,10 @@ export const CertificatesTable = ({
                                 <DropdownMenuItem
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setAssignTargetId(certificate.id);
+                                    setAssignTarget({
+                                      id: certificate.id,
+                                      hasProfile: Boolean(certificate.profileId)
+                                    });
                                   }}
                                 >
                                   <BoxIcon />
@@ -1415,11 +1420,12 @@ export const CertificatesTable = ({
         applicationId={applicationId}
       />
 
-      {assignTargetId ? (
+      {assignTarget ? (
         <AssignCertificateToApplicationModal
-          isOpen={Boolean(assignTargetId)}
-          onClose={() => setAssignTargetId(null)}
-          certificateId={assignTargetId}
+          isOpen={Boolean(assignTarget)}
+          onClose={() => setAssignTarget(null)}
+          certificateId={assignTarget.id}
+          hasProfile={assignTarget.hasProfile}
         />
       ) : null}
     </div>
