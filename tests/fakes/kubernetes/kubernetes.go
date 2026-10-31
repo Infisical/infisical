@@ -26,6 +26,14 @@ func (s service) Host() string { return s.host }
 // URL is what an identity's kubernetesHost is set to.
 func (s service) URL() string { return "https://" + s.host }
 
+// Port is where fakenet also serves the API server, routed by port rather than by
+// name, for requests that arrive through a gateway's TCP tunnel with Host: localhost.
+const Port = 6443
+
+// TunnelURL is the kubernetesHost to use when Infisical reaches the cluster through a
+// gateway.
+func (s service) TunnelURL() string { return "https://" + s.host + ":6443" }
+
 // Scope is the reviewer JWT. Attaching Kubernetes auth probes /version with no
 // credential first, which a real API server answers anonymously; it holds no state, so
 // those probes share one scope.
