@@ -1,8 +1,10 @@
 import { ReactNode, useState } from "react";
+import axios from "axios";
 import { format } from "date-fns";
 import {
   BanIcon,
   ChevronDownIcon,
+  DownloadIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -58,6 +60,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
+import { downloadTxtFile } from "@app/helpers/download";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -66,6 +69,7 @@ import {
 import { useResetPageHelper } from "@app/hooks";
 import {
   AgentVaultTrafficPolicy,
+  fetchAgentVaultProxyCa,
   useDeleteAgentVaultProxy,
   useListAgentVaultProxies,
   useRevokeAgentVaultProxyAccess,
@@ -139,6 +143,22 @@ const truncateFingerprint = (fingerprint: string) =>
 export const AgentVaultProxiesPage = () => {
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  // Asked of the server on every click, never cached: the CA changes on rotation, and only the server can
+  // refuse a proxy that serves its own CA.
+  const downloadProxyCa = async (proxy: TAgentVaultProxy) => {
+    try {
+      const ca = await fetchAgentVaultProxyCa(proxy.id);
+      downloadTxtFile(`${proxy.name}-ca.pem`, ca.certificate);
+    } catch (error) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined;
+      createNotification({
+        type: "error",
+        text: message ?? "Failed to download the certificate authority"
+      });
+    }
+  };
 
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
@@ -338,6 +358,19 @@ export const AgentVaultProxiesPage = () => {
                             variant="ghost"
                             size="xs"
                           />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <IconButton
+                                aria-label="Download certificate authority"
+                                variant="ghost"
+                                size="xs"
+                                onClick={() => downloadProxyCa(proxy)}
+                              >
+                                <DownloadIcon />
+                              </IconButton>
+                            </TooltipTrigger>
+                            <TooltipContent>Download certificate authority</TooltipContent>
+                          </Tooltip>
                         </div>
                       ) : (
                         <span className="text-muted">&mdash;</span>

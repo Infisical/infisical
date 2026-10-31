@@ -15,12 +15,17 @@ While you can technically run the agent and the proxy on a single machine, we re
 We also recommend keeping both machines on the same private network. This is because every request the agent makes goes through the proxy, and a round trip between networks adds latency to every request.
 </Tip>
 
+If your agents run in [E2B sandboxes](/documentation/platform/agent-vault/guides/e2b), E2B connects to the proxy from its own servers, so the proxy can't be on a private network. Run the proxy on a public machine instead, with the [SOCKS5 port](#accept-connections-over-socks5) turned on.
+
 ## Supported connections
 
-The proxy attaches credentials to HTTP/1.1 requests, over both HTTPS and plain HTTP. These connections fail through the proxy:
+Agents connect to the proxy as an HTTP proxy. If you turn on the [SOCKS5 port](#accept-connections-over-socks5), clients such as E2B can also connect over SOCKS5 over TLS.
+
+Over either connection, the proxy attaches credentials to HTTP/1.1 requests, over both HTTPS and plain HTTP. These connections fail through the proxy:
 
 - WebSocket connections, such as to a `wss://` URL
 - Clients that only speak HTTP/2, such as gRPC clients
+- Other TCP traffic through the SOCKS5 port, such as SSH
 
 If an API offers both, configure the agent to use its plain HTTPS requests. Many SDKs fall back to HTTPS when a WebSocket connection fails.
 
@@ -150,6 +155,8 @@ The commands use these settings:
 - `INFISICAL_AGENT_VAULT_PROXY_TOKEN` or `--proxy-token`: the proxy token (prefer the environment variable, because other users on the machine can read anything on a command line)
 - `--domain` or `INFISICAL_DOMAIN`: your Infisical instance URL (required for EU Cloud and self-hosted instances, because the default is Infisical Cloud in the US)
 
+The HTTP port listens on all interfaces. To make it listen on one address only, such as `127.0.0.1`, pass `--listen-host` or set `INFISICAL_AGENT_VAULT_LISTEN_HOST`. To also accept SOCKS5 connections, see [Accept connections over SOCKS5](#accept-connections-over-socks5).
+
 Each time the proxy starts, it loads its settings and certificate authority from Infisical and, if it can, saves a copy in its data directory (`~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` as root, or `--data-dir`). If it can't reach Infisical for 60 seconds, it starts from that copy, or exits if there isn't one.
 
 <Info>
@@ -255,8 +262,17 @@ The proxy decrypts HTTPS traffic to attach the credential, so each agent has to 
 <Warning>
 Agents send their session token to the proxy unencrypted with every request. If someone can read that traffic and reach the proxy, they can use the token to call every API in the session's access bundle with its real credentials. The token keeps working until the session expires or you [revoke it](/documentation/platform/agent-vault/sessions#revoke-a-session).
 
-For this reason, we recommend running the proxy where only your agents can reach it, such as on the same host, a private network, or a container network.
+For this reason, we recommend running the proxy where only your agents can reach it, such as on the same host, a private network, or a container network. The [SOCKS5 port](#accept-connections-over-socks5) always uses TLS, so the session token is encrypted on the way to it.
 </Warning>
+
+### Download the certificate authority
+
+To get the proxy's CA without connecting to the proxy, such as to give it to a sandbox provider, download it from Infisical:
+
+- **In Infisical:** on the **Proxies** page, select the download icon next to the fingerprint in the **Certificate Authority** column
+- **With the API:** call [the endpoint that gets a proxy's certificate authority](/api-reference/endpoints/agent-vault-proxies/get-ca) as an Agent Vault member or admin
+
+If the proxy serves [your own CA](#use-your-own-certificate-authority), Infisical doesn't have the certificate, so the download fails.
 
 ### Pin the proxy's certificate
 
@@ -288,6 +304,53 @@ Your own CA stays the same when you rotate the proxy's token. To use the CA Infi
 ### APIs with a private certificate authority
 
 The proxy checks the certificate of each API it connects to, the way any HTTPS client does. If an API uses a private certificate authority, the machine running the proxy has to trust that authority. The agent's machine doesn't need to trust it.
+
+## Accept connections over SOCKS5
+
+Some sandbox providers, such as [E2B](/documentation/platform/agent-vault/guides/e2b), send a sandbox's traffic to a SOCKS5 proxy from outside the sandbox, instead of setting `HTTPS_PROXY` in the sandbox. To support them, turn on the proxy's SOCKS5 port, which only accepts SOCKS5 over TLS.
+
+### Turn on the SOCKS5 port
+
+Pass `--socks5-port` with the port number, and `--socks5-tls-name` with the DNS name or IP address that clients connect to:
+
+```bash
+INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> \
+infisical agent-vault proxy \
+  --listen-host 127.0.0.1 \
+  --socks5-port 1080 \
+  --socks5-tls-name proxy.example.com
+```
+
+- **Interfaces:** the SOCKS5 port listens on all interfaces, on a different port from `--port`
+- **The HTTP port:** on a public machine, keep the HTTP port (`17323` by default) off the internet, such as with `--listen-host 127.0.0.1`, because agents send their session token to it unencrypted
+- **Environment variables:** each flag has an environment variable, listed in the [CLI reference](/cli/reference#agent-vault-proxy)
+
+When the port is ready, the proxy logs `agent-vault: SOCKS5 listening`. Each log line about a SOCKS5 connection has the field `door` set to `socks5`.
+
+### Certificate for the SOCKS5 port
+
+With `--socks5-tls-name`, the proxy makes the port's certificate from its CA and renews the certificate before it expires. Clients check the certificate with the proxy's CA, which you can [download from Infisical](#download-the-certificate-authority).
+
+To serve your own certificate instead, such as one from a publicly trusted CA, pass `--socks5-tls-cert` and `--socks5-tls-key` in place of `--socks5-tls-name`. Each value can be the PEM text, the PEM encoded as base64, or the path to a PEM file, and the key can be of any type. The proxy reads the certificate only when it starts, and doesn't start if the certificate has expired, so restart the proxy each time you renew the certificate.
+
+### Sessions on the SOCKS5 port
+
+Clients sign in with a SOCKS5 username and password. The proxy ignores the username, so you can use any value, such as `x-agent-vault`. Set the password to the session token. After sign-in, the proxy handles requests the same way it handles them on the HTTP port, including the [traffic policy](#traffic-policy) and the limits in [Supported connections](#supported-connections).
+
+- If the session isn't valid, the proxy refuses the sign-in, so the client sees the connection close, and the proxy logs the reason
+- If you revoke a session while a connection is open, the next request on that connection gets a 403 with `the session is no longer valid` (within one [poll interval](#poll-interval))
+
+### Requests to private addresses
+
+If the traffic policy is **Any host**, the SOCKS5 port refuses requests to private, loopback, link-local, and other internal addresses, such as a cloud metadata endpoint or the proxy's own network. The client gets a 403:
+
+```text
+HTTP/1.1 403 Forbidden
+
+the destination is a private, loopback or link-local address
+```
+
+The proxy still lets the request through if a service in the session's access bundle names the host. The HTTP port doesn't refuse these addresses. To turn the check off for the SOCKS5 port, pass `--socks5-allow-private-destinations`.
 
 ## Rotate a proxy's token
 
@@ -330,7 +393,7 @@ Revoke access if you think a machine running the proxy is compromised.
 To keep the proxy available when one machine goes down, run it on several machines with the same proxy token and put a load balancer in front of them. Every machine serves the same certificate authority, so agents trust whichever machine they reach.
 
 - **Load balancer type:** use a TCP (layer 4) load balancer, because agents send `CONNECT` requests that most HTTP load balancers don't forward. You don't need sticky sessions
-- **Health checks:** send an HTTP `GET` to `/_agent-vault/ca` on each machine, which returns `200` while the proxy is serving
+- **Health checks:** send an HTTP `GET` to `/_agent-vault/ca` on each machine, which returns `200` while the proxy is serving (if the HTTP port only listens locally, open a TCP connection to the SOCKS5 port instead)
 - **Your own certificate authority (optional):** if you want to [use your own](#use-your-own-certificate-authority), pass the same `--ca-cert` and `--ca-key` to every machine
 
 Point agents at the load balancer's address instead of a single machine.

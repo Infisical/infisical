@@ -40,6 +40,7 @@ import {
   TAgentVaultProductMember,
   TAgentVaultProductMemberOf,
   TAgentVaultProxy,
+  TAgentVaultProxyCa,
   TAgentVaultSession,
   TAgentVaultSessionLogCorsProbe,
   TAgentVaultSessionLogHealth,
@@ -430,6 +431,13 @@ export const useListAgentVaultProxies = (
       return data;
     }
   });
+};
+
+export const fetchAgentVaultProxyCa = async (proxyId: string) => {
+  const { data } = await apiRequest.get<{ ca: TAgentVaultProxyCa }>(
+    `/api/v1/agent-vault/proxies/${proxyId}/ca`
+  );
+  return data.ca;
 };
 
 export const useGetAgentVaultSessionLogSettings = (enabled = true) => {

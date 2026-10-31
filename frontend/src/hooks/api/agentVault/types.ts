@@ -340,6 +340,12 @@ export type TAgentVaultProxy = {
   createdAt?: string;
 };
 
+export type TAgentVaultProxyCa = {
+  certificate: string;
+  fingerprint: string;
+  expiresAt: string;
+};
+
 export type TAgentVaultProxyToken = {
   proxyToken: string;
 };

@@ -152,7 +152,7 @@ Configure the following options to get custom guidance and best practices tailor
   </ul>
 
   <Note>
-    The proxy [runs on a different machine](/documentation/platform/agent-vault/proxies#choose-where-to-run-the-proxy) from the agent, on the same private network. If the proxy ran on the agent's machine, the agent could read the proxy token.
+    The proxy [runs on a different machine](/documentation/platform/agent-vault/proxies#choose-where-to-run-the-proxy) from the agent, on the same private network. If the proxy ran on the agent's machine, the agent could read the proxy token. If your agents run in [E2B sandboxes](/documentation/platform/agent-vault/guides/e2b), the proxy runs on a public machine instead, and E2B connects to it over SOCKS5.
   </Note>
 </AgentVaultSetupStep>
 

@@ -312,6 +312,25 @@ export const agentVaultProxyServiceFactory = ({
     return { proxies: proxies.map((proxy) => (isAdmin ? toAdminView(proxy) : toMemberView(proxy))), totalCount };
   };
 
+  // A proxy started with its own CA reports only that CA's fingerprint, so the certificate Infisical holds is not
+  // the one it serves and can't be handed out as if it were.
+  const getProxyCa = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
+    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Read);
+    const proxy = await $findProxyOr404({ projectId, proxyId });
+    if (!proxy.rootCaCertificate) {
+      throw new ConflictError({
+        message: `Proxy '${proxy.name}' has no certificate authority yet. Start it once with its proxy token, then try again.`
+      });
+    }
+    const held = parseRootCaCertificate(proxy.rootCaCertificate);
+    if (proxy.rootCaFingerprint && proxy.rootCaFingerprint !== held.fingerprint) {
+      throw new ConflictError({
+        message: `Proxy '${proxy.name}' serves its own certificate authority. Use the certificate you passed to it with --ca-cert.`
+      });
+    }
+    return { ca: { certificate: proxy.rootCaCertificate, fingerprint: held.fingerprint, expiresAt: held.expiresAt } };
+  };
+
   const $resourceActor = (ctx: TCreateProxyDTO["ctx"]) => ({
     type: ctx.actor,
     id: ctx.actorId,
@@ -1146,6 +1165,7 @@ export const agentVaultProxyServiceFactory = ({
   return {
     getProxyForAuth,
     listProxies,
+    getProxyCa,
     createProxy,
     rotateProxyToken,
     updateProxy,
