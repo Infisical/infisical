@@ -70,6 +70,11 @@ func (s service) Scope(r *http.Request) (string, bool) {
 		code := r.PostForm.Get("code")
 		return code, code != ""
 	}
+	// Google's userinfo call carries the token as a query parameter rather than a
+	// header.
+	if token := r.URL.Query().Get("access_token"); token != "" {
+		return token, true
+	}
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	return token, ok && token != ""
 }
