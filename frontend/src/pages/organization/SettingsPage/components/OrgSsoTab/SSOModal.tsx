@@ -229,7 +229,9 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
       isActive: false,
       entryPoint: "",
       issuer: "",
-      cert: ""
+      cert: "",
+      mfaSignalAttribute: null,
+      mfaAuthnContexts: null
     });
 
     createNotification({

@@ -298,7 +298,9 @@ export const OrgSsoTab = withPermission(
           isActive: false,
           entryPoint: "",
           issuer: "",
-          cert: ""
+          cert: "",
+          mfaSignalAttribute: null,
+          mfaAuthnContexts: null
         });
       } else if (from === "oidc") {
         await updateOidcAsync({
@@ -312,7 +314,9 @@ export const OrgSsoTab = withPermission(
           tokenEndpoint: "",
           userinfoEndpoint: "",
           clientId: "",
-          clientSecret: ""
+          clientSecret: "",
+          mfaClaimName: "amr",
+          mfaAmrValues: null
         });
       } else {
         await updateLdapAsync({

@@ -171,6 +171,8 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
       userinfoEndpoint: "",
       clientId: "",
       clientSecret: "",
+      mfaClaimName: "amr",
+      mfaAmrValues: null,
       isActive: false,
       organizationId: currentOrg.id
     });
