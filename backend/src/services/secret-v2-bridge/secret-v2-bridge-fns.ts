@@ -20,7 +20,9 @@ import {
   InternalMetadataType,
   TInternalMetadata
 } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, NotFoundError, throwIfAnySettledClientClosed } from "@app/lib/errors";
+import { hasPostgresConstraintViolation } from "@app/lib/errors/postgres";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
@@ -2208,3 +2210,15 @@ export const fnSecretMoveInTransaction = async (dto: TFnSecretMoveInTransaction)
 
   return fnSecretMove({ ...fnSecretMoveDTO, permission });
 };
+
+// Concurrent creates of one shared secret can all pass the existence check; this index rejects all but one.
+const SHARED_SECRET_KEY_UNIQUE_INDEX = "uq_secrets_v2_key_folder_id_shared";
+
+export const throwIfDuplicateSharedSecret =
+  (message: string) =>
+  (err: unknown): never => {
+    if (hasPostgresConstraintViolation(err, DatabaseErrorCode.UniqueViolation, SHARED_SECRET_KEY_UNIQUE_INDEX)) {
+      throw new BadRequestError({ message });
+    }
+    throw err;
+  };
