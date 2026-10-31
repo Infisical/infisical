@@ -113,16 +113,6 @@ export const HoneyTokensUpgradeIntent = {
     "Honey tokens are included with Secrets Management Pro. Review the plan or start a free trial to continue."
 } satisfies UpgradeIntent;
 
-export const SecretsBrokeringUpgradeIntent = {
-  featureKey: UpgradeFeature.SecretsBrokering,
-  productKey: BillingProduct.SecretsManagement,
-  planKey: BillingPlan.Enterprise,
-  upgradeLabel: "Unlock Secrets Brokering",
-  title: "Add Proxied Service",
-  description:
-    "Secrets brokering is included with Secrets Management Enterprise. Review the plan to continue."
-} satisfies UpgradeIntent;
-
 export const PointInTimeRecoveryUpgradeIntent = {
   featureKey: UpgradeFeature.PointInTimeRecovery,
   productKey: BillingProduct.SecretsManagement,

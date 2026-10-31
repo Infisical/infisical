@@ -24,7 +24,6 @@ import { BROKERABLE_DYNAMIC_SECRETS } from "./proxied-service-brokerable-outputs
 import { TProxiedServiceCredentialDALFactory } from "./proxied-service-credential-dal";
 import { TProxiedServiceDALFactory } from "./proxied-service-dal";
 import {
-  TCreateProxiedServiceDTO,
   TDeleteProxiedServiceDTO,
   TGetProxiedServiceByIdDTO,
   TGetProxiedServiceByNameDTO,
@@ -164,7 +163,10 @@ export const proxiedServiceServiceFactory = ({
   const $findReferencedDynamicSecrets = async (folderId: string, credentials: TCredentialRef[]) => {
     const names = [...new Set(credentials.map((c) => c.dynamicSecretName).filter((n): n is string => Boolean(n)))];
     if (!names.length) return { names, byName: new Map<string, TDynamicSecretWithMetadata>() };
-    const found = await dynamicSecretDAL.findWithMetadata({ folderId, $in: { name: names } });
+    const found = await dynamicSecretDAL.findWithMetadata({
+      folderId,
+      $in: { name: names }
+    });
     return { names, byName: new Map(found.map((ds) => [ds.name, ds])) };
   };
 
@@ -201,7 +203,11 @@ export const proxiedServiceServiceFactory = ({
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionDynamicSecretActions.Lease,
-        subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath, metadata: ds.metadata })
+        subject(ProjectPermissionSub.DynamicSecrets, {
+          environment,
+          secretPath,
+          metadata: ds.metadata
+        })
       );
 
       const brokerable = BROKERABLE_DYNAMIC_SECRETS[ds.type as DynamicSecretProviders];
@@ -234,7 +240,11 @@ export const proxiedServiceServiceFactory = ({
       const metadata = byName.get(cred.dynamicSecretName)?.metadata ?? [];
       const callerCanLease = permission.can(
         ProjectPermissionDynamicSecretActions.Lease,
-        subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath, metadata })
+        subject(ProjectPermissionSub.DynamicSecrets, {
+          environment,
+          secretPath,
+          metadata
+        })
       );
       return { ...cred, callerCanLease };
     });
@@ -243,64 +253,17 @@ export const proxiedServiceServiceFactory = ({
   const $resolveSecretPath = async (projectId: string, folderId: string) => {
     const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folderWithPath) {
-      throw new NotFoundError({ message: "Could not resolve the folder for this proxied service" });
+      throw new NotFoundError({
+        message: "Could not resolve the folder for this proxied service"
+      });
     }
     return prefixWithSlash(removeTrailingSlash(folderWithPath.path));
   };
 
-  const create = async (
-    { projectId, environment, secretPath, name, hostPattern, isEnabled, credentials }: TCreateProxiedServiceDTO,
-    actor: OrgServiceActor
-  ) => {
-    await $checkLicense(actor.orgId);
-    const canonicalPath = prefixWithSlash(removeTrailingSlash(secretPath));
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionProxiedServiceActions.Create,
-      subject(ProjectPermissionSub.ProxiedServices, { environment, secretPath: canonicalPath })
-    );
-
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) {
-      throw new BadRequestError({
-        message: `Could not find folder with path "${secretPath}" in environment "${environment}"`
-      });
-    }
-
-    await $assertReferencedSecretsReadable(actor, projectId, environment, canonicalPath, credentials);
-    await $assertReferencedDynamicSecretsLeasable(
-      permission,
-      actor.orgId,
-      projectId,
-      environment,
-      canonicalPath,
-      folder.id,
-      credentials
-    );
-
-    const existing = await proxiedServiceDAL.findOne({ folderId: folder.id, name });
-    if (existing) {
-      throw new BadRequestError({ message: `A proxied service named "${name}" already exists in this folder` });
-    }
-
-    return proxiedServiceDAL.transaction(async (tx) => {
-      const service = await proxiedServiceDAL.create(
-        { name, hostPattern, isEnabled: isEnabled ?? true, folderId: folder.id },
-        tx
-      );
-      const credentialRows = credentials.map((c) => toCredentialRow(service.id, c));
-      const insertedCredentials = credentialRows.length
-        ? await proxiedServiceCredentialDAL.insertMany(credentialRows, tx)
-        : [];
-      return { ...service, credentials: insertedCredentials };
+  const create = async () => {
+    throw new BadRequestError({
+      message:
+        "Proxied services can no longer be created. Agent Proxy is moving to Agent Vault: set up access to this service in Agent Vault instead. Existing proxied services keep working and can still be edited or deleted."
     });
   };
 
@@ -331,7 +294,9 @@ export const proxiedServiceServiceFactory = ({
 
     const project = await projectDAL.findById(projectId);
     if (!project) {
-      throw new NotFoundError({ message: `Project with ID "${projectId}" not found` });
+      throw new NotFoundError({
+        message: `Project with ID "${projectId}" not found`
+      });
     }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
@@ -366,7 +331,9 @@ export const proxiedServiceServiceFactory = ({
     await $checkLicense(actor.orgId);
     const service = await proxiedServiceDAL.findByIdWithScope(serviceId);
     if (!service) {
-      throw new NotFoundError({ message: `Proxied service with ID "${serviceId}" not found` });
+      throw new NotFoundError({
+        message: `Proxied service with ID "${serviceId}" not found`
+      });
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -386,7 +353,9 @@ export const proxiedServiceServiceFactory = ({
     const canRead = permission.can(ProjectPermissionProxiedServiceActions.Read, scopedSubject);
     const canProxy = permission.can(ProjectPermissionProxiedServiceActions.Proxy, scopedSubject);
     if (!canRead && !canProxy) {
-      throw new ForbiddenRequestError({ message: "You do not have permission to access this proxied service" });
+      throw new ForbiddenRequestError({
+        message: "You do not have permission to access this proxied service"
+      });
     }
 
     const credentials = await proxiedServiceCredentialDAL.findByServiceIds([service.id]);
@@ -423,17 +392,26 @@ export const proxiedServiceServiceFactory = ({
     const canRead = permission.can(ProjectPermissionProxiedServiceActions.Read, scopedSubject);
     const canProxy = permission.can(ProjectPermissionProxiedServiceActions.Proxy, scopedSubject);
     if (!canRead && !canProxy) {
-      throw new ForbiddenRequestError({ message: "You do not have permission to access this proxied service" });
+      throw new ForbiddenRequestError({
+        message: "You do not have permission to access this proxied service"
+      });
     }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) {
-      throw new NotFoundError({ message: `Proxied service "${name}" not found` });
+      throw new NotFoundError({
+        message: `Proxied service "${name}" not found`
+      });
     }
 
-    const service = await proxiedServiceDAL.findOne({ folderId: folder.id, name });
+    const service = await proxiedServiceDAL.findOne({
+      folderId: folder.id,
+      name
+    });
     if (!service) {
-      throw new NotFoundError({ message: `Proxied service "${name}" not found` });
+      throw new NotFoundError({
+        message: `Proxied service "${name}" not found`
+      });
     }
 
     const credentials = await proxiedServiceCredentialDAL.findByServiceIds([service.id]);
@@ -454,7 +432,9 @@ export const proxiedServiceServiceFactory = ({
     await $checkLicense(actor.orgId);
     const service = await proxiedServiceDAL.findByIdWithScope(serviceId);
     if (!service) {
-      throw new NotFoundError({ message: `Proxied service with ID "${serviceId}" not found` });
+      throw new NotFoundError({
+        message: `Proxied service with ID "${serviceId}" not found`
+      });
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -475,9 +455,14 @@ export const proxiedServiceServiceFactory = ({
     );
 
     if (name && name !== service.name) {
-      const conflicting = await proxiedServiceDAL.findOne({ folderId: service.folderId, name });
+      const conflicting = await proxiedServiceDAL.findOne({
+        folderId: service.folderId,
+        name
+      });
       if (conflicting) {
-        throw new BadRequestError({ message: `A proxied service named "${name}" already exists in this folder` });
+        throw new BadRequestError({
+          message: `A proxied service named "${name}" already exists in this folder`
+        });
       }
     }
 
@@ -541,7 +526,9 @@ export const proxiedServiceServiceFactory = ({
     await $checkLicense(actor.orgId);
     const service = await proxiedServiceDAL.findByIdWithScope(serviceId);
     if (!service) {
-      throw new NotFoundError({ message: `Proxied service with ID "${serviceId}" not found` });
+      throw new NotFoundError({
+        message: `Proxied service with ID "${serviceId}" not found`
+      });
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -563,7 +550,11 @@ export const proxiedServiceServiceFactory = ({
 
     await proxiedServiceDAL.deleteById(serviceId);
     const { environmentSlug, ...rest } = service;
-    return { ...rest, environment: environmentSlug, secretPath: resolvedSecretPath };
+    return {
+      ...rest,
+      environment: environmentSlug,
+      secretPath: resolvedSecretPath
+    };
   };
 
   const getDashboardProxiedServiceCount = async (
@@ -660,7 +651,9 @@ export const proxiedServiceServiceFactory = ({
     await $checkLicense(actor.orgId);
     const service = await proxiedServiceDAL.findByIdWithScope(serviceId);
     if (!service) {
-      throw new NotFoundError({ message: `Proxied service with ID "${serviceId}" not found` });
+      throw new NotFoundError({
+        message: `Proxied service with ID "${serviceId}" not found`
+      });
     }
 
     const { permission } = await permissionService.getProjectPermission({

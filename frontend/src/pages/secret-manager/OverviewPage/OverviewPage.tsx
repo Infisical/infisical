@@ -59,7 +59,6 @@ import {
   SecretAccessInsightsUpgradeIntent,
   SecretImportReplicationUpgradeIntent,
   SecretRotationsUpgradeIntent,
-  SecretsBrokeringUpgradeIntent,
   UpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
@@ -67,7 +66,7 @@ import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  CreateProxiedServiceModal,
+  AgentProxyMovedModal,
   DeleteProxiedServiceModal,
   EditProxiedServiceModal
 } from "@app/components/proxied-services";
@@ -3865,15 +3864,7 @@ const OverviewPageContent = () => {
       });
     },
     onAddHoneyToken: handleAddHoneyToken,
-    onAddProxiedService: () => {
-      if (subscription?.secretsBrokering) {
-        handlePopUpOpen("addProxiedService");
-        return;
-      }
-      openUpgradeGate({
-        intent: SecretsBrokeringUpgradeIntent
-      });
-    },
+    onAddProxiedService: () => handlePopUpOpen("addProxiedService"),
     onCopySecrets: () =>
       handleOpenCopySecrets({
         origin: "toolbar",
@@ -5185,13 +5176,9 @@ const OverviewPageContent = () => {
         isOpen={popUp.addHoneyToken.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addHoneyToken", isOpen)}
       />
-      <CreateProxiedServiceModal
+      <AgentProxyMovedModal
         isOpen={popUp.addProxiedService.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addProxiedService", isOpen)}
-        projectId={projectId}
-        environment={singleEnvSlug}
-        secretPath={secretPath}
-        existingNames={proxiedServiceNames}
       />
       <EditProxiedServiceModal
         isOpen={popUp.editProxiedService.isOpen}

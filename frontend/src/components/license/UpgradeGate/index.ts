@@ -62,7 +62,6 @@ export {
   SecretApprovalPoliciesUpgradeIntent,
   SecretImportReplicationUpgradeIntent,
   SecretRotationsUpgradeIntent,
-  SecretsBrokeringUpgradeIntent,
   SecretScanningUpgradeIntent,
   SecretsManagementUpgradeIntent,
   UpgradeFeature
