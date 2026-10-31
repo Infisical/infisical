@@ -325,6 +325,15 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GET_CSR.caId)
       }),
+      querystring: z.object({
+        maxPathLength: z.coerce
+          .number()
+          .int()
+          .min(-1)
+          .max(255)
+          .optional()
+          .describe(CERTIFICATE_AUTHORITIES.GET_CSR.maxPathLength)
+      }),
       response: {
         200: z.object({
           csr: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CSR.csr)
@@ -334,6 +343,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { ca, csr } = await server.services.internalCertificateAuthority.getCaCsr({
         caId: req.params.caId,
+        maxPathLength: req.query.maxPathLength,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

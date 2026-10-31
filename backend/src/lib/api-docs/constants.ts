@@ -2267,6 +2267,8 @@ export const CERTIFICATE_AUTHORITIES = {
   },
   GET_CSR: {
     caId: "The ID of the CA to generate CSR from.",
+    maxPathLength:
+      "The maximum number of intermediate CAs that may follow this CA in the chain. Use -1 for no limit. A CA that already has a path length always keeps it.",
     csr: "The generated CSR from the CA."
   },
   RENEW_CA_CERT: {
