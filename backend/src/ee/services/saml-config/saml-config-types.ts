@@ -91,4 +91,5 @@ export type TSamlConfigServiceFactory = {
     mfaAuthnContexts?: string[] | null;
   }>;
   samlLogin: (arg: TSamlLoginDTO) => Promise<TProviderAuthResult & { userId: string; orgId: string; orgName: string }>;
+  consumeSamlAssertion: (arg: { samlConfigId: string; parsedAssertion: unknown }) => Promise<void>;
 };

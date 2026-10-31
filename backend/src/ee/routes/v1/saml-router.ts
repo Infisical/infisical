@@ -193,9 +193,12 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           }
 
           const { ssoConfig } = req as unknown as FastifyRequest;
+          const parsedAssertion = profile.getAssertion?.();
+          await server.services.saml.consumeSamlAssertion({ samlConfigId: ssoConfig.id, parsedAssertion });
+
           const idpMfa = matchIdpMfaSignal({
             kind: "saml",
-            authnContextClassRefs: extractSamlAuthnContextClassRefs(profile.getAssertion?.()),
+            authnContextClassRefs: extractSamlAuthnContextClassRefs(parsedAssertion),
             attributes: profile.attributes as Record<string, unknown> | undefined,
             config: ssoConfig
           });

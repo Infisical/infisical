@@ -1662,7 +1662,8 @@ export const registerRoutes = async (
     telemetryService,
     usageMeteringService,
     alertChannelRecipientDAL,
-    eventEmitter: eventOutboxService
+    eventEmitter: eventOutboxService,
+    keyStore
   });
 
   const ldapService = ldapConfigServiceFactory({

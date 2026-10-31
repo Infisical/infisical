@@ -261,7 +261,10 @@ export const KeyStorePrefixes = {
     `native-integration-deprecation-notice:${orgId}:${period}` as const,
 
   LegacyPkiDeprecationNotice: (orgId: string, period: string) =>
-    `legacy-pki-deprecation-notice:${orgId}:${period}` as const
+    `legacy-pki-deprecation-notice:${orgId}:${period}` as const,
+
+  SamlAssertionReplay: (samlConfigId: string, assertionIdHash: string) =>
+    `saml-assertion-replay:${samlConfigId}:${assertionIdHash}` as const
 };
 
 export const KeyStoreTtls = {

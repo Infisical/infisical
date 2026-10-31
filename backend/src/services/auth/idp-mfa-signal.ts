@@ -1,3 +1,5 @@
+import { getSamlAssertionNode, samlXmlChildren } from "@app/ee/services/saml-config/saml-assertion-fns";
+
 // "amr" is the OIDC Core claim name. SAML has no standard attribute name, so the Okta convention is the default.
 const DEFAULT_MFA_CLAIM_NAME = "amr";
 
@@ -113,8 +115,6 @@ export const matchIdpMfaSignal = (input: TIdpMfaSignalInput): TIdpMfaSignal => {
   return { verified: evidence.length > 0, evidence, received };
 };
 
-// node-saml parses with xml2js explicitArray and explicitCharkey: every child is an array, a text node is
-// { _: "value" }, and the root is either the Assertion or a Response wrapping one.
 const textOf = (node: unknown): string | undefined => {
   if (typeof node === "string") return node;
   if (node && typeof node === "object" && "_" in node && typeof (node as { _: unknown })._ === "string") {
@@ -123,21 +123,10 @@ const textOf = (node: unknown): string | undefined => {
   return undefined;
 };
 
-const children = (node: unknown, name: string): unknown[] => {
-  if (!node || typeof node !== "object") return [];
-  const value = (node as Record<string, unknown>)[name];
-  if (value === undefined || value === null) return [];
-  return Array.isArray(value) ? value : [value];
-};
-
 export const extractSamlAuthnContextClassRefs = (parsedAssertion: unknown): string[] => {
-  const root =
-    children(parsedAssertion, "Assertion")[0] ??
-    children(children(parsedAssertion, "Response")[0], "Assertion")[0] ??
-    parsedAssertion;
-  return children(root, "AuthnStatement")
-    .flatMap((statement) => children(statement, "AuthnContext"))
-    .flatMap((context) => children(context, "AuthnContextClassRef"))
+  return samlXmlChildren(getSamlAssertionNode(parsedAssertion), "AuthnStatement")
+    .flatMap((statement) => samlXmlChildren(statement, "AuthnContext"))
+    .flatMap((context) => samlXmlChildren(context, "AuthnContextClassRef"))
     .map(textOf)
     .filter((value): value is string => Boolean(value));
 };
