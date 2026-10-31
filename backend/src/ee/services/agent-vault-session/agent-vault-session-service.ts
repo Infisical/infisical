@@ -11,8 +11,12 @@ import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
+import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
+import { findCallerDelegation, resolveOnBehalfOfUser } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { AgentVaultMemberType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
@@ -34,12 +38,18 @@ export const AGENT_VAULT_SESSION_TTL_NEVER = "never";
 // Past roughly 1e8 days the expiry overflows Date and Postgres rejects the row as a 500. A century is
 // far beyond any real lifetime and keeps the message honest; "never" exists for no expiry at all.
 export const AGENT_VAULT_SESSION_MAX_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
+// The user an on-behalf-of session acts for didn't start it and may not know it exists, so it is short by default.
+// It should probably have a maximum too, but for now any TTL is allowed, never included.
+export const AGENT_VAULT_ON_BEHALF_OF_SESSION_DEFAULT_TTL = "1h";
 
 type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;
   agentVaultSessionAccessBundleDAL: TAgentVaultSessionAccessBundleDALFactory;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
+  agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  userDAL: Pick<TUserDALFactory, "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "wrapKey">;
 };
@@ -50,7 +60,10 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultSessionDAL,
   agentVaultSessionAccessBundleDAL,
   agentVaultAccessBundleDAL,
+  agentVaultDelegationDAL,
   membershipDAL,
+  userDAL,
+  orgDAL,
   permissionService,
   kmsService
 }: TAgentVaultSessionServiceFactoryDep) => {
@@ -61,17 +74,34 @@ export const agentVaultSessionServiceFactory = ({
     return { type: ctx.actor, id: ctx.actorId };
   };
 
-  const toSessionView = ({ userId, identityId, ...session }: TAgentVaultSessionListRow) => ({
+  const toSessionView = ({
+    userId,
+    identityId,
+    onBehalfOfUserId,
+    onBehalfOfUserName,
+    ...session
+  }: TAgentVaultSessionListRow) => ({
     ...session,
-    status: deriveSessionStatus({ ...session, userId, identityId })
+    status: deriveSessionStatus({ ...session, userId, identityId, onBehalfOfUserId, onBehalfOfUserName })
   });
 
-  const mintSession = async ({ projectId, ctx, accessBundles, actorName, actorEmail, ttl, label }: TMintSessionDTO) => {
-    const actor = requireSessionActor(ctx);
-    const { permission, accessBundleIds: reachable } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
+  const resolveSessionTtl = (ttl: string | undefined, isOnBehalfOf: boolean) =>
+    ttl ?? (isOnBehalfOf ? AGENT_VAULT_ON_BEHALF_OF_SESSION_DEFAULT_TTL : AGENT_VAULT_SESSION_DEFAULT_TTL);
+
+  const mintSession = async ({
+    projectId,
+    ctx,
+    accessBundles,
+    actorName,
+    actorEmail,
+    ttl: requestedTtl,
+    onBehalfOf,
+    label
+  }: TMintSessionDTO) => {
+    const caller = requireSessionActor(ctx);
+    const ttl = resolveSessionTtl(requestedTtl, Boolean(onBehalfOf));
+
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Create,
       ProjectPermissionSub.AgentVaultSessions
@@ -89,18 +119,59 @@ export const agentVaultSessionServiceFactory = ({
 
     const bundles = await agentVaultAccessBundleDAL.find({ projectId, $in: { name: accessBundles } });
     const bundlesByName = new Map(bundles.map((bundle) => [bundle.name, bundle]));
-
-    const unreachable = accessBundles.find((name) => {
-      const bundle = bundlesByName.get(name);
-      return !bundle || (reachable !== null && !reachable.includes(bundle.id));
-    });
-    if (unreachable) {
-      throw new BadRequestError({
-        message: `No access bundle named '${unreachable}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
+    // An unknown name reads like an ungranted one, so the error never confirms that a bundle exists.
+    const firstUnreachable = (reachable: string[] | null) =>
+      accessBundles.find((name) => {
+        const bundle = bundlesByName.get(name);
+        return !bundle || (reachable !== null && !reachable.includes(bundle.id));
       });
+
+    let onBehalfOfUser: Awaited<ReturnType<typeof resolveOnBehalfOfUser>> | null = null;
+    if (onBehalfOf) {
+      // A session on a user's behalf can use only the bundles both the user and the identity reach. The delegation is
+      // checked first and the identity's own bundles next, so an identity learns nothing about who is in the org until
+      // an admin has delegated it and granted it the bundle it asks for.
+      const delegation = await findCallerDelegation({ agentVaultDelegationDAL }, { projectId, ctx });
+      const { accessBundleIds: identityReach } = await getAgentVaultReachability(
+        { permissionService, membershipDAL },
+        { projectId, ctx }
+      );
+      const notGrantedToIdentity = firstUnreachable(identityReach);
+      if (notGrantedToIdentity) {
+        throw new BadRequestError({
+          message: `No access bundle named '${notGrantedToIdentity}' is granted to this machine identity. A session on behalf of a user can use only bundles granted to both the user and the machine identity, so check the name, or ask an Agent Vault admin to grant the bundle to the machine identity.`
+        });
+      }
+
+      onBehalfOfUser = await resolveOnBehalfOfUser(
+        { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL },
+        { projectId, ctx, onBehalfOf, delegation }
+      );
+      // getProjectPermission leaves the last actor it ran for in the request context, where the audit log reads the
+      // caller's permission metadata. Running the caller's check again, memoized so it costs no query, puts it back.
+      await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+
+      const notGrantedToUser = firstUnreachable(onBehalfOfUser.accessBundleIds);
+      if (notGrantedToUser) {
+        throw new BadRequestError({
+          message: `No access bundle named '${notGrantedToUser}' is granted to '${onBehalfOfUser.identifier}'. Check the name, or ask an Agent Vault admin to grant it to them.`
+        });
+      }
+    } else {
+      const { accessBundleIds } = await getAgentVaultReachability(
+        { permissionService, membershipDAL },
+        { projectId, ctx }
+      );
+      const notGranted = firstUnreachable(accessBundleIds);
+      if (notGranted) {
+        throw new BadRequestError({
+          message: `No access bundle named '${notGranted}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
+        });
+      }
     }
 
-    const expiresAt = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : new Date(Date.now() + ms(ttl));
+    const ttlMs = ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : ms(ttl);
+    const expiresAt = ttlMs === null ? null : new Date(Date.now() + ttlMs);
     const { token, tokenHash } = generateSessionToken();
 
     const sessionId = crypto.nativeCrypto.randomUUID();
@@ -109,17 +180,29 @@ export const agentVaultSessionServiceFactory = ({
       kmsService
     );
 
+    // A session on a user's behalf belongs to the identity, so only it and admins see the session and its logs. The
+    // user is kept alongside: resolve uses their personal values and intersects their reach with the identity's.
+    const owner = {
+      userId: caller.type === ActorType.USER ? caller.id : null,
+      identityId: caller.type === ActorType.IDENTITY ? caller.id : null,
+      actorType: caller.type === ActorType.IDENTITY ? AgentVaultMemberType.MachineIdentity : AgentVaultMemberType.User,
+      actorName,
+      actorEmail,
+      ...(onBehalfOfUser && {
+        onBehalfOfUserId: onBehalfOfUser.user.id,
+        onBehalfOfUserName:
+          `${onBehalfOfUser.user.firstName ?? ""} ${onBehalfOfUser.user.lastName ?? ""}`.trim() ||
+          (onBehalfOfUser.user.email ?? onBehalfOfUser.user.username),
+        onBehalfOfUserEmail: onBehalfOfUser.user.email ?? null
+      })
+    };
+
     const session = await agentVaultSessionDAL.transaction(async (tx) => {
       const created = await agentVaultSessionDAL.createWithId(
         {
           id: sessionId,
           projectId,
-          userId: actor.type === ActorType.USER ? actor.id : null,
-          identityId: actor.type === ActorType.IDENTITY ? actor.id : null,
-          actorType:
-            actor.type === ActorType.IDENTITY ? AgentVaultMemberType.MachineIdentity : AgentVaultMemberType.User,
-          actorName,
-          actorEmail,
+          ...owner,
           label: label || null,
           tokenHash,
           expiresAt,
@@ -153,7 +236,11 @@ export const agentVaultSessionServiceFactory = ({
           position
         }))
       },
-      token
+      token,
+      ttlSeconds: ttlMs === null ? null : Math.floor(ttlMs / 1000),
+      onBehalfOf: onBehalfOfUser
+        ? { userId: onBehalfOfUser.user.id, username: onBehalfOfUser.user.username, email: onBehalfOfUser.user.email }
+        : null
     };
   };
 
@@ -231,8 +318,8 @@ export const agentVaultSessionServiceFactory = ({
       return { session: toSessionView({ ...session, revokedAt: revoked.revokedAt ?? null }), revokedNow: true };
     }
 
-    // Nothing was written: a concurrent revoke won, or the owner was deleted, which already reads as revoked and is
-    // left untouched. Report the row as it is now, which the read above may not have seen.
+    // Nothing was written: a concurrent revoke won, or the owner or the user it acts for was deleted, which already
+    // reads as revoked and is left untouched. Report the row as it is now, which the read above may not have seen.
     const current = await agentVaultSessionDAL.findByIdOnPrimary(session.id, projectId);
     return {
       session: toSessionView(
@@ -241,7 +328,9 @@ export const agentVaultSessionServiceFactory = ({
               ...session,
               revokedAt: current.revokedAt ?? null,
               userId: current.userId ?? null,
-              identityId: current.identityId ?? null
+              identityId: current.identityId ?? null,
+              onBehalfOfUserId: current.onBehalfOfUserId ?? null,
+              onBehalfOf: session.onBehalfOf && { ...session.onBehalfOf, id: current.onBehalfOfUserId ?? null }
             }
           : session
       ),
@@ -263,7 +352,8 @@ export const agentVaultSessionServiceFactory = ({
     if (!updated) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
     if (!updated.isUpdated) {
       throw new BadRequestError({
-        message: "The user or machine identity that owned this session was deleted, so its label can't be changed."
+        message:
+          "The user or machine identity that owned this session, or the user it was started on behalf of, was deleted, so its label can't be changed."
       });
     }
 

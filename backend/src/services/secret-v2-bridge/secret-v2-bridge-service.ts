@@ -1555,74 +1555,53 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     // scott: if any of this changes it also needs to be mirrored in secret rotation for getting dashboard secrets
-    const decryptedSecrets = secrets
-      .filter((el) => {
-        const canDescribeSecret = hasSecretReadValueOrDescribePermission(
+    const decryptedSecrets: ReturnType<typeof reshapeBridgeSecret>[] = [];
+    for (const secret of secrets) {
+      const secretPath = groupedPaths[secret.folderId][0].path;
+      const secretSubjectFields = {
+        environment,
+        secretPath,
+        secretName: secret.key,
+        secretTags: secret.tags.map((i) => i.slug)
+      };
+
+      const canDescribeSecret = hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.DescribeSecret,
+        secretSubjectFields
+      );
+      if (!canDescribeSecret) continue;
+
+      const canReadValue =
+        viewSecretValue &&
+        hasSecretReadValueOrDescribePermission(
           permission,
-          ProjectPermissionSecretActions.DescribeSecret,
-          {
-            environment,
-            secretPath: groupedPaths[el.folderId][0].path,
-            secretName: el.key,
-            secretTags: el.tags.map((i) => i.slug)
-          }
+          ProjectPermissionSecretActions.ReadValue,
+          secretSubjectFields
         );
 
-        if (!canDescribeSecret) {
-          return false;
+      if (viewSecretValue && !canReadValue) {
+        // Recursive secret, should be filtered out
+        if (secretPath !== path) continue;
+
+        if (throwOnMissingReadValuePermission) {
+          throwIfMissingSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            secretSubjectFields
+          );
         }
+        // Otherwise keep the secret with its value masked below.
+      }
 
-        if (viewSecretValue) {
-          // Recursive secret, should be filtered out
-          if (groupedPaths[el.folderId][0].path !== path) {
-            const canReadRecursiveSecretValue = hasSecretReadValueOrDescribePermission(
-              permission,
-              ProjectPermissionSecretActions.ReadValue,
-              {
-                environment,
-                secretPath: groupedPaths[el.folderId][0].path,
-                secretName: el.key,
-                secretTags: el.tags.map((i) => i.slug)
-              }
-            );
+      const isPersonalSecret = secret.userId === actorId && secret.type === SecretType.Personal;
+      const isValueMasked = !canReadValue && !isPersonalSecret;
 
-            if (!canReadRecursiveSecretValue) {
-              return false;
-            }
-          }
-
-          if (throwOnMissingReadValuePermission) {
-            throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-              environment,
-              secretPath: groupedPaths[el.folderId][0].path,
-              secretName: el.key,
-              secretTags: el.tags.map((i) => i.slug)
-            });
-          }
-          // Else, we do nothing. Because we don't want to filter out the secret, OR throw an error.
-          // If the user doesn't have access to read the value, in the below map function, we mask the secret value and return the secret with a hidden value.
-        }
-
-        return canDescribeSecret;
-      })
-      .map((secret) => {
-        const isPersonalSecret = secret.userId === actorId && secret.type === SecretType.Personal;
-
-        const secretValueHidden =
-          !viewSecretValue ||
-          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment,
-            secretPath: groupedPaths[secret.folderId][0].path,
-            secretName: secret.key,
-            secretTags: secret.tags.map((i) => i.slug)
-          });
-
-        const isValueMasked = secretValueHidden && !isPersonalSecret;
-
-        return reshapeBridgeSecret(
+      decryptedSecrets.push(
+        reshapeBridgeSecret(
           projectId,
           environment,
-          groupedPaths[secret.folderId][0].path,
+          secretPath,
           {
             ...secret,
             secretMetadata: secret.secretMetadata?.map((el) => ({
@@ -1641,8 +1620,9 @@ export const secretV2BridgeServiceFactory = ({
               : ""
           },
           isValueMasked
-        );
-      });
+        )
+      );
+    }
 
     // note(daniel):  when in relative mode, direct secret references also resolve through imported secrets.
     // wrap secretDAL with import-aware fetch so the expander sees the full merged view.
@@ -1695,7 +1675,8 @@ export const secretV2BridgeServiceFactory = ({
     if (shouldExpandSecretReferences) {
       throwIfClientDisconnected(abortSignal);
       const errors = await expandSecretReferencesGroupedByPath({
-        secrets: decryptedSecrets,
+        // expandSecretReferences returns values without "${" unchanged, so skip them rather than await each one
+        secrets: decryptedSecrets.filter((secret) => secret.secretValue.includes("${")),
         environment,
         expandSecretReferences
       });

@@ -13,6 +13,8 @@ import {
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
   TAgentVaultBundleSkill,
+  TAgentVaultDelegation,
+  TAgentVaultDelegationDetail,
   TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
@@ -28,6 +30,7 @@ import {
   TAgentVaultSkillVersion,
   TAgentVaultVariable,
   TAgentVaultWrittenMember,
+  TChangeAgentVaultDelegationSubjectsDTO,
   TCompleteAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultAccessBundleDTO,
   TCreateAgentVaultOauthAuthorizationDTO,
@@ -37,6 +40,7 @@ import {
   TCreateAgentVaultSkillDTO,
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
+  TSetAgentVaultDelegationDTO,
   TSetAgentVaultPersonalValuesDTO,
   TUpdateAgentVaultAccessBundleDTO,
   TUpdateAgentVaultMemberRolesDTO,
@@ -46,6 +50,80 @@ import {
   TUpdateAgentVaultSkillDTO,
   TUpdateAgentVaultVariableDTO
 } from "./types";
+
+// A save sends the whole list, so the next edit has to start from its result, not from a refetch that
+// reads a replica which may not have the write yet. A read already in flight is cancelled first, or
+// it could land after this and put the old list back. The candidates are refetched, since they
+// depend on who is in the delegation.
+const useWriteDelegationResult = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return async (machineIdentityId: string, delegation: TAgentVaultDelegationDetail | null) => {
+    const queryKey = agentVaultKeys.delegation(currentOrg.id, machineIdentityId);
+    await queryClient.cancelQueries({ queryKey, exact: true });
+    queryClient.setQueryData(queryKey, delegation);
+    await queryClient.invalidateQueries({
+      queryKey: agentVaultKeys.availableDelegationSubjects(currentOrg.id, machineIdentityId)
+    });
+  };
+};
+
+export const useSetAgentVaultDelegation = () => {
+  const writeResult = useWriteDelegationResult();
+  return useMutation({
+    mutationFn: async ({ machineIdentityId, ...body }: TSetAgentVaultDelegationDTO) => {
+      const { data } = await apiRequest.put<{ delegation: TAgentVaultDelegationDetail }>(
+        `/api/v1/agent-vault/delegations/${machineIdentityId}`,
+        body
+      );
+      return data.delegation;
+    },
+    onSuccess: (delegation, { machineIdentityId }) => writeResult(machineIdentityId, delegation)
+  });
+};
+
+export const useDeleteAgentVaultDelegation = () => {
+  const writeResult = useWriteDelegationResult();
+  return useMutation({
+    mutationFn: async ({ machineIdentityId }: { machineIdentityId: string }) => {
+      const { data } = await apiRequest.delete<{ delegation: TAgentVaultDelegation }>(
+        `/api/v1/agent-vault/delegations/${machineIdentityId}`
+      );
+      return data.delegation;
+    },
+    onSuccess: (_, { machineIdentityId }) => writeResult(machineIdentityId, null)
+  });
+};
+
+// Adds to the delegation without resending who is already in it, so it can't undo another change.
+export const useAddAgentVaultDelegationSubjects = () => {
+  const writeResult = useWriteDelegationResult();
+  return useMutation({
+    mutationFn: async ({ machineIdentityId, ...body }: TChangeAgentVaultDelegationSubjectsDTO) => {
+      const { data } = await apiRequest.post<{ delegation: TAgentVaultDelegationDetail }>(
+        `/api/v1/agent-vault/delegations/${machineIdentityId}/subjects`,
+        body
+      );
+      return data.delegation;
+    },
+    onSuccess: (delegation, { machineIdentityId }) => writeResult(machineIdentityId, delegation)
+  });
+};
+
+// null once the delegation names no one, which reads as no delegation.
+export const useRemoveAgentVaultDelegationSubjects = () => {
+  const writeResult = useWriteDelegationResult();
+  return useMutation({
+    mutationFn: async ({ machineIdentityId, ...body }: TChangeAgentVaultDelegationSubjectsDTO) => {
+      const { data } = await apiRequest.delete<{ delegation: TAgentVaultDelegationDetail | null }>(
+        `/api/v1/agent-vault/delegations/${machineIdentityId}/subjects`,
+        { data: body }
+      );
+      return data.delegation;
+    },
+    onSuccess: (delegation, { machineIdentityId }) => writeResult(machineIdentityId, delegation)
+  });
+};
 
 export const useCreateAgentVaultAccessBundle = () => {
   const { currentOrg } = useOrganization();

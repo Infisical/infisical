@@ -681,6 +681,12 @@ export const AgentVaultSessionActorSchema = z.discriminatedUnion("type", [
   sessionActorSchemas.machineIdentity
 ]);
 
+// Shaped like a session's user actor, so a client shows the user a session acts for the way it shows an owner.
+export const AgentVaultSessionOnBehalfOfSchema = sessionActorSchemas.user.extend({
+  type: z.literal(AgentVaultMemberType.User).describe(AGENT_VAULT.SESSION.onBehalfOfType),
+  id: z.string().uuid().nullable().describe(AGENT_VAULT.SESSION.onBehalfOfUserIdRead)
+});
+
 // No .default().optional(): the optional wraps the default and the default never applies.
 export const agentVaultListQuery = (docs: { search: string; limit: string; offset: string }) => ({
   search: z

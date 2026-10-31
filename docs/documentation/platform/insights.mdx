@@ -237,13 +237,17 @@ The card counts every user and machine identity that can read a secret's value, 
 
 Project admins aren't counted, because they can read every secret by design.
 
-### When results appear
+### Which reads are recorded
 
 Infisical records when users and machine identities read secret values from the dashboard or the secrets endpoints the CLI and SDKs use, including values returned through [secret imports](/documentation/platform/secret-reference#secret-imports) and [secret references](/documentation/platform/secret-reference#secret-referencing). Reads made with service tokens or through the secret imports endpoints aren't recorded.
+
+### When results appear
 
 A project needs 30 days of recorded reads before the card shows results. Recording starts when the project was created or when read tracking was released, whichever is later. On a self-hosted instance, read tracking starts when you upgrade to a version that includes it. Until then, the card shows **Not enough read history yet** and the date results will start.
 
 A secret counts against an identity only once both the secret and the identity's access to it are more than 30 days old. New secrets and newly granted access aren't flagged until they've had a full 30 days to be read.
+
+### How often the card updates
 
 Infisical recalculates the card at most once a day. The **Updates in** badge next to the card title shows when the next update happens.
 

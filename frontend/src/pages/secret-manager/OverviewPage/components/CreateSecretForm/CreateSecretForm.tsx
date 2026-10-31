@@ -68,6 +68,10 @@ import {
   overviewResponsePhase,
   useOverviewTelemetry
 } from "../../OverviewTelemetry";
+import {
+  notifySecretsCreatedWithoutShare,
+  TNotifySecretsCreated
+} from "../../useNotifySecretsCreated";
 import { didAllSecretCreationsSucceed } from "./createSecretFormState";
 
 const MAX_SECRETS_PER_COMMIT = 1000;
@@ -153,6 +157,7 @@ type Props = {
   // Called after the user actually creates a secret (non-batch path) so the parent can run the
   // activation nudge. The parent owns the nudge hook + modal state, so this stays a callback.
   onSecretCreated?: () => void;
+  notifySecretsCreated?: TNotifySecretsCreated;
   // Called when the user opts to bulk-upload secrets instead. The parent owns the import modal,
   // so it swaps popups; when the user pasted multiple KEY=VALUE pairs, the parsed set is passed
   // along so the modal can skip its upload step.
@@ -165,6 +170,7 @@ export const CreateSecretForm = ({
   onClose,
   editSecret,
   onSecretCreated,
+  notifySecretsCreated = notifySecretsCreatedWithoutShare,
   onUploadSecrets
 }: Props) => {
   const overviewTelemetry = useOverviewTelemetry();
@@ -443,10 +449,15 @@ export const CreateSecretForm = ({
           text: "Requested changes have been sent for review"
         });
       } else {
-        createNotification({
-          type: "success",
-          text: `${result.secrets.created.length} secrets created`
-        });
+        notifySecretsCreated(
+          result.secrets.created.length,
+          secrets.map((secret) => ({
+            environment: selectedEnv[0].slug,
+            key: secret.key,
+            value: secret.value,
+            tags: secret.tags?.map((tag) => tag.label)
+          }))
+        );
         onSecretCreated?.();
       }
       if (attempt.isCurrent() && formOwner.current.invocation === invocation) {
@@ -475,7 +486,8 @@ export const CreateSecretForm = ({
             tagIds: secret.tags?.map((tag) => tag.value),
             secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined
           })),
-          environment
+          environment,
+          secret
         };
       })
     );
@@ -530,12 +542,21 @@ export const CreateSecretForm = ({
     }
 
     if (updatedEnvs.length) {
-      createNotification({
-        type: "success",
-        text: `Secrets created in ${
-          updatedEnvs.length > 1 ? "environments" : "environment"
-        }: ${updatedEnvs.join(", ")}`
-      });
+      notifySecretsCreated(
+        responseCount,
+        results.flatMap((result) =>
+          result.status === "fulfilled" && !("approval" in result.value)
+            ? [
+                {
+                  environment: result.value.environment,
+                  key: result.value.secret.key,
+                  value: result.value.secret.value,
+                  tags: result.value.secret.tags?.map((tag) => tag.label)
+                }
+              ]
+            : []
+        )
+      );
 
       // The user just created a secret: let the parent check whether to surface the nudge.
       onSecretCreated?.();

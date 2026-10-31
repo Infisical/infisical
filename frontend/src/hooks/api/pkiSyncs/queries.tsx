@@ -6,6 +6,7 @@ import { PkiSync, TPkiSyncOption } from "@app/hooks/api/pkiSyncs";
 import {
   TAwsListener,
   TAwsLoadBalancer,
+  TImpervaSite,
   TKempVirtualService,
   TListPkiSyncOptions,
   TListPkiSyncs,
@@ -39,6 +40,8 @@ export const pkiSyncKeys = {
     [...pkiSyncKeys.all, "aws-listeners", connectionId, region, loadBalancerArn] as const,
   kempVirtualServices: (connectionId: string) =>
     [...pkiSyncKeys.all, "kemp-virtual-services", connectionId] as const,
+  impervaSites: (connectionId: string) =>
+    [...pkiSyncKeys.all, "imperva-sites", connectionId] as const,
   certificateOrders: (scopeId: string, certificateOrderIds: string[]) =>
     [...pkiSyncKeys.all, "certificate-orders", scopeId, certificateOrderIds] as const,
   matchingCertificateIds: (
@@ -373,6 +376,34 @@ export const useListKempVirtualServices = (
         }
       );
       return data.virtualServices;
+    },
+    enabled: !!connectionId,
+    ...options
+  });
+};
+
+export const useListImpervaSites = (
+  { connectionId }: { connectionId: string },
+  options?: Omit<
+    UseQueryOptions<
+      TImpervaSite[],
+      unknown,
+      TImpervaSite[],
+      ReturnType<typeof pkiSyncKeys.impervaSites>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pkiSyncKeys.impervaSites(connectionId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ sites: TImpervaSite[] }>(
+        "/api/v1/cert-manager/syncs/imperva/sites",
+        {
+          params: { connectionId }
+        }
+      );
+      return data.sites;
     },
     enabled: !!connectionId,
     ...options
