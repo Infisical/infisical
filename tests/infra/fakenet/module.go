@@ -80,7 +80,10 @@ func ResolveImage(ctx context.Context, repoRoot string, log infra.Logger) (Image
 	}
 
 	tests := filepath.Join(repoRoot, "tests")
-	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-o", filepath.Join(dir, "fakenet"), "./cmd/fakenet")
+	// -buildvcs=false: the stamped VCS state flips whenever a tracked file is edited,
+	// which would change the binary, rebuild fakenet and replace it under the packages
+	// still running.
+	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-buildvcs=false", "-o", filepath.Join(dir, "fakenet"), "./cmd/fakenet")
 	build.Dir = tests
 	build.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+goarch, "CGO_ENABLED=0")
 	if out, bErr := build.CombinedOutput(); bErr != nil {

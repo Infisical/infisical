@@ -47,7 +47,12 @@ func TestSecret_Create(t *testing.T) {
 | `harness.Isolated` | the package's own Postgres, Redis, and Infisical | the test writes instance-wide state: super-admin config, login methods, encryption strategy, run modes |
 
 `Isolated` costs a full boot per package. Containers the test talks to through Infisical,
-such as a rotation target database, are added with `harness.WithInfra(...)`.
+such as a rotation target database, are added with `harness.WithInfra(...)`. Instance-wide
+environment, such as `RELAY_AUTH_SECRET`, is set with `harness.WithInfisicalEnv(k, v)`,
+which only an `Isolated` package may use.
+
+A container one test owns, such as a relay or gateway agent, is started with
+`h.RunContainer(...)` and stopped when the test ends (`suites/gateway/forwarding_test.go`).
 
 ## Structure
 

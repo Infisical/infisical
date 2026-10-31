@@ -50,7 +50,8 @@ configuration, or the old container is reused.
 ## Layout
 
 ```
-suites/             product behaviour, grouped by product (suites/secretmanager/secrets)
+suites/             behaviour, grouped by product (suites/secretmanager/secrets) or
+                    platform area (suites/machineidentity, suites/user, suites/group)
 harnesstest/        harness behaviour; only for failures the harness alone can cause
 harness/            Stack, Profile, Tenant, Principal
 fixture/            platform resources: projects, App Connections
