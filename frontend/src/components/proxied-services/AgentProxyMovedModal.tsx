@@ -10,18 +10,18 @@ const CHANGES = [
   {
     title: "Access Bundles Replace Proxied Services",
     description:
-      "Describe the services an agent may reach in an access bundle, then grant it to the people who run agents.",
+      "Describe the services an agent may reach in an access bundle, then grant it to the people who run agents."
   },
   {
     title: "Credentials Stay Out of Agents",
     description:
-      "A proxy in your network attaches the real credential on the way out, only for the services you allowed.",
+      "A proxy in your network attaches the real credential on the way out, only for the services you allowed."
   },
   {
     title: "Existing Proxied Services Keep Working",
     description:
-      "You can still edit and delete the proxied services in this project, but you cannot create new ones. Proxied Services will be removed in the future, and we recommend you migrate to Agent Vault for securing agentic access to your secrets",
-  },
+      "You can still edit and delete the proxied services in this project, but you cannot create new ones. Proxied Services will be removed in the future, and we recommend you migrate to Agent Vault for securing agentic access to your secrets"
+  }
 ];
 
 type Props = {
@@ -55,7 +55,7 @@ export const AgentProxyMovedModal = ({ isOpen, onOpenChange }: Props) => {
             onOpenChange(false);
             navigate({
               to: "/organizations/$orgId/agent-vault",
-              params: { orgId: currentOrg.id },
+              params: { orgId: currentOrg.id }
             });
           }}
         >
@@ -72,10 +72,7 @@ export const AgentProxyMovedModal = ({ isOpen, onOpenChange }: Props) => {
         <ul className="flex flex-col gap-4">
           {CHANGES.map(({ title, description }) => (
             <li key={title} className="flex items-start gap-3">
-              <CheckIcon
-                aria-hidden="true"
-                className="mt-0.5 size-4 shrink-0 text-success"
-              />
+              <CheckIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
               <div className="text-sm">
                 <p className="font-medium">{title}</p>
                 <p className="mt-1 text-muted">{description}</p>
