@@ -509,6 +509,7 @@
                       "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
                       "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                       "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                      "documentation/platform/pki/applications/certificate-syncs/imperva",
                       "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks",
                       "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile",
                       "documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster",
@@ -1103,6 +1104,7 @@
                   "integrations/app-connections/heroku",
                   "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
+                  "integrations/app-connections/imperva",
                   "integrations/app-connections/jira",
                   "integrations/app-connections/keeper",
                   "integrations/app-connections/kemp-loadmaster",
@@ -2169,10 +2171,12 @@
                         ]
                       },
                       {
+                        "group": "Imperva",
+                        "pages": ["api-reference/endpoints/app-connections/imperva/create"]
+                      },
+                      {
                         "group": "Kemp LoadMaster",
-                        "pages": [
-                          "api-reference/endpoints/app-connections/kemp-loadmaster/create"
-                        ]
+                        "pages": ["api-reference/endpoints/app-connections/kemp-loadmaster/create"]
                       },
                       {
                         "group": "Laravel Forge",
@@ -4247,6 +4251,13 @@
                               "api-reference/endpoints/pki/syncs/f5-big-ip/delete",
                               "api-reference/endpoints/pki/syncs/f5-big-ip/sync-certificates",
                               "api-reference/endpoints/pki/syncs/f5-big-ip/remove-certificates"
+                            ]
+                          },
+                          {
+                            "group": "Imperva",
+                            "pages": [
+                              "api-reference/endpoints/pki/syncs/imperva/create",
+                              "api-reference/endpoints/pki/syncs/imperva/sync-certificates"
                             ]
                           },
                           {

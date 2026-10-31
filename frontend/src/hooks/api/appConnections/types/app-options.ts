@@ -293,6 +293,10 @@ export type TKempLoadMasterConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.KempLoadMaster;
 };
 
+export type TImpervaConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Imperva;
+};
+
 export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Anthropic;
 };
@@ -460,6 +464,7 @@ export type TAppConnectionOption =
   | TPaloAltoNetworksConnectionOption
   | TKeeperConnectionOption
   | TKempLoadMasterConnectionOption
+  | TImpervaConnectionOption
   | TAnthropicConnectionOption
   | TOvhConnectionOption
   | TDevinConnectionOption
@@ -556,6 +561,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.PaloAltoNetworks]: TPaloAltoNetworksConnectionOption;
   [AppConnection.Keeper]: TKeeperConnectionOption;
   [AppConnection.KempLoadMaster]: TKempLoadMasterConnectionOption;
+  [AppConnection.Imperva]: TImpervaConnectionOption;
   [AppConnection.Anthropic]: TAnthropicConnectionOption;
   [AppConnection.OVH]: TOvhConnectionOption;
   [AppConnection.Devin]: TDevinConnectionOption;

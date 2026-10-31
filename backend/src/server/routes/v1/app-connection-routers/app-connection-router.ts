@@ -146,6 +146,10 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import {
+  ImpervaConnectionListItemSchema,
+  SanitizedImpervaConnectionSchema
+} from "@app/services/app-connection/imperva";
 import { JiraConnectionListItemSchema, SanitizedJiraConnectionSchema } from "@app/services/app-connection/jira";
 import { KeeperConnectionListItemSchema, SanitizedKeeperConnectionSchema } from "@app/services/app-connection/keeper";
 import {
@@ -363,6 +367,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedNetScalerConnectionSchema.options,
   ...SanitizedPaloAltoNetworksConnectionSchema.options,
   ...SanitizedKempLoadMasterConnectionSchema.options,
+  ...SanitizedImpervaConnectionSchema.options,
   ...SanitizedDopplerConnectionSchema.options,
   ...SanitizedOvhConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
@@ -459,6 +464,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   NetScalerConnectionListItemSchema,
   PaloAltoNetworksConnectionListItemSchema,
   KempLoadMasterConnectionListItemSchema,
+  ImpervaConnectionListItemSchema,
   AnthropicConnectionListItemSchema,
   OvhConnectionListItemSchema,
   DevinConnectionListItemSchema,

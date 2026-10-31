@@ -196,6 +196,7 @@ import {
   HumanitecConnectionMethod,
   validateHumanitecConnectionCredentials
 } from "./humanitec";
+import { getImpervaConnectionListItem, ImpervaConnectionMethod, validateImpervaConnectionCredentials } from "./imperva";
 import { getJiraConnectionListItem, JiraConnectionMethod, validateJiraConnectionCredentials } from "./jira";
 import { getKeeperConnectionListItem, KeeperConnectionMethod, validateKeeperConnectionCredentials } from "./keeper";
 import {
@@ -377,6 +378,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.NetScaler,
   AppConnection.PaloAltoNetworks,
   AppConnection.KempLoadMaster,
+  AppConnection.Imperva,
   AppConnection.DigiCert,
   AppConnection.F5BigIp,
   AppConnection.GoDaddy,
@@ -494,6 +496,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getNetScalerConnectionListItem(),
     getPaloAltoNetworksConnectionListItem(),
     getKempLoadMasterConnectionListItem(),
+    getImpervaConnectionListItem(),
     getOvhConnectionListItem(),
     getOnaConnectionListItem(),
     getDigiCertConnectionListItem(),
@@ -737,6 +740,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.PaloAltoNetworks]:
       validatePaloAltoNetworksConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.KempLoadMaster]: validateKempLoadMasterConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Imperva]: validateImpervaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Ona]: validateOnaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TravisCI]: validateTravisCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ExternalInfisical]: ((config: TAppConnectionConfig) =>
@@ -886,6 +890,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case NutanixPrismCentralConnectionMethod.ApiKey:
     case PowerDnsConnectionMethod.ApiKey:
     case DaytonaConnectionMethod.ApiKey:
+    case ImpervaConnectionMethod.ApiKey:
     case KeeperConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
@@ -1068,6 +1073,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.NetScaler]: platformManagedCredentialsNotSupported,
   [AppConnection.PaloAltoNetworks]: platformManagedCredentialsNotSupported,
   [AppConnection.KempLoadMaster]: platformManagedCredentialsNotSupported,
+  [AppConnection.Imperva]: platformManagedCredentialsNotSupported,
   [AppConnection.Doppler]: platformManagedCredentialsNotSupported,
   [AppConnection.OVH]: platformManagedCredentialsNotSupported,
   [AppConnection.Ona]: platformManagedCredentialsNotSupported,

@@ -1,7 +1,10 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { Field, FieldDescription, FieldError, FieldLabel, Input } from "@app/components/v3";
-import { INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS } from "@app/helpers/pkiSyncs";
+import {
+  CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS,
+  INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS
+} from "@app/helpers/pkiSyncs";
 import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
@@ -93,7 +96,7 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
 
       {renderDestinationOptions(currentDestination, isUpdate)}
 
-      {currentDestination !== PkiSync.NutanixPrismCentral && (
+      {!CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS.includes(currentDestination) && (
         <Controller
           control={control}
           name="syncOptions.certificateNameSchema"

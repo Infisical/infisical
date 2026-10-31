@@ -74,6 +74,7 @@ import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/god
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { HpeIloConnectionMethod } from "@app/hooks/api/appConnections/types/hpe-ilo-connection";
+import { ImpervaConnectionMethod } from "@app/hooks/api/appConnections/types/imperva-connection";
 import { JiraConnectionMethod } from "@app/hooks/api/appConnections/types/jira-connection";
 import { KeeperConnectionMethod } from "@app/hooks/api/appConnections/types/keeper-connection";
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
@@ -538,6 +539,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "NETWORKING",
     description: "Connect to a Palo Alto Networks firewall or Panorama."
   },
+  [AppConnection.Imperva]: {
+    name: "Imperva",
+    image: "Imperva.png",
+    category: "NETWORKING",
+    description: "Manage websites protected by Imperva Cloud WAF."
+  },
   [AppConnection.KempLoadMaster]: {
     name: "Kemp LoadMaster",
     image: "Kemp LoadMaster.png",
@@ -916,6 +923,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ServiceNowConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: LockIcon };
     case NutanixPrismCentralConnectionMethod.ApiKey:
+    case ImpervaConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
     case OVHConnectionMethod.Certificate:
       return { name: "Certificate", icon: FileBadgeIcon };
