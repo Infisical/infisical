@@ -12,18 +12,7 @@ import (
 )
 
 // providers are the logins every provider-agnostic claim runs against.
-//
-// Google is left out: passport-google-oauth20 sends the access token to
-// www.googleapis.com/oauth2/v3/userinfo as an access_token query parameter, and
-// fakes/oauth attributes profile calls only by the Authorization header, so every
-// Google callback answers 500 until the fake reads the query parameter too.
-var providers = []fixture.OAuthProvider{fixture.OAuthGitHub, fixture.OAuthGitLab}
-
-func skipUntilGoogleFakeAttributesQueryToken(t *testing.T) {
-	t.Helper()
-	t.Skip("fakes/oauth does not attribute www.googleapis.com/oauth2/v3/userinfo?access_token=..., " +
-		"which is how passport-google-oauth20 sends the token, so the Google callback answers 500")
-}
+var providers = []fixture.OAuthProvider{fixture.OAuthGoogle, fixture.OAuthGitHub, fixture.OAuthGitLab}
 
 // accountOf follows a login that issued a session and reads the account it belongs to.
 func accountOf(t *testing.T, tn *harness.Tenant, res fixture.OAuthResult) *api.GetCurrentUserV1Response {

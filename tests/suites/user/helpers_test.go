@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -139,13 +138,8 @@ func refresh(t *testing.T, tn *harness.Tenant, ip string, jid *http.Cookie) *api
 	return res
 }
 
-// addresses are dropped before looking for a code: a tenant's mail domain is a hex nonce,
-// which can hold a run of six digits that mail.Code would take for the code.
-var addresses = regexp.MustCompile(`[^\s<>"'()]*@[^\s<>"'()]*`)
-
 func code(t *testing.T, msg smtp.Message) string {
 	t.Helper()
-	msg.Body = addresses.ReplaceAllString(msg.Body, " ")
 	c, err := mail.Code(msg, 6)
 	require.NoError(t, err)
 	return c

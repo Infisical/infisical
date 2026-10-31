@@ -29202,6 +29202,1326 @@ func (e SubscribeToProjectEventsJSONBodyRegisterEvent) Valid() bool {
 	}
 }
 
+// Defines values for ListExternalKms400JSONResponseBodyStatusCode.
+const (
+	ListExternalKms400JSONResponseBodyStatusCodeN400 ListExternalKms400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListExternalKms400JSONResponseBodyStatusCode enum.
+func (e ListExternalKms400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalKms400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExternalKms401JSONResponseBodyStatusCode.
+const (
+	ListExternalKms401JSONResponseBodyStatusCodeN401 ListExternalKms401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListExternalKms401JSONResponseBodyStatusCode enum.
+func (e ListExternalKms401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalKms401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExternalKms403JSONResponseBodyStatusCode.
+const (
+	ListExternalKms403JSONResponseBodyStatusCodeN403 ListExternalKms403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListExternalKms403JSONResponseBodyStatusCode enum.
+func (e ListExternalKms403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalKms403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExternalKms404JSONResponseBodyStatusCode.
+const (
+	ListExternalKms404JSONResponseBodyStatusCodeN404 ListExternalKms404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListExternalKms404JSONResponseBodyStatusCode enum.
+func (e ListExternalKms404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalKms404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExternalKms422JSONResponseBodyStatusCode.
+const (
+	ListExternalKms422JSONResponseBodyStatusCodeN422 ListExternalKms422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListExternalKms422JSONResponseBodyStatusCode enum.
+func (e ListExternalKms422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalKms422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListExternalKms500JSONResponseBodyStatusCode.
+const (
+	ListExternalKms500JSONResponseBodyStatusCodeN500 ListExternalKms500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListExternalKms500JSONResponseBodyStatusCode enum.
+func (e ListExternalKms500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListExternalKms500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKmsJSONBodyProvider0InputsCredential0Type.
+const (
+	CreateExternalKmsJSONBodyProvider0InputsCredential0TypeAccessKey CreateExternalKmsJSONBodyProvider0InputsCredential0Type = "access-key"
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKmsJSONBodyProvider0InputsCredential0Type enum.
+func (e CreateExternalKmsJSONBodyProvider0InputsCredential0Type) Valid() bool {
+	switch e {
+	case CreateExternalKmsJSONBodyProvider0InputsCredential0TypeAccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKmsJSONBodyProvider0InputsCredential1Type.
+const (
+	CreateExternalKmsJSONBodyProvider0InputsCredential1TypeAssumeRole CreateExternalKmsJSONBodyProvider0InputsCredential1Type = "assume-role"
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKmsJSONBodyProvider0InputsCredential1Type enum.
+func (e CreateExternalKmsJSONBodyProvider0InputsCredential1Type) Valid() bool {
+	switch e {
+	case CreateExternalKmsJSONBodyProvider0InputsCredential1TypeAssumeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKmsJSONBodyProvider0Type.
+const (
+	CreateExternalKmsJSONBodyProvider0TypeAws CreateExternalKmsJSONBodyProvider0Type = "aws"
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKmsJSONBodyProvider0Type enum.
+func (e CreateExternalKmsJSONBodyProvider0Type) Valid() bool {
+	switch e {
+	case CreateExternalKmsJSONBodyProvider0TypeAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKmsJSONBodyProvider1InputsCredentialType.
+const (
+	CreateExternalKmsJSONBodyProvider1InputsCredentialTypeServiceAccount CreateExternalKmsJSONBodyProvider1InputsCredentialType = "service_account"
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKmsJSONBodyProvider1InputsCredentialType enum.
+func (e CreateExternalKmsJSONBodyProvider1InputsCredentialType) Valid() bool {
+	switch e {
+	case CreateExternalKmsJSONBodyProvider1InputsCredentialTypeServiceAccount:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain.
+const (
+	CreateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomainGoogleapisCom CreateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain = "googleapis.com"
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain enum.
+func (e CreateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain) Valid() bool {
+	switch e {
+	case CreateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomainGoogleapisCom:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKmsJSONBodyProvider1Type.
+const (
+	CreateExternalKmsJSONBodyProvider1TypeGcp CreateExternalKmsJSONBodyProvider1Type = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKmsJSONBodyProvider1Type enum.
+func (e CreateExternalKmsJSONBodyProvider1Type) Valid() bool {
+	switch e {
+	case CreateExternalKmsJSONBodyProvider1TypeGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKms400JSONResponseBodyStatusCode.
+const (
+	CreateExternalKms400JSONResponseBodyStatusCodeN400 CreateExternalKms400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKms400JSONResponseBodyStatusCode enum.
+func (e CreateExternalKms400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateExternalKms400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKms401JSONResponseBodyStatusCode.
+const (
+	CreateExternalKms401JSONResponseBodyStatusCodeN401 CreateExternalKms401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKms401JSONResponseBodyStatusCode enum.
+func (e CreateExternalKms401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateExternalKms401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKms403JSONResponseBodyStatusCode.
+const (
+	CreateExternalKms403JSONResponseBodyStatusCodeN403 CreateExternalKms403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKms403JSONResponseBodyStatusCode enum.
+func (e CreateExternalKms403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateExternalKms403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKms404JSONResponseBodyStatusCode.
+const (
+	CreateExternalKms404JSONResponseBodyStatusCodeN404 CreateExternalKms404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKms404JSONResponseBodyStatusCode enum.
+func (e CreateExternalKms404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateExternalKms404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKms422JSONResponseBodyStatusCode.
+const (
+	CreateExternalKms422JSONResponseBodyStatusCodeN422 CreateExternalKms422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKms422JSONResponseBodyStatusCode enum.
+func (e CreateExternalKms422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateExternalKms422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateExternalKms500JSONResponseBodyStatusCode.
+const (
+	CreateExternalKms500JSONResponseBodyStatusCodeN500 CreateExternalKms500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateExternalKms500JSONResponseBodyStatusCode enum.
+func (e CreateExternalKms500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateExternalKms500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAwsExternalKmsJSONBodyConfigurationCredential0Type.
+const (
+	CreateAwsExternalKmsJSONBodyConfigurationCredential0TypeAccessKey CreateAwsExternalKmsJSONBodyConfigurationCredential0Type = "access-key"
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsExternalKmsJSONBodyConfigurationCredential0Type enum.
+func (e CreateAwsExternalKmsJSONBodyConfigurationCredential0Type) Valid() bool {
+	switch e {
+	case CreateAwsExternalKmsJSONBodyConfigurationCredential0TypeAccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAwsExternalKmsJSONBodyConfigurationCredential1Type.
+const (
+	CreateAwsExternalKmsJSONBodyConfigurationCredential1TypeAssumeRole CreateAwsExternalKmsJSONBodyConfigurationCredential1Type = "assume-role"
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsExternalKmsJSONBodyConfigurationCredential1Type enum.
+func (e CreateAwsExternalKmsJSONBodyConfigurationCredential1Type) Valid() bool {
+	switch e {
+	case CreateAwsExternalKmsJSONBodyConfigurationCredential1TypeAssumeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type.
+const (
+	CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0TypeAccessKey CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type = "access-key"
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type enum.
+func (e CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type) Valid() bool {
+	switch e {
+	case CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0TypeAccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type.
+const (
+	CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1TypeAssumeRole CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type = "assume-role"
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type enum.
+func (e CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type) Valid() bool {
+	switch e {
+	case CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1TypeAssumeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAwsExternalKms400JSONResponseBodyStatusCode.
+const (
+	CreateAwsExternalKms400JSONResponseBodyStatusCodeN400 CreateAwsExternalKms400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsExternalKms400JSONResponseBodyStatusCode enum.
+func (e CreateAwsExternalKms400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAwsExternalKms400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAwsExternalKms401JSONResponseBodyStatusCode.
+const (
+	CreateAwsExternalKms401JSONResponseBodyStatusCodeN401 CreateAwsExternalKms401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsExternalKms401JSONResponseBodyStatusCode enum.
+func (e CreateAwsExternalKms401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAwsExternalKms401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAwsExternalKms403JSONResponseBodyStatusCode.
+const (
+	CreateAwsExternalKms403JSONResponseBodyStatusCodeN403 CreateAwsExternalKms403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsExternalKms403JSONResponseBodyStatusCode enum.
+func (e CreateAwsExternalKms403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAwsExternalKms403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAwsExternalKms404JSONResponseBodyStatusCode.
+const (
+	CreateAwsExternalKms404JSONResponseBodyStatusCodeN404 CreateAwsExternalKms404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsExternalKms404JSONResponseBodyStatusCode enum.
+func (e CreateAwsExternalKms404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAwsExternalKms404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAwsExternalKms422JSONResponseBodyStatusCode.
+const (
+	CreateAwsExternalKms422JSONResponseBodyStatusCodeN422 CreateAwsExternalKms422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsExternalKms422JSONResponseBodyStatusCode enum.
+func (e CreateAwsExternalKms422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAwsExternalKms422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAwsExternalKms500JSONResponseBodyStatusCode.
+const (
+	CreateAwsExternalKms500JSONResponseBodyStatusCodeN500 CreateAwsExternalKms500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsExternalKms500JSONResponseBodyStatusCode enum.
+func (e CreateAwsExternalKms500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAwsExternalKms500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type.
+const (
+	DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0TypeAccessKey DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type = "access-key"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type enum.
+func (e DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type) Valid() bool {
+	switch e {
+	case DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0TypeAccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type.
+const (
+	DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1TypeAssumeRole DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type = "assume-role"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type enum.
+func (e DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type) Valid() bool {
+	switch e {
+	case DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1TypeAssumeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAwsExternalKms400JSONResponseBodyStatusCode.
+const (
+	DeleteAwsExternalKms400JSONResponseBodyStatusCodeN400 DeleteAwsExternalKms400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteAwsExternalKms400JSONResponseBodyStatusCode enum.
+func (e DeleteAwsExternalKms400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAwsExternalKms400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAwsExternalKms401JSONResponseBodyStatusCode.
+const (
+	DeleteAwsExternalKms401JSONResponseBodyStatusCodeN401 DeleteAwsExternalKms401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteAwsExternalKms401JSONResponseBodyStatusCode enum.
+func (e DeleteAwsExternalKms401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAwsExternalKms401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAwsExternalKms403JSONResponseBodyStatusCode.
+const (
+	DeleteAwsExternalKms403JSONResponseBodyStatusCodeN403 DeleteAwsExternalKms403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteAwsExternalKms403JSONResponseBodyStatusCode enum.
+func (e DeleteAwsExternalKms403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAwsExternalKms403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAwsExternalKms404JSONResponseBodyStatusCode.
+const (
+	DeleteAwsExternalKms404JSONResponseBodyStatusCodeN404 DeleteAwsExternalKms404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteAwsExternalKms404JSONResponseBodyStatusCode enum.
+func (e DeleteAwsExternalKms404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAwsExternalKms404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAwsExternalKms422JSONResponseBodyStatusCode.
+const (
+	DeleteAwsExternalKms422JSONResponseBodyStatusCodeN422 DeleteAwsExternalKms422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteAwsExternalKms422JSONResponseBodyStatusCode enum.
+func (e DeleteAwsExternalKms422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAwsExternalKms422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAwsExternalKms500JSONResponseBodyStatusCode.
+const (
+	DeleteAwsExternalKms500JSONResponseBodyStatusCodeN500 DeleteAwsExternalKms500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteAwsExternalKms500JSONResponseBodyStatusCode enum.
+func (e DeleteAwsExternalKms500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteAwsExternalKms500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type.
+const (
+	GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0TypeAccessKey GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type = "access-key"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type enum.
+func (e GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type) Valid() bool {
+	switch e {
+	case GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0TypeAccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type.
+const (
+	GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1TypeAssumeRole GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type = "assume-role"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type enum.
+func (e GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type) Valid() bool {
+	switch e {
+	case GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1TypeAssumeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsExternalKms400JSONResponseBodyStatusCode.
+const (
+	GetAwsExternalKms400JSONResponseBodyStatusCodeN400 GetAwsExternalKms400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetAwsExternalKms400JSONResponseBodyStatusCode enum.
+func (e GetAwsExternalKms400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsExternalKms400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsExternalKms401JSONResponseBodyStatusCode.
+const (
+	GetAwsExternalKms401JSONResponseBodyStatusCodeN401 GetAwsExternalKms401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetAwsExternalKms401JSONResponseBodyStatusCode enum.
+func (e GetAwsExternalKms401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsExternalKms401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsExternalKms403JSONResponseBodyStatusCode.
+const (
+	GetAwsExternalKms403JSONResponseBodyStatusCodeN403 GetAwsExternalKms403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetAwsExternalKms403JSONResponseBodyStatusCode enum.
+func (e GetAwsExternalKms403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsExternalKms403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsExternalKms404JSONResponseBodyStatusCode.
+const (
+	GetAwsExternalKms404JSONResponseBodyStatusCodeN404 GetAwsExternalKms404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetAwsExternalKms404JSONResponseBodyStatusCode enum.
+func (e GetAwsExternalKms404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsExternalKms404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsExternalKms422JSONResponseBodyStatusCode.
+const (
+	GetAwsExternalKms422JSONResponseBodyStatusCodeN422 GetAwsExternalKms422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetAwsExternalKms422JSONResponseBodyStatusCode enum.
+func (e GetAwsExternalKms422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsExternalKms422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsExternalKms500JSONResponseBodyStatusCode.
+const (
+	GetAwsExternalKms500JSONResponseBodyStatusCodeN500 GetAwsExternalKms500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetAwsExternalKms500JSONResponseBodyStatusCode enum.
+func (e GetAwsExternalKms500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsExternalKms500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAwsExternalKmsJSONBodyConfigurationCredential0Type.
+const (
+	UpdateAwsExternalKmsJSONBodyConfigurationCredential0TypeAccessKey UpdateAwsExternalKmsJSONBodyConfigurationCredential0Type = "access-key"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsExternalKmsJSONBodyConfigurationCredential0Type enum.
+func (e UpdateAwsExternalKmsJSONBodyConfigurationCredential0Type) Valid() bool {
+	switch e {
+	case UpdateAwsExternalKmsJSONBodyConfigurationCredential0TypeAccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAwsExternalKmsJSONBodyConfigurationCredential1Type.
+const (
+	UpdateAwsExternalKmsJSONBodyConfigurationCredential1TypeAssumeRole UpdateAwsExternalKmsJSONBodyConfigurationCredential1Type = "assume-role"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsExternalKmsJSONBodyConfigurationCredential1Type enum.
+func (e UpdateAwsExternalKmsJSONBodyConfigurationCredential1Type) Valid() bool {
+	switch e {
+	case UpdateAwsExternalKmsJSONBodyConfigurationCredential1TypeAssumeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type.
+const (
+	UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0TypeAccessKey UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type = "access-key"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type enum.
+func (e UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type) Valid() bool {
+	switch e {
+	case UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0TypeAccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type.
+const (
+	UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1TypeAssumeRole UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type = "assume-role"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type enum.
+func (e UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type) Valid() bool {
+	switch e {
+	case UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1TypeAssumeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAwsExternalKms400JSONResponseBodyStatusCode.
+const (
+	UpdateAwsExternalKms400JSONResponseBodyStatusCodeN400 UpdateAwsExternalKms400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsExternalKms400JSONResponseBodyStatusCode enum.
+func (e UpdateAwsExternalKms400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAwsExternalKms400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAwsExternalKms401JSONResponseBodyStatusCode.
+const (
+	UpdateAwsExternalKms401JSONResponseBodyStatusCodeN401 UpdateAwsExternalKms401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsExternalKms401JSONResponseBodyStatusCode enum.
+func (e UpdateAwsExternalKms401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAwsExternalKms401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAwsExternalKms403JSONResponseBodyStatusCode.
+const (
+	UpdateAwsExternalKms403JSONResponseBodyStatusCodeN403 UpdateAwsExternalKms403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsExternalKms403JSONResponseBodyStatusCode enum.
+func (e UpdateAwsExternalKms403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAwsExternalKms403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAwsExternalKms404JSONResponseBodyStatusCode.
+const (
+	UpdateAwsExternalKms404JSONResponseBodyStatusCodeN404 UpdateAwsExternalKms404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsExternalKms404JSONResponseBodyStatusCode enum.
+func (e UpdateAwsExternalKms404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAwsExternalKms404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAwsExternalKms422JSONResponseBodyStatusCode.
+const (
+	UpdateAwsExternalKms422JSONResponseBodyStatusCodeN422 UpdateAwsExternalKms422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsExternalKms422JSONResponseBodyStatusCode enum.
+func (e UpdateAwsExternalKms422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAwsExternalKms422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAwsExternalKms500JSONResponseBodyStatusCode.
+const (
+	UpdateAwsExternalKms500JSONResponseBodyStatusCodeN500 UpdateAwsExternalKms500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsExternalKms500JSONResponseBodyStatusCode enum.
+func (e UpdateAwsExternalKms500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateAwsExternalKms500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type.
+const (
+	GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0TypeAccessKey GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type = "access-key"
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type enum.
+func (e GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type) Valid() bool {
+	switch e {
+	case GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0TypeAccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type.
+const (
+	GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1TypeAssumeRole GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type = "assume-role"
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type enum.
+func (e GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type) Valid() bool {
+	switch e {
+	case GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1TypeAssumeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsByName400JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsByName400JSONResponseBodyStatusCodeN400 GetExternalKmsByName400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsByName400JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsByName400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsByName400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsByName401JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsByName401JSONResponseBodyStatusCodeN401 GetExternalKmsByName401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsByName401JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsByName401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsByName401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsByName403JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsByName403JSONResponseBodyStatusCodeN403 GetExternalKmsByName403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsByName403JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsByName403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsByName403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsByName404JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsByName404JSONResponseBodyStatusCodeN404 GetExternalKmsByName404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsByName404JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsByName404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsByName404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsByName422JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsByName422JSONResponseBodyStatusCodeN422 GetExternalKmsByName422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsByName422JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsByName422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsByName422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsByName500JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsByName500JSONResponseBodyStatusCodeN500 GetExternalKmsByName500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsByName500JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsByName500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsByName500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteExternalKms400JSONResponseBodyStatusCode.
+const (
+	DeleteExternalKms400JSONResponseBodyStatusCodeN400 DeleteExternalKms400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteExternalKms400JSONResponseBodyStatusCode enum.
+func (e DeleteExternalKms400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteExternalKms400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteExternalKms401JSONResponseBodyStatusCode.
+const (
+	DeleteExternalKms401JSONResponseBodyStatusCodeN401 DeleteExternalKms401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteExternalKms401JSONResponseBodyStatusCode enum.
+func (e DeleteExternalKms401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteExternalKms401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteExternalKms403JSONResponseBodyStatusCode.
+const (
+	DeleteExternalKms403JSONResponseBodyStatusCodeN403 DeleteExternalKms403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteExternalKms403JSONResponseBodyStatusCode enum.
+func (e DeleteExternalKms403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteExternalKms403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteExternalKms404JSONResponseBodyStatusCode.
+const (
+	DeleteExternalKms404JSONResponseBodyStatusCodeN404 DeleteExternalKms404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteExternalKms404JSONResponseBodyStatusCode enum.
+func (e DeleteExternalKms404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteExternalKms404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteExternalKms422JSONResponseBodyStatusCode.
+const (
+	DeleteExternalKms422JSONResponseBodyStatusCodeN422 DeleteExternalKms422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteExternalKms422JSONResponseBodyStatusCode enum.
+func (e DeleteExternalKms422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteExternalKms422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteExternalKms500JSONResponseBodyStatusCode.
+const (
+	DeleteExternalKms500JSONResponseBodyStatusCodeN500 DeleteExternalKms500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteExternalKms500JSONResponseBodyStatusCode enum.
+func (e DeleteExternalKms500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteExternalKms500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type.
+const (
+	GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0TypeAccessKey GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type = "access-key"
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type enum.
+func (e GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type) Valid() bool {
+	switch e {
+	case GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0TypeAccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type.
+const (
+	GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1TypeAssumeRole GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type = "assume-role"
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type enum.
+func (e GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type) Valid() bool {
+	switch e {
+	case GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1TypeAssumeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsById400JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsById400JSONResponseBodyStatusCodeN400 GetExternalKmsById400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsById400JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsById400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsById400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsById401JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsById401JSONResponseBodyStatusCodeN401 GetExternalKmsById401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsById401JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsById401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsById401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsById403JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsById403JSONResponseBodyStatusCodeN403 GetExternalKmsById403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsById403JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsById403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsById403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsById404JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsById404JSONResponseBodyStatusCodeN404 GetExternalKmsById404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsById404JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsById404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsById404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsById422JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsById422JSONResponseBodyStatusCodeN422 GetExternalKmsById422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsById422JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsById422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsById422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetExternalKmsById500JSONResponseBodyStatusCode.
+const (
+	GetExternalKmsById500JSONResponseBodyStatusCodeN500 GetExternalKmsById500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetExternalKmsById500JSONResponseBodyStatusCode enum.
+func (e GetExternalKmsById500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetExternalKmsById500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKmsJSONBodyProvider0InputsCredential0Type.
+const (
+	UpdateExternalKmsJSONBodyProvider0InputsCredential0TypeAccessKey UpdateExternalKmsJSONBodyProvider0InputsCredential0Type = "access-key"
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKmsJSONBodyProvider0InputsCredential0Type enum.
+func (e UpdateExternalKmsJSONBodyProvider0InputsCredential0Type) Valid() bool {
+	switch e {
+	case UpdateExternalKmsJSONBodyProvider0InputsCredential0TypeAccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKmsJSONBodyProvider0InputsCredential1Type.
+const (
+	UpdateExternalKmsJSONBodyProvider0InputsCredential1TypeAssumeRole UpdateExternalKmsJSONBodyProvider0InputsCredential1Type = "assume-role"
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKmsJSONBodyProvider0InputsCredential1Type enum.
+func (e UpdateExternalKmsJSONBodyProvider0InputsCredential1Type) Valid() bool {
+	switch e {
+	case UpdateExternalKmsJSONBodyProvider0InputsCredential1TypeAssumeRole:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKmsJSONBodyProvider0Type.
+const (
+	UpdateExternalKmsJSONBodyProvider0TypeAws UpdateExternalKmsJSONBodyProvider0Type = "aws"
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKmsJSONBodyProvider0Type enum.
+func (e UpdateExternalKmsJSONBodyProvider0Type) Valid() bool {
+	switch e {
+	case UpdateExternalKmsJSONBodyProvider0TypeAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKmsJSONBodyProvider1InputsCredentialType.
+const (
+	UpdateExternalKmsJSONBodyProvider1InputsCredentialTypeServiceAccount UpdateExternalKmsJSONBodyProvider1InputsCredentialType = "service_account"
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKmsJSONBodyProvider1InputsCredentialType enum.
+func (e UpdateExternalKmsJSONBodyProvider1InputsCredentialType) Valid() bool {
+	switch e {
+	case UpdateExternalKmsJSONBodyProvider1InputsCredentialTypeServiceAccount:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain.
+const (
+	UpdateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomainGoogleapisCom UpdateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain = "googleapis.com"
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain enum.
+func (e UpdateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain) Valid() bool {
+	switch e {
+	case UpdateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomainGoogleapisCom:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKmsJSONBodyProvider1Type.
+const (
+	UpdateExternalKmsJSONBodyProvider1TypeGcp UpdateExternalKmsJSONBodyProvider1Type = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKmsJSONBodyProvider1Type enum.
+func (e UpdateExternalKmsJSONBodyProvider1Type) Valid() bool {
+	switch e {
+	case UpdateExternalKmsJSONBodyProvider1TypeGcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKms400JSONResponseBodyStatusCode.
+const (
+	UpdateExternalKms400JSONResponseBodyStatusCodeN400 UpdateExternalKms400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKms400JSONResponseBodyStatusCode enum.
+func (e UpdateExternalKms400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalKms400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKms401JSONResponseBodyStatusCode.
+const (
+	UpdateExternalKms401JSONResponseBodyStatusCodeN401 UpdateExternalKms401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKms401JSONResponseBodyStatusCode enum.
+func (e UpdateExternalKms401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalKms401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKms403JSONResponseBodyStatusCode.
+const (
+	UpdateExternalKms403JSONResponseBodyStatusCodeN403 UpdateExternalKms403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKms403JSONResponseBodyStatusCode enum.
+func (e UpdateExternalKms403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalKms403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKms404JSONResponseBodyStatusCode.
+const (
+	UpdateExternalKms404JSONResponseBodyStatusCodeN404 UpdateExternalKms404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKms404JSONResponseBodyStatusCode enum.
+func (e UpdateExternalKms404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalKms404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKms422JSONResponseBodyStatusCode.
+const (
+	UpdateExternalKms422JSONResponseBodyStatusCodeN422 UpdateExternalKms422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKms422JSONResponseBodyStatusCode enum.
+func (e UpdateExternalKms422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalKms422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateExternalKms500JSONResponseBodyStatusCode.
+const (
+	UpdateExternalKms500JSONResponseBodyStatusCodeN500 UpdateExternalKms500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateExternalKms500JSONResponseBodyStatusCode enum.
+func (e UpdateExternalKms500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateExternalKms500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListGatewayPools400JSONResponseBodyStatusCode.
 const (
 	ListGatewayPools400JSONResponseBodyStatusCodeN400 ListGatewayPools400JSONResponseBodyStatusCode = 400
@@ -29916,6 +31236,456 @@ const (
 func (e GetGatewayPoolConnectedResources500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetGatewayPoolConnectedResources500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGithubOrgSyncConfig400JSONResponseBodyStatusCode.
+const (
+	DeleteGithubOrgSyncConfig400JSONResponseBodyStatusCodeN400 DeleteGithubOrgSyncConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteGithubOrgSyncConfig400JSONResponseBodyStatusCode enum.
+func (e DeleteGithubOrgSyncConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGithubOrgSyncConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGithubOrgSyncConfig401JSONResponseBodyStatusCode.
+const (
+	DeleteGithubOrgSyncConfig401JSONResponseBodyStatusCodeN401 DeleteGithubOrgSyncConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteGithubOrgSyncConfig401JSONResponseBodyStatusCode enum.
+func (e DeleteGithubOrgSyncConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGithubOrgSyncConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGithubOrgSyncConfig403JSONResponseBodyStatusCode.
+const (
+	DeleteGithubOrgSyncConfig403JSONResponseBodyStatusCodeN403 DeleteGithubOrgSyncConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteGithubOrgSyncConfig403JSONResponseBodyStatusCode enum.
+func (e DeleteGithubOrgSyncConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGithubOrgSyncConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGithubOrgSyncConfig404JSONResponseBodyStatusCode.
+const (
+	DeleteGithubOrgSyncConfig404JSONResponseBodyStatusCodeN404 DeleteGithubOrgSyncConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteGithubOrgSyncConfig404JSONResponseBodyStatusCode enum.
+func (e DeleteGithubOrgSyncConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGithubOrgSyncConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGithubOrgSyncConfig422JSONResponseBodyStatusCode.
+const (
+	DeleteGithubOrgSyncConfig422JSONResponseBodyStatusCodeN422 DeleteGithubOrgSyncConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteGithubOrgSyncConfig422JSONResponseBodyStatusCode enum.
+func (e DeleteGithubOrgSyncConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGithubOrgSyncConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteGithubOrgSyncConfig500JSONResponseBodyStatusCode.
+const (
+	DeleteGithubOrgSyncConfig500JSONResponseBodyStatusCodeN500 DeleteGithubOrgSyncConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteGithubOrgSyncConfig500JSONResponseBodyStatusCode enum.
+func (e DeleteGithubOrgSyncConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteGithubOrgSyncConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGithubOrgSyncConfig400JSONResponseBodyStatusCode.
+const (
+	GetGithubOrgSyncConfig400JSONResponseBodyStatusCodeN400 GetGithubOrgSyncConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetGithubOrgSyncConfig400JSONResponseBodyStatusCode enum.
+func (e GetGithubOrgSyncConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGithubOrgSyncConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGithubOrgSyncConfig401JSONResponseBodyStatusCode.
+const (
+	GetGithubOrgSyncConfig401JSONResponseBodyStatusCodeN401 GetGithubOrgSyncConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetGithubOrgSyncConfig401JSONResponseBodyStatusCode enum.
+func (e GetGithubOrgSyncConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGithubOrgSyncConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGithubOrgSyncConfig403JSONResponseBodyStatusCode.
+const (
+	GetGithubOrgSyncConfig403JSONResponseBodyStatusCodeN403 GetGithubOrgSyncConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetGithubOrgSyncConfig403JSONResponseBodyStatusCode enum.
+func (e GetGithubOrgSyncConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGithubOrgSyncConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGithubOrgSyncConfig404JSONResponseBodyStatusCode.
+const (
+	GetGithubOrgSyncConfig404JSONResponseBodyStatusCodeN404 GetGithubOrgSyncConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetGithubOrgSyncConfig404JSONResponseBodyStatusCode enum.
+func (e GetGithubOrgSyncConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGithubOrgSyncConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGithubOrgSyncConfig422JSONResponseBodyStatusCode.
+const (
+	GetGithubOrgSyncConfig422JSONResponseBodyStatusCodeN422 GetGithubOrgSyncConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetGithubOrgSyncConfig422JSONResponseBodyStatusCode enum.
+func (e GetGithubOrgSyncConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGithubOrgSyncConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGithubOrgSyncConfig500JSONResponseBodyStatusCode.
+const (
+	GetGithubOrgSyncConfig500JSONResponseBodyStatusCodeN500 GetGithubOrgSyncConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetGithubOrgSyncConfig500JSONResponseBodyStatusCode enum.
+func (e GetGithubOrgSyncConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetGithubOrgSyncConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGithubOrgSyncConfig400JSONResponseBodyStatusCode.
+const (
+	UpdateGithubOrgSyncConfig400JSONResponseBodyStatusCodeN400 UpdateGithubOrgSyncConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateGithubOrgSyncConfig400JSONResponseBodyStatusCode enum.
+func (e UpdateGithubOrgSyncConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGithubOrgSyncConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGithubOrgSyncConfig401JSONResponseBodyStatusCode.
+const (
+	UpdateGithubOrgSyncConfig401JSONResponseBodyStatusCodeN401 UpdateGithubOrgSyncConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateGithubOrgSyncConfig401JSONResponseBodyStatusCode enum.
+func (e UpdateGithubOrgSyncConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGithubOrgSyncConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGithubOrgSyncConfig403JSONResponseBodyStatusCode.
+const (
+	UpdateGithubOrgSyncConfig403JSONResponseBodyStatusCodeN403 UpdateGithubOrgSyncConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateGithubOrgSyncConfig403JSONResponseBodyStatusCode enum.
+func (e UpdateGithubOrgSyncConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGithubOrgSyncConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGithubOrgSyncConfig404JSONResponseBodyStatusCode.
+const (
+	UpdateGithubOrgSyncConfig404JSONResponseBodyStatusCodeN404 UpdateGithubOrgSyncConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateGithubOrgSyncConfig404JSONResponseBodyStatusCode enum.
+func (e UpdateGithubOrgSyncConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGithubOrgSyncConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGithubOrgSyncConfig422JSONResponseBodyStatusCode.
+const (
+	UpdateGithubOrgSyncConfig422JSONResponseBodyStatusCodeN422 UpdateGithubOrgSyncConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateGithubOrgSyncConfig422JSONResponseBodyStatusCode enum.
+func (e UpdateGithubOrgSyncConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGithubOrgSyncConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGithubOrgSyncConfig500JSONResponseBodyStatusCode.
+const (
+	UpdateGithubOrgSyncConfig500JSONResponseBodyStatusCodeN500 UpdateGithubOrgSyncConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateGithubOrgSyncConfig500JSONResponseBodyStatusCode enum.
+func (e UpdateGithubOrgSyncConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateGithubOrgSyncConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGithubOrgSyncConfig400JSONResponseBodyStatusCode.
+const (
+	CreateGithubOrgSyncConfig400JSONResponseBodyStatusCodeN400 CreateGithubOrgSyncConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateGithubOrgSyncConfig400JSONResponseBodyStatusCode enum.
+func (e CreateGithubOrgSyncConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGithubOrgSyncConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGithubOrgSyncConfig401JSONResponseBodyStatusCode.
+const (
+	CreateGithubOrgSyncConfig401JSONResponseBodyStatusCodeN401 CreateGithubOrgSyncConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateGithubOrgSyncConfig401JSONResponseBodyStatusCode enum.
+func (e CreateGithubOrgSyncConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGithubOrgSyncConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGithubOrgSyncConfig403JSONResponseBodyStatusCode.
+const (
+	CreateGithubOrgSyncConfig403JSONResponseBodyStatusCodeN403 CreateGithubOrgSyncConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateGithubOrgSyncConfig403JSONResponseBodyStatusCode enum.
+func (e CreateGithubOrgSyncConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGithubOrgSyncConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGithubOrgSyncConfig404JSONResponseBodyStatusCode.
+const (
+	CreateGithubOrgSyncConfig404JSONResponseBodyStatusCodeN404 CreateGithubOrgSyncConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateGithubOrgSyncConfig404JSONResponseBodyStatusCode enum.
+func (e CreateGithubOrgSyncConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGithubOrgSyncConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGithubOrgSyncConfig422JSONResponseBodyStatusCode.
+const (
+	CreateGithubOrgSyncConfig422JSONResponseBodyStatusCodeN422 CreateGithubOrgSyncConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateGithubOrgSyncConfig422JSONResponseBodyStatusCode enum.
+func (e CreateGithubOrgSyncConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGithubOrgSyncConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGithubOrgSyncConfig500JSONResponseBodyStatusCode.
+const (
+	CreateGithubOrgSyncConfig500JSONResponseBodyStatusCodeN500 CreateGithubOrgSyncConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateGithubOrgSyncConfig500JSONResponseBodyStatusCode enum.
+func (e CreateGithubOrgSyncConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGithubOrgSyncConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncAllGithubOrgTeams400JSONResponseBodyStatusCode.
+const (
+	SyncAllGithubOrgTeams400JSONResponseBodyStatusCodeN400 SyncAllGithubOrgTeams400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the SyncAllGithubOrgTeams400JSONResponseBodyStatusCode enum.
+func (e SyncAllGithubOrgTeams400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncAllGithubOrgTeams400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncAllGithubOrgTeams401JSONResponseBodyStatusCode.
+const (
+	SyncAllGithubOrgTeams401JSONResponseBodyStatusCodeN401 SyncAllGithubOrgTeams401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the SyncAllGithubOrgTeams401JSONResponseBodyStatusCode enum.
+func (e SyncAllGithubOrgTeams401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncAllGithubOrgTeams401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncAllGithubOrgTeams403JSONResponseBodyStatusCode.
+const (
+	SyncAllGithubOrgTeams403JSONResponseBodyStatusCodeN403 SyncAllGithubOrgTeams403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the SyncAllGithubOrgTeams403JSONResponseBodyStatusCode enum.
+func (e SyncAllGithubOrgTeams403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncAllGithubOrgTeams403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncAllGithubOrgTeams404JSONResponseBodyStatusCode.
+const (
+	SyncAllGithubOrgTeams404JSONResponseBodyStatusCodeN404 SyncAllGithubOrgTeams404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the SyncAllGithubOrgTeams404JSONResponseBodyStatusCode enum.
+func (e SyncAllGithubOrgTeams404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncAllGithubOrgTeams404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncAllGithubOrgTeams422JSONResponseBodyStatusCode.
+const (
+	SyncAllGithubOrgTeams422JSONResponseBodyStatusCodeN422 SyncAllGithubOrgTeams422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the SyncAllGithubOrgTeams422JSONResponseBodyStatusCode enum.
+func (e SyncAllGithubOrgTeams422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncAllGithubOrgTeams422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncAllGithubOrgTeams500JSONResponseBodyStatusCode.
+const (
+	SyncAllGithubOrgTeams500JSONResponseBodyStatusCodeN500 SyncAllGithubOrgTeams500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the SyncAllGithubOrgTeams500JSONResponseBodyStatusCode enum.
+func (e SyncAllGithubOrgTeams500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncAllGithubOrgTeams500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -35076,6 +36846,636 @@ const (
 func (e VerifyUserToOrganization500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case VerifyUserToOrganization500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig400JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig400JSONResponseBodyStatusCodeN400 GetLdapConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig400JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig401JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig401JSONResponseBodyStatusCodeN401 GetLdapConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig401JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig403JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig403JSONResponseBodyStatusCodeN403 GetLdapConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig403JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig404JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig404JSONResponseBodyStatusCodeN404 GetLdapConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig404JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig422JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig422JSONResponseBodyStatusCodeN422 GetLdapConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig422JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig500JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig500JSONResponseBodyStatusCodeN500 GetLdapConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig500JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig400JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig400JSONResponseBodyStatusCodeN400 UpdateLdapConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig400JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig401JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig401JSONResponseBodyStatusCodeN401 UpdateLdapConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig401JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig403JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig403JSONResponseBodyStatusCodeN403 UpdateLdapConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig403JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig404JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig404JSONResponseBodyStatusCodeN404 UpdateLdapConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig404JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig422JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig422JSONResponseBodyStatusCodeN422 UpdateLdapConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig422JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig500JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig500JSONResponseBodyStatusCodeN500 UpdateLdapConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig500JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig400JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig400JSONResponseBodyStatusCodeN400 CreateLdapConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig400JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig401JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig401JSONResponseBodyStatusCodeN401 CreateLdapConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig401JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig403JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig403JSONResponseBodyStatusCodeN403 CreateLdapConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig403JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig404JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig404JSONResponseBodyStatusCodeN404 CreateLdapConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig404JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig422JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig422JSONResponseBodyStatusCodeN422 CreateLdapConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig422JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig500JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig500JSONResponseBodyStatusCodeN500 CreateLdapConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig500JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection400JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection400JSONResponseBodyStatusCodeN400 TestLdapConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection400JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection401JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection401JSONResponseBodyStatusCodeN401 TestLdapConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection401JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection403JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection403JSONResponseBodyStatusCodeN403 TestLdapConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection403JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection404JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection404JSONResponseBodyStatusCodeN404 TestLdapConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection404JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection422JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection422JSONResponseBodyStatusCodeN422 TestLdapConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection422JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection500JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection500JSONResponseBodyStatusCodeN500 TestLdapConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection500JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps400JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps400JSONResponseBodyStatusCodeN400 ListLdapGroupMaps400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps400JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps401JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps401JSONResponseBodyStatusCodeN401 ListLdapGroupMaps401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps401JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps403JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps403JSONResponseBodyStatusCodeN403 ListLdapGroupMaps403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps403JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps404JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps404JSONResponseBodyStatusCodeN404 ListLdapGroupMaps404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps404JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps422JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps422JSONResponseBodyStatusCodeN422 ListLdapGroupMaps422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps422JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps500JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps500JSONResponseBodyStatusCodeN500 ListLdapGroupMaps500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps500JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap400JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap400JSONResponseBodyStatusCodeN400 CreateLdapGroupMap400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap400JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap401JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap401JSONResponseBodyStatusCodeN401 CreateLdapGroupMap401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap401JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap403JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap403JSONResponseBodyStatusCodeN403 CreateLdapGroupMap403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap403JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap404JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap404JSONResponseBodyStatusCodeN404 CreateLdapGroupMap404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap404JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap422JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap422JSONResponseBodyStatusCodeN422 CreateLdapGroupMap422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap422JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap500JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap500JSONResponseBodyStatusCodeN500 CreateLdapGroupMap500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap500JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap400JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap400JSONResponseBodyStatusCodeN400 DeleteLdapGroupMap400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap400JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap401JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap401JSONResponseBodyStatusCodeN401 DeleteLdapGroupMap401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap401JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap403JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap403JSONResponseBodyStatusCodeN403 DeleteLdapGroupMap403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap403JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap404JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap404JSONResponseBodyStatusCodeN404 DeleteLdapGroupMap404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap404JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap422JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap422JSONResponseBodyStatusCodeN422 DeleteLdapGroupMap422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap422JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap500JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap500JSONResponseBodyStatusCodeN500 DeleteLdapGroupMap500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap500JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -68607,6 +71007,654 @@ func (e TestWebhook500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for ListWorkflowIntegrations400JSONResponseBodyStatusCode.
+const (
+	ListWorkflowIntegrations400JSONResponseBodyStatusCodeN400 ListWorkflowIntegrations400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListWorkflowIntegrations400JSONResponseBodyStatusCode enum.
+func (e ListWorkflowIntegrations400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListWorkflowIntegrations400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListWorkflowIntegrations401JSONResponseBodyStatusCode.
+const (
+	ListWorkflowIntegrations401JSONResponseBodyStatusCodeN401 ListWorkflowIntegrations401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListWorkflowIntegrations401JSONResponseBodyStatusCode enum.
+func (e ListWorkflowIntegrations401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListWorkflowIntegrations401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListWorkflowIntegrations403JSONResponseBodyStatusCode.
+const (
+	ListWorkflowIntegrations403JSONResponseBodyStatusCodeN403 ListWorkflowIntegrations403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListWorkflowIntegrations403JSONResponseBodyStatusCode enum.
+func (e ListWorkflowIntegrations403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListWorkflowIntegrations403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListWorkflowIntegrations404JSONResponseBodyStatusCode.
+const (
+	ListWorkflowIntegrations404JSONResponseBodyStatusCodeN404 ListWorkflowIntegrations404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListWorkflowIntegrations404JSONResponseBodyStatusCode enum.
+func (e ListWorkflowIntegrations404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListWorkflowIntegrations404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListWorkflowIntegrations422JSONResponseBodyStatusCode.
+const (
+	ListWorkflowIntegrations422JSONResponseBodyStatusCodeN422 ListWorkflowIntegrations422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListWorkflowIntegrations422JSONResponseBodyStatusCode enum.
+func (e ListWorkflowIntegrations422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListWorkflowIntegrations422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListWorkflowIntegrations500JSONResponseBodyStatusCode.
+const (
+	ListWorkflowIntegrations500JSONResponseBodyStatusCodeN500 ListWorkflowIntegrations500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListWorkflowIntegrations500JSONResponseBodyStatusCode enum.
+func (e ListWorkflowIntegrations500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListWorkflowIntegrations500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListMicrosoftTeamsIntegrations200JSONResponseBodyStatus.
+const (
+	ListMicrosoftTeamsIntegrations200JSONResponseBodyStatusInstalled ListMicrosoftTeamsIntegrations200JSONResponseBodyStatus = "installed"
+	ListMicrosoftTeamsIntegrations200JSONResponseBodyStatusPending   ListMicrosoftTeamsIntegrations200JSONResponseBodyStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the ListMicrosoftTeamsIntegrations200JSONResponseBodyStatus enum.
+func (e ListMicrosoftTeamsIntegrations200JSONResponseBodyStatus) Valid() bool {
+	switch e {
+	case ListMicrosoftTeamsIntegrations200JSONResponseBodyStatusInstalled:
+		return true
+	case ListMicrosoftTeamsIntegrations200JSONResponseBodyStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListMicrosoftTeamsIntegrations400JSONResponseBodyStatusCode.
+const (
+	ListMicrosoftTeamsIntegrations400JSONResponseBodyStatusCodeN400 ListMicrosoftTeamsIntegrations400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListMicrosoftTeamsIntegrations400JSONResponseBodyStatusCode enum.
+func (e ListMicrosoftTeamsIntegrations400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListMicrosoftTeamsIntegrations400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListMicrosoftTeamsIntegrations401JSONResponseBodyStatusCode.
+const (
+	ListMicrosoftTeamsIntegrations401JSONResponseBodyStatusCodeN401 ListMicrosoftTeamsIntegrations401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListMicrosoftTeamsIntegrations401JSONResponseBodyStatusCode enum.
+func (e ListMicrosoftTeamsIntegrations401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListMicrosoftTeamsIntegrations401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListMicrosoftTeamsIntegrations403JSONResponseBodyStatusCode.
+const (
+	ListMicrosoftTeamsIntegrations403JSONResponseBodyStatusCodeN403 ListMicrosoftTeamsIntegrations403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListMicrosoftTeamsIntegrations403JSONResponseBodyStatusCode enum.
+func (e ListMicrosoftTeamsIntegrations403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListMicrosoftTeamsIntegrations403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListMicrosoftTeamsIntegrations404JSONResponseBodyStatusCode.
+const (
+	ListMicrosoftTeamsIntegrations404JSONResponseBodyStatusCodeN404 ListMicrosoftTeamsIntegrations404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListMicrosoftTeamsIntegrations404JSONResponseBodyStatusCode enum.
+func (e ListMicrosoftTeamsIntegrations404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListMicrosoftTeamsIntegrations404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListMicrosoftTeamsIntegrations422JSONResponseBodyStatusCode.
+const (
+	ListMicrosoftTeamsIntegrations422JSONResponseBodyStatusCodeN422 ListMicrosoftTeamsIntegrations422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListMicrosoftTeamsIntegrations422JSONResponseBodyStatusCode enum.
+func (e ListMicrosoftTeamsIntegrations422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListMicrosoftTeamsIntegrations422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListMicrosoftTeamsIntegrations500JSONResponseBodyStatusCode.
+const (
+	ListMicrosoftTeamsIntegrations500JSONResponseBodyStatusCodeN500 ListMicrosoftTeamsIntegrations500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListMicrosoftTeamsIntegrations500JSONResponseBodyStatusCode enum.
+func (e ListMicrosoftTeamsIntegrations500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListMicrosoftTeamsIntegrations500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetMicrosoftTeamsClientId400JSONResponseBodyStatusCode.
+const (
+	GetMicrosoftTeamsClientId400JSONResponseBodyStatusCodeN400 GetMicrosoftTeamsClientId400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetMicrosoftTeamsClientId400JSONResponseBodyStatusCode enum.
+func (e GetMicrosoftTeamsClientId400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetMicrosoftTeamsClientId400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetMicrosoftTeamsClientId401JSONResponseBodyStatusCode.
+const (
+	GetMicrosoftTeamsClientId401JSONResponseBodyStatusCodeN401 GetMicrosoftTeamsClientId401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetMicrosoftTeamsClientId401JSONResponseBodyStatusCode enum.
+func (e GetMicrosoftTeamsClientId401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetMicrosoftTeamsClientId401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetMicrosoftTeamsClientId403JSONResponseBodyStatusCode.
+const (
+	GetMicrosoftTeamsClientId403JSONResponseBodyStatusCodeN403 GetMicrosoftTeamsClientId403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetMicrosoftTeamsClientId403JSONResponseBodyStatusCode enum.
+func (e GetMicrosoftTeamsClientId403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetMicrosoftTeamsClientId403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetMicrosoftTeamsClientId404JSONResponseBodyStatusCode.
+const (
+	GetMicrosoftTeamsClientId404JSONResponseBodyStatusCodeN404 GetMicrosoftTeamsClientId404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetMicrosoftTeamsClientId404JSONResponseBodyStatusCode enum.
+func (e GetMicrosoftTeamsClientId404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetMicrosoftTeamsClientId404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetMicrosoftTeamsClientId422JSONResponseBodyStatusCode.
+const (
+	GetMicrosoftTeamsClientId422JSONResponseBodyStatusCodeN422 GetMicrosoftTeamsClientId422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetMicrosoftTeamsClientId422JSONResponseBodyStatusCode enum.
+func (e GetMicrosoftTeamsClientId422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetMicrosoftTeamsClientId422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetMicrosoftTeamsClientId500JSONResponseBodyStatusCode.
+const (
+	GetMicrosoftTeamsClientId500JSONResponseBodyStatusCodeN500 GetMicrosoftTeamsClientId500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetMicrosoftTeamsClientId500JSONResponseBodyStatusCode enum.
+func (e GetMicrosoftTeamsClientId500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetMicrosoftTeamsClientId500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSlackIntegrations400JSONResponseBodyStatusCode.
+const (
+	ListSlackIntegrations400JSONResponseBodyStatusCodeN400 ListSlackIntegrations400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListSlackIntegrations400JSONResponseBodyStatusCode enum.
+func (e ListSlackIntegrations400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSlackIntegrations400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSlackIntegrations401JSONResponseBodyStatusCode.
+const (
+	ListSlackIntegrations401JSONResponseBodyStatusCodeN401 ListSlackIntegrations401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListSlackIntegrations401JSONResponseBodyStatusCode enum.
+func (e ListSlackIntegrations401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSlackIntegrations401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSlackIntegrations403JSONResponseBodyStatusCode.
+const (
+	ListSlackIntegrations403JSONResponseBodyStatusCodeN403 ListSlackIntegrations403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListSlackIntegrations403JSONResponseBodyStatusCode enum.
+func (e ListSlackIntegrations403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSlackIntegrations403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSlackIntegrations404JSONResponseBodyStatusCode.
+const (
+	ListSlackIntegrations404JSONResponseBodyStatusCodeN404 ListSlackIntegrations404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListSlackIntegrations404JSONResponseBodyStatusCode enum.
+func (e ListSlackIntegrations404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSlackIntegrations404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSlackIntegrations422JSONResponseBodyStatusCode.
+const (
+	ListSlackIntegrations422JSONResponseBodyStatusCodeN422 ListSlackIntegrations422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListSlackIntegrations422JSONResponseBodyStatusCode enum.
+func (e ListSlackIntegrations422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSlackIntegrations422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListSlackIntegrations500JSONResponseBodyStatusCode.
+const (
+	ListSlackIntegrations500JSONResponseBodyStatusCodeN500 ListSlackIntegrations500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListSlackIntegrations500JSONResponseBodyStatusCode enum.
+func (e ListSlackIntegrations500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListSlackIntegrations500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackInstallUrl400JSONResponseBodyStatusCode.
+const (
+	GetSlackInstallUrl400JSONResponseBodyStatusCodeN400 GetSlackInstallUrl400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetSlackInstallUrl400JSONResponseBodyStatusCode enum.
+func (e GetSlackInstallUrl400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackInstallUrl400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackInstallUrl401JSONResponseBodyStatusCode.
+const (
+	GetSlackInstallUrl401JSONResponseBodyStatusCodeN401 GetSlackInstallUrl401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetSlackInstallUrl401JSONResponseBodyStatusCode enum.
+func (e GetSlackInstallUrl401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackInstallUrl401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackInstallUrl403JSONResponseBodyStatusCode.
+const (
+	GetSlackInstallUrl403JSONResponseBodyStatusCodeN403 GetSlackInstallUrl403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetSlackInstallUrl403JSONResponseBodyStatusCode enum.
+func (e GetSlackInstallUrl403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackInstallUrl403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackInstallUrl404JSONResponseBodyStatusCode.
+const (
+	GetSlackInstallUrl404JSONResponseBodyStatusCodeN404 GetSlackInstallUrl404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetSlackInstallUrl404JSONResponseBodyStatusCode enum.
+func (e GetSlackInstallUrl404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackInstallUrl404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackInstallUrl422JSONResponseBodyStatusCode.
+const (
+	GetSlackInstallUrl422JSONResponseBodyStatusCodeN422 GetSlackInstallUrl422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetSlackInstallUrl422JSONResponseBodyStatusCode enum.
+func (e GetSlackInstallUrl422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackInstallUrl422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackInstallUrl500JSONResponseBodyStatusCode.
+const (
+	GetSlackInstallUrl500JSONResponseBodyStatusCodeN500 GetSlackInstallUrl500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetSlackInstallUrl500JSONResponseBodyStatusCode enum.
+func (e GetSlackInstallUrl500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackInstallUrl500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSlackIntegration400JSONResponseBodyStatusCode.
+const (
+	DeleteSlackIntegration400JSONResponseBodyStatusCodeN400 DeleteSlackIntegration400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteSlackIntegration400JSONResponseBodyStatusCode enum.
+func (e DeleteSlackIntegration400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSlackIntegration400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSlackIntegration401JSONResponseBodyStatusCode.
+const (
+	DeleteSlackIntegration401JSONResponseBodyStatusCodeN401 DeleteSlackIntegration401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteSlackIntegration401JSONResponseBodyStatusCode enum.
+func (e DeleteSlackIntegration401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSlackIntegration401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSlackIntegration403JSONResponseBodyStatusCode.
+const (
+	DeleteSlackIntegration403JSONResponseBodyStatusCodeN403 DeleteSlackIntegration403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteSlackIntegration403JSONResponseBodyStatusCode enum.
+func (e DeleteSlackIntegration403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSlackIntegration403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSlackIntegration404JSONResponseBodyStatusCode.
+const (
+	DeleteSlackIntegration404JSONResponseBodyStatusCodeN404 DeleteSlackIntegration404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteSlackIntegration404JSONResponseBodyStatusCode enum.
+func (e DeleteSlackIntegration404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSlackIntegration404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSlackIntegration422JSONResponseBodyStatusCode.
+const (
+	DeleteSlackIntegration422JSONResponseBodyStatusCodeN422 DeleteSlackIntegration422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteSlackIntegration422JSONResponseBodyStatusCode enum.
+func (e DeleteSlackIntegration422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSlackIntegration422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSlackIntegration500JSONResponseBodyStatusCode.
+const (
+	DeleteSlackIntegration500JSONResponseBodyStatusCodeN500 DeleteSlackIntegration500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteSlackIntegration500JSONResponseBodyStatusCode enum.
+func (e DeleteSlackIntegration500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSlackIntegration500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackIntegration400JSONResponseBodyStatusCode.
+const (
+	GetSlackIntegration400JSONResponseBodyStatusCodeN400 GetSlackIntegration400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetSlackIntegration400JSONResponseBodyStatusCode enum.
+func (e GetSlackIntegration400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackIntegration400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackIntegration401JSONResponseBodyStatusCode.
+const (
+	GetSlackIntegration401JSONResponseBodyStatusCodeN401 GetSlackIntegration401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetSlackIntegration401JSONResponseBodyStatusCode enum.
+func (e GetSlackIntegration401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackIntegration401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackIntegration403JSONResponseBodyStatusCode.
+const (
+	GetSlackIntegration403JSONResponseBodyStatusCodeN403 GetSlackIntegration403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetSlackIntegration403JSONResponseBodyStatusCode enum.
+func (e GetSlackIntegration403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackIntegration403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackIntegration404JSONResponseBodyStatusCode.
+const (
+	GetSlackIntegration404JSONResponseBodyStatusCodeN404 GetSlackIntegration404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetSlackIntegration404JSONResponseBodyStatusCode enum.
+func (e GetSlackIntegration404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackIntegration404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackIntegration422JSONResponseBodyStatusCode.
+const (
+	GetSlackIntegration422JSONResponseBodyStatusCodeN422 GetSlackIntegration422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetSlackIntegration422JSONResponseBodyStatusCode enum.
+func (e GetSlackIntegration422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackIntegration422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSlackIntegration500JSONResponseBodyStatusCode.
+const (
+	GetSlackIntegration500JSONResponseBodyStatusCodeN500 GetSlackIntegration500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetSlackIntegration500JSONResponseBodyStatusCode enum.
+func (e GetSlackIntegration500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSlackIntegration500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UploadProjectKey400JSONResponseBodyStatusCode.
 const (
 	UploadProjectKey400JSONResponseBodyStatusCodeN400 UploadProjectKey400JSONResponseBodyStatusCode = 400
@@ -101632,6 +104680,826 @@ type SubscribeToProjectEventsJSONBody struct {
 // SubscribeToProjectEventsJSONBodyRegisterEvent defines parameters for SubscribeToProjectEvents.
 type SubscribeToProjectEventsJSONBodyRegisterEvent string
 
+// ListExternalKms400JSONResponseBodyStatusCode defines parameters for ListExternalKms.
+type ListExternalKms400JSONResponseBodyStatusCode float32
+
+// ListExternalKms401JSONResponseBodyStatusCode defines parameters for ListExternalKms.
+type ListExternalKms401JSONResponseBodyStatusCode float32
+
+// ListExternalKms403JSONResponseBodyStatusCode defines parameters for ListExternalKms.
+type ListExternalKms403JSONResponseBodyStatusCode float32
+
+// ListExternalKms404JSONResponseBodyStatusCode defines parameters for ListExternalKms.
+type ListExternalKms404JSONResponseBodyStatusCode float32
+
+// ListExternalKms422JSONResponseBodyStatusCode defines parameters for ListExternalKms.
+type ListExternalKms422JSONResponseBodyStatusCode float32
+
+// ListExternalKms500JSONResponseBodyStatusCode defines parameters for ListExternalKms.
+type ListExternalKms500JSONResponseBodyStatusCode float32
+
+// CreateExternalKmsJSONBody defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBody struct {
+	Description *string                            `json:"description,omitempty"`
+	Name        string                             `json:"name"`
+	Provider    CreateExternalKmsJSONBody_Provider `json:"provider"`
+}
+
+// CreateExternalKmsJSONBodyProvider0 defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBodyProvider0 struct {
+	Inputs struct {
+		// AwsRegion AWS region to connect
+		AwsRegion string `json:"awsRegion"`
+
+		// Credential AWS credential information to connect
+		Credential CreateExternalKmsJSONBody_Provider_0_Inputs_Credential `json:"credential"`
+
+		// KmsKeyId A pre existing AWS KMS key id to be used for encryption. If not provided a kms key will be generated.
+		KmsKeyId *string `json:"kmsKeyId,omitempty"`
+	} `json:"inputs"`
+	Type CreateExternalKmsJSONBodyProvider0Type `json:"type"`
+}
+
+// CreateExternalKmsJSONBodyProvider0InputsCredential0 defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBodyProvider0InputsCredential0 struct {
+	Data struct {
+		// AccessKey AWS user account access key
+		AccessKey string `json:"accessKey"`
+
+		// SecretKey AWS user account secret key
+		SecretKey string `json:"secretKey"`
+	} `json:"data"`
+	Type CreateExternalKmsJSONBodyProvider0InputsCredential0Type `json:"type"`
+}
+
+// CreateExternalKmsJSONBodyProvider0InputsCredential0Type defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBodyProvider0InputsCredential0Type string
+
+// CreateExternalKmsJSONBodyProvider0InputsCredential1 defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBodyProvider0InputsCredential1 struct {
+	Data struct {
+		// AssumeRoleArn AWS user role to be assumed by infisical
+		AssumeRoleArn string `json:"assumeRoleArn"`
+
+		// ExternalId AWS assume role external id for further security in authentication
+		ExternalId *string `json:"externalId,omitempty"`
+	} `json:"data"`
+	Type CreateExternalKmsJSONBodyProvider0InputsCredential1Type `json:"type"`
+}
+
+// CreateExternalKmsJSONBodyProvider0InputsCredential1Type defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBodyProvider0InputsCredential1Type string
+
+// CreateExternalKmsJSONBody_Provider_0_Inputs_Credential defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBody_Provider_0_Inputs_Credential struct {
+	union json.RawMessage
+}
+
+// CreateExternalKmsJSONBodyProvider0Type defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBodyProvider0Type string
+
+// CreateExternalKmsJSONBodyProvider1 defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBodyProvider1 struct {
+	Inputs struct {
+		// Credential GCP Service Account JSON credential to connect
+		Credential struct {
+			AuthProviderX509CertUrl string                                                           `json:"auth_provider_x509_cert_url"`
+			AuthUri                 string                                                           `json:"auth_uri"`
+			ClientEmail             string                                                           `json:"client_email"`
+			ClientId                string                                                           `json:"client_id"`
+			ClientX509CertUrl       string                                                           `json:"client_x509_cert_url"`
+			PrivateKey              string                                                           `json:"private_key"`
+			PrivateKeyId            string                                                           `json:"private_key_id"`
+			ProjectId               string                                                           `json:"project_id"`
+			TokenUri                string                                                           `json:"token_uri"`
+			Type                    CreateExternalKmsJSONBodyProvider1InputsCredentialType           `json:"type"`
+			UniverseDomain          CreateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain `json:"universe_domain"`
+		} `json:"credential"`
+
+		// GcpRegion GCP region where the KMS key is located
+		GcpRegion string `json:"gcpRegion"`
+
+		// KeyName GCP key name
+		KeyName string `json:"keyName"`
+	} `json:"inputs"`
+	Type CreateExternalKmsJSONBodyProvider1Type `json:"type"`
+}
+
+// CreateExternalKmsJSONBodyProvider1InputsCredentialType defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBodyProvider1InputsCredentialType string
+
+// CreateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain string
+
+// CreateExternalKmsJSONBodyProvider1Type defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBodyProvider1Type string
+
+// CreateExternalKmsJSONBody_Provider defines parameters for CreateExternalKms.
+type CreateExternalKmsJSONBody_Provider struct {
+	union json.RawMessage
+}
+
+// CreateExternalKms400JSONResponseBodyStatusCode defines parameters for CreateExternalKms.
+type CreateExternalKms400JSONResponseBodyStatusCode float32
+
+// CreateExternalKms401JSONResponseBodyStatusCode defines parameters for CreateExternalKms.
+type CreateExternalKms401JSONResponseBodyStatusCode float32
+
+// CreateExternalKms403JSONResponseBodyStatusCode defines parameters for CreateExternalKms.
+type CreateExternalKms403JSONResponseBodyStatusCode float32
+
+// CreateExternalKms404JSONResponseBodyStatusCode defines parameters for CreateExternalKms.
+type CreateExternalKms404JSONResponseBodyStatusCode float32
+
+// CreateExternalKms422JSONResponseBodyStatusCode defines parameters for CreateExternalKms.
+type CreateExternalKms422JSONResponseBodyStatusCode float32
+
+// CreateExternalKms500JSONResponseBodyStatusCode defines parameters for CreateExternalKms.
+type CreateExternalKms500JSONResponseBodyStatusCode float32
+
+// CreateAwsExternalKmsJSONBody defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKmsJSONBody struct {
+	Configuration struct {
+		// AwsRegion AWS region to connect
+		AwsRegion string `json:"awsRegion"`
+
+		// Credential AWS credential information to connect
+		Credential CreateAwsExternalKmsJSONBody_Configuration_Credential `json:"credential"`
+
+		// KmsKeyId A pre existing AWS KMS key id to be used for encryption. If not provided a kms key will be generated.
+		KmsKeyId *string `json:"kmsKeyId,omitempty"`
+	} `json:"configuration"`
+	Description *string `json:"description,omitempty"`
+	Name        string  `json:"name"`
+}
+
+// CreateAwsExternalKmsJSONBodyConfigurationCredential0 defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKmsJSONBodyConfigurationCredential0 struct {
+	Data struct {
+		// AccessKey AWS user account access key
+		AccessKey string `json:"accessKey"`
+
+		// SecretKey AWS user account secret key
+		SecretKey string `json:"secretKey"`
+	} `json:"data"`
+	Type CreateAwsExternalKmsJSONBodyConfigurationCredential0Type `json:"type"`
+}
+
+// CreateAwsExternalKmsJSONBodyConfigurationCredential0Type defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKmsJSONBodyConfigurationCredential0Type string
+
+// CreateAwsExternalKmsJSONBodyConfigurationCredential1 defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKmsJSONBodyConfigurationCredential1 struct {
+	Data struct {
+		// AssumeRoleArn AWS user role to be assumed by infisical
+		AssumeRoleArn string `json:"assumeRoleArn"`
+
+		// ExternalId AWS assume role external id for further security in authentication
+		ExternalId *string `json:"externalId,omitempty"`
+	} `json:"data"`
+	Type CreateAwsExternalKmsJSONBodyConfigurationCredential1Type `json:"type"`
+}
+
+// CreateAwsExternalKmsJSONBodyConfigurationCredential1Type defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKmsJSONBodyConfigurationCredential1Type string
+
+// CreateAwsExternalKmsJSONBody_Configuration_Credential defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKmsJSONBody_Configuration_Credential struct {
+	union json.RawMessage
+}
+
+// CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 struct {
+	// AwsRegion AWS region to connect
+	AwsRegion  string                                                                         `json:"awsRegion"`
+	Credential CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential `json:"credential"`
+
+	// KmsKeyId A pre existing AWS KMS key id to be used for encryption. If not provided a kms key will be generated.
+	KmsKeyId *string `json:"kmsKeyId,omitempty"`
+}
+
+// CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 struct {
+	Data struct {
+		// AccessKey AWS user account access key
+		AccessKey string `json:"accessKey"`
+	} `json:"data"`
+	Type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type `json:"type"`
+}
+
+// CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type string
+
+// CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 struct {
+	Data struct {
+		// AssumeRoleArn AWS user role to be assumed by infisical
+		AssumeRoleArn string `json:"assumeRoleArn"`
+
+		// ExternalId AWS assume role external id for further security in authentication
+		ExternalId *string `json:"externalId,omitempty"`
+	} `json:"data"`
+	Type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
+}
+
+// CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type string
+
+// CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential struct {
+	union json.RawMessage
+}
+
+// CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 struct {
+	// GcpRegion GCP region where the KMS key is located
+	GcpRegion string `json:"gcpRegion"`
+
+	// KeyName GCP key name
+	KeyName string `json:"keyName"`
+}
+
+// CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration struct {
+	union json.RawMessage
+}
+
+// CreateAwsExternalKms400JSONResponseBodyStatusCode defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms400JSONResponseBodyStatusCode float32
+
+// CreateAwsExternalKms401JSONResponseBodyStatusCode defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms401JSONResponseBodyStatusCode float32
+
+// CreateAwsExternalKms403JSONResponseBodyStatusCode defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms403JSONResponseBodyStatusCode float32
+
+// CreateAwsExternalKms404JSONResponseBodyStatusCode defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms404JSONResponseBodyStatusCode float32
+
+// CreateAwsExternalKms422JSONResponseBodyStatusCode defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms422JSONResponseBodyStatusCode float32
+
+// CreateAwsExternalKms500JSONResponseBodyStatusCode defines parameters for CreateAwsExternalKms.
+type CreateAwsExternalKms500JSONResponseBodyStatusCode float32
+
+// DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 struct {
+	// AwsRegion AWS region to connect
+	AwsRegion  string                                                                         `json:"awsRegion"`
+	Credential DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential `json:"credential"`
+
+	// KmsKeyId A pre existing AWS KMS key id to be used for encryption. If not provided a kms key will be generated.
+	KmsKeyId *string `json:"kmsKeyId,omitempty"`
+}
+
+// DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 struct {
+	Data struct {
+		// AccessKey AWS user account access key
+		AccessKey string `json:"accessKey"`
+	} `json:"data"`
+	Type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type `json:"type"`
+}
+
+// DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type string
+
+// DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 struct {
+	Data struct {
+		// AssumeRoleArn AWS user role to be assumed by infisical
+		AssumeRoleArn string `json:"assumeRoleArn"`
+
+		// ExternalId AWS assume role external id for further security in authentication
+		ExternalId *string `json:"externalId,omitempty"`
+	} `json:"data"`
+	Type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
+}
+
+// DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type string
+
+// DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential struct {
+	union json.RawMessage
+}
+
+// DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 struct {
+	// GcpRegion GCP region where the KMS key is located
+	GcpRegion string `json:"gcpRegion"`
+
+	// KeyName GCP key name
+	KeyName string `json:"keyName"`
+}
+
+// DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration struct {
+	union json.RawMessage
+}
+
+// DeleteAwsExternalKms400JSONResponseBodyStatusCode defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms400JSONResponseBodyStatusCode float32
+
+// DeleteAwsExternalKms401JSONResponseBodyStatusCode defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms401JSONResponseBodyStatusCode float32
+
+// DeleteAwsExternalKms403JSONResponseBodyStatusCode defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms403JSONResponseBodyStatusCode float32
+
+// DeleteAwsExternalKms404JSONResponseBodyStatusCode defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms404JSONResponseBodyStatusCode float32
+
+// DeleteAwsExternalKms422JSONResponseBodyStatusCode defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms422JSONResponseBodyStatusCode float32
+
+// DeleteAwsExternalKms500JSONResponseBodyStatusCode defines parameters for DeleteAwsExternalKms.
+type DeleteAwsExternalKms500JSONResponseBodyStatusCode float32
+
+// GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 struct {
+	// AwsRegion AWS region to connect
+	AwsRegion  string                                                                      `json:"awsRegion"`
+	Credential GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential `json:"credential"`
+
+	// KmsKeyId A pre existing AWS KMS key id to be used for encryption. If not provided a kms key will be generated.
+	KmsKeyId *string `json:"kmsKeyId,omitempty"`
+}
+
+// GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 struct {
+	Data struct {
+		// AccessKey AWS user account access key
+		AccessKey string `json:"accessKey"`
+	} `json:"data"`
+	Type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type `json:"type"`
+}
+
+// GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type string
+
+// GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 struct {
+	Data struct {
+		// AssumeRoleArn AWS user role to be assumed by infisical
+		AssumeRoleArn string `json:"assumeRoleArn"`
+
+		// ExternalId AWS assume role external id for further security in authentication
+		ExternalId *string `json:"externalId,omitempty"`
+	} `json:"data"`
+	Type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
+}
+
+// GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type string
+
+// GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential struct {
+	union json.RawMessage
+}
+
+// GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 struct {
+	// GcpRegion GCP region where the KMS key is located
+	GcpRegion string `json:"gcpRegion"`
+
+	// KeyName GCP key name
+	KeyName string `json:"keyName"`
+}
+
+// GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration struct {
+	union json.RawMessage
+}
+
+// GetAwsExternalKms400JSONResponseBodyStatusCode defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms400JSONResponseBodyStatusCode float32
+
+// GetAwsExternalKms401JSONResponseBodyStatusCode defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms401JSONResponseBodyStatusCode float32
+
+// GetAwsExternalKms403JSONResponseBodyStatusCode defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms403JSONResponseBodyStatusCode float32
+
+// GetAwsExternalKms404JSONResponseBodyStatusCode defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms404JSONResponseBodyStatusCode float32
+
+// GetAwsExternalKms422JSONResponseBodyStatusCode defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms422JSONResponseBodyStatusCode float32
+
+// GetAwsExternalKms500JSONResponseBodyStatusCode defines parameters for GetAwsExternalKms.
+type GetAwsExternalKms500JSONResponseBodyStatusCode float32
+
+// UpdateAwsExternalKmsJSONBody defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKmsJSONBody struct {
+	Configuration *struct {
+		// AwsRegion AWS region to connect
+		AwsRegion *string `json:"awsRegion,omitempty"`
+
+		// Credential AWS credential information to connect
+		Credential *UpdateAwsExternalKmsJSONBody_Configuration_Credential `json:"credential,omitempty"`
+
+		// KmsKeyId A pre existing AWS KMS key id to be used for encryption. If not provided a kms key will be generated.
+		KmsKeyId *string `json:"kmsKeyId,omitempty"`
+	} `json:"configuration,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Name        *string `json:"name,omitempty"`
+}
+
+// UpdateAwsExternalKmsJSONBodyConfigurationCredential0 defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKmsJSONBodyConfigurationCredential0 struct {
+	Data struct {
+		// AccessKey AWS user account access key
+		AccessKey string `json:"accessKey"`
+
+		// SecretKey AWS user account secret key
+		SecretKey string `json:"secretKey"`
+	} `json:"data"`
+	Type UpdateAwsExternalKmsJSONBodyConfigurationCredential0Type `json:"type"`
+}
+
+// UpdateAwsExternalKmsJSONBodyConfigurationCredential0Type defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKmsJSONBodyConfigurationCredential0Type string
+
+// UpdateAwsExternalKmsJSONBodyConfigurationCredential1 defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKmsJSONBodyConfigurationCredential1 struct {
+	Data struct {
+		// AssumeRoleArn AWS user role to be assumed by infisical
+		AssumeRoleArn string `json:"assumeRoleArn"`
+
+		// ExternalId AWS assume role external id for further security in authentication
+		ExternalId *string `json:"externalId,omitempty"`
+	} `json:"data"`
+	Type UpdateAwsExternalKmsJSONBodyConfigurationCredential1Type `json:"type"`
+}
+
+// UpdateAwsExternalKmsJSONBodyConfigurationCredential1Type defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKmsJSONBodyConfigurationCredential1Type string
+
+// UpdateAwsExternalKmsJSONBody_Configuration_Credential defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKmsJSONBody_Configuration_Credential struct {
+	union json.RawMessage
+}
+
+// UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 struct {
+	// AwsRegion AWS region to connect
+	AwsRegion  string                                                                         `json:"awsRegion"`
+	Credential UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential `json:"credential"`
+
+	// KmsKeyId A pre existing AWS KMS key id to be used for encryption. If not provided a kms key will be generated.
+	KmsKeyId *string `json:"kmsKeyId,omitempty"`
+}
+
+// UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 struct {
+	Data struct {
+		// AccessKey AWS user account access key
+		AccessKey string `json:"accessKey"`
+	} `json:"data"`
+	Type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type `json:"type"`
+}
+
+// UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0Type string
+
+// UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 struct {
+	Data struct {
+		// AssumeRoleArn AWS user role to be assumed by infisical
+		AssumeRoleArn string `json:"assumeRoleArn"`
+
+		// ExternalId AWS assume role external id for further security in authentication
+		ExternalId *string `json:"externalId,omitempty"`
+	} `json:"data"`
+	Type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type `json:"type"`
+}
+
+// UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1Type string
+
+// UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential struct {
+	union json.RawMessage
+}
+
+// UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 struct {
+	// GcpRegion GCP region where the KMS key is located
+	GcpRegion string `json:"gcpRegion"`
+
+	// KeyName GCP key name
+	KeyName string `json:"keyName"`
+}
+
+// UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration struct {
+	union json.RawMessage
+}
+
+// UpdateAwsExternalKms400JSONResponseBodyStatusCode defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms400JSONResponseBodyStatusCode float32
+
+// UpdateAwsExternalKms401JSONResponseBodyStatusCode defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms401JSONResponseBodyStatusCode float32
+
+// UpdateAwsExternalKms403JSONResponseBodyStatusCode defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms403JSONResponseBodyStatusCode float32
+
+// UpdateAwsExternalKms404JSONResponseBodyStatusCode defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms404JSONResponseBodyStatusCode float32
+
+// UpdateAwsExternalKms422JSONResponseBodyStatusCode defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms422JSONResponseBodyStatusCode float32
+
+// UpdateAwsExternalKms500JSONResponseBodyStatusCode defines parameters for UpdateAwsExternalKms.
+type UpdateAwsExternalKms500JSONResponseBodyStatusCode float32
+
+// GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0 defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0 struct {
+	// AwsRegion AWS region to connect
+	AwsRegion  string                                                                                  `json:"awsRegion"`
+	Credential GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential `json:"credential"`
+
+	// KmsKeyId A pre existing AWS KMS key id to be used for encryption. If not provided a kms key will be generated.
+	KmsKeyId *string `json:"kmsKeyId,omitempty"`
+}
+
+// GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0 defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0 struct {
+	Data struct {
+		// AccessKey AWS user account access key
+		AccessKey string `json:"accessKey"`
+	} `json:"data"`
+	Type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type `json:"type"`
+}
+
+// GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type string
+
+// GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1 defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1 struct {
+	Data struct {
+		// AssumeRoleArn AWS user role to be assumed by infisical
+		AssumeRoleArn string `json:"assumeRoleArn"`
+
+		// ExternalId AWS assume role external id for further security in authentication
+		ExternalId *string `json:"externalId,omitempty"`
+	} `json:"data"`
+	Type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type `json:"type"`
+}
+
+// GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type string
+
+// GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential struct {
+	union json.RawMessage
+}
+
+// GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1 defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1 struct {
+	// GcpRegion GCP region where the KMS key is located
+	GcpRegion string `json:"gcpRegion"`
+
+	// KeyName GCP key name
+	KeyName string `json:"keyName"`
+}
+
+// GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput struct {
+	union json.RawMessage
+}
+
+// GetExternalKmsByName400JSONResponseBodyStatusCode defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName400JSONResponseBodyStatusCode float32
+
+// GetExternalKmsByName401JSONResponseBodyStatusCode defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName401JSONResponseBodyStatusCode float32
+
+// GetExternalKmsByName403JSONResponseBodyStatusCode defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName403JSONResponseBodyStatusCode float32
+
+// GetExternalKmsByName404JSONResponseBodyStatusCode defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName404JSONResponseBodyStatusCode float32
+
+// GetExternalKmsByName422JSONResponseBodyStatusCode defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName422JSONResponseBodyStatusCode float32
+
+// GetExternalKmsByName500JSONResponseBodyStatusCode defines parameters for GetExternalKmsByName.
+type GetExternalKmsByName500JSONResponseBodyStatusCode float32
+
+// DeleteExternalKms400JSONResponseBodyStatusCode defines parameters for DeleteExternalKms.
+type DeleteExternalKms400JSONResponseBodyStatusCode float32
+
+// DeleteExternalKms401JSONResponseBodyStatusCode defines parameters for DeleteExternalKms.
+type DeleteExternalKms401JSONResponseBodyStatusCode float32
+
+// DeleteExternalKms403JSONResponseBodyStatusCode defines parameters for DeleteExternalKms.
+type DeleteExternalKms403JSONResponseBodyStatusCode float32
+
+// DeleteExternalKms404JSONResponseBodyStatusCode defines parameters for DeleteExternalKms.
+type DeleteExternalKms404JSONResponseBodyStatusCode float32
+
+// DeleteExternalKms422JSONResponseBodyStatusCode defines parameters for DeleteExternalKms.
+type DeleteExternalKms422JSONResponseBodyStatusCode float32
+
+// DeleteExternalKms500JSONResponseBodyStatusCode defines parameters for DeleteExternalKms.
+type DeleteExternalKms500JSONResponseBodyStatusCode float32
+
+// GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0 defines parameters for GetExternalKmsById.
+type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0 struct {
+	// AwsRegion AWS region to connect
+	AwsRegion  string                                                                                `json:"awsRegion"`
+	Credential GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential `json:"credential"`
+
+	// KmsKeyId A pre existing AWS KMS key id to be used for encryption. If not provided a kms key will be generated.
+	KmsKeyId *string `json:"kmsKeyId,omitempty"`
+}
+
+// GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0 defines parameters for GetExternalKmsById.
+type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0 struct {
+	Data struct {
+		// AccessKey AWS user account access key
+		AccessKey string `json:"accessKey"`
+	} `json:"data"`
+	Type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type `json:"type"`
+}
+
+// GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type defines parameters for GetExternalKmsById.
+type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0Type string
+
+// GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1 defines parameters for GetExternalKmsById.
+type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1 struct {
+	Data struct {
+		// AssumeRoleArn AWS user role to be assumed by infisical
+		AssumeRoleArn string `json:"assumeRoleArn"`
+
+		// ExternalId AWS assume role external id for further security in authentication
+		ExternalId *string `json:"externalId,omitempty"`
+	} `json:"data"`
+	Type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type `json:"type"`
+}
+
+// GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type defines parameters for GetExternalKmsById.
+type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1Type string
+
+// GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential defines parameters for GetExternalKmsById.
+type GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential struct {
+	union json.RawMessage
+}
+
+// GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1 defines parameters for GetExternalKmsById.
+type GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1 struct {
+	// GcpRegion GCP region where the KMS key is located
+	GcpRegion string `json:"gcpRegion"`
+
+	// KeyName GCP key name
+	KeyName string `json:"keyName"`
+}
+
+// GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput defines parameters for GetExternalKmsById.
+type GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput struct {
+	union json.RawMessage
+}
+
+// GetExternalKmsById400JSONResponseBodyStatusCode defines parameters for GetExternalKmsById.
+type GetExternalKmsById400JSONResponseBodyStatusCode float32
+
+// GetExternalKmsById401JSONResponseBodyStatusCode defines parameters for GetExternalKmsById.
+type GetExternalKmsById401JSONResponseBodyStatusCode float32
+
+// GetExternalKmsById403JSONResponseBodyStatusCode defines parameters for GetExternalKmsById.
+type GetExternalKmsById403JSONResponseBodyStatusCode float32
+
+// GetExternalKmsById404JSONResponseBodyStatusCode defines parameters for GetExternalKmsById.
+type GetExternalKmsById404JSONResponseBodyStatusCode float32
+
+// GetExternalKmsById422JSONResponseBodyStatusCode defines parameters for GetExternalKmsById.
+type GetExternalKmsById422JSONResponseBodyStatusCode float32
+
+// GetExternalKmsById500JSONResponseBodyStatusCode defines parameters for GetExternalKmsById.
+type GetExternalKmsById500JSONResponseBodyStatusCode float32
+
+// UpdateExternalKmsJSONBody defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBody struct {
+	Description *string                            `json:"description,omitempty"`
+	Name        *string                            `json:"name,omitempty"`
+	Provider    UpdateExternalKmsJSONBody_Provider `json:"provider"`
+}
+
+// UpdateExternalKmsJSONBodyProvider0 defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBodyProvider0 struct {
+	Inputs struct {
+		// AwsRegion AWS region to connect
+		AwsRegion *string `json:"awsRegion,omitempty"`
+
+		// Credential AWS credential information to connect
+		Credential *UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential `json:"credential,omitempty"`
+
+		// KmsKeyId A pre existing AWS KMS key id to be used for encryption. If not provided a kms key will be generated.
+		KmsKeyId *string `json:"kmsKeyId,omitempty"`
+	} `json:"inputs"`
+	Type UpdateExternalKmsJSONBodyProvider0Type `json:"type"`
+}
+
+// UpdateExternalKmsJSONBodyProvider0InputsCredential0 defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBodyProvider0InputsCredential0 struct {
+	Data struct {
+		// AccessKey AWS user account access key
+		AccessKey string `json:"accessKey"`
+
+		// SecretKey AWS user account secret key
+		SecretKey string `json:"secretKey"`
+	} `json:"data"`
+	Type UpdateExternalKmsJSONBodyProvider0InputsCredential0Type `json:"type"`
+}
+
+// UpdateExternalKmsJSONBodyProvider0InputsCredential0Type defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBodyProvider0InputsCredential0Type string
+
+// UpdateExternalKmsJSONBodyProvider0InputsCredential1 defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBodyProvider0InputsCredential1 struct {
+	Data struct {
+		// AssumeRoleArn AWS user role to be assumed by infisical
+		AssumeRoleArn string `json:"assumeRoleArn"`
+
+		// ExternalId AWS assume role external id for further security in authentication
+		ExternalId *string `json:"externalId,omitempty"`
+	} `json:"data"`
+	Type UpdateExternalKmsJSONBodyProvider0InputsCredential1Type `json:"type"`
+}
+
+// UpdateExternalKmsJSONBodyProvider0InputsCredential1Type defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBodyProvider0InputsCredential1Type string
+
+// UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential struct {
+	union json.RawMessage
+}
+
+// UpdateExternalKmsJSONBodyProvider0Type defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBodyProvider0Type string
+
+// UpdateExternalKmsJSONBodyProvider1 defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBodyProvider1 struct {
+	Inputs struct {
+		// Credential GCP Service Account JSON credential to connect
+		Credential *struct {
+			AuthProviderX509CertUrl string                                                           `json:"auth_provider_x509_cert_url"`
+			AuthUri                 string                                                           `json:"auth_uri"`
+			ClientEmail             string                                                           `json:"client_email"`
+			ClientId                string                                                           `json:"client_id"`
+			ClientX509CertUrl       string                                                           `json:"client_x509_cert_url"`
+			PrivateKey              string                                                           `json:"private_key"`
+			PrivateKeyId            string                                                           `json:"private_key_id"`
+			ProjectId               string                                                           `json:"project_id"`
+			TokenUri                string                                                           `json:"token_uri"`
+			Type                    UpdateExternalKmsJSONBodyProvider1InputsCredentialType           `json:"type"`
+			UniverseDomain          UpdateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain `json:"universe_domain"`
+		} `json:"credential,omitempty"`
+
+		// GcpRegion GCP region where the KMS key is located
+		GcpRegion *string `json:"gcpRegion,omitempty"`
+
+		// KeyName GCP key name
+		KeyName *string `json:"keyName,omitempty"`
+	} `json:"inputs"`
+	Type UpdateExternalKmsJSONBodyProvider1Type `json:"type"`
+}
+
+// UpdateExternalKmsJSONBodyProvider1InputsCredentialType defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBodyProvider1InputsCredentialType string
+
+// UpdateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBodyProvider1InputsCredentialUniverseDomain string
+
+// UpdateExternalKmsJSONBodyProvider1Type defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBodyProvider1Type string
+
+// UpdateExternalKmsJSONBody_Provider defines parameters for UpdateExternalKms.
+type UpdateExternalKmsJSONBody_Provider struct {
+	union json.RawMessage
+}
+
+// UpdateExternalKms400JSONResponseBodyStatusCode defines parameters for UpdateExternalKms.
+type UpdateExternalKms400JSONResponseBodyStatusCode float32
+
+// UpdateExternalKms401JSONResponseBodyStatusCode defines parameters for UpdateExternalKms.
+type UpdateExternalKms401JSONResponseBodyStatusCode float32
+
+// UpdateExternalKms403JSONResponseBodyStatusCode defines parameters for UpdateExternalKms.
+type UpdateExternalKms403JSONResponseBodyStatusCode float32
+
+// UpdateExternalKms404JSONResponseBodyStatusCode defines parameters for UpdateExternalKms.
+type UpdateExternalKms404JSONResponseBodyStatusCode float32
+
+// UpdateExternalKms422JSONResponseBodyStatusCode defines parameters for UpdateExternalKms.
+type UpdateExternalKms422JSONResponseBodyStatusCode float32
+
+// UpdateExternalKms500JSONResponseBodyStatusCode defines parameters for UpdateExternalKms.
+type UpdateExternalKms500JSONResponseBodyStatusCode float32
+
 // ListGatewayPools400JSONResponseBodyStatusCode defines parameters for ListGatewayPools.
 type ListGatewayPools400JSONResponseBodyStatusCode float32
 
@@ -101793,6 +105661,110 @@ type GetGatewayPoolConnectedResources422JSONResponseBodyStatusCode float32
 
 // GetGatewayPoolConnectedResources500JSONResponseBodyStatusCode defines parameters for GetGatewayPoolConnectedResources.
 type GetGatewayPoolConnectedResources500JSONResponseBodyStatusCode float32
+
+// DeleteGithubOrgSyncConfig400JSONResponseBodyStatusCode defines parameters for DeleteGithubOrgSyncConfig.
+type DeleteGithubOrgSyncConfig400JSONResponseBodyStatusCode float32
+
+// DeleteGithubOrgSyncConfig401JSONResponseBodyStatusCode defines parameters for DeleteGithubOrgSyncConfig.
+type DeleteGithubOrgSyncConfig401JSONResponseBodyStatusCode float32
+
+// DeleteGithubOrgSyncConfig403JSONResponseBodyStatusCode defines parameters for DeleteGithubOrgSyncConfig.
+type DeleteGithubOrgSyncConfig403JSONResponseBodyStatusCode float32
+
+// DeleteGithubOrgSyncConfig404JSONResponseBodyStatusCode defines parameters for DeleteGithubOrgSyncConfig.
+type DeleteGithubOrgSyncConfig404JSONResponseBodyStatusCode float32
+
+// DeleteGithubOrgSyncConfig422JSONResponseBodyStatusCode defines parameters for DeleteGithubOrgSyncConfig.
+type DeleteGithubOrgSyncConfig422JSONResponseBodyStatusCode float32
+
+// DeleteGithubOrgSyncConfig500JSONResponseBodyStatusCode defines parameters for DeleteGithubOrgSyncConfig.
+type DeleteGithubOrgSyncConfig500JSONResponseBodyStatusCode float32
+
+// GetGithubOrgSyncConfig400JSONResponseBodyStatusCode defines parameters for GetGithubOrgSyncConfig.
+type GetGithubOrgSyncConfig400JSONResponseBodyStatusCode float32
+
+// GetGithubOrgSyncConfig401JSONResponseBodyStatusCode defines parameters for GetGithubOrgSyncConfig.
+type GetGithubOrgSyncConfig401JSONResponseBodyStatusCode float32
+
+// GetGithubOrgSyncConfig403JSONResponseBodyStatusCode defines parameters for GetGithubOrgSyncConfig.
+type GetGithubOrgSyncConfig403JSONResponseBodyStatusCode float32
+
+// GetGithubOrgSyncConfig404JSONResponseBodyStatusCode defines parameters for GetGithubOrgSyncConfig.
+type GetGithubOrgSyncConfig404JSONResponseBodyStatusCode float32
+
+// GetGithubOrgSyncConfig422JSONResponseBodyStatusCode defines parameters for GetGithubOrgSyncConfig.
+type GetGithubOrgSyncConfig422JSONResponseBodyStatusCode float32
+
+// GetGithubOrgSyncConfig500JSONResponseBodyStatusCode defines parameters for GetGithubOrgSyncConfig.
+type GetGithubOrgSyncConfig500JSONResponseBodyStatusCode float32
+
+// UpdateGithubOrgSyncConfigJSONBody defines parameters for UpdateGithubOrgSyncConfig.
+type UpdateGithubOrgSyncConfigJSONBody struct {
+	GithubOrgAccessToken *string `json:"githubOrgAccessToken,omitempty"`
+	GithubOrgName        *string `json:"githubOrgName,omitempty"`
+	IsActive             *bool   `json:"isActive,omitempty"`
+}
+
+// UpdateGithubOrgSyncConfig400JSONResponseBodyStatusCode defines parameters for UpdateGithubOrgSyncConfig.
+type UpdateGithubOrgSyncConfig400JSONResponseBodyStatusCode float32
+
+// UpdateGithubOrgSyncConfig401JSONResponseBodyStatusCode defines parameters for UpdateGithubOrgSyncConfig.
+type UpdateGithubOrgSyncConfig401JSONResponseBodyStatusCode float32
+
+// UpdateGithubOrgSyncConfig403JSONResponseBodyStatusCode defines parameters for UpdateGithubOrgSyncConfig.
+type UpdateGithubOrgSyncConfig403JSONResponseBodyStatusCode float32
+
+// UpdateGithubOrgSyncConfig404JSONResponseBodyStatusCode defines parameters for UpdateGithubOrgSyncConfig.
+type UpdateGithubOrgSyncConfig404JSONResponseBodyStatusCode float32
+
+// UpdateGithubOrgSyncConfig422JSONResponseBodyStatusCode defines parameters for UpdateGithubOrgSyncConfig.
+type UpdateGithubOrgSyncConfig422JSONResponseBodyStatusCode float32
+
+// UpdateGithubOrgSyncConfig500JSONResponseBodyStatusCode defines parameters for UpdateGithubOrgSyncConfig.
+type UpdateGithubOrgSyncConfig500JSONResponseBodyStatusCode float32
+
+// CreateGithubOrgSyncConfigJSONBody defines parameters for CreateGithubOrgSyncConfig.
+type CreateGithubOrgSyncConfigJSONBody struct {
+	GithubOrgAccessToken *string `json:"githubOrgAccessToken,omitempty"`
+	GithubOrgName        string  `json:"githubOrgName"`
+	IsActive             *bool   `json:"isActive,omitempty"`
+}
+
+// CreateGithubOrgSyncConfig400JSONResponseBodyStatusCode defines parameters for CreateGithubOrgSyncConfig.
+type CreateGithubOrgSyncConfig400JSONResponseBodyStatusCode float32
+
+// CreateGithubOrgSyncConfig401JSONResponseBodyStatusCode defines parameters for CreateGithubOrgSyncConfig.
+type CreateGithubOrgSyncConfig401JSONResponseBodyStatusCode float32
+
+// CreateGithubOrgSyncConfig403JSONResponseBodyStatusCode defines parameters for CreateGithubOrgSyncConfig.
+type CreateGithubOrgSyncConfig403JSONResponseBodyStatusCode float32
+
+// CreateGithubOrgSyncConfig404JSONResponseBodyStatusCode defines parameters for CreateGithubOrgSyncConfig.
+type CreateGithubOrgSyncConfig404JSONResponseBodyStatusCode float32
+
+// CreateGithubOrgSyncConfig422JSONResponseBodyStatusCode defines parameters for CreateGithubOrgSyncConfig.
+type CreateGithubOrgSyncConfig422JSONResponseBodyStatusCode float32
+
+// CreateGithubOrgSyncConfig500JSONResponseBodyStatusCode defines parameters for CreateGithubOrgSyncConfig.
+type CreateGithubOrgSyncConfig500JSONResponseBodyStatusCode float32
+
+// SyncAllGithubOrgTeams400JSONResponseBodyStatusCode defines parameters for SyncAllGithubOrgTeams.
+type SyncAllGithubOrgTeams400JSONResponseBodyStatusCode float32
+
+// SyncAllGithubOrgTeams401JSONResponseBodyStatusCode defines parameters for SyncAllGithubOrgTeams.
+type SyncAllGithubOrgTeams401JSONResponseBodyStatusCode float32
+
+// SyncAllGithubOrgTeams403JSONResponseBodyStatusCode defines parameters for SyncAllGithubOrgTeams.
+type SyncAllGithubOrgTeams403JSONResponseBodyStatusCode float32
+
+// SyncAllGithubOrgTeams404JSONResponseBodyStatusCode defines parameters for SyncAllGithubOrgTeams.
+type SyncAllGithubOrgTeams404JSONResponseBodyStatusCode float32
+
+// SyncAllGithubOrgTeams422JSONResponseBodyStatusCode defines parameters for SyncAllGithubOrgTeams.
+type SyncAllGithubOrgTeams422JSONResponseBodyStatusCode float32
+
+// SyncAllGithubOrgTeams500JSONResponseBodyStatusCode defines parameters for SyncAllGithubOrgTeams.
+type SyncAllGithubOrgTeams500JSONResponseBodyStatusCode float32
 
 // ListGroups400JSONResponseBodyStatusCode defines parameters for ListGroups.
 type ListGroups400JSONResponseBodyStatusCode float32
@@ -103659,6 +107631,244 @@ type VerifyUserToOrganization422JSONResponseBodyStatusCode float32
 
 // VerifyUserToOrganization500JSONResponseBodyStatusCode defines parameters for VerifyUserToOrganization.
 type VerifyUserToOrganization500JSONResponseBodyStatusCode float32
+
+// GetLdapConfigParams defines parameters for GetLdapConfig.
+type GetLdapConfigParams struct {
+	// OrganizationId The ID of the organization to get the LDAP config for.
+	OrganizationId string `form:"organizationId" json:"organizationId"`
+}
+
+// GetLdapConfig400JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig400JSONResponseBodyStatusCode float32
+
+// GetLdapConfig401JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig401JSONResponseBodyStatusCode float32
+
+// GetLdapConfig403JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig403JSONResponseBodyStatusCode float32
+
+// GetLdapConfig404JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig404JSONResponseBodyStatusCode float32
+
+// GetLdapConfig422JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig422JSONResponseBodyStatusCode float32
+
+// GetLdapConfig500JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig500JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfigJSONBody defines parameters for UpdateLdapConfig.
+type UpdateLdapConfigJSONBody struct {
+	// BindDN The distinguished name of object to bind when performing the user search such as `cn=infisical,ou=Users,dc=acme,dc=com`
+	BindDN *string `json:"bindDN,omitempty"`
+
+	// BindPass The password to use along with Bind DN when performing the user search.
+	BindPass *string `json:"bindPass,omitempty"`
+
+	// CaCert The CA certificate to use when verifying the LDAP server certificate.
+	CaCert *string `json:"caCert,omitempty"`
+
+	// ClientCertificate PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.
+	ClientCertificate *string `json:"clientCertificate,omitempty"`
+
+	// ClientKeyCertificate PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate.
+	ClientKeyCertificate *string `json:"clientKeyCertificate,omitempty"`
+
+	// GroupSearchBase LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`
+	GroupSearchBase *string `json:"groupSearchBase,omitempty"`
+
+	// GroupSearchFilter The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.
+	GroupSearchFilter *string `json:"groupSearchFilter,omitempty"`
+
+	// IsActive Whether to enable or disable this LDAP configuration.
+	IsActive *bool `json:"isActive,omitempty"`
+
+	// OrganizationId The ID of the organization to update the LDAP config for.
+	OrganizationId string `json:"organizationId"`
+
+	// SearchBase The base DN to use for the user search such as `ou=Users,dc=acme,dc=com`
+	SearchBase *string `json:"searchBase,omitempty"`
+
+	// SearchFilter The template used to construct the LDAP user search filter such as `(uid={{username}})` uses literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.
+	SearchFilter *string `json:"searchFilter,omitempty"`
+
+	// UniqueUserAttribute The attribute to use as the unique identifier of LDAP users such as `sAMAccountName`, `cn`, `uid`, `objectGUID`. If left blank, defaults to uidNumber
+	UniqueUserAttribute *string `json:"uniqueUserAttribute,omitempty"`
+
+	// Url The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` (for connection over SSL/TLS), etc.
+	Url *string `json:"url,omitempty"`
+}
+
+// UpdateLdapConfig400JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig400JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfig401JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig401JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfig403JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig403JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfig404JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig404JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfig422JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig422JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfig500JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig500JSONResponseBodyStatusCode float32
+
+// CreateLdapConfigJSONBody defines parameters for CreateLdapConfig.
+type CreateLdapConfigJSONBody struct {
+	// BindDN The distinguished name of the object to bind when performing the user search such as `cn=infisical,ou=Users,dc=acme,dc=com`
+	BindDN string `json:"bindDN"`
+
+	// BindPass The password to use along with Bind DN when performing the user search.
+	BindPass string `json:"bindPass"`
+
+	// CaCert The CA certificate to use when verifying the LDAP server certificate.
+	CaCert *string `json:"caCert,omitempty"`
+
+	// ClientCertificate PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.
+	ClientCertificate *string `json:"clientCertificate,omitempty"`
+
+	// ClientKeyCertificate PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate.
+	ClientKeyCertificate *string `json:"clientKeyCertificate,omitempty"`
+
+	// GroupSearchBase LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`
+	GroupSearchBase string `json:"groupSearchBase"`
+
+	// GroupSearchFilter The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.
+	GroupSearchFilter *string `json:"groupSearchFilter,omitempty"`
+
+	// IsActive Whether to enable or disable this LDAP configuration.
+	IsActive bool `json:"isActive"`
+
+	// OrganizationId The ID of the organization to create the LDAP config for.
+	OrganizationId string `json:"organizationId"`
+
+	// SearchBase The base DN to use for the user search such as `ou=Users,dc=acme,dc=com`
+	SearchBase string `json:"searchBase"`
+
+	// SearchFilter The template used to construct the LDAP user search filter such as `(uid={{username}})` uses literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.
+	SearchFilter *string `json:"searchFilter,omitempty"`
+
+	// UniqueUserAttribute The attribute to use as the unique identifier of LDAP users such as `sAMAccountName`, `cn`, `uid`, `objectGUID`. If left blank, defaults to uidNumber
+	UniqueUserAttribute *string `json:"uniqueUserAttribute,omitempty"`
+
+	// Url The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` (for connection over SSL/TLS), etc.
+	Url string `json:"url"`
+}
+
+// CreateLdapConfig400JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig400JSONResponseBodyStatusCode float32
+
+// CreateLdapConfig401JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig401JSONResponseBodyStatusCode float32
+
+// CreateLdapConfig403JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig403JSONResponseBodyStatusCode float32
+
+// CreateLdapConfig404JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig404JSONResponseBodyStatusCode float32
+
+// CreateLdapConfig422JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig422JSONResponseBodyStatusCode float32
+
+// CreateLdapConfig500JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig500JSONResponseBodyStatusCode float32
+
+// TestLdapConnectionJSONBody defines parameters for TestLdapConnection.
+type TestLdapConnectionJSONBody struct {
+	BindDN               string  `json:"bindDN"`
+	BindPass             string  `json:"bindPass"`
+	CaCert               string  `json:"caCert"`
+	ClientCertificate    *string `json:"clientCertificate,omitempty"`
+	ClientKeyCertificate *string `json:"clientKeyCertificate,omitempty"`
+	Url                  string  `json:"url"`
+}
+
+// TestLdapConnection400JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection400JSONResponseBodyStatusCode float32
+
+// TestLdapConnection401JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection401JSONResponseBodyStatusCode float32
+
+// TestLdapConnection403JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection403JSONResponseBodyStatusCode float32
+
+// TestLdapConnection404JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection404JSONResponseBodyStatusCode float32
+
+// TestLdapConnection422JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection422JSONResponseBodyStatusCode float32
+
+// TestLdapConnection500JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection500JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps400JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps400JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps401JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps401JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps403JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps403JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps404JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps404JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps422JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps422JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps500JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps500JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMapJSONBody defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMapJSONBody struct {
+	GroupSlug   string `json:"groupSlug"`
+	LdapGroupCN string `json:"ldapGroupCN"`
+}
+
+// CreateLdapGroupMap400JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap400JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMap401JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap401JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMap403JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap403JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMap404JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap404JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMap422JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap422JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMap500JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap500JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap400JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap400JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap401JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap401JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap403JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap403JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap404JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap404JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap422JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap422JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap500JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap500JSONResponseBodyStatusCode float32
+
+// LoginWithLdapSsoJSONBody defines parameters for LoginWithLdapSso.
+type LoginWithLdapSsoJSONBody struct {
+	CallbackPort     *float32 `json:"callbackPort,omitempty"`
+	OrganizationSlug string   `json:"organizationSlug"`
+}
 
 // DeleteUserNotifications400JSONResponseBodyStatusCode defines parameters for DeleteUserNotifications.
 type DeleteUserNotifications400JSONResponseBodyStatusCode float32
@@ -114678,6 +118888,141 @@ type TestWebhook422JSONResponseBodyStatusCode float32
 // TestWebhook500JSONResponseBodyStatusCode defines parameters for TestWebhook.
 type TestWebhook500JSONResponseBodyStatusCode float32
 
+// ListWorkflowIntegrations400JSONResponseBodyStatusCode defines parameters for ListWorkflowIntegrations.
+type ListWorkflowIntegrations400JSONResponseBodyStatusCode float32
+
+// ListWorkflowIntegrations401JSONResponseBodyStatusCode defines parameters for ListWorkflowIntegrations.
+type ListWorkflowIntegrations401JSONResponseBodyStatusCode float32
+
+// ListWorkflowIntegrations403JSONResponseBodyStatusCode defines parameters for ListWorkflowIntegrations.
+type ListWorkflowIntegrations403JSONResponseBodyStatusCode float32
+
+// ListWorkflowIntegrations404JSONResponseBodyStatusCode defines parameters for ListWorkflowIntegrations.
+type ListWorkflowIntegrations404JSONResponseBodyStatusCode float32
+
+// ListWorkflowIntegrations422JSONResponseBodyStatusCode defines parameters for ListWorkflowIntegrations.
+type ListWorkflowIntegrations422JSONResponseBodyStatusCode float32
+
+// ListWorkflowIntegrations500JSONResponseBodyStatusCode defines parameters for ListWorkflowIntegrations.
+type ListWorkflowIntegrations500JSONResponseBodyStatusCode float32
+
+// ListMicrosoftTeamsIntegrations200JSONResponseBodyStatus defines parameters for ListMicrosoftTeamsIntegrations.
+type ListMicrosoftTeamsIntegrations200JSONResponseBodyStatus string
+
+// ListMicrosoftTeamsIntegrations400JSONResponseBodyStatusCode defines parameters for ListMicrosoftTeamsIntegrations.
+type ListMicrosoftTeamsIntegrations400JSONResponseBodyStatusCode float32
+
+// ListMicrosoftTeamsIntegrations401JSONResponseBodyStatusCode defines parameters for ListMicrosoftTeamsIntegrations.
+type ListMicrosoftTeamsIntegrations401JSONResponseBodyStatusCode float32
+
+// ListMicrosoftTeamsIntegrations403JSONResponseBodyStatusCode defines parameters for ListMicrosoftTeamsIntegrations.
+type ListMicrosoftTeamsIntegrations403JSONResponseBodyStatusCode float32
+
+// ListMicrosoftTeamsIntegrations404JSONResponseBodyStatusCode defines parameters for ListMicrosoftTeamsIntegrations.
+type ListMicrosoftTeamsIntegrations404JSONResponseBodyStatusCode float32
+
+// ListMicrosoftTeamsIntegrations422JSONResponseBodyStatusCode defines parameters for ListMicrosoftTeamsIntegrations.
+type ListMicrosoftTeamsIntegrations422JSONResponseBodyStatusCode float32
+
+// ListMicrosoftTeamsIntegrations500JSONResponseBodyStatusCode defines parameters for ListMicrosoftTeamsIntegrations.
+type ListMicrosoftTeamsIntegrations500JSONResponseBodyStatusCode float32
+
+// GetMicrosoftTeamsClientId400JSONResponseBodyStatusCode defines parameters for GetMicrosoftTeamsClientId.
+type GetMicrosoftTeamsClientId400JSONResponseBodyStatusCode float32
+
+// GetMicrosoftTeamsClientId401JSONResponseBodyStatusCode defines parameters for GetMicrosoftTeamsClientId.
+type GetMicrosoftTeamsClientId401JSONResponseBodyStatusCode float32
+
+// GetMicrosoftTeamsClientId403JSONResponseBodyStatusCode defines parameters for GetMicrosoftTeamsClientId.
+type GetMicrosoftTeamsClientId403JSONResponseBodyStatusCode float32
+
+// GetMicrosoftTeamsClientId404JSONResponseBodyStatusCode defines parameters for GetMicrosoftTeamsClientId.
+type GetMicrosoftTeamsClientId404JSONResponseBodyStatusCode float32
+
+// GetMicrosoftTeamsClientId422JSONResponseBodyStatusCode defines parameters for GetMicrosoftTeamsClientId.
+type GetMicrosoftTeamsClientId422JSONResponseBodyStatusCode float32
+
+// GetMicrosoftTeamsClientId500JSONResponseBodyStatusCode defines parameters for GetMicrosoftTeamsClientId.
+type GetMicrosoftTeamsClientId500JSONResponseBodyStatusCode float32
+
+// ListSlackIntegrations400JSONResponseBodyStatusCode defines parameters for ListSlackIntegrations.
+type ListSlackIntegrations400JSONResponseBodyStatusCode float32
+
+// ListSlackIntegrations401JSONResponseBodyStatusCode defines parameters for ListSlackIntegrations.
+type ListSlackIntegrations401JSONResponseBodyStatusCode float32
+
+// ListSlackIntegrations403JSONResponseBodyStatusCode defines parameters for ListSlackIntegrations.
+type ListSlackIntegrations403JSONResponseBodyStatusCode float32
+
+// ListSlackIntegrations404JSONResponseBodyStatusCode defines parameters for ListSlackIntegrations.
+type ListSlackIntegrations404JSONResponseBodyStatusCode float32
+
+// ListSlackIntegrations422JSONResponseBodyStatusCode defines parameters for ListSlackIntegrations.
+type ListSlackIntegrations422JSONResponseBodyStatusCode float32
+
+// ListSlackIntegrations500JSONResponseBodyStatusCode defines parameters for ListSlackIntegrations.
+type ListSlackIntegrations500JSONResponseBodyStatusCode float32
+
+// GetSlackInstallUrlParams defines parameters for GetSlackInstallUrl.
+type GetSlackInstallUrlParams struct {
+	Slug        string  `form:"slug" json:"slug"`
+	Description *string `form:"description,omitempty" json:"description,omitempty"`
+}
+
+// GetSlackInstallUrl400JSONResponseBodyStatusCode defines parameters for GetSlackInstallUrl.
+type GetSlackInstallUrl400JSONResponseBodyStatusCode float32
+
+// GetSlackInstallUrl401JSONResponseBodyStatusCode defines parameters for GetSlackInstallUrl.
+type GetSlackInstallUrl401JSONResponseBodyStatusCode float32
+
+// GetSlackInstallUrl403JSONResponseBodyStatusCode defines parameters for GetSlackInstallUrl.
+type GetSlackInstallUrl403JSONResponseBodyStatusCode float32
+
+// GetSlackInstallUrl404JSONResponseBodyStatusCode defines parameters for GetSlackInstallUrl.
+type GetSlackInstallUrl404JSONResponseBodyStatusCode float32
+
+// GetSlackInstallUrl422JSONResponseBodyStatusCode defines parameters for GetSlackInstallUrl.
+type GetSlackInstallUrl422JSONResponseBodyStatusCode float32
+
+// GetSlackInstallUrl500JSONResponseBodyStatusCode defines parameters for GetSlackInstallUrl.
+type GetSlackInstallUrl500JSONResponseBodyStatusCode float32
+
+// DeleteSlackIntegration400JSONResponseBodyStatusCode defines parameters for DeleteSlackIntegration.
+type DeleteSlackIntegration400JSONResponseBodyStatusCode float32
+
+// DeleteSlackIntegration401JSONResponseBodyStatusCode defines parameters for DeleteSlackIntegration.
+type DeleteSlackIntegration401JSONResponseBodyStatusCode float32
+
+// DeleteSlackIntegration403JSONResponseBodyStatusCode defines parameters for DeleteSlackIntegration.
+type DeleteSlackIntegration403JSONResponseBodyStatusCode float32
+
+// DeleteSlackIntegration404JSONResponseBodyStatusCode defines parameters for DeleteSlackIntegration.
+type DeleteSlackIntegration404JSONResponseBodyStatusCode float32
+
+// DeleteSlackIntegration422JSONResponseBodyStatusCode defines parameters for DeleteSlackIntegration.
+type DeleteSlackIntegration422JSONResponseBodyStatusCode float32
+
+// DeleteSlackIntegration500JSONResponseBodyStatusCode defines parameters for DeleteSlackIntegration.
+type DeleteSlackIntegration500JSONResponseBodyStatusCode float32
+
+// GetSlackIntegration400JSONResponseBodyStatusCode defines parameters for GetSlackIntegration.
+type GetSlackIntegration400JSONResponseBodyStatusCode float32
+
+// GetSlackIntegration401JSONResponseBodyStatusCode defines parameters for GetSlackIntegration.
+type GetSlackIntegration401JSONResponseBodyStatusCode float32
+
+// GetSlackIntegration403JSONResponseBodyStatusCode defines parameters for GetSlackIntegration.
+type GetSlackIntegration403JSONResponseBodyStatusCode float32
+
+// GetSlackIntegration404JSONResponseBodyStatusCode defines parameters for GetSlackIntegration.
+type GetSlackIntegration404JSONResponseBodyStatusCode float32
+
+// GetSlackIntegration422JSONResponseBodyStatusCode defines parameters for GetSlackIntegration.
+type GetSlackIntegration422JSONResponseBodyStatusCode float32
+
+// GetSlackIntegration500JSONResponseBodyStatusCode defines parameters for GetSlackIntegration.
+type GetSlackIntegration500JSONResponseBodyStatusCode float32
+
 // UploadProjectKeyJSONBody defines parameters for UploadProjectKey.
 type UploadProjectKeyJSONBody struct {
 	Key struct {
@@ -120551,6 +124896,18 @@ type CreateEmailDomainJSONRequestBody CreateEmailDomainJSONBody
 // SubscribeToProjectEventsJSONRequestBody defines body for SubscribeToProjectEvents for application/json ContentType.
 type SubscribeToProjectEventsJSONRequestBody SubscribeToProjectEventsJSONBody
 
+// CreateExternalKmsJSONRequestBody defines body for CreateExternalKms for application/json ContentType.
+type CreateExternalKmsJSONRequestBody CreateExternalKmsJSONBody
+
+// CreateAwsExternalKmsJSONRequestBody defines body for CreateAwsExternalKms for application/json ContentType.
+type CreateAwsExternalKmsJSONRequestBody CreateAwsExternalKmsJSONBody
+
+// UpdateAwsExternalKmsJSONRequestBody defines body for UpdateAwsExternalKms for application/json ContentType.
+type UpdateAwsExternalKmsJSONRequestBody UpdateAwsExternalKmsJSONBody
+
+// UpdateExternalKmsJSONRequestBody defines body for UpdateExternalKms for application/json ContentType.
+type UpdateExternalKmsJSONRequestBody UpdateExternalKmsJSONBody
+
 // CreateGatewayPoolJSONRequestBody defines body for CreateGatewayPool for application/json ContentType.
 type CreateGatewayPoolJSONRequestBody CreateGatewayPoolJSONBody
 
@@ -120559,6 +124916,12 @@ type UpdateGatewayPoolJSONRequestBody UpdateGatewayPoolJSONBody
 
 // AddGatewayToPoolJSONRequestBody defines body for AddGatewayToPool for application/json ContentType.
 type AddGatewayToPoolJSONRequestBody AddGatewayToPoolJSONBody
+
+// UpdateGithubOrgSyncConfigJSONRequestBody defines body for UpdateGithubOrgSyncConfig for application/json ContentType.
+type UpdateGithubOrgSyncConfigJSONRequestBody UpdateGithubOrgSyncConfigJSONBody
+
+// CreateGithubOrgSyncConfigJSONRequestBody defines body for CreateGithubOrgSyncConfig for application/json ContentType.
+type CreateGithubOrgSyncConfigJSONRequestBody CreateGithubOrgSyncConfigJSONBody
 
 // CreateGroupJSONRequestBody defines body for CreateGroup for application/json ContentType.
 type CreateGroupJSONRequestBody CreateGroupJSONBody
@@ -120604,6 +124967,21 @@ type ResendOrganizationMemberInvitationJSONRequestBody ResendOrganizationMemberI
 
 // VerifyUserToOrganizationJSONRequestBody defines body for VerifyUserToOrganization for application/json ContentType.
 type VerifyUserToOrganizationJSONRequestBody VerifyUserToOrganizationJSONBody
+
+// UpdateLdapConfigJSONRequestBody defines body for UpdateLdapConfig for application/json ContentType.
+type UpdateLdapConfigJSONRequestBody UpdateLdapConfigJSONBody
+
+// CreateLdapConfigJSONRequestBody defines body for CreateLdapConfig for application/json ContentType.
+type CreateLdapConfigJSONRequestBody CreateLdapConfigJSONBody
+
+// TestLdapConnectionJSONRequestBody defines body for TestLdapConnection for application/json ContentType.
+type TestLdapConnectionJSONRequestBody TestLdapConnectionJSONBody
+
+// CreateLdapGroupMapJSONRequestBody defines body for CreateLdapGroupMap for application/json ContentType.
+type CreateLdapGroupMapJSONRequestBody CreateLdapGroupMapJSONBody
+
+// LoginWithLdapSsoJSONRequestBody defines body for LoginWithLdapSso for application/json ContentType.
+type LoginWithLdapSsoJSONRequestBody LoginWithLdapSsoJSONBody
 
 // UpdateUserNotificationJSONRequestBody defines body for UpdateUserNotification for application/json ContentType.
 type UpdateUserNotificationJSONRequestBody UpdateUserNotificationJSONBody
@@ -132217,6 +136595,1122 @@ func (t CreateDynamicSecretJSONBody_Provider) MarshalJSON() ([]byte, error) {
 }
 
 func (t *CreateDynamicSecretJSONBody_Provider) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateExternalKmsJSONBodyProvider0InputsCredential0 returns the union data inside the CreateExternalKmsJSONBody_Provider_0_Inputs_Credential as a CreateExternalKmsJSONBodyProvider0InputsCredential0
+func (t CreateExternalKmsJSONBody_Provider_0_Inputs_Credential) AsCreateExternalKmsJSONBodyProvider0InputsCredential0() (CreateExternalKmsJSONBodyProvider0InputsCredential0, error) {
+	var body CreateExternalKmsJSONBodyProvider0InputsCredential0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateExternalKmsJSONBodyProvider0InputsCredential0 overwrites any union data inside the CreateExternalKmsJSONBody_Provider_0_Inputs_Credential as the provided CreateExternalKmsJSONBodyProvider0InputsCredential0
+func (t *CreateExternalKmsJSONBody_Provider_0_Inputs_Credential) FromCreateExternalKmsJSONBodyProvider0InputsCredential0(v CreateExternalKmsJSONBodyProvider0InputsCredential0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateExternalKmsJSONBodyProvider0InputsCredential0 performs a merge with any union data inside the CreateExternalKmsJSONBody_Provider_0_Inputs_Credential, using the provided CreateExternalKmsJSONBodyProvider0InputsCredential0
+func (t *CreateExternalKmsJSONBody_Provider_0_Inputs_Credential) MergeCreateExternalKmsJSONBodyProvider0InputsCredential0(v CreateExternalKmsJSONBodyProvider0InputsCredential0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateExternalKmsJSONBodyProvider0InputsCredential1 returns the union data inside the CreateExternalKmsJSONBody_Provider_0_Inputs_Credential as a CreateExternalKmsJSONBodyProvider0InputsCredential1
+func (t CreateExternalKmsJSONBody_Provider_0_Inputs_Credential) AsCreateExternalKmsJSONBodyProvider0InputsCredential1() (CreateExternalKmsJSONBodyProvider0InputsCredential1, error) {
+	var body CreateExternalKmsJSONBodyProvider0InputsCredential1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateExternalKmsJSONBodyProvider0InputsCredential1 overwrites any union data inside the CreateExternalKmsJSONBody_Provider_0_Inputs_Credential as the provided CreateExternalKmsJSONBodyProvider0InputsCredential1
+func (t *CreateExternalKmsJSONBody_Provider_0_Inputs_Credential) FromCreateExternalKmsJSONBodyProvider0InputsCredential1(v CreateExternalKmsJSONBodyProvider0InputsCredential1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateExternalKmsJSONBodyProvider0InputsCredential1 performs a merge with any union data inside the CreateExternalKmsJSONBody_Provider_0_Inputs_Credential, using the provided CreateExternalKmsJSONBodyProvider0InputsCredential1
+func (t *CreateExternalKmsJSONBody_Provider_0_Inputs_Credential) MergeCreateExternalKmsJSONBodyProvider0InputsCredential1(v CreateExternalKmsJSONBodyProvider0InputsCredential1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateExternalKmsJSONBody_Provider_0_Inputs_Credential) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateExternalKmsJSONBody_Provider_0_Inputs_Credential) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateExternalKmsJSONBodyProvider0 returns the union data inside the CreateExternalKmsJSONBody_Provider as a CreateExternalKmsJSONBodyProvider0
+func (t CreateExternalKmsJSONBody_Provider) AsCreateExternalKmsJSONBodyProvider0() (CreateExternalKmsJSONBodyProvider0, error) {
+	var body CreateExternalKmsJSONBodyProvider0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateExternalKmsJSONBodyProvider0 overwrites any union data inside the CreateExternalKmsJSONBody_Provider as the provided CreateExternalKmsJSONBodyProvider0
+func (t *CreateExternalKmsJSONBody_Provider) FromCreateExternalKmsJSONBodyProvider0(v CreateExternalKmsJSONBodyProvider0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateExternalKmsJSONBodyProvider0 performs a merge with any union data inside the CreateExternalKmsJSONBody_Provider, using the provided CreateExternalKmsJSONBodyProvider0
+func (t *CreateExternalKmsJSONBody_Provider) MergeCreateExternalKmsJSONBodyProvider0(v CreateExternalKmsJSONBodyProvider0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateExternalKmsJSONBodyProvider1 returns the union data inside the CreateExternalKmsJSONBody_Provider as a CreateExternalKmsJSONBodyProvider1
+func (t CreateExternalKmsJSONBody_Provider) AsCreateExternalKmsJSONBodyProvider1() (CreateExternalKmsJSONBodyProvider1, error) {
+	var body CreateExternalKmsJSONBodyProvider1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateExternalKmsJSONBodyProvider1 overwrites any union data inside the CreateExternalKmsJSONBody_Provider as the provided CreateExternalKmsJSONBodyProvider1
+func (t *CreateExternalKmsJSONBody_Provider) FromCreateExternalKmsJSONBodyProvider1(v CreateExternalKmsJSONBodyProvider1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateExternalKmsJSONBodyProvider1 performs a merge with any union data inside the CreateExternalKmsJSONBody_Provider, using the provided CreateExternalKmsJSONBodyProvider1
+func (t *CreateExternalKmsJSONBody_Provider) MergeCreateExternalKmsJSONBodyProvider1(v CreateExternalKmsJSONBodyProvider1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateExternalKmsJSONBody_Provider) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateExternalKmsJSONBody_Provider) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateAwsExternalKmsJSONBodyConfigurationCredential0 returns the union data inside the CreateAwsExternalKmsJSONBody_Configuration_Credential as a CreateAwsExternalKmsJSONBodyConfigurationCredential0
+func (t CreateAwsExternalKmsJSONBody_Configuration_Credential) AsCreateAwsExternalKmsJSONBodyConfigurationCredential0() (CreateAwsExternalKmsJSONBodyConfigurationCredential0, error) {
+	var body CreateAwsExternalKmsJSONBodyConfigurationCredential0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAwsExternalKmsJSONBodyConfigurationCredential0 overwrites any union data inside the CreateAwsExternalKmsJSONBody_Configuration_Credential as the provided CreateAwsExternalKmsJSONBodyConfigurationCredential0
+func (t *CreateAwsExternalKmsJSONBody_Configuration_Credential) FromCreateAwsExternalKmsJSONBodyConfigurationCredential0(v CreateAwsExternalKmsJSONBodyConfigurationCredential0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAwsExternalKmsJSONBodyConfigurationCredential0 performs a merge with any union data inside the CreateAwsExternalKmsJSONBody_Configuration_Credential, using the provided CreateAwsExternalKmsJSONBodyConfigurationCredential0
+func (t *CreateAwsExternalKmsJSONBody_Configuration_Credential) MergeCreateAwsExternalKmsJSONBodyConfigurationCredential0(v CreateAwsExternalKmsJSONBodyConfigurationCredential0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateAwsExternalKmsJSONBodyConfigurationCredential1 returns the union data inside the CreateAwsExternalKmsJSONBody_Configuration_Credential as a CreateAwsExternalKmsJSONBodyConfigurationCredential1
+func (t CreateAwsExternalKmsJSONBody_Configuration_Credential) AsCreateAwsExternalKmsJSONBodyConfigurationCredential1() (CreateAwsExternalKmsJSONBodyConfigurationCredential1, error) {
+	var body CreateAwsExternalKmsJSONBodyConfigurationCredential1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAwsExternalKmsJSONBodyConfigurationCredential1 overwrites any union data inside the CreateAwsExternalKmsJSONBody_Configuration_Credential as the provided CreateAwsExternalKmsJSONBodyConfigurationCredential1
+func (t *CreateAwsExternalKmsJSONBody_Configuration_Credential) FromCreateAwsExternalKmsJSONBodyConfigurationCredential1(v CreateAwsExternalKmsJSONBodyConfigurationCredential1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAwsExternalKmsJSONBodyConfigurationCredential1 performs a merge with any union data inside the CreateAwsExternalKmsJSONBody_Configuration_Credential, using the provided CreateAwsExternalKmsJSONBodyConfigurationCredential1
+func (t *CreateAwsExternalKmsJSONBody_Configuration_Credential) MergeCreateAwsExternalKmsJSONBodyConfigurationCredential1(v CreateAwsExternalKmsJSONBodyConfigurationCredential1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateAwsExternalKmsJSONBody_Configuration_Credential) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateAwsExternalKmsJSONBody_Configuration_Credential) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 returns the union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as a CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) AsCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0() (CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0, error) {
+	var body CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 overwrites any union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as the provided CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t *CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) FromCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0(v CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 performs a merge with any union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential, using the provided CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t *CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MergeCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0(v CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 returns the union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as a CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) AsCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1() (CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1, error) {
+	var body CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 overwrites any union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as the provided CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t *CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) FromCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1(v CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 performs a merge with any union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential, using the provided CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t *CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MergeCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1(v CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 returns the union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as a CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) AsCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0() (CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0, error) {
+	var body CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 overwrites any union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as the provided CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t *CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) FromCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0(v CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 performs a merge with any union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration, using the provided CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t *CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MergeCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0(v CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 returns the union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as a CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) AsCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1() (CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1, error) {
+	var body CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 overwrites any union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as the provided CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t *CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) FromCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1(v CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 performs a merge with any union data inside the CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration, using the provided CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t *CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MergeCreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1(v CreateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 returns the union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as a DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) AsDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0() (DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0, error) {
+	var body DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 overwrites any union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as the provided DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t *DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) FromDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0(v DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 performs a merge with any union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential, using the provided DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t *DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MergeDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0(v DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 returns the union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as a DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) AsDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1() (DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1, error) {
+	var body DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 overwrites any union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as the provided DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t *DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) FromDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1(v DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 performs a merge with any union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential, using the provided DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t *DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MergeDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1(v DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 returns the union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as a DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) AsDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0() (DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0, error) {
+	var body DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 overwrites any union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as the provided DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t *DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) FromDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0(v DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 performs a merge with any union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration, using the provided DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t *DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MergeDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0(v DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 returns the union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as a DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) AsDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1() (DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1, error) {
+	var body DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 overwrites any union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as the provided DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t *DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) FromDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1(v DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 performs a merge with any union data inside the DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration, using the provided DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t *DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MergeDeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1(v DeleteAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 returns the union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as a GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) AsGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0() (GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0, error) {
+	var body GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 overwrites any union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as the provided GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t *GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) FromGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0(v GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 performs a merge with any union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential, using the provided GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t *GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MergeGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0(v GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 returns the union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as a GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) AsGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1() (GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1, error) {
+	var body GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 overwrites any union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as the provided GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t *GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) FromGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1(v GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 performs a merge with any union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential, using the provided GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t *GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MergeGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1(v GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 returns the union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as a GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) AsGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0() (GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0, error) {
+	var body GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 overwrites any union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as the provided GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t *GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) FromGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0(v GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 performs a merge with any union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration, using the provided GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t *GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MergeGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0(v GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 returns the union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as a GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) AsGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1() (GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1, error) {
+	var body GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 overwrites any union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as the provided GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t *GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) FromGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1(v GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 performs a merge with any union data inside the GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration, using the provided GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t *GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MergeGetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1(v GetAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateAwsExternalKmsJSONBodyConfigurationCredential0 returns the union data inside the UpdateAwsExternalKmsJSONBody_Configuration_Credential as a UpdateAwsExternalKmsJSONBodyConfigurationCredential0
+func (t UpdateAwsExternalKmsJSONBody_Configuration_Credential) AsUpdateAwsExternalKmsJSONBodyConfigurationCredential0() (UpdateAwsExternalKmsJSONBodyConfigurationCredential0, error) {
+	var body UpdateAwsExternalKmsJSONBodyConfigurationCredential0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAwsExternalKmsJSONBodyConfigurationCredential0 overwrites any union data inside the UpdateAwsExternalKmsJSONBody_Configuration_Credential as the provided UpdateAwsExternalKmsJSONBodyConfigurationCredential0
+func (t *UpdateAwsExternalKmsJSONBody_Configuration_Credential) FromUpdateAwsExternalKmsJSONBodyConfigurationCredential0(v UpdateAwsExternalKmsJSONBodyConfigurationCredential0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAwsExternalKmsJSONBodyConfigurationCredential0 performs a merge with any union data inside the UpdateAwsExternalKmsJSONBody_Configuration_Credential, using the provided UpdateAwsExternalKmsJSONBodyConfigurationCredential0
+func (t *UpdateAwsExternalKmsJSONBody_Configuration_Credential) MergeUpdateAwsExternalKmsJSONBodyConfigurationCredential0(v UpdateAwsExternalKmsJSONBodyConfigurationCredential0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateAwsExternalKmsJSONBodyConfigurationCredential1 returns the union data inside the UpdateAwsExternalKmsJSONBody_Configuration_Credential as a UpdateAwsExternalKmsJSONBodyConfigurationCredential1
+func (t UpdateAwsExternalKmsJSONBody_Configuration_Credential) AsUpdateAwsExternalKmsJSONBodyConfigurationCredential1() (UpdateAwsExternalKmsJSONBodyConfigurationCredential1, error) {
+	var body UpdateAwsExternalKmsJSONBodyConfigurationCredential1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAwsExternalKmsJSONBodyConfigurationCredential1 overwrites any union data inside the UpdateAwsExternalKmsJSONBody_Configuration_Credential as the provided UpdateAwsExternalKmsJSONBodyConfigurationCredential1
+func (t *UpdateAwsExternalKmsJSONBody_Configuration_Credential) FromUpdateAwsExternalKmsJSONBodyConfigurationCredential1(v UpdateAwsExternalKmsJSONBodyConfigurationCredential1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAwsExternalKmsJSONBodyConfigurationCredential1 performs a merge with any union data inside the UpdateAwsExternalKmsJSONBody_Configuration_Credential, using the provided UpdateAwsExternalKmsJSONBodyConfigurationCredential1
+func (t *UpdateAwsExternalKmsJSONBody_Configuration_Credential) MergeUpdateAwsExternalKmsJSONBodyConfigurationCredential1(v UpdateAwsExternalKmsJSONBodyConfigurationCredential1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateAwsExternalKmsJSONBody_Configuration_Credential) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateAwsExternalKmsJSONBody_Configuration_Credential) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 returns the union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as a UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) AsUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0() (UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0, error) {
+	var body UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 overwrites any union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as the provided UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t *UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) FromUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0(v UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0 performs a merge with any union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential, using the provided UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0
+func (t *UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MergeUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0(v UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 returns the union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as a UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) AsUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1() (UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1, error) {
+	var body UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 overwrites any union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential as the provided UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t *UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) FromUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1(v UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1 performs a merge with any union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential, using the provided UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1
+func (t *UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MergeUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1(v UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0Credential1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration_0_Credential) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 returns the union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as a UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) AsUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0() (UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0, error) {
+	var body UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 overwrites any union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as the provided UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t *UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) FromUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0(v UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0 performs a merge with any union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration, using the provided UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0
+func (t *UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MergeUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0(v UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 returns the union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as a UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) AsUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1() (UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1, error) {
+	var body UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 overwrites any union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration as the provided UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t *UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) FromUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1(v UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1 performs a merge with any union data inside the UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration, using the provided UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1
+func (t *UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MergeUpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1(v UpdateAwsExternalKms200JSONResponseBodyExternalKmsConfiguration1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0 returns the union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential as a GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0
+func (t GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) AsGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0() (GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0, error) {
+	var body GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0 overwrites any union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential as the provided GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0
+func (t *GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) FromGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0(v GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0 performs a merge with any union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential, using the provided GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0
+func (t *GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) MergeGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0(v GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1 returns the union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential as a GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1
+func (t GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) AsGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1() (GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1, error) {
+	var body GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1 overwrites any union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential as the provided GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1
+func (t *GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) FromGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1(v GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1 performs a merge with any union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential, using the provided GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1
+func (t *GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) MergeGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1(v GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0Credential1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0 returns the union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput as a GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0
+func (t GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput) AsGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0() (GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0, error) {
+	var body GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0 overwrites any union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput as the provided GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0
+func (t *GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput) FromGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0(v GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0 performs a merge with any union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput, using the provided GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0
+func (t *GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput) MergeGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0(v GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1 returns the union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput as a GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1
+func (t GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput) AsGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1() (GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1, error) {
+	var body GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1 overwrites any union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput as the provided GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1
+func (t *GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput) FromGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1(v GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1 performs a merge with any union data inside the GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput, using the provided GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1
+func (t *GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput) MergeGetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1(v GetExternalKmsByName200JSONResponseBodyExternalKmsExternalProviderInput1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0 returns the union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential as a GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0
+func (t GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) AsGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0() (GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0, error) {
+	var body GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0 overwrites any union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential as the provided GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0
+func (t *GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) FromGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0(v GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0 performs a merge with any union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential, using the provided GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0
+func (t *GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) MergeGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0(v GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1 returns the union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential as a GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1
+func (t GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) AsGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1() (GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1, error) {
+	var body GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1 overwrites any union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential as the provided GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1
+func (t *GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) FromGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1(v GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1 performs a merge with any union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential, using the provided GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1
+func (t *GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) MergeGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1(v GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0Credential1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput_0_Credential) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0 returns the union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput as a GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0
+func (t GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput) AsGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0() (GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0, error) {
+	var body GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0 overwrites any union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput as the provided GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0
+func (t *GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput) FromGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0(v GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0 performs a merge with any union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput, using the provided GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0
+func (t *GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput) MergeGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0(v GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1 returns the union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput as a GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1
+func (t GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput) AsGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1() (GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1, error) {
+	var body GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1 overwrites any union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput as the provided GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1
+func (t *GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput) FromGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1(v GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1 performs a merge with any union data inside the GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput, using the provided GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1
+func (t *GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput) MergeGetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1(v GetExternalKmsById200JSONResponseBodyExternalKmsExternalProviderInput1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateExternalKmsJSONBodyProvider0InputsCredential0 returns the union data inside the UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential as a UpdateExternalKmsJSONBodyProvider0InputsCredential0
+func (t UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential) AsUpdateExternalKmsJSONBodyProvider0InputsCredential0() (UpdateExternalKmsJSONBodyProvider0InputsCredential0, error) {
+	var body UpdateExternalKmsJSONBodyProvider0InputsCredential0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateExternalKmsJSONBodyProvider0InputsCredential0 overwrites any union data inside the UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential as the provided UpdateExternalKmsJSONBodyProvider0InputsCredential0
+func (t *UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential) FromUpdateExternalKmsJSONBodyProvider0InputsCredential0(v UpdateExternalKmsJSONBodyProvider0InputsCredential0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateExternalKmsJSONBodyProvider0InputsCredential0 performs a merge with any union data inside the UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential, using the provided UpdateExternalKmsJSONBodyProvider0InputsCredential0
+func (t *UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential) MergeUpdateExternalKmsJSONBodyProvider0InputsCredential0(v UpdateExternalKmsJSONBodyProvider0InputsCredential0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateExternalKmsJSONBodyProvider0InputsCredential1 returns the union data inside the UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential as a UpdateExternalKmsJSONBodyProvider0InputsCredential1
+func (t UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential) AsUpdateExternalKmsJSONBodyProvider0InputsCredential1() (UpdateExternalKmsJSONBodyProvider0InputsCredential1, error) {
+	var body UpdateExternalKmsJSONBodyProvider0InputsCredential1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateExternalKmsJSONBodyProvider0InputsCredential1 overwrites any union data inside the UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential as the provided UpdateExternalKmsJSONBodyProvider0InputsCredential1
+func (t *UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential) FromUpdateExternalKmsJSONBodyProvider0InputsCredential1(v UpdateExternalKmsJSONBodyProvider0InputsCredential1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateExternalKmsJSONBodyProvider0InputsCredential1 performs a merge with any union data inside the UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential, using the provided UpdateExternalKmsJSONBodyProvider0InputsCredential1
+func (t *UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential) MergeUpdateExternalKmsJSONBodyProvider0InputsCredential1(v UpdateExternalKmsJSONBodyProvider0InputsCredential1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateExternalKmsJSONBody_Provider_0_Inputs_Credential) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsUpdateExternalKmsJSONBodyProvider0 returns the union data inside the UpdateExternalKmsJSONBody_Provider as a UpdateExternalKmsJSONBodyProvider0
+func (t UpdateExternalKmsJSONBody_Provider) AsUpdateExternalKmsJSONBodyProvider0() (UpdateExternalKmsJSONBodyProvider0, error) {
+	var body UpdateExternalKmsJSONBodyProvider0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateExternalKmsJSONBodyProvider0 overwrites any union data inside the UpdateExternalKmsJSONBody_Provider as the provided UpdateExternalKmsJSONBodyProvider0
+func (t *UpdateExternalKmsJSONBody_Provider) FromUpdateExternalKmsJSONBodyProvider0(v UpdateExternalKmsJSONBodyProvider0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateExternalKmsJSONBodyProvider0 performs a merge with any union data inside the UpdateExternalKmsJSONBody_Provider, using the provided UpdateExternalKmsJSONBodyProvider0
+func (t *UpdateExternalKmsJSONBody_Provider) MergeUpdateExternalKmsJSONBodyProvider0(v UpdateExternalKmsJSONBodyProvider0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsUpdateExternalKmsJSONBodyProvider1 returns the union data inside the UpdateExternalKmsJSONBody_Provider as a UpdateExternalKmsJSONBodyProvider1
+func (t UpdateExternalKmsJSONBody_Provider) AsUpdateExternalKmsJSONBodyProvider1() (UpdateExternalKmsJSONBodyProvider1, error) {
+	var body UpdateExternalKmsJSONBodyProvider1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromUpdateExternalKmsJSONBodyProvider1 overwrites any union data inside the UpdateExternalKmsJSONBody_Provider as the provided UpdateExternalKmsJSONBodyProvider1
+func (t *UpdateExternalKmsJSONBody_Provider) FromUpdateExternalKmsJSONBodyProvider1(v UpdateExternalKmsJSONBodyProvider1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeUpdateExternalKmsJSONBodyProvider1 performs a merge with any union data inside the UpdateExternalKmsJSONBody_Provider, using the provided UpdateExternalKmsJSONBodyProvider1
+func (t *UpdateExternalKmsJSONBody_Provider) MergeUpdateExternalKmsJSONBodyProvider1(v UpdateExternalKmsJSONBodyProvider1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t UpdateExternalKmsJSONBody_Provider) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *UpdateExternalKmsJSONBody_Provider) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -147187,6 +152681,56 @@ type ClientInterface interface {
 	// Subscribe to project events.
 	SubscribeToProjectEvents(ctx context.Context, body SubscribeToProjectEventsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListExternalKms performs a GET /api/v1/external-kms (the `ListExternalKms` operationId) request.
+	ListExternalKms(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateExternalKmsWithBody performs a POST /api/v1/external-kms (the `CreateExternalKms` operationId) request,
+	// with any type of body and a specified content type.
+	CreateExternalKmsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateExternalKms performs a POST /api/v1/external-kms (the `CreateExternalKms` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateExternalKms(ctx context.Context, body CreateExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAwsExternalKmsWithBody performs a POST /api/v1/external-kms/aws (the `CreateAwsExternalKms` operationId) request,
+	// with any type of body and a specified content type.
+	CreateAwsExternalKmsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAwsExternalKms performs a POST /api/v1/external-kms/aws (the `CreateAwsExternalKms` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateAwsExternalKms(ctx context.Context, body CreateAwsExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAwsExternalKms performs a DELETE /api/v1/external-kms/aws/{id} (the `DeleteAwsExternalKms` operationId) request.
+	DeleteAwsExternalKms(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAwsExternalKms performs a GET /api/v1/external-kms/aws/{id} (the `GetAwsExternalKms` operationId) request.
+	GetAwsExternalKms(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAwsExternalKmsWithBody performs a PATCH /api/v1/external-kms/aws/{id} (the `UpdateAwsExternalKms` operationId) request,
+	// with any type of body and a specified content type.
+	UpdateAwsExternalKmsWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAwsExternalKms performs a PATCH /api/v1/external-kms/aws/{id} (the `UpdateAwsExternalKms` operationId) request.
+	// Takes a body of the `application/json` content type.
+	UpdateAwsExternalKms(ctx context.Context, id string, body UpdateAwsExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetExternalKmsByName performs a GET /api/v1/external-kms/name/{name} (the `GetExternalKmsByName` operationId) request.
+	GetExternalKmsByName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteExternalKms performs a DELETE /api/v1/external-kms/{id} (the `DeleteExternalKms` operationId) request.
+	DeleteExternalKms(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetExternalKmsById performs a GET /api/v1/external-kms/{id} (the `GetExternalKmsById` operationId) request.
+	GetExternalKmsById(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateExternalKmsWithBody performs a PATCH /api/v1/external-kms/{id} (the `UpdateExternalKms` operationId) request,
+	// with any type of body and a specified content type.
+	UpdateExternalKmsWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateExternalKms performs a PATCH /api/v1/external-kms/{id} (the `UpdateExternalKms` operationId) request.
+	// Takes a body of the `application/json` content type.
+	UpdateExternalKms(ctx context.Context, id string, body UpdateExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListGatewayPools performs a GET /api/v1/gateway-pools (the `ListGatewayPools` operationId) request.
 	ListGatewayPools(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -147225,6 +152769,31 @@ type ClientInterface interface {
 
 	// GetGatewayPoolConnectedResources performs a GET /api/v1/gateway-pools/{poolId}/resources (the `GetGatewayPoolConnectedResources` operationId) request.
 	GetGatewayPoolConnectedResources(ctx context.Context, poolId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteGithubOrgSyncConfig performs a DELETE /api/v1/github-org-sync-config (the `DeleteGithubOrgSyncConfig` operationId) request.
+	DeleteGithubOrgSyncConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetGithubOrgSyncConfig performs a GET /api/v1/github-org-sync-config (the `GetGithubOrgSyncConfig` operationId) request.
+	GetGithubOrgSyncConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateGithubOrgSyncConfigWithBody performs a PATCH /api/v1/github-org-sync-config (the `UpdateGithubOrgSyncConfig` operationId) request,
+	// with any type of body and a specified content type.
+	UpdateGithubOrgSyncConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateGithubOrgSyncConfig performs a PATCH /api/v1/github-org-sync-config (the `UpdateGithubOrgSyncConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	UpdateGithubOrgSyncConfig(ctx context.Context, body UpdateGithubOrgSyncConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateGithubOrgSyncConfigWithBody performs a POST /api/v1/github-org-sync-config (the `CreateGithubOrgSyncConfig` operationId) request,
+	// with any type of body and a specified content type.
+	CreateGithubOrgSyncConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateGithubOrgSyncConfig performs a POST /api/v1/github-org-sync-config (the `CreateGithubOrgSyncConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateGithubOrgSyncConfig(ctx context.Context, body CreateGithubOrgSyncConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SyncAllGithubOrgTeams performs a POST /api/v1/github-org-sync-config/sync-all-teams (the `SyncAllGithubOrgTeams` operationId) request.
+	SyncAllGithubOrgTeams(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListGroups performs a GET /api/v1/groups (the `ListGroups` operationId) request.
 	ListGroups(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -147515,6 +153084,65 @@ type ClientInterface interface {
 	// VerifyUserToOrganization performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request.
 	// Takes a body of the `application/json` content type.
 	VerifyUserToOrganization(ctx context.Context, body VerifyUserToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetLdapConfig performs a GET /api/v1/ldap/config (the `GetLdapConfig` operationId) request.
+	//
+	// Get LDAP config.
+	GetLdapConfig(ctx context.Context, params *GetLdapConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLdapConfigWithBody performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update LDAP config.
+	UpdateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLdapConfig performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update LDAP config.
+	UpdateLdapConfig(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLdapConfigWithBody performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create LDAP config.
+	CreateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLdapConfig performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create LDAP config.
+	CreateLdapConfig(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TestLdapConnectionWithBody performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
+	// with any type of body and a specified content type.
+	TestLdapConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TestLdapConnection performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	TestLdapConnection(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListLdapGroupMaps performs a GET /api/v1/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
+	ListLdapGroupMaps(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLdapGroupMapWithBody performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
+	// with any type of body and a specified content type.
+	CreateLdapGroupMapWithBody(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLdapGroupMap performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateLdapGroupMap(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteLdapGroupMap performs a DELETE /api/v1/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
+	DeleteLdapGroupMap(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LoginWithLdapSsoWithBody performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request,
+	// with any type of body and a specified content type.
+	LoginWithLdapSsoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LoginWithLdapSso performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request.
+	// Takes a body of the `application/json` content type.
+	LoginWithLdapSso(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteUserNotifications performs a DELETE /api/v1/notifications/user (the `DeleteUserNotifications` operationId) request.
 	DeleteUserNotifications(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -149361,6 +154989,27 @@ type ClientInterface interface {
 
 	// TestWebhook performs a POST /api/v1/webhooks/{webhookId}/test (the `TestWebhook` operationId) request.
 	TestWebhook(ctx context.Context, webhookId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListWorkflowIntegrations performs a GET /api/v1/workflow-integrations (the `ListWorkflowIntegrations` operationId) request.
+	ListWorkflowIntegrations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListMicrosoftTeamsIntegrations performs a GET /api/v1/workflow-integrations/microsoft-teams (the `ListMicrosoftTeamsIntegrations` operationId) request.
+	ListMicrosoftTeamsIntegrations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMicrosoftTeamsClientId performs a GET /api/v1/workflow-integrations/microsoft-teams/client-id (the `GetMicrosoftTeamsClientId` operationId) request.
+	GetMicrosoftTeamsClientId(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListSlackIntegrations performs a GET /api/v1/workflow-integrations/slack (the `ListSlackIntegrations` operationId) request.
+	ListSlackIntegrations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSlackInstallUrl performs a GET /api/v1/workflow-integrations/slack/install (the `GetSlackInstallUrl` operationId) request.
+	GetSlackInstallUrl(ctx context.Context, params *GetSlackInstallUrlParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteSlackIntegration performs a DELETE /api/v1/workflow-integrations/slack/{id} (the `DeleteSlackIntegration` operationId) request.
+	DeleteSlackIntegration(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSlackIntegration performs a GET /api/v1/workflow-integrations/slack/{id} (the `GetSlackIntegration` operationId) request.
+	GetSlackIntegration(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UploadProjectKeyWithBody performs a POST /api/v1/workspace/{workspaceId}/key (the `UploadProjectKey` operationId) request,
 	// with any type of body and a specified content type.
@@ -154336,6 +159985,196 @@ func (c *Client) SubscribeToProjectEvents(ctx context.Context, body SubscribeToP
 	return c.Client.Do(req)
 }
 
+// ListExternalKms performs a GET /api/v1/external-kms (the `ListExternalKms` operationId) request.
+func (c *Client) ListExternalKms(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListExternalKmsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateExternalKmsWithBody performs a POST /api/v1/external-kms (the `CreateExternalKms` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateExternalKmsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateExternalKmsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateExternalKms performs a POST /api/v1/external-kms (the `CreateExternalKms` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateExternalKms(ctx context.Context, body CreateExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateExternalKmsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAwsExternalKmsWithBody performs a POST /api/v1/external-kms/aws (the `CreateAwsExternalKms` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateAwsExternalKmsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAwsExternalKmsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAwsExternalKms performs a POST /api/v1/external-kms/aws (the `CreateAwsExternalKms` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateAwsExternalKms(ctx context.Context, body CreateAwsExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAwsExternalKmsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteAwsExternalKms performs a DELETE /api/v1/external-kms/aws/{id} (the `DeleteAwsExternalKms` operationId) request.
+func (c *Client) DeleteAwsExternalKms(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAwsExternalKmsRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAwsExternalKms performs a GET /api/v1/external-kms/aws/{id} (the `GetAwsExternalKms` operationId) request.
+func (c *Client) GetAwsExternalKms(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAwsExternalKmsRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAwsExternalKmsWithBody performs a PATCH /api/v1/external-kms/aws/{id} (the `UpdateAwsExternalKms` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) UpdateAwsExternalKmsWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAwsExternalKmsRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAwsExternalKms performs a PATCH /api/v1/external-kms/aws/{id} (the `UpdateAwsExternalKms` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) UpdateAwsExternalKms(ctx context.Context, id string, body UpdateAwsExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAwsExternalKmsRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetExternalKmsByName performs a GET /api/v1/external-kms/name/{name} (the `GetExternalKmsByName` operationId) request.
+func (c *Client) GetExternalKmsByName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetExternalKmsByNameRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteExternalKms performs a DELETE /api/v1/external-kms/{id} (the `DeleteExternalKms` operationId) request.
+func (c *Client) DeleteExternalKms(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteExternalKmsRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetExternalKmsById performs a GET /api/v1/external-kms/{id} (the `GetExternalKmsById` operationId) request.
+func (c *Client) GetExternalKmsById(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetExternalKmsByIdRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateExternalKmsWithBody performs a PATCH /api/v1/external-kms/{id} (the `UpdateExternalKms` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) UpdateExternalKmsWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateExternalKmsRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateExternalKms performs a PATCH /api/v1/external-kms/{id} (the `UpdateExternalKms` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) UpdateExternalKms(ctx context.Context, id string, body UpdateExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateExternalKmsRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListGatewayPools performs a GET /api/v1/gateway-pools (the `ListGatewayPools` operationId) request.
 func (c *Client) ListGatewayPools(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListGatewayPoolsRequest(c.Server)
@@ -154475,6 +160314,101 @@ func (c *Client) RemoveGatewayFromPool(ctx context.Context, poolId openapi_types
 // GetGatewayPoolConnectedResources performs a GET /api/v1/gateway-pools/{poolId}/resources (the `GetGatewayPoolConnectedResources` operationId) request.
 func (c *Client) GetGatewayPoolConnectedResources(ctx context.Context, poolId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetGatewayPoolConnectedResourcesRequest(c.Server, poolId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteGithubOrgSyncConfig performs a DELETE /api/v1/github-org-sync-config (the `DeleteGithubOrgSyncConfig` operationId) request.
+func (c *Client) DeleteGithubOrgSyncConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteGithubOrgSyncConfigRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetGithubOrgSyncConfig performs a GET /api/v1/github-org-sync-config (the `GetGithubOrgSyncConfig` operationId) request.
+func (c *Client) GetGithubOrgSyncConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetGithubOrgSyncConfigRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateGithubOrgSyncConfigWithBody performs a PATCH /api/v1/github-org-sync-config (the `UpdateGithubOrgSyncConfig` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) UpdateGithubOrgSyncConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateGithubOrgSyncConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateGithubOrgSyncConfig performs a PATCH /api/v1/github-org-sync-config (the `UpdateGithubOrgSyncConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) UpdateGithubOrgSyncConfig(ctx context.Context, body UpdateGithubOrgSyncConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateGithubOrgSyncConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateGithubOrgSyncConfigWithBody performs a POST /api/v1/github-org-sync-config (the `CreateGithubOrgSyncConfig` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateGithubOrgSyncConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGithubOrgSyncConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateGithubOrgSyncConfig performs a POST /api/v1/github-org-sync-config (the `CreateGithubOrgSyncConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateGithubOrgSyncConfig(ctx context.Context, body CreateGithubOrgSyncConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGithubOrgSyncConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SyncAllGithubOrgTeams performs a POST /api/v1/github-org-sync-config/sync-all-teams (the `SyncAllGithubOrgTeams` operationId) request.
+func (c *Client) SyncAllGithubOrgTeams(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSyncAllGithubOrgTeamsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -155425,6 +161359,195 @@ func (c *Client) VerifyUserToOrganizationWithBody(ctx context.Context, contentTy
 // Takes a body of the `application/json` content type.
 func (c *Client) VerifyUserToOrganization(ctx context.Context, body VerifyUserToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewVerifyUserToOrganizationRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetLdapConfig performs a GET /api/v1/ldap/config (the `GetLdapConfig` operationId) request.
+//
+// Get LDAP config.
+func (c *Client) GetLdapConfig(ctx context.Context, params *GetLdapConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetLdapConfigRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLdapConfigWithBody performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update LDAP config.
+func (c *Client) UpdateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLdapConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLdapConfig performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update LDAP config.
+func (c *Client) UpdateLdapConfig(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLdapConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLdapConfigWithBody performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create LDAP config.
+func (c *Client) CreateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLdapConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLdapConfig performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create LDAP config.
+func (c *Client) CreateLdapConfig(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLdapConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// TestLdapConnectionWithBody performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) TestLdapConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTestLdapConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// TestLdapConnection performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) TestLdapConnection(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTestLdapConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListLdapGroupMaps performs a GET /api/v1/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
+func (c *Client) ListLdapGroupMaps(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListLdapGroupMapsRequest(c.Server, configId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLdapGroupMapWithBody performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateLdapGroupMapWithBody(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLdapGroupMapRequestWithBody(c.Server, configId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLdapGroupMap performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateLdapGroupMap(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLdapGroupMapRequest(c.Server, configId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteLdapGroupMap performs a DELETE /api/v1/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
+func (c *Client) DeleteLdapGroupMap(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteLdapGroupMapRequest(c.Server, configId, groupMapId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LoginWithLdapSsoWithBody performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) LoginWithLdapSsoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLoginWithLdapSsoRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LoginWithLdapSso performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) LoginWithLdapSso(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLoginWithLdapSsoRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -161262,6 +167385,97 @@ func (c *Client) UpdateWebhook(ctx context.Context, webhookId string, body Updat
 // TestWebhook performs a POST /api/v1/webhooks/{webhookId}/test (the `TestWebhook` operationId) request.
 func (c *Client) TestWebhook(ctx context.Context, webhookId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewTestWebhookRequest(c.Server, webhookId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListWorkflowIntegrations performs a GET /api/v1/workflow-integrations (the `ListWorkflowIntegrations` operationId) request.
+func (c *Client) ListWorkflowIntegrations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListWorkflowIntegrationsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListMicrosoftTeamsIntegrations performs a GET /api/v1/workflow-integrations/microsoft-teams (the `ListMicrosoftTeamsIntegrations` operationId) request.
+func (c *Client) ListMicrosoftTeamsIntegrations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListMicrosoftTeamsIntegrationsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetMicrosoftTeamsClientId performs a GET /api/v1/workflow-integrations/microsoft-teams/client-id (the `GetMicrosoftTeamsClientId` operationId) request.
+func (c *Client) GetMicrosoftTeamsClientId(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetMicrosoftTeamsClientIdRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListSlackIntegrations performs a GET /api/v1/workflow-integrations/slack (the `ListSlackIntegrations` operationId) request.
+func (c *Client) ListSlackIntegrations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListSlackIntegrationsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetSlackInstallUrl performs a GET /api/v1/workflow-integrations/slack/install (the `GetSlackInstallUrl` operationId) request.
+func (c *Client) GetSlackInstallUrl(ctx context.Context, params *GetSlackInstallUrlParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSlackInstallUrlRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteSlackIntegration performs a DELETE /api/v1/workflow-integrations/slack/{id} (the `DeleteSlackIntegration` operationId) request.
+func (c *Client) DeleteSlackIntegration(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteSlackIntegrationRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetSlackIntegration performs a GET /api/v1/workflow-integrations/slack/{id} (the `GetSlackIntegration` operationId) request.
+func (c *Client) GetSlackIntegration(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSlackIntegrationRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -173025,6 +179239,377 @@ func NewSubscribeToProjectEventsRequestWithBody(server string, contentType strin
 	return req, nil
 }
 
+// NewListExternalKmsRequest constructs an http.Request for the ListExternalKms method
+func NewListExternalKmsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/external-kms")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateExternalKmsRequest calls the generic CreateExternalKms builder with application/json body
+func NewCreateExternalKmsRequest(server string, body CreateExternalKmsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateExternalKmsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateExternalKmsRequestWithBody constructs an http.Request for the CreateExternalKms method, with any body, and a specified content type
+func NewCreateExternalKmsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/external-kms")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateAwsExternalKmsRequest calls the generic CreateAwsExternalKms builder with application/json body
+func NewCreateAwsExternalKmsRequest(server string, body CreateAwsExternalKmsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateAwsExternalKmsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateAwsExternalKmsRequestWithBody constructs an http.Request for the CreateAwsExternalKms method, with any body, and a specified content type
+func NewCreateAwsExternalKmsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/external-kms/aws")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteAwsExternalKmsRequest constructs an http.Request for the DeleteAwsExternalKms method
+func NewDeleteAwsExternalKmsRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/external-kms/aws/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAwsExternalKmsRequest constructs an http.Request for the GetAwsExternalKms method
+func NewGetAwsExternalKmsRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/external-kms/aws/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateAwsExternalKmsRequest calls the generic UpdateAwsExternalKms builder with application/json body
+func NewUpdateAwsExternalKmsRequest(server string, id string, body UpdateAwsExternalKmsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAwsExternalKmsRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewUpdateAwsExternalKmsRequestWithBody constructs an http.Request for the UpdateAwsExternalKms method, with any body, and a specified content type
+func NewUpdateAwsExternalKmsRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/external-kms/aws/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetExternalKmsByNameRequest constructs an http.Request for the GetExternalKmsByName method
+func NewGetExternalKmsByNameRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/external-kms/name/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteExternalKmsRequest constructs an http.Request for the DeleteExternalKms method
+func NewDeleteExternalKmsRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/external-kms/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetExternalKmsByIdRequest constructs an http.Request for the GetExternalKmsById method
+func NewGetExternalKmsByIdRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/external-kms/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateExternalKmsRequest calls the generic UpdateExternalKms builder with application/json body
+func NewUpdateExternalKmsRequest(server string, id string, body UpdateExternalKmsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateExternalKmsRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewUpdateExternalKmsRequestWithBody constructs an http.Request for the UpdateExternalKms method, with any body, and a specified content type
+func NewUpdateExternalKmsRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/external-kms/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListGatewayPoolsRequest constructs an http.Request for the ListGatewayPools method
 func NewListGatewayPoolsRequest(server string) (*http.Request, error) {
 	var err error
@@ -173322,6 +179907,167 @@ func NewGetGatewayPoolConnectedResourcesRequest(server string, poolId openapi_ty
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteGithubOrgSyncConfigRequest constructs an http.Request for the DeleteGithubOrgSyncConfig method
+func NewDeleteGithubOrgSyncConfigRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/github-org-sync-config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetGithubOrgSyncConfigRequest constructs an http.Request for the GetGithubOrgSyncConfig method
+func NewGetGithubOrgSyncConfigRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/github-org-sync-config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateGithubOrgSyncConfigRequest calls the generic UpdateGithubOrgSyncConfig builder with application/json body
+func NewUpdateGithubOrgSyncConfigRequest(server string, body UpdateGithubOrgSyncConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateGithubOrgSyncConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateGithubOrgSyncConfigRequestWithBody constructs an http.Request for the UpdateGithubOrgSyncConfig method, with any body, and a specified content type
+func NewUpdateGithubOrgSyncConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/github-org-sync-config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateGithubOrgSyncConfigRequest calls the generic CreateGithubOrgSyncConfig builder with application/json body
+func NewCreateGithubOrgSyncConfigRequest(server string, body CreateGithubOrgSyncConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateGithubOrgSyncConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateGithubOrgSyncConfigRequestWithBody constructs an http.Request for the CreateGithubOrgSyncConfig method, with any body, and a specified content type
+func NewCreateGithubOrgSyncConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/github-org-sync-config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSyncAllGithubOrgTeamsRequest constructs an http.Request for the SyncAllGithubOrgTeams method
+func NewSyncAllGithubOrgTeamsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/github-org-sync-config/sync-all-teams")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -175568,6 +182314,338 @@ func NewVerifyUserToOrganizationRequestWithBody(server string, contentType strin
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/invite-org/verify")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetLdapConfigRequest constructs an http.Request for the GetLdapConfig method
+func NewGetLdapConfigRequest(server string, params *GetLdapConfigParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ldap/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateLdapConfigRequest calls the generic UpdateLdapConfig builder with application/json body
+func NewUpdateLdapConfigRequest(server string, body UpdateLdapConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateLdapConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateLdapConfigRequestWithBody constructs an http.Request for the UpdateLdapConfig method, with any body, and a specified content type
+func NewUpdateLdapConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ldap/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateLdapConfigRequest calls the generic CreateLdapConfig builder with application/json body
+func NewCreateLdapConfigRequest(server string, body CreateLdapConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateLdapConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateLdapConfigRequestWithBody constructs an http.Request for the CreateLdapConfig method, with any body, and a specified content type
+func NewCreateLdapConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ldap/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewTestLdapConnectionRequest calls the generic TestLdapConnection builder with application/json body
+func NewTestLdapConnectionRequest(server string, body TestLdapConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewTestLdapConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewTestLdapConnectionRequestWithBody constructs an http.Request for the TestLdapConnection method, with any body, and a specified content type
+func NewTestLdapConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ldap/config/test-connection")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListLdapGroupMapsRequest constructs an http.Request for the ListLdapGroupMaps method
+func NewListLdapGroupMapsRequest(server string, configId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ldap/config/%s/group-maps", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateLdapGroupMapRequest calls the generic CreateLdapGroupMap builder with application/json body
+func NewCreateLdapGroupMapRequest(server string, configId string, body CreateLdapGroupMapJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateLdapGroupMapRequestWithBody(server, configId, "application/json", bodyReader)
+}
+
+// NewCreateLdapGroupMapRequestWithBody constructs an http.Request for the CreateLdapGroupMap method, with any body, and a specified content type
+func NewCreateLdapGroupMapRequestWithBody(server string, configId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ldap/config/%s/group-maps", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteLdapGroupMapRequest constructs an http.Request for the DeleteLdapGroupMap method
+func NewDeleteLdapGroupMapRequest(server string, configId string, groupMapId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupMapId", groupMapId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ldap/config/%s/group-maps/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewLoginWithLdapSsoRequest calls the generic LoginWithLdapSso builder with application/json body
+func NewLoginWithLdapSsoRequest(server string, body LoginWithLdapSsoJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewLoginWithLdapSsoRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewLoginWithLdapSsoRequestWithBody constructs an http.Request for the LoginWithLdapSso method, with any body, and a specified content type
+func NewLoginWithLdapSsoRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/ldap/login")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -189659,6 +196737,244 @@ func NewTestWebhookRequest(server string, webhookId string) (*http.Request, erro
 	return req, nil
 }
 
+// NewListWorkflowIntegrationsRequest constructs an http.Request for the ListWorkflowIntegrations method
+func NewListWorkflowIntegrationsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/workflow-integrations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListMicrosoftTeamsIntegrationsRequest constructs an http.Request for the ListMicrosoftTeamsIntegrations method
+func NewListMicrosoftTeamsIntegrationsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/workflow-integrations/microsoft-teams")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetMicrosoftTeamsClientIdRequest constructs an http.Request for the GetMicrosoftTeamsClientId method
+func NewGetMicrosoftTeamsClientIdRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/workflow-integrations/microsoft-teams/client-id")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListSlackIntegrationsRequest constructs an http.Request for the ListSlackIntegrations method
+func NewListSlackIntegrationsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/workflow-integrations/slack")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetSlackInstallUrlRequest constructs an http.Request for the GetSlackInstallUrl method
+func NewGetSlackInstallUrlRequest(server string, params *GetSlackInstallUrlParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/workflow-integrations/slack/install")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "slug", params.Slug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Description != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "description", *params.Description, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteSlackIntegrationRequest constructs an http.Request for the DeleteSlackIntegration method
+func NewDeleteSlackIntegrationRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/workflow-integrations/slack/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetSlackIntegrationRequest constructs an http.Request for the GetSlackIntegration method
+func NewGetSlackIntegrationRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/workflow-integrations/slack/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewUploadProjectKeyRequest calls the generic UploadProjectKey builder with application/json body
 func NewUploadProjectKeyRequest(server string, workspaceId string, body UploadProjectKeyJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -197332,6 +204648,76 @@ type ClientWithResponsesInterface interface {
 	// Subscribe to project events.
 	SubscribeToProjectEventsWithResponse(ctx context.Context, body SubscribeToProjectEventsJSONRequestBody, reqEditors ...RequestEditorFn) (*SubscribeToProjectEventsResponse, error)
 
+	// ListExternalKmsWithResponse performs a GET /api/v1/external-kms (the `ListExternalKms` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListExternalKmsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExternalKmsResponse, error)
+
+	// CreateExternalKmsWithBodyWithResponse performs a POST /api/v1/external-kms (the `CreateExternalKms` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateExternalKmsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateExternalKmsResponse, error)
+
+	// CreateExternalKmsWithResponse performs a POST /api/v1/external-kms (the `CreateExternalKms` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateExternalKmsWithResponse(ctx context.Context, body CreateExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateExternalKmsResponse, error)
+
+	// CreateAwsExternalKmsWithBodyWithResponse performs a POST /api/v1/external-kms/aws (the `CreateAwsExternalKms` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateAwsExternalKmsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAwsExternalKmsResponse, error)
+
+	// CreateAwsExternalKmsWithResponse performs a POST /api/v1/external-kms/aws (the `CreateAwsExternalKms` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateAwsExternalKmsWithResponse(ctx context.Context, body CreateAwsExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAwsExternalKmsResponse, error)
+
+	// DeleteAwsExternalKmsWithResponse performs a DELETE /api/v1/external-kms/aws/{id} (the `DeleteAwsExternalKms` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteAwsExternalKmsWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteAwsExternalKmsResponse, error)
+
+	// GetAwsExternalKmsWithResponse performs a GET /api/v1/external-kms/aws/{id} (the `GetAwsExternalKms` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetAwsExternalKmsWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetAwsExternalKmsResponse, error)
+
+	// UpdateAwsExternalKmsWithBodyWithResponse performs a PATCH /api/v1/external-kms/aws/{id} (the `UpdateAwsExternalKms` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateAwsExternalKmsWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAwsExternalKmsResponse, error)
+
+	// UpdateAwsExternalKmsWithResponse performs a PATCH /api/v1/external-kms/aws/{id} (the `UpdateAwsExternalKms` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	UpdateAwsExternalKmsWithResponse(ctx context.Context, id string, body UpdateAwsExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAwsExternalKmsResponse, error)
+
+	// GetExternalKmsByNameWithResponse performs a GET /api/v1/external-kms/name/{name} (the `GetExternalKmsByName` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetExternalKmsByNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetExternalKmsByNameResponse, error)
+
+	// DeleteExternalKmsWithResponse performs a DELETE /api/v1/external-kms/{id} (the `DeleteExternalKms` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteExternalKmsWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteExternalKmsResponse, error)
+
+	// GetExternalKmsByIdWithResponse performs a GET /api/v1/external-kms/{id} (the `GetExternalKmsById` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetExternalKmsByIdWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetExternalKmsByIdResponse, error)
+
+	// UpdateExternalKmsWithBodyWithResponse performs a PATCH /api/v1/external-kms/{id} (the `UpdateExternalKms` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateExternalKmsWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateExternalKmsResponse, error)
+
+	// UpdateExternalKmsWithResponse performs a PATCH /api/v1/external-kms/{id} (the `UpdateExternalKms` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	UpdateExternalKmsWithResponse(ctx context.Context, id string, body UpdateExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateExternalKmsResponse, error)
+
 	// ListGatewayPoolsWithResponse performs a GET /api/v1/gateway-pools (the `ListGatewayPools` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -197386,6 +204772,41 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetGatewayPoolConnectedResourcesWithResponse(ctx context.Context, poolId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetGatewayPoolConnectedResourcesResponse, error)
+
+	// DeleteGithubOrgSyncConfigWithResponse performs a DELETE /api/v1/github-org-sync-config (the `DeleteGithubOrgSyncConfig` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteGithubOrgSyncConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteGithubOrgSyncConfigResponse, error)
+
+	// GetGithubOrgSyncConfigWithResponse performs a GET /api/v1/github-org-sync-config (the `GetGithubOrgSyncConfig` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetGithubOrgSyncConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetGithubOrgSyncConfigResponse, error)
+
+	// UpdateGithubOrgSyncConfigWithBodyWithResponse performs a PATCH /api/v1/github-org-sync-config (the `UpdateGithubOrgSyncConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateGithubOrgSyncConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGithubOrgSyncConfigResponse, error)
+
+	// UpdateGithubOrgSyncConfigWithResponse performs a PATCH /api/v1/github-org-sync-config (the `UpdateGithubOrgSyncConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	UpdateGithubOrgSyncConfigWithResponse(ctx context.Context, body UpdateGithubOrgSyncConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGithubOrgSyncConfigResponse, error)
+
+	// CreateGithubOrgSyncConfigWithBodyWithResponse performs a POST /api/v1/github-org-sync-config (the `CreateGithubOrgSyncConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateGithubOrgSyncConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGithubOrgSyncConfigResponse, error)
+
+	// CreateGithubOrgSyncConfigWithResponse performs a POST /api/v1/github-org-sync-config (the `CreateGithubOrgSyncConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateGithubOrgSyncConfigWithResponse(ctx context.Context, body CreateGithubOrgSyncConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGithubOrgSyncConfigResponse, error)
+
+	// SyncAllGithubOrgTeamsWithResponse performs a POST /api/v1/github-org-sync-config/sync-all-teams (the `SyncAllGithubOrgTeams` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	SyncAllGithubOrgTeamsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SyncAllGithubOrgTeamsResponse, error)
 
 	// ListGroupsWithResponse performs a GET /api/v1/groups (the `ListGroups` operationId) request.
 	//
@@ -197778,6 +205199,81 @@ type ClientWithResponsesInterface interface {
 	// VerifyUserToOrganizationWithResponse performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	VerifyUserToOrganizationWithResponse(ctx context.Context, body VerifyUserToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyUserToOrganizationResponse, error)
+
+	// GetLdapConfigWithResponse performs a GET /api/v1/ldap/config (the `GetLdapConfig` operationId) request.
+	//
+	// Get LDAP config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetLdapConfigWithResponse(ctx context.Context, params *GetLdapConfigParams, reqEditors ...RequestEditorFn) (*GetLdapConfigResponse, error)
+
+	// UpdateLdapConfigWithBodyWithResponse performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update LDAP config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error)
+
+	// UpdateLdapConfigWithResponse performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update LDAP config.
+	UpdateLdapConfigWithResponse(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error)
+
+	// CreateLdapConfigWithBodyWithResponse performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create LDAP config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error)
+
+	// CreateLdapConfigWithResponse performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create LDAP config.
+	CreateLdapConfigWithResponse(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error)
+
+	// TestLdapConnectionWithBodyWithResponse performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	TestLdapConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error)
+
+	// TestLdapConnectionWithResponse performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	TestLdapConnectionWithResponse(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error)
+
+	// ListLdapGroupMapsWithResponse performs a GET /api/v1/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListLdapGroupMapsWithResponse(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*ListLdapGroupMapsResponse, error)
+
+	// CreateLdapGroupMapWithBodyWithResponse performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateLdapGroupMapWithBodyWithResponse(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error)
+
+	// CreateLdapGroupMapWithResponse performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateLdapGroupMapWithResponse(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error)
+
+	// DeleteLdapGroupMapWithResponse performs a DELETE /api/v1/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteLdapGroupMapWithResponse(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*DeleteLdapGroupMapResponse, error)
+
+	// LoginWithLdapSsoWithBodyWithResponse performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	LoginWithLdapSsoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error)
+
+	// LoginWithLdapSsoWithResponse performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	LoginWithLdapSsoWithResponse(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error)
 
 	// DeleteUserNotificationsWithResponse performs a DELETE /api/v1/notifications/user (the `DeleteUserNotifications` operationId) request.
 	//
@@ -200216,6 +207712,41 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	TestWebhookWithResponse(ctx context.Context, webhookId string, reqEditors ...RequestEditorFn) (*TestWebhookResponse, error)
+
+	// ListWorkflowIntegrationsWithResponse performs a GET /api/v1/workflow-integrations (the `ListWorkflowIntegrations` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListWorkflowIntegrationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListWorkflowIntegrationsResponse, error)
+
+	// ListMicrosoftTeamsIntegrationsWithResponse performs a GET /api/v1/workflow-integrations/microsoft-teams (the `ListMicrosoftTeamsIntegrations` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListMicrosoftTeamsIntegrationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListMicrosoftTeamsIntegrationsResponse, error)
+
+	// GetMicrosoftTeamsClientIdWithResponse performs a GET /api/v1/workflow-integrations/microsoft-teams/client-id (the `GetMicrosoftTeamsClientId` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetMicrosoftTeamsClientIdWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMicrosoftTeamsClientIdResponse, error)
+
+	// ListSlackIntegrationsWithResponse performs a GET /api/v1/workflow-integrations/slack (the `ListSlackIntegrations` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListSlackIntegrationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListSlackIntegrationsResponse, error)
+
+	// GetSlackInstallUrlWithResponse performs a GET /api/v1/workflow-integrations/slack/install (the `GetSlackInstallUrl` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetSlackInstallUrlWithResponse(ctx context.Context, params *GetSlackInstallUrlParams, reqEditors ...RequestEditorFn) (*GetSlackInstallUrlResponse, error)
+
+	// DeleteSlackIntegrationWithResponse performs a DELETE /api/v1/workflow-integrations/slack/{id} (the `DeleteSlackIntegration` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteSlackIntegrationWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteSlackIntegrationResponse, error)
+
+	// GetSlackIntegrationWithResponse performs a GET /api/v1/workflow-integrations/slack/{id} (the `GetSlackIntegration` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetSlackIntegrationWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetSlackIntegrationResponse, error)
 
 	// UploadProjectKeyWithBodyWithResponse performs a POST /api/v1/workspace/{workspaceId}/key (the `UploadProjectKey` operationId) request,
 	// with any type of body and a specified content type.
@@ -235366,6 +242897,1904 @@ func (r SubscribeToProjectEventsResponse) ContentType() string {
 	return ""
 }
 
+type ListExternalKmsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ExternalKmsList []struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Description *string   `json:"description,omitempty"`
+			ExternalKms struct {
+				Provider      string  `json:"provider"`
+				Status        *string `json:"status,omitempty"`
+				StatusDetails *string `json:"statusDetails,omitempty"`
+			} `json:"externalKms"`
+			Id         openapi_types.UUID `json:"id"`
+			IsDisabled *bool              `json:"isDisabled,omitempty"`
+			Name       string             `json:"name"`
+			UpdatedAt  time.Time          `json:"updatedAt"`
+		} `json:"externalKmsList"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                  `json:"details,omitempty"`
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode ListExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode ListExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                  `json:"details,omitempty"`
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode ListExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode ListExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                       `json:"error"`
+		Message    interface{}                                  `json:"message,omitempty"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode ListExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                       `json:"error"`
+		Message    string                                       `json:"message"`
+		ReqId      string                                       `json:"reqId"`
+		StatusCode ListExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListExternalKmsResponse) GetJSON200() *struct {
+	ExternalKmsList []struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Description *string   `json:"description,omitempty"`
+		ExternalKms struct {
+			Provider      string  `json:"provider"`
+			Status        *string `json:"status,omitempty"`
+			StatusDetails *string `json:"statusDetails,omitempty"`
+		} `json:"externalKms"`
+		Id         openapi_types.UUID `json:"id"`
+		IsDisabled *bool              `json:"isDisabled,omitempty"`
+		Name       string             `json:"name"`
+		UpdatedAt  time.Time          `json:"updatedAt"`
+	} `json:"externalKmsList"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListExternalKmsResponse) GetJSON400() *struct {
+	Details    interface{}                                  `json:"details,omitempty"`
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode ListExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListExternalKmsResponse) GetJSON401() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode ListExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListExternalKmsResponse) GetJSON403() *struct {
+	Details    interface{}                                  `json:"details,omitempty"`
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode ListExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListExternalKmsResponse) GetJSON404() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode ListExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListExternalKmsResponse) GetJSON422() *struct {
+	Error      string                                       `json:"error"`
+	Message    interface{}                                  `json:"message,omitempty"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode ListExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListExternalKmsResponse) GetJSON500() *struct {
+	Error      string                                       `json:"error"`
+	Message    string                                       `json:"message"`
+	ReqId      string                                       `json:"reqId"`
+	StatusCode ListExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListExternalKmsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListExternalKmsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListExternalKmsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListExternalKmsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateExternalKmsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ExternalKms struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Description *string   `json:"description,omitempty"`
+			External    struct {
+				Id            openapi_types.UUID `json:"id"`
+				Provider      string             `json:"provider"`
+				Status        *string            `json:"status,omitempty"`
+				StatusDetails *string            `json:"statusDetails,omitempty"`
+			} `json:"external"`
+			HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsDisabled          *bool              `json:"isDisabled,omitempty"`
+			IsExportable        *bool              `json:"isExportable,omitempty"`
+			IsReserved          *bool              `json:"isReserved,omitempty"`
+			KeyUsage            *string            `json:"keyUsage,omitempty"`
+			KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+			Name                string             `json:"name"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			ProjectId           *string            `json:"projectId,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+		} `json:"externalKms"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateExternalKmsResponse) GetJSON200() *struct {
+	ExternalKms struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Description *string   `json:"description,omitempty"`
+		External    struct {
+			Id            openapi_types.UUID `json:"id"`
+			Provider      string             `json:"provider"`
+			Status        *string            `json:"status,omitempty"`
+			StatusDetails *string            `json:"statusDetails,omitempty"`
+		} `json:"external"`
+		HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsDisabled          *bool              `json:"isDisabled,omitempty"`
+		IsExportable        *bool              `json:"isExportable,omitempty"`
+		IsReserved          *bool              `json:"isReserved,omitempty"`
+		KeyUsage            *string            `json:"keyUsage,omitempty"`
+		KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+		Name                string             `json:"name"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		ProjectId           *string            `json:"projectId,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+	} `json:"externalKms"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateExternalKmsResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateExternalKmsResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateExternalKmsResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateExternalKmsResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateExternalKmsResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateExternalKmsResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateExternalKmsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateExternalKmsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateExternalKmsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateExternalKmsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateAwsExternalKmsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Description *string   `json:"description,omitempty"`
+		ExternalKms struct {
+			Configuration   CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+			CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
+			Id              openapi_types.UUID                                                `json:"id"`
+			Provider        string                                                            `json:"provider"`
+			Status          *string                                                           `json:"status,omitempty"`
+			StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+		} `json:"externalKms"`
+		HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsDisabled          *bool              `json:"isDisabled,omitempty"`
+		IsExportable        *bool              `json:"isExportable,omitempty"`
+		IsReserved          *bool              `json:"isReserved,omitempty"`
+		KeyUsage            *string            `json:"keyUsage,omitempty"`
+		KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+		Name                string             `json:"name"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		ProjectId           *string            `json:"projectId,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreateAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreateAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreateAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreateAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                            `json:"error"`
+		Message    interface{}                                       `json:"message,omitempty"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreateAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode CreateAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateAwsExternalKmsResponse) GetJSON200() *struct {
+	CreatedAt   time.Time `json:"createdAt"`
+	Description *string   `json:"description,omitempty"`
+	ExternalKms struct {
+		Configuration   CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+		CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
+		Id              openapi_types.UUID                                                `json:"id"`
+		Provider        string                                                            `json:"provider"`
+		Status          *string                                                           `json:"status,omitempty"`
+		StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+	} `json:"externalKms"`
+	HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+	Id                  openapi_types.UUID `json:"id"`
+	IsDisabled          *bool              `json:"isDisabled,omitempty"`
+	IsExportable        *bool              `json:"isExportable,omitempty"`
+	IsReserved          *bool              `json:"isReserved,omitempty"`
+	KeyUsage            *string            `json:"keyUsage,omitempty"`
+	KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+	Name                string             `json:"name"`
+	OrgId               openapi_types.UUID `json:"orgId"`
+	ProjectId           *string            `json:"projectId,omitempty"`
+	UpdatedAt           time.Time          `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateAwsExternalKmsResponse) GetJSON400() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreateAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateAwsExternalKmsResponse) GetJSON401() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreateAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateAwsExternalKmsResponse) GetJSON403() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreateAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateAwsExternalKmsResponse) GetJSON404() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreateAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateAwsExternalKmsResponse) GetJSON422() *struct {
+	Error      string                                            `json:"error"`
+	Message    interface{}                                       `json:"message,omitempty"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreateAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateAwsExternalKmsResponse) GetJSON500() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode CreateAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateAwsExternalKmsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateAwsExternalKmsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateAwsExternalKmsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAwsExternalKmsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAwsExternalKmsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Description *string   `json:"description,omitempty"`
+		ExternalKms struct {
+			Configuration   DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+			CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
+			Id              openapi_types.UUID                                                `json:"id"`
+			Provider        string                                                            `json:"provider"`
+			Status          *string                                                           `json:"status,omitempty"`
+			StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+		} `json:"externalKms"`
+		HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsDisabled          *bool              `json:"isDisabled,omitempty"`
+		IsExportable        *bool              `json:"isExportable,omitempty"`
+		IsReserved          *bool              `json:"isReserved,omitempty"`
+		KeyUsage            *string            `json:"keyUsage,omitempty"`
+		KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+		Name                string             `json:"name"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		ProjectId           *string            `json:"projectId,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode DeleteAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode DeleteAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode DeleteAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode DeleteAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                            `json:"error"`
+		Message    interface{}                                       `json:"message,omitempty"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode DeleteAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode DeleteAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteAwsExternalKmsResponse) GetJSON200() *struct {
+	CreatedAt   time.Time `json:"createdAt"`
+	Description *string   `json:"description,omitempty"`
+	ExternalKms struct {
+		Configuration   DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+		CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
+		Id              openapi_types.UUID                                                `json:"id"`
+		Provider        string                                                            `json:"provider"`
+		Status          *string                                                           `json:"status,omitempty"`
+		StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+	} `json:"externalKms"`
+	HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+	Id                  openapi_types.UUID `json:"id"`
+	IsDisabled          *bool              `json:"isDisabled,omitempty"`
+	IsExportable        *bool              `json:"isExportable,omitempty"`
+	IsReserved          *bool              `json:"isReserved,omitempty"`
+	KeyUsage            *string            `json:"keyUsage,omitempty"`
+	KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+	Name                string             `json:"name"`
+	OrgId               openapi_types.UUID `json:"orgId"`
+	ProjectId           *string            `json:"projectId,omitempty"`
+	UpdatedAt           time.Time          `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteAwsExternalKmsResponse) GetJSON400() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode DeleteAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteAwsExternalKmsResponse) GetJSON401() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode DeleteAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteAwsExternalKmsResponse) GetJSON403() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode DeleteAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAwsExternalKmsResponse) GetJSON404() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode DeleteAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteAwsExternalKmsResponse) GetJSON422() *struct {
+	Error      string                                            `json:"error"`
+	Message    interface{}                                       `json:"message,omitempty"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode DeleteAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteAwsExternalKmsResponse) GetJSON500() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode DeleteAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAwsExternalKmsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAwsExternalKmsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAwsExternalKmsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAwsExternalKmsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAwsExternalKmsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Description *string   `json:"description,omitempty"`
+		ExternalKms struct {
+			Configuration   GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+			CredentialsHash *string                                                        `json:"credentialsHash,omitempty"`
+			Id              openapi_types.UUID                                             `json:"id"`
+			Provider        string                                                         `json:"provider"`
+			Status          *string                                                        `json:"status,omitempty"`
+			StatusDetails   *string                                                        `json:"statusDetails,omitempty"`
+		} `json:"externalKms"`
+		HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsDisabled          *bool              `json:"isDisabled,omitempty"`
+		IsExportable        *bool              `json:"isExportable,omitempty"`
+		IsReserved          *bool              `json:"isReserved,omitempty"`
+		KeyUsage            *string            `json:"keyUsage,omitempty"`
+		KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+		Name                string             `json:"name"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		ProjectId           *string            `json:"projectId,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode GetAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAwsExternalKmsResponse) GetJSON200() *struct {
+	CreatedAt   time.Time `json:"createdAt"`
+	Description *string   `json:"description,omitempty"`
+	ExternalKms struct {
+		Configuration   GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+		CredentialsHash *string                                                        `json:"credentialsHash,omitempty"`
+		Id              openapi_types.UUID                                             `json:"id"`
+		Provider        string                                                         `json:"provider"`
+		Status          *string                                                        `json:"status,omitempty"`
+		StatusDetails   *string                                                        `json:"statusDetails,omitempty"`
+	} `json:"externalKms"`
+	HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+	Id                  openapi_types.UUID `json:"id"`
+	IsDisabled          *bool              `json:"isDisabled,omitempty"`
+	IsExportable        *bool              `json:"isExportable,omitempty"`
+	IsReserved          *bool              `json:"isReserved,omitempty"`
+	KeyUsage            *string            `json:"keyUsage,omitempty"`
+	KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+	Name                string             `json:"name"`
+	OrgId               openapi_types.UUID `json:"orgId"`
+	ProjectId           *string            `json:"projectId,omitempty"`
+	UpdatedAt           time.Time          `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetAwsExternalKmsResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAwsExternalKmsResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAwsExternalKmsResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAwsExternalKmsResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetAwsExternalKmsResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetAwsExternalKmsResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode GetAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAwsExternalKmsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAwsExternalKmsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAwsExternalKmsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAwsExternalKmsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateAwsExternalKmsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Description *string   `json:"description,omitempty"`
+		ExternalKms struct {
+			Configuration   UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+			CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
+			Id              openapi_types.UUID                                                `json:"id"`
+			Provider        string                                                            `json:"provider"`
+			Status          *string                                                           `json:"status,omitempty"`
+			StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+		} `json:"externalKms"`
+		HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsDisabled          *bool              `json:"isDisabled,omitempty"`
+		IsExportable        *bool              `json:"isExportable,omitempty"`
+		IsReserved          *bool              `json:"isReserved,omitempty"`
+		KeyUsage            *string            `json:"keyUsage,omitempty"`
+		KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+		Name                string             `json:"name"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		ProjectId           *string            `json:"projectId,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode UpdateAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode UpdateAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode UpdateAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode UpdateAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                            `json:"error"`
+		Message    interface{}                                       `json:"message,omitempty"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode UpdateAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode UpdateAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateAwsExternalKmsResponse) GetJSON200() *struct {
+	CreatedAt   time.Time `json:"createdAt"`
+	Description *string   `json:"description,omitempty"`
+	ExternalKms struct {
+		Configuration   UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+		CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
+		Id              openapi_types.UUID                                                `json:"id"`
+		Provider        string                                                            `json:"provider"`
+		Status          *string                                                           `json:"status,omitempty"`
+		StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+	} `json:"externalKms"`
+	HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+	Id                  openapi_types.UUID `json:"id"`
+	IsDisabled          *bool              `json:"isDisabled,omitempty"`
+	IsExportable        *bool              `json:"isExportable,omitempty"`
+	IsReserved          *bool              `json:"isReserved,omitempty"`
+	KeyUsage            *string            `json:"keyUsage,omitempty"`
+	KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+	Name                string             `json:"name"`
+	OrgId               openapi_types.UUID `json:"orgId"`
+	ProjectId           *string            `json:"projectId,omitempty"`
+	UpdatedAt           time.Time          `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateAwsExternalKmsResponse) GetJSON400() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode UpdateAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateAwsExternalKmsResponse) GetJSON401() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode UpdateAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateAwsExternalKmsResponse) GetJSON403() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode UpdateAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateAwsExternalKmsResponse) GetJSON404() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode UpdateAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateAwsExternalKmsResponse) GetJSON422() *struct {
+	Error      string                                            `json:"error"`
+	Message    interface{}                                       `json:"message,omitempty"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode UpdateAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateAwsExternalKmsResponse) GetJSON500() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode UpdateAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateAwsExternalKmsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAwsExternalKmsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAwsExternalKmsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAwsExternalKmsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetExternalKmsByNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ExternalKms struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Description *string   `json:"description,omitempty"`
+			External    struct {
+				Id            openapi_types.UUID                                                         `json:"id"`
+				Provider      string                                                                     `json:"provider"`
+				ProviderInput GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput `json:"providerInput"`
+				Status        *string                                                                    `json:"status,omitempty"`
+				StatusDetails *string                                                                    `json:"statusDetails,omitempty"`
+			} `json:"external"`
+			HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsDisabled          *bool              `json:"isDisabled,omitempty"`
+			IsExportable        *bool              `json:"isExportable,omitempty"`
+			IsReserved          *bool              `json:"isReserved,omitempty"`
+			KeyUsage            *string            `json:"keyUsage,omitempty"`
+			KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+			Name                string             `json:"name"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			ProjectId           *string            `json:"projectId,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+		} `json:"externalKms"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode GetExternalKmsByName400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode GetExternalKmsByName401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode GetExternalKmsByName403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode GetExternalKmsByName404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                            `json:"error"`
+		Message    interface{}                                       `json:"message,omitempty"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode GetExternalKmsByName422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode GetExternalKmsByName500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetExternalKmsByNameResponse) GetJSON200() *struct {
+	ExternalKms struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Description *string   `json:"description,omitempty"`
+		External    struct {
+			Id            openapi_types.UUID                                                         `json:"id"`
+			Provider      string                                                                     `json:"provider"`
+			ProviderInput GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput `json:"providerInput"`
+			Status        *string                                                                    `json:"status,omitempty"`
+			StatusDetails *string                                                                    `json:"statusDetails,omitempty"`
+		} `json:"external"`
+		HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsDisabled          *bool              `json:"isDisabled,omitempty"`
+		IsExportable        *bool              `json:"isExportable,omitempty"`
+		IsReserved          *bool              `json:"isReserved,omitempty"`
+		KeyUsage            *string            `json:"keyUsage,omitempty"`
+		KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+		Name                string             `json:"name"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		ProjectId           *string            `json:"projectId,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+	} `json:"externalKms"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetExternalKmsByNameResponse) GetJSON400() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode GetExternalKmsByName400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetExternalKmsByNameResponse) GetJSON401() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode GetExternalKmsByName401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetExternalKmsByNameResponse) GetJSON403() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode GetExternalKmsByName403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetExternalKmsByNameResponse) GetJSON404() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode GetExternalKmsByName404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetExternalKmsByNameResponse) GetJSON422() *struct {
+	Error      string                                            `json:"error"`
+	Message    interface{}                                       `json:"message,omitempty"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode GetExternalKmsByName422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetExternalKmsByNameResponse) GetJSON500() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode GetExternalKmsByName500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetExternalKmsByNameResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetExternalKmsByNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetExternalKmsByNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetExternalKmsByNameResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteExternalKmsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ExternalKms struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Description *string   `json:"description,omitempty"`
+			External    struct {
+				Id            openapi_types.UUID `json:"id"`
+				Provider      string             `json:"provider"`
+				Status        *string            `json:"status,omitempty"`
+				StatusDetails *string            `json:"statusDetails,omitempty"`
+			} `json:"external"`
+			HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsDisabled          *bool              `json:"isDisabled,omitempty"`
+			IsExportable        *bool              `json:"isExportable,omitempty"`
+			IsReserved          *bool              `json:"isReserved,omitempty"`
+			KeyUsage            *string            `json:"keyUsage,omitempty"`
+			KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+			Name                string             `json:"name"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			ProjectId           *string            `json:"projectId,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+		} `json:"externalKms"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode DeleteExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode DeleteExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode DeleteExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode DeleteExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode DeleteExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode DeleteExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteExternalKmsResponse) GetJSON200() *struct {
+	ExternalKms struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Description *string   `json:"description,omitempty"`
+		External    struct {
+			Id            openapi_types.UUID `json:"id"`
+			Provider      string             `json:"provider"`
+			Status        *string            `json:"status,omitempty"`
+			StatusDetails *string            `json:"statusDetails,omitempty"`
+		} `json:"external"`
+		HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsDisabled          *bool              `json:"isDisabled,omitempty"`
+		IsExportable        *bool              `json:"isExportable,omitempty"`
+		IsReserved          *bool              `json:"isReserved,omitempty"`
+		KeyUsage            *string            `json:"keyUsage,omitempty"`
+		KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+		Name                string             `json:"name"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		ProjectId           *string            `json:"projectId,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+	} `json:"externalKms"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteExternalKmsResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode DeleteExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteExternalKmsResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode DeleteExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteExternalKmsResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode DeleteExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteExternalKmsResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode DeleteExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteExternalKmsResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode DeleteExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteExternalKmsResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode DeleteExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteExternalKmsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteExternalKmsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteExternalKmsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteExternalKmsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetExternalKmsByIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ExternalKms struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Description *string   `json:"description,omitempty"`
+			External    struct {
+				Id            openapi_types.UUID                                                       `json:"id"`
+				Provider      string                                                                   `json:"provider"`
+				ProviderInput GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput `json:"providerInput"`
+				Status        *string                                                                  `json:"status,omitempty"`
+				StatusDetails *string                                                                  `json:"statusDetails,omitempty"`
+			} `json:"external"`
+			HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsDisabled          *bool              `json:"isDisabled,omitempty"`
+			IsExportable        *bool              `json:"isExportable,omitempty"`
+			IsReserved          *bool              `json:"isReserved,omitempty"`
+			KeyUsage            *string            `json:"keyUsage,omitempty"`
+			KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+			Name                string             `json:"name"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			ProjectId           *string            `json:"projectId,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+		} `json:"externalKms"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetExternalKmsById400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetExternalKmsById401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetExternalKmsById403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetExternalKmsById404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetExternalKmsById422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetExternalKmsById500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetExternalKmsByIdResponse) GetJSON200() *struct {
+	ExternalKms struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Description *string   `json:"description,omitempty"`
+		External    struct {
+			Id            openapi_types.UUID                                                       `json:"id"`
+			Provider      string                                                                   `json:"provider"`
+			ProviderInput GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput `json:"providerInput"`
+			Status        *string                                                                  `json:"status,omitempty"`
+			StatusDetails *string                                                                  `json:"statusDetails,omitempty"`
+		} `json:"external"`
+		HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsDisabled          *bool              `json:"isDisabled,omitempty"`
+		IsExportable        *bool              `json:"isExportable,omitempty"`
+		IsReserved          *bool              `json:"isReserved,omitempty"`
+		KeyUsage            *string            `json:"keyUsage,omitempty"`
+		KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+		Name                string             `json:"name"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		ProjectId           *string            `json:"projectId,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+	} `json:"externalKms"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetExternalKmsByIdResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetExternalKmsById400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetExternalKmsByIdResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetExternalKmsById401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetExternalKmsByIdResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetExternalKmsById403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetExternalKmsByIdResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetExternalKmsById404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetExternalKmsByIdResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetExternalKmsById422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetExternalKmsByIdResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetExternalKmsById500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetExternalKmsByIdResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetExternalKmsByIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetExternalKmsByIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetExternalKmsByIdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateExternalKmsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ExternalKms struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Description *string   `json:"description,omitempty"`
+			External    struct {
+				Id            openapi_types.UUID `json:"id"`
+				Provider      string             `json:"provider"`
+				Status        *string            `json:"status,omitempty"`
+				StatusDetails *string            `json:"statusDetails,omitempty"`
+			} `json:"external"`
+			HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsDisabled          *bool              `json:"isDisabled,omitempty"`
+			IsExportable        *bool              `json:"isExportable,omitempty"`
+			IsReserved          *bool              `json:"isReserved,omitempty"`
+			KeyUsage            *string            `json:"keyUsage,omitempty"`
+			KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+			Name                string             `json:"name"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			ProjectId           *string            `json:"projectId,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+		} `json:"externalKms"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateExternalKmsResponse) GetJSON200() *struct {
+	ExternalKms struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Description *string   `json:"description,omitempty"`
+		External    struct {
+			Id            openapi_types.UUID `json:"id"`
+			Provider      string             `json:"provider"`
+			Status        *string            `json:"status,omitempty"`
+			StatusDetails *string            `json:"statusDetails,omitempty"`
+		} `json:"external"`
+		HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsDisabled          *bool              `json:"isDisabled,omitempty"`
+		IsExportable        *bool              `json:"isExportable,omitempty"`
+		IsReserved          *bool              `json:"isReserved,omitempty"`
+		KeyUsage            *string            `json:"keyUsage,omitempty"`
+		KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+		Name                string             `json:"name"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		ProjectId           *string            `json:"projectId,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+	} `json:"externalKms"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateExternalKmsResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateExternalKmsResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateExternalKmsResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateExternalKmsResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateExternalKmsResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateExternalKmsResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateExternalKmsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateExternalKmsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateExternalKmsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateExternalKmsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListGatewayPoolsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -236698,6 +246127,827 @@ func (r GetGatewayPoolConnectedResourcesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetGatewayPoolConnectedResourcesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteGithubOrgSyncConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		GithubOrgSyncConfig struct {
+			CreatedAt     time.Time          `json:"createdAt"`
+			GithubOrgName string             `json:"githubOrgName"`
+			Id            openapi_types.UUID `json:"id"`
+			IsActive      *bool              `json:"isActive,omitempty"`
+			OrgId         openapi_types.UUID `json:"orgId"`
+			UpdatedAt     time.Time          `json:"updatedAt"`
+		} `json:"githubOrgSyncConfig"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode DeleteGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteGithubOrgSyncConfigResponse) GetJSON200() *struct {
+	GithubOrgSyncConfig struct {
+		CreatedAt     time.Time          `json:"createdAt"`
+		GithubOrgName string             `json:"githubOrgName"`
+		Id            openapi_types.UUID `json:"id"`
+		IsActive      *bool              `json:"isActive,omitempty"`
+		OrgId         openapi_types.UUID `json:"orgId"`
+		UpdatedAt     time.Time          `json:"updatedAt"`
+	} `json:"githubOrgSyncConfig"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteGithubOrgSyncConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteGithubOrgSyncConfigResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteGithubOrgSyncConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteGithubOrgSyncConfigResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteGithubOrgSyncConfigResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteGithubOrgSyncConfigResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode DeleteGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteGithubOrgSyncConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteGithubOrgSyncConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteGithubOrgSyncConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteGithubOrgSyncConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetGithubOrgSyncConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		GithubOrgSyncConfig struct {
+			CreatedAt     time.Time          `json:"createdAt"`
+			GithubOrgName string             `json:"githubOrgName"`
+			Id            openapi_types.UUID `json:"id"`
+			IsActive      *bool              `json:"isActive,omitempty"`
+			OrgId         openapi_types.UUID `json:"orgId"`
+			UpdatedAt     time.Time          `json:"updatedAt"`
+		} `json:"githubOrgSyncConfig"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetGithubOrgSyncConfigResponse) GetJSON200() *struct {
+	GithubOrgSyncConfig struct {
+		CreatedAt     time.Time          `json:"createdAt"`
+		GithubOrgName string             `json:"githubOrgName"`
+		Id            openapi_types.UUID `json:"id"`
+		IsActive      *bool              `json:"isActive,omitempty"`
+		OrgId         openapi_types.UUID `json:"orgId"`
+		UpdatedAt     time.Time          `json:"updatedAt"`
+	} `json:"githubOrgSyncConfig"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetGithubOrgSyncConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetGithubOrgSyncConfigResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetGithubOrgSyncConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetGithubOrgSyncConfigResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetGithubOrgSyncConfigResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetGithubOrgSyncConfigResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetGithubOrgSyncConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetGithubOrgSyncConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetGithubOrgSyncConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetGithubOrgSyncConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateGithubOrgSyncConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		GithubOrgSyncConfig struct {
+			CreatedAt     time.Time          `json:"createdAt"`
+			GithubOrgName string             `json:"githubOrgName"`
+			Id            openapi_types.UUID `json:"id"`
+			IsActive      *bool              `json:"isActive,omitempty"`
+			OrgId         openapi_types.UUID `json:"orgId"`
+			UpdatedAt     time.Time          `json:"updatedAt"`
+		} `json:"githubOrgSyncConfig"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode UpdateGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode UpdateGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode UpdateGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode UpdateGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode UpdateGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode UpdateGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateGithubOrgSyncConfigResponse) GetJSON200() *struct {
+	GithubOrgSyncConfig struct {
+		CreatedAt     time.Time          `json:"createdAt"`
+		GithubOrgName string             `json:"githubOrgName"`
+		Id            openapi_types.UUID `json:"id"`
+		IsActive      *bool              `json:"isActive,omitempty"`
+		OrgId         openapi_types.UUID `json:"orgId"`
+		UpdatedAt     time.Time          `json:"updatedAt"`
+	} `json:"githubOrgSyncConfig"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateGithubOrgSyncConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode UpdateGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateGithubOrgSyncConfigResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode UpdateGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateGithubOrgSyncConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode UpdateGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateGithubOrgSyncConfigResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode UpdateGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateGithubOrgSyncConfigResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode UpdateGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateGithubOrgSyncConfigResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode UpdateGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateGithubOrgSyncConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateGithubOrgSyncConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateGithubOrgSyncConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateGithubOrgSyncConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateGithubOrgSyncConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		GithubOrgSyncConfig struct {
+			CreatedAt     time.Time          `json:"createdAt"`
+			GithubOrgName string             `json:"githubOrgName"`
+			Id            openapi_types.UUID `json:"id"`
+			IsActive      *bool              `json:"isActive,omitempty"`
+			OrgId         openapi_types.UUID `json:"orgId"`
+			UpdatedAt     time.Time          `json:"updatedAt"`
+		} `json:"githubOrgSyncConfig"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateGithubOrgSyncConfigResponse) GetJSON200() *struct {
+	GithubOrgSyncConfig struct {
+		CreatedAt     time.Time          `json:"createdAt"`
+		GithubOrgName string             `json:"githubOrgName"`
+		Id            openapi_types.UUID `json:"id"`
+		IsActive      *bool              `json:"isActive,omitempty"`
+		OrgId         openapi_types.UUID `json:"orgId"`
+		UpdatedAt     time.Time          `json:"updatedAt"`
+	} `json:"githubOrgSyncConfig"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateGithubOrgSyncConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateGithubOrgSyncConfigResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateGithubOrgSyncConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateGithubOrgSyncConfigResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateGithubOrgSyncConfigResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateGithubOrgSyncConfigResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateGithubOrgSyncConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateGithubOrgSyncConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateGithubOrgSyncConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateGithubOrgSyncConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SyncAllGithubOrgTeamsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CreatedTeams       []string `json:"createdTeams"`
+		Errors             []string `json:"errors"`
+		RemovedMemberships float32  `json:"removedMemberships"`
+		SyncDuration       float32  `json:"syncDuration"`
+		TotalUsers         float32  `json:"totalUsers"`
+		UpdatedTeams       []string `json:"updatedTeams"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode SyncAllGithubOrgTeams400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode SyncAllGithubOrgTeams401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode SyncAllGithubOrgTeams403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode SyncAllGithubOrgTeams404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                             `json:"error"`
+		Message    interface{}                                        `json:"message,omitempty"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode SyncAllGithubOrgTeams422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode SyncAllGithubOrgTeams500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SyncAllGithubOrgTeamsResponse) GetJSON200() *struct {
+	CreatedTeams       []string `json:"createdTeams"`
+	Errors             []string `json:"errors"`
+	RemovedMemberships float32  `json:"removedMemberships"`
+	SyncDuration       float32  `json:"syncDuration"`
+	TotalUsers         float32  `json:"totalUsers"`
+	UpdatedTeams       []string `json:"updatedTeams"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SyncAllGithubOrgTeamsResponse) GetJSON400() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode SyncAllGithubOrgTeams400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SyncAllGithubOrgTeamsResponse) GetJSON401() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode SyncAllGithubOrgTeams401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SyncAllGithubOrgTeamsResponse) GetJSON403() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode SyncAllGithubOrgTeams403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SyncAllGithubOrgTeamsResponse) GetJSON404() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode SyncAllGithubOrgTeams404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SyncAllGithubOrgTeamsResponse) GetJSON422() *struct {
+	Error      string                                             `json:"error"`
+	Message    interface{}                                        `json:"message,omitempty"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode SyncAllGithubOrgTeams422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r SyncAllGithubOrgTeamsResponse) GetJSON500() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode SyncAllGithubOrgTeams500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SyncAllGithubOrgTeamsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SyncAllGithubOrgTeamsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SyncAllGithubOrgTeamsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SyncAllGithubOrgTeamsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -245277,6 +255527,1185 @@ func (r VerifyUserToOrganizationResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r VerifyUserToOrganizationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetLdapConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		BindDN                  string `json:"bindDN"`
+		BindPass                string `json:"bindPass"`
+		CaCert                  string `json:"caCert"`
+		ClientCertificate       string `json:"clientCertificate"`
+		GroupSearchBase         string `json:"groupSearchBase"`
+		GroupSearchFilter       string `json:"groupSearchFilter"`
+		HasClientKeyCertificate bool   `json:"hasClientKeyCertificate"`
+		Id                      string `json:"id"`
+		IsActive                bool   `json:"isActive"`
+		Organization            string `json:"organization"`
+		SearchBase              string `json:"searchBase"`
+		SearchFilter            string `json:"searchFilter"`
+		UniqueUserAttribute     string `json:"uniqueUserAttribute"`
+		Url                     string `json:"url"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                     `json:"error"`
+		Message    interface{}                                `json:"message,omitempty"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetLdapConfigResponse) GetJSON200() *struct {
+	BindDN                  string `json:"bindDN"`
+	BindPass                string `json:"bindPass"`
+	CaCert                  string `json:"caCert"`
+	ClientCertificate       string `json:"clientCertificate"`
+	GroupSearchBase         string `json:"groupSearchBase"`
+	GroupSearchFilter       string `json:"groupSearchFilter"`
+	HasClientKeyCertificate bool   `json:"hasClientKeyCertificate"`
+	Id                      string `json:"id"`
+	IsActive                bool   `json:"isActive"`
+	Organization            string `json:"organization"`
+	SearchBase              string `json:"searchBase"`
+	SearchFilter            string `json:"searchFilter"`
+	UniqueUserAttribute     string `json:"uniqueUserAttribute"`
+	Url                     string `json:"url"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetLdapConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetLdapConfigResponse) GetJSON401() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetLdapConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetLdapConfigResponse) GetJSON404() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetLdapConfigResponse) GetJSON422() *struct {
+	Error      string                                     `json:"error"`
+	Message    interface{}                                `json:"message,omitempty"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetLdapConfigResponse) GetJSON500() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetLdapConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetLdapConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetLdapConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetLdapConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateLdapConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CreatedAt           time.Time          `json:"createdAt"`
+		GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+		GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsActive            bool               `json:"isActive"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		SearchBase          string             `json:"searchBase"`
+		SearchFilter        *string            `json:"searchFilter,omitempty"`
+		UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+		Url                 string             `json:"url"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON200() *struct {
+	CreatedAt           time.Time          `json:"createdAt"`
+	GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+	GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+	Id                  openapi_types.UUID `json:"id"`
+	IsActive            bool               `json:"isActive"`
+	OrgId               openapi_types.UUID `json:"orgId"`
+	SearchBase          string             `json:"searchBase"`
+	SearchFilter        *string            `json:"searchFilter,omitempty"`
+	UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+	UpdatedAt           time.Time          `json:"updatedAt"`
+	Url                 string             `json:"url"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateLdapConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateLdapConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateLdapConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateLdapConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateLdapConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CreatedAt           time.Time          `json:"createdAt"`
+		GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+		GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsActive            bool               `json:"isActive"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		SearchBase          string             `json:"searchBase"`
+		SearchFilter        *string            `json:"searchFilter,omitempty"`
+		UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+		Url                 string             `json:"url"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON200() *struct {
+	CreatedAt           time.Time          `json:"createdAt"`
+	GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+	GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+	Id                  openapi_types.UUID `json:"id"`
+	IsActive            bool               `json:"isActive"`
+	OrgId               openapi_types.UUID `json:"orgId"`
+	SearchBase          string             `json:"searchBase"`
+	SearchFilter        *string            `json:"searchFilter,omitempty"`
+	UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+	UpdatedAt           time.Time          `json:"updatedAt"`
+	Url                 string             `json:"url"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateLdapConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateLdapConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateLdapConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateLdapConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type TestLdapConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r TestLdapConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r TestLdapConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TestLdapConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TestLdapConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListLdapGroupMapsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]struct {
+		Group struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+			Slug string `json:"slug"`
+		} `json:"group"`
+		Id           string `json:"id"`
+		LdapConfigId string `json:"ldapConfigId"`
+		LdapGroupCN  string `json:"ldapGroupCN"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON200() *[]struct {
+	Group struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	} `json:"group"`
+	Id           string `json:"id"`
+	LdapConfigId string `json:"ldapConfigId"`
+	LdapGroupCN  string `json:"ldapGroupCN"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListLdapGroupMapsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListLdapGroupMapsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListLdapGroupMapsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListLdapGroupMapsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateLdapGroupMapResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		GroupId      openapi_types.UUID `json:"groupId"`
+		Id           openapi_types.UUID `json:"id"`
+		LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+		LdapGroupCN  string             `json:"ldapGroupCN"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON200() *struct {
+	GroupId      openapi_types.UUID `json:"groupId"`
+	Id           openapi_types.UUID `json:"id"`
+	LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+	LdapGroupCN  string             `json:"ldapGroupCN"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateLdapGroupMapResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateLdapGroupMapResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateLdapGroupMapResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateLdapGroupMapResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteLdapGroupMapResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		GroupId      openapi_types.UUID `json:"groupId"`
+		Id           openapi_types.UUID `json:"id"`
+		LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+		LdapGroupCN  string             `json:"ldapGroupCN"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON200() *struct {
+	GroupId      openapi_types.UUID `json:"groupId"`
+	Id           openapi_types.UUID `json:"id"`
+	LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+	LdapGroupCN  string             `json:"ldapGroupCN"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteLdapGroupMapResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteLdapGroupMapResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteLdapGroupMapResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteLdapGroupMapResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type LoginWithLdapSsoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r LoginWithLdapSsoResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r LoginWithLdapSsoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LoginWithLdapSsoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r LoginWithLdapSsoResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -298563,6 +309992,1101 @@ func (r TestWebhookResponse) ContentType() string {
 	return ""
 }
 
+type ListWorkflowIntegrationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]struct {
+		Description *string            `json:"description,omitempty"`
+		Id          openapi_types.UUID `json:"id"`
+		Integration string             `json:"integration"`
+		Slug        string             `json:"slug"`
+		Status      *string            `json:"status,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ListWorkflowIntegrations400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ListWorkflowIntegrations401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                           `json:"details,omitempty"`
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ListWorkflowIntegrations403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ListWorkflowIntegrations404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                `json:"error"`
+		Message    interface{}                                           `json:"message,omitempty"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ListWorkflowIntegrations422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                `json:"error"`
+		Message    string                                                `json:"message"`
+		ReqId      string                                                `json:"reqId"`
+		StatusCode ListWorkflowIntegrations500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListWorkflowIntegrationsResponse) GetJSON200() *[]struct {
+	Description *string            `json:"description,omitempty"`
+	Id          openapi_types.UUID `json:"id"`
+	Integration string             `json:"integration"`
+	Slug        string             `json:"slug"`
+	Status      *string            `json:"status,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListWorkflowIntegrationsResponse) GetJSON400() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ListWorkflowIntegrations400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListWorkflowIntegrationsResponse) GetJSON401() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ListWorkflowIntegrations401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListWorkflowIntegrationsResponse) GetJSON403() *struct {
+	Details    interface{}                                           `json:"details,omitempty"`
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ListWorkflowIntegrations403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListWorkflowIntegrationsResponse) GetJSON404() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ListWorkflowIntegrations404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListWorkflowIntegrationsResponse) GetJSON422() *struct {
+	Error      string                                                `json:"error"`
+	Message    interface{}                                           `json:"message,omitempty"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ListWorkflowIntegrations422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListWorkflowIntegrationsResponse) GetJSON500() *struct {
+	Error      string                                                `json:"error"`
+	Message    string                                                `json:"message"`
+	ReqId      string                                                `json:"reqId"`
+	StatusCode ListWorkflowIntegrations500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListWorkflowIntegrationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListWorkflowIntegrationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListWorkflowIntegrationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListWorkflowIntegrationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListMicrosoftTeamsIntegrationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]struct {
+		Description *string                                                 `json:"description,omitempty"`
+		Id          openapi_types.UUID                                      `json:"id"`
+		Integration string                                                  `json:"integration"`
+		Slug        string                                                  `json:"slug"`
+		Status      ListMicrosoftTeamsIntegrations200JSONResponseBodyStatus `json:"status"`
+		TenantId    string                                                  `json:"tenantId"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListMicrosoftTeamsIntegrations400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListMicrosoftTeamsIntegrations401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListMicrosoftTeamsIntegrations403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListMicrosoftTeamsIntegrations404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                      `json:"error"`
+		Message    interface{}                                                 `json:"message,omitempty"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListMicrosoftTeamsIntegrations422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListMicrosoftTeamsIntegrations500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListMicrosoftTeamsIntegrationsResponse) GetJSON200() *[]struct {
+	Description *string                                                 `json:"description,omitempty"`
+	Id          openapi_types.UUID                                      `json:"id"`
+	Integration string                                                  `json:"integration"`
+	Slug        string                                                  `json:"slug"`
+	Status      ListMicrosoftTeamsIntegrations200JSONResponseBodyStatus `json:"status"`
+	TenantId    string                                                  `json:"tenantId"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListMicrosoftTeamsIntegrationsResponse) GetJSON400() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListMicrosoftTeamsIntegrations400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListMicrosoftTeamsIntegrationsResponse) GetJSON401() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListMicrosoftTeamsIntegrations401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListMicrosoftTeamsIntegrationsResponse) GetJSON403() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListMicrosoftTeamsIntegrations403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListMicrosoftTeamsIntegrationsResponse) GetJSON404() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListMicrosoftTeamsIntegrations404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListMicrosoftTeamsIntegrationsResponse) GetJSON422() *struct {
+	Error      string                                                      `json:"error"`
+	Message    interface{}                                                 `json:"message,omitempty"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListMicrosoftTeamsIntegrations422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListMicrosoftTeamsIntegrationsResponse) GetJSON500() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListMicrosoftTeamsIntegrations500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListMicrosoftTeamsIntegrationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListMicrosoftTeamsIntegrationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListMicrosoftTeamsIntegrationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListMicrosoftTeamsIntegrationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetMicrosoftTeamsClientIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ClientId string `json:"clientId"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode GetMicrosoftTeamsClientId400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode GetMicrosoftTeamsClientId401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode GetMicrosoftTeamsClientId403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode GetMicrosoftTeamsClientId404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode GetMicrosoftTeamsClientId422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode GetMicrosoftTeamsClientId500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetMicrosoftTeamsClientIdResponse) GetJSON200() *struct {
+	ClientId string `json:"clientId"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetMicrosoftTeamsClientIdResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode GetMicrosoftTeamsClientId400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetMicrosoftTeamsClientIdResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode GetMicrosoftTeamsClientId401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetMicrosoftTeamsClientIdResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode GetMicrosoftTeamsClientId403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetMicrosoftTeamsClientIdResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode GetMicrosoftTeamsClientId404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetMicrosoftTeamsClientIdResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode GetMicrosoftTeamsClientId422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetMicrosoftTeamsClientIdResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode GetMicrosoftTeamsClientId500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetMicrosoftTeamsClientIdResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMicrosoftTeamsClientIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMicrosoftTeamsClientIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMicrosoftTeamsClientIdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListSlackIntegrationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]struct {
+		Description *string            `json:"description,omitempty"`
+		Id          openapi_types.UUID `json:"id"`
+		Integration string             `json:"integration"`
+		Slug        string             `json:"slug"`
+		TeamName    string             `json:"teamName"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListSlackIntegrations400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListSlackIntegrations401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                        `json:"details,omitempty"`
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListSlackIntegrations403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListSlackIntegrations404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                             `json:"error"`
+		Message    interface{}                                        `json:"message,omitempty"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListSlackIntegrations422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                             `json:"error"`
+		Message    string                                             `json:"message"`
+		ReqId      string                                             `json:"reqId"`
+		StatusCode ListSlackIntegrations500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListSlackIntegrationsResponse) GetJSON200() *[]struct {
+	Description *string            `json:"description,omitempty"`
+	Id          openapi_types.UUID `json:"id"`
+	Integration string             `json:"integration"`
+	Slug        string             `json:"slug"`
+	TeamName    string             `json:"teamName"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListSlackIntegrationsResponse) GetJSON400() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListSlackIntegrations400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListSlackIntegrationsResponse) GetJSON401() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListSlackIntegrations401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListSlackIntegrationsResponse) GetJSON403() *struct {
+	Details    interface{}                                        `json:"details,omitempty"`
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListSlackIntegrations403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListSlackIntegrationsResponse) GetJSON404() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListSlackIntegrations404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListSlackIntegrationsResponse) GetJSON422() *struct {
+	Error      string                                             `json:"error"`
+	Message    interface{}                                        `json:"message,omitempty"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListSlackIntegrations422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListSlackIntegrationsResponse) GetJSON500() *struct {
+	Error      string                                             `json:"error"`
+	Message    string                                             `json:"message"`
+	ReqId      string                                             `json:"reqId"`
+	StatusCode ListSlackIntegrations500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListSlackIntegrationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListSlackIntegrationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListSlackIntegrationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListSlackIntegrationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSlackInstallUrlResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *string
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSlackInstallUrl400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSlackInstallUrl401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSlackInstallUrl403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSlackInstallUrl404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSlackInstallUrl422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSlackInstallUrl500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetSlackInstallUrlResponse) GetJSON200() *string {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetSlackInstallUrlResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSlackInstallUrl400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetSlackInstallUrlResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSlackInstallUrl401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetSlackInstallUrlResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSlackInstallUrl403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetSlackInstallUrlResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSlackInstallUrl404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetSlackInstallUrlResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSlackInstallUrl422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetSlackInstallUrlResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSlackInstallUrl500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetSlackInstallUrlResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSlackInstallUrlResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSlackInstallUrlResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSlackInstallUrlResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteSlackIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Description *string            `json:"description,omitempty"`
+		Id          openapi_types.UUID `json:"id"`
+		Integration string             `json:"integration"`
+		Slug        string             `json:"slug"`
+		TeamName    string             `json:"teamName"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteSlackIntegration400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteSlackIntegration401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteSlackIntegration403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteSlackIntegration404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteSlackIntegration422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode DeleteSlackIntegration500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteSlackIntegrationResponse) GetJSON200() *struct {
+	Description *string            `json:"description,omitempty"`
+	Id          openapi_types.UUID `json:"id"`
+	Integration string             `json:"integration"`
+	Slug        string             `json:"slug"`
+	TeamName    string             `json:"teamName"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteSlackIntegrationResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteSlackIntegration400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteSlackIntegrationResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteSlackIntegration401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteSlackIntegrationResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteSlackIntegration403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteSlackIntegrationResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteSlackIntegration404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteSlackIntegrationResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteSlackIntegration422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteSlackIntegrationResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode DeleteSlackIntegration500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteSlackIntegrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteSlackIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteSlackIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteSlackIntegrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSlackIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Description *string            `json:"description,omitempty"`
+		Id          openapi_types.UUID `json:"id"`
+		Integration string             `json:"integration"`
+		Slug        string             `json:"slug"`
+		TeamName    string             `json:"teamName"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetSlackIntegration400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetSlackIntegration401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetSlackIntegration403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetSlackIntegration404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                           `json:"error"`
+		Message    interface{}                                      `json:"message,omitempty"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetSlackIntegration422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetSlackIntegration500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetSlackIntegrationResponse) GetJSON200() *struct {
+	Description *string            `json:"description,omitempty"`
+	Id          openapi_types.UUID `json:"id"`
+	Integration string             `json:"integration"`
+	Slug        string             `json:"slug"`
+	TeamName    string             `json:"teamName"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetSlackIntegrationResponse) GetJSON400() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetSlackIntegration400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetSlackIntegrationResponse) GetJSON401() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetSlackIntegration401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetSlackIntegrationResponse) GetJSON403() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetSlackIntegration403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetSlackIntegrationResponse) GetJSON404() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetSlackIntegration404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetSlackIntegrationResponse) GetJSON422() *struct {
+	Error      string                                           `json:"error"`
+	Message    interface{}                                      `json:"message,omitempty"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetSlackIntegration422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetSlackIntegrationResponse) GetJSON500() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetSlackIntegration500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetSlackIntegrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSlackIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSlackIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSlackIntegrationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UploadProjectKeyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -326948,6 +339472,160 @@ func (c *ClientWithResponses) SubscribeToProjectEventsWithResponse(ctx context.C
 	return ParseSubscribeToProjectEventsResponse(rsp)
 }
 
+// ListExternalKmsWithResponse performs a GET /api/v1/external-kms (the `ListExternalKms` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListExternalKmsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListExternalKmsResponse, error) {
+	rsp, err := c.ListExternalKms(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListExternalKmsResponse(rsp)
+}
+
+// CreateExternalKmsWithBodyWithResponse performs a POST /api/v1/external-kms (the `CreateExternalKms` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateExternalKmsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateExternalKmsResponse, error) {
+	rsp, err := c.CreateExternalKmsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateExternalKmsResponse(rsp)
+}
+
+// CreateExternalKmsWithResponse performs a POST /api/v1/external-kms (the `CreateExternalKms` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateExternalKmsWithResponse(ctx context.Context, body CreateExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateExternalKmsResponse, error) {
+	rsp, err := c.CreateExternalKms(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateExternalKmsResponse(rsp)
+}
+
+// CreateAwsExternalKmsWithBodyWithResponse performs a POST /api/v1/external-kms/aws (the `CreateAwsExternalKms` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateAwsExternalKmsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAwsExternalKmsResponse, error) {
+	rsp, err := c.CreateAwsExternalKmsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAwsExternalKmsResponse(rsp)
+}
+
+// CreateAwsExternalKmsWithResponse performs a POST /api/v1/external-kms/aws (the `CreateAwsExternalKms` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateAwsExternalKmsWithResponse(ctx context.Context, body CreateAwsExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAwsExternalKmsResponse, error) {
+	rsp, err := c.CreateAwsExternalKms(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAwsExternalKmsResponse(rsp)
+}
+
+// DeleteAwsExternalKmsWithResponse performs a DELETE /api/v1/external-kms/aws/{id} (the `DeleteAwsExternalKms` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteAwsExternalKmsWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteAwsExternalKmsResponse, error) {
+	rsp, err := c.DeleteAwsExternalKms(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAwsExternalKmsResponse(rsp)
+}
+
+// GetAwsExternalKmsWithResponse performs a GET /api/v1/external-kms/aws/{id} (the `GetAwsExternalKms` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetAwsExternalKmsWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetAwsExternalKmsResponse, error) {
+	rsp, err := c.GetAwsExternalKms(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAwsExternalKmsResponse(rsp)
+}
+
+// UpdateAwsExternalKmsWithBodyWithResponse performs a PATCH /api/v1/external-kms/aws/{id} (the `UpdateAwsExternalKms` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateAwsExternalKmsWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAwsExternalKmsResponse, error) {
+	rsp, err := c.UpdateAwsExternalKmsWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAwsExternalKmsResponse(rsp)
+}
+
+// UpdateAwsExternalKmsWithResponse performs a PATCH /api/v1/external-kms/aws/{id} (the `UpdateAwsExternalKms` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateAwsExternalKmsWithResponse(ctx context.Context, id string, body UpdateAwsExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAwsExternalKmsResponse, error) {
+	rsp, err := c.UpdateAwsExternalKms(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAwsExternalKmsResponse(rsp)
+}
+
+// GetExternalKmsByNameWithResponse performs a GET /api/v1/external-kms/name/{name} (the `GetExternalKmsByName` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetExternalKmsByNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetExternalKmsByNameResponse, error) {
+	rsp, err := c.GetExternalKmsByName(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetExternalKmsByNameResponse(rsp)
+}
+
+// DeleteExternalKmsWithResponse performs a DELETE /api/v1/external-kms/{id} (the `DeleteExternalKms` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteExternalKmsWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteExternalKmsResponse, error) {
+	rsp, err := c.DeleteExternalKms(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteExternalKmsResponse(rsp)
+}
+
+// GetExternalKmsByIdWithResponse performs a GET /api/v1/external-kms/{id} (the `GetExternalKmsById` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetExternalKmsByIdWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetExternalKmsByIdResponse, error) {
+	rsp, err := c.GetExternalKmsById(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetExternalKmsByIdResponse(rsp)
+}
+
+// UpdateExternalKmsWithBodyWithResponse performs a PATCH /api/v1/external-kms/{id} (the `UpdateExternalKms` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateExternalKmsWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateExternalKmsResponse, error) {
+	rsp, err := c.UpdateExternalKmsWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateExternalKmsResponse(rsp)
+}
+
+// UpdateExternalKmsWithResponse performs a PATCH /api/v1/external-kms/{id} (the `UpdateExternalKms` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateExternalKmsWithResponse(ctx context.Context, id string, body UpdateExternalKmsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateExternalKmsResponse, error) {
+	rsp, err := c.UpdateExternalKms(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateExternalKmsResponse(rsp)
+}
+
 // ListGatewayPoolsWithResponse performs a GET /api/v1/gateway-pools (the `ListGatewayPools` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -327067,6 +339745,83 @@ func (c *ClientWithResponses) GetGatewayPoolConnectedResourcesWithResponse(ctx c
 		return nil, err
 	}
 	return ParseGetGatewayPoolConnectedResourcesResponse(rsp)
+}
+
+// DeleteGithubOrgSyncConfigWithResponse performs a DELETE /api/v1/github-org-sync-config (the `DeleteGithubOrgSyncConfig` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteGithubOrgSyncConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteGithubOrgSyncConfigResponse, error) {
+	rsp, err := c.DeleteGithubOrgSyncConfig(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteGithubOrgSyncConfigResponse(rsp)
+}
+
+// GetGithubOrgSyncConfigWithResponse performs a GET /api/v1/github-org-sync-config (the `GetGithubOrgSyncConfig` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetGithubOrgSyncConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetGithubOrgSyncConfigResponse, error) {
+	rsp, err := c.GetGithubOrgSyncConfig(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetGithubOrgSyncConfigResponse(rsp)
+}
+
+// UpdateGithubOrgSyncConfigWithBodyWithResponse performs a PATCH /api/v1/github-org-sync-config (the `UpdateGithubOrgSyncConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateGithubOrgSyncConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGithubOrgSyncConfigResponse, error) {
+	rsp, err := c.UpdateGithubOrgSyncConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGithubOrgSyncConfigResponse(rsp)
+}
+
+// UpdateGithubOrgSyncConfigWithResponse performs a PATCH /api/v1/github-org-sync-config (the `UpdateGithubOrgSyncConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateGithubOrgSyncConfigWithResponse(ctx context.Context, body UpdateGithubOrgSyncConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGithubOrgSyncConfigResponse, error) {
+	rsp, err := c.UpdateGithubOrgSyncConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGithubOrgSyncConfigResponse(rsp)
+}
+
+// CreateGithubOrgSyncConfigWithBodyWithResponse performs a POST /api/v1/github-org-sync-config (the `CreateGithubOrgSyncConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateGithubOrgSyncConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGithubOrgSyncConfigResponse, error) {
+	rsp, err := c.CreateGithubOrgSyncConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGithubOrgSyncConfigResponse(rsp)
+}
+
+// CreateGithubOrgSyncConfigWithResponse performs a POST /api/v1/github-org-sync-config (the `CreateGithubOrgSyncConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateGithubOrgSyncConfigWithResponse(ctx context.Context, body CreateGithubOrgSyncConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGithubOrgSyncConfigResponse, error) {
+	rsp, err := c.CreateGithubOrgSyncConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGithubOrgSyncConfigResponse(rsp)
+}
+
+// SyncAllGithubOrgTeamsWithResponse performs a POST /api/v1/github-org-sync-config/sync-all-teams (the `SyncAllGithubOrgTeams` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) SyncAllGithubOrgTeamsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SyncAllGithubOrgTeamsResponse, error) {
+	rsp, err := c.SyncAllGithubOrgTeams(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSyncAllGithubOrgTeamsResponse(rsp)
 }
 
 // ListGroupsWithResponse performs a GET /api/v1/groups (the `ListGroups` operationId) request.
@@ -327855,6 +340610,159 @@ func (c *ClientWithResponses) VerifyUserToOrganizationWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseVerifyUserToOrganizationResponse(rsp)
+}
+
+// GetLdapConfigWithResponse performs a GET /api/v1/ldap/config (the `GetLdapConfig` operationId) request.
+//
+// Get LDAP config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetLdapConfigWithResponse(ctx context.Context, params *GetLdapConfigParams, reqEditors ...RequestEditorFn) (*GetLdapConfigResponse, error) {
+	rsp, err := c.GetLdapConfig(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetLdapConfigResponse(rsp)
+}
+
+// UpdateLdapConfigWithBodyWithResponse performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update LDAP config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error) {
+	rsp, err := c.UpdateLdapConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLdapConfigResponse(rsp)
+}
+
+// UpdateLdapConfigWithResponse performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update LDAP config.
+func (c *ClientWithResponses) UpdateLdapConfigWithResponse(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error) {
+	rsp, err := c.UpdateLdapConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLdapConfigResponse(rsp)
+}
+
+// CreateLdapConfigWithBodyWithResponse performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create LDAP config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error) {
+	rsp, err := c.CreateLdapConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLdapConfigResponse(rsp)
+}
+
+// CreateLdapConfigWithResponse performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create LDAP config.
+func (c *ClientWithResponses) CreateLdapConfigWithResponse(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error) {
+	rsp, err := c.CreateLdapConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLdapConfigResponse(rsp)
+}
+
+// TestLdapConnectionWithBodyWithResponse performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) TestLdapConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error) {
+	rsp, err := c.TestLdapConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTestLdapConnectionResponse(rsp)
+}
+
+// TestLdapConnectionWithResponse performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) TestLdapConnectionWithResponse(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error) {
+	rsp, err := c.TestLdapConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTestLdapConnectionResponse(rsp)
+}
+
+// ListLdapGroupMapsWithResponse performs a GET /api/v1/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListLdapGroupMapsWithResponse(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*ListLdapGroupMapsResponse, error) {
+	rsp, err := c.ListLdapGroupMaps(ctx, configId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListLdapGroupMapsResponse(rsp)
+}
+
+// CreateLdapGroupMapWithBodyWithResponse performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateLdapGroupMapWithBodyWithResponse(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error) {
+	rsp, err := c.CreateLdapGroupMapWithBody(ctx, configId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLdapGroupMapResponse(rsp)
+}
+
+// CreateLdapGroupMapWithResponse performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateLdapGroupMapWithResponse(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error) {
+	rsp, err := c.CreateLdapGroupMap(ctx, configId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLdapGroupMapResponse(rsp)
+}
+
+// DeleteLdapGroupMapWithResponse performs a DELETE /api/v1/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteLdapGroupMapWithResponse(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*DeleteLdapGroupMapResponse, error) {
+	rsp, err := c.DeleteLdapGroupMap(ctx, configId, groupMapId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteLdapGroupMapResponse(rsp)
+}
+
+// LoginWithLdapSsoWithBodyWithResponse performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) LoginWithLdapSsoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error) {
+	rsp, err := c.LoginWithLdapSsoWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLoginWithLdapSsoResponse(rsp)
+}
+
+// LoginWithLdapSsoWithResponse performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) LoginWithLdapSsoWithResponse(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error) {
+	rsp, err := c.LoginWithLdapSso(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLoginWithLdapSsoResponse(rsp)
 }
 
 // DeleteUserNotificationsWithResponse performs a DELETE /api/v1/notifications/user (the `DeleteUserNotifications` operationId) request.
@@ -332691,6 +345599,83 @@ func (c *ClientWithResponses) TestWebhookWithResponse(ctx context.Context, webho
 		return nil, err
 	}
 	return ParseTestWebhookResponse(rsp)
+}
+
+// ListWorkflowIntegrationsWithResponse performs a GET /api/v1/workflow-integrations (the `ListWorkflowIntegrations` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListWorkflowIntegrationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListWorkflowIntegrationsResponse, error) {
+	rsp, err := c.ListWorkflowIntegrations(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListWorkflowIntegrationsResponse(rsp)
+}
+
+// ListMicrosoftTeamsIntegrationsWithResponse performs a GET /api/v1/workflow-integrations/microsoft-teams (the `ListMicrosoftTeamsIntegrations` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListMicrosoftTeamsIntegrationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListMicrosoftTeamsIntegrationsResponse, error) {
+	rsp, err := c.ListMicrosoftTeamsIntegrations(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMicrosoftTeamsIntegrationsResponse(rsp)
+}
+
+// GetMicrosoftTeamsClientIdWithResponse performs a GET /api/v1/workflow-integrations/microsoft-teams/client-id (the `GetMicrosoftTeamsClientId` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetMicrosoftTeamsClientIdWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMicrosoftTeamsClientIdResponse, error) {
+	rsp, err := c.GetMicrosoftTeamsClientId(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMicrosoftTeamsClientIdResponse(rsp)
+}
+
+// ListSlackIntegrationsWithResponse performs a GET /api/v1/workflow-integrations/slack (the `ListSlackIntegrations` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListSlackIntegrationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListSlackIntegrationsResponse, error) {
+	rsp, err := c.ListSlackIntegrations(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListSlackIntegrationsResponse(rsp)
+}
+
+// GetSlackInstallUrlWithResponse performs a GET /api/v1/workflow-integrations/slack/install (the `GetSlackInstallUrl` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetSlackInstallUrlWithResponse(ctx context.Context, params *GetSlackInstallUrlParams, reqEditors ...RequestEditorFn) (*GetSlackInstallUrlResponse, error) {
+	rsp, err := c.GetSlackInstallUrl(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSlackInstallUrlResponse(rsp)
+}
+
+// DeleteSlackIntegrationWithResponse performs a DELETE /api/v1/workflow-integrations/slack/{id} (the `DeleteSlackIntegration` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteSlackIntegrationWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteSlackIntegrationResponse, error) {
+	rsp, err := c.DeleteSlackIntegration(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteSlackIntegrationResponse(rsp)
+}
+
+// GetSlackIntegrationWithResponse performs a GET /api/v1/workflow-integrations/slack/{id} (the `GetSlackIntegration` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetSlackIntegrationWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetSlackIntegrationResponse, error) {
+	rsp, err := c.GetSlackIntegration(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSlackIntegrationResponse(rsp)
 }
 
 // UploadProjectKeyWithBodyWithResponse performs a POST /api/v1/workspace/{workspaceId}/key (the `UploadProjectKey` operationId) request,
@@ -356964,6 +369949,1220 @@ func ParseSubscribeToProjectEventsResponse(rsp *http.Response) (*SubscribeToProj
 	return response, nil
 }
 
+// ParseListExternalKmsResponse parses an HTTP response from a ListExternalKmsWithResponse call
+func ParseListExternalKmsResponse(rsp *http.Response) (*ListExternalKmsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListExternalKmsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ExternalKmsList []struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Description *string   `json:"description,omitempty"`
+				ExternalKms struct {
+					Provider      string  `json:"provider"`
+					Status        *string `json:"status,omitempty"`
+					StatusDetails *string `json:"statusDetails,omitempty"`
+				} `json:"externalKms"`
+				Id         openapi_types.UUID `json:"id"`
+				IsDisabled *bool              `json:"isDisabled,omitempty"`
+				Name       string             `json:"name"`
+				UpdatedAt  time.Time          `json:"updatedAt"`
+			} `json:"externalKmsList"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                  `json:"details,omitempty"`
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode ListExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode ListExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                  `json:"details,omitempty"`
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode ListExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode ListExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    interface{}                                  `json:"message,omitempty"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode ListExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                       `json:"error"`
+			Message    string                                       `json:"message"`
+			ReqId      string                                       `json:"reqId"`
+			StatusCode ListExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateExternalKmsResponse parses an HTTP response from a CreateExternalKmsWithResponse call
+func ParseCreateExternalKmsResponse(rsp *http.Response) (*CreateExternalKmsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateExternalKmsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ExternalKms struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Description *string   `json:"description,omitempty"`
+				External    struct {
+					Id            openapi_types.UUID `json:"id"`
+					Provider      string             `json:"provider"`
+					Status        *string            `json:"status,omitempty"`
+					StatusDetails *string            `json:"statusDetails,omitempty"`
+				} `json:"external"`
+				HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				IsDisabled          *bool              `json:"isDisabled,omitempty"`
+				IsExportable        *bool              `json:"isExportable,omitempty"`
+				IsReserved          *bool              `json:"isReserved,omitempty"`
+				KeyUsage            *string            `json:"keyUsage,omitempty"`
+				KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+				Name                string             `json:"name"`
+				OrgId               openapi_types.UUID `json:"orgId"`
+				ProjectId           *string            `json:"projectId,omitempty"`
+				UpdatedAt           time.Time          `json:"updatedAt"`
+			} `json:"externalKms"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateAwsExternalKmsResponse parses an HTTP response from a CreateAwsExternalKmsWithResponse call
+func ParseCreateAwsExternalKmsResponse(rsp *http.Response) (*CreateAwsExternalKmsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateAwsExternalKmsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Description *string   `json:"description,omitempty"`
+			ExternalKms struct {
+				Configuration   CreateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+				CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
+				Id              openapi_types.UUID                                                `json:"id"`
+				Provider        string                                                            `json:"provider"`
+				Status          *string                                                           `json:"status,omitempty"`
+				StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+			} `json:"externalKms"`
+			HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsDisabled          *bool              `json:"isDisabled,omitempty"`
+			IsExportable        *bool              `json:"isExportable,omitempty"`
+			IsReserved          *bool              `json:"isReserved,omitempty"`
+			KeyUsage            *string            `json:"keyUsage,omitempty"`
+			KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+			Name                string             `json:"name"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			ProjectId           *string            `json:"projectId,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreateAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreateAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreateAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreateAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    interface{}                                       `json:"message,omitempty"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreateAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode CreateAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAwsExternalKmsResponse parses an HTTP response from a DeleteAwsExternalKmsWithResponse call
+func ParseDeleteAwsExternalKmsResponse(rsp *http.Response) (*DeleteAwsExternalKmsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAwsExternalKmsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Description *string   `json:"description,omitempty"`
+			ExternalKms struct {
+				Configuration   DeleteAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+				CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
+				Id              openapi_types.UUID                                                `json:"id"`
+				Provider        string                                                            `json:"provider"`
+				Status          *string                                                           `json:"status,omitempty"`
+				StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+			} `json:"externalKms"`
+			HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsDisabled          *bool              `json:"isDisabled,omitempty"`
+			IsExportable        *bool              `json:"isExportable,omitempty"`
+			IsReserved          *bool              `json:"isReserved,omitempty"`
+			KeyUsage            *string            `json:"keyUsage,omitempty"`
+			KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+			Name                string             `json:"name"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			ProjectId           *string            `json:"projectId,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode DeleteAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode DeleteAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode DeleteAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode DeleteAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    interface{}                                       `json:"message,omitempty"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode DeleteAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode DeleteAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAwsExternalKmsResponse parses an HTTP response from a GetAwsExternalKmsWithResponse call
+func ParseGetAwsExternalKmsResponse(rsp *http.Response) (*GetAwsExternalKmsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAwsExternalKmsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Description *string   `json:"description,omitempty"`
+			ExternalKms struct {
+				Configuration   GetAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+				CredentialsHash *string                                                        `json:"credentialsHash,omitempty"`
+				Id              openapi_types.UUID                                             `json:"id"`
+				Provider        string                                                         `json:"provider"`
+				Status          *string                                                        `json:"status,omitempty"`
+				StatusDetails   *string                                                        `json:"statusDetails,omitempty"`
+			} `json:"externalKms"`
+			HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsDisabled          *bool              `json:"isDisabled,omitempty"`
+			IsExportable        *bool              `json:"isExportable,omitempty"`
+			IsReserved          *bool              `json:"isReserved,omitempty"`
+			KeyUsage            *string            `json:"keyUsage,omitempty"`
+			KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+			Name                string             `json:"name"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			ProjectId           *string            `json:"projectId,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode GetAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAwsExternalKmsResponse parses an HTTP response from a UpdateAwsExternalKmsWithResponse call
+func ParseUpdateAwsExternalKmsResponse(rsp *http.Response) (*UpdateAwsExternalKmsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAwsExternalKmsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Description *string   `json:"description,omitempty"`
+			ExternalKms struct {
+				Configuration   UpdateAwsExternalKms200JSONResponseBody_ExternalKms_Configuration `json:"configuration"`
+				CredentialsHash *string                                                           `json:"credentialsHash,omitempty"`
+				Id              openapi_types.UUID                                                `json:"id"`
+				Provider        string                                                            `json:"provider"`
+				Status          *string                                                           `json:"status,omitempty"`
+				StatusDetails   *string                                                           `json:"statusDetails,omitempty"`
+			} `json:"externalKms"`
+			HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsDisabled          *bool              `json:"isDisabled,omitempty"`
+			IsExportable        *bool              `json:"isExportable,omitempty"`
+			IsReserved          *bool              `json:"isReserved,omitempty"`
+			KeyUsage            *string            `json:"keyUsage,omitempty"`
+			KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+			Name                string             `json:"name"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			ProjectId           *string            `json:"projectId,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode UpdateAwsExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode UpdateAwsExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode UpdateAwsExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode UpdateAwsExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    interface{}                                       `json:"message,omitempty"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode UpdateAwsExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode UpdateAwsExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetExternalKmsByNameResponse parses an HTTP response from a GetExternalKmsByNameWithResponse call
+func ParseGetExternalKmsByNameResponse(rsp *http.Response) (*GetExternalKmsByNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetExternalKmsByNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ExternalKms struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Description *string   `json:"description,omitempty"`
+				External    struct {
+					Id            openapi_types.UUID                                                         `json:"id"`
+					Provider      string                                                                     `json:"provider"`
+					ProviderInput GetExternalKmsByName200JSONResponseBody_ExternalKms_External_ProviderInput `json:"providerInput"`
+					Status        *string                                                                    `json:"status,omitempty"`
+					StatusDetails *string                                                                    `json:"statusDetails,omitempty"`
+				} `json:"external"`
+				HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				IsDisabled          *bool              `json:"isDisabled,omitempty"`
+				IsExportable        *bool              `json:"isExportable,omitempty"`
+				IsReserved          *bool              `json:"isReserved,omitempty"`
+				KeyUsage            *string            `json:"keyUsage,omitempty"`
+				KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+				Name                string             `json:"name"`
+				OrgId               openapi_types.UUID `json:"orgId"`
+				ProjectId           *string            `json:"projectId,omitempty"`
+				UpdatedAt           time.Time          `json:"updatedAt"`
+			} `json:"externalKms"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode GetExternalKmsByName400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode GetExternalKmsByName401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode GetExternalKmsByName403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode GetExternalKmsByName404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    interface{}                                       `json:"message,omitempty"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode GetExternalKmsByName422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode GetExternalKmsByName500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteExternalKmsResponse parses an HTTP response from a DeleteExternalKmsWithResponse call
+func ParseDeleteExternalKmsResponse(rsp *http.Response) (*DeleteExternalKmsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteExternalKmsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ExternalKms struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Description *string   `json:"description,omitempty"`
+				External    struct {
+					Id            openapi_types.UUID `json:"id"`
+					Provider      string             `json:"provider"`
+					Status        *string            `json:"status,omitempty"`
+					StatusDetails *string            `json:"statusDetails,omitempty"`
+				} `json:"external"`
+				HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				IsDisabled          *bool              `json:"isDisabled,omitempty"`
+				IsExportable        *bool              `json:"isExportable,omitempty"`
+				IsReserved          *bool              `json:"isReserved,omitempty"`
+				KeyUsage            *string            `json:"keyUsage,omitempty"`
+				KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+				Name                string             `json:"name"`
+				OrgId               openapi_types.UUID `json:"orgId"`
+				ProjectId           *string            `json:"projectId,omitempty"`
+				UpdatedAt           time.Time          `json:"updatedAt"`
+			} `json:"externalKms"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode DeleteExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode DeleteExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode DeleteExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode DeleteExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode DeleteExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode DeleteExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetExternalKmsByIdResponse parses an HTTP response from a GetExternalKmsByIdWithResponse call
+func ParseGetExternalKmsByIdResponse(rsp *http.Response) (*GetExternalKmsByIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetExternalKmsByIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ExternalKms struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Description *string   `json:"description,omitempty"`
+				External    struct {
+					Id            openapi_types.UUID                                                       `json:"id"`
+					Provider      string                                                                   `json:"provider"`
+					ProviderInput GetExternalKmsById200JSONResponseBody_ExternalKms_External_ProviderInput `json:"providerInput"`
+					Status        *string                                                                  `json:"status,omitempty"`
+					StatusDetails *string                                                                  `json:"statusDetails,omitempty"`
+				} `json:"external"`
+				HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				IsDisabled          *bool              `json:"isDisabled,omitempty"`
+				IsExportable        *bool              `json:"isExportable,omitempty"`
+				IsReserved          *bool              `json:"isReserved,omitempty"`
+				KeyUsage            *string            `json:"keyUsage,omitempty"`
+				KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+				Name                string             `json:"name"`
+				OrgId               openapi_types.UUID `json:"orgId"`
+				ProjectId           *string            `json:"projectId,omitempty"`
+				UpdatedAt           time.Time          `json:"updatedAt"`
+			} `json:"externalKms"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetExternalKmsById400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetExternalKmsById401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetExternalKmsById403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetExternalKmsById404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetExternalKmsById422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetExternalKmsById500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateExternalKmsResponse parses an HTTP response from a UpdateExternalKmsWithResponse call
+func ParseUpdateExternalKmsResponse(rsp *http.Response) (*UpdateExternalKmsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateExternalKmsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ExternalKms struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Description *string   `json:"description,omitempty"`
+				External    struct {
+					Id            openapi_types.UUID `json:"id"`
+					Provider      string             `json:"provider"`
+					Status        *string            `json:"status,omitempty"`
+					StatusDetails *string            `json:"statusDetails,omitempty"`
+				} `json:"external"`
+				HasDeleteProtection *bool              `json:"hasDeleteProtection,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				IsDisabled          *bool              `json:"isDisabled,omitempty"`
+				IsExportable        *bool              `json:"isExportable,omitempty"`
+				IsReserved          *bool              `json:"isReserved,omitempty"`
+				KeyUsage            *string            `json:"keyUsage,omitempty"`
+				KmipMetadata        interface{}        `json:"kmipMetadata,omitempty"`
+				Name                string             `json:"name"`
+				OrgId               openapi_types.UUID `json:"orgId"`
+				ProjectId           *string            `json:"projectId,omitempty"`
+				UpdatedAt           time.Time          `json:"updatedAt"`
+			} `json:"externalKms"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateExternalKms400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateExternalKms401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateExternalKms403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateExternalKms404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateExternalKms422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateExternalKms500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListGatewayPoolsResponse parses an HTTP response from a ListGatewayPoolsWithResponse call
 func ParseListGatewayPoolsResponse(rsp *http.Response) (*ListGatewayPoolsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -357834,6 +372033,549 @@ func ParseGetGatewayPoolConnectedResourcesResponse(rsp *http.Response) (*GetGate
 			Message    string                                                        `json:"message"`
 			ReqId      string                                                        `json:"reqId"`
 			StatusCode GetGatewayPoolConnectedResources500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteGithubOrgSyncConfigResponse parses an HTTP response from a DeleteGithubOrgSyncConfigWithResponse call
+func ParseDeleteGithubOrgSyncConfigResponse(rsp *http.Response) (*DeleteGithubOrgSyncConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteGithubOrgSyncConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			GithubOrgSyncConfig struct {
+				CreatedAt     time.Time          `json:"createdAt"`
+				GithubOrgName string             `json:"githubOrgName"`
+				Id            openapi_types.UUID `json:"id"`
+				IsActive      *bool              `json:"isActive,omitempty"`
+				OrgId         openapi_types.UUID `json:"orgId"`
+				UpdatedAt     time.Time          `json:"updatedAt"`
+			} `json:"githubOrgSyncConfig"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode DeleteGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetGithubOrgSyncConfigResponse parses an HTTP response from a GetGithubOrgSyncConfigWithResponse call
+func ParseGetGithubOrgSyncConfigResponse(rsp *http.Response) (*GetGithubOrgSyncConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetGithubOrgSyncConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			GithubOrgSyncConfig struct {
+				CreatedAt     time.Time          `json:"createdAt"`
+				GithubOrgName string             `json:"githubOrgName"`
+				Id            openapi_types.UUID `json:"id"`
+				IsActive      *bool              `json:"isActive,omitempty"`
+				OrgId         openapi_types.UUID `json:"orgId"`
+				UpdatedAt     time.Time          `json:"updatedAt"`
+			} `json:"githubOrgSyncConfig"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateGithubOrgSyncConfigResponse parses an HTTP response from a UpdateGithubOrgSyncConfigWithResponse call
+func ParseUpdateGithubOrgSyncConfigResponse(rsp *http.Response) (*UpdateGithubOrgSyncConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateGithubOrgSyncConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			GithubOrgSyncConfig struct {
+				CreatedAt     time.Time          `json:"createdAt"`
+				GithubOrgName string             `json:"githubOrgName"`
+				Id            openapi_types.UUID `json:"id"`
+				IsActive      *bool              `json:"isActive,omitempty"`
+				OrgId         openapi_types.UUID `json:"orgId"`
+				UpdatedAt     time.Time          `json:"updatedAt"`
+			} `json:"githubOrgSyncConfig"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode UpdateGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode UpdateGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode UpdateGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode UpdateGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode UpdateGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode UpdateGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateGithubOrgSyncConfigResponse parses an HTTP response from a CreateGithubOrgSyncConfigWithResponse call
+func ParseCreateGithubOrgSyncConfigResponse(rsp *http.Response) (*CreateGithubOrgSyncConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateGithubOrgSyncConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			GithubOrgSyncConfig struct {
+				CreatedAt     time.Time          `json:"createdAt"`
+				GithubOrgName string             `json:"githubOrgName"`
+				Id            openapi_types.UUID `json:"id"`
+				IsActive      *bool              `json:"isActive,omitempty"`
+				OrgId         openapi_types.UUID `json:"orgId"`
+				UpdatedAt     time.Time          `json:"updatedAt"`
+			} `json:"githubOrgSyncConfig"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGithubOrgSyncConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGithubOrgSyncConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGithubOrgSyncConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGithubOrgSyncConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGithubOrgSyncConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateGithubOrgSyncConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSyncAllGithubOrgTeamsResponse parses an HTTP response from a SyncAllGithubOrgTeamsWithResponse call
+func ParseSyncAllGithubOrgTeamsResponse(rsp *http.Response) (*SyncAllGithubOrgTeamsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SyncAllGithubOrgTeamsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CreatedTeams       []string `json:"createdTeams"`
+			Errors             []string `json:"errors"`
+			RemovedMemberships float32  `json:"removedMemberships"`
+			SyncDuration       float32  `json:"syncDuration"`
+			TotalUsers         float32  `json:"totalUsers"`
+			UpdatedTeams       []string `json:"updatedTeams"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode SyncAllGithubOrgTeams400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode SyncAllGithubOrgTeams401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode SyncAllGithubOrgTeams403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode SyncAllGithubOrgTeams404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    interface{}                                        `json:"message,omitempty"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode SyncAllGithubOrgTeams422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode SyncAllGithubOrgTeams500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -363481,6 +378223,780 @@ func ParseVerifyUserToOrganizationResponse(rsp *http.Response) (*VerifyUserToOrg
 		}
 		response.JSON500 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseGetLdapConfigResponse parses an HTTP response from a GetLdapConfigWithResponse call
+func ParseGetLdapConfigResponse(rsp *http.Response) (*GetLdapConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetLdapConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			BindDN                  string `json:"bindDN"`
+			BindPass                string `json:"bindPass"`
+			CaCert                  string `json:"caCert"`
+			ClientCertificate       string `json:"clientCertificate"`
+			GroupSearchBase         string `json:"groupSearchBase"`
+			GroupSearchFilter       string `json:"groupSearchFilter"`
+			HasClientKeyCertificate bool   `json:"hasClientKeyCertificate"`
+			Id                      string `json:"id"`
+			IsActive                bool   `json:"isActive"`
+			Organization            string `json:"organization"`
+			SearchBase              string `json:"searchBase"`
+			SearchFilter            string `json:"searchFilter"`
+			UniqueUserAttribute     string `json:"uniqueUserAttribute"`
+			Url                     string `json:"url"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    interface{}                                `json:"message,omitempty"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateLdapConfigResponse parses an HTTP response from a UpdateLdapConfigWithResponse call
+func ParseUpdateLdapConfigResponse(rsp *http.Response) (*UpdateLdapConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateLdapConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CreatedAt           time.Time          `json:"createdAt"`
+			GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+			GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsActive            bool               `json:"isActive"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			SearchBase          string             `json:"searchBase"`
+			SearchFilter        *string            `json:"searchFilter,omitempty"`
+			UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+			Url                 string             `json:"url"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateLdapConfigResponse parses an HTTP response from a CreateLdapConfigWithResponse call
+func ParseCreateLdapConfigResponse(rsp *http.Response) (*CreateLdapConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateLdapConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CreatedAt           time.Time          `json:"createdAt"`
+			GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+			GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsActive            bool               `json:"isActive"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			SearchBase          string             `json:"searchBase"`
+			SearchFilter        *string            `json:"searchFilter,omitempty"`
+			UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+			Url                 string             `json:"url"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseTestLdapConnectionResponse parses an HTTP response from a TestLdapConnectionWithResponse call
+func ParseTestLdapConnectionResponse(rsp *http.Response) (*TestLdapConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TestLdapConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListLdapGroupMapsResponse parses an HTTP response from a ListLdapGroupMapsWithResponse call
+func ParseListLdapGroupMapsResponse(rsp *http.Response) (*ListLdapGroupMapsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListLdapGroupMapsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []struct {
+			Group struct {
+				Id   string `json:"id"`
+				Name string `json:"name"`
+				Slug string `json:"slug"`
+			} `json:"group"`
+			Id           string `json:"id"`
+			LdapConfigId string `json:"ldapConfigId"`
+			LdapGroupCN  string `json:"ldapGroupCN"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateLdapGroupMapResponse parses an HTTP response from a CreateLdapGroupMapWithResponse call
+func ParseCreateLdapGroupMapResponse(rsp *http.Response) (*CreateLdapGroupMapResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateLdapGroupMapResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			GroupId      openapi_types.UUID `json:"groupId"`
+			Id           openapi_types.UUID `json:"id"`
+			LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+			LdapGroupCN  string             `json:"ldapGroupCN"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteLdapGroupMapResponse parses an HTTP response from a DeleteLdapGroupMapWithResponse call
+func ParseDeleteLdapGroupMapResponse(rsp *http.Response) (*DeleteLdapGroupMapResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteLdapGroupMapResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			GroupId      openapi_types.UUID `json:"groupId"`
+			Id           openapi_types.UUID `json:"id"`
+			LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+			LdapGroupCN  string             `json:"ldapGroupCN"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLoginWithLdapSsoResponse parses an HTTP response from a LoginWithLdapSsoWithResponse call
+func ParseLoginWithLdapSsoResponse(rsp *http.Response) (*LoginWithLdapSsoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LoginWithLdapSsoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
 	}
 
 	return response, nil
@@ -397267,6 +412783,739 @@ func ParseTestWebhookResponse(rsp *http.Response) (*TestWebhookResponse, error) 
 			Message    string                                   `json:"message"`
 			ReqId      string                                   `json:"reqId"`
 			StatusCode TestWebhook500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListWorkflowIntegrationsResponse parses an HTTP response from a ListWorkflowIntegrationsWithResponse call
+func ParseListWorkflowIntegrationsResponse(rsp *http.Response) (*ListWorkflowIntegrationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListWorkflowIntegrationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []struct {
+			Description *string            `json:"description,omitempty"`
+			Id          openapi_types.UUID `json:"id"`
+			Integration string             `json:"integration"`
+			Slug        string             `json:"slug"`
+			Status      *string            `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ListWorkflowIntegrations400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ListWorkflowIntegrations401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                           `json:"details,omitempty"`
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ListWorkflowIntegrations403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ListWorkflowIntegrations404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    interface{}                                           `json:"message,omitempty"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ListWorkflowIntegrations422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                `json:"error"`
+			Message    string                                                `json:"message"`
+			ReqId      string                                                `json:"reqId"`
+			StatusCode ListWorkflowIntegrations500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListMicrosoftTeamsIntegrationsResponse parses an HTTP response from a ListMicrosoftTeamsIntegrationsWithResponse call
+func ParseListMicrosoftTeamsIntegrationsResponse(rsp *http.Response) (*ListMicrosoftTeamsIntegrationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListMicrosoftTeamsIntegrationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []struct {
+			Description *string                                                 `json:"description,omitempty"`
+			Id          openapi_types.UUID                                      `json:"id"`
+			Integration string                                                  `json:"integration"`
+			Slug        string                                                  `json:"slug"`
+			Status      ListMicrosoftTeamsIntegrations200JSONResponseBodyStatus `json:"status"`
+			TenantId    string                                                  `json:"tenantId"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListMicrosoftTeamsIntegrations400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListMicrosoftTeamsIntegrations401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListMicrosoftTeamsIntegrations403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListMicrosoftTeamsIntegrations404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    interface{}                                                 `json:"message,omitempty"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListMicrosoftTeamsIntegrations422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListMicrosoftTeamsIntegrations500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetMicrosoftTeamsClientIdResponse parses an HTTP response from a GetMicrosoftTeamsClientIdWithResponse call
+func ParseGetMicrosoftTeamsClientIdResponse(rsp *http.Response) (*GetMicrosoftTeamsClientIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMicrosoftTeamsClientIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ClientId string `json:"clientId"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode GetMicrosoftTeamsClientId400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode GetMicrosoftTeamsClientId401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode GetMicrosoftTeamsClientId403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode GetMicrosoftTeamsClientId404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode GetMicrosoftTeamsClientId422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode GetMicrosoftTeamsClientId500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListSlackIntegrationsResponse parses an HTTP response from a ListSlackIntegrationsWithResponse call
+func ParseListSlackIntegrationsResponse(rsp *http.Response) (*ListSlackIntegrationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListSlackIntegrationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []struct {
+			Description *string            `json:"description,omitempty"`
+			Id          openapi_types.UUID `json:"id"`
+			Integration string             `json:"integration"`
+			Slug        string             `json:"slug"`
+			TeamName    string             `json:"teamName"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListSlackIntegrations400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListSlackIntegrations401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                        `json:"details,omitempty"`
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListSlackIntegrations403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListSlackIntegrations404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    interface{}                                        `json:"message,omitempty"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListSlackIntegrations422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                             `json:"error"`
+			Message    string                                             `json:"message"`
+			ReqId      string                                             `json:"reqId"`
+			StatusCode ListSlackIntegrations500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSlackInstallUrlResponse parses an HTTP response from a GetSlackInstallUrlWithResponse call
+func ParseGetSlackInstallUrlResponse(rsp *http.Response) (*GetSlackInstallUrlResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSlackInstallUrlResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest string
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSlackInstallUrl400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSlackInstallUrl401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSlackInstallUrl403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSlackInstallUrl404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSlackInstallUrl422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSlackInstallUrl500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteSlackIntegrationResponse parses an HTTP response from a DeleteSlackIntegrationWithResponse call
+func ParseDeleteSlackIntegrationResponse(rsp *http.Response) (*DeleteSlackIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteSlackIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Description *string            `json:"description,omitempty"`
+			Id          openapi_types.UUID `json:"id"`
+			Integration string             `json:"integration"`
+			Slug        string             `json:"slug"`
+			TeamName    string             `json:"teamName"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteSlackIntegration400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteSlackIntegration401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteSlackIntegration403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteSlackIntegration404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteSlackIntegration422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode DeleteSlackIntegration500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSlackIntegrationResponse parses an HTTP response from a GetSlackIntegrationWithResponse call
+func ParseGetSlackIntegrationResponse(rsp *http.Response) (*GetSlackIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSlackIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Description *string            `json:"description,omitempty"`
+			Id          openapi_types.UUID `json:"id"`
+			Integration string             `json:"integration"`
+			Slug        string             `json:"slug"`
+			TeamName    string             `json:"teamName"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetSlackIntegration400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetSlackIntegration401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetSlackIntegration403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetSlackIntegration404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    interface{}                                      `json:"message,omitempty"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetSlackIntegration422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetSlackIntegration500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

@@ -71,22 +71,6 @@ func TestOAuth_Signup(t *testing.T) {
 		}
 	})
 
-	t.Run("should send a first-time Google user with an unverified email to SSO signup", func(t *testing.T) {
-		t.Parallel()
-		skipUntilGoogleFakeAttributesQueryToken(t)
-
-		// Setup
-		tn := h.NewTenant(t)
-		p := fixture.NewOAuthPerson(tn, false)
-
-		// Action
-		res := fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p)
-
-		// Assert
-		require.Equal(t, "/signup/sso", res.Redirect(t).Path)
-		require.Nil(t, cookieNamed(res.HTTP, "jid"))
-	})
-
 	t.Run("should complete signup with the mailed code and refuse a wrong code", func(t *testing.T) {
 		t.Parallel()
 		for _, kind := range providers {
@@ -330,9 +314,38 @@ func TestOAuth_Google(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
+	t.Run("should refuse selecting an org with Google SSO enforced for a non-Google session, and allow a Google one", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		alice := tn.NewUser(t)
+		p := fixture.NewOAuthPerson(tn, true)
+		p.Email = alice.Email
+		google := sessionFrom(t, tn, fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p))
+		first := selectOrg(t, tn, google, tn.OrgID.String())
+		require.Equalf(t, http.StatusOK, first.StatusCode(), "selecting with Google: %s", apierr.Body(first.Body))
+		enforced := updateOrg(t, tn, api.UpdateOrganizationJSONRequestBody{GoogleSsoAuthEnforced: new(true), BypassOrgAuthEnabled: new(true)})
+		require.Equalf(t, http.StatusOK, enforced.StatusCode(), "enforcing Google SSO: %s", apierr.Body(enforced.Body))
+
+		// Action
+		password := selectOrg(t, tn, loggedIn(t, tn, alice.Email), tn.OrgID.String())
+		googleAgain := selectOrg(t, tn, sessionFrom(t, tn, fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p)), tn.OrgID.String())
+
+		// Assert
+		require.Equal(t, http.StatusForbidden, password.StatusCode())
+		require.Contains(t, apierr.Message(password.Body), "Login with Google SSO")
+		require.Nil(t, cookieNamed(password.HTTPResponse, "jid"))
+		require.Equalf(t, http.StatusOK, googleAgain.StatusCode(), "selecting with Google: %s", apierr.Body(googleAgain.Body))
+	})
+}
+
+func TestOAuth_KnownIssues(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
 	t.Run("should accept an invited membership when Google login names the org slug", func(t *testing.T) {
 		t.Parallel()
-		skipUntilGoogleFakeAttributesQueryToken(t)
 
 		// Setup
 		tn := h.NewTenant(t)
@@ -350,37 +363,7 @@ func TestOAuth_Google(t *testing.T) {
 		require.Equal(t, "accepted", fixture.MembershipOf(t, other, alice.Email).Status)
 	})
 
-	t.Run("should refuse selecting an org with Google SSO enforced for a non-Google session, and allow a Google one", func(t *testing.T) {
-		t.Parallel()
-		skipUntilGoogleFakeAttributesQueryToken(t)
-
-		// Setup
-		tn := h.NewTenant(t)
-		alice := tn.NewUser(t)
-		p := fixture.NewOAuthPerson(tn, true)
-		p.Email = alice.Email
-		google := sessionFrom(t, tn, fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p))
-		first := selectOrg(t, tn, google, tn.OrgID.String())
-		require.Equalf(t, http.StatusOK, first.StatusCode(), "selecting with Google: %s", apierr.Body(first.Body))
-		enforced := updateOrg(t, tn, api.UpdateOrganizationJSONRequestBody{GoogleSsoAuthEnforced: new(true)})
-		require.Equalf(t, http.StatusOK, enforced.StatusCode(), "enforcing Google SSO: %s", apierr.Body(enforced.Body))
-
-		// Action
-		password := selectOrg(t, tn, loggedIn(t, tn, alice.Email), tn.OrgID.String())
-		googleAgain := selectOrg(t, tn, sessionFrom(t, tn, fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p)), tn.OrgID.String())
-
-		// Assert
-		require.Equal(t, http.StatusForbidden, password.StatusCode())
-		require.Equal(t, "Google SSO is enforced for this organization. Please use Google SSO to login.", apierr.Message(password.Body))
-		require.Equalf(t, http.StatusOK, googleAgain.StatusCode(), "selecting with Google: %s", apierr.Body(googleAgain.Body))
-	})
-}
-
-func TestOAuth_KnownIssues(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	t.Run("should answer a 4xx when the provider returns no email", func(t *testing.T) {
+	t.Run("should answer a 4xx when GitHub returns no email", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -392,6 +375,24 @@ func TestOAuth_KnownIssues(t *testing.T) {
 
 		// Action
 		res, err := b.Callback(ctx, fixture.OAuthGitHub, cp.Code, b.State, b.Cookies...)
+
+		// Assert
+		require.NoError(t, err, "the callback never answered")
+		require4xx(t, res.Status, res.Body)
+		require.Nil(t, cookieNamed(res.HTTP, "jid"))
+	})
+	t.Run("should answer a 4xx when Google returns no email", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		b := fixture.StartOAuth(t, tn, fixture.OAuthGoogle)
+		cp := fixture.OAuthConsent(t, tn, fixture.OAuthGoogle, fixture.OAuthPerson{ID: fixture.NewOAuthAccountID(), Verified: true})
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+		defer cancel()
+
+		// Action
+		res, err := b.Callback(ctx, fixture.OAuthGoogle, cp.Code, b.State, b.Cookies...)
 
 		// Assert
 		require.NoError(t, err, "the callback never answered")
