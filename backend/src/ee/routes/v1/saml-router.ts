@@ -35,7 +35,7 @@ import { AuthMode, ProviderAuthResult, TProviderAuthCallback } from "@app/servic
 import { extractSamlAuthnContextClassRefs, matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const SamlMfaSignalAttributeSchema = z.string().trim().min(1).max(512).optional();
+const SamlMfaSignalAttributeSchema = z.string().trim().min(1).max(512).nullable().optional();
 const SamlMfaAuthnContextsSchema = z.array(z.string().trim().min(1).max(512)).max(20).nullable().optional();
 
 type TSAMLConfig = {
@@ -447,7 +447,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           cert: z.string(),
           lastUsed: z.date().nullable().optional(),
           enableGroupSync: z.boolean().optional(),
-          mfaSignalAttribute: z.string(),
+          mfaSignalAttribute: z.string().nullable().optional(),
           mfaAuthnContexts: z.string().array().nullable().optional()
         })
       }

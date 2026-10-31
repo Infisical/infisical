@@ -48,7 +48,7 @@ export const useCreateSSOConfig = () => {
       issuer: string;
       cert: string;
       enableGroupSync?: boolean;
-      mfaSignalAttribute?: string;
+      mfaSignalAttribute?: string | null;
       mfaAuthnContexts?: string[] | null;
     }) => {
       const { data } = await apiRequest.post("/api/v1/sso/config", {
@@ -94,7 +94,7 @@ export const useUpdateSSOConfig = () => {
       issuer?: string;
       cert?: string;
       enableGroupSync?: boolean;
-      mfaSignalAttribute?: string;
+      mfaSignalAttribute?: string | null;
       mfaAuthnContexts?: string[] | null;
     }) => {
       const { data } = await apiRequest.patch("/api/v1/sso/config", {

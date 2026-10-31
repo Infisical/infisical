@@ -54,14 +54,14 @@ describe("matchIdpMfaSignal for OIDC", () => {
 const saml = (
   authnContextClassRefs: string[],
   attributes?: Record<string, unknown>,
-  config?: { mfaSignalAttribute?: string; mfaAuthnContexts?: string[] }
+  config?: { authProvider?: string; mfaSignalAttribute?: string; mfaAuthnContexts?: string[] }
 ) => matchIdpMfaSignal({ kind: "saml", authnContextClassRefs, attributes, config });
 
 describe("matchIdpMfaSignal for SAML", () => {
   test.each([
-    ["Entra ID Authenticator", "urn:oasis:names:tc:SAML:2.0:ac:classes:MobileTwoFactorContract"],
-    ["Entra ID TOTP", "urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken"],
-    ["Entra ID passkey", "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI"],
+    ["MobileTwoFactorContract", "urn:oasis:names:tc:SAML:2.0:ac:classes:MobileTwoFactorContract"],
+    ["TimeSyncToken", "urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken"],
+    ["Entra ID passkey (SmartcardPKI)", "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI"],
     ["REFEDS MFA profile", "https://refeds.org/profile/mfa"],
     ["Entra ID multipleauthn context", MULTIPLEAUTHN]
   ])("accepts the %s context class", (_, classRef) => {
@@ -91,18 +91,31 @@ describe("matchIdpMfaSignal for SAML", () => {
     expect(saml([], { AMR: "mfa" })).toMatchObject({ verified: true, evidence: ["AMR=mfa"] });
   });
 
-  test("reads the Entra ID authnmethodsreferences attribute when the configuration names it", () => {
-    const attributes = {
-      [AUTHN_METHODS_REFERENCES]: [
-        "http://schemas.microsoft.com/ws/2008/06/identity/authenticationmethod/password",
-        MULTIPLEAUTHN
-      ]
-    };
+  describe("default attribute per provider", () => {
+    const passwordMethod = "http://schemas.microsoft.com/ws/2008/06/identity/authenticationmethod/password";
     const passwordClass = "urn:oasis:names:tc:SAML:2.0:ac:classes:Password";
-    expect(saml([passwordClass], attributes).verified).toBe(false);
-    expect(saml([passwordClass], attributes, { mfaSignalAttribute: AUTHN_METHODS_REFERENCES })).toMatchObject({
-      verified: true,
-      evidence: [`${AUTHN_METHODS_REFERENCES}=${MULTIPLEAUTHN}`]
+    const entraPush = { [AUTHN_METHODS_REFERENCES]: [passwordMethod, MULTIPLEAUTHN] };
+
+    // Entra ID reports a push or TOTP login as Password in AuthnContextClassRef.
+    test("reads authnmethodsreferences for an Entra ID config with no attribute set", () => {
+      expect(saml([passwordClass], entraPush, { authProvider: "azure-saml" })).toMatchObject({
+        verified: true,
+        evidence: [`${AUTHN_METHODS_REFERENCES}=${MULTIPLEAUTHN}`]
+      });
+      expect(
+        saml([passwordClass], { [AUTHN_METHODS_REFERENCES]: [passwordMethod] }, { authProvider: "azure-saml" }).verified
+      ).toBe(false);
+    });
+
+    test("reads amr, not authnmethodsreferences, for every other provider", () => {
+      expect(saml([passwordClass], entraPush, { authProvider: "okta-saml" }).verified).toBe(false);
+      expect(saml([], { amr: ["mfa"] }, { authProvider: "okta-saml" }).verified).toBe(true);
+    });
+
+    test("an attribute set on the config overrides the provider default", () => {
+      expect(
+        saml([], { amr: ["mfa"], ...entraPush }, { authProvider: "azure-saml", mfaSignalAttribute: "amr" })
+      ).toMatchObject({ verified: true, evidence: ["amr=mfa"] });
     });
   });
 

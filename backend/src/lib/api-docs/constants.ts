@@ -4254,7 +4254,7 @@ export const SamlSso = {
     enableGroupSync:
       "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.",
     mfaSignalAttribute:
-      "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Defaults to amr.",
+      "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
     mfaAuthnContexts:
       "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
   },
@@ -4269,7 +4269,7 @@ export const SamlSso = {
     enableGroupSync:
       "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.",
     mfaSignalAttribute:
-      "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Defaults to amr.",
+      "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
     mfaAuthnContexts:
       "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
   },

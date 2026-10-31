@@ -24,7 +24,7 @@ If your organization enforces MFA and your users sign in through [SAML or OIDC S
 Infisical trusts a login only if the identity provider's signed response says MFA was completed:
 
 - For OIDC, the ID token's `amr` claim includes `mfa`
-- For SAML, the assertion's authentication context is a two-factor class, such as `MobileTwoFactorContract` or `TimeSyncToken`, or the `amr` attribute statement includes `mfa`
+- For SAML, the assertion's authentication context is a two-factor class, such as `MobileTwoFactorContract` or `TimeSyncToken`, or the MFA attribute includes `mfa` or `multipleauthn` (Infisical reads `authnmethodsreferences` for Entra ID and `amr` for every other provider)
 
 Without a signal, Infisical prompts as usual. The `user-login` event in the [audit log](/documentation/platform/audit-logs#event-types) shows the values the identity provider sent, so you can see why a login was or wasn't prompted.
 

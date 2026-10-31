@@ -1,6 +1,12 @@
 // "amr" is the OIDC Core claim name. SAML has no standard attribute name, so the Okta convention is the default.
 const DEFAULT_MFA_CLAIM_NAME = "amr";
 
+// Entra ID reports a push or TOTP login as Password in AuthnContextClassRef and puts multipleauthn only in this
+// attribute, which it sends without configuration, so it is the default for Entra configs.
+const SAML_PROVIDER_MFA_SIGNAL_ATTRIBUTES: Record<string, string> = {
+  "azure-saml": "http://schemas.microsoft.com/claims/authnmethodsreferences"
+};
+
 // RFC 8176 value for a completed multi-factor login; Okta, Entra ID, Auth0, Google and Duo all emit it.
 const DEFAULT_OIDC_MFA_CLAIM_VALUES = ["mfa"];
 
@@ -33,6 +39,7 @@ export type TIdpMfaSignal = {
 };
 
 type TSamlMfaSignalConfig = {
+  authProvider?: string | null;
   mfaSignalAttribute?: string | null;
   mfaAuthnContexts?: string[] | null;
 };
@@ -89,7 +96,10 @@ export const matchIdpMfaSignal = (input: TIdpMfaSignalInput): TIdpMfaSignal => {
   const evidence = matchingValues(receivedContexts, acceptedContexts);
 
   const attributes = input.attributes ?? {};
-  const attributeName = input.config?.mfaSignalAttribute?.trim() || DEFAULT_MFA_CLAIM_NAME;
+  const attributeName =
+    input.config?.mfaSignalAttribute?.trim() ||
+    SAML_PROVIDER_MFA_SIGNAL_ATTRIBUTES[input.config?.authProvider ?? ""] ||
+    DEFAULT_MFA_CLAIM_NAME;
   const attributeKey = findKey(attributes, attributeName);
   const receivedAttributeValues = attributeKey ? toStringList(attributes[attributeKey]) : [];
   matchingValues(receivedAttributeValues, SAML_MFA_ATTRIBUTE_VALUES).forEach((value) => {

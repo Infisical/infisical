@@ -30,7 +30,7 @@ export const SamlConfigsSchema = z.object({
   encryptedSamlIssuer: zodBuffer,
   encryptedSamlCertificate: zodBuffer,
   enableGroupSync: z.boolean().default(false),
-  mfaSignalAttribute: z.string().default("amr"),
+  mfaSignalAttribute: z.string().nullable().optional(),
   mfaAuthnContexts: z.string().array().nullable().optional()
 });
 

@@ -159,18 +159,18 @@ const providerLabels = (authProvider: string): TProviderLabels => {
   }
 };
 
+const providerMfaSignalAttribute = (authProvider: string) =>
+  authProvider === AuthProvider.AZURE_SAML
+    ? "http://schemas.microsoft.com/claims/authnmethodsreferences"
+    : "amr";
+
 const schema = z
   .object({
     authProvider: z.string().min(1, "SSO Type is required"),
     entryPoint: z.string().trim().min(1, "URL required"),
     issuer: z.string().trim().min(1, "Issuer required"),
     cert: z.string().default(""),
-    mfaSignalAttribute: z
-      .string()
-      .trim()
-      .min(1, "Attribute name is required")
-      .max(512, "Attribute name is too long")
-      .default("amr"),
+    mfaSignalAttribute: z.string().trim().max(512, "Attribute name is too long").default(""),
     mfaAuthnContexts: z
       .array(z.string().trim().min(1).max(512, "Context value is too long"))
       .max(20, "At most 20 contexts")
@@ -201,7 +201,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
   const { control, handleSubmit, reset, watch, setValue, getValues } = useForm<AddSSOFormData>({
     defaultValues: {
       authProvider: AuthProvider.OKTA_SAML,
-      mfaSignalAttribute: "amr",
+      mfaSignalAttribute: "",
       mfaAuthnContexts: []
     },
     resolver: zodResolver(schema)
@@ -214,7 +214,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
         entryPoint: data?.entryPoint ?? "",
         issuer: data?.issuer ?? "",
         cert: data?.cert ?? "",
-        mfaSignalAttribute: data?.mfaSignalAttribute || "amr",
+        mfaSignalAttribute: data?.mfaSignalAttribute ?? "",
         mfaAuthnContexts: data?.mfaAuthnContexts ?? []
       });
     }
@@ -249,7 +249,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
     if (!currentOrg) return;
 
     const mfaSignal = {
-      mfaSignalAttribute,
+      mfaSignalAttribute: mfaSignalAttribute || null,
       mfaAuthnContexts: mfaAuthnContexts.length > 0 ? mfaAuthnContexts : null
     };
     const payload = {
@@ -442,18 +442,20 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                   name="mfaSignalAttribute"
                   render={({ field, fieldState: { error } }) => (
                     <Field>
-                      <FieldLabel htmlFor="sso-mfa-signal-attribute">MFA Attribute Name</FieldLabel>
+                      <FieldLabel htmlFor="sso-mfa-signal-attribute">
+                        MFA Attribute Name (Optional)
+                      </FieldLabel>
                       <Input
                         id="sso-mfa-signal-attribute"
                         className="font-mono"
-                        placeholder="amr"
+                        placeholder={providerMfaSignalAttribute(authProvider)}
                         autoComplete="off"
                         isError={Boolean(error)}
                         {...field}
                       />
                       <FieldDescription>
                         Attribute in the {providerName} SAML assertion that lists the authentication
-                        methods the user completed.
+                        methods the user completed. Leave empty to use the {providerName} default.
                       </FieldDescription>
                       <FieldError>{error?.message}</FieldError>
                     </Field>

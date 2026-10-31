@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
   const hasSamlAuthnContexts = await knex.schema.hasColumn(TableName.SamlConfig, "mfaAuthnContexts");
   if (!hasSamlSignalAttribute || !hasSamlAuthnContexts) {
     await knex.schema.alterTable(TableName.SamlConfig, (t) => {
-      if (!hasSamlSignalAttribute) t.string("mfaSignalAttribute", 512).notNullable().defaultTo("amr");
+      if (!hasSamlSignalAttribute) t.string("mfaSignalAttribute", 512).nullable();
       if (!hasSamlAuthnContexts) t.specificType("mfaAuthnContexts", "text[]").nullable();
     });
   }
