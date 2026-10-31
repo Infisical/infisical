@@ -62,7 +62,14 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
+import {
+  ActorAuthMethod,
+  ActorType,
+  AuthMethod,
+  AuthModeJwtTokenPayload,
+  AuthTokenType,
+  SsoMfaTrust
+} from "../auth/auth-type";
 import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manager-project-bootstrap";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
@@ -503,6 +510,7 @@ export const orgServiceFactory = ({
       defaultMembershipRoleSlug,
       enforceMfa,
       selectedMfaMethod,
+      ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
       userTokenExpiration,
@@ -579,6 +587,17 @@ export const orgServiceFactory = ({
           message: "Failed to enforce user MFA due to missing instance SMTP configuration."
         });
       }
+    }
+
+    if (ssoMfaTrust !== undefined) {
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+    }
+
+    if (ssoMfaTrust !== undefined && ssoMfaTrust !== SsoMfaTrust.None && !plan.enforceMfa) {
+      throw new BadRequestError({
+        message:
+          "Failed to update MFA for SSO logins due to plan restriction. Upgrade plan to trust identity provider MFA."
+      });
     }
 
     if (authEnforced !== undefined) {
@@ -718,6 +737,7 @@ export const orgServiceFactory = ({
       defaultMembershipRole,
       enforceMfa,
       selectedMfaMethod,
+      ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
       userTokenExpiration,
@@ -940,7 +960,8 @@ export const orgServiceFactory = ({
           ip: ipAddress,
           userAgent: userAgentHeader,
           isMfaVerified: decodedToken.isMfaVerified,
-          mfaMethod: decodedToken.mfaMethod
+          mfaMethod: decodedToken.mfaMethod,
+          idpMfaOrgId: decodedToken.idpMfaOrgId
         },
         tx
       );

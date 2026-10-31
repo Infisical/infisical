@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { TOrgPermission } from "@app/lib/types";
 
-import { ActorAuthMethod, ActorType, MfaMethod } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType, MfaMethod, SsoMfaTrust } from "../auth/auth-type";
 import { OrgWithSubOrgsSchema } from "./org-schema";
 
 /** Root org with accessible sub-orgs (basic info only) */
@@ -78,6 +78,7 @@ export type TUpdateOrgDTO = {
     defaultMembershipRoleSlug: string;
     enforceMfa: boolean;
     selectedMfaMethod: MfaMethod;
+    ssoMfaTrust: SsoMfaTrust;
     allowSecretSharingOutsideOrganization: boolean;
     bypassOrgAuthEnabled: boolean;
     userTokenExpiration: string;

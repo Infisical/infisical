@@ -13,6 +13,11 @@ export enum AuthMethod {
   OIDC = "oidc"
 }
 
+export enum SsoMfaTrust {
+  None = "none",
+  Signal = "signal"
+}
+
 export enum AuthTokenType {
   ACCESS_TOKEN = "accessToken",
   REFRESH_TOKEN = "refreshToken",
@@ -113,6 +118,7 @@ export type AuthModeJwtTokenPayload = {
   subOrganizationId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
+  idpMfaOrgId?: string;
   // Present only on delegated OAuth 2.0 access tokens. Its presence marks the token as
   // AuthMode.OAUTH so the default JWT middleware will not accept it as a first-party session.
   oauthClientId?: string;
@@ -130,6 +136,7 @@ export type AuthModeMfaJwtTokenPayload = {
   userId: string;
   organizationId?: string;
   requiredMfaMethod: MfaMethod;
+  idpMfaOrgId?: string;
 };
 
 export type AuthModeRefreshJwtTokenPayload = {
@@ -143,6 +150,7 @@ export type AuthModeRefreshJwtTokenPayload = {
   subOrganizationId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
+  idpMfaOrgId?: string;
   oauthClientId?: string;
   scopes?: string[];
 };
@@ -154,6 +162,7 @@ export type AuthModeSignUpTokenPayload = {
   isEmailVerified: boolean;
   aliasId?: string;
   organizationId?: string;
+  idpMfaOrgId?: string;
   callbackPort?: string;
   // User profile fields for the frontend signup page
   email?: string;

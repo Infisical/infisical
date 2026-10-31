@@ -1,14 +1,16 @@
 import crypto from "node:crypto";
 
-import { decode } from "jsonwebtoken";
+import { packRules } from "@casl/ability/extra";
+import jwt, { decode } from "jsonwebtoken";
 
 import { OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { MfaMethod } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType, MfaMethod, SsoMfaTrust } from "@app/services/auth/auth-type";
 
 import { TTestSmtpService } from "../../mocks/smtp";
 import { loginUser, selectOrg } from "../../testUtils/auth";
-import { addUserMembership } from "../../testUtils/users";
+import { overrideLicenseFeatures } from "../../testUtils/license";
+import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "../../testUtils/users";
 
 describe("Auth MFA V3", () => {
   const smtp = () => (globalThis as unknown as { testSmtp: TTestSmtpService }).testSmtp;
@@ -99,6 +101,267 @@ describe("Auth MFA V3", () => {
     });
 
     expect(res.statusCode).toBeGreaterThanOrEqual(400);
+  });
+
+  // Signs the org-less session directly; the callback deriving the verdict is in auth-idp.spec.ts.
+  describe("identity provider MFA signal", () => {
+    const rootOrgId = seedData1.organization.id;
+    let restoreLicense: () => void;
+
+    const signSsoSession = async (authMethod: AuthMethod, idpMfaOrgId?: string, organizationId?: string) => {
+      const [session] = await db()(TableName.AuthTokenSession)
+        .insert({
+          userId: seedData1.id,
+          ip: "127.0.0.1",
+          userAgent: "e2e-idp-mfa-signal",
+          accessVersion: 1,
+          refreshVersion: 1,
+          lastUsed: new Date()
+        } as never)
+        .returning("*");
+
+      return jwt.sign(
+        {
+          authTokenType: AuthTokenType.ACCESS_TOKEN,
+          authMethod,
+          userId: seedData1.id,
+          tokenVersionId: session.id,
+          accessVersion: 1,
+          ...(idpMfaOrgId && { idpMfaOrgId }),
+          ...(organizationId && { organizationId })
+        },
+        process.env.AUTH_SECRET as string,
+        { expiresIn: "1h" }
+      );
+    };
+
+    const setSsoMfaTrust = (ssoMfaTrust: SsoMfaTrust) =>
+      db()(TableName.Organization).where({ id: rootOrgId }).update({ ssoMfaTrust });
+
+    const updateOrg = (body: Record<string, unknown>) =>
+      testServer.inject({
+        method: "PATCH",
+        url: `/api/v1/organization/${rootOrgId}`,
+        headers: { authorization: `Bearer ${jwtAuthToken}` },
+        body
+      });
+
+    beforeAll(() => {
+      restoreLicense = overrideLicenseFeatures({ enforceMfa: true });
+    });
+
+    afterAll(async () => {
+      restoreLicense();
+      await setSsoMfaTrust(SsoMfaTrust.None);
+    });
+
+    test.each([AuthMethod.OKTA_SAML, AuthMethod.OIDC])(
+      "a signalled %s session skips the prompt when the org trusts the signal",
+      async (authMethod) => {
+        await setSsoMfaTrust(SsoMfaTrust.Signal);
+
+        const { payload } = await selectOrg(await signSsoSession(authMethod, rootOrgId), rootOrgId);
+
+        expect(payload.isMfaEnabled).toBe(false);
+        expect(decode(payload.token)).toMatchObject({ organizationId: rootOrgId, idpMfaOrgId: rootOrgId });
+      }
+    );
+
+    test("an SSO session that carried no signal still gets the prompt", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+
+      const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML), rootOrgId);
+
+      expect(payload.isMfaEnabled).toBe(true);
+      expect(payload.mfaMethod).toBe(MfaMethod.EMAIL);
+    });
+
+    test("the root org's proof also covers its sub-organizations", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+      const [subOrg] = await db()(TableName.Organization)
+        .insert({
+          name: `idp-mfa-${crypto.randomUUID()}`,
+          slug: `idp-mfa-${crypto.randomUUID()}`,
+          rootOrgId,
+          parentOrgId: rootOrgId,
+          enforceMfa: true
+        })
+        .returning("*");
+      try {
+        await addUserMembership({ userId: seedData1.id, orgId: subOrg.id, role: OrgMembershipRole.Member });
+
+        const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId), subOrg.id);
+
+        expect(payload.isMfaEnabled).toBe(false);
+        expect(decode(payload.token)).toMatchObject({
+          organizationId: rootOrgId,
+          subOrganizationId: subOrg.id,
+          idpMfaOrgId: rootOrgId
+        });
+      } finally {
+        await db()(TableName.Organization).where({ id: subOrg.id }).del();
+      }
+    });
+
+    test("a proof produced by another organization's IdP still gets the prompt", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+
+      const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, crypto.randomUUID()), rootOrgId);
+
+      expect(payload.isMfaEnabled).toBe(true);
+    });
+
+    test("a password session on the same org still gets the prompt", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+      const { accessToken } = await loginUser(seedData1.email, seedData1.password);
+
+      const { payload } = await selectOrg(accessToken, rootOrgId);
+
+      expect(payload.isMfaEnabled).toBe(true);
+    });
+
+    test("the signal is ignored while the org requires Infisical MFA", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.None);
+
+      const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId), rootOrgId);
+
+      expect(payload.isMfaEnabled).toBe(true);
+    });
+
+    describe("OAuth consent", () => {
+      const redirectUri = "https://app.example.com/callback";
+      let client: { id: string; clientId: string };
+
+      const consent = (token: string) =>
+        testServer.inject({
+          method: "POST",
+          url: "/api/v1/oauth/authorize/consent",
+          headers: { authorization: `Bearer ${token}` },
+          body: { client_id: client.clientId, redirect_uri: redirectUri }
+        });
+
+      beforeAll(async () => {
+        const res = await testServer.inject({
+          method: "POST",
+          url: "/api/v1/oauth/clients",
+          headers: { authorization: `Bearer ${jwtAuthToken}` },
+          body: { name: `idp-mfa-${crypto.randomUUID()}`, redirectUris: [redirectUri] }
+        });
+        expect(res.statusCode).toBe(200);
+        client = res.json().client;
+      });
+
+      afterAll(async () => {
+        await testServer.inject({
+          method: "DELETE",
+          url: `/api/v1/oauth/clients/${client.id}`,
+          headers: { authorization: `Bearer ${jwtAuthToken}` }
+        });
+      });
+
+      test("a session the IdP signal let in is not refused when authorizing an application", async () => {
+        await setSsoMfaTrust(SsoMfaTrust.Signal);
+
+        const res = await consent(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId, rootOrgId));
+
+        expect(res.statusCode).toBe(200);
+        expect(new URL(res.json().callbackUrl).searchParams.get("code")).toBeTruthy();
+      });
+
+      test("the same session is refused once the org stops trusting the signal", async () => {
+        await setSsoMfaTrust(SsoMfaTrust.None);
+
+        const res = await consent(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId, rootOrgId));
+
+        expect(res.statusCode).toBe(401);
+        expect(res.json().message).toMatch(/Multi-factor authentication is required/);
+      });
+    });
+
+    // Written straight to the table because the e2e license mock reports `rbac: false`, so the custom-role
+    // routes refuse to create one.
+    test("changing the setting needs the SSO edit permission, not just settings edit", async () => {
+      const { userId } = await createUser("sso-mfa-trust");
+      const [role] = await db()(TableName.Role)
+        .insert({
+          name: `settings-only-${crypto.randomUUID()}`,
+          slug: `settings-only-${crypto.randomUUID()}`,
+          orgId: rootOrgId,
+          permissions: JSON.stringify(packRules([{ subject: "settings", action: ["read", "edit"] }]))
+        })
+        .returning("id");
+      try {
+        const membershipId = await addUserMembership({ userId, orgId: rootOrgId, role: OrgMembershipRole.Member });
+        await db()(TableName.MembershipRole).where({ membershipId }).delete();
+        await db()(TableName.MembershipRole).insert({ membershipId, role: "custom", customRoleId: role.id });
+        const token = await createUserAccessToken({ userId, orgId: rootOrgId });
+        const patch = (body: Record<string, unknown>) =>
+          testServer.inject({
+            method: "PATCH",
+            url: `/api/v1/organization/${rootOrgId}`,
+            headers: { authorization: `Bearer ${token}` },
+            body
+          });
+
+        expect((await patch({ name: seedData1.organization.name })).statusCode).toBe(200);
+        expect((await patch({ ssoMfaTrust: SsoMfaTrust.None })).statusCode).toBe(403);
+      } finally {
+        await deleteUsers([userId]);
+        await db()(TableName.Role).where({ id: role.id }).del();
+      }
+    });
+
+    test("the setting can be turned on before any SSO configuration exists, like the bypass toggle", async () => {
+      const res = await updateOrg({ ssoMfaTrust: SsoMfaTrust.Signal });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().organization.ssoMfaTrust).toBe(SsoMfaTrust.Signal);
+    });
+
+    test("the signal also covers personal MFA when the org enforces it", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+      await db()(TableName.Users).where({ id: seedData1.id }).update({ isMfaEnabled: true });
+      try {
+        const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId), rootOrgId);
+
+        expect(payload.isMfaEnabled).toBe(false);
+      } finally {
+        await db()(TableName.Users).where({ id: seedData1.id }).update({ isMfaEnabled: false });
+      }
+    });
+
+    test("a user's own MFA is still prompted when only the user, not the org, requires it", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+      await db()(TableName.Organization).where({ id: rootOrgId }).update({ enforceMfa: false });
+      await db()(TableName.Users).where({ id: seedData1.id }).update({ isMfaEnabled: true });
+      try {
+        const { payload } = await selectOrg(await signSsoSession(AuthMethod.OKTA_SAML, rootOrgId), rootOrgId);
+
+        expect(payload.isMfaEnabled).toBe(true);
+      } finally {
+        await db()(TableName.Users).where({ id: seedData1.id }).update({ isMfaEnabled: false });
+        await db()(TableName.Organization).where({ id: rootOrgId }).update({ enforceMfa: true });
+      }
+    });
+
+    test("an unknown mode is rejected", async () => {
+      const res = await updateOrg({ ssoMfaTrust: "delegate" });
+
+      expect(res.statusCode).toBe(422);
+    });
+
+    test("the setting can be turned off even on a plan without MFA enforcement", async () => {
+      await setSsoMfaTrust(SsoMfaTrust.Signal);
+      restoreLicense();
+      try {
+        const res = await updateOrg({ ssoMfaTrust: SsoMfaTrust.None });
+
+        expect(res.statusCode).toBe(200);
+        expect(res.json().organization.ssoMfaTrust).toBe(SsoMfaTrust.None);
+      } finally {
+        restoreLicense = overrideLicenseFeatures({ enforceMfa: true });
+      }
+    });
   });
 
   // The MFA policy belongs to the root org, so one verified session must cover every switch between

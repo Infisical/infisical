@@ -1,12 +1,15 @@
 import crypto from "node:crypto";
 
+import { decode } from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { AccessScope, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";
+import { addUserMembership } from "../../testUtils/users";
 
 const TEST_ORG_ID = seedData1.organization.id;
 const TEST_DOMAIN = "testdomain.local";
@@ -35,6 +38,171 @@ describe("Auth IdP Service-Level Tests", () => {
     }
 
     await cleanupEmailDomains(TEST_ORG_ID, db);
+  });
+
+  // Covers the callback deriving the verdict; org selection acting on it is in auth-mfa.spec.ts.
+  describe("Identity provider MFA signal", () => {
+    const makeAcceptedSsoUser = async (aliasType: UserAliasType.SAML | UserAliasType.OIDC) => {
+      const externalId = `${aliasType}-signal-${crypto.randomUUID()}`;
+      const email = `${aliasType}signal-${crypto.randomUUID()}@${TEST_DOMAIN}`;
+      const db = getDb();
+
+      const [user] = await db(TableName.Users)
+        .insert({
+          username: email,
+          email,
+          firstName: "Signal",
+          lastName: "User",
+          isAccepted: true,
+          isGhost: false,
+          authMethods: [aliasType === UserAliasType.SAML ? AuthMethod.OKTA_SAML : AuthMethod.OIDC]
+        })
+        .returning("*");
+      createdUserIds.push(user.id);
+
+      await db(TableName.UserAliases).insert({
+        userId: user.id,
+        username: email,
+        aliasType,
+        externalId,
+        emails: [email],
+        orgId: TEST_ORG_ID,
+        isEmailVerified: true
+      });
+      await addUserMembership({ userId: user.id, orgId: TEST_ORG_ID, role: OrgMembershipRole.Member });
+
+      return { externalId, email };
+    };
+
+    const sessionClaims = (result: { result: string; tokens?: { access: string } }) => {
+      expect(result.result).toBe(ProviderAuthResult.SESSION);
+      return decode(result.tokens?.access as string) as Record<string, unknown>;
+    };
+
+    test("a SAML login carries the verdict on its session, and only when the IdP signalled MFA", async () => {
+      const { externalId, email } = await makeAcceptedSsoUser(UserAliasType.SAML);
+      const login = (idpMfa?: { verified: boolean; evidence: string[]; received: string[] }) =>
+        getServices().saml.samlLogin({
+          externalId,
+          email,
+          firstName: "Signal",
+          lastName: "User",
+          authProvider: AuthMethod.OKTA_SAML,
+          orgId: TEST_ORG_ID,
+          ip: "127.0.0.1",
+          userAgent: "test-agent",
+          idpMfa
+        });
+
+      expect(
+        sessionClaims(await login({ verified: true, evidence: ["amr=mfa"], received: ["amr=pwd", "amr=mfa"] }))
+          .idpMfaOrgId
+      ).toBe(TEST_ORG_ID);
+      expect(
+        sessionClaims(await login({ verified: false, evidence: [], received: ["amr=pwd"] })).idpMfaOrgId
+      ).toBeUndefined();
+      expect(sessionClaims(await login()).idpMfaOrgId).toBeUndefined();
+    });
+
+    test("an OIDC login carries the verdict on its session, and only when the IdP signalled MFA", async () => {
+      const { externalId, email } = await makeAcceptedSsoUser(UserAliasType.OIDC);
+      const login = (idpMfa?: { verified: boolean; evidence: string[]; received: string[] }) =>
+        getServices().oidc.oidcLogin({
+          externalId,
+          email,
+          firstName: "Signal",
+          lastName: "User",
+          orgId: TEST_ORG_ID,
+          ip: "127.0.0.1",
+          userAgent: "test-agent",
+          idpMfa
+        });
+
+      expect(
+        sessionClaims(await login({ verified: true, evidence: ["mfa"], received: ["pwd", "mfa"] })).idpMfaOrgId
+      ).toBe(TEST_ORG_ID);
+      expect(sessionClaims(await login()).idpMfaOrgId).toBeUndefined();
+    });
+  });
+
+  describe("SSO config updates", () => {
+    const actor = {
+      actor: ActorType.USER,
+      actorId: seedData1.id,
+      actorOrgId: TEST_ORG_ID,
+      actorAuthMethod: AuthMethod.OKTA_SAML
+    };
+
+    const enforceSsoAndScim = () =>
+      getDb()(TableName.Organization).where({ id: TEST_ORG_ID }).update({ authEnforced: true, scimEnabled: true });
+
+    const orgFlags = () =>
+      getDb()(TableName.Organization).where({ id: TEST_ORG_ID }).first("authEnforced", "scimEnabled");
+
+    afterEach(async () => {
+      await getDb()(TableName.SamlConfig).where({ orgId: TEST_ORG_ID }).del();
+      await getDb()(TableName.OidcConfig).where({ orgId: TEST_ORG_ID }).del();
+      await getDb()(TableName.Organization)
+        .where({ id: TEST_ORG_ID })
+        .update({ authEnforced: false, scimEnabled: false });
+    });
+
+    test("editing only the SAML MFA signal keeps SSO enforcement, SCIM and the active config", async () => {
+      await getDb()(TableName.SamlConfig).insert({
+        orgId: TEST_ORG_ID,
+        authProvider: AuthMethod.OKTA_SAML,
+        isActive: true,
+        lastUsed: new Date(),
+        encryptedSamlEntryPoint: Buffer.from("entry-point"),
+        encryptedSamlIssuer: Buffer.from("issuer"),
+        encryptedSamlCertificate: Buffer.from("cert")
+      });
+      await enforceSsoAndScim();
+
+      await getServices().saml.updateSamlCfg({
+        ...actor,
+        orgId: TEST_ORG_ID,
+        mfaSignalAttribute: "session_amr",
+        mfaAuthnContexts: ["urn:example:mfa"]
+      });
+
+      expect(await orgFlags()).toEqual({ authEnforced: true, scimEnabled: true });
+      const cfg = await getDb()(TableName.SamlConfig).where({ orgId: TEST_ORG_ID }).first();
+      expect(cfg).toMatchObject({ isActive: true, mfaSignalAttribute: "session_amr" });
+      expect(cfg?.lastUsed).not.toBeNull();
+
+      await getServices().saml.updateSamlCfg({ ...actor, orgId: TEST_ORG_ID, isActive: false });
+
+      expect(await orgFlags()).toEqual({ authEnforced: false, scimEnabled: false });
+    });
+
+    test("editing only the OIDC MFA signal keeps SSO enforcement and SCIM", async () => {
+      await getDb()(TableName.OidcConfig).insert({
+        orgId: TEST_ORG_ID,
+        configurationType: "discoveryURL",
+        isActive: true,
+        lastUsed: new Date(),
+        encryptedOidcClientId: Buffer.from("client-id"),
+        encryptedOidcClientSecret: Buffer.from("client-secret")
+      });
+      await enforceSsoAndScim();
+
+      await getServices().oidc.updateOidcCfg({
+        ...actor,
+        organizationId: TEST_ORG_ID,
+        mfaClaimName: "acr",
+        mfaAmrValues: ["phr"]
+      });
+
+      expect(await orgFlags()).toEqual({ authEnforced: true, scimEnabled: true });
+      const cfg = await getDb()(TableName.OidcConfig).where({ orgId: TEST_ORG_ID }).first();
+      expect(cfg).toMatchObject({ isActive: true, mfaClaimName: "acr", mfaAmrValues: ["phr"] });
+      expect(cfg?.lastUsed).not.toBeNull();
+
+      await getServices().oidc.updateOidcCfg({ ...actor, organizationId: TEST_ORG_ID, allowedEmailDomains: "" });
+
+      expect(await orgFlags()).toEqual({ authEnforced: false, scimEnabled: false });
+    });
   });
 
   describe("SAML Login", () => {

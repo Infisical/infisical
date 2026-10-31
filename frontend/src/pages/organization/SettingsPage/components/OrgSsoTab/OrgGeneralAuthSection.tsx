@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { AlertTriangle, Info, ShieldCheck } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { SsoEnforcementUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
@@ -27,9 +28,6 @@ import {
   FieldDescription,
   FieldGroup,
   FieldTitle,
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
   Toggle
 } from "@app/components/v3";
 import {
@@ -40,6 +38,8 @@ import {
 } from "@app/context";
 import { useLogoutUser, useUpdateOrg } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+
+import { SsoMfaTrustField } from "./SsoMfaTrustField";
 
 enum EnforceAuthType {
   SAML = "saml",
@@ -253,7 +253,7 @@ export const OrgGeneralAuthSection = ({
             Enforcement
             {isAnySsoEnforced && <Badge variant="success">Active</Badge>}
           </CardTitle>
-          <CardDescription>Require all members to sign in via your IDP.</CardDescription>
+          <CardDescription>Require all members to sign in via your IdP.</CardDescription>
         </CardHeader>
         <CardContent>
           <FieldGroup>
@@ -263,10 +263,7 @@ export const OrgGeneralAuthSection = ({
             >
               <FieldContent>
                 <FieldTitle>Enforce SAML SSO</FieldTitle>
-                <FieldDescription>
-                  Only allow members to sign in via SAML. Also disables email & password signup for
-                  your verified domain(s) and skips email verification for SSO sign-ins.
-                </FieldDescription>
+                <FieldDescription>Members can only sign in via SAML.</FieldDescription>
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
@@ -289,10 +286,7 @@ export const OrgGeneralAuthSection = ({
             >
               <FieldContent>
                 <FieldTitle>Enforce OIDC SSO</FieldTitle>
-                <FieldDescription>
-                  Only allow members to sign in via OIDC. Also disables email & password signup for
-                  your verified domain(s) and skips email verification for SSO sign-ins.
-                </FieldDescription>
+                <FieldDescription>Members can only sign in via OIDC.</FieldDescription>
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
@@ -317,9 +311,7 @@ export const OrgGeneralAuthSection = ({
             >
               <FieldContent>
                 <FieldTitle>Enforce Google OAuth</FieldTitle>
-                <FieldDescription>
-                  Only allow members to sign in via Google OAuth (not SAML).
-                </FieldDescription>
+                <FieldDescription>Members can only sign in via Google OAuth.</FieldDescription>
               </FieldContent>
               <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
                 {(isAllowed) => (
@@ -336,59 +328,54 @@ export const OrgGeneralAuthSection = ({
               </OrgPermissionCan>
             </Field>
 
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldTitle>
-                  Enable Admin SSO Bypass
-                  <HoverCard openDelay={150} closeDelay={150}>
-                    <HoverCardTrigger asChild>
-                      <Info className="text-muted" />
-                    </HoverCardTrigger>
-                    <HoverCardContent className="w-80">
-                      <p>
-                        Enable org-level MFA before turning this on — without a second factor, an
-                        admin password is the weakest way into the org.
-                      </p>
-                      <p className="mt-3 mb-0.5">
-                        If locked out, admins can sign in via the{" "}
-                        <a
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline underline-offset-2 hover:text-foreground"
-                          href="https://infisical.com/docs/documentation/platform/sso/overview#sso-break-glass"
-                        >
-                          Admin Login Portal
-                        </a>{" "}
-                        at{" "}
-                        <a
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline underline-offset-2 hover:text-foreground"
-                          href={`${window.location.origin}/login/admin`}
-                        >
-                          /login/admin
-                        </a>
-                        .
-                      </p>
-                    </HoverCardContent>
-                  </HoverCard>
-                </FieldTitle>
-                <FieldDescription>
-                  Admins can sign in with a password if your IDP is inaccessible.
-                </FieldDescription>
-              </FieldContent>
-              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
-                {(isAllowed) => (
-                  <Toggle
-                    id="allow-admin-bypass"
-                    variant="org"
-                    checked={currentOrg?.bypassOrgAuthEnabled ?? false}
-                    onCheckedChange={(value) => handleEnableBypassOrgAuthToggle(value)}
-                    disabled={!isAllowed}
-                  />
-                )}
-              </OrgPermissionCan>
-            </Field>
+            <div className="ml-1 border-l border-border pl-4">
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldTitle>Admin SSO Bypass</FieldTitle>
+                  <FieldDescription>
+                    Admins can sign in with a password at{" "}
+                    <a
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono underline underline-offset-2 hover:text-foreground"
+                      href={`${window.location.origin}/login/admin`}
+                    >
+                      /login/admin
+                    </a>{" "}
+                    if your IdP is inaccessible.
+                  </FieldDescription>
+                </FieldContent>
+                <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+                  {(isAllowed) => (
+                    <Toggle
+                      id="allow-admin-bypass"
+                      variant="org"
+                      checked={currentOrg?.bypassOrgAuthEnabled ?? false}
+                      onCheckedChange={(value) => handleEnableBypassOrgAuthToggle(value)}
+                      disabled={!isAllowed}
+                    />
+                  )}
+                </OrgPermissionCan>
+              </Field>
+              {isAnySsoEnforced && currentOrg?.bypassOrgAuthEnabled && !currentOrg?.enforceMfa && (
+                <Alert variant="warning" className="mt-3">
+                  <AlertTriangle />
+                  <AlertDescription>
+                    Org MFA is off, so bypass is password-only.{" "}
+                    <Link
+                      to="/organizations/$orgId/settings"
+                      params={{ orgId: currentOrg.id }}
+                      search={{ selectedTab: "tab-org-security" }}
+                      className="underline underline-offset-2 hover:text-foreground"
+                    >
+                      Enforce MFA
+                    </Link>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            <SsoMfaTrustField />
           </FieldGroup>
         </CardContent>
       </Card>

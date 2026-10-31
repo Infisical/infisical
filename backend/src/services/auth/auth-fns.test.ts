@@ -1,11 +1,12 @@
 import { LoginMethod } from "../super-admin/super-admin-types";
 import {
   assertOAuthLoginMethodEnabled,
+  isIdpMfaTrusted,
   isMfaProofAccepted,
   isOAuthLoginMethodDisabled,
   RECOVERY_CODE_MFA_ASSURANCE
 } from "./auth-fns";
-import { AuthMethod, MfaMethod } from "./auth-type";
+import { AuthMethod, MfaMethod, SsoMfaTrust } from "./auth-type";
 
 describe("OAuth login method policy", () => {
   test.each([
@@ -60,5 +61,43 @@ describe("isMfaProofAccepted", () => {
     expect(isMfaProofAccepted(null, [MfaMethod.EMAIL])).toBe(false);
     expect(isMfaProofAccepted(undefined, [MfaMethod.EMAIL])).toBe(false);
     expect(isMfaProofAccepted("1", [MfaMethod.EMAIL])).toBe(false);
+  });
+});
+
+describe("isIdpMfaTrusted", () => {
+  const org = { id: "org-a", enforceMfa: true, ssoMfaTrust: SsoMfaTrust.Signal };
+
+  test.each([AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.OIDC] as const)(
+    "trusts a signalled %s login when the org trusts the signal",
+    (authMethod) => {
+      expect(isIdpMfaTrusted({ org, authMethod, idpMfaOrgId: org.id })).toBe(true);
+    }
+  );
+
+  test("never trusts a login that carried no signal", () => {
+    expect(isIdpMfaTrusted({ org, authMethod: AuthMethod.OKTA_SAML })).toBe(false);
+  });
+
+  test("never trusts a signal produced by another organization's IdP", () => {
+    expect(isIdpMfaTrusted({ org, authMethod: AuthMethod.OIDC, idpMfaOrgId: "org-b" })).toBe(false);
+  });
+
+  test("has nothing to waive while the org does not enforce MFA", () => {
+    expect(
+      isIdpMfaTrusted({ org: { ...org, enforceMfa: false }, authMethod: AuthMethod.OIDC, idpMfaOrgId: org.id })
+    ).toBe(false);
+  });
+
+  test.each([AuthMethod.EMAIL, AuthMethod.GOOGLE, AuthMethod.GITHUB, AuthMethod.LDAP] as const)(
+    "never trusts a %s login, so break-glass accounts keep the Infisical challenge",
+    (authMethod) => {
+      expect(isIdpMfaTrusted({ org, authMethod, idpMfaOrgId: org.id })).toBe(false);
+    }
+  );
+
+  test.each([SsoMfaTrust.None, undefined, null, "delegate"])("ignores the signal when the setting is %s", (mode) => {
+    expect(
+      isIdpMfaTrusted({ org: { ...org, ssoMfaTrust: mode }, authMethod: AuthMethod.OIDC, idpMfaOrgId: org.id })
+    ).toBe(false);
   });
 });

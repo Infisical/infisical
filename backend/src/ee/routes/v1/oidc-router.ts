@@ -37,8 +37,13 @@ const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({
   isActive: true,
   allowedEmailDomains: true,
   manageGroupMemberships: true,
-  jwtSignatureAlgorithm: true
+  jwtSignatureAlgorithm: true,
+  mfaClaimName: true,
+  mfaAmrValues: true
 });
+
+const OidcMfaAmrValuesSchema = z.array(z.string().trim().min(1).max(64)).max(20).nullable().optional();
+const OidcMfaClaimNameSchema = z.string().trim().min(1).max(128).optional();
 
 export const registerOidcRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -230,7 +235,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           orgId: true,
           allowedEmailDomains: true,
           manageGroupMemberships: true,
-          jwtSignatureAlgorithm: true
+          jwtSignatureAlgorithm: true,
+          mfaClaimName: true,
+          mfaAmrValues: true
         }).extend({
           clientId: z.string(),
           clientSecret: z.string()
@@ -294,6 +301,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientId: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.clientId),
           clientSecret: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.clientSecret),
           isActive: z.boolean().describe(OidcSSo.UPDATE_CONFIG.isActive),
+          mfaClaimName: OidcMfaClaimNameSchema.describe(OidcSSo.UPDATE_CONFIG.mfaClaimName),
+          mfaAmrValues: OidcMfaAmrValuesSchema.describe(OidcSSo.UPDATE_CONFIG.mfaAmrValues),
           manageGroupMemberships: z.boolean().optional().describe(OidcSSo.UPDATE_CONFIG.manageGroupMemberships),
           jwtSignatureAlgorithm: z
             .nativeEnum(OIDCJWTSignatureAlgorithm)
@@ -315,7 +324,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           orgId: true,
           allowedEmailDomains: true,
           isActive: true,
-          manageGroupMemberships: true
+          manageGroupMemberships: true,
+          mfaClaimName: true,
+          mfaAmrValues: true
         })
       }
     },
@@ -394,6 +405,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientSecret: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientSecret),
           isActive: z.boolean().describe(OidcSSo.CREATE_CONFIG.isActive),
           organizationId: z.string().trim().describe(OidcSSo.CREATE_CONFIG.organizationId),
+          mfaClaimName: OidcMfaClaimNameSchema.describe(OidcSSo.CREATE_CONFIG.mfaClaimName),
+          mfaAmrValues: OidcMfaAmrValuesSchema.describe(OidcSSo.CREATE_CONFIG.mfaAmrValues),
           manageGroupMemberships: z
             .boolean()
             .optional()
