@@ -849,7 +849,7 @@ sessions = client.agent_vault.sessions.list(
 **Parameters:**
 - `scope` (Union[AgentVaultSessionScope, str], optional): whose sessions to list, either `AgentVaultSessionScope.MINE` (`"mine"`) for the identity's own sessions or `AgentVaultSessionScope.ALL` (`"all"`) for every session if the identity is an admin (defaults to `AgentVaultSessionScope.MINE`)
 - `statuses` (List[Union[AgentVaultSessionStatus, str]], optional): the statuses to include, from `AgentVaultSessionStatus.ACTIVE` (`"active"`), `AgentVaultSessionStatus.REVOKED` (`"revoked"`), and `AgentVaultSessionStatus.EXPIRED` (`"expired"`) (defaults to all three)
-- `search` (str, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session), owner name, owner email, or access bundle name
+- `search` (str, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session), owner name, owner email, access bundle name, or the name or email of the user that the session was [created on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
 - `limit` (int, optional): the maximum number of sessions to return, from 1 to 100 (defaults to `20`)
 - `offset` (int, optional): the number of sessions to skip (defaults to `0`)
 
@@ -882,13 +882,34 @@ session = client.agent_vault.sessions.create(
 
 **Parameters:**
 - `access_bundle` (str): the name of the access bundle that the agent can use during the session
-- `ttl` (str, optional): how long the session lasts, as a duration of at least one minute such as `30m`, `8h`, or `7d`, or as `never` for a session that doesn't expire (defaults to `7d`)
+- `ttl` (str, optional): how long the session lasts, as a duration of at least one minute such as `30m`, `8h`, or `7d`, or as `never` for a session that doesn't expire (defaults to `7d`, or to `1h` for a session on behalf of a user)
 - `label` (str, optional): a short description of what the session is for, such as `nightly deploy` (up to 128 characters, without line breaks, tabs, or invisible characters)
+- `on_behalf_of_user_email` (str, optional): the email address of the user that the session is [created on behalf of](#create-a-session-on-behalf-of-a-user) (raises a `ValueError` if you also pass `on_behalf_of_user_id`)
+- `on_behalf_of_user_id` (str, optional): the ID of the user that the session is created on behalf of (raises a `ValueError` if you also pass `on_behalf_of_user_email`)
 
 **Returns:**
 - `CreatedAgentVaultSession`: the new session, with the session token in `token` (Infisical returns the token only once)
 
 To pass `session.token` to the agent, follow the steps in [Start the agent with the session token](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token).
+
+#### Create a session on behalf of a user
+
+If the client logs in as a machine identity with a [delegation](/documentation/platform/agent-vault/sessions-on-behalf-of-users#set-up-a-delegation), the client can create sessions on behalf of the users that the delegation covers. For each of those sessions, the proxy uses the user's [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values) instead of the machine identity's.
+
+<Note>
+  `on_behalf_of_user_email` and `on_behalf_of_user_id` require `infisicalsdk` version 1.1.1 or newer.
+</Note>
+
+```python
+session = client.agent_vault.sessions.create(
+    access_bundle="<access-bundle-name>",
+    on_behalf_of_user_email="<user-email>"
+)
+```
+
+- The session can use an access bundle only if both the user and the machine identity [can use the bundle](/documentation/platform/agent-vault/sessions-on-behalf-of-users#what-the-session-can-reach)
+- The session belongs to the machine identity, so the user can't see the session
+- In each session that the `get`, `list`, `update`, and `revoke` methods return, `onBehalfOf` is the user, or `None` if the session is the machine identity's own
 
 #### Update session label
 
