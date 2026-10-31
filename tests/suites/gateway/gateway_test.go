@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fakes/kubernetes"
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -59,6 +61,31 @@ func TestGateway_Create(t *testing.T) {
 			m.check(t, stored.AuthMethod.Config)
 		})
 	}
+
+	t.Run("should create a gateway that authenticates with kubernetes against the cluster it names", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		cluster := kubernetes.Open(t, fixture.FakenetAdmin(t, tn))
+		name := gatewayName()
+
+		// Action
+		res := createGateway(t, tn.Admin.API, name, map[string]any{
+			"method":            "kubernetes",
+			"kubernetesHost":    kubernetes.Service.URL(),
+			"tokenReviewerJwt":  cluster.ReviewerJWT,
+			"allowedNamespaces": "infisical",
+			"allowedNames":      "gateway",
+		})
+
+		// Assert
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		stored := getGateway(t, tn, decodeGateway(t, res.Body).ID)
+		require.Equal(t, "kubernetes", stored.AuthMethod.Method)
+		require.Equal(t, "infisical", stored.AuthMethod.Config["allowedNamespaces"])
+		require.Equal(t, "gateway", stored.AuthMethod.Config["allowedNames"])
+	})
 
 	invalid := []struct {
 		name       string
