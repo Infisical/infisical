@@ -1,27 +1,3 @@
-### Choosing cluster-wide or namespace-scoped
-
-The installation mode decides whether a resource in one namespace can use credentials from another namespace:
-
-| Mode | Trust boundary | Cross-namespace references | Use when |
-| --- | --- | --- | --- |
-| Cluster-wide (default) | The cluster | Allowed. A resource can reference a service account, `InfisicalAuth`, or secret in any namespace. | You trust everyone who can create operator resources to read secrets in every namespace, such as a platform team that manages authentication from one central namespace. |
-| Namespace-scoped | The namespace | Blocked. The operator only has a Role in the namespace it watches, so the Kubernetes API server rejects the operator's requests for secrets and service account tokens in any other namespace. | Several teams share a cluster and each team owns a namespace. |
-
-To keep teams apart on a shared cluster, install a separate namespace-scoped operator in each team's namespace.
-
-<Accordion title="Blocking cross-namespace references in a cluster-wide installation">
-  If you keep a cluster-wide installation and still want to keep namespaces apart, use an admission policy, such as a [ValidatingAdmissionPolicy](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/), to reject resources that set one of these fields to a namespace other than their own:
-
-  | Resource | Fields |
-  | --- | --- |
-  | `InfisicalAuth` | `spec.kubernetes.serviceAccountRef.namespace`, and the `namespace` of each credential reference: `clientIdRef` and `clientSecretRef` under `spec.universal`, `usernameRef` and `passwordRef` under `spec.ldap`, and `identityIdRef` under every auth method |
-  | `InfisicalStaticSecret` | `spec.infisicalAuthRef.namespace` and `spec.targets[].namespace` |
-  | `InfisicalSecret`, `InfisicalDynamicSecret`, and `InfisicalPushSecret` | `spec.authentication.kubernetesAuth.serviceAccountRef.namespace` |
-  | `InfisicalPushSecret` | `spec.push.secret.secretNamespace` |
-
-  Other fields can also name another namespace, such as `infisicalConnectionRef.namespace`, TLS CA certificate references, and the managed secret references on v1alpha1 resources. These fields don't give access to another namespace's credentials, but add them to the policy if you need full isolation.
-</Accordion>
-
 <Steps>
   <Step title="Add the Helm repository">
     ```bash
@@ -31,7 +7,16 @@ To keep teams apart on a shared cluster, install a separate namespace-scoped ope
   </Step>
 
   <Step title="Install the chart">
-    Install the operator cluster-wide or namespace-scoped. To pick a mode, see [Choosing cluster-wide or namespace-scoped](#choosing-cluster-wide-or-namespace-scoped).
+    Install the operator cluster-wide or namespace-scoped.
+
+    <Accordion title="Choosing cluster-wide or namespace-scoped">
+      The installation mode decides whether a resource in one namespace can use credentials from another namespace:
+
+      | Mode | Cross-namespace references | Use when |
+      | --- | --- | --- |
+      | Cluster-wide (default) | Allowed. The cluster is the trust boundary. | You trust everyone who can create operator resources, such as a platform team that manages authentication from one namespace. |
+      | Namespace-scoped | Blocked. Kubernetes rejects the operator's requests to other namespaces. | Teams share a cluster and each team owns a namespace. Install one operator per team namespace. |
+    </Accordion>
 
     <Tabs>
       <Tab title="Cluster-wide (default)">
