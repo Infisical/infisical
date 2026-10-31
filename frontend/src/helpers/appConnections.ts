@@ -26,6 +26,7 @@ import {
   DatabricksConnectionMethod,
   DaytonaConnectionMethod,
   DbtConnectionMethod,
+  DenoDeployConnectionMethod,
   DevinConnectionMethod,
   FlyioConnectionMethod,
   GcpConnectionMethod,
@@ -691,6 +692,12 @@ export const APP_CONNECTION_MAP: Record<
     description: "Route access requests through ServiceNow approvals.",
     enterprise: true
   },
+  [AppConnection.DenoDeploy]: {
+    name: "Deno Deploy",
+    image: "Deno.svg",
+    category: "HOSTING",
+    description: "App and environment variable access for Deno Deploy."
+  },
   [AppConnection.S3Compatible]: {
     name: "S3-Compatible Storage",
     image: "S3 Compatible.svg",
@@ -836,6 +843,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureDevOpsConnectionMethod.AccessToken:
     case WindmillConnectionMethod.AccessToken:
     case FlyioConnectionMethod.AccessToken:
+    case DenoDeployConnectionMethod.AccessToken:
     case NetlifyConnectionMethod.AccessToken:
     case ConvexConnectionMethod.PersonalAccessToken:
     case HasuraCloudConnectionMethod.AccessToken:

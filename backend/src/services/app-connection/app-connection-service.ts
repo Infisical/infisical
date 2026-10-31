@@ -105,6 +105,8 @@ import { datadogConnectionService } from "./datadog/datadog-connection-service";
 import { ValidateDaytonaConnectionCredentialsSchema } from "./daytona";
 import { ValidateDbtConnectionCredentialsSchema } from "./dbt";
 import { dbtConnectionService } from "./dbt/dbt-connection-service";
+import { ValidateDenoDeployConnectionCredentialsSchema } from "./deno-deploy";
+import { denoDeployConnectionService } from "./deno-deploy/deno-deploy-connection-service";
 import { ValidateDevinConnectionCredentialsSchema } from "./devin";
 import { ValidateDigiCertConnectionCredentialsSchema } from "./digicert/digicert-connection-schemas";
 import { digicertConnectionService } from "./digicert/digicert-connection-service";
@@ -339,6 +341,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.PowerDns]: ValidatePowerDnsConnectionCredentialsSchema,
   [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
   [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
+  [AppConnection.DenoDeploy]: ValidateDenoDeployConnectionCredentialsSchema,
   [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
   [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema,
   [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
@@ -1501,6 +1504,7 @@ export const appConnectionServiceFactory = ({
     heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     render: renderConnectionService(connectAppConnectionById),
     flyio: flyioConnectionService(connectAppConnectionById),
+    denoDeploy: denoDeployConnectionService(connectAppConnectionById),
     triggerDev: triggerDevConnectionService(connectAppConnectionById),
     gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),

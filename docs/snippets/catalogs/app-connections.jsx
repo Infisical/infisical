@@ -536,6 +536,14 @@ export const appConnections = [
     category: "SaaS",
   },
   {
+    name: "Deno Deploy",
+    slug: "deno-deploy",
+    path: "/integrations/app-connections/deno-deploy",
+    description:
+      "Learn how to connect Deno Deploy to sync environment variables from Infisical.",
+    category: "Hosting",
+  },
+  {
     name: "Trigger.dev",
     slug: "trigger-dev",
     path: "/integrations/app-connections/trigger-dev",

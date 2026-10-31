@@ -87,6 +87,7 @@ export enum AppConnection {
   PowerDns = "powerdns",
   Spacelift = "spacelift",
   Daytona = "daytona",
+  DenoDeploy = "deno-deploy",
   Stripe = "stripe",
   Keeper = "keeper",
   HpeIloRedFish = "hpe-ilo",

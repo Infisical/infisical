@@ -40,6 +40,7 @@ import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DatadogConnectionForm } from "./DatadogConnectionForm";
 import { DaytonaConnectionForm } from "./DaytonaConnectionForm";
 import { DbtConnectionForm } from "./DbtConnectionForm";
+import { DenoDeployConnectionForm } from "./DenoDeployConnectionForm";
 import { DevinConnectionForm } from "./DevinConnectionForm";
 import { DigiCertConnectionForm } from "./DigiCertConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
@@ -357,6 +358,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <DaytonaConnectionForm onSubmit={onSubmit} />;
       case AppConnection.ServiceNow:
         return <ServiceNowConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.DenoDeploy:
+        return <DenoDeployConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Cloud66:
@@ -678,6 +681,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DaytonaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.ServiceNow:
         return <ServiceNowConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.DenoDeploy:
+        return <DenoDeployConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Cloud66:

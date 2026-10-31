@@ -348,6 +348,7 @@
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
                       "integrations/secret-syncs/daytona",
+                      "integrations/secret-syncs/deno-deploy",
                       "integrations/secret-syncs/devin",
                       "integrations/secret-syncs/digital-ocean-app-platform",
                       "integrations/secret-syncs/flyio",
@@ -1084,6 +1085,7 @@
                   "integrations/app-connections/databricks",
                   "integrations/app-connections/datadog",
                   "integrations/app-connections/daytona",
+                  "integrations/app-connections/deno-deploy",
                   "integrations/app-connections/dbt",
                   "integrations/app-connections/devin",
                   "integrations/app-connections/digicert",
@@ -1908,6 +1910,18 @@
                           "api-reference/endpoints/app-connections/daytona/create",
                           "api-reference/endpoints/app-connections/daytona/update",
                           "api-reference/endpoints/app-connections/daytona/delete"
+                        ]
+                      },
+                      {
+                        "group": "Deno Deploy",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/deno-deploy/list",
+                          "api-reference/endpoints/app-connections/deno-deploy/available",
+                          "api-reference/endpoints/app-connections/deno-deploy/get-by-id",
+                          "api-reference/endpoints/app-connections/deno-deploy/get-by-name",
+                          "api-reference/endpoints/app-connections/deno-deploy/create",
+                          "api-reference/endpoints/app-connections/deno-deploy/update",
+                          "api-reference/endpoints/app-connections/deno-deploy/delete"
                         ]
                       },
                       {
@@ -3578,6 +3592,20 @@
                           "api-reference/endpoints/secret-syncs/daytona/delete",
                           "api-reference/endpoints/secret-syncs/daytona/sync-secrets",
                           "api-reference/endpoints/secret-syncs/daytona/remove-secrets"
+                        ]
+                      },
+                      {
+                        "group": "Deno Deploy",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/deno-deploy/list",
+                          "api-reference/endpoints/secret-syncs/deno-deploy/get-by-id",
+                          "api-reference/endpoints/secret-syncs/deno-deploy/get-by-name",
+                          "api-reference/endpoints/secret-syncs/deno-deploy/create",
+                          "api-reference/endpoints/secret-syncs/deno-deploy/update",
+                          "api-reference/endpoints/secret-syncs/deno-deploy/delete",
+                          "api-reference/endpoints/secret-syncs/deno-deploy/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/deno-deploy/import-secrets",
+                          "api-reference/endpoints/secret-syncs/deno-deploy/remove-secrets"
                         ]
                       },
                       {

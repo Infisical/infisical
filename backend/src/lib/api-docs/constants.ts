@@ -3156,6 +3156,11 @@ export const AppConnections = {
       organizationId:
         "The Daytona organization the API key belongs to. Resolved from Daytona when the connection is created."
     },
+    DENO_DEPLOY: {
+      accessToken: "The Deno Deploy organization access token used to authenticate with Deno Deploy.",
+      organizationId:
+        "The Deno Deploy organization this token belongs to. Stored with the connection and not sent to Deno Deploy."
+    },
     GITLAB: {
       instanceUrl: "The GitLab instance URL to connect with.",
       accessToken: "The Access Token used to access GitLab.",
@@ -3614,6 +3619,11 @@ export const SecretSyncs = {
     },
     FLYIO: {
       appId: "The ID of the Fly.io app to sync secrets to."
+    },
+    DENO_DEPLOY: {
+      appId: "The ID of the Deno Deploy app to sync secrets to.",
+      appSlug: "The slug of the Deno Deploy app to sync secrets to.",
+      context: "The Deno Deploy deployment context to sync secrets to."
     },
     TRIGGER_DEV: {
       projectRef: "The reference of the Trigger.dev project to sync secrets to.",

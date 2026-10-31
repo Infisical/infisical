@@ -26,6 +26,7 @@ import { registerDatabricksConnectionRouter } from "./databricks-connection-rout
 import { registerDatadogConnectionRouter } from "./datadog-connection-router";
 import { registerDaytonaConnectionRouter } from "./daytona-connection-router";
 import { registerDbtConnectionRouter } from "./dbt-connection-router";
+import { registerDenoDeployConnectionRouter } from "./deno-deploy-connection-router";
 import { registerDevinConnectionRouter } from "./devin-connection-router";
 import { registerDigiCertConnectionRouter } from "./digicert-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
@@ -187,6 +188,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.NutanixPrismCentral]: registerNutanixPrismCentralConnectionRouter,
     [AppConnection.Spacelift]: registerSpaceliftConnectionRouter,
     [AppConnection.Daytona]: registerDaytonaConnectionRouter,
+    [AppConnection.DenoDeploy]: registerDenoDeployConnectionRouter,
     [AppConnection.Stripe]: registerStripeConnectionRouter,
     [AppConnection.Keeper]: registerKeeperConnectionRouter,
     [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter,
