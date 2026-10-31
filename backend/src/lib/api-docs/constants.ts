@@ -2322,6 +2322,28 @@ export const CERTIFICATE_AUTHORITIES = {
     certificate: "The certificate body to import.",
     certificateChain: "The certificate chain to import."
   },
+  IMPORT_CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA to import the cross-signed certificate for.",
+    certificate:
+      "The PEM-encoded cross-signed certificate. It must have the same subject and public key as the CA and be signed by another CA.",
+    certificateChain: "The PEM-encoded certificates of the CA that signed the cross-signed certificate, up to its root."
+  },
+  GET_CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA to get the cross-signed certificate for."
+  },
+  DELETE_CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA to remove the cross-signed certificate from."
+  },
+  CROSS_SIGNED_CERT: {
+    caId: "The ID of the CA the cross-signed certificate belongs to.",
+    certificate: "The PEM-encoded cross-signed certificate.",
+    certificateChain: "The PEM-encoded certificates of the CA that signed the cross-signed certificate, if imported.",
+    issuer: "The distinguished name of the CA that signed the cross-signed certificate.",
+    serialNumber: "The serial number of the cross-signed certificate.",
+    notBefore: "The date and time the cross-signed certificate becomes valid.",
+    notAfter:
+      "The date and time the cross-signed certificate expires. After this, new certificates no longer include it in their chain."
+  },
   ISSUE_CERT: {
     caId: "The ID of the CA to issue the certificate from.",
     certificateTemplateId: "The ID of the certificate template to issue the certificate from.",

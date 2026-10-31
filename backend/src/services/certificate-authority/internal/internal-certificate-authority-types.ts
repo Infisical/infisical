@@ -21,6 +21,7 @@ import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import type { TCaKeySourceServiceFactory } from "../ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "../certificate-authority-cross-signed-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaRenewalType, CaStatus, CaType, InternalCaType } from "../certificate-authority-enums";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
@@ -376,6 +377,19 @@ export type TGetCaCertChainDTO = {
   caCertId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+};
+
+export type TBuildIssuedCertificateChainDTO = {
+  caId: string;
+  caCert: string;
+  caCertChain: string;
+  projectId: string;
+  certificateAuthorityCrossSignedCertDAL: Pick<
+    TCertificateAuthorityCrossSignedCertDALFactory,
+    "findValidInCaHierarchy"
+  >;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };

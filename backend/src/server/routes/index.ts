@@ -334,6 +334,8 @@ import { caKeySourceServiceFactory } from "@app/services/certificate-authority/c
 import { caSigningConfigDALFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-dal";
 import { caSigningConfigServiceFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+import { certificateAuthorityCrossSignedCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cross-signed-cert-dal";
+import { certificateAuthorityCrossSignedCertServiceFactory } from "@app/services/certificate-authority/certificate-authority-cross-signed-cert-service";
 import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
@@ -1925,6 +1927,7 @@ export const registerRoutes = async (
   const caSigningConfigDAL = caSigningConfigDALFactory(db);
   const externalCertificateAuthorityDAL = externalCertificateAuthorityDALFactory(db);
   const certificateAuthorityCertDAL = certificateAuthorityCertDALFactory(db);
+  const certificateAuthorityCrossSignedCertDAL = certificateAuthorityCrossSignedCertDALFactory(db);
   const certificateAuthoritySecretDAL = certificateAuthoritySecretDALFactory(db);
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
   const certificateTemplateDAL = certificateTemplateDALFactory(db);
@@ -3869,6 +3872,7 @@ export const registerRoutes = async (
   const internalCaFns = InternalCertificateAuthorityFns({
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
+    certificateAuthorityCrossSignedCertDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCrlDAL,
     certificateDAL,
@@ -3918,6 +3922,7 @@ export const registerRoutes = async (
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
+    certificateAuthorityCrossSignedCertDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCrlDAL,
     certificateTemplateDAL,
@@ -3936,6 +3941,15 @@ export const registerRoutes = async (
     caSigningConfigDAL,
     usageMeteringService,
     caKeySourceService
+  });
+
+  const certificateAuthorityCrossSignedCertService = certificateAuthorityCrossSignedCertServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthorityCrossSignedCertDAL,
+    projectDAL,
+    kmsService,
+    permissionService
   });
 
   const caAutoRenewalQueue = caAutoRenewalQueueFactory({
@@ -4007,6 +4021,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     internalCertificateAuthorityDAL,
     certificateAuthorityCertDAL,
+    certificateAuthorityCrossSignedCertDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCrlDAL,
     certificatePolicyDAL,
@@ -4557,6 +4572,7 @@ export const registerRoutes = async (
     pkiSubscriberDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
+    certificateAuthorityCrossSignedCertDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCrlDAL,
     certificateDAL,
@@ -4704,6 +4720,7 @@ export const registerRoutes = async (
     pkiTemplatesDAL,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
+    certificateAuthorityCrossSignedCertDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCrlDAL,
     certificateDAL,
@@ -4963,6 +4980,7 @@ export const registerRoutes = async (
     certificateEstV3: certificateEstV3Service,
     certificateAuthority: certificateAuthorityService,
     internalCertificateAuthority: internalCertificateAuthorityService,
+    certificateAuthorityCrossSignedCert: certificateAuthorityCrossSignedCertService,
     caSigningConfig: caSigningConfigService,
     certificateTemplate: certificateTemplateService,
     certificatePolicy: certificatePolicyService,

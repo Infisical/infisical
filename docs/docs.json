@@ -419,6 +419,7 @@
                     "root": "documentation/platform/pki/ca/private-ca",
                     "pages": [
                       "documentation/platform/pki/ca/ca-renewal",
+                      "documentation/platform/pki/ca/cross-signed-certificates",
                       "documentation/platform/pki/ca/crl-distribution",
                       "documentation/platform/pki/ca/ocsp",
                       "documentation/platform/pki/reference/pqc-algorithms"
@@ -4414,6 +4415,14 @@
                             "pages": [
                               "api-reference/endpoints/certificate-authorities/internal/get-auto-renewal",
                               "api-reference/endpoints/certificate-authorities/internal/update-auto-renewal"
+                            ]
+                          },
+                          {
+                            "group": "Cross-signed certificate",
+                            "pages": [
+                              "api-reference/endpoints/certificate-authorities/internal/import-cross-signed-cert",
+                              "api-reference/endpoints/certificate-authorities/internal/get-cross-signed-cert",
+                              "api-reference/endpoints/certificate-authorities/internal/delete-cross-signed-cert"
                             ]
                           }
                         ]

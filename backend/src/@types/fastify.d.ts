@@ -104,6 +104,7 @@ import { TCertManagerInstanceServiceFactory } from "@app/services/cert-manager-i
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { TCaAutoRenewalQueueFactory } from "@app/services/certificate-authority/ca-auto-renewal-queue";
 import { TCaSigningConfigServiceFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-service";
+import { TCertificateAuthorityCrossSignedCertServiceFactory } from "@app/services/certificate-authority/certificate-authority-cross-signed-cert-service";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateCleanupServiceFactory } from "@app/services/certificate-cleanup/certificate-cleanup-service";
@@ -479,6 +480,7 @@ declare module "fastify" {
     pit: TPitServiceFactory;
     secretScanningV2: TSecretScanningV2ServiceFactory;
     internalCertificateAuthority: TInternalCertificateAuthorityServiceFactory;
+    certificateAuthorityCrossSignedCert: TCertificateAuthorityCrossSignedCertServiceFactory;
     pkiTemplate: TPkiTemplatesServiceFactory;
     reminder: TReminderServiceFactory;
     eventBus: TInternalEventBusService;

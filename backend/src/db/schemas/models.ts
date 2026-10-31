@@ -21,6 +21,7 @@ export enum TableName {
   CertificateAuthorityCert = "certificate_authority_certs",
   CertificateAuthoritySecret = "certificate_authority_secret",
   CertificateAuthorityCrl = "certificate_authority_crl",
+  CertificateAuthorityCrossSignedCert = "certificate_authority_cross_signed_certs",
   Certificate = "certificates",
   CertificateBody = "certificate_bodies",
   CertificateRequests = "certificate_requests",

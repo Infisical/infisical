@@ -33,6 +33,19 @@ const CaAutoRenewalResponseSchema = z.object({
   lastRenewalAt: z.date().nullable()
 });
 
+const CROSS_SIGNED_CERT_PEM_MAX_LENGTH = 100_000;
+const CROSS_SIGNED_CERT_CHAIN_PEM_MAX_LENGTH = 500_000;
+
+const CaCrossSignedCertResponseSchema = z.object({
+  caId: z.string().uuid().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.caId),
+  certificate: z.string().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.certificate),
+  certificateChain: z.string().nullable().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.certificateChain),
+  issuer: z.string().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.issuer),
+  serialNumber: z.string().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.serialNumber),
+  notBefore: z.date().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.notBefore),
+  notAfter: z.date().describe(CERTIFICATE_AUTHORITIES.CROSS_SIGNED_CERT.notAfter)
+});
+
 export const registerInternalCertificateAuthorityRouter = async (server: FastifyZodProvider) => {
   registerCertificateAuthorityEndpoints({
     caType: CaType.INTERNAL,
@@ -513,6 +526,159 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
         message: "Successfully imported certificate to CA",
         caId: req.params.caId
       };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:caId/cross-signed-certificate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    schema: {
+      hide: false,
+      operationId: "importCaCrossSignedCertificate",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Import or replace the cross-signed certificate of a CA",
+      params: z.object({
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.IMPORT_CROSS_SIGNED_CERT.caId)
+      }),
+      body: z.object({
+        certificate: z
+          .string()
+          .trim()
+          .min(1)
+          .max(CROSS_SIGNED_CERT_PEM_MAX_LENGTH)
+          .describe(CERTIFICATE_AUTHORITIES.IMPORT_CROSS_SIGNED_CERT.certificate),
+        certificateChain: z
+          .string()
+          .trim()
+          .max(CROSS_SIGNED_CERT_CHAIN_PEM_MAX_LENGTH)
+          .optional()
+          .describe(CERTIFICATE_AUTHORITIES.IMPORT_CROSS_SIGNED_CERT.certificateChain)
+      }),
+      response: {
+        200: z.object({
+          crossSignedCertificate: CaCrossSignedCertResponseSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const { ca, crossSignedCertificate, replacedSerialNumber } =
+        await server.services.certificateAuthorityCrossSignedCert.importCaCrossSignedCert({
+          caId: req.params.caId,
+          certificate: req.body.certificate,
+          certificateChain: req.body.certificateChain,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.IMPORT_CA_CROSS_SIGNED_CERT,
+          metadata: {
+            caId: ca.id,
+            caName: ca.name,
+            issuer: crossSignedCertificate.issuer,
+            serialNumber: crossSignedCertificate.serialNumber,
+            notAfter: crossSignedCertificate.notAfter.toISOString(),
+            ...(replacedSerialNumber && { replacedSerialNumber })
+          }
+        }
+      });
+
+      return { crossSignedCertificate };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:caId/cross-signed-certificate",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    schema: {
+      hide: false,
+      operationId: "getCaCrossSignedCertificate",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Get the cross-signed certificate of a CA",
+      params: z.object({
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.GET_CROSS_SIGNED_CERT.caId)
+      }),
+      response: {
+        200: z.object({
+          crossSignedCertificate: CaCrossSignedCertResponseSchema.nullable()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { crossSignedCertificate } = await server.services.certificateAuthorityCrossSignedCert.getCaCrossSignedCert(
+        {
+          caId: req.params.caId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        }
+      );
+
+      return { crossSignedCertificate };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:caId/cross-signed-certificate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    schema: {
+      hide: false,
+      operationId: "deleteCaCrossSignedCertificate",
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Remove the cross-signed certificate of a CA",
+      params: z.object({
+        caId: z.string().trim().uuid().describe(CERTIFICATE_AUTHORITIES.DELETE_CROSS_SIGNED_CERT.caId)
+      }),
+      response: {
+        200: z.object({
+          crossSignedCertificate: CaCrossSignedCertResponseSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const { ca, crossSignedCertificate } =
+        await server.services.certificateAuthorityCrossSignedCert.deleteCaCrossSignedCert({
+          caId: req.params.caId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.DELETE_CA_CROSS_SIGNED_CERT,
+          metadata: {
+            caId: ca.id,
+            caName: ca.name,
+            issuer: crossSignedCertificate.issuer,
+            serialNumber: crossSignedCertificate.serialNumber,
+            notAfter: crossSignedCertificate.notAfter.toISOString()
+          }
+        }
+      });
+
+      return { crossSignedCertificate };
     }
   });
 
