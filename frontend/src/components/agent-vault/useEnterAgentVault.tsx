@@ -12,7 +12,7 @@ import {
 import { useGetUserProjects, useRequestProjectAccess } from "@app/hooks/api";
 import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
-import { Project } from "@app/hooks/api/projects/types";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 
 export type TEnterAgentVaultOutcome = "entered" | "requesting-access" | "blocked";
 
@@ -37,9 +37,9 @@ export const useEnterAgentVault = () => {
     OrgPermissionProjectActions.RequestAccess,
     OrgPermissionSubjects.Project
   );
-  const isAgentVaultMember = Boolean(
-    currentOrg?.agentVaultProjectId && projects.some((p) => p.id === currentOrg.agentVaultProjectId)
-  );
+  // Matched by type, not by currentOrg.agentVaultProjectId: the org can be cached from before its
+  // Agent Vault project existed, and there is only one Agent Vault project per org.
+  const isAgentVaultMember = projects.some((p) => p.type === ProjectType.AgentVault);
   const needsAccessRequest = !isAgentVaultMember && !isOrgAdmin && canRequestAccess;
 
   const navigateToAgentVault = () => {
@@ -111,6 +111,10 @@ export const useEnterAgentVault = () => {
     try {
       const agentVaultProjectId = await resolveAgentVaultProjectId();
       if (!agentVaultProjectId) return false;
+      if (projects.some((p) => p.id === agentVaultProjectId)) {
+        navigateToAgentVault();
+        return true;
+      }
       await requestProjectAccess.mutateAsync({ projectId: agentVaultProjectId });
       createNotification({
         type: "success",
