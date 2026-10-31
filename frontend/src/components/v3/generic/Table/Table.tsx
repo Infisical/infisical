@@ -163,6 +163,9 @@ const TableRow = React.forwardRef<
         "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
         props.onClick && "cursor-pointer select-none",
         linked && rowLinkContainerClassName,
+        // WebKit ignores position: relative on a <tr>, so the RowLink overlay would escape to the
+        // table and every row would open the last link. A translate makes the row its containing block.
+        linked && "translate-0",
         className
       )}
       {...props}
