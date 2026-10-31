@@ -56,6 +56,7 @@ const isDelegatedApprovalChanged = (
 export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
   projectDAL,
   permissionService,
+  licenseService,
   projectEnvDAL,
   userDAL,
   groupDAL,
@@ -475,6 +476,14 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
     );
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to create access approval policy due to plan restriction. Upgrade plan to create access approval policy."
+      });
+    }
 
     const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApproval;
 
