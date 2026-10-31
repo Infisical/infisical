@@ -16,7 +16,7 @@ type ControlPlane struct {
 // Open mints a reviewer JWT and returns the cluster it reaches.
 func Open(tt *testing.T, adminURL string) *ControlPlane {
 	tt.Helper()
-	reviewer := "reviewer-" + id.Nonce()
+	reviewer := id.Nonce() + "-reviewer"
 	fakenet.Track(tt, adminURL, Service.Host(), reviewer)
 	return &ControlPlane{Scope: fakenet.Open[Cluster](tt, adminURL, Service.Host(), reviewer), ReviewerJWT: reviewer}
 }

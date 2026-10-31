@@ -11,7 +11,6 @@ import (
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
-	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -176,33 +175,6 @@ func TestGatewayForwarding_DynamicSecret(t *testing.T) {
 		require.NoError(t, target.Login(t, username, password))
 	})
 
-	t.Run("should fail the lease once the gateway is revoked", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		target := fixture.OpenPostgresTarget(t, tn)
-		gw, _ := healthyGateway(t, h, tn, startRelay(t, h, tn))
-		created, ds := createDynamicSecret(t, tn, target, map[string]any{"gatewayId": gw.ID})
-		requireStatus(t, http.StatusOK, created.StatusCode(), created.Body)
-		revoked, err := tn.Admin.API.RevokeGatewayAccessWithResponse(t.Context(), gw.ID)
-		require.NoError(t, err)
-		requireStatus(t, http.StatusOK, revoked.StatusCode(), revoked.Body)
-
-		// Action + Assert
-		spec.Why(t, "revoking does not close the agent's open tunnel; the agent drops it once its token is refused")
-		wait.Until(t, "a lease to be refused after the revoke", func() bool {
-			res := ds.lease(t)
-			if res.StatusCode() == http.StatusOK {
-				username, _ := leasedUsername(t, res)
-				target.DropRoleAtCleanup(t, username)
-				return false
-			}
-			requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
-			return true
-		})
-	})
-
 	t.Run("should fail the lease once the gateway's agent stops", func(t *testing.T) {
 		t.Parallel()
 
@@ -283,5 +255,38 @@ func TestGatewayForwarding_Pool(t *testing.T) {
 		// Assert
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
 		require.Equal(t, "Gateway pool has no healthy gateways.", apierr.Message(res.Body))
+	})
+}
+
+// Revoking is documented to disconnect the running gateway, but Infisical keeps handing
+// out connection details for it, and the agent keeps proxying on its open tunnel until
+// it notices its own token was refused (about 30 seconds here). Leases issued in that
+// window reach the target through a revoked gateway.
+func TestGatewayForwarding_KnownIssues(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should refuse a lease through a gateway as soon as it is revoked", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		target := fixture.OpenPostgresTarget(t, tn)
+		gw, _ := healthyGateway(t, h, tn, startRelay(t, h, tn))
+		created, ds := createDynamicSecret(t, tn, target, map[string]any{"gatewayId": gw.ID})
+		requireStatus(t, http.StatusOK, created.StatusCode(), created.Body)
+		revoked, err := tn.Admin.API.RevokeGatewayAccessWithResponse(t.Context(), gw.ID)
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, revoked.StatusCode(), revoked.Body)
+
+		// Action
+		res := ds.lease(t)
+
+		// Assert
+		if res.StatusCode() == http.StatusOK {
+			username, _ := leasedUsername(t, res)
+			target.DropRoleAtCleanup(t, username)
+		}
+		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
 	})
 }

@@ -2,7 +2,6 @@ package machineidentityfed_test
 
 import (
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -124,7 +123,6 @@ func TestKubernetesAuth_Attach(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		fedSkipWhenKubernetesFakeRefusesVersion(t, res.Body)
 		fedRequireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
 		require.Contains(t, apierr.Message(res.Body), "Ensure the service account has the 'system:auth-delegator' ClusterRole binding.")
 		require.NotContains(t, fedAuthMethods(t, tn, identityID), "kubernetes-auth")
@@ -169,18 +167,7 @@ func fedAttachKubernetes(t *testing.T, tn *harness.Tenant, identityID uuid.UUID,
 	t.Helper()
 	res, err := tn.Admin.API.AttachKubernetesAuthWithResponse(t.Context(), identityID.String(), fedKubernetesBindings(cluster))
 	require.NoError(t, err)
-	fedSkipWhenKubernetesFakeRefusesVersion(t, res.Body)
 	require.NotNilf(t, res.JSON200, "attaching Kubernetes auth returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-}
-
-// fedSkipWhenKubernetesFakeRefusesVersion skips while fakes/kubernetes cannot answer the
-// unauthenticated GET /version Infisical sends on attach: the fake scopes by bearer token,
-// so fakenet refuses that request with 501 and every API-mode attach fails.
-func fedSkipWhenKubernetesFakeRefusesVersion(t *testing.T, body []byte) {
-	t.Helper()
-	if strings.Contains(apierr.Message(body), "Kubernetes API returned server error: 501") {
-		t.Skip("fakes/kubernetes answers the unauthenticated GET /version with fakenet's 501, so API-mode attach cannot succeed")
-	}
 }
 
 func fedLoginKubernetes(t *testing.T, tn *harness.Tenant, identityID uuid.UUID, jwt string) *api.LoginWithKubernetesAuthResponse {

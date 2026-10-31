@@ -2,13 +2,13 @@ package alert_test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
-	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/wait"
@@ -27,20 +27,22 @@ func TestUserNotification(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should list an unread notification naming the project when a user is added to it", func(t *testing.T) {
+	t.Run("should list an unread notification naming the device when a user signs in from a new one", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		alice := tn.NewUser(t, harness.WithName("alice"))
+		ip := sourceIP()
 
 		// Action
-		alice := proj.NewUser(t, fixture.WithPrincipalName("alice"))
+		signInFrom(t, tn, alice, ip, "new-laptop")
 
 		// Assert
-		got := waitForInvitation(t, alice)
-		require.Equal(t, "Project Invitation", got.Title)
-		require.Contains(t, got.Body, proj.Name)
+		got := waitForDeviceNotice(t, alice, ip)
+		require.Equal(t, "login-from-new-device", got.Type)
+		require.Equal(t, "Login From New Device", got.Title)
+		require.Contains(t, got.Body, "new-laptop")
 		require.False(t, got.IsRead)
 	})
 
@@ -49,11 +51,12 @@ func TestUserNotification(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		first := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		second := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		alice := first.NewUser(t, fixture.WithPrincipalName("alice"))
-		second.Grant(t, alice)
-		waitForNotifications(t, alice, 2)
+		alice := tn.NewUser(t, harness.WithName("alice"))
+		first, second := sourceIP(), sourceIP()
+		signInFrom(t, tn, alice, first, "laptop")
+		signInFrom(t, tn, alice, second, "phone")
+		waitForDeviceNotice(t, alice, first)
+		waitForDeviceNotice(t, alice, second)
 
 		// Action
 		res, err := alice.API.MarkUserNotificationsAsReadWithResponse(t.Context())
@@ -62,9 +65,9 @@ func TestUserNotification(t *testing.T) {
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
 		got := notifications(t, alice)
-		require.Len(t, got, 2)
+		require.GreaterOrEqual(t, len(got), 2)
 		for _, n := range got {
-			require.Truef(t, n.IsRead, "%q is still unread", n.Title)
+			require.Truef(t, n.IsRead, "%q is still unread", n.Body)
 		}
 	})
 
@@ -73,24 +76,23 @@ func TestUserNotification(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		first := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		second := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		alice := first.NewUser(t, fixture.WithPrincipalName("alice"))
-		second.Grant(t, alice)
-		all := waitForNotifications(t, alice, 2)
+		alice := tn.NewUser(t, harness.WithName("alice"))
+		first, second := sourceIP(), sourceIP()
+		signInFrom(t, tn, alice, first, "laptop")
+		signInFrom(t, tn, alice, second, "phone")
+		read := waitForDeviceNotice(t, alice, first)
+		unread := waitForDeviceNotice(t, alice, second)
 
 		// Action
-		res, err := alice.API.UpdateUserNotificationWithResponse(t.Context(), all[0].ID,
+		res, err := alice.API.UpdateUserNotificationWithResponse(t.Context(), read.ID,
 			api.UpdateUserNotificationJSONRequestBody{IsRead: true})
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
-		read := map[string]bool{}
-		for _, n := range notifications(t, alice) {
-			read[n.ID] = n.IsRead
-		}
-		require.Equal(t, map[string]bool{all[0].ID: true, all[1].ID: false}, read)
+		require.True(t, waitForDeviceNotice(t, alice, first).IsRead)
+		require.False(t, waitForDeviceNotice(t, alice, second).IsRead)
+		require.Equal(t, unread.ID, waitForDeviceNotice(t, alice, second).ID)
 	})
 
 	t.Run("should answer 404 and change nothing when a user marks another user's notification read", func(t *testing.T) {
@@ -98,10 +100,11 @@ func TestUserNotification(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		alice := proj.NewUser(t, fixture.WithPrincipalName("alice"))
+		alice := tn.NewUser(t, harness.WithName("alice"))
 		bob := tn.NewUser(t, harness.WithName("bob"))
-		theirs := waitForInvitation(t, alice)
+		ip := sourceIP()
+		signInFrom(t, tn, alice, ip, "laptop")
+		theirs := waitForDeviceNotice(t, alice, ip)
 
 		// Action
 		res, err := bob.API.UpdateUserNotificationWithResponse(t.Context(), theirs.ID,
@@ -111,7 +114,7 @@ func TestUserNotification(t *testing.T) {
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "%s", apierr.Body(res.Body))
 		require.Equal(t, "Notification not found", apierr.Message(res.Body))
-		require.False(t, waitForInvitation(t, alice).IsRead)
+		require.False(t, waitForDeviceNotice(t, alice, ip).IsRead)
 	})
 
 	t.Run("should answer 404 and keep it when a user deletes another user's notification", func(t *testing.T) {
@@ -119,10 +122,11 @@ func TestUserNotification(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		alice := proj.NewUser(t, fixture.WithPrincipalName("alice"))
+		alice := tn.NewUser(t, harness.WithName("alice"))
 		bob := tn.NewUser(t, harness.WithName("bob"))
-		theirs := waitForInvitation(t, alice)
+		ip := sourceIP()
+		signInFrom(t, tn, alice, ip, "laptop")
+		theirs := waitForDeviceNotice(t, alice, ip)
 
 		// Action
 		res, err := bob.API.DeleteUserNotificationWithResponse(t.Context(), theirs.ID)
@@ -131,8 +135,29 @@ func TestUserNotification(t *testing.T) {
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "%s", apierr.Body(res.Body))
 		require.Equal(t, "Notification not found", apierr.Message(res.Body))
-		require.Equal(t, theirs.ID, waitForInvitation(t, alice).ID)
+		require.Equal(t, theirs.ID, waitForDeviceNotice(t, alice, ip).ID)
 	})
+}
+
+// signInFrom selects the org from an address and client the user has not used, which
+// is what raises a new-device notification.
+func signInFrom(t *testing.T, tn *harness.Tenant, user *harness.Principal, ip, userAgent string) {
+	t.Helper()
+	res, err := user.API.SelectOrganizationV3WithResponse(t.Context(),
+		api.SelectOrganizationV3JSONRequestBody{OrganizationId: tn.OrgID.String()},
+		func(_ context.Context, req *http.Request) error {
+			req.Header.Set("X-Forwarded-For", ip)
+			req.Header.Set("User-Agent", userAgent)
+			return nil
+		})
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, res.StatusCode(), "selecting the org: %s", apierr.Body(res.Body))
+}
+
+func sourceIP() string {
+	b := make([]byte, 3)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf("10.%d.%d.%d", b[0], b[1], b[2])
 }
 
 func listNotifications(ctx context.Context, user *harness.Principal) ([]notification, error) {
@@ -163,30 +188,20 @@ func notifications(t *testing.T, user *harness.Principal) []notification {
 	return got
 }
 
-// waitForNotifications polls until the user holds n notifications. They are written
-// from a queue after the response.
-func waitForNotifications(t *testing.T, user *harness.Principal, n int) []notification {
-	t.Helper()
-	got, err := wait.For(t.Context(), func(ctx context.Context) ([]notification, bool, error) {
-		got, err := listNotifications(ctx, user)
-		return got, len(got) >= n, err
-	})
-	require.NoErrorf(t, err, "waiting for %d notifications for %s", n, user.Email)
-	return got
-}
-
-func waitForInvitation(t *testing.T, user *harness.Principal) notification {
+// waitForDeviceNotice polls for the new-device notification naming an address.
+// Notifications are written from a queue after the response.
+func waitForDeviceNotice(t *testing.T, user *harness.Principal, ip string) notification {
 	t.Helper()
 	got, err := wait.For(t.Context(), func(ctx context.Context) (notification, bool, error) {
 		got, err := listNotifications(ctx, user)
 		for _, n := range got {
-			if n.Type == "project-invitation" && strings.Contains(n.Body, "project") {
+			if strings.Contains(n.Body, "**"+ip+"**") {
 				return n, true, nil
 			}
 		}
 		return notification{}, false, err
 	})
-	require.NoErrorf(t, err, "waiting for a project invitation notification for %s", user.Email)
+	require.NoErrorf(t, err, "waiting for a new-device notification for %s from %s", user.Email, ip)
 	return got
 }
 

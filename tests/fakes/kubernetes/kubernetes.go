@@ -26,8 +26,14 @@ func (s service) Host() string { return s.host }
 // URL is what an identity's kubernetesHost is set to.
 func (s service) URL() string { return "https://" + s.host }
 
+// Scope is the reviewer JWT. Attaching Kubernetes auth probes /version with no
+// credential first, which a real API server answers anonymously; it holds no state, so
+// those probes share one scope.
 func (service) Scope(r *http.Request) (string, bool) {
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if (!ok || token == "") && r.URL.Path == "/version" {
+		return "anonymous-version", true
+	}
 	return token, ok && token != ""
 }
 

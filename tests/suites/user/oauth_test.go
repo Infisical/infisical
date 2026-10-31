@@ -29,13 +29,13 @@ func TestOAuth_Signup(t *testing.T) {
 
 				// Setup
 				tn := h.NewTenant(t)
-				p := newPerson(tn, true)
+				p := fixture.NewOAuthPerson(tn, true)
 
 				// Action
-				res := oauthLogin(t, tn, kind, p)
+				res := fixture.OAuthLogin(t, tn, kind, p)
 
 				// Assert
-				loc := res.redirect(t)
+				loc := res.Redirect(t)
 				require.Equal(t, "/login/select-organization", loc.Path)
 				require.Equal(t, "true", loc.Query().Get("signup_completed"))
 				me := accountOf(t, tn, res).JSON200.User
@@ -53,13 +53,13 @@ func TestOAuth_Signup(t *testing.T) {
 
 				// Setup
 				tn := h.NewTenant(t)
-				p := newPerson(tn, false)
+				p := fixture.NewOAuthPerson(tn, false)
 
 				// Action
-				res := oauthLogin(t, tn, kind, p)
+				res := fixture.OAuthLogin(t, tn, kind, p)
 
 				// Assert
-				loc := res.redirect(t)
+				loc := res.Redirect(t)
 				require.Equal(t, "/signup/sso", loc.Path)
 				signup := claims(t, loc.Query().Get("token"))
 				require.Equal(t, "signupToken", signup["authTokenType"])
@@ -77,13 +77,13 @@ func TestOAuth_Signup(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		p := newPerson(tn, false)
+		p := fixture.NewOAuthPerson(tn, false)
 
 		// Action
-		res := oauthLogin(t, tn, viaGoogle, p)
+		res := fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p)
 
 		// Assert
-		require.Equal(t, "/signup/sso", res.redirect(t).Path)
+		require.Equal(t, "/signup/sso", res.Redirect(t).Path)
 		require.Nil(t, cookieNamed(res.HTTP, "jid"))
 	})
 
@@ -95,9 +95,9 @@ func TestOAuth_Signup(t *testing.T) {
 
 				// Setup
 				tn := h.NewTenant(t)
-				p := newPerson(tn, false)
-				first := oauthLogin(t, tn, kind, p)
-				require.Equal(t, "/signup/sso", first.redirect(t).Path)
+				p := fixture.NewOAuthPerson(tn, false)
+				first := fixture.OAuthLogin(t, tn, kind, p)
+				require.Equal(t, "/signup/sso", first.Redirect(t).Path)
 				mailed := sso.VerificationCode(t, tn, p.Email)
 
 				// Action
@@ -108,8 +108,8 @@ func TestOAuth_Signup(t *testing.T) {
 				require.Equal(t, http.StatusBadRequest, wrong.StatusCode())
 				require.Equal(t, "Invalid token", apierr.Message(wrong.Body))
 				require.Equalf(t, http.StatusOK, right.StatusCode(), "completing: %s", apierr.Body(right.Body))
-				again := oauthLogin(t, tn, kind, p)
-				require.Equal(t, "/login/select-organization", again.redirect(t).Path)
+				again := fixture.OAuthLogin(t, tn, kind, p)
+				require.Equal(t, "/login/select-organization", again.Redirect(t).Path)
 				require.Equal(t, strings.ToLower(p.Email), *accountOf(t, tn, again).JSON200.User.Email)
 			})
 		}
@@ -124,11 +124,11 @@ func TestOAuth_Signup(t *testing.T) {
 		unverifiedPrimary, verified := tn.Email("x-"+id.Short()), tn.Email("x-"+id.Short())
 
 		// Action
-		withPrimary := startOAuth(t, tn, viaGitHub).finish(t, viaGitHub, consentGitHub(t, tn, newAccountID(),
+		withPrimary := fixture.StartOAuth(t, tn, fixture.OAuthGitHub).Finish(t, fixture.OAuthGitHub, fixture.OAuthConsentGitHub(t, tn, fixture.NewOAuthAccountID(),
 			githubfake.Email{Email: secondary, Verified: true},
 			githubfake.Email{Email: primary, Primary: true, Verified: true},
 		))
-		withoutPrimary := startOAuth(t, tn, viaGitHub).finish(t, viaGitHub, consentGitHub(t, tn, newAccountID(),
+		withoutPrimary := fixture.StartOAuth(t, tn, fixture.OAuthGitHub).Finish(t, fixture.OAuthGitHub, fixture.OAuthConsentGitHub(t, tn, fixture.NewOAuthAccountID(),
 			githubfake.Email{Email: unverifiedPrimary, Primary: true},
 			githubfake.Email{Email: verified, Verified: true},
 		))
@@ -152,14 +152,14 @@ func TestOAuth_ExistingAccount(t *testing.T) {
 				// Setup
 				tn := h.NewTenant(t)
 				alice := tn.NewUser(t)
-				p := newPerson(tn, true)
+				p := fixture.NewOAuthPerson(tn, true)
 				p.Email = alice.Email
 
 				// Action
-				res := oauthLogin(t, tn, kind, p)
+				res := fixture.OAuthLogin(t, tn, kind, p)
 
 				// Assert
-				require.Equal(t, "/login/select-organization", res.redirect(t).Path)
+				require.Equal(t, "/login/select-organization", res.Redirect(t).Path)
 				me := accountOf(t, tn, res).JSON200.User
 				require.Equal(t, alice.ID, me.Id)
 				require.Contains(t, *me.AuthMethods, "email")
@@ -177,14 +177,14 @@ func TestOAuth_ExistingAccount(t *testing.T) {
 				// Setup
 				tn := h.NewTenant(t)
 				alice := tn.NewUser(t)
-				p := newPerson(tn, false)
+				p := fixture.NewOAuthPerson(tn, false)
 				p.Email = alice.Email
 
 				// Action
-				res := oauthLogin(t, tn, kind, p)
+				res := fixture.OAuthLogin(t, tn, kind, p)
 
 				// Assert
-				require.Equal(t, "/signup/sso", res.redirect(t).Path)
+				require.Equal(t, "/signup/sso", res.Redirect(t).Path)
 				require.Nil(t, cookieNamed(res.HTTP, "jid"))
 				me, err := alice.API.GetCurrentUserWithResponse(t.Context())
 				require.NoError(t, err)
@@ -202,15 +202,15 @@ func TestOAuth_ExistingAccount(t *testing.T) {
 
 				// Setup
 				tn := h.NewTenant(t)
-				p := newPerson(tn, true)
-				before := accountOf(t, tn, oauthLogin(t, tn, kind, p)).JSON200.User
+				p := fixture.NewOAuthPerson(tn, true)
+				before := accountOf(t, tn, fixture.OAuthLogin(t, tn, kind, p)).JSON200.User
 				p.Email = tn.Email("renamed-" + id.Short())
 
 				// Action
-				res := oauthLogin(t, tn, kind, p)
+				res := fixture.OAuthLogin(t, tn, kind, p)
 
 				// Assert
-				require.Equal(t, "/login/select-organization", res.redirect(t).Path)
+				require.Equal(t, "/login/select-organization", res.Redirect(t).Path)
 				after := accountOf(t, tn, res).JSON200.User
 				require.Equal(t, before.Id, after.Id)
 				require.Equal(t, strings.ToLower(p.Email), *after.Email)
@@ -228,20 +228,20 @@ func TestOAuth_ExistingAccount(t *testing.T) {
 				// Setup
 				tn := h.NewTenant(t)
 				bob := tn.NewUser(t)
-				p := newPerson(tn, true)
+				p := fixture.NewOAuthPerson(tn, true)
 				original := p.Email
-				before := accountOf(t, tn, oauthLogin(t, tn, kind, p)).JSON200.User
+				before := accountOf(t, tn, fixture.OAuthLogin(t, tn, kind, p)).JSON200.User
 				p.Email = bob.Email
 
 				// Action
-				res := oauthLogin(t, tn, kind, p)
+				res := fixture.OAuthLogin(t, tn, kind, p)
 
 				// Assert
 				require.Equalf(t, http.StatusBadRequest, res.Status, "body: %s", apierr.Body(res.Body))
 				require.Contains(t, apierr.Message(res.Body), "already in use by another Infisical user")
 				require.Nil(t, cookieNamed(res.HTTP, "jid"))
 				p.Email = original
-				after := accountOf(t, tn, oauthLogin(t, tn, kind, p)).JSON200.User
+				after := accountOf(t, tn, fixture.OAuthLogin(t, tn, kind, p)).JSON200.User
 				require.Equal(t, before.Id, after.Id)
 				require.Equal(t, strings.ToLower(original), *after.Email)
 				me, err := bob.API.GetCurrentUserWithResponse(t.Context())
@@ -264,18 +264,18 @@ func TestOAuth_Callback(t *testing.T) {
 
 				// Setup
 				tn := h.NewTenant(t)
-				p := newPerson(tn, true)
-				b := startOAuth(t, tn, kind)
-				cp := consent(t, tn, kind, p)
+				p := fixture.NewOAuthPerson(tn, true)
+				b := fixture.StartOAuth(t, tn, kind)
+				cp := fixture.OAuthConsent(t, tn, kind, p)
 
 				// Action
-				res, err := b.callback(t.Context(), kind, cp.Code, "forged-"+id.Short(), b.cookies...)
+				res, err := b.Callback(t.Context(), kind, cp.Code, "forged-"+id.Short(), b.Cookies...)
 
 				// Assert
 				require.NoError(t, err)
 				requireNoSession(t, res)
 				require.False(t, cp.State(t).Redeemed, "Infisical redeemed a code that came back with a forged state")
-				require.Equal(t, "true", oauthLogin(t, tn, kind, p).redirect(t).Query().Get("signup_completed"))
+				require.Equal(t, "true", fixture.OAuthLogin(t, tn, kind, p).Redirect(t).Query().Get("signup_completed"))
 			})
 		}
 	})
@@ -288,18 +288,18 @@ func TestOAuth_Callback(t *testing.T) {
 
 				// Setup
 				tn := h.NewTenant(t)
-				p := newPerson(tn, true)
-				b := startOAuth(t, tn, kind)
-				cp := consent(t, tn, kind, p)
+				p := fixture.NewOAuthPerson(tn, true)
+				b := fixture.StartOAuth(t, tn, kind)
+				cp := fixture.OAuthConsent(t, tn, kind, p)
 
 				// Action
-				res, err := b.callback(t.Context(), kind, cp.Code, b.state)
+				res, err := b.Callback(t.Context(), kind, cp.Code, b.State)
 
 				// Assert
 				require.NoError(t, err)
 				requireNoSession(t, res)
 				require.False(t, cp.State(t).Redeemed, "Infisical redeemed a code without the browser's session")
-				require.Equal(t, "true", oauthLogin(t, tn, kind, p).redirect(t).Query().Get("signup_completed"))
+				require.Equal(t, "true", fixture.OAuthLogin(t, tn, kind, p).Redirect(t).Query().Get("signup_completed"))
 			})
 		}
 	})
@@ -312,13 +312,13 @@ func TestOAuth_Callback(t *testing.T) {
 
 				// Setup
 				tn := h.NewTenant(t)
-				p := newPerson(tn, true)
+				p := fixture.NewOAuthPerson(tn, true)
 
 				// Action
-				res := oauthLogin(t, tn, kind, p, withCallbackPort("5555"))
+				res := fixture.OAuthLogin(t, tn, kind, p, fixture.WithOAuthCallbackPort("5555"))
 
 				// Assert
-				loc := res.redirect(t)
+				loc := res.Redirect(t)
 				require.Equal(t, "/login/select-organization", loc.Path)
 				require.Equal(t, "5555", loc.Query().Get("callback_port"))
 			})
@@ -339,14 +339,14 @@ func TestOAuth_Google(t *testing.T) {
 		other := h.NewTenant(t)
 		alice := tn.NewUser(t)
 		invite(t, other, alice.Email)
-		p := newPerson(tn, true)
+		p := fixture.NewOAuthPerson(tn, true)
 		p.Email = alice.Email
 
 		// Action
-		res := oauthLogin(t, tn, viaGoogle, p, withOrgSlug(other.OrgSlug))
+		res := fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p, fixture.WithOAuthOrgSlug(other.OrgSlug))
 
 		// Assert
-		require.Equal(t, "/login/select-organization", res.redirect(t).Path)
+		require.Equal(t, "/login/select-organization", res.Redirect(t).Path)
 		require.Equal(t, "accepted", fixture.MembershipOf(t, other, alice.Email).Status)
 	})
 
@@ -357,9 +357,9 @@ func TestOAuth_Google(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		alice := tn.NewUser(t)
-		p := newPerson(tn, true)
+		p := fixture.NewOAuthPerson(tn, true)
 		p.Email = alice.Email
-		google := sessionFrom(t, tn, oauthLogin(t, tn, viaGoogle, p))
+		google := sessionFrom(t, tn, fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p))
 		first := selectOrg(t, tn, google, tn.OrgID.String())
 		require.Equalf(t, http.StatusOK, first.StatusCode(), "selecting with Google: %s", apierr.Body(first.Body))
 		enforced := updateOrg(t, tn, api.UpdateOrganizationJSONRequestBody{GoogleSsoAuthEnforced: new(true)})
@@ -367,12 +367,12 @@ func TestOAuth_Google(t *testing.T) {
 
 		// Action
 		password := selectOrg(t, tn, loggedIn(t, tn, alice.Email), tn.OrgID.String())
-		viaGoogleAgain := selectOrg(t, tn, sessionFrom(t, tn, oauthLogin(t, tn, viaGoogle, p)), tn.OrgID.String())
+		googleAgain := selectOrg(t, tn, sessionFrom(t, tn, fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p)), tn.OrgID.String())
 
 		// Assert
 		require.Equal(t, http.StatusForbidden, password.StatusCode())
 		require.Equal(t, "Google SSO is enforced for this organization. Please use Google SSO to login.", apierr.Message(password.Body))
-		require.Equalf(t, http.StatusOK, viaGoogleAgain.StatusCode(), "selecting with Google: %s", apierr.Body(viaGoogleAgain.Body))
+		require.Equalf(t, http.StatusOK, googleAgain.StatusCode(), "selecting with Google: %s", apierr.Body(googleAgain.Body))
 	})
 }
 
@@ -385,29 +385,17 @@ func TestOAuth_KnownIssues(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		b := startOAuth(t, tn, viaGitHub)
-		cp := consentGitHub(t, tn, newAccountID())
+		b := fixture.StartOAuth(t, tn, fixture.OAuthGitHub)
+		cp := fixture.OAuthConsentGitHub(t, tn, fixture.NewOAuthAccountID())
 		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 		defer cancel()
 
 		// Action
-		res, err := b.callback(ctx, viaGitHub, cp.Code, b.state, b.cookies...)
+		res, err := b.Callback(ctx, fixture.OAuthGitHub, cp.Code, b.State, b.Cookies...)
 
 		// Assert
 		require.NoError(t, err, "the callback never answered")
 		require4xx(t, res.Status, res.Body)
 		require.Nil(t, cookieNamed(res.HTTP, "jid"))
 	})
-}
-
-// requireNoSession checks a callback started no session: it either refused outright or
-// sent the browser to the provider error page.
-func requireNoSession(t *testing.T, res callbackResult) {
-	t.Helper()
-	require.Nil(t, cookieNamed(res.HTTP, "jid"))
-	if res.Status == http.StatusFound {
-		require.Equal(t, "/login/provider/error", res.redirect(t).Path)
-		return
-	}
-	require4xx(t, res.Status, res.Body)
 }
