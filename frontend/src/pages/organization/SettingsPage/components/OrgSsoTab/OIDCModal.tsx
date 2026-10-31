@@ -333,7 +333,11 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                     <Field>
                       <FieldLabel>Configuration Type</FieldLabel>
                       <Tabs value={value} onValueChange={onChange}>
-                        <TabsList variant="filled" className="grid w-full grid-cols-2">
+                        <TabsList
+                          variant="filled"
+                          aria-label="Configuration type"
+                          className="w-full"
+                        >
                           <TabsTrigger value={ConfigurationType.DISCOVERY_URL}>
                             Discovery URL
                           </TabsTrigger>
