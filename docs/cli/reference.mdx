@@ -1624,7 +1624,27 @@ Print an environment's secrets in a file format such as `.env` or JSON, for tool
 
 `dotenv` writes each secret as `KEY='value'`, and `dotenv-export` adds `export` in front. Neither escapes quotes inside values. `dotenv-eval` also writes `export` statements, but quotes each value so the output is safe to load with `eval` or `source`. No format escapes secret names, so load output into a shell only when every name is a valid shell variable name.
 
-`--template` takes a Go template that fetches secrets with the functions the [Infisical Agent](/integrations/platforms/infisical-agent#available-secret-template-functions) provides, such as `listSecrets` and `getSecretByName`.
+Use `--template` when the built-in output formats don't match the file your application expects. The template uses Go's [`text/template`](https://pkg.go.dev/text/template) syntax and Infisical's secret template functions.
+
+Create a file named `secrets.tmpl` that renders each secret as an unquoted `KEY=value` line:
+
+```text
+{{- with listSecrets "<project-id>" "dev" "/" }}
+{{- range . }}
+{{ .Key }}={{ .Value }}
+{{- end }}
+{{- end }}
+```
+
+Render the template with the CLI:
+
+```bash
+infisical sm export --template=./secrets.tmpl
+```
+
+When you pass `--template`, the template chooses the project, environment, and folder. Every other export flag except `--token` is ignored. Use `--token` when you need to provide a machine identity access token instead of using your saved login.
+
+The [Infisical Agent template function reference](/integrations/platforms/infisical-agent#available-secret-template-functions) also covers `listSecretsByProjectSlug`, `getSecretByName`, and `dynamicSecret`.
 
 </CLICommand>
 
