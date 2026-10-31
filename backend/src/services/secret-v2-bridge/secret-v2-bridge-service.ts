@@ -31,7 +31,6 @@ import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/c
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
-import { hasPostgresConstraintViolation } from "@app/lib/errors/postgres";
 import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
@@ -98,7 +97,8 @@ import {
   fnUpdateSecretLinkedReferences,
   generatePaths,
   recursivelyGetSecretPaths,
-  reshapeBridgeSecret
+  reshapeBridgeSecret,
+  throwIfDuplicateSharedSecret
 } from "./secret-v2-bridge-fns";
 import {
   SecretUpdateMode,
@@ -197,18 +197,6 @@ type TSecretV2BridgeServiceFactoryDep = {
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
-
-// Concurrent creates of one shared secret can all pass the existence check; this index rejects all but one.
-const SHARED_SECRET_KEY_UNIQUE_INDEX = "uq_secrets_v2_key_folder_id_shared";
-
-const throwIfDuplicateSharedSecret =
-  (message: string) =>
-  (err: unknown): never => {
-    if (hasPostgresConstraintViolation(err, DatabaseErrorCode.UniqueViolation, SHARED_SECRET_KEY_UNIQUE_INDEX)) {
-      throw new BadRequestError({ message });
-    }
-    throw err;
-  };
 
 /*
  * This service is a bridge from our old architecture towards the new architecture
@@ -2412,15 +2400,13 @@ export const secretV2BridgeServiceFactory = ({
       return modifiedSecretsInDB;
     };
 
-    const newSecrets = providedTx
-      ? await executeBulkInsert(providedTx)
-      : await secretDAL
-          .transaction(executeBulkInsert)
-          .catch(
-            throwIfDuplicateSharedSecret(
-              `One or more of these secrets already exist in path '${secretPath}' of environment '${environment}'`
-            )
-          );
+    const newSecrets = await (
+      providedTx ? executeBulkInsert(providedTx) : secretDAL.transaction(executeBulkInsert)
+    ).catch(
+      throwIfDuplicateSharedSecret(
+        `One or more of these secrets already exist in path '${secretPath}' of environment '${environment}'`
+      )
+    );
 
     if (!skipPostProcessing) {
       await dispatchSecretCreateSideEffects({
