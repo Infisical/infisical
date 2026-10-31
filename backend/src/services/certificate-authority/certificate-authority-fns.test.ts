@@ -11,7 +11,8 @@ import {
   buildOcspResponderUrl,
   createDistinguishedName,
   extractDnParts,
-  signatureAlgorithmToAlgCfg
+  signatureAlgorithmToAlgCfg,
+  validateCrossSignedCertificate
 } from "./certificate-authority-fns";
 
 // Helper to access properties on the union return type
@@ -360,6 +361,7 @@ describe("buildAuthorityInfoAccessExtension", () => {
 describe("buildIssuedCertificateChain", () => {
   const SIGNING_ALGORITHM = { name: "ECDSA", hash: "SHA-256" };
   const PROJECT_ID = "project-1";
+  const CA_ID = "ca-1";
 
   const generateKeys = () =>
     crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
@@ -477,16 +479,17 @@ describe("buildIssuedCertificateChain", () => {
     caCertChain: string;
     crossSignedCerts: TCertificateAuthorityCrossSignedCerts[];
   }) => {
-    const findValidByPublicKeyFingerprints = vi.fn().mockResolvedValue(crossSignedCerts);
+    const findValidInCaHierarchy = vi.fn().mockResolvedValue(crossSignedCerts);
     const decryptWithKmsKey = vi
       .fn()
       .mockResolvedValue(async ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => Buffer.from(cipherTextBlob));
 
     const chain = await buildIssuedCertificateChain({
+      caId: CA_ID,
       caCert,
       caCertChain,
       projectId: PROJECT_ID,
-      certificateAuthorityCrossSignedCertDAL: { findValidByPublicKeyFingerprints },
+      certificateAuthorityCrossSignedCertDAL: { findValidInCaHierarchy },
       projectDAL: {
         findOne: vi.fn().mockResolvedValue({
           id: PROJECT_ID,
@@ -499,7 +502,7 @@ describe("buildIssuedCertificateChain", () => {
       kmsService: { decryptWithKmsKey, generateKmsKey: vi.fn() } as never
     });
 
-    return { chain, findValidByPublicKeyFingerprints, decryptWithKmsKey };
+    return { chain, findValidInCaHierarchy, decryptWithKmsKey };
   };
 
   const subjectsOf = (chain: string) =>
@@ -521,7 +524,7 @@ describe("buildIssuedCertificateChain", () => {
 
     expect(intermediateResult.chain).toBe(`${intermediate}\n${infisicalRoot}`.trim());
     expect(rootResult.chain).toBe(infisicalRoot.trim());
-    expect(intermediateResult.findValidByPublicKeyFingerprints).toHaveBeenCalledWith(PROJECT_ID, expect.any(Array));
+    expect(intermediateResult.findValidInCaHierarchy).toHaveBeenCalledWith(CA_ID, expect.any(Array));
     expect(intermediateResult.decryptWithKmsKey).not.toHaveBeenCalled();
   });
 
@@ -572,5 +575,181 @@ describe("buildIssuedCertificateChain", () => {
     });
 
     expect(chain).toBe(infisicalRoot.trim());
+  });
+});
+
+describe("validateCrossSignedCertificate", () => {
+  const SIGNING_ALGORITHM = { name: "ECDSA", hash: "SHA-256" };
+
+  const generateKeys = () =>
+    crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+      "sign",
+      "verify"
+    ]) as Promise<CryptoKeyPair>;
+
+  const createCaCert = async ({
+    subject,
+    issuer,
+    publicKey,
+    signingKey,
+    pathLength,
+    keyUsages = x509.KeyUsageFlags.keyCertSign
+  }: {
+    subject: string;
+    issuer: string;
+    publicKey: CryptoKey;
+    signingKey: CryptoKey;
+    pathLength?: number;
+    keyUsages?: number;
+  }) =>
+    (
+      await x509.X509CertificateGenerator.create({
+        serialNumber: "01",
+        subject,
+        issuer,
+        notBefore: new Date(Date.now() - 60 * 1000),
+        notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        publicKey,
+        signingKey,
+        signingAlgorithm: SIGNING_ALGORITHM,
+        extensions: [
+          new x509.BasicConstraintsExtension(true, pathLength, true),
+          new x509.KeyUsagesExtension(keyUsages, true)
+        ]
+      })
+    ).toString("pem");
+
+  let rootKeys: CryptoKeyPair;
+  let legacyRootKeys: CryptoKeyPair;
+  let legacyIntermediateKeys: CryptoKeyPair;
+  let infisicalRoot: string;
+  let legacyRoot: string;
+  let legacyIntermediate: string;
+
+  beforeAll(async () => {
+    rootKeys = await generateKeys();
+    legacyRootKeys = await generateKeys();
+    legacyIntermediateKeys = await generateKeys();
+
+    infisicalRoot = await createCaCert({
+      subject: "CN=Corp Root CA",
+      issuer: "CN=Corp Root CA",
+      publicKey: rootKeys.publicKey,
+      signingKey: rootKeys.privateKey
+    });
+    legacyRoot = await createCaCert({
+      subject: "CN=Legacy Root CA",
+      issuer: "CN=Legacy Root CA",
+      publicKey: legacyRootKeys.publicKey,
+      signingKey: legacyRootKeys.privateKey
+    });
+    legacyIntermediate = await createCaCert({
+      subject: "CN=Legacy Issuing CA",
+      issuer: "CN=Legacy Root CA",
+      publicKey: legacyIntermediateKeys.publicKey,
+      signingKey: legacyRootKeys.privateKey
+    });
+  });
+
+  const crossSignRoot = (
+    signingKey: CryptoKey,
+    issuer: string,
+    options: { pathLength?: number; keyUsages?: number } = {}
+  ) =>
+    createCaCert({
+      subject: "CN=Corp Root CA",
+      issuer,
+      publicKey: rootKeys.publicKey,
+      signingKey,
+      ...options
+    });
+
+  it("accepts a copy signed by an old root that has the same name as the CA", async () => {
+    const sameNameLegacyKeys = await generateKeys();
+    const sameNameLegacyRoot = await createCaCert({
+      subject: "CN=Corp Root CA",
+      issuer: "CN=Corp Root CA",
+      publicKey: sameNameLegacyKeys.publicKey,
+      signingKey: sameNameLegacyKeys.privateKey
+    });
+    const crossSigned = await crossSignRoot(sameNameLegacyKeys.privateKey, "CN=Corp Root CA");
+
+    const { crossSignedCertObj } = await validateCrossSignedCertificate({
+      caCertificate: infisicalRoot,
+      caCertificateChain: "",
+      certificate: crossSigned,
+      certificateChain: sameNameLegacyRoot
+    });
+
+    expect(crossSignedCertObj.issuer).toBe("CN=Corp Root CA");
+  });
+
+  it("rejects the CA's own self-signed certificate", async () => {
+    await expect(
+      validateCrossSignedCertificate({
+        caCertificate: infisicalRoot,
+        caCertificateChain: "",
+        certificate: infisicalRoot
+      })
+    ).rejects.toThrow("self-signed");
+  });
+
+  it("rejects a copy with a shorter path length than the CA", async () => {
+    const crossSigned = await crossSignRoot(legacyRootKeys.privateKey, "CN=Legacy Root CA", { pathLength: 0 });
+
+    await expect(
+      validateCrossSignedCertificate({
+        caCertificate: infisicalRoot,
+        caCertificateChain: "",
+        certificate: crossSigned
+      })
+    ).rejects.toThrow("fewer CA levels");
+  });
+
+  it("rejects a copy that can't sign certificates", async () => {
+    const crossSigned = await crossSignRoot(legacyRootKeys.privateKey, "CN=Legacy Root CA", {
+      keyUsages: x509.KeyUsageFlags.digitalSignature
+    });
+
+    await expect(
+      validateCrossSignedCertificate({
+        caCertificate: infisicalRoot,
+        caCertificateChain: "",
+        certificate: crossSigned
+      })
+    ).rejects.toThrow("can't sign certificates");
+  });
+
+  it("rejects a chain whose upper certificate didn't sign the one below it", async () => {
+    const otherRootKeys = await generateKeys();
+    const otherRoot = await createCaCert({
+      subject: "CN=Legacy Root CA",
+      issuer: "CN=Legacy Root CA",
+      publicKey: otherRootKeys.publicKey,
+      signingKey: otherRootKeys.privateKey
+    });
+    const crossSigned = await crossSignRoot(legacyIntermediateKeys.privateKey, "CN=Legacy Issuing CA");
+
+    await expect(
+      validateCrossSignedCertificate({
+        caCertificate: infisicalRoot,
+        caCertificateChain: "",
+        certificate: crossSigned,
+        certificateChain: `${legacyIntermediate}\n${otherRoot}`
+      })
+    ).rejects.toThrow("Certificate 2 in the chain didn't sign certificate 1");
+  });
+
+  it("accepts a copy with a complete, ordered chain", async () => {
+    const crossSigned = await crossSignRoot(legacyIntermediateKeys.privateKey, "CN=Legacy Issuing CA");
+
+    const { crossSignedCertChainPem } = await validateCrossSignedCertificate({
+      caCertificate: infisicalRoot,
+      caCertificateChain: "",
+      certificate: crossSigned,
+      certificateChain: `${legacyIntermediate}\n${legacyRoot}`
+    });
+
+    expect(crossSignedCertChainPem).toContain("BEGIN CERTIFICATE");
   });
 });

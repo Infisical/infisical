@@ -12,21 +12,33 @@ export type TCertificateAuthorityCrossSignedCertDALFactory = ReturnType<
 export const certificateAuthorityCrossSignedCertDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.CertificateAuthorityCrossSignedCert);
 
-  const findValidByPublicKeyFingerprints = async (projectId: string, publicKeyFingerprints: string[]) => {
-    const now = new Date();
-    const crossSignedCerts = await db(TableName.CertificateAuthorityCrossSignedCert)
-      .join(
-        TableName.CertificateAuthority,
-        `${TableName.CertificateAuthority}.id`,
-        `${TableName.CertificateAuthorityCrossSignedCert}.caId`
-      )
-      .where(`${TableName.CertificateAuthority}.projectId`, projectId)
-      .whereIn(`${TableName.CertificateAuthorityCrossSignedCert}.publicKeyFingerprint`, publicKeyFingerprints)
-      .where(`${TableName.CertificateAuthorityCrossSignedCert}.notBefore`, "<=", now)
-      .where(`${TableName.CertificateAuthorityCrossSignedCert}.notAfter`, ">", now)
-      .select(selectAllTableCols(TableName.CertificateAuthorityCrossSignedCert));
+  const findValidInCaHierarchy = async (caId: string, publicKeyFingerprints: string[]) => {
+    try {
+      const now = new Date();
+      const crossSignedCerts = await db
+        .withRecursive("ca_hierarchy", (cte) => {
+          void cte
+            .select("caId", "parentCaId")
+            .from(TableName.InternalCertificateAuthority)
+            .where("caId", caId)
+            .union((builder) => {
+              void builder
+                .select("ica.caId", "ica.parentCaId")
+                .from({ ica: TableName.InternalCertificateAuthority })
+                .innerJoin("ca_hierarchy", "ca_hierarchy.parentCaId", "ica.caId");
+            });
+        })
+        .from(TableName.CertificateAuthorityCrossSignedCert)
+        .join("ca_hierarchy", "ca_hierarchy.caId", `${TableName.CertificateAuthorityCrossSignedCert}.caId`)
+        .whereIn(`${TableName.CertificateAuthorityCrossSignedCert}.publicKeyFingerprint`, publicKeyFingerprints)
+        .where(`${TableName.CertificateAuthorityCrossSignedCert}.notBefore`, "<=", now)
+        .where(`${TableName.CertificateAuthorityCrossSignedCert}.notAfter`, ">", now)
+        .select(selectAllTableCols(TableName.CertificateAuthorityCrossSignedCert));
 
-    return crossSignedCerts;
+      return crossSignedCerts as TCertificateAuthorityCrossSignedCerts[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindValidCaCrossSignedCertsInCaHierarchy" });
+    }
   };
 
   const findByCaIdForUpdate = async (
@@ -45,7 +57,7 @@ export const certificateAuthorityCrossSignedCertDALFactory = (db: TDbClient) => 
 
   return {
     ...orm,
-    findValidByPublicKeyFingerprints,
+    findValidInCaHierarchy,
     findByCaIdForUpdate
   };
 };

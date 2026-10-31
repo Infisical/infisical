@@ -113,7 +113,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       });
     }
 
-    const { caCert } = await getCaCertChain({
+    const { caCert, caCertChain } = await getCaCertChain({
       caCertId: ca.internalCa.activeCaCertId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
@@ -123,6 +123,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
 
     const { crossSignedCertObj, crossSignedCertChainPem } = await validateCrossSignedCertificate({
       caCertificate: caCert,
+      caCertificateChain: caCertChain,
       certificate,
       certificateChain
     });

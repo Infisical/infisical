@@ -79,9 +79,9 @@ The import fails if any of the following is true:
 - The subject or the public key doesn't match the CA
 - The certificate's subject key identifier doesn't match the CA's
 - The certificate is self-signed or has expired
-- The certificate isn't a CA certificate
+- The certificate isn't a CA certificate, allows fewer CA levels below it than the CA, or can't sign certificates
 - The certificate is the CA's own certificate rather than the cross-signed certificate the old CA signed
-- The first certificate in **Certificate Chain** didn't sign the certificate
+- The certificates in **Certificate Chain** aren't CA certificates in order, each signed by the next one
 
 ### Sign the CSR with OpenSSL
 
@@ -97,7 +97,7 @@ openssl x509 -req -in <ca-name>.csr \
 
 ## Certificate chains with a cross-signed certificate
 
-Certificates issued while the cross-signed certificate is valid carry a chain where the cross-signed certificate takes the place of the CA's own certificate, followed by the certificate chain you imported. This applies to every way a certificate is issued or renewed, including the API, ACME, EST, and SCEP. If the cross-signed certificate's validity period starts in the future, the CA adds it to chains only from that date.
+Certificates issued while the cross-signed certificate is valid carry a chain where the cross-signed certificate takes the place of the CA's own certificate, followed by the certificate chain you imported. This applies to every way a certificate is issued or renewed, including the API, ACME, EST, SCEP, and signing an external intermediate CA. EST and SCEP return only the issued certificate, so devices that enroll through them build the chain from the CA certificates those protocols return, which don't include the cross-signed certificate. If the cross-signed certificate's validity period starts in the future, the CA adds it to chains only from that date.
 
 If you cross-sign a root CA, a certificate from an intermediate CA under it carries this chain:
 

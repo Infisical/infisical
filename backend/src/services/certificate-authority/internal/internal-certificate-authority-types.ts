@@ -382,12 +382,13 @@ export type TGetCaCertChainDTO = {
 };
 
 export type TBuildIssuedCertificateChainDTO = {
+  caId: string;
   caCert: string;
   caCertChain: string;
   projectId: string;
   certificateAuthorityCrossSignedCertDAL: Pick<
     TCertificateAuthorityCrossSignedCertDALFactory,
-    "findValidByPublicKeyFingerprints"
+    "findValidInCaHierarchy"
   >;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;

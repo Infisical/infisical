@@ -51,7 +51,7 @@ type TInternalCertificateAuthorityFnsDeps = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthorityCrossSignedCertDAL: Pick<
     TCertificateAuthorityCrossSignedCertDALFactory,
-    "findValidByPublicKeyFingerprints"
+    "findValidInCaHierarchy"
   >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;

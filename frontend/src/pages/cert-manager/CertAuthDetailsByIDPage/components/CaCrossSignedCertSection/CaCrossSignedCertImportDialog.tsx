@@ -73,10 +73,7 @@ const checkCrossSignedCert = (certificatePem: string, caCertPem: string, caName:
   const isCa = Boolean(cert.getExtension(x509.BasicConstraintsExtension)?.ca);
 
   const getSignerItem = (): TCheckItem => {
-    if (cert.issuer === cert.subject) {
-      return { isPassed: false, text: "Self-signed", isFixedByCsr: true };
-    }
-    if (cert.issuer === caCert.issuer) {
+    if (cert.equal(caCert)) {
       return {
         isPassed: false,
         text: "This is the CA's own certificate. Import the cross-signed certificate your old CA signed."

@@ -197,12 +197,17 @@ const hasSamePublicKey = (a: x509.X509Certificate, b: x509.X509Certificate) =>
 const isSameCertificateIdentity = (a: x509.X509Certificate, b: x509.X509Certificate) =>
   a.subject === b.subject && hasSamePublicKey(a, b);
 
+const isSignedBy = (cert: x509.X509Certificate, signerCert: x509.X509Certificate) =>
+  cert.verify({ publicKey: signerCert.publicKey, signatureOnly: true }).catch(() => false);
+
 export const validateCrossSignedCertificate = async ({
   caCertificate,
+  caCertificateChain,
   certificate,
   certificateChain
 }: {
   caCertificate: string;
+  caCertificateChain: string;
   certificate: string;
   certificateChain?: string;
 }) => {
@@ -243,21 +248,45 @@ export const validateCrossSignedCertificate = async ({
     }
   }
 
-  if (crossSignedCertObj.issuer === crossSignedCertObj.subject) {
+  if (await isSignedBy(crossSignedCertObj, crossSignedCertObj)) {
     throw new BadRequestError({
       message: "This certificate is self-signed. Have the old CA sign the CSR from this CA."
     });
   }
 
-  if (crossSignedCertObj.issuer === caCertObj.issuer) {
+  const [caParentCertObj] = parsePemCertificateChain(caCertificateChain) ?? [];
+  const isCaOwnCertificate =
+    Buffer.from(crossSignedCertObj.rawData).equals(Buffer.from(caCertObj.rawData)) ||
+    (caParentCertObj !== undefined && (await isSignedBy(crossSignedCertObj, caParentCertObj)));
+  if (isCaOwnCertificate) {
     throw new BadRequestError({
       message: "This is the CA's own certificate. Import the cross-signed certificate your old CA signed."
     });
   }
 
-  if (!crossSignedCertObj.getExtension(x509.BasicConstraintsExtension)?.ca) {
+  const basicConstraints = crossSignedCertObj.getExtension(x509.BasicConstraintsExtension);
+  if (!basicConstraints?.ca) {
     throw new BadRequestError({
       message: "This isn't a CA certificate. Have the old CA sign the CSR as a CA certificate."
+    });
+  }
+
+  const caPathLength = caCertObj.getExtension(x509.BasicConstraintsExtension)?.pathLength;
+  if (
+    basicConstraints.pathLength !== undefined &&
+    (caPathLength === undefined || basicConstraints.pathLength < caPathLength)
+  ) {
+    throw new BadRequestError({
+      message:
+        "This certificate allows fewer CA levels below it than this CA. Have the old CA keep the path length from the CSR."
+    });
+  }
+
+  const keyUsages = crossSignedCertObj.getExtension(x509.KeyUsagesExtension);
+  // eslint-disable-next-line no-bitwise
+  if (keyUsages && !(keyUsages.usages & x509.KeyUsageFlags.keyCertSign)) {
+    throw new BadRequestError({
+      message: "This certificate can't sign certificates. Have the old CA include the Certificate Sign key usage."
     });
   }
 
@@ -275,13 +304,36 @@ export const validateCrossSignedCertificate = async ({
   if (chainCertObjs.length) {
     const [issuerCertObj] = chainCertObjs;
     const isSignedByIssuer =
-      issuerCertObj.subject === crossSignedCertObj.issuer &&
-      (await crossSignedCertObj.verify({ publicKey: issuerCertObj.publicKey, signatureOnly: true }).catch(() => false));
+      issuerCertObj.subject === crossSignedCertObj.issuer && (await isSignedBy(crossSignedCertObj, issuerCertObj));
 
     if (!isSignedByIssuer) {
       throw new BadRequestError({
         message:
           "The first certificate in the chain didn't sign this certificate. Start the chain with the old CA that signed it."
+      });
+    }
+
+    const nonCaIndex = chainCertObjs.findIndex(
+      (chainCertObj) => !chainCertObj.getExtension(x509.BasicConstraintsExtension)?.ca
+    );
+    if (nonCaIndex !== -1) {
+      throw new BadRequestError({
+        message: `Certificate ${nonCaIndex + 1} in the chain isn't a CA certificate. Paste only the old CA's certificates up to its root.`
+      });
+    }
+
+    const chainLinks = await Promise.all(
+      chainCertObjs
+        .slice(1)
+        .map(
+          async (signerCertObj, index) =>
+            chainCertObjs[index].issuer === signerCertObj.subject && isSignedBy(chainCertObjs[index], signerCertObj)
+        )
+    );
+    const brokenLinkIndex = chainLinks.indexOf(false);
+    if (brokenLinkIndex !== -1) {
+      throw new BadRequestError({
+        message: `Certificate ${brokenLinkIndex + 2} in the chain didn't sign certificate ${brokenLinkIndex + 1}. Paste the old CA's certificates in order, up to its root.`
       });
     }
   }
@@ -665,6 +717,7 @@ export const getCaCertChain = async ({
   });
 
   return {
+    caId: caCert.caId,
     caCert: caCertObj.toString("pem"),
     caCertChain: decryptedChain.toString("utf-8"),
     serialNumber: caCertObj.serialNumber
@@ -672,6 +725,7 @@ export const getCaCertChain = async ({
 };
 
 export const buildIssuedCertificateChain = async ({
+  caId,
   caCert,
   caCertChain,
   projectId,
@@ -683,8 +737,8 @@ export const buildIssuedCertificateChain = async ({
 
   const chainCertObjs = parsePemCertificateChain(defaultChain) ?? [];
 
-  const crossSignedCerts = await certificateAuthorityCrossSignedCertDAL.findValidByPublicKeyFingerprints(
-    projectId,
+  const crossSignedCerts = await certificateAuthorityCrossSignedCertDAL.findValidInCaHierarchy(
+    caId,
     chainCertObjs.map(getPublicKeyFingerprint)
   );
   if (!crossSignedCerts.length) return defaultChain;
@@ -730,8 +784,8 @@ export const getIssuedCaCertChain = async ({
   certificateAuthorityCrossSignedCertDAL,
   projectDAL,
   kmsService
-}: TGetCaCertChainDTO & Omit<TBuildIssuedCertificateChainDTO, "caCert" | "caCertChain">) => {
-  const { caCert, caCertChain } = await getCaCertChain({
+}: TGetCaCertChainDTO & Omit<TBuildIssuedCertificateChainDTO, "caId" | "caCert" | "caCertChain">) => {
+  const { caId, caCert, caCertChain } = await getCaCertChain({
     caCertId,
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
@@ -740,6 +794,7 @@ export const getIssuedCaCertChain = async ({
   });
 
   const certificateChainPem = await buildIssuedCertificateChain({
+    caId,
     caCert,
     caCertChain,
     projectId,

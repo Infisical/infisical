@@ -142,7 +142,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   >;
   certificateAuthorityCrossSignedCertDAL: Pick<
     TCertificateAuthorityCrossSignedCertDALFactory,
-    "findValidByPublicKeyFingerprints"
+    "findValidInCaHierarchy"
   >;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne" | "primaryNode">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
@@ -1549,10 +1549,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       ]
     });
 
-    const { caCert: issuingCaCertificate, caCertChain } = await getCaCertChain({
+    const {
+      caCert: issuingCaCertificate,
+      caCertChain,
+      certificateChainPem
+    } = await getIssuedCaCertChain({
       caCertId: ca.internalCa.activeCaCertId,
+      projectId: ca.projectId,
       certificateAuthorityDAL,
       certificateAuthorityCertDAL,
+      certificateAuthorityCrossSignedCertDAL,
       projectDAL,
       kmsService
     });
@@ -1560,7 +1566,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     return {
       certificate: intermediateCert.toString("pem"),
       issuingCaCertificate,
-      certificateChain: `${issuingCaCertificate}\n${caCertChain}`.trim(),
+      certificateChain: isInternal ? `${issuingCaCertificate}\n${caCertChain}`.trim() : certificateChainPem,
       serialNumber: intermediateCert.serialNumber,
       ca: expandInternalCa(ca)
     };
@@ -1577,6 +1583,13 @@ export const internalCertificateAuthorityServiceFactory = ({
     const isInternal = "isInternal" in params && params.isInternal === true;
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+
+    if (ca.internalCa.type === InternalCaType.ROOT) {
+      throw new BadRequestError({
+        message:
+          "Root CAs sign their own certificate, so you can't import one. To have another CA sign this CA, import a cross-signed certificate instead."
+      });
+    }
 
     if (!isInternal) {
       const { actor, actorId, actorAuthMethod, actorOrgId } = params;
