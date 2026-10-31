@@ -298,7 +298,11 @@ const parseCertificateChain = (certificateChain: string): string[] => {
 const isSelfSignedCertificate = (certificatePem: string) => {
   try {
     const certObj = new x509.X509Certificate(certificatePem);
-    return certObj.subject === certObj.issuer;
+    if (certObj.subject !== certObj.issuer) return false;
+
+    const authorityKeyId = certObj.getExtension(x509.AuthorityKeyIdentifierExtension)?.keyId;
+    const subjectKeyId = certObj.getExtension(x509.SubjectKeyIdentifierExtension)?.keyId;
+    return !authorityKeyId || !subjectKeyId || authorityKeyId.toLowerCase() === subjectKeyId.toLowerCase();
   } catch {
     return false;
   }

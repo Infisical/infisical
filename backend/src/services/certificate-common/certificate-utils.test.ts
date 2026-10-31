@@ -93,6 +93,32 @@ describe("root CA stripping", () => {
       );
     });
 
+    it("keeps a trailing cross-signed certificate whose old root has the same name", async () => {
+      const rootKeys = await generateKeys();
+      const sameNameLegacyKeys = await generateKeys();
+      const sameNameCopy = (
+        await x509.X509CertificateGenerator.create({
+          serialNumber: "03",
+          subject: "CN=Corp Root CA",
+          issuer: "CN=Corp Root CA",
+          notBefore,
+          notAfter,
+          publicKey: rootKeys.publicKey,
+          signingKey: sameNameLegacyKeys.privateKey,
+          signingAlgorithm: SIGNING_ALGORITHM,
+          extensions: [
+            new x509.BasicConstraintsExtension(true, undefined, true),
+            await x509.SubjectKeyIdentifierExtension.create(rootKeys.publicKey),
+            await x509.AuthorityKeyIdentifierExtension.create(sameNameLegacyKeys.publicKey)
+          ]
+        })
+      ).toString("pem");
+
+      expect(removeRootCaFromChain([intermediate, sameNameCopy].join("\n"))).toBe(
+        [intermediate, sameNameCopy].join("\n")
+      );
+    });
+
     it("returns an empty string for a chain of only a root", () => {
       expect(removeRootCaFromChain(infisicalRoot)).toBe("");
     });

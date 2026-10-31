@@ -978,6 +978,7 @@ export const internalCertificateAuthorityServiceFactory = ({
             },
             {
               activeCaCertId: newCaCert.id,
+              serialNumber: cert.serialNumber,
               notBefore: notBeforeDate,
               notAfter: new Date(notAfter)
             },
@@ -1109,6 +1110,7 @@ export const internalCertificateAuthorityServiceFactory = ({
             },
             {
               activeCaCertId: newCaCert.id,
+              serialNumber: intermediateCert.serialNumber,
               notBefore: notBeforeDate,
               notAfter: new Date(notAfter)
             },
@@ -1737,7 +1739,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           notBefore: new Date(certObj.notBefore),
           notAfter: new Date(certObj.notAfter),
           serialNumber: certObj.serialNumber,
-          parentCaId: parentCa?.id,
+          parentCaId: parentCaId ?? parentCa?.id,
           activeCaCertId: newCaCert.id
         },
         tx
