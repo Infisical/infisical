@@ -599,7 +599,10 @@ export const samlConfigServiceFactory = ({
     );
 
     if (!claimed) {
-      logger.warn({ samlConfigId, assertionIdHash }, "Rejected a SAML assertion that was already used");
+      logger.warn(
+        { samlConfigId, assertionIdHash },
+        `Rejected a SAML assertion that was already used [samlConfigId=${samlConfigId}] [assertionIdHash=${assertionIdHash}]`
+      );
       throw new BadRequestError({
         message: "This SAML response was already used. Sign in again through your identity provider."
       });
