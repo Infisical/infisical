@@ -60,7 +60,6 @@ const saml = (
 describe("matchIdpMfaSignal for SAML", () => {
   test.each([
     ["MobileTwoFactorContract", "urn:oasis:names:tc:SAML:2.0:ac:classes:MobileTwoFactorContract"],
-    ["TimeSyncToken", "urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken"],
     ["Entra ID passkey (SmartcardPKI)", "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI"],
     ["REFEDS MFA profile", "https://refeds.org/profile/mfa"],
     ["Entra ID multipleauthn context", MULTIPLEAUTHN]
@@ -74,6 +73,7 @@ describe("matchIdpMfaSignal for SAML", () => {
     ["Password", "urn:oasis:names:tc:SAML:2.0:ac:classes:Password"],
     ["possession-only Smartcard", "urn:oasis:names:tc:SAML:2.0:ac:classes:Smartcard"],
     ["possession-only SoftwarePKI", "urn:oasis:names:tc:SAML:2.0:ac:classes:SoftwarePKI"],
+    ["possession-only TimeSyncToken", "urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken"],
     ["unspecified", "urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified"]
   ])("rejects the single-factor %s context class", (_, classRef) => {
     expect(saml([classRef]).verified).toBe(false);

@@ -10,14 +10,13 @@ const SAML_PROVIDER_MFA_SIGNAL_ATTRIBUTES: Record<string, string> = {
 // RFC 8176 value for a completed multi-factor login; Okta, Entra ID, Auth0, Google and Duo all emit it.
 const DEFAULT_OIDC_MFA_CLAIM_VALUES = ["mfa"];
 
-// Only classes whose definition asserts two factors: SmartcardPKI is a card plus a PIN and TimeSyncToken a
-// PIN plus a token code, alongside MobileTwoFactorContract, the REFEDS MFA profile and Entra ID's
-// satisfied-MFA class. Possession-only classes such as Smartcard and SoftwarePKI, and single-factor ones such
-// as PasswordProtectedTransport and MobileTwoFactorUnregistered, are deliberately absent; an org that knows
-// its IdP only issues them after MFA adds them to `mfaAuthnContexts`.
+// Only classes whose definition asserts two factors: SmartcardPKI's schema requires a card plus an
+// ActivationPin, alongside MobileTwoFactorContract, the REFEDS MFA profile and Entra ID's satisfied-MFA class.
+// Possession-only classes such as Smartcard, SoftwarePKI and TimeSyncToken (its schema requires only the token),
+// and single-factor ones such as PasswordProtectedTransport and MobileTwoFactorUnregistered, are deliberately
+// absent; an org that knows its IdP only issues them after MFA adds them to `mfaAuthnContexts`.
 const DEFAULT_SAML_MFA_AUTHN_CONTEXTS = [
   "urn:oasis:names:tc:SAML:2.0:ac:classes:MobileTwoFactorContract",
-  "urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken",
   "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI",
   "https://refeds.org/profile/mfa",
   "http://schemas.microsoft.com/claims/multipleauthn"

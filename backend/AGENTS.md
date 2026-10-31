@@ -303,7 +303,7 @@ Token detection logic in `inject-identity.ts` checks `x-api-key` header first, t
 org's MFA enforcement with the MFA the IdP already performed. The SAML and OIDC callbacks derive one verdict
 per login with `matchIdpMfaSignal` (`services/auth/idp-mfa-signal.ts`): the OIDC claim named by
 `oidc_configs.mfaClaimName` contains `mfa`, the SAML `AuthnContextClassRef` is a class whose definition asserts
-two factors (possession-only classes such as `Smartcard` and `SoftwarePKI` are not defaults), or the
+two factors (possession-only classes such as `Smartcard`, `SoftwarePKI` and `TimeSyncToken` are not defaults), or the
 attribute named by `saml_configs.mfaSignalAttribute` contains `mfa` or `multipleauthn`. A null attribute name
 means the provider's default: Entra ID's `authnmethodsreferences` for `azure-saml`, because Entra reports a push
 or TOTP login as `Password` in `AuthnContextClassRef` and puts `multipleauthn` only there, and `amr` for every
