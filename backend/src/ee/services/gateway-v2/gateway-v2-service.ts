@@ -139,6 +139,9 @@ export const gatewayV2ServiceFactory = ({
       if (orgGatewayConfigV2) return orgGatewayConfigV2;
 
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgGatewayV2Init(orgId)]);
+      // Re-read under the lock: a request that waited on it must not create a second one.
+      const lockedOrgGatewayConfigV2 = await orgGatewayConfigV2DAL.findOne({ orgId }, tx);
+      if (lockedOrgGatewayConfigV2) return lockedOrgGatewayConfigV2;
 
       // generate root CA
       const rootCaKeyAlgorithm = CertKeyAlgorithm.RSA_2048;
@@ -1200,6 +1203,12 @@ export const gatewayV2ServiceFactory = ({
       }
 
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.GatewayPamSessionKey(gateway.id)]);
+      // Re-read under the lock: a request that waited on it must return the key the first one
+      // stored rather than replace it.
+      const lockedGateway = await gatewayV2DAL.findById(gateway.id, tx);
+      if (lockedGateway?.encryptedPamSessionKey) {
+        return decryptor({ cipherTextBlob: lockedGateway.encryptedPamSessionKey });
+      }
 
       const newPamSessionKey = crypto.randomBytes(32);
       const { cipherTextBlob: encryptedPamSessionKey } = encryptor({ plainText: newPamSessionKey });
