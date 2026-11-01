@@ -32,6 +32,7 @@ import {
   Toggle
 } from "@app/components/v3";
 import {
+  BillingV2Bands,
   BillingV2Cadence,
   BillingV2CatalogProduct,
   BillingV2CompareRow,
@@ -43,6 +44,8 @@ import {
 } from "@app/hooks/api";
 
 import {
+  bandRangeLabel,
+  bandRateLabel,
   byDisplayOrder,
   cadencePeriod,
   cadenceWord,
@@ -52,6 +55,7 @@ import {
   fmtMoney,
   fmtMoneyCents,
   isMeteredCadence,
+  meteredUsageCaption,
   unitForCount,
   unitPrice
 } from "../billing-v2-format";
@@ -62,7 +66,14 @@ import { ActiveBadge, DimensionMeter, ProductIcon } from "./shared";
 import { UpgradeView } from "./UpgradeView";
 
 // prefix/metered carry the usage-based framing for metered dims; absent for per_unit and base prices.
-type PriceLine = { amount: string; unit: string; prefix?: string; metered?: boolean };
+type PriceLine = {
+  amount: string;
+  unit: string;
+  prefix?: string;
+  metered?: boolean;
+  bands?: BillingV2Bands;
+  noun?: string;
+};
 
 // The plan's headline price for a cadence: a base fee, else the first priced dimension's rate.
 const planHeadlinePrice = (plan: BillingV2Plan, cadence: BillingV2Cadence): number => {
@@ -100,6 +111,17 @@ const dimPriceLine = (
       ? `/ ${dim.noun} / ${perMonth ? "month" : cadenceWord(cadence)}`
       : `per ${dim.noun} / ${perMonth ? "mo" : cadenceWordShort(cadence)}`;
   const line: PriceLine = { amount: fmtMoneyCents(amount), unit, metered };
+  if (metered && dim.bands && dim.bands.tiers.length > 1) {
+    // Banded usage reads as its table, not one rate; the headline names the first paid band.
+    const paidIndex = dim.bands.tiers.findIndex((band) => band.unitPrice > 0 || band.flatFee > 0);
+    const paid = dim.bands.tiers[paidIndex >= 0 ? paidIndex : 0];
+    line.amount = bandRateLabel(paid, dim.noun);
+    line.unit = "/ month";
+    line.prefix = dim.bands.mode === "volume" ? "Volume pricing, from" : "Usage in bands, from";
+    line.bands = dim.bands;
+    line.noun = dim.noun;
+    return line;
+  }
   if (metered && dim.included > 0) {
     line.prefix = `First ${dim.included.toLocaleString()} ${unitForCount(dim.noun, dim.included)} included, then`;
   }
@@ -116,6 +138,20 @@ const PriceLineView = ({ line, headline }: { line: PriceLine; headline?: boolean
       <span className="text-xs text-muted">{line.unit}</span>
       {line.metered && <Badge variant="neutral">Usage-based</Badge>}
     </div>
+    {line.bands && (
+      <div className="mt-1 flex flex-col gap-0.5">
+        {line.bands.tiers.map((band, index) => (
+          <div
+            // eslint-disable-next-line react/no-array-index-key
+            key={index}
+            className="flex justify-between gap-3 text-xs text-muted tabular-nums"
+          >
+            <span>{bandRangeLabel(line.bands as BillingV2Bands, index)}</span>
+            <span className="text-foreground">{bandRateLabel(band, line.noun ?? "unit")}</span>
+          </div>
+        ))}
+      </div>
+    )}
   </div>
 );
 
@@ -384,7 +420,15 @@ const CurrentUsageCard = ({
       {dims.length > 0 && (
         <div className="flex flex-col gap-3">
           {dims.map((dim) => (
-            <DimensionMeter key={dim.key} dim={dim} color={color} />
+            <div key={dim.key} className="flex flex-col gap-1">
+              <DimensionMeter dim={dim} color={color} />
+              {dim.metered && dim.usage && (
+                <span className="text-xs text-muted">
+                  This period ({dim.usage.periodStart} – {dim.usage.periodEnd})
+                  {meteredUsageCaption(dim) ? `: ${meteredUsageCaption(dim)}` : ""}
+                </span>
+              )}
+            </div>
           ))}
         </div>
       )}
