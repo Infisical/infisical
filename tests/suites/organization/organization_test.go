@@ -33,8 +33,8 @@ func TestOrganization_Create(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		require.NotEqualf(t, http.StatusOK, res.StatusCode(),
-			"tenant %s read tenant %s's plan", mine.OrgSlug, theirs.OrgSlug)
+		requireStatus(t, http.StatusForbidden, res.StatusCode(), res.Body)
+		require.Contains(t, string(res.Body), "belongs to a different organization")
 	})
 
 	t.Run("should refuse a read when the organization does not exist", func(t *testing.T) {
@@ -48,7 +48,8 @@ func TestOrganization_Create(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		require.NotEqual(t, http.StatusOK, res.StatusCode(), "an organization that does not exist returned a plan")
+		requireStatus(t, http.StatusForbidden, res.StatusCode(), res.Body)
+		require.Contains(t, string(res.Body), "belongs to a different organization")
 	})
 
 	t.Run("should make the creator admin", func(t *testing.T) {

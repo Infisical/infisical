@@ -135,6 +135,27 @@ func TestLdapAuth_Attach(t *testing.T) {
 		require.NotContains(t, fedAuthMethods(t, tn, identityID), "ldap-auth")
 	})
 
+	t.Run("should refuse a bind DN the directory does not know and store nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		dir := fedNewDirectory(t, tn)
+		identityID := fedNewIdentity(t, tn)
+		config := fedLdapConfig(dir, dir.BindPassword)
+		config["bindDN"] = "cn=nobody," + dir.BaseDN
+
+		// Action
+		res, err := tn.Admin.API.AttachLdapAuthWithBodyWithResponse(t.Context(), identityID.String(), "application/json", fedJSON(t, config))
+
+		// Assert
+		require.NoError(t, err)
+		fedRequireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.Equal(t, "Failed to connect to LDAP server. Please ensure that the LDAP server is running and your credentials are correct.",
+			apierr.Message(res.Body))
+		require.NotContains(t, fedAuthMethods(t, tn, identityID), "ldap-auth")
+	})
+
 	t.Run("should refuse attaching when the plan does not include LDAP and store nothing", func(t *testing.T) {
 		t.Parallel()
 

@@ -141,7 +141,8 @@ func TestMachineIdentity_RoleChange(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
-		waitForStatus(t, http.StatusForbidden, func() (int, []byte) { return createGroupAs(t, identity.API) })
+		status, body = createGroupAs(t, identity.API)
+		requireStatus(t, http.StatusForbidden, status, body)
 	})
 
 	t.Run("should apply an upgraded org role without a new login", func(t *testing.T) {

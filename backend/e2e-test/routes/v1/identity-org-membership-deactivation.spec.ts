@@ -1,4 +1,4 @@
-import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
@@ -6,6 +6,7 @@ import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 // directly: it is the same path a future route would take, and it owns the revoke and restore hooks
 // that keep cached token verdicts honest.
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
+import { createProjectGroup, deleteGroups } from "e2e-test/testUtils/groups";
 import { createIdentityActor } from "e2e-test/testUtils/identities";
 
 type TMembershipIdentityService = {
@@ -72,16 +73,23 @@ describe("Machine identity org membership deactivation", () => {
 
   test("an identity whose org membership is deactivated cannot be added to a project", async () => {
     const identity = await createIdentityActor({ orgId, authToken, role: OrgMembershipRole.Member });
+    const active = await createIdentityActor({ orgId, authToken, role: OrgMembershipRole.Member });
     await setActive(orgId, identity.identityId, false);
+    const addToProject = (identityId: string) =>
+      testServer.inject({
+        method: "POST",
+        url: `/api/v1/projects/${projectId}/memberships/identities/${identityId}`,
+        headers: { authorization: `Bearer ${authToken}` },
+        body: { roles: [{ role: ProjectMembershipRole.Viewer }] }
+      });
 
-    const res = await testServer.inject({
-      method: "POST",
-      url: `/api/v1/projects/${projectId}/memberships/identities/${identity.identityId}`,
-      headers: { authorization: `Bearer ${authToken}` },
-      body: { roles: [{ role: ProjectMembershipRole.Viewer }] }
-    });
+    expect((await addToProject(active.identityId)).statusCode).toBe(200);
+    const res = await addToProject(identity.identityId);
 
     expect(res.statusCode).toBe(400);
+    expect(res.json().message).toBe(
+      `Machine identity '${identity.identityId}' is not an active member of this organization`
+    );
     const members = await testServer.inject({
       method: "GET",
       url: `/api/v1/projects/${projectId}/memberships/identities`,
@@ -90,5 +98,29 @@ describe("Machine identity org membership deactivation", () => {
     expect(
       (members.json().identityMemberships as { identityId: string }[]).some((m) => m.identityId === identity.identityId)
     ).toBe(false);
+  });
+
+  test("an identity whose org membership is deactivated gets no access through a group", async () => {
+    const identity = await createIdentityActor({ orgId, authToken, role: OrgMembershipRole.Member });
+    const group = await createProjectGroup({ orgId, projectId, userIds: [] });
+    await testDb(TableName.IdentityGroupMembership).insert({ identityId: identity.identityId, groupId: group.id });
+    const readProject = () =>
+      testServer.inject({
+        method: "GET",
+        url: `/api/v1/projects/${projectId}`,
+        headers: { authorization: `Bearer ${identity.authToken}` }
+      });
+
+    try {
+      expect((await readProject()).statusCode).toBe(200);
+
+      await setActive(orgId, identity.identityId, false);
+
+      const refused = await readProject();
+      expect(refused.statusCode).toBe(401);
+      expect(refused.json().message).toBe("Failed to authorize: Identity is not a member of the organization");
+    } finally {
+      await deleteGroups([group.id]);
+    }
   });
 });

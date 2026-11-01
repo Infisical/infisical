@@ -11,6 +11,7 @@ import (
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -191,6 +192,7 @@ func TestGatewayForwarding_DynamicSecret(t *testing.T) {
 
 		// Assert
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.Contains(t, apierr.Message(res.Body), "Failed to establish gateway mTLS")
 	})
 }
 
@@ -215,13 +217,17 @@ func TestGatewayForwarding_Pool(t *testing.T) {
 		return poolID, agents, ids
 	}
 
-	t.Run("should fail over to the healthy member when one member's agent is stopped", func(t *testing.T) {
+	t.Run("should keep serving through the pool while a stopped member still looks healthy", func(t *testing.T) {
 		t.Parallel()
+		spec.Why(t, `Infisical has not noticed the stopped member, so it can still select it: every
+			call succeeding means a call that lands on it is retried on the live member. Which
+			member served a call is not observable over HTTP; the retry itself is unit tested in
+			gateway-pool-failover.test.ts.`)
 
 		// Setup
 		tn := h.NewTenant(t)
 		target := fixture.OpenPostgresTarget(t, tn)
-		poolID, agents, _ := pooled(t, tn)
+		poolID, agents, ids := pooled(t, tn)
 		agents[0].Stop(t)
 
 		// Action
@@ -233,6 +239,9 @@ func TestGatewayForwarding_Pool(t *testing.T) {
 
 		// Assert
 		require.Equal(t, []int{http.StatusOK, http.StatusOK, http.StatusOK, http.StatusOK}, statuses)
+		stopped := getGateway(t, tn, ids[0])
+		require.NotNil(t, stopped.HeartbeatTTL)
+		require.Positive(t, *stopped.HeartbeatTTL, "the stopped member was already marked down, so it was never selectable")
 	})
 
 	t.Run("should answer that the pool has no healthy gateways when every member is down", func(t *testing.T) {
@@ -258,10 +267,8 @@ func TestGatewayForwarding_Pool(t *testing.T) {
 	})
 }
 
-// Revoking is documented to disconnect the running gateway, but Infisical keeps handing
-// out connection details for it, and the agent keeps proxying on its open tunnel until
-// it notices its own token was refused (about 30 seconds here). Leases issued in that
-// window reach the target through a revoked gateway.
+// Revoking clears the gateway's transports, so routing refuses it at once rather than
+// handing out connection details while the agent's open tunnel lives on.
 func TestGatewayForwarding_Revoke(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -288,5 +295,6 @@ func TestGatewayForwarding_Revoke(t *testing.T) {
 			target.DropRoleAtCleanup(t, username)
 		}
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.Equal(t, "Gateway does not have a reachable transport configured", apierr.Message(res.Body))
 	})
 }

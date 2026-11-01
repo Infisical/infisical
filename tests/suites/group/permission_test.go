@@ -76,6 +76,31 @@ func TestGroup_Permission(t *testing.T) {
 		require.Contains(t, string(body), "FROM_GROUP")
 	})
 
+	t.Run("should give a machine identity the union of its direct project role and its group's", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateSecret(t, proj, "dev", "EXISTING", "value")
+		proj.NewRole(t, "creator", fixture.Permission{Subject: "secrets", Action: []string{"create"}})
+		identity := tn.NewMachineIdentity(t, harness.OrgRole("member"))
+		proj.Grant(t, identity, "viewer")
+		group := fixture.NewGroup(t, tn)
+		proj.GrantGroup(t, group, "creator")
+		status, body := createSecret(t, identity.API, proj.ID, "BEFORE_GROUP")
+		requireStatus(t, http.StatusForbidden, status, body)
+
+		// Action
+		group.AddIdentity(t, identity)
+
+		// Assert
+		waitForStatus(t, http.StatusOK, func() (int, []byte) { return createSecret(t, identity.API, proj.ID, "FROM_GROUP") })
+		status, body = listSecrets(t, identity.API, proj.ID)
+		requireStatus(t, http.StatusOK, status, body)
+		require.Contains(t, string(body), "EXISTING")
+	})
+
 	t.Run("should let a deny in the group's org role override an allow in the member's own role", func(t *testing.T) {
 		t.Parallel()
 

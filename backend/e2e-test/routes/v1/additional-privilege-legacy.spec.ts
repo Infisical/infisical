@@ -5,6 +5,7 @@ import { OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/sch
 // flag is written straight to the table so the behaviour those projects still rely on stays covered.
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { addIdentityToProject, createIdentityActor } from "e2e-test/testUtils/identities";
+import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
 import { pollUntil } from "e2e-test/testUtils/poll";
 import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 
@@ -137,32 +138,82 @@ describe("Additional privileges on a legacy project", () => {
 
     expect((await listSecrets(identity.authToken)).statusCode).toBe(403);
   });
+});
 
-  test("an actor cannot grant a privilege broader than its own", async () => {
-    const actor = await createIdentityActor({ orgId, authToken, role: OrgMembershipRole.Member });
-    await addIdentityToProject({
-      projectId,
-      identityId: actor.identityId,
-      role: ProjectMembershipRole.Member,
-      authToken
-    });
-    const target = await noAccessIdentity();
+// Only the legacy privilege system compares a grant with the actor's own permissions; the new one
+// checks assign-additional-privileges alone. New orgs use the new system and no route turns it off,
+// so the flag is written, as group-legacy-privilege.spec.ts does.
+describe("Additional privileges on the legacy privilege system", () => {
+  let orgId: string;
+  let projectId: string;
+  let authToken: string;
+  let cleanup: () => Promise<void>;
+  let restoreLicense: () => void;
 
-    const res = await testServer.inject({
+  beforeAll(async () => {
+    restoreLicense = overrideLicenseFeatures({ rbac: true });
+    ({ orgId, projectId, authToken, cleanup } = await createIsolatedOrgAndProject("legacy-privilege-boundary"));
+    await testDb(TableName.Project).where({ id: projectId }).update({ isLegacyAdditionalPrivilegesEnabled: true });
+    await testDb(TableName.Organization).where({ id: orgId }).update({ shouldUseNewPrivilegeSystem: false });
+  });
+
+  afterAll(async () => {
+    await cleanup();
+    restoreLicense();
+  });
+
+  test("an actor can grant a privilege within its own permissions but not one broader than them", async () => {
+    const slug = `granter-${orgId.slice(0, 8)}`;
+    const role = await testServer.inject({
       method: "POST",
-      url: "/api/v2/identity-project-additional-privilege",
-      headers: { authorization: `Bearer ${actor.authToken}` },
+      url: `/api/v1/projects/${projectId}/roles`,
+      headers: { authorization: `Bearer ${authToken}` },
       body: {
-        identityId: target.identityId,
-        projectId,
-        slug: "too-broad",
-        permissions: [{ subject: "role", action: ["create", "edit", "delete"] }],
-        type: { isTemporary: false }
+        slug,
+        name: slug,
+        permissions: [
+          { subject: "secrets", action: ["describeSecret", "readValue"] },
+          { subject: "identity", action: ["read", "edit", "grant-privileges"] }
+        ]
       }
     });
+    expect(role.statusCode, role.payload).toBe(200);
+    const actor = await createIdentityActor({ orgId, authToken, role: OrgMembershipRole.Member });
+    const added = await testServer.inject({
+      method: "POST",
+      url: `/api/v1/projects/${projectId}/memberships/identities/${actor.identityId}`,
+      headers: { authorization: `Bearer ${authToken}` },
+      body: { roles: [{ role: slug }] }
+    });
+    expect(added.statusCode, added.payload).toBe(200);
+    const target = await createIdentityActor({ orgId, authToken, role: OrgMembershipRole.Member });
+    await addIdentityToProject({
+      projectId,
+      identityId: target.identityId,
+      role: ProjectMembershipRole.NoAccess,
+      authToken
+    });
+    const grant = (privilegeSlug: string, permissions: unknown) =>
+      testServer.inject({
+        method: "POST",
+        url: "/api/v2/identity-project-additional-privilege",
+        headers: { authorization: `Bearer ${actor.authToken}` },
+        body: {
+          identityId: target.identityId,
+          projectId,
+          slug: privilegeSlug,
+          permissions,
+          type: { isTemporary: false }
+        }
+      });
 
-    expect(res.statusCode).toBe(403);
+    const within = await grant("within", READ_SECRETS);
+    expect(within.statusCode, within.payload).toBe(200);
+
+    const broader = await grant("too-broad", [{ subject: "role", action: ["create", "edit", "delete"] }]);
+    expect(broader.statusCode, broader.payload).toBe(403);
+    expect(broader.json().error).toBe("PermissionBoundaryError");
     const privileges = await testDb(TableName.AdditionalPrivilege).where({ actorIdentityId: target.identityId });
-    expect(privileges).toHaveLength(0);
+    expect(privileges.map((p) => p.name)).toEqual(["within"]);
   });
 });

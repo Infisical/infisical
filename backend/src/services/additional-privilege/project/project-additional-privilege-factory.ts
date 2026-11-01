@@ -1,4 +1,4 @@
-import { ForbiddenError, MongoAbility, RawRule, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRule, subject } from "@casl/ability";
 
 import { AccessScope, ActionProjectType } from "@app/db/schemas";
 import {
@@ -12,6 +12,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -321,12 +322,23 @@ export const newProjectAdditionalPrivilegesFactory = ({
       actorId,
       permissions,
       permission,
-      targetUserPermission,
+      targetUserPermission: currentTargetPermission,
       memberships,
       shouldUseNewPrivilegeSystem,
       targetIdentifier,
       errorMessage
     } = params;
+
+    // The legacy system lets an actor manage only what it holds itself, and what the target ends up
+    // holding includes the privilege being granted, so the requested rules join the comparison.
+    // Comparing against the target's current permissions alone let an actor grant what it lacks.
+    const targetUserPermission =
+      !shouldUseNewPrivilegeSystem && Array.isArray(permissions) && permissions.length
+        ? createMongoAbility<ProjectPermissionSet>(
+            [...currentTargetPermission.rules, ...(permissions as RawRule[])] as never,
+            { conditionsMatcher }
+          )
+        : currentTargetPermission;
 
     const permissionAction =
       actorType === ActorType.USER

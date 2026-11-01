@@ -138,6 +138,11 @@ func TestUniversalAuth_ClientSecret(t *testing.T) {
 		require.Len(t, res.JSON200.ClientSecretData, 1)
 		require.Equal(t, ua.ClientSecret[:4], res.JSON200.ClientSecretData[0].ClientSecretPrefix)
 		require.NotContains(t, string(res.Body), ua.ClientSecret)
+		one, err := tn.Admin.API.GetUniversalAuthClientSecretWithResponse(t.Context(), ua.ID.String(), res.JSON200.ClientSecretData[0].Id)
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, one.StatusCode(), one.Body)
+		require.Contains(t, string(one.Body), ua.ClientSecret[:4])
+		require.NotContains(t, string(one.Body), ua.ClientSecret)
 	})
 
 	t.Run("should refuse new logins with a revoked secret and cut off the tokens it issued", func(t *testing.T) {
@@ -281,6 +286,7 @@ func TestUniversalAuth_Lockout(t *testing.T) {
 		tn := h.NewTenant(t)
 		ua := newUA(t, tn, lockable)
 		failWrong(t, tn, ua, 2)
+		require.Equal(t, []string{"universal-auth"}, getIdentity(t, tn, ua.ID).JSON200.Identity.Identity.ActiveLockoutAuthMethods)
 
 		// Action
 		res, err := tn.Admin.API.ClearUniversalAuthLockoutsWithResponse(t.Context(), ua.ID.String())

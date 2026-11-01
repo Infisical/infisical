@@ -43,6 +43,7 @@ func TestJwtAuth_Login(t *testing.T) {
 		// Assert
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 		requireWorks(t, tn.Client(t, res.JSON200.AccessToken))
+		require.Equal(t, "jwt-auth", *fedIdentity(t, tn, identityID).JSON200.Identity.LastLoginAuthMethod)
 	})
 
 	refusals := []struct {
@@ -103,6 +104,7 @@ func TestJwtAuth_Login(t *testing.T) {
 			requireStatus(t, tc.status, res.StatusCode(), res.Body)
 			require.Contains(t, string(res.Body), tc.message)
 			require.Nil(t, res.JSON200)
+			fedRequireNeverLoggedIn(t, tn, identityID)
 		})
 	}
 

@@ -5,7 +5,9 @@
 // authorization redirect, seeds a code for a person, and hands the code to Infisical's
 // callback, which redeems it here on the provider's real hostname. The code is the
 // scope: the token endpoint answers with the code itself as the access token, so the
-// profile calls that follow land in the same scope.
+// profile calls that follow land in the same scope. A grant seeded with the PKCE challenge from
+// Infisical's redirect refuses a token request whose verifier does not match it, as the
+// provider would.
 //
 // GitHub serves profiles from api.github.com, which the github fake owns, so a GitHub
 // login seeds that fake's account under the code. This package only answers the token
@@ -16,6 +18,8 @@
 package oauth
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -97,6 +101,10 @@ type Grant struct {
 	// Certs are a GCP service account's signing certificates, PEM by key id.
 	Certs map[string]string `json:"certs,omitempty"`
 
+	// CodeChallenge is the PKCE S256 challenge from the authorization redirect. When set,
+	// the token request must carry the verifier it was derived from.
+	CodeChallenge string `json:"codeChallenge,omitempty"`
+
 	// Redeemed is set once Infisical exchanged the code.
 	Redeemed bool `json:"redeemed"`
 
@@ -164,6 +172,14 @@ func (g *Grant) token(clientID, clientSecret string) http.HandlerFunc {
 		}
 		code := r.PostForm.Get("code")
 		g.mu.Lock()
+		if g.CodeChallenge != "" {
+			sum := sha256.Sum256([]byte(r.PostForm.Get("code_verifier")))
+			if base64.RawURLEncoding.EncodeToString(sum[:]) != g.CodeChallenge {
+				g.mu.Unlock()
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_grant", "error_description": "PKCE verification failed"})
+				return
+			}
+		}
 		if g.Redeemed {
 			g.mu.Unlock()
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_grant"})
@@ -237,16 +253,18 @@ func (g *Grant) Snapshot() ([]byte, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return json.Marshal(struct {
-		Profile  *Profile          `json:"profile,omitempty"`
-		Certs    map[string]string `json:"certs,omitempty"`
-		Redeemed bool              `json:"redeemed"`
-	}{g.Profile, g.Certs, g.Redeemed})
+		Profile       *Profile          `json:"profile,omitempty"`
+		Certs         map[string]string `json:"certs,omitempty"`
+		CodeChallenge string            `json:"codeChallenge,omitempty"`
+		Redeemed      bool              `json:"redeemed"`
+	}{g.Profile, g.Certs, g.CodeChallenge, g.Redeemed})
 }
 
 func (g *Grant) Seed(raw []byte) error {
 	var in struct {
-		Profile *Profile          `json:"profile"`
-		Certs   map[string]string `json:"certs"`
+		Profile       *Profile          `json:"profile"`
+		Certs         map[string]string `json:"certs"`
+		CodeChallenge string            `json:"codeChallenge"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
@@ -255,6 +273,9 @@ func (g *Grant) Seed(raw []byte) error {
 	defer g.mu.Unlock()
 	if in.Profile != nil {
 		g.Profile = in.Profile
+	}
+	if in.CodeChallenge != "" {
+		g.CodeChallenge = in.CodeChallenge
 	}
 	if in.Certs != nil {
 		if g.Certs == nil {

@@ -40,6 +40,24 @@ func TestTlsCertAuth_Login(t *testing.T) {
 		// Assert
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 		requireWorks(t, tn.Client(t, res.JSON200.AccessToken))
+		require.Equal(t, "tls-cert-auth", *fedIdentity(t, tn, identityID).JSON200.Identity.LastLoginAuthMethod)
+	})
+
+	t.Run("should answer 404 when the identity has no TLS certificate auth", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		ca := newCA(t)
+		identityID := fedNewIdentity(t, tn)
+
+		// Action
+		res := tlsLogin(t, tn, identityID, withClientCert(ca.issue(t, "allowed-workload").pem))
+
+		// Assert
+		requireStatus(t, http.StatusNotFound, res.StatusCode(), res.Body)
+		require.Contains(t, string(res.Body), "TLS Certificate auth method not found for identity")
+		fedRequireNeverLoggedIn(t, tn, identityID)
 	})
 
 	refusals := []struct {
@@ -91,6 +109,7 @@ func TestTlsCertAuth_Login(t *testing.T) {
 			requireStatus(t, tc.status, res.StatusCode(), res.Body)
 			require.Contains(t, string(res.Body), tc.message)
 			require.Nil(t, res.JSON200)
+			fedRequireNeverLoggedIn(t, tn, identityID)
 		})
 	}
 

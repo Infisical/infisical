@@ -52,12 +52,6 @@ func TestSpiffeAuth_StaticBundle(t *testing.T) {
 			},
 		},
 		{
-			name: "should refuse a SPIFFE ID from another trust domain and issue no token", message: "Access denied",
-			svid: func(t *testing.T, idp *fedOidcProvider) string {
-				return idp.sign(t, fedClaims("", "spiffe://other.example.test/ns/payments/sa/api", "infisical", nil))
-			},
-		},
-		{
 			name: "should refuse a SPIFFE ID outside the allowed patterns and issue no token", message: "Access denied",
 			svid: func(t *testing.T, idp *fedOidcProvider) string {
 				return idp.sign(t, fedClaims("", "spiffe://"+fedTrustDomain+"/ns/billing/sa/api", "infisical", nil))
@@ -90,6 +84,26 @@ func TestSpiffeAuth_StaticBundle(t *testing.T) {
 			fedRequireNeverLoggedIn(t, tn, identityID)
 		})
 	}
+
+	t.Run("should refuse a SPIFFE ID from another trust domain even when the allowed IDs match any, and issue no token", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		idp := fedNewOidcProvider(t, tn)
+		identityID := fedNewIdentity(t, tn)
+		fedAttachSpiffeAllowing(t, tn, identityID, fedStaticBundle(t, idp), "spiffe://**")
+		accepted := fedLoginSpiffe(t, tn, fedNewIdentityWithSpiffeAny(t, tn, idp), idp.sign(t, fedClaims("", "spiffe://"+fedTrustDomain+"/ns/billing/sa/api", "infisical", nil)))
+		require.NotNilf(t, accepted.JSON200, "a SPIFFE ID in the trust domain was refused with %d: %s", accepted.StatusCode(), apierr.Body(accepted.Body))
+
+		// Action
+		res := fedLoginSpiffe(t, tn, identityID, idp.sign(t, fedClaims("", "spiffe://other.example.test/ns/payments/sa/api", "infisical", nil)))
+
+		// Assert
+		fedRequireStatus(t, http.StatusUnauthorized, res.StatusCode(), res.Body)
+		require.Equal(t, "Access denied", apierr.Message(res.Body))
+		fedRequireNeverLoggedIn(t, tn, identityID)
+	})
 
 	t.Run("should answer 404 when the identity has no SPIFFE auth", func(t *testing.T) {
 		t.Parallel()
@@ -130,6 +144,24 @@ func TestSpiffeAuth_WebBundle(t *testing.T) {
 		fedRequireTokenWorks(t, tn, res.JSON200.AccessToken)
 	})
 
+	t.Run("should refuse a JWT-SVID signed by a key the bundle endpoint does not serve and issue no token", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		idp := fedNewOidcProvider(t, tn)
+		identityID := fedNewIdentity(t, tn)
+		fedAttachSpiffe(t, tn, identityID, fedWebBundle(idp))
+
+		// Action
+		res := fedLoginSpiffe(t, tn, identityID, fedSignJWT(t, fedRSAKey(t), "untrusted-"+id.Short(), fedClaims("", fedSpiffeID, "infisical", nil)))
+
+		// Assert
+		fedRequireStatus(t, http.StatusUnauthorized, res.StatusCode(), res.Body)
+		require.Equal(t, "No key in the SPIFFE trust bundle matches the JWT-SVID signing key", apierr.Message(res.Body))
+		fedRequireNeverLoggedIn(t, tn, identityID)
+	})
+
 	t.Run("should refetch the cached bundle and accept a key the endpoint started serving after the last fetch", func(t *testing.T) {
 		t.Parallel()
 
@@ -152,6 +184,13 @@ func TestSpiffeAuth_WebBundle(t *testing.T) {
 	})
 }
 
+func fedNewIdentityWithSpiffeAny(t *testing.T, tn *harness.Tenant, idp *fedOidcProvider) uuid.UUID {
+	t.Helper()
+	identityID := fedNewIdentity(t, tn)
+	fedAttachSpiffeAllowing(t, tn, identityID, fedStaticBundle(t, idp), "spiffe://**")
+	return identityID
+}
+
 // fedStaticBundle is the provider's test key as a SPIFFE bundle an admin uploads.
 func fedStaticBundle(t *testing.T, idp *fedOidcProvider) map[string]any {
 	t.Helper()
@@ -168,9 +207,14 @@ func fedWebBundle(idp *fedOidcProvider) map[string]any {
 
 func fedAttachSpiffe(t *testing.T, tn *harness.Tenant, identityID uuid.UUID, distribution map[string]any) {
 	t.Helper()
+	fedAttachSpiffeAllowing(t, tn, identityID, distribution, "spiffe://"+fedTrustDomain+"/ns/payments/**")
+}
+
+func fedAttachSpiffeAllowing(t *testing.T, tn *harness.Tenant, identityID uuid.UUID, distribution map[string]any, allowedIDs string) {
+	t.Helper()
 	res, err := tn.Admin.API.AttachSpiffeAuthWithBodyWithResponse(t.Context(), identityID.String(), "application/json", fedJSON(t, map[string]any{
 		"trustDomain":             fedTrustDomain,
-		"allowedSpiffeIds":        "spiffe://" + fedTrustDomain + "/ns/payments/**",
+		"allowedSpiffeIds":        allowedIDs,
 		"allowedAudiences":        "infisical",
 		"trustBundleDistribution": distribution,
 	}))

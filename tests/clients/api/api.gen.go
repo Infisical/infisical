@@ -11712,6 +11712,315 @@ func (e ListAuditLogStreams500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateCriblAuditLogStreamJSONBodyFiltersProducts.
+const (
+	CreateCriblAuditLogStreamJSONBodyFiltersProductsAgentVault     CreateCriblAuditLogStreamJSONBodyFiltersProducts = "agent-vault"
+	CreateCriblAuditLogStreamJSONBodyFiltersProductsCertManager    CreateCriblAuditLogStreamJSONBodyFiltersProducts = "cert-manager"
+	CreateCriblAuditLogStreamJSONBodyFiltersProductsKms            CreateCriblAuditLogStreamJSONBodyFiltersProducts = "kms"
+	CreateCriblAuditLogStreamJSONBodyFiltersProductsOrganization   CreateCriblAuditLogStreamJSONBodyFiltersProducts = "organization"
+	CreateCriblAuditLogStreamJSONBodyFiltersProductsPam            CreateCriblAuditLogStreamJSONBodyFiltersProducts = "pam"
+	CreateCriblAuditLogStreamJSONBodyFiltersProductsSecretManager  CreateCriblAuditLogStreamJSONBodyFiltersProducts = "secret-manager"
+	CreateCriblAuditLogStreamJSONBodyFiltersProductsSecretScanning CreateCriblAuditLogStreamJSONBodyFiltersProducts = "secret-scanning"
+)
+
+// Valid indicates whether the value is a known member of the CreateCriblAuditLogStreamJSONBodyFiltersProducts enum.
+func (e CreateCriblAuditLogStreamJSONBodyFiltersProducts) Valid() bool {
+	switch e {
+	case CreateCriblAuditLogStreamJSONBodyFiltersProductsAgentVault:
+		return true
+	case CreateCriblAuditLogStreamJSONBodyFiltersProductsCertManager:
+		return true
+	case CreateCriblAuditLogStreamJSONBodyFiltersProductsKms:
+		return true
+	case CreateCriblAuditLogStreamJSONBodyFiltersProductsOrganization:
+		return true
+	case CreateCriblAuditLogStreamJSONBodyFiltersProductsPam:
+		return true
+	case CreateCriblAuditLogStreamJSONBodyFiltersProductsSecretManager:
+		return true
+	case CreateCriblAuditLogStreamJSONBodyFiltersProductsSecretScanning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts.
+const (
+	CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsAgentVault     CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "agent-vault"
+	CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsCertManager    CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "cert-manager"
+	CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsKms            CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "kms"
+	CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsOrganization   CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "organization"
+	CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsPam            CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "pam"
+	CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretManager  CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "secret-manager"
+	CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretScanning CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "secret-scanning"
+)
+
+// Valid indicates whether the value is a known member of the CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts enum.
+func (e CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts) Valid() bool {
+	switch e {
+	case CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsAgentVault:
+		return true
+	case CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsCertManager:
+		return true
+	case CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsKms:
+		return true
+	case CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsOrganization:
+		return true
+	case CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsPam:
+		return true
+	case CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretManager:
+		return true
+	case CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretScanning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider.
+const (
+	CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamProviderCribl CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider = "cribl"
+)
+
+// Valid indicates whether the value is a known member of the CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider enum.
+func (e CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider) Valid() bool {
+	switch e {
+	case CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamProviderCribl:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCriblAuditLogStream400JSONResponseBodyStatusCode.
+const (
+	CreateCriblAuditLogStream400JSONResponseBodyStatusCodeN400 CreateCriblAuditLogStream400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateCriblAuditLogStream400JSONResponseBodyStatusCode enum.
+func (e CreateCriblAuditLogStream400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCriblAuditLogStream400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCriblAuditLogStream401JSONResponseBodyStatusCode.
+const (
+	CreateCriblAuditLogStream401JSONResponseBodyStatusCodeN401 CreateCriblAuditLogStream401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateCriblAuditLogStream401JSONResponseBodyStatusCode enum.
+func (e CreateCriblAuditLogStream401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCriblAuditLogStream401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCriblAuditLogStream403JSONResponseBodyStatusCode.
+const (
+	CreateCriblAuditLogStream403JSONResponseBodyStatusCodeN403 CreateCriblAuditLogStream403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateCriblAuditLogStream403JSONResponseBodyStatusCode enum.
+func (e CreateCriblAuditLogStream403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCriblAuditLogStream403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCriblAuditLogStream404JSONResponseBodyStatusCode.
+const (
+	CreateCriblAuditLogStream404JSONResponseBodyStatusCodeN404 CreateCriblAuditLogStream404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateCriblAuditLogStream404JSONResponseBodyStatusCode enum.
+func (e CreateCriblAuditLogStream404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCriblAuditLogStream404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCriblAuditLogStream422JSONResponseBodyStatusCode.
+const (
+	CreateCriblAuditLogStream422JSONResponseBodyStatusCodeN422 CreateCriblAuditLogStream422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateCriblAuditLogStream422JSONResponseBodyStatusCode enum.
+func (e CreateCriblAuditLogStream422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCriblAuditLogStream422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateCriblAuditLogStream500JSONResponseBodyStatusCode.
+const (
+	CreateCriblAuditLogStream500JSONResponseBodyStatusCodeN500 CreateCriblAuditLogStream500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateCriblAuditLogStream500JSONResponseBodyStatusCode enum.
+func (e CreateCriblAuditLogStream500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateCriblAuditLogStream500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts.
+const (
+	GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsAgentVault     GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "agent-vault"
+	GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsCertManager    GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "cert-manager"
+	GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsKms            GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "kms"
+	GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsOrganization   GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "organization"
+	GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsPam            GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "pam"
+	GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretManager  GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "secret-manager"
+	GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretScanning GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "secret-scanning"
+)
+
+// Valid indicates whether the value is a known member of the GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts enum.
+func (e GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts) Valid() bool {
+	switch e {
+	case GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsAgentVault:
+		return true
+	case GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsCertManager:
+		return true
+	case GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsKms:
+		return true
+	case GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsOrganization:
+		return true
+	case GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsPam:
+		return true
+	case GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretManager:
+		return true
+	case GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretScanning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider.
+const (
+	GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamProviderCribl GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider = "cribl"
+)
+
+// Valid indicates whether the value is a known member of the GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider enum.
+func (e GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider) Valid() bool {
+	switch e {
+	case GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamProviderCribl:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCriblAuditLogStream400JSONResponseBodyStatusCode.
+const (
+	GetCriblAuditLogStream400JSONResponseBodyStatusCodeN400 GetCriblAuditLogStream400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetCriblAuditLogStream400JSONResponseBodyStatusCode enum.
+func (e GetCriblAuditLogStream400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCriblAuditLogStream400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCriblAuditLogStream401JSONResponseBodyStatusCode.
+const (
+	GetCriblAuditLogStream401JSONResponseBodyStatusCodeN401 GetCriblAuditLogStream401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetCriblAuditLogStream401JSONResponseBodyStatusCode enum.
+func (e GetCriblAuditLogStream401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCriblAuditLogStream401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCriblAuditLogStream403JSONResponseBodyStatusCode.
+const (
+	GetCriblAuditLogStream403JSONResponseBodyStatusCodeN403 GetCriblAuditLogStream403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetCriblAuditLogStream403JSONResponseBodyStatusCode enum.
+func (e GetCriblAuditLogStream403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCriblAuditLogStream403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCriblAuditLogStream404JSONResponseBodyStatusCode.
+const (
+	GetCriblAuditLogStream404JSONResponseBodyStatusCodeN404 GetCriblAuditLogStream404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetCriblAuditLogStream404JSONResponseBodyStatusCode enum.
+func (e GetCriblAuditLogStream404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCriblAuditLogStream404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCriblAuditLogStream422JSONResponseBodyStatusCode.
+const (
+	GetCriblAuditLogStream422JSONResponseBodyStatusCodeN422 GetCriblAuditLogStream422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetCriblAuditLogStream422JSONResponseBodyStatusCode enum.
+func (e GetCriblAuditLogStream422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCriblAuditLogStream422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCriblAuditLogStream500JSONResponseBodyStatusCode.
+const (
+	GetCriblAuditLogStream500JSONResponseBodyStatusCodeN500 GetCriblAuditLogStream500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetCriblAuditLogStream500JSONResponseBodyStatusCode enum.
+func (e GetCriblAuditLogStream500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCriblAuditLogStream500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateCustomAuditLogStreamJSONBodyFiltersProducts.
 const (
 	CreateCustomAuditLogStreamJSONBodyFiltersProductsAgentVault     CreateCustomAuditLogStreamJSONBodyFiltersProducts = "agent-vault"
@@ -12921,6 +13230,315 @@ const (
 func (e ListAuditLogStreamOptions500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListAuditLogStreamOptions500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts.
+const (
+	CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsAgentVault     CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts = "agent-vault"
+	CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsCertManager    CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts = "cert-manager"
+	CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsKms            CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts = "kms"
+	CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsOrganization   CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts = "organization"
+	CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsPam            CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts = "pam"
+	CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsSecretManager  CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts = "secret-manager"
+	CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsSecretScanning CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts = "secret-scanning"
+)
+
+// Valid indicates whether the value is a known member of the CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts enum.
+func (e CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts) Valid() bool {
+	switch e {
+	case CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsAgentVault:
+		return true
+	case CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsCertManager:
+		return true
+	case CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsKms:
+		return true
+	case CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsOrganization:
+		return true
+	case CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsPam:
+		return true
+	case CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsSecretManager:
+		return true
+	case CreateSumoLogicAuditLogStreamJSONBodyFiltersProductsSecretScanning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts.
+const (
+	CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsAgentVault     CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "agent-vault"
+	CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsCertManager    CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "cert-manager"
+	CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsKms            CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "kms"
+	CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsOrganization   CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "organization"
+	CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsPam            CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "pam"
+	CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretManager  CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "secret-manager"
+	CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretScanning CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "secret-scanning"
+)
+
+// Valid indicates whether the value is a known member of the CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts enum.
+func (e CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts) Valid() bool {
+	switch e {
+	case CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsAgentVault:
+		return true
+	case CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsCertManager:
+		return true
+	case CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsKms:
+		return true
+	case CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsOrganization:
+		return true
+	case CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsPam:
+		return true
+	case CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretManager:
+		return true
+	case CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretScanning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider.
+const (
+	CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProviderSumoLogic CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider = "sumo-logic"
+)
+
+// Valid indicates whether the value is a known member of the CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider enum.
+func (e CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider) Valid() bool {
+	switch e {
+	case CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProviderSumoLogic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSumoLogicAuditLogStream400JSONResponseBodyStatusCode.
+const (
+	CreateSumoLogicAuditLogStream400JSONResponseBodyStatusCodeN400 CreateSumoLogicAuditLogStream400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateSumoLogicAuditLogStream400JSONResponseBodyStatusCode enum.
+func (e CreateSumoLogicAuditLogStream400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSumoLogicAuditLogStream400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSumoLogicAuditLogStream401JSONResponseBodyStatusCode.
+const (
+	CreateSumoLogicAuditLogStream401JSONResponseBodyStatusCodeN401 CreateSumoLogicAuditLogStream401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateSumoLogicAuditLogStream401JSONResponseBodyStatusCode enum.
+func (e CreateSumoLogicAuditLogStream401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSumoLogicAuditLogStream401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSumoLogicAuditLogStream403JSONResponseBodyStatusCode.
+const (
+	CreateSumoLogicAuditLogStream403JSONResponseBodyStatusCodeN403 CreateSumoLogicAuditLogStream403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateSumoLogicAuditLogStream403JSONResponseBodyStatusCode enum.
+func (e CreateSumoLogicAuditLogStream403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSumoLogicAuditLogStream403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSumoLogicAuditLogStream404JSONResponseBodyStatusCode.
+const (
+	CreateSumoLogicAuditLogStream404JSONResponseBodyStatusCodeN404 CreateSumoLogicAuditLogStream404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateSumoLogicAuditLogStream404JSONResponseBodyStatusCode enum.
+func (e CreateSumoLogicAuditLogStream404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSumoLogicAuditLogStream404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSumoLogicAuditLogStream422JSONResponseBodyStatusCode.
+const (
+	CreateSumoLogicAuditLogStream422JSONResponseBodyStatusCodeN422 CreateSumoLogicAuditLogStream422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateSumoLogicAuditLogStream422JSONResponseBodyStatusCode enum.
+func (e CreateSumoLogicAuditLogStream422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSumoLogicAuditLogStream422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSumoLogicAuditLogStream500JSONResponseBodyStatusCode.
+const (
+	CreateSumoLogicAuditLogStream500JSONResponseBodyStatusCodeN500 CreateSumoLogicAuditLogStream500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateSumoLogicAuditLogStream500JSONResponseBodyStatusCode enum.
+func (e CreateSumoLogicAuditLogStream500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSumoLogicAuditLogStream500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts.
+const (
+	GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsAgentVault     GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "agent-vault"
+	GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsCertManager    GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "cert-manager"
+	GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsKms            GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "kms"
+	GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsOrganization   GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "organization"
+	GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsPam            GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "pam"
+	GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretManager  GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "secret-manager"
+	GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretScanning GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts = "secret-scanning"
+)
+
+// Valid indicates whether the value is a known member of the GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts enum.
+func (e GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts) Valid() bool {
+	switch e {
+	case GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsAgentVault:
+		return true
+	case GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsCertManager:
+		return true
+	case GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsKms:
+		return true
+	case GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsOrganization:
+		return true
+	case GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsPam:
+		return true
+	case GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretManager:
+		return true
+	case GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProductsSecretScanning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider.
+const (
+	GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProviderSumoLogic GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider = "sumo-logic"
+)
+
+// Valid indicates whether the value is a known member of the GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider enum.
+func (e GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider) Valid() bool {
+	switch e {
+	case GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProviderSumoLogic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSumoLogicAuditLogStream400JSONResponseBodyStatusCode.
+const (
+	GetSumoLogicAuditLogStream400JSONResponseBodyStatusCodeN400 GetSumoLogicAuditLogStream400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetSumoLogicAuditLogStream400JSONResponseBodyStatusCode enum.
+func (e GetSumoLogicAuditLogStream400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSumoLogicAuditLogStream400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSumoLogicAuditLogStream401JSONResponseBodyStatusCode.
+const (
+	GetSumoLogicAuditLogStream401JSONResponseBodyStatusCodeN401 GetSumoLogicAuditLogStream401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetSumoLogicAuditLogStream401JSONResponseBodyStatusCode enum.
+func (e GetSumoLogicAuditLogStream401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSumoLogicAuditLogStream401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSumoLogicAuditLogStream403JSONResponseBodyStatusCode.
+const (
+	GetSumoLogicAuditLogStream403JSONResponseBodyStatusCodeN403 GetSumoLogicAuditLogStream403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetSumoLogicAuditLogStream403JSONResponseBodyStatusCode enum.
+func (e GetSumoLogicAuditLogStream403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSumoLogicAuditLogStream403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSumoLogicAuditLogStream404JSONResponseBodyStatusCode.
+const (
+	GetSumoLogicAuditLogStream404JSONResponseBodyStatusCodeN404 GetSumoLogicAuditLogStream404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetSumoLogicAuditLogStream404JSONResponseBodyStatusCode enum.
+func (e GetSumoLogicAuditLogStream404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSumoLogicAuditLogStream404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSumoLogicAuditLogStream422JSONResponseBodyStatusCode.
+const (
+	GetSumoLogicAuditLogStream422JSONResponseBodyStatusCodeN422 GetSumoLogicAuditLogStream422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetSumoLogicAuditLogStream422JSONResponseBodyStatusCode enum.
+func (e GetSumoLogicAuditLogStream422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSumoLogicAuditLogStream422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSumoLogicAuditLogStream500JSONResponseBodyStatusCode.
+const (
+	GetSumoLogicAuditLogStream500JSONResponseBodyStatusCodeN500 GetSumoLogicAuditLogStream500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetSumoLogicAuditLogStream500JSONResponseBodyStatusCode enum.
+func (e GetSumoLogicAuditLogStream500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSumoLogicAuditLogStream500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -94951,6 +95569,68 @@ type ListAuditLogStreams422JSONResponseBodyStatusCode float32
 // ListAuditLogStreams500JSONResponseBodyStatusCode defines parameters for ListAuditLogStreams.
 type ListAuditLogStreams500JSONResponseBodyStatusCode float32
 
+// CreateCriblAuditLogStreamJSONBody defines parameters for CreateCriblAuditLogStream.
+type CreateCriblAuditLogStreamJSONBody struct {
+	Credentials struct {
+		Token string `json:"token"`
+		Url   string `json:"url"`
+	} `json:"credentials"`
+	Filters *struct {
+		Products *[]CreateCriblAuditLogStreamJSONBodyFiltersProducts `json:"products,omitempty"`
+	} `json:"filters,omitempty"`
+}
+
+// CreateCriblAuditLogStreamJSONBodyFiltersProducts defines parameters for CreateCriblAuditLogStream.
+type CreateCriblAuditLogStreamJSONBodyFiltersProducts string
+
+// CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts defines parameters for CreateCriblAuditLogStream.
+type CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts string
+
+// CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider defines parameters for CreateCriblAuditLogStream.
+type CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider string
+
+// CreateCriblAuditLogStream400JSONResponseBodyStatusCode defines parameters for CreateCriblAuditLogStream.
+type CreateCriblAuditLogStream400JSONResponseBodyStatusCode float32
+
+// CreateCriblAuditLogStream401JSONResponseBodyStatusCode defines parameters for CreateCriblAuditLogStream.
+type CreateCriblAuditLogStream401JSONResponseBodyStatusCode float32
+
+// CreateCriblAuditLogStream403JSONResponseBodyStatusCode defines parameters for CreateCriblAuditLogStream.
+type CreateCriblAuditLogStream403JSONResponseBodyStatusCode float32
+
+// CreateCriblAuditLogStream404JSONResponseBodyStatusCode defines parameters for CreateCriblAuditLogStream.
+type CreateCriblAuditLogStream404JSONResponseBodyStatusCode float32
+
+// CreateCriblAuditLogStream422JSONResponseBodyStatusCode defines parameters for CreateCriblAuditLogStream.
+type CreateCriblAuditLogStream422JSONResponseBodyStatusCode float32
+
+// CreateCriblAuditLogStream500JSONResponseBodyStatusCode defines parameters for CreateCriblAuditLogStream.
+type CreateCriblAuditLogStream500JSONResponseBodyStatusCode float32
+
+// GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts defines parameters for GetCriblAuditLogStream.
+type GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts string
+
+// GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider defines parameters for GetCriblAuditLogStream.
+type GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider string
+
+// GetCriblAuditLogStream400JSONResponseBodyStatusCode defines parameters for GetCriblAuditLogStream.
+type GetCriblAuditLogStream400JSONResponseBodyStatusCode float32
+
+// GetCriblAuditLogStream401JSONResponseBodyStatusCode defines parameters for GetCriblAuditLogStream.
+type GetCriblAuditLogStream401JSONResponseBodyStatusCode float32
+
+// GetCriblAuditLogStream403JSONResponseBodyStatusCode defines parameters for GetCriblAuditLogStream.
+type GetCriblAuditLogStream403JSONResponseBodyStatusCode float32
+
+// GetCriblAuditLogStream404JSONResponseBodyStatusCode defines parameters for GetCriblAuditLogStream.
+type GetCriblAuditLogStream404JSONResponseBodyStatusCode float32
+
+// GetCriblAuditLogStream422JSONResponseBodyStatusCode defines parameters for GetCriblAuditLogStream.
+type GetCriblAuditLogStream422JSONResponseBodyStatusCode float32
+
+// GetCriblAuditLogStream500JSONResponseBodyStatusCode defines parameters for GetCriblAuditLogStream.
+type GetCriblAuditLogStream500JSONResponseBodyStatusCode float32
+
 // CreateCustomAuditLogStreamJSONBody defines parameters for CreateCustomAuditLogStream.
 type CreateCustomAuditLogStreamJSONBody struct {
 	Credentials struct {
@@ -95241,6 +95921,68 @@ type ListAuditLogStreamOptions422JSONResponseBodyStatusCode float32
 
 // ListAuditLogStreamOptions500JSONResponseBodyStatusCode defines parameters for ListAuditLogStreamOptions.
 type ListAuditLogStreamOptions500JSONResponseBodyStatusCode float32
+
+// CreateSumoLogicAuditLogStreamJSONBody defines parameters for CreateSumoLogicAuditLogStream.
+type CreateSumoLogicAuditLogStreamJSONBody struct {
+	Credentials struct {
+		Token string `json:"token"`
+		Url   string `json:"url"`
+	} `json:"credentials"`
+	Filters *struct {
+		Products *[]CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts `json:"products,omitempty"`
+	} `json:"filters,omitempty"`
+}
+
+// CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts defines parameters for CreateSumoLogicAuditLogStream.
+type CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts string
+
+// CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts defines parameters for CreateSumoLogicAuditLogStream.
+type CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts string
+
+// CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider defines parameters for CreateSumoLogicAuditLogStream.
+type CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider string
+
+// CreateSumoLogicAuditLogStream400JSONResponseBodyStatusCode defines parameters for CreateSumoLogicAuditLogStream.
+type CreateSumoLogicAuditLogStream400JSONResponseBodyStatusCode float32
+
+// CreateSumoLogicAuditLogStream401JSONResponseBodyStatusCode defines parameters for CreateSumoLogicAuditLogStream.
+type CreateSumoLogicAuditLogStream401JSONResponseBodyStatusCode float32
+
+// CreateSumoLogicAuditLogStream403JSONResponseBodyStatusCode defines parameters for CreateSumoLogicAuditLogStream.
+type CreateSumoLogicAuditLogStream403JSONResponseBodyStatusCode float32
+
+// CreateSumoLogicAuditLogStream404JSONResponseBodyStatusCode defines parameters for CreateSumoLogicAuditLogStream.
+type CreateSumoLogicAuditLogStream404JSONResponseBodyStatusCode float32
+
+// CreateSumoLogicAuditLogStream422JSONResponseBodyStatusCode defines parameters for CreateSumoLogicAuditLogStream.
+type CreateSumoLogicAuditLogStream422JSONResponseBodyStatusCode float32
+
+// CreateSumoLogicAuditLogStream500JSONResponseBodyStatusCode defines parameters for CreateSumoLogicAuditLogStream.
+type CreateSumoLogicAuditLogStream500JSONResponseBodyStatusCode float32
+
+// GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts defines parameters for GetSumoLogicAuditLogStream.
+type GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts string
+
+// GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider defines parameters for GetSumoLogicAuditLogStream.
+type GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider string
+
+// GetSumoLogicAuditLogStream400JSONResponseBodyStatusCode defines parameters for GetSumoLogicAuditLogStream.
+type GetSumoLogicAuditLogStream400JSONResponseBodyStatusCode float32
+
+// GetSumoLogicAuditLogStream401JSONResponseBodyStatusCode defines parameters for GetSumoLogicAuditLogStream.
+type GetSumoLogicAuditLogStream401JSONResponseBodyStatusCode float32
+
+// GetSumoLogicAuditLogStream403JSONResponseBodyStatusCode defines parameters for GetSumoLogicAuditLogStream.
+type GetSumoLogicAuditLogStream403JSONResponseBodyStatusCode float32
+
+// GetSumoLogicAuditLogStream404JSONResponseBodyStatusCode defines parameters for GetSumoLogicAuditLogStream.
+type GetSumoLogicAuditLogStream404JSONResponseBodyStatusCode float32
+
+// GetSumoLogicAuditLogStream422JSONResponseBodyStatusCode defines parameters for GetSumoLogicAuditLogStream.
+type GetSumoLogicAuditLogStream422JSONResponseBodyStatusCode float32
+
+// GetSumoLogicAuditLogStream500JSONResponseBodyStatusCode defines parameters for GetSumoLogicAuditLogStream.
+type GetSumoLogicAuditLogStream500JSONResponseBodyStatusCode float32
 
 // DeleteAlicloudAuth400JSONResponseBodyStatusCode defines parameters for DeleteAlicloudAuth.
 type DeleteAlicloudAuth400JSONResponseBodyStatusCode float32
@@ -126688,6 +127430,9 @@ type CreateServiceNowAppConnectionJSONRequestBody CreateServiceNowAppConnectionJ
 // CreateVercelAppConnectionJSONRequestBody defines body for CreateVercelAppConnection for application/json ContentType.
 type CreateVercelAppConnectionJSONRequestBody CreateVercelAppConnectionJSONBody
 
+// CreateCriblAuditLogStreamJSONRequestBody defines body for CreateCriblAuditLogStream for application/json ContentType.
+type CreateCriblAuditLogStreamJSONRequestBody CreateCriblAuditLogStreamJSONBody
+
 // CreateCustomAuditLogStreamJSONRequestBody defines body for CreateCustomAuditLogStream for application/json ContentType.
 type CreateCustomAuditLogStreamJSONRequestBody CreateCustomAuditLogStreamJSONBody
 
@@ -126696,6 +127441,9 @@ type UpdateCustomAuditLogStreamJSONRequestBody UpdateCustomAuditLogStreamJSONBod
 
 // CreateDatadogAuditLogStreamJSONRequestBody defines body for CreateDatadogAuditLogStream for application/json ContentType.
 type CreateDatadogAuditLogStreamJSONRequestBody CreateDatadogAuditLogStreamJSONBody
+
+// CreateSumoLogicAuditLogStreamJSONRequestBody defines body for CreateSumoLogicAuditLogStream for application/json ContentType.
+type CreateSumoLogicAuditLogStreamJSONRequestBody CreateSumoLogicAuditLogStreamJSONBody
 
 // UpdateAlicloudAuthJSONRequestBody defines body for UpdateAlicloudAuth for application/json ContentType.
 type UpdateAlicloudAuthJSONRequestBody UpdateAlicloudAuthJSONBody
@@ -154479,6 +155227,17 @@ type ClientInterface interface {
 	// ListAuditLogStreams performs a GET /api/v1/audit-log-streams (the `ListAuditLogStreams` operationId) request.
 	ListAuditLogStreams(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateCriblAuditLogStreamWithBody performs a POST /api/v1/audit-log-streams/cribl (the `CreateCriblAuditLogStream` operationId) request,
+	// with any type of body and a specified content type.
+	CreateCriblAuditLogStreamWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCriblAuditLogStream performs a POST /api/v1/audit-log-streams/cribl (the `CreateCriblAuditLogStream` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateCriblAuditLogStream(ctx context.Context, body CreateCriblAuditLogStreamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCriblAuditLogStream performs a GET /api/v1/audit-log-streams/cribl/{logStreamId} (the `GetCriblAuditLogStream` operationId) request.
+	GetCriblAuditLogStream(ctx context.Context, logStreamId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateCustomAuditLogStreamWithBody performs a POST /api/v1/audit-log-streams/custom (the `CreateCustomAuditLogStream` operationId) request,
 	// with any type of body and a specified content type.
 	CreateCustomAuditLogStreamWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -154514,6 +155273,17 @@ type ClientInterface interface {
 
 	// ListAuditLogStreamOptions performs a GET /api/v1/audit-log-streams/options (the `ListAuditLogStreamOptions` operationId) request.
 	ListAuditLogStreamOptions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSumoLogicAuditLogStreamWithBody performs a POST /api/v1/audit-log-streams/sumo-logic (the `CreateSumoLogicAuditLogStream` operationId) request,
+	// with any type of body and a specified content type.
+	CreateSumoLogicAuditLogStreamWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSumoLogicAuditLogStream performs a POST /api/v1/audit-log-streams/sumo-logic (the `CreateSumoLogicAuditLogStream` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateSumoLogicAuditLogStream(ctx context.Context, body CreateSumoLogicAuditLogStreamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSumoLogicAuditLogStream performs a GET /api/v1/audit-log-streams/sumo-logic/{logStreamId} (the `GetSumoLogicAuditLogStream` operationId) request.
+	GetSumoLogicAuditLogStream(ctx context.Context, logStreamId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteAlicloudAuth performs a DELETE /api/v1/auth/alicloud-auth/identities/{identityId} (the `DeleteAlicloudAuth` operationId) request.
 	//
@@ -160142,6 +160912,47 @@ func (c *Client) ListAuditLogStreams(ctx context.Context, reqEditors ...RequestE
 	return c.Client.Do(req)
 }
 
+// CreateCriblAuditLogStreamWithBody performs a POST /api/v1/audit-log-streams/cribl (the `CreateCriblAuditLogStream` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateCriblAuditLogStreamWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCriblAuditLogStreamRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCriblAuditLogStream performs a POST /api/v1/audit-log-streams/cribl (the `CreateCriblAuditLogStream` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateCriblAuditLogStream(ctx context.Context, body CreateCriblAuditLogStreamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCriblAuditLogStreamRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCriblAuditLogStream performs a GET /api/v1/audit-log-streams/cribl/{logStreamId} (the `GetCriblAuditLogStream` operationId) request.
+func (c *Client) GetCriblAuditLogStream(ctx context.Context, logStreamId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCriblAuditLogStreamRequest(c.Server, logStreamId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CreateCustomAuditLogStreamWithBody performs a POST /api/v1/audit-log-streams/custom (the `CreateCustomAuditLogStream` operationId) request,
 // with any type of body and a specified content type.
 func (c *Client) CreateCustomAuditLogStreamWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -160268,6 +161079,47 @@ func (c *Client) GetDatadogAuditLogStream(ctx context.Context, logStreamId opena
 // ListAuditLogStreamOptions performs a GET /api/v1/audit-log-streams/options (the `ListAuditLogStreamOptions` operationId) request.
 func (c *Client) ListAuditLogStreamOptions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListAuditLogStreamOptionsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSumoLogicAuditLogStreamWithBody performs a POST /api/v1/audit-log-streams/sumo-logic (the `CreateSumoLogicAuditLogStream` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateSumoLogicAuditLogStreamWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSumoLogicAuditLogStreamRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSumoLogicAuditLogStream performs a POST /api/v1/audit-log-streams/sumo-logic (the `CreateSumoLogicAuditLogStream` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateSumoLogicAuditLogStream(ctx context.Context, body CreateSumoLogicAuditLogStreamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSumoLogicAuditLogStreamRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetSumoLogicAuditLogStream performs a GET /api/v1/audit-log-streams/sumo-logic/{logStreamId} (the `GetSumoLogicAuditLogStream` operationId) request.
+func (c *Client) GetSumoLogicAuditLogStream(ctx context.Context, logStreamId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSumoLogicAuditLogStreamRequest(c.Server, logStreamId)
 	if err != nil {
 		return nil, err
 	}
@@ -176473,6 +177325,80 @@ func NewListAuditLogStreamsRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewCreateCriblAuditLogStreamRequest calls the generic CreateCriblAuditLogStream builder with application/json body
+func NewCreateCriblAuditLogStreamRequest(server string, body CreateCriblAuditLogStreamJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateCriblAuditLogStreamRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateCriblAuditLogStreamRequestWithBody constructs an http.Request for the CreateCriblAuditLogStream method, with any body, and a specified content type
+func NewCreateCriblAuditLogStreamRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/audit-log-streams/cribl")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetCriblAuditLogStreamRequest constructs an http.Request for the GetCriblAuditLogStream method
+func NewGetCriblAuditLogStreamRequest(server string, logStreamId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "logStreamId", logStreamId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/audit-log-streams/cribl/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateCustomAuditLogStreamRequest calls the generic CreateCustomAuditLogStream builder with application/json body
 func NewCreateCustomAuditLogStreamRequest(server string, body CreateCustomAuditLogStreamJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -176712,6 +177638,80 @@ func NewListAuditLogStreamOptionsRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/audit-log-streams/options")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateSumoLogicAuditLogStreamRequest calls the generic CreateSumoLogicAuditLogStream builder with application/json body
+func NewCreateSumoLogicAuditLogStreamRequest(server string, body CreateSumoLogicAuditLogStreamJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateSumoLogicAuditLogStreamRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateSumoLogicAuditLogStreamRequestWithBody constructs an http.Request for the CreateSumoLogicAuditLogStream method, with any body, and a specified content type
+func NewCreateSumoLogicAuditLogStreamRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/audit-log-streams/sumo-logic")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetSumoLogicAuditLogStreamRequest constructs an http.Request for the GetSumoLogicAuditLogStream method
+func NewGetSumoLogicAuditLogStreamRequest(server string, logStreamId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "logStreamId", logStreamId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/audit-log-streams/sumo-logic/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -206447,6 +207447,21 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	ListAuditLogStreamsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAuditLogStreamsResponse, error)
 
+	// CreateCriblAuditLogStreamWithBodyWithResponse performs a POST /api/v1/audit-log-streams/cribl (the `CreateCriblAuditLogStream` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateCriblAuditLogStreamWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCriblAuditLogStreamResponse, error)
+
+	// CreateCriblAuditLogStreamWithResponse performs a POST /api/v1/audit-log-streams/cribl (the `CreateCriblAuditLogStream` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateCriblAuditLogStreamWithResponse(ctx context.Context, body CreateCriblAuditLogStreamJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCriblAuditLogStreamResponse, error)
+
+	// GetCriblAuditLogStreamWithResponse performs a GET /api/v1/audit-log-streams/cribl/{logStreamId} (the `GetCriblAuditLogStream` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetCriblAuditLogStreamWithResponse(ctx context.Context, logStreamId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetCriblAuditLogStreamResponse, error)
+
 	// CreateCustomAuditLogStreamWithBodyWithResponse performs a POST /api/v1/audit-log-streams/custom (the `CreateCustomAuditLogStream` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -206496,6 +207511,21 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ListAuditLogStreamOptionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAuditLogStreamOptionsResponse, error)
+
+	// CreateSumoLogicAuditLogStreamWithBodyWithResponse performs a POST /api/v1/audit-log-streams/sumo-logic (the `CreateSumoLogicAuditLogStream` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateSumoLogicAuditLogStreamWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSumoLogicAuditLogStreamResponse, error)
+
+	// CreateSumoLogicAuditLogStreamWithResponse performs a POST /api/v1/audit-log-streams/sumo-logic (the `CreateSumoLogicAuditLogStream` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateSumoLogicAuditLogStreamWithResponse(ctx context.Context, body CreateSumoLogicAuditLogStreamJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSumoLogicAuditLogStreamResponse, error)
+
+	// GetSumoLogicAuditLogStreamWithResponse performs a GET /api/v1/audit-log-streams/sumo-logic/{logStreamId} (the `GetSumoLogicAuditLogStream` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetSumoLogicAuditLogStreamWithResponse(ctx context.Context, logStreamId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetSumoLogicAuditLogStreamResponse, error)
 
 	// DeleteAlicloudAuthWithResponse performs a DELETE /api/v1/auth/alicloud-auth/identities/{identityId} (the `DeleteAlicloudAuth` operationId) request.
 	//
@@ -224743,6 +225773,368 @@ func (r ListAuditLogStreamsResponse) ContentType() string {
 	return ""
 }
 
+type CreateCriblAuditLogStreamResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuditLogStream struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Credentials struct {
+				Url string `json:"url"`
+			} `json:"credentials"`
+			FailingSince *time.Time `json:"failingSince,omitempty"`
+			Filters      *struct {
+				Products *[]CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+			} `json:"filters,omitempty"`
+			Id                openapi_types.UUID                                                 `json:"id"`
+			LastDeliveryError *string                                                            `json:"lastDeliveryError,omitempty"`
+			OrgId             openapi_types.UUID                                                 `json:"orgId"`
+			Provider          CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+			StreamMode        *string                                                            `json:"streamMode,omitempty"`
+			UpdatedAt         time.Time                                                          `json:"updatedAt"`
+		} `json:"auditLogStream"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateCriblAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateCriblAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateCriblAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateCriblAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateCriblAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateCriblAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateCriblAuditLogStreamResponse) GetJSON200() *struct {
+	AuditLogStream struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Credentials struct {
+			Url string `json:"url"`
+		} `json:"credentials"`
+		FailingSince *time.Time `json:"failingSince,omitempty"`
+		Filters      *struct {
+			Products *[]CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+		} `json:"filters,omitempty"`
+		Id                openapi_types.UUID                                                 `json:"id"`
+		LastDeliveryError *string                                                            `json:"lastDeliveryError,omitempty"`
+		OrgId             openapi_types.UUID                                                 `json:"orgId"`
+		Provider          CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+		StreamMode        *string                                                            `json:"streamMode,omitempty"`
+		UpdatedAt         time.Time                                                          `json:"updatedAt"`
+	} `json:"auditLogStream"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateCriblAuditLogStreamResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateCriblAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateCriblAuditLogStreamResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateCriblAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateCriblAuditLogStreamResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateCriblAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateCriblAuditLogStreamResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateCriblAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateCriblAuditLogStreamResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateCriblAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateCriblAuditLogStreamResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateCriblAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateCriblAuditLogStreamResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateCriblAuditLogStreamResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateCriblAuditLogStreamResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCriblAuditLogStreamResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetCriblAuditLogStreamResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuditLogStream struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Credentials struct {
+				Url string `json:"url"`
+			} `json:"credentials"`
+			FailingSince *time.Time `json:"failingSince,omitempty"`
+			Filters      *struct {
+				Products *[]GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+			} `json:"filters,omitempty"`
+			Id                openapi_types.UUID                                              `json:"id"`
+			LastDeliveryError *string                                                         `json:"lastDeliveryError,omitempty"`
+			OrgId             openapi_types.UUID                                              `json:"orgId"`
+			Provider          GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+			StreamMode        *string                                                         `json:"streamMode,omitempty"`
+			UpdatedAt         time.Time                                                       `json:"updatedAt"`
+		} `json:"auditLogStream"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetCriblAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetCriblAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetCriblAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetCriblAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetCriblAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode GetCriblAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCriblAuditLogStreamResponse) GetJSON200() *struct {
+	AuditLogStream struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Credentials struct {
+			Url string `json:"url"`
+		} `json:"credentials"`
+		FailingSince *time.Time `json:"failingSince,omitempty"`
+		Filters      *struct {
+			Products *[]GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+		} `json:"filters,omitempty"`
+		Id                openapi_types.UUID                                              `json:"id"`
+		LastDeliveryError *string                                                         `json:"lastDeliveryError,omitempty"`
+		OrgId             openapi_types.UUID                                              `json:"orgId"`
+		Provider          GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+		StreamMode        *string                                                         `json:"streamMode,omitempty"`
+		UpdatedAt         time.Time                                                       `json:"updatedAt"`
+	} `json:"auditLogStream"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetCriblAuditLogStreamResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetCriblAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetCriblAuditLogStreamResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetCriblAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetCriblAuditLogStreamResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetCriblAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetCriblAuditLogStreamResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetCriblAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetCriblAuditLogStreamResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetCriblAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetCriblAuditLogStreamResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode GetCriblAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCriblAuditLogStreamResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCriblAuditLogStreamResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCriblAuditLogStreamResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCriblAuditLogStreamResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateCustomAuditLogStreamResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -226006,6 +227398,372 @@ func (r ListAuditLogStreamOptionsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListAuditLogStreamOptionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateSumoLogicAuditLogStreamResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuditLogStream struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Credentials struct {
+				Token string `json:"token"`
+				Url   string `json:"url"`
+			} `json:"credentials"`
+			FailingSince *time.Time `json:"failingSince,omitempty"`
+			Filters      *struct {
+				Products *[]CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+			} `json:"filters,omitempty"`
+			Id                openapi_types.UUID                                                     `json:"id"`
+			LastDeliveryError *string                                                                `json:"lastDeliveryError,omitempty"`
+			OrgId             openapi_types.UUID                                                     `json:"orgId"`
+			Provider          CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+			StreamMode        *string                                                                `json:"streamMode,omitempty"`
+			UpdatedAt         time.Time                                                              `json:"updatedAt"`
+		} `json:"auditLogStream"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateSumoLogicAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateSumoLogicAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateSumoLogicAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateSumoLogicAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                     `json:"error"`
+		Message    interface{}                                                `json:"message,omitempty"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateSumoLogicAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateSumoLogicAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateSumoLogicAuditLogStreamResponse) GetJSON200() *struct {
+	AuditLogStream struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Credentials struct {
+			Token string `json:"token"`
+			Url   string `json:"url"`
+		} `json:"credentials"`
+		FailingSince *time.Time `json:"failingSince,omitempty"`
+		Filters      *struct {
+			Products *[]CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+		} `json:"filters,omitempty"`
+		Id                openapi_types.UUID                                                     `json:"id"`
+		LastDeliveryError *string                                                                `json:"lastDeliveryError,omitempty"`
+		OrgId             openapi_types.UUID                                                     `json:"orgId"`
+		Provider          CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+		StreamMode        *string                                                                `json:"streamMode,omitempty"`
+		UpdatedAt         time.Time                                                              `json:"updatedAt"`
+	} `json:"auditLogStream"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateSumoLogicAuditLogStreamResponse) GetJSON400() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateSumoLogicAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateSumoLogicAuditLogStreamResponse) GetJSON401() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateSumoLogicAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateSumoLogicAuditLogStreamResponse) GetJSON403() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateSumoLogicAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateSumoLogicAuditLogStreamResponse) GetJSON404() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateSumoLogicAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateSumoLogicAuditLogStreamResponse) GetJSON422() *struct {
+	Error      string                                                     `json:"error"`
+	Message    interface{}                                                `json:"message,omitempty"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateSumoLogicAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateSumoLogicAuditLogStreamResponse) GetJSON500() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateSumoLogicAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateSumoLogicAuditLogStreamResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateSumoLogicAuditLogStreamResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateSumoLogicAuditLogStreamResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateSumoLogicAuditLogStreamResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSumoLogicAuditLogStreamResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuditLogStream struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Credentials struct {
+				Token string `json:"token"`
+				Url   string `json:"url"`
+			} `json:"credentials"`
+			FailingSince *time.Time `json:"failingSince,omitempty"`
+			Filters      *struct {
+				Products *[]GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+			} `json:"filters,omitempty"`
+			Id                openapi_types.UUID                                                  `json:"id"`
+			LastDeliveryError *string                                                             `json:"lastDeliveryError,omitempty"`
+			OrgId             openapi_types.UUID                                                  `json:"orgId"`
+			Provider          GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+			StreamMode        *string                                                             `json:"streamMode,omitempty"`
+			UpdatedAt         time.Time                                                           `json:"updatedAt"`
+		} `json:"auditLogStream"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetSumoLogicAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetSumoLogicAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetSumoLogicAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetSumoLogicAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                  `json:"error"`
+		Message    interface{}                                             `json:"message,omitempty"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetSumoLogicAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetSumoLogicAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetSumoLogicAuditLogStreamResponse) GetJSON200() *struct {
+	AuditLogStream struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Credentials struct {
+			Token string `json:"token"`
+			Url   string `json:"url"`
+		} `json:"credentials"`
+		FailingSince *time.Time `json:"failingSince,omitempty"`
+		Filters      *struct {
+			Products *[]GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+		} `json:"filters,omitempty"`
+		Id                openapi_types.UUID                                                  `json:"id"`
+		LastDeliveryError *string                                                             `json:"lastDeliveryError,omitempty"`
+		OrgId             openapi_types.UUID                                                  `json:"orgId"`
+		Provider          GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+		StreamMode        *string                                                             `json:"streamMode,omitempty"`
+		UpdatedAt         time.Time                                                           `json:"updatedAt"`
+	} `json:"auditLogStream"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetSumoLogicAuditLogStreamResponse) GetJSON400() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetSumoLogicAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetSumoLogicAuditLogStreamResponse) GetJSON401() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetSumoLogicAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetSumoLogicAuditLogStreamResponse) GetJSON403() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetSumoLogicAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetSumoLogicAuditLogStreamResponse) GetJSON404() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetSumoLogicAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetSumoLogicAuditLogStreamResponse) GetJSON422() *struct {
+	Error      string                                                  `json:"error"`
+	Message    interface{}                                             `json:"message,omitempty"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetSumoLogicAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetSumoLogicAuditLogStreamResponse) GetJSON500() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetSumoLogicAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetSumoLogicAuditLogStreamResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSumoLogicAuditLogStreamResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSumoLogicAuditLogStreamResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSumoLogicAuditLogStreamResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -340757,6 +342515,39 @@ func (c *ClientWithResponses) ListAuditLogStreamsWithResponse(ctx context.Contex
 	return ParseListAuditLogStreamsResponse(rsp)
 }
 
+// CreateCriblAuditLogStreamWithBodyWithResponse performs a POST /api/v1/audit-log-streams/cribl (the `CreateCriblAuditLogStream` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateCriblAuditLogStreamWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCriblAuditLogStreamResponse, error) {
+	rsp, err := c.CreateCriblAuditLogStreamWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCriblAuditLogStreamResponse(rsp)
+}
+
+// CreateCriblAuditLogStreamWithResponse performs a POST /api/v1/audit-log-streams/cribl (the `CreateCriblAuditLogStream` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateCriblAuditLogStreamWithResponse(ctx context.Context, body CreateCriblAuditLogStreamJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCriblAuditLogStreamResponse, error) {
+	rsp, err := c.CreateCriblAuditLogStream(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCriblAuditLogStreamResponse(rsp)
+}
+
+// GetCriblAuditLogStreamWithResponse performs a GET /api/v1/audit-log-streams/cribl/{logStreamId} (the `GetCriblAuditLogStream` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetCriblAuditLogStreamWithResponse(ctx context.Context, logStreamId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetCriblAuditLogStreamResponse, error) {
+	rsp, err := c.GetCriblAuditLogStream(ctx, logStreamId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCriblAuditLogStreamResponse(rsp)
+}
+
 // CreateCustomAuditLogStreamWithBodyWithResponse performs a POST /api/v1/audit-log-streams/custom (the `CreateCustomAuditLogStream` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -340865,6 +342656,39 @@ func (c *ClientWithResponses) ListAuditLogStreamOptionsWithResponse(ctx context.
 		return nil, err
 	}
 	return ParseListAuditLogStreamOptionsResponse(rsp)
+}
+
+// CreateSumoLogicAuditLogStreamWithBodyWithResponse performs a POST /api/v1/audit-log-streams/sumo-logic (the `CreateSumoLogicAuditLogStream` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateSumoLogicAuditLogStreamWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSumoLogicAuditLogStreamResponse, error) {
+	rsp, err := c.CreateSumoLogicAuditLogStreamWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSumoLogicAuditLogStreamResponse(rsp)
+}
+
+// CreateSumoLogicAuditLogStreamWithResponse performs a POST /api/v1/audit-log-streams/sumo-logic (the `CreateSumoLogicAuditLogStream` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateSumoLogicAuditLogStreamWithResponse(ctx context.Context, body CreateSumoLogicAuditLogStreamJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSumoLogicAuditLogStreamResponse, error) {
+	rsp, err := c.CreateSumoLogicAuditLogStream(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSumoLogicAuditLogStreamResponse(rsp)
+}
+
+// GetSumoLogicAuditLogStreamWithResponse performs a GET /api/v1/audit-log-streams/sumo-logic/{logStreamId} (the `GetSumoLogicAuditLogStream` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetSumoLogicAuditLogStreamWithResponse(ctx context.Context, logStreamId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetSumoLogicAuditLogStreamResponse, error) {
+	rsp, err := c.GetSumoLogicAuditLogStream(ctx, logStreamId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSumoLogicAuditLogStreamResponse(rsp)
 }
 
 // DeleteAlicloudAuthWithResponse performs a DELETE /api/v1/auth/alicloud-auth/identities/{identityId} (the `DeleteAlicloudAuth` operationId) request.
@@ -359857,6 +361681,240 @@ func ParseListAuditLogStreamsResponse(rsp *http.Response) (*ListAuditLogStreamsR
 	return response, nil
 }
 
+// ParseCreateCriblAuditLogStreamResponse parses an HTTP response from a CreateCriblAuditLogStreamWithResponse call
+func ParseCreateCriblAuditLogStreamResponse(rsp *http.Response) (*CreateCriblAuditLogStreamResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateCriblAuditLogStreamResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuditLogStream struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Credentials struct {
+					Url string `json:"url"`
+				} `json:"credentials"`
+				FailingSince *time.Time `json:"failingSince,omitempty"`
+				Filters      *struct {
+					Products *[]CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+				} `json:"filters,omitempty"`
+				Id                openapi_types.UUID                                                 `json:"id"`
+				LastDeliveryError *string                                                            `json:"lastDeliveryError,omitempty"`
+				OrgId             openapi_types.UUID                                                 `json:"orgId"`
+				Provider          CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+				StreamMode        *string                                                            `json:"streamMode,omitempty"`
+				UpdatedAt         time.Time                                                          `json:"updatedAt"`
+			} `json:"auditLogStream"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateCriblAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateCriblAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateCriblAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateCriblAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateCriblAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateCriblAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetCriblAuditLogStreamResponse parses an HTTP response from a GetCriblAuditLogStreamWithResponse call
+func ParseGetCriblAuditLogStreamResponse(rsp *http.Response) (*GetCriblAuditLogStreamResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCriblAuditLogStreamResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuditLogStream struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Credentials struct {
+					Url string `json:"url"`
+				} `json:"credentials"`
+				FailingSince *time.Time `json:"failingSince,omitempty"`
+				Filters      *struct {
+					Products *[]GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+				} `json:"filters,omitempty"`
+				Id                openapi_types.UUID                                              `json:"id"`
+				LastDeliveryError *string                                                         `json:"lastDeliveryError,omitempty"`
+				OrgId             openapi_types.UUID                                              `json:"orgId"`
+				Provider          GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+				StreamMode        *string                                                         `json:"streamMode,omitempty"`
+				UpdatedAt         time.Time                                                       `json:"updatedAt"`
+			} `json:"auditLogStream"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetCriblAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetCriblAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetCriblAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetCriblAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetCriblAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode GetCriblAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateCustomAuditLogStreamResponse parses an HTTP response from a CreateCustomAuditLogStreamWithResponse call
 func ParseCreateCustomAuditLogStreamResponse(rsp *http.Response) (*CreateCustomAuditLogStreamResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -360666,6 +362724,242 @@ func ParseListAuditLogStreamOptionsResponse(rsp *http.Response) (*ListAuditLogSt
 			Message    string                                                 `json:"message"`
 			ReqId      string                                                 `json:"reqId"`
 			StatusCode ListAuditLogStreamOptions500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateSumoLogicAuditLogStreamResponse parses an HTTP response from a CreateSumoLogicAuditLogStreamWithResponse call
+func ParseCreateSumoLogicAuditLogStreamResponse(rsp *http.Response) (*CreateSumoLogicAuditLogStreamResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateSumoLogicAuditLogStreamResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuditLogStream struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Credentials struct {
+					Token string `json:"token"`
+					Url   string `json:"url"`
+				} `json:"credentials"`
+				FailingSince *time.Time `json:"failingSince,omitempty"`
+				Filters      *struct {
+					Products *[]CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+				} `json:"filters,omitempty"`
+				Id                openapi_types.UUID                                                     `json:"id"`
+				LastDeliveryError *string                                                                `json:"lastDeliveryError,omitempty"`
+				OrgId             openapi_types.UUID                                                     `json:"orgId"`
+				Provider          CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+				StreamMode        *string                                                                `json:"streamMode,omitempty"`
+				UpdatedAt         time.Time                                                              `json:"updatedAt"`
+			} `json:"auditLogStream"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateSumoLogicAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateSumoLogicAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateSumoLogicAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateSumoLogicAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    interface{}                                                `json:"message,omitempty"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateSumoLogicAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateSumoLogicAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSumoLogicAuditLogStreamResponse parses an HTTP response from a GetSumoLogicAuditLogStreamWithResponse call
+func ParseGetSumoLogicAuditLogStreamResponse(rsp *http.Response) (*GetSumoLogicAuditLogStreamResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSumoLogicAuditLogStreamResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuditLogStream struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Credentials struct {
+					Token string `json:"token"`
+					Url   string `json:"url"`
+				} `json:"credentials"`
+				FailingSince *time.Time `json:"failingSince,omitempty"`
+				Filters      *struct {
+					Products *[]GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
+				} `json:"filters,omitempty"`
+				Id                openapi_types.UUID                                                  `json:"id"`
+				LastDeliveryError *string                                                             `json:"lastDeliveryError,omitempty"`
+				OrgId             openapi_types.UUID                                                  `json:"orgId"`
+				Provider          GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamProvider `json:"provider"`
+				StreamMode        *string                                                             `json:"streamMode,omitempty"`
+				UpdatedAt         time.Time                                                           `json:"updatedAt"`
+			} `json:"auditLogStream"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetSumoLogicAuditLogStream400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetSumoLogicAuditLogStream401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetSumoLogicAuditLogStream403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetSumoLogicAuditLogStream404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    interface{}                                             `json:"message,omitempty"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetSumoLogicAuditLogStream422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetSumoLogicAuditLogStream500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

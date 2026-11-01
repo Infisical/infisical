@@ -28,7 +28,7 @@ func TestAdminConsole_ProjectAccess(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
-		require.Contains(t, projectMemberEmails(t, tn, proj), orgAdmin.Email)
+		require.Equal(t, []string{"admin"}, projectRoleSlugs(t, tn, proj, orgAdmin))
 		msg := tn.Mail(t).Expect(t, tn.Admin.Email, smtp.Subject("Organization Admin Project Direct Access Issued"))
 		require.Contains(t, msg.Body, orgAdmin.Email)
 		require.Contains(t, msg.Body, proj.Name)
@@ -88,4 +88,24 @@ func TestAdminConsole_ProjectAccess(t *testing.T) {
 		}
 		require.Contains(t, ids, proj.ID)
 	})
+}
+
+// projectRoleSlugs is the role slugs the user holds directly in the project.
+func projectRoleSlugs(t *testing.T, tn *harness.Tenant, proj *fixture.Project, user *harness.Principal) []string {
+	t.Helper()
+	res, err := fresh(t, tn, tn.Admin).ListProjectMembershipsWithResponse(t.Context(), proj.ID)
+	require.NoError(t, err)
+	requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+	for _, m := range res.JSON200.Memberships {
+		if m.UserId != user.ID {
+			continue
+		}
+		var out []string
+		for _, r := range m.Roles {
+			out = append(out, r.Role)
+		}
+		return out
+	}
+	t.Fatalf("%s is not a member of project %s", user.Email, proj.ID)
+	return nil
 }

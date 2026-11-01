@@ -123,6 +123,7 @@ func TestMembership_Delete(t *testing.T) {
 		proj.Grant(t, member, "viewer")
 		group := fixture.NewGroup(t, tn)
 		group.AddUser(t, member)
+		require.Contains(t, groupMemberIDs(t, tn, group), member.ID)
 
 		// Action
 		res, err := tn.Admin.API.DeleteOrgMembershipWithResponse(t.Context(), tn.OrgID.String(),
@@ -133,6 +134,11 @@ func TestMembership_Delete(t *testing.T) {
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 		require.Nil(t, fixture.MembershipOf(t, tn, member.Email))
 		require.NotContains(t, projectMemberEmails(t, tn, proj), member.Email)
+		// The group list only shows org members, so the user is invited back: a group row that
+		// survived the removal would list them as a member again.
+		reinvited := invite(t, tn, tn.Admin, "member", member.Email)
+		requireStatus(t, http.StatusOK, reinvited.StatusCode(), reinvited.Body)
+		require.NotNil(t, fixture.MembershipOf(t, tn, member.Email))
 		require.NotContains(t, groupMemberIDs(t, tn, group), member.ID)
 	})
 

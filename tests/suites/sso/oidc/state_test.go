@@ -45,7 +45,8 @@ func TestOIDCState(t *testing.T) {
 		res := callback(t, o, o.OP.LogIn(t, mallory), state, cookies)
 
 		// Assert
-		require.NotEqual(t, http.StatusFound, res.StatusCode())
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "%s", res.Body)
+		require.Equal(t, "Your OIDC login session has expired or was not started. Start the login again.", apierr.Message(res.Body))
 		require.Nil(t, sso.RefreshCookie(res.HTTPResponse))
 		require.Nil(t, fixture.MembershipOf(t, o.Tenant, mallory.Email))
 	})

@@ -95,15 +95,16 @@ func TestAccessToken_NumUses(t *testing.T) {
 		statuses := []int{}
 
 		// Action
+		var last []byte
 		for range 4 {
-			status, _ := whoami(t, c)
+			status, body := whoami(t, c)
 			statuses = append(statuses, status)
+			last = body
 		}
 
 		// Assert
 		require.Equal(t, []int{http.StatusOK, http.StatusOK, http.StatusOK, http.StatusUnauthorized}, statuses)
-		_, body := whoami(t, c)
-		require.Contains(t, string(body), "token usage limit reached")
+		require.Contains(t, string(last), "token usage limit reached")
 	})
 
 	t.Run("should count uses across a renewal rather than resetting them", func(t *testing.T) {
@@ -212,7 +213,10 @@ func TestAccessToken_TTL(t *testing.T) {
 			require.LessOrEqual(t, exp, deadline+1, "a renewed token outlived the max TTL")
 		}
 		require.GreaterOrEqual(t, time.Now().Unix(), deadline-1, "renewal was refused before the max TTL ran out: %s", refused.Body)
-		require.Truef(t, refusedForMaxTTL(refused.StatusCode(), refused.Body), "answered %d: %s", refused.StatusCode(), apierr.Body(refused.Body))
+		// A renewed token never outlives the budget, so once it runs out the presented token has
+		// itself expired and is refused before the max TTL check could name the budget.
+		requireStatus(t, http.StatusForbidden, refused.StatusCode(), refused.Body)
+		require.Contains(t, string(refused.Body), "Your token has expired")
 	})
 
 	t.Run("should cap expiresIn at the remaining max TTL budget", func(t *testing.T) {
@@ -500,15 +504,6 @@ func revoke(t *testing.T, tn *harness.Tenant, token string) *api.RevokeIdentityA
 		api.RevokeIdentityAccessTokenJSONRequestBody{AccessToken: token})
 	require.NoError(t, err)
 	return res
-}
-
-// refusedForMaxTTL accepts both ways a renewal past the max TTL is refused: the budget
-// check, or the presented token having expired, since no renewed token outlives the
-// budget.
-func refusedForMaxTTL(status int, body []byte) bool {
-	msg := string(body)
-	return (status == http.StatusUnauthorized && strings.Contains(msg, "reached its max TTL")) ||
-		(status == http.StatusForbidden && strings.Contains(msg, "Your token has expired"))
 }
 
 func encodeSegment(t *testing.T, v any) string {

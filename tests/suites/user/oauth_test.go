@@ -2,6 +2,8 @@ package user_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"net/http"
 	"strings"
 	"testing"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	githubfake "github.com/Infisical/infisical/tests/fakes/github"
+	"github.com/Infisical/infisical/tests/fakes/oauth"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/harness"
@@ -264,6 +267,34 @@ func TestOAuth_Callback(t *testing.T) {
 		}
 	})
 
+	t.Run("should refuse a login whose PKCE verifier does not match the redirect's challenge, and create no account", func(t *testing.T) {
+		t.Parallel()
+		for _, kind := range providers {
+			t.Run(string(kind), func(t *testing.T) {
+				t.Parallel()
+
+				// Setup
+				tn := h.NewTenant(t)
+				p := fixture.NewOAuthPerson(tn, true)
+				b := fixture.StartOAuth(t, tn, kind)
+				cp := fixture.OAuthConsent(t, tn, kind, p)
+				other := sha256.Sum256([]byte("not-the-verifier-" + id.Short()))
+				cp.Seed(t, oauth.Grant{CodeChallenge: base64.RawURLEncoding.EncodeToString(other[:])})
+
+				// Action
+				res, err := b.Callback(t.Context(), kind, cp.Code, b.State, b.Cookies...)
+
+				// Assert
+				require.NoError(t, err)
+				require.Equalf(t, http.StatusBadRequest, res.Status, "body: %s", apierr.Body(res.Body))
+				require.Contains(t, apierr.Message(res.Body), "did not accept the login's authorization code")
+				requireNoSession(t, res)
+				require.False(t, cp.State(t).Redeemed)
+				require.Equal(t, "true", fixture.OAuthLogin(t, tn, kind, p).Redirect(t).Query().Get("signup_completed"))
+			})
+		}
+	})
+
 	t.Run("should refuse a callback without the redirect's session cookie, and create no account", func(t *testing.T) {
 		t.Parallel()
 		for _, kind := range providers {
@@ -365,8 +396,6 @@ func TestOAuth_Google(t *testing.T) {
 	})
 }
 
-// A provider that returns no usable email used to leave the callback hanging, because the error
-// was thrown outside the strategy's callback.
 func TestOAuth_NoEmail(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -388,6 +417,26 @@ func TestOAuth_NoEmail(t *testing.T) {
 		require.NoError(t, err, "the callback never answered")
 		require.Equalf(t, http.StatusBadRequest, res.Status, "body: %s", apierr.Body(res.Body))
 		require.Equal(t, "No email found for GitHub account", apierr.Message(res.Body))
+		require.Nil(t, cookieNamed(res.HTTP, "jid"))
+	})
+
+	t.Run("should refuse a GitLab login whose profile has no email, and answer", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		b := fixture.StartOAuth(t, tn, fixture.OAuthGitLab)
+		cp := fixture.OAuthConsent(t, tn, fixture.OAuthGitLab, fixture.OAuthPerson{ID: fixture.NewOAuthAccountID(), Verified: true})
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+		defer cancel()
+
+		// Action
+		res, err := b.Callback(ctx, fixture.OAuthGitLab, cp.Code, b.State, b.Cookies...)
+
+		// Assert
+		require.NoError(t, err, "the callback never answered")
+		require.Equalf(t, http.StatusBadRequest, res.Status, "body: %s", apierr.Body(res.Body))
+		require.Equal(t, "No email found for GitLab account", apierr.Message(res.Body))
 		require.Nil(t, cookieNamed(res.HTTP, "jid"))
 	})
 

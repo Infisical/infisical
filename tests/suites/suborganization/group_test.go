@@ -38,20 +38,6 @@ func availableGroupIDs(t *testing.T, client *api.ClientWithResponses) []uuid.UUI
 	return out
 }
 
-func membershipIDIn(t *testing.T, client *api.ClientWithResponses, orgID, userID uuid.UUID) uuid.UUID {
-	t.Helper()
-	res, err := client.ListOrgMembershipsWithResponse(t.Context(), orgID.String())
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "listing the members of %s returned %d: %s", orgID, res.StatusCode(), apierr.Body(res.Body))
-	for _, m := range res.JSON200.Users {
-		if m.User.Id == userID {
-			return m.Id
-		}
-	}
-	t.Fatalf("user %s has no membership in %s", userID, orgID)
-	return uuid.Nil
-}
-
 func TestSubOrgGroup_Native(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -346,6 +332,67 @@ func TestSubOrgGroup_Linked(t *testing.T) {
 		require.Empty(t, fixture.GroupUserIDs(t, tn.Admin.API, group.ID))
 	})
 
+	t.Run("should refuse removing a linked root group's user from the sub-org, and keep them", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sub := fixture.NewSubOrg(t, tn)
+		group := fixture.NewGroup(t, tn)
+		group.AddUser(t, tn.Admin)
+		sub.LinkGroup(t, group, "member")
+
+		// Action
+		res, err := sub.Admin.API.RemoveUserFromGroupWithResponse(t.Context(), group.ID.String(), tn.Admin.Email)
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusForbidden, res.StatusCode(), res.Body)
+		require.Contains(t, string(res.Body), "is owned by a parent organization")
+		require.Equal(t, []uuid.UUID{tn.Admin.ID}, fixture.GroupUserIDs(t, tn.Admin.API, group.ID))
+	})
+
+	t.Run("should refuse adding a machine identity to a linked root group from the sub-org, and add nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sub := fixture.NewSubOrg(t, tn)
+		group := fixture.NewGroup(t, tn)
+		identity := tn.NewMachineIdentity(t, harness.OrgRole("member"))
+		sub.LinkGroup(t, group, "member")
+
+		// Action
+		res, err := sub.Admin.API.AddMachineIdentityToGroupWithResponse(t.Context(), group.ID.String(), identity.ID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusForbidden, res.StatusCode(), res.Body)
+		require.Contains(t, string(res.Body), "is owned by a parent organization")
+		require.Empty(t, groupIdentityIDs(t, tn.Admin.API, group.ID))
+	})
+
+	t.Run("should refuse removing a machine identity from a linked root group from the sub-org, and keep it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sub := fixture.NewSubOrg(t, tn)
+		group := fixture.NewGroup(t, tn)
+		identity := tn.NewMachineIdentity(t, harness.OrgRole("member"))
+		group.AddIdentity(t, identity)
+		sub.LinkGroup(t, group, "member")
+
+		// Action
+		res, err := sub.Admin.API.RemoveMachineIdentityFromGroupWithResponse(t.Context(), group.ID.String(), identity.ID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusForbidden, res.StatusCode(), res.Body)
+		require.Contains(t, string(res.Body), "is owned by a parent organization")
+		require.Equal(t, []uuid.UUID{identity.ID}, groupIdentityIDs(t, tn.Admin.API, group.ID))
+	})
+
 	t.Run("should refuse renaming a linked group from the sub-org", func(t *testing.T) {
 		t.Parallel()
 
@@ -533,4 +580,19 @@ func TestSubOrgGroup_Linked(t *testing.T) {
 		})
 		require.Equal(t, group.Name, event["groupName"])
 	})
+}
+
+func groupIdentityIDs(t *testing.T, client *api.ClientWithResponses, groupID uuid.UUID) []uuid.UUID {
+	t.Helper()
+	filter := api.ListGroupMachineIdentitiesParamsFilter("assignedMachineIdentities")
+	res, err := client.ListGroupMachineIdentitiesWithResponse(t.Context(), groupID.String(), &api.ListGroupMachineIdentitiesParams{Filter: &filter})
+	require.NoError(t, err)
+	requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+	ids := []uuid.UUID{}
+	for _, m := range res.JSON200.MachineIdentities {
+		if m.IsPartOfGroup {
+			ids = append(ids, m.Id)
+		}
+	}
+	return ids
 }

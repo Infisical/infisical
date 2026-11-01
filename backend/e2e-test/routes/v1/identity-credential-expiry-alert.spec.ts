@@ -1,4 +1,4 @@
-import { OrgMembershipRole } from "@app/db/schemas";
+import { OrgMembershipRole, TableName } from "@app/db/schemas";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 // Expiry alerts are evaluated by the daily alert cron, which only enqueues one dispatch job per
@@ -78,5 +78,55 @@ describe("Machine identity credential expiry alert", () => {
     });
 
     expect(email.recipients).toEqual([recipient.username]);
+  }, 40_000);
+
+  // The e2e environment serves no HTTPS endpoint, and a webhook channel takes only https URLs, so
+  // the post itself cannot be observed here (the webhook channel's delivery is pinned black-box by
+  // the auth-method-changed alert). What is pinned is that an expiry run targets the webhook channel.
+  test("a client secret expiring within the lead time is dispatched to the alert's webhook channel", async () => {
+    const identity = await createIdentityActor({ orgId, authToken });
+    const secretRes = await testServer.inject({
+      method: "POST",
+      url: `/api/v1/auth/universal-auth/identities/${identity.identityId}/client-secrets`,
+      headers: { authorization: `Bearer ${authToken}` },
+      body: { description: "expiring-to-webhook", ttl: 2 * 24 * 60 * 60 }
+    });
+    expect(secretRes.statusCode, secretRes.payload).toBe(200);
+
+    const alertRes = await createAlert({
+      authToken,
+      body: {
+        name: "credential expiry webhook",
+        resourceType: "identity.authentication",
+        resourceId: identity.identityId,
+        eventType: "identity.authentication.expiry",
+        condition: { alertBefore: "7d" },
+        channels: [{ name: "Webhook", channelType: "webhook", config: { url: "https://hooks.example.test/expiry" } }]
+      }
+    });
+
+    await queue().queue(
+      QueueName.AlertDispatch,
+      QueueJobs.AlertDispatch,
+      { alertId: alertRes.id, scheduledAt: new Date().toISOString() },
+      { jobId: `e2e-alert-dispatch-${alertRes.id}`, removeOnComplete: true, removeOnFail: true, attempts: 1 }
+    );
+
+    const targets = await pollUntil({
+      describe: "the expiry run's channel targets",
+      read: () =>
+        testDb(TableName.AlertHistoryTarget)
+          .join(
+            TableName.AlertHistory,
+            `${TableName.AlertHistory}.id`,
+            `${TableName.AlertHistoryTarget}.alertHistoryId`
+          )
+          .where(`${TableName.AlertHistory}.alertId`, alertRes.id)
+          .select(`${TableName.AlertHistoryTarget}.channelType`),
+      done: (rows) => rows.length > 0,
+      timeoutMs: 30_000
+    });
+
+    expect(targets.map((row) => row.channelType)).toEqual(["webhook"]);
   }, 40_000);
 });

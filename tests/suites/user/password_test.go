@@ -104,6 +104,7 @@ func TestAccountRecovery(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		alice := tn.NewUser(t)
+		phone := signIn(t, tn, alice.Email)
 		token := recoveryToken(t, tn, alice.Email)
 
 		// Action
@@ -113,6 +114,7 @@ func TestAccountRecovery(t *testing.T) {
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "resetting: %s", apierr.Body(res.Body))
 		requireSessionGone(t, alice.API)
+		requireSessionGone(t, phone.API)
 		old, _ := login(t, tn, alice.Email, harness.UserPassword)
 		require.Equal(t, http.StatusBadRequest, old.StatusCode())
 		reset, _ := login(t, tn, alice.Email, newPassword)

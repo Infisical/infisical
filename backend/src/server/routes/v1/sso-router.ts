@@ -320,7 +320,11 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         },
         async (req: any, _accessToken: string, _refreshToken: string, profile: any, cb: any) => {
           const authMetricStartTime = performance.now();
-          const email = profile.emails[0].value;
+          const email = profile.emails?.[0]?.value;
+          if (!email) {
+            cb(new BadRequestError({ message: "No email found for GitLab account" }), false);
+            return;
+          }
           // GitLab's /user API exposes confirmed_at as a non-empty ISO timestamp when the email is
           // confirmed, or null otherwise (it is not a boolean). Treat a present, non-empty string as
           // verified rather than coercing with Boolean(), so no non-string truthy value can slip in.
@@ -425,6 +429,23 @@ export const initializeOauthConfigSync = async () => {
     task: refreshOauthConfig
   });
 };
+
+// passport-oauth2 raises a TokenError when the provider refuses to exchange the authorization code
+// (expired, already used, or a PKCE verifier that does not match). That is the browser's login
+// that failed, not the server, so it answers 400 instead of falling through to a 500.
+const withOAuthTokenErrorAsBadRequest =
+  (provider: string, authenticate: (req: any, res: any) => Promise<unknown>) => async (req: any, res: any) => {
+    try {
+      return await authenticate(req, res);
+    } catch (error) {
+      if ((error as { name?: string })?.name === "TokenError") {
+        throw new BadRequestError({
+          message: `${provider} did not accept the login's authorization code. Start the login again.`
+        });
+      }
+      throw error;
+    }
+  };
 
 export const registerSsoRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -579,7 +600,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         .passthrough()
     },
     preValidation: [
-      async (req, res) => {
+      withOAuthTokenErrorAsBadRequest("Google", async (req: any, res: any) => {
         return (
           passport.authenticate("google", {
             session: false,
@@ -588,7 +609,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             authInfo: false
           } as any) as any
         )(req, res);
-      }
+      })
     ],
     handler: handleOAuthCallbackRedirect
   });
@@ -685,7 +706,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         .passthrough()
     },
     preValidation: [
-      async (req: any, res: any) => {
+      withOAuthTokenErrorAsBadRequest("GitHub", async (req: any, res: any) => {
         return (
           passport.authenticate("github", {
             session: false,
@@ -694,7 +715,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             authInfo: false
           } as any) as any
         )(req, res);
-      }
+      })
     ],
     handler: async (req: any, res: any) => {
       if (req.passportUser.externalProviderAccessToken) {
@@ -764,7 +785,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         .passthrough()
     },
     preValidation: [
-      async (req: any, res: any) => {
+      withOAuthTokenErrorAsBadRequest("GitLab", async (req: any, res: any) => {
         return (
           passport.authenticate("gitlab", {
             session: false,
@@ -773,7 +794,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             authInfo: false
           } as any) as any
         )(req, res);
-      }
+      })
     ],
     handler: handleOAuthCallbackRedirect
   });

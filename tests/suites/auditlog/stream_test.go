@@ -65,6 +65,21 @@ func TestAuditLogStream_Create(t *testing.T) {
 		require.Equal(t, kept.String(), got[0]["id"])
 	})
 
+	t.Run("should refuse a URL nothing listens on and store nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+
+		// Action
+		status, body := createCustomStream(t, tn.Admin, "https://"+webhook.Service.Host()+":9/"+id.Short())
+
+		// Assert
+		require.Equalf(t, http.StatusBadRequest, status, "%s", apierr.Body(body))
+		require.True(t, strings.HasPrefix(apierr.Message(body), "Failed to connect with upstream source"), apierr.Message(body))
+		require.Empty(t, streams(t, tn))
+	})
+
 	t.Run("should refuse a URL whose test delivery fails and store nothing", func(t *testing.T) {
 		t.Parallel()
 
@@ -171,6 +186,66 @@ func TestAuditLogStream_Credentials(t *testing.T) {
 
 		// Assert
 		require.Equal(t, token, sink.ExpectEvent[webhook.DeliveryReceived](t, isPing).Header.Get("DD-API-KEY"),
+			"the test delivery should carry the token")
+		require.Len(t, listed, 1)
+		for name, body := range map[string]string{
+			"create": string(created.Body), "get": string(got.Body), "list": jsonString(t, listed),
+		} {
+			require.NotContainsf(t, body, token, "%s revealed the token", name)
+			require.Containsf(t, body, sink.URL, "%s dropped the URL", name)
+		}
+	})
+
+	t.Run("should omit a Cribl token in every read", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
+		token := strings.Repeat("cd34", 8)
+
+		// Action
+		created, err := tn.Admin.API.CreateCriblAuditLogStreamWithBodyWithResponse(t.Context(), "application/json",
+			jsonBody(t, map[string]any{"credentials": map[string]any{"url": sink.URL, "token": token}}))
+		require.NoError(t, err)
+		require.NotNilf(t, created.JSON200, "creating a stream returned %d: %s", created.StatusCode(), apierr.Body(created.Body))
+		got, err := tn.Admin.API.GetCriblAuditLogStreamWithResponse(t.Context(), created.JSON200.AuditLogStream.Id)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, got.StatusCode(), "reading the stream: %s", apierr.Body(got.Body))
+		listed := streams(t, tn)
+
+		// Assert
+		require.Equal(t, "Bearer "+token, sink.ExpectEvent[webhook.DeliveryReceived](t, isPing).Header.Get("Authorization"),
+			"the test delivery should carry the token")
+		require.Len(t, listed, 1)
+		for name, body := range map[string]string{
+			"create": string(created.Body), "get": string(got.Body), "list": jsonString(t, listed),
+		} {
+			require.NotContainsf(t, body, token, "%s revealed the token", name)
+			require.Containsf(t, body, sink.URL, "%s dropped the URL", name)
+		}
+	})
+
+	t.Run("should redact a Sumo Logic token in every read", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
+		token := strings.Repeat("ef56", 8)
+
+		// Action
+		created, err := tn.Admin.API.CreateSumoLogicAuditLogStreamWithBodyWithResponse(t.Context(), "application/json",
+			jsonBody(t, map[string]any{"credentials": map[string]any{"url": sink.URL, "token": token}}))
+		require.NoError(t, err)
+		require.NotNilf(t, created.JSON200, "creating a stream returned %d: %s", created.StatusCode(), apierr.Body(created.Body))
+		got, err := tn.Admin.API.GetSumoLogicAuditLogStreamWithResponse(t.Context(), created.JSON200.AuditLogStream.Id)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, got.StatusCode(), "reading the stream: %s", apierr.Body(got.Body))
+		listed := streams(t, tn)
+
+		// Assert
+		require.Equal(t, token, sink.ExpectEvent[webhook.DeliveryReceived](t, isPing).Header.Get("X-Sumo-Token"),
 			"the test delivery should carry the token")
 		require.Len(t, listed, 1)
 		for name, body := range map[string]string{

@@ -62,6 +62,7 @@ func TestSignup_Email(t *testing.T) {
 		require.Equal(t, http.StatusOK, existing.StatusCode())
 		require.Equal(t, http.StatusOK, unknown.StatusCode())
 		require.Equal(t, "Sent an email verification code to "+alice.Email, existing.JSON200.Message)
+		require.Equal(t, "Sent an email verification code to "+fresh, unknown.JSON200.Message)
 		require.Equal(t, unknown.JSON200.CooldownSeconds, existing.JSON200.CooldownSeconds)
 		tn.Mail(t).Expect(t, alice.Email, smtp.Subject("Sign-up Request for Your Infisical Account"))
 		tn.Mail(t).ExpectNoEvent[smtp.MessageReceived](t, func(e smtp.MessageReceived) bool {

@@ -61,7 +61,10 @@ type OAuthBrowser struct {
 	IP      string
 	Cookies []*http.Cookie
 	State   string
-	api     *api.ClientWithResponses
+	// Challenge is the PKCE challenge on the authorization redirect, which the provider
+	// checks the token request's verifier against.
+	Challenge string
+	api       *api.ClientWithResponses
 }
 
 type OAuthStartOption func(*oauthStart)
@@ -112,6 +115,9 @@ func StartOAuth(tt *testing.T, tn *harness.Tenant, kind OAuthProvider, opts ...O
 	require.NoError(tt, err)
 	b.State, b.Cookies = loc.Query().Get("state"), res.Cookies()
 	require.NotEmptyf(tt, b.State, "the authorization redirect carries no state: %s", loc)
+	b.Challenge = loc.Query().Get("code_challenge")
+	require.NotEmptyf(tt, b.Challenge, "the authorization redirect carries no PKCE challenge: %s", loc)
+	require.Equal(tt, "S256", loc.Query().Get("code_challenge_method"))
 	return b
 }
 
@@ -166,6 +172,7 @@ func (b *OAuthBrowser) Callback(ctx context.Context, kind OAuthProvider, code, s
 // Finish completes the round trip with the browser's own cookies and state.
 func (b *OAuthBrowser) Finish(tt *testing.T, kind OAuthProvider, cp *oauth.ControlPlane) OAuthResult {
 	tt.Helper()
+	cp.Seed(tt, oauth.Grant{CodeChallenge: b.Challenge})
 	res, err := b.Callback(tt.Context(), kind, cp.Code, b.State, b.Cookies...)
 	require.NoError(tt, err)
 	return res
