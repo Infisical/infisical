@@ -163,7 +163,31 @@ export const identityJwtAuthServiceFactory = ({
         }
 
         const { kid } = decodedToken.header as { kid: string };
-        const jwtSigningKey = await client.getSigningKey(kid);
+        let jwtSigningKey;
+        try {
+          jwtSigningKey = await client.getSigningKey(kid);
+        } catch (error) {
+          if (error instanceof Error && error.name === "SigningKeyNotFoundError") {
+            throw new UnauthorizedError({
+              message: `Access denied: Unable to verify JWT signature. The signing key '${kid}' was not found in the configured JWKS.`,
+              detail: {
+                reasonCode: "signing_key_not_found",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
+            });
+          }
+          throw new UnauthorizedError({
+            message: `Access denied: Failed to retrieve signing key from the JWKS endpoint: ${error instanceof Error ? error.message : String(error)}`,
+            detail: {
+              reasonCode: "signing_key_retrieval_failed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
 
         try {
           tokenData = crypto.jwt().verify(jwtValue, jwtSigningKey.getPublicKey()) as Record<string, string>;

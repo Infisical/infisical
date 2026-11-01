@@ -142,11 +142,11 @@ func TestAccountRecovery(t *testing.T) {
 	})
 }
 
-func TestAccountRecovery_KnownIssues(t *testing.T) {
+func TestAccountRecovery_WrongCode(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should refuse a wrong recovery code with a 4xx", func(t *testing.T) {
+	t.Run("should refuse a wrong recovery code without issuing a recovery token", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -163,7 +163,9 @@ func TestAccountRecovery_KnownIssues(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		require4xx(t, res.StatusCode(), res.Body)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "body: %s", apierr.Body(res.Body))
+		require.Equal(t, "Invalid or expired verification request", apierr.Message(res.Body))
+		require.Nil(t, res.JSON200)
 	})
 }
 

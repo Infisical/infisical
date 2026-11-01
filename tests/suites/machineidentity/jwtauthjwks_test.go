@@ -89,11 +89,11 @@ func TestJwtAuth_Jwks(t *testing.T) {
 	})
 }
 
-func TestJwtAuth_Jwks_KnownIssues(t *testing.T) {
+func TestJwtAuth_JwksUnknownKey(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should refuse a JWT whose kid the JWKS does not publish as unauthorized rather than a server error", func(t *testing.T) {
+	t.Run("should refuse a JWT whose kid the JWKS does not publish and issue no token", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -108,6 +108,7 @@ func TestJwtAuth_Jwks_KnownIssues(t *testing.T) {
 
 		// Assert
 		fedRequireStatus(t, http.StatusUnauthorized, res.StatusCode(), res.Body)
+		require.Contains(t, apierr.Message(res.Body), "was not found in the configured JWKS")
 		fedRequireNeverLoggedIn(t, tn, identityID)
 	})
 }

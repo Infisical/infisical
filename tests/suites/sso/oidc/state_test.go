@@ -6,6 +6,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/sso"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,10 +68,10 @@ func TestOIDCState(t *testing.T) {
 	})
 }
 
-func TestOIDCState_KnownIssues(t *testing.T) {
+func TestOIDCState_Session(t *testing.T) {
 	t.Parallel()
 
-	t.Run("should answer a client error rather than 500 when a used state is replayed", func(t *testing.T) {
+	t.Run("should refuse a replayed state once the login has completed", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -83,11 +84,11 @@ func TestOIDCState_KnownIssues(t *testing.T) {
 		res := callback(t, o, o.OP.LogIn(t, o.Person()), state, cookies)
 
 		// Assert
-		require.GreaterOrEqual(t, res.StatusCode(), 400)
-		require.Lessf(t, res.StatusCode(), 500, "%s", res.Body)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "%s", res.Body)
+		require.Equal(t, "Your OIDC login session has expired or was not started. Start the login again.", apierr.Message(res.Body))
 	})
 
-	t.Run("should answer a client error rather than 500 when the login session cookie is missing", func(t *testing.T) {
+	t.Run("should refuse a callback without the login session cookie", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -98,7 +99,7 @@ func TestOIDCState_KnownIssues(t *testing.T) {
 		res := callback(t, o, o.OP.LogIn(t, o.Person()), state, nil)
 
 		// Assert
-		require.GreaterOrEqual(t, res.StatusCode(), 400)
-		require.Lessf(t, res.StatusCode(), 500, "%s", res.Body)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "%s", res.Body)
+		require.Equal(t, "Your OIDC login session has expired or was not started. Start the login again.", apierr.Message(res.Body))
 	})
 }

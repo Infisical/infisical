@@ -487,7 +487,7 @@ func TestGatewayAttach_KnownIssues(t *testing.T) {
 
 // addGatewayToPool maps a unique violation to "already a member", but reads the code
 // from the wrong field of the wrapped database error, so the duplicate surfaces as a 500.
-func TestGatewayPoolMembership_KnownIssues(t *testing.T) {
+func TestGatewayPoolMembership_Duplicate(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 

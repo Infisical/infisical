@@ -82,6 +82,14 @@ clients/api/        generated client; never edit by hand
 - Use the actor the claim is about, not `tn.Admin` by default.
 - No package, fixture, or option for a single caller.
 
+## Known issues
+
+A test that pins a backend bug asserts the intended behaviour and lives in a function named
+`Test<Area>_KnownIssues`. It fails until the bug is fixed, so CI runs the suites with
+`-skip KnownIssues` (`make test-suites TEST_FLAGS="-skip KnownIssues"`). Run them locally
+with `-run KnownIssues`. When a fix lands, move the subtest into the ordinary test for that
+behaviour and assert the exact status and message.
+
 ## Before you call it done
 
 ```bash

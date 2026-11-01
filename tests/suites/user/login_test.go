@@ -140,11 +140,11 @@ func TestSelectOrganization(t *testing.T) {
 	})
 }
 
-func TestLogin_KnownIssues(t *testing.T) {
+func TestLogin_UserAgent(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should refuse a login without a user agent with a 4xx", func(t *testing.T) {
+	t.Run("should refuse a login without a user agent and issue no session", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -162,8 +162,8 @@ func TestLogin_KnownIssues(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		require.GreaterOrEqualf(t, res.StatusCode(), 400, "body: %s", apierr.Body(res.Body))
-		require.Lessf(t, res.StatusCode(), 500, "body: %s", apierr.Body(res.Body))
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "body: %s", apierr.Body(res.Body))
+		require.Equal(t, "User agent header is required", apierr.Message(res.Body))
 		require.Nil(t, cookieNamed(res.HTTPResponse, "jid"))
 	})
 }

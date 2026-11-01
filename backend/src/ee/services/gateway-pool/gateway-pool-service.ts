@@ -97,7 +97,7 @@ export const gatewayPoolServiceFactory = ({
     } catch (error) {
       if (
         error instanceof DatabaseError &&
-        (error as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
+        (error.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
       ) {
         throw new BadRequestError({
           message: `A gateway pool named "${name}" already exists in this organization.`
@@ -180,7 +180,7 @@ export const gatewayPoolServiceFactory = ({
     } catch (error) {
       if (
         error instanceof DatabaseError &&
-        (error as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
+        (error.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
       ) {
         throw new BadRequestError({ message: `A gateway pool named "${name}" already exists in this organization.` });
       }
@@ -234,7 +234,7 @@ export const gatewayPoolServiceFactory = ({
     } catch (error) {
       if (
         error instanceof DatabaseError &&
-        (error as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
+        (error.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
       ) {
         throw new BadRequestError({ message: "This gateway is already a member of the pool." });
       }

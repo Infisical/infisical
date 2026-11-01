@@ -53,9 +53,13 @@ test-suites:  PKGS = ./suites/...
 test-harness: PKGS = ./harnesstest/...
 test-all:     PKGS = ./suites/... ./harnesstest/...
 
+# Extra `go test` flags. CI passes `-skip KnownIssues`: those tests assert the intended
+# behaviour for open backend bugs and fail until the bugs are fixed.
+TEST_FLAGS ?=
+
 test-suites test-harness test-all:
 	@trap '$(MAKE) --no-print-directory down' EXIT; \
-	go run ./cmd/inf up && go test $(PKGS) -count=1
+	go run ./cmd/inf up && go test $(PKGS) -count=1 $(TEST_FLAGS)
 
 up:
 	go run ./cmd/inf up

@@ -102,12 +102,13 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
           // @ts-expect-error this is because this is express type and not fastify
           const orgSlug = req.session.get("orgSlug");
 
+          // Errors thrown here escape the async verify callback and the request never answers, so
+          // they go to passport through the callback instead.
           const email = profile?.emails?.[0]?.value;
-          if (!email)
-            throw new NotFoundError({
-              message: "Email not found",
-              name: "OauthGoogleRegister"
-            });
+          if (!email) {
+            cb(new NotFoundError({ message: "Email not found", name: "OauthGoogleRegister" }), false);
+            return;
+          }
 
           // Google maps its email_verified claim onto emails[0].verified (a string "true"/"false"
           // per the userinfo response, occasionally a boolean); when verified we skip our own
@@ -208,9 +209,19 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         // eslint-disable-next-line
         async (req: any, accessToken: string, _refreshToken: string, _profile: any, done: Function) => {
           const authMetricStartTime = performance.now();
-          const ghEmails = await fetchGithubEmails(accessToken);
+          // Errors thrown here escape the async verify callback and the request never answers, so
+          // they go to passport through done instead.
+          let ghEmails;
+          try {
+            ghEmails = await fetchGithubEmails(accessToken);
+          } catch (err) {
+            logger.error(err, "Failed to fetch GitHub account emails");
+            return done(new BadRequestError({ message: "Failed to read the emails of the GitHub account" }), false);
+          }
           const selectedEmail = selectGithubLoginEmail(ghEmails);
-          if (!selectedEmail) throw new Error("No email found for GitHub account");
+          if (!selectedEmail) {
+            return done(new BadRequestError({ message: "No email found for GitHub account" }), false);
+          }
           const { email, isEmailVerifiedByProvider } = selectedEmail;
 
           try {

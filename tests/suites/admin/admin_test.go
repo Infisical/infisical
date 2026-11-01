@@ -239,9 +239,9 @@ func setConfig(t *testing.T, admin *harness.Principal, body api.UpdateAdminConfi
 }
 
 // setLoginMethods writes the enabled login methods as the root user, after letting it
-// sign in with Google too so the lockout guard allows email to be switched off. The
-// machine identity instance admin cannot write them (see TestAdminConfig_KnownIssues),
-// and granting server admin to another user needs an instance license.
+// sign in with Google too so the lockout guard allows email to be switched off. The lockout
+// guard only protects a user admin, so the claims about it need a user caller, and granting
+// server admin to another user needs an instance license.
 func setLoginMethods(t *testing.T, h *harness.Stack, methods ...api.UpdateAdminConfigJSONBodyEnabledLoginMethods) {
 	t.Helper()
 	setConfig(t, rootUser(t, h), api.UpdateAdminConfigJSONRequestBody{EnabledLoginMethods: &methods})
@@ -320,7 +320,7 @@ func sourceIP() string {
 	return fmt.Sprintf("10.%d.%d.%d", b[0], b[1], b[2])
 }
 
-func TestAdminConfig_KnownIssues(t *testing.T) {
+func TestAdminConfig_IdentityAdmin(t *testing.T) {
 	h := harness.From(t)
 
 	t.Run("should let the machine identity instance admin set the enabled login methods", func(t *testing.T) {

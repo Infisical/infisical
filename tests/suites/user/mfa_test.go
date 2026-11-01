@@ -299,11 +299,11 @@ func TestMFA_TOTP(t *testing.T) {
 	})
 }
 
-func TestMFA_KnownIssues(t *testing.T) {
+func TestMFA_Refusal(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should refuse a wrong mailed MFA code with a 4xx and start no session", func(t *testing.T) {
+	t.Run("should refuse a wrong mailed MFA code and start no session", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -319,10 +319,11 @@ func TestMFA_KnownIssues(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Nil(t, cookieNamed(res.HTTPResponse, "jid"))
-		require4xx(t, res.StatusCode(), res.Body)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "body: %s", apierr.Body(res.Body))
+		require.Equal(t, "Invalid token", apierr.Message(res.Body))
 	})
 
-	t.Run("should refuse an MFA route called with an ordinary session token with a 4xx", func(t *testing.T) {
+	t.Run("should refuse an MFA route called with an ordinary session token as unauthorized", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -335,7 +336,8 @@ func TestMFA_KnownIssues(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Nil(t, cookieNamed(res.HTTPResponse, "jid"))
-		require4xx(t, res.StatusCode(), res.Body)
+		require.Equalf(t, http.StatusUnauthorized, res.StatusCode(), "body: %s", apierr.Body(res.Body))
+		require.Equal(t, "Unauthorized access", apierr.Message(res.Body))
 	})
 }
 

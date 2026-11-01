@@ -362,8 +362,15 @@ func TestOAuth_KnownIssues(t *testing.T) {
 		require.Equal(t, "/login/select-organization", res.Redirect(t).Path)
 		require.Equal(t, "accepted", fixture.MembershipOf(t, other, alice.Email).Status)
 	})
+}
 
-	t.Run("should answer a 4xx when GitHub returns no email", func(t *testing.T) {
+// A provider that returns no usable email used to leave the callback hanging, because the error
+// was thrown outside the strategy's callback.
+func TestOAuth_NoEmail(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should refuse a GitHub login whose account has no email, and answer", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -378,10 +385,12 @@ func TestOAuth_KnownIssues(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err, "the callback never answered")
-		require4xx(t, res.Status, res.Body)
+		require.Equalf(t, http.StatusBadRequest, res.Status, "body: %s", apierr.Body(res.Body))
+		require.Equal(t, "No email found for GitHub account", apierr.Message(res.Body))
 		require.Nil(t, cookieNamed(res.HTTP, "jid"))
 	})
-	t.Run("should answer a 4xx when Google returns no email", func(t *testing.T) {
+
+	t.Run("should refuse a Google login whose profile has no email, and answer", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -396,7 +405,8 @@ func TestOAuth_KnownIssues(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err, "the callback never answered")
-		require4xx(t, res.Status, res.Body)
+		require.Equalf(t, http.StatusNotFound, res.Status, "body: %s", apierr.Body(res.Body))
+		require.Equal(t, "Email not found", apierr.Message(res.Body))
 		require.Nil(t, cookieNamed(res.HTTP, "jid"))
 	})
 }
