@@ -70,20 +70,6 @@ func main() {
 		log.Fatalf("fakenet: admin listener: %v", http.ListenAndServe(":8080", srv.Admin(ca)))
 	}()
 
-	// A Kubernetes API server reached through a gateway arrives as a raw TCP tunnel with
-	// Host: localhost, so it is told apart by port, as API servers conventionally listen
-	// on 6443, rather than by name.
-	k8s, err := tls.Listen("tcp", fmt.Sprintf(":%d", kubernetes.Port), ca.TLSConfig())
-	if err != nil {
-		log.Fatalf("fakenet: %v", err)
-	}
-	go func() {
-		log.Fatalf("fakenet: kubernetes listener: %v", http.Serve(k8s, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r.Host = kubernetes.Service.Host()
-			srv.ServeHTTP(w, r)
-		})))
-	}()
-
 	ln, err := tls.Listen("tcp", ":443", ca.TLSConfig())
 	if err != nil {
 		log.Fatalf("fakenet: %v", err)

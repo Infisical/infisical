@@ -51,9 +51,6 @@ such as a rotation target database, are added with `harness.WithInfra(...)`. Ins
 environment, such as `RELAY_AUTH_SECRET`, is set with `harness.WithInfisicalEnv(k, v)`,
 which only an `Isolated` package may use.
 
-A container one test owns, such as a relay or gateway agent, is started with
-`h.RunContainer(...)` and stopped when the test ends (`suites/gateway/forwarding_test.go`).
-
 ## Structure
 
 - Setup in about eight lines, the action as one call, one to three assertions. A longer
