@@ -29,9 +29,10 @@ Not here:
 ## Commands
 
 ```bash
-make test-suites   # product tests; starts and stops the stack
-make test-harness  # harness tests
-make test-all      # both
+make test-suites   # shared suites; starts and stops the stack
+make test-isolated # isolated suites, one package at a time
+make test-harness  # harness tests on the shared stack
+make test-all      # all three, the isolated run going ahead when the others fail
 make test-unit     # no containers
 make lint          # gofmt, vet, staticcheck
 ```
@@ -51,8 +52,12 @@ configuration, or the old container is reused.
 
 ```
 suites/             behaviour, grouped by product (suites/secretmanager/secrets) or
-                    platform area (suites/machineidentity, suites/user, suites/group)
+                    platform area (suites/machineidentity, suites/user, suites/group);
+                    harness.Shared only
+suitesisolated/     packages on harness.Isolated, which write instance-wide state; each
+                    boots its own stack, so they run one at a time (`make test-isolated`)
 harnesstest/        harness behaviour; only for failures the harness alone can cause
+                    (harnesstest/isolated is the harness's own Isolated package)
 harness/            Stack, Profile, Tenant, Principal
 fixture/            platform resources: projects, App Connections
 fixture/<product>/  one package per product: secretmanager, pki, pam
@@ -72,6 +77,9 @@ clients/api/        generated client; never edit by hand
 ## Rules
 
 - `t.Parallel()` on every test and subtest under `Shared`; never under `Isolated`.
+- A package on `harness.Isolated` lives under `suitesisolated/` (or `harnesstest/isolated/`),
+  and nothing else uses it. CI cannot hold several isolated stacks beside the shared one, so
+  it runs these after the shared suites with `-p 1`; a layout test in `harness/` enforces it.
 - Every test body is `// Setup`, `// Action`, `// Assert`.
 - Assert with `testify/require` only.
 - Every test creates its own tenant.
@@ -95,7 +103,8 @@ and assert the exact status and message.
 ```bash
 make lint
 make test-all
-make up && go test -p 4 ./suites/... ./harnesstest/... -count=3; make down
+make up && go test -p 4 ./suites/... ./harnesstest/shared/... -count=3; make down
+go test -p 1 ./suitesisolated/... ./harnesstest/isolated/... -count=3; make down
 ```
 
 The last command is the flake gate. A failure there is shared state leaking across

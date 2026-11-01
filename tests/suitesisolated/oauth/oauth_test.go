@@ -1,4 +1,4 @@
-package isolated_test
+package oauth_test
 
 import (
 	"bytes"
