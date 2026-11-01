@@ -338,13 +338,8 @@ func TestOAuth_Google(t *testing.T) {
 		require.Nil(t, cookieNamed(password.HTTPResponse, "jid"))
 		require.Equalf(t, http.StatusOK, googleAgain.StatusCode(), "selecting with Google: %s", apierr.Body(googleAgain.Body))
 	})
-}
 
-func TestOAuth_KnownIssues(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	t.Run("should accept an invited membership when Google login names the org slug", func(t *testing.T) {
+	t.Run("should leave an invited membership pending after a Google login naming the org, and accept it once the org is selected", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -354,12 +349,18 @@ func TestOAuth_KnownIssues(t *testing.T) {
 		invite(t, other, alice.Email)
 		p := fixture.NewOAuthPerson(tn, true)
 		p.Email = alice.Email
+		res := fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p, fixture.WithOAuthOrgSlug(other.OrgSlug))
+		require.Equal(t, "/login/select-organization", res.Redirect(t).Path)
+		require.Equal(t, "invited", fixture.MembershipOf(t, other, alice.Email).Status)
+		s := sessionFrom(t, tn, res)
 
 		// Action
-		res := fixture.OAuthLogin(t, tn, fixture.OAuthGoogle, p, fixture.WithOAuthOrgSlug(other.OrgSlug))
+		selected, err := s.API.SelectOrganizationV3WithResponse(t.Context(),
+			api.SelectOrganizationV3JSONRequestBody{OrganizationId: other.OrgID.String()})
 
 		// Assert
-		require.Equal(t, "/login/select-organization", res.Redirect(t).Path)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, selected.StatusCode(), "body: %s", apierr.Body(selected.Body))
 		require.Equal(t, "accepted", fixture.MembershipOf(t, other, alice.Email).Status)
 	})
 }

@@ -262,7 +262,7 @@ func TestGatewayForwarding_Pool(t *testing.T) {
 // out connection details for it, and the agent keeps proxying on its open tunnel until
 // it notices its own token was refused (about 30 seconds here). Leases issued in that
 // window reach the target through a revoked gateway.
-func TestGatewayForwarding_KnownIssues(t *testing.T) {
+func TestGatewayForwarding_Revoke(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 

@@ -109,7 +109,6 @@ export const gatewayPoolServiceFactory = ({
 
   const listGatewayPools = async (actor: TListGatewayPoolsDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.ListGatewayPools);
-    await $checkLicense(actor.orgId);
 
     const pools = await gatewayPoolDAL.findByOrgIdWithDetails(actor.orgId);
 
@@ -153,7 +152,6 @@ export const gatewayPoolServiceFactory = ({
 
   const getGatewayPoolById = async ({ poolId, ...actor }: TGetGatewayPoolByIdDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.ListGatewayPools);
-    await $checkLicense(actor.orgId);
 
     const pool = await gatewayPoolDAL.findByIdWithMembers(poolId, actor.orgId);
     if (!pool) {
@@ -190,7 +188,6 @@ export const gatewayPoolServiceFactory = ({
 
   const deleteGatewayPool = async ({ poolId, ...actor }: TDeleteGatewayPoolDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.DeleteGatewayPools);
-    await $checkLicense(actor.orgId);
 
     const existingPool = await gatewayPoolDAL.findById(poolId);
     if (!existingPool || existingPool.orgId !== actor.orgId) {
@@ -244,7 +241,6 @@ export const gatewayPoolServiceFactory = ({
 
   const removeGatewayFromPool = async ({ poolId, gatewayId, ...actor }: TRemoveGatewayFromPoolDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.EditGatewayPools);
-    await $checkLicense(actor.orgId);
 
     const pool = await gatewayPoolDAL.findById(poolId);
     if (!pool || pool.orgId !== actor.orgId) {
@@ -469,7 +465,6 @@ export const gatewayPoolServiceFactory = ({
 
   const getConnectedResources = async ({ poolId, ...actor }: TGetGatewayPoolByIdDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.ListGatewayPools);
-    await $checkLicense(actor.orgId);
 
     const pool = await gatewayPoolDAL.findById(poolId);
     if (!pool || pool.orgId !== actor.orgId) {

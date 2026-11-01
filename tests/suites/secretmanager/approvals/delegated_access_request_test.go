@@ -349,9 +349,13 @@ func (r *delegatedRequest) state(ctx context.Context) (delegatedState, error) {
 // await waits for the delegated approval system's status to reach want.
 func (r *delegatedRequest) await(t *testing.T, want string) delegatedState {
 	t.Helper()
+	// A decision moves the delegated row and the approval request in separate writes, so a
+	// terminal delegated status can be read before the request leaves pending.
+	terminal := want == "approved" || want == "rejected" || want == "failed"
 	got, err := wait.For(t.Context(), func(ctx context.Context) (delegatedState, bool, error) {
 		st, err := r.state(ctx)
-		return st, err == nil && st.delegated == want, err
+		settled := !terminal || st.status != "pending"
+		return st, err == nil && st.delegated == want && settled, err
 	}, wait.Timeout(outboxWait))
 	require.NoErrorf(t, err, "waiting for the delegated request to reach %s", want)
 	return got

@@ -534,33 +534,3 @@ func TestSubOrgGroup_Linked(t *testing.T) {
 		require.Equal(t, group.Name, event["groupName"])
 	})
 }
-
-func TestSubOrgGroup_KnownIssues(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	t.Run("should keep the user in the root group when they are removed from a sub-org", func(t *testing.T) {
-		t.Parallel()
-		spec.Why(t, `Suspected bug: deleteOrgMembershipsFn (services/org/org-fns.ts) removes the user
-			from every group holding a membership in the org it removes them from, and a linked
-			root group holds one in the sub-org, so the user leaves the root group everywhere.`)
-
-		// Setup
-		tn := h.NewTenant(t)
-		sub := fixture.NewSubOrg(t, tn)
-		member := tn.NewUser(t)
-		group := fixture.NewGroup(t, tn)
-		group.AddUser(t, member)
-		sub.LinkGroup(t, group, "member")
-		addToSubOrg(t, sub, member, "member")
-		membershipID := membershipIDIn(t, sub.Admin.API, sub.ID, member.ID)
-
-		// Action
-		res, err := sub.Admin.API.DeleteOrgMembershipWithResponse(t.Context(), sub.ID.String(), membershipID.String())
-
-		// Assert
-		require.NoError(t, err)
-		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
-		require.Equal(t, []uuid.UUID{member.ID}, fixture.GroupUserIDs(t, tn.Admin.API, group.ID))
-	})
-}

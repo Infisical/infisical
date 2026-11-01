@@ -363,9 +363,8 @@ func appConnectionsOf(t *testing.T, body []byte) json.RawMessage {
 }
 
 // Losing an entitlement makes a feature read-only (backend/CODE_QUALITY.md, License
-// Checks), but every pool route checks the plan, so a downgraded organization can no
-// longer see, audit or clean up the pools its resources still route through.
-func TestGatewayPool_KnownIssues(t *testing.T) {
+// Checks): a downgraded organization can still see, audit and clean up its pools.
+func TestGatewayPool_Downgrade(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
@@ -460,9 +459,7 @@ func TestGatewayPool_KnownIssues(t *testing.T) {
 	})
 }
 
-// Creating an App Connection through a gateway checks plan.gateway, but pointing an
-// existing one at a gateway does not, so the gate is one PATCH away.
-func TestGatewayAttach_KnownIssues(t *testing.T) {
+func TestGatewayAttach_Update(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
@@ -485,8 +482,6 @@ func TestGatewayAttach_KnownIssues(t *testing.T) {
 	})
 }
 
-// addGatewayToPool maps a unique violation to "already a member", but reads the code
-// from the wrong field of the wrapped database error, so the duplicate surfaces as a 500.
 func TestGatewayPoolMembership_Duplicate(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)

@@ -209,11 +209,11 @@ func TestAuditLog_OrgEvents(t *testing.T) {
 	})
 }
 
-func TestAuditLog_KnownIssues(t *testing.T) {
+func TestAuditLog_OrgInvite(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should record an org invitation naming the invitee", func(t *testing.T) {
+	t.Run("should record an org invitation naming the invitee and the role", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -230,9 +230,10 @@ func TestAuditLog_KnownIssues(t *testing.T) {
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
 		tn.Mail(t).Expect(t, invitee, smtp.Subject("invitation"))
-		waitForEvent(t, tn.Admin, "", func(e entry) bool {
-			return e.Type != "view-audit-logs" && strings.Contains(strings.ToLower(jsonString(t, e.Metadata)), invitee)
+		event := waitForEvent(t, tn.Admin, "invite-org-members", func(e entry) bool {
+			return strings.Contains(strings.ToLower(jsonString(t, e.Metadata)), invitee)
 		})
+		require.Equal(t, "member", event.Metadata["organizationRoleSlug"])
 	})
 }
 

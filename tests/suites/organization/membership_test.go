@@ -7,6 +7,7 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -198,7 +199,7 @@ func groupMemberIDs(t *testing.T, tn *harness.Tenant, g *fixture.Group) []uuid.U
 	return ids
 }
 
-func TestMembership_KnownIssues(t *testing.T) {
+func TestMembership_Read(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
@@ -216,5 +217,6 @@ func TestMembership_KnownIssues(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusNotFound, res.StatusCode(), res.Body)
+		require.Contains(t, apierr.Message(res.Body), "not found")
 	})
 }

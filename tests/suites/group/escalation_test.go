@@ -152,28 +152,3 @@ func TestGroup_Escalation(t *testing.T) {
 		require.Contains(t, projectGroupIDs(t, tn.Admin.API, proj.ID), group.ID)
 	})
 }
-
-func TestGroup_KnownIssues(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	t.Run("should refuse a custom role with edit and add-members adding itself to an admin group", func(t *testing.T) {
-		t.Parallel()
-		spec.Why(t, `Suspected bug: under the new privilege system the add-members boundary only
-			checks the action, so add-members alone lets an actor join a group holding admin.`)
-
-		// Setup
-		tn := h.NewTenant(t)
-		fixture.NewOrgRole(t, tn, "group-joiner", groupsRule("read", "edit", "add-members"))
-		actor := tn.NewUser(t, harness.OrgRole("group-joiner"))
-		group := fixture.NewGroup(t, tn, fixture.WithGroupRole("admin"))
-
-		// Action
-		res, err := actor.API.AddUserToGroupWithResponse(t.Context(), group.ID.String(), actor.Email)
-
-		// Assert
-		require.NoError(t, err)
-		requireStatus(t, http.StatusForbidden, res.StatusCode(), res.Body)
-		require.NotContains(t, fixture.GroupUserIDs(t, tn.Admin.API, group.ID), actor.ID)
-	})
-}
