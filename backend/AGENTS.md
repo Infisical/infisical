@@ -121,6 +121,22 @@ fake reimplements the real reconciliation rules (skip empty writes, delete absen
 deletion is disabled, respect the key schema), because those rules are the behavior the specs
 exist to pin.
 
+#### Backend images (`Dockerfile`, `Dockerfile.dev`)
+
+`Dockerfile` is the image the Go blackbox suite (`tests/`) builds and runs; `Dockerfile.dev`
+backs the BDD and read-replica compose files. Both are kept small on purpose:
+
+- **apt installs use `--no-install-recommends`, so list every package the server runs.**
+  Recommends used to pull in `openssh-client` (for `ssh-keygen`) and `ca-certificates` (for
+  `git` over HTTPS) by accident. When you add a `spawn`/`execFile` of a system binary, add its
+  package to the runtime stage explicitly.
+- **The final stage copies `node_modules` before `dist`.** A source-only change then rebuilds
+  only the `dist` layer. Do not go back to copying the whole build stage and deleting from it:
+  a later `rm` hides files but the earlier layer still ships them.
+- **npm runs under `RUN --mount=type=cache,target=/root/.npm`**, which keeps the download
+  cache out of the image. Compilers for SoftHSM2 and PQC OpenSSL in `Dockerfile.dev` live in
+  their own stages; only their installed output is copied in.
+
 #### FIPS test image and the prebuilt toolchain
 
 CI (`.github/workflows/run-backend-tests.yml`) runs the e2e suite inside a FIPS image built
