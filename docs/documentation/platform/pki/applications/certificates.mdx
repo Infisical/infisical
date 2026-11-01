@@ -37,7 +37,9 @@ From the certificate details page, use the **Options** menu:
 | **Renew Now** | [Renew the certificate](/documentation/platform/pki/applications/certificate-renewal), optionally changing its subject, names, validity, or key pair |
 | **Manage Syncs** | Push to cloud destinations (ACM, Key Vault, etc.) |
 | **Revoke** | Revoke with a reason code; certificate appears in CRL |
-| **Delete** | Remove from inventory |
+| **Delete** | Remove the certificate and its private key. It stays in the inventory as **Deleted** |
+
+Deleting a certificate doesn't revoke it. Revoke it first if clients should stop trusting it.
 
 ## Issuing certificates
 
