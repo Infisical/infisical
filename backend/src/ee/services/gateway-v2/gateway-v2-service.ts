@@ -1149,6 +1149,15 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
+    // app_connections.gatewayId has no foreign key, so nothing in the database stops a delete that
+    // would leave a connection routing through a gateway that no longer exists.
+    const appConnections = await appConnectionDAL.findByGatewayId(gateway.id);
+    if (appConnections.length) {
+      throw new BadRequestError({
+        message: `Gateway '${gateway.name}' is used by app connection(s) ${appConnections.map((c) => `'${c.name}'`).join(", ")}. Remove the gateway from those connections before deleting it.`
+      });
+    }
+
     try {
       return await gatewayV2DAL.deleteById(gateway.id);
     } catch (err) {

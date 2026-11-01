@@ -288,6 +288,56 @@ func TestGateway_MemberPermission(t *testing.T) {
 	})
 }
 
+func TestGateway_Delete(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should refuse deleting a gateway an app connection routes through, naming the connection", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		gw := newGateway(t, tn)
+		conn := fixture.NewAppConnection(t, tn, fixture.PostgresAppConnection(fixture.OpenPostgresTarget(t, tn)))
+		attached := updateConnection(t, tn.Admin.API, conn.ID, api.UpdatePostgresAppConnectionJSONRequestBody{GatewayId: &gw.ID})
+		requireStatus(t, http.StatusOK, attached.StatusCode(), attached.Body)
+
+		// Action
+		res, err := tn.Admin.API.DeleteGatewayWithResponse(t.Context(), gw.ID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.Contains(t, string(res.Body), conn.Name)
+		require.Equal(t, []uuid.UUID{gw.ID}, gatewayIDs(t, tn.Admin.API))
+		require.Equal(t, &gw.ID, connectionRouteOf(t, tn, conn.ID).GatewayID)
+	})
+
+	t.Run("should delete a gateway once no app connection routes through it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		gw := newGateway(t, tn)
+		connID := postgresConnection(t, tn)
+		attached := updateConnection(t, tn.Admin.API, connID, api.UpdatePostgresAppConnectionJSONRequestBody{GatewayId: &gw.ID})
+		requireStatus(t, http.StatusOK, attached.StatusCode(), attached.Body)
+		detached, err := tn.Admin.API.UpdatePostgresAppConnectionWithBodyWithResponse(t.Context(), connID,
+			"application/json", jsonBody(t, map[string]any{"gatewayId": nil}))
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, detached.StatusCode(), detached.Body)
+		require.Nil(t, connectionRouteOf(t, tn, connID).GatewayID)
+
+		// Action
+		res, err := tn.Admin.API.DeleteGatewayWithResponse(t.Context(), gw.ID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		require.Empty(t, gatewayIDs(t, tn.Admin.API))
+	})
+}
+
 func TestGateway_List(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
