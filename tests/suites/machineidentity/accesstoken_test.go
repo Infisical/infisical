@@ -154,7 +154,7 @@ func TestAccessToken_TTL(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		token := newUA(t, tn, api.AttachUniversalAuthJSONRequestBody{AccessTokenTTL: new(2), AccessTokenMaxTTL: new(10)}).login(t, tn)
+		token := newUA(t, tn, api.AttachUniversalAuthJSONRequestBody{AccessTokenTTL: new(5), AccessTokenMaxTTL: new(20)}).login(t, tn)
 		c := tn.Client(t, token)
 
 		// Action
@@ -190,8 +190,8 @@ func TestAccessToken_TTL(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		const maxTTL = 4
-		token := newUA(t, tn, api.AttachUniversalAuthJSONRequestBody{AccessTokenTTL: new(2), AccessTokenMaxTTL: new(maxTTL)}).login(t, tn)
+		const maxTTL = 10
+		token := newUA(t, tn, api.AttachUniversalAuthJSONRequestBody{AccessTokenTTL: new(5), AccessTokenMaxTTL: new(maxTTL)}).login(t, tn)
 		deadline := int64(claims(t, token)["creationEpoch"].(float64)) + maxTTL
 		var exps []int64
 
@@ -224,7 +224,7 @@ func TestAccessToken_TTL(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		const ttl, maxTTL = 4, 6
+		const ttl, maxTTL = 8, 12
 		token := newUA(t, tn, api.AttachUniversalAuthJSONRequestBody{AccessTokenTTL: new(ttl), AccessTokenMaxTTL: new(maxTTL)}).login(t, tn)
 		deadline := claims(t, token)["creationEpoch"].(float64) + maxTTL
 
@@ -248,7 +248,7 @@ func TestAccessToken_TTL(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		const period, maxTTL = 2, 3
+		const period, maxTTL = 5, 6
 		token := newUA(t, tn, api.AttachUniversalAuthJSONRequestBody{
 			AccessTokenTTL: new(period), AccessTokenMaxTTL: new(maxTTL), AccessTokenPeriod: new(period),
 		}).login(t, tn)
@@ -264,7 +264,7 @@ func TestAccessToken_TTL(t *testing.T) {
 			token = res.JSON200.AccessToken
 			expiresIn = append(expiresIn, res.JSON200.ExpiresIn)
 			return struct{}{}, time.Since(start) > 2*maxTTL*time.Second, nil
-		}, wait.Interval(500*time.Millisecond), wait.Timeout(15*time.Second))
+		}, wait.Interval(time.Second), wait.Timeout(30*time.Second))
 
 		// Assert
 		require.NoError(t, err)

@@ -596,7 +596,11 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       hide: true,
       operationId: "googleLoginCallback",
       querystring: z
-        .object({ code: z.string().optional(), state: z.string().optional(), error: z.string().optional() })
+        .object({
+          code: z.string().trim().max(4096).optional(),
+          state: z.string().trim().max(4096).optional(),
+          error: z.string().trim().max(256).optional()
+        })
         .passthrough()
     },
     preValidation: [
@@ -702,7 +706,11 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       hide: true,
       operationId: "githubLoginCallback",
       querystring: z
-        .object({ code: z.string().optional(), state: z.string().optional(), error: z.string().optional() })
+        .object({
+          code: z.string().trim().max(4096).optional(),
+          state: z.string().trim().max(4096).optional(),
+          error: z.string().trim().max(256).optional()
+        })
         .passthrough()
     },
     preValidation: [
@@ -781,7 +789,11 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       hide: true,
       operationId: "gitlabLoginCallback",
       querystring: z
-        .object({ code: z.string().optional(), state: z.string().optional(), error: z.string().optional() })
+        .object({
+          code: z.string().trim().max(4096).optional(),
+          state: z.string().trim().max(4096).optional(),
+          error: z.string().trim().max(256).optional()
+        })
         .passthrough()
     },
     preValidation: [

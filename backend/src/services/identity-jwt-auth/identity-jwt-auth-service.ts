@@ -20,6 +20,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -178,8 +179,14 @@ export const identityJwtAuthServiceFactory = ({
               }
             });
           }
+          // The fetch error can carry network details or the endpoint's response body, and this
+          // route is unauthenticated, so the caller gets a fixed message and the detail is logged.
+          logger.error(
+            { error, identityId: identity.id, jwksUrl: identityJwtAuth.jwksUrl, kid },
+            `JWT auth signing key retrieval failed [identityId=${identity.id}] [kid=${kid}]`
+          );
           throw new UnauthorizedError({
-            message: `Access denied: Failed to retrieve signing key from the JWKS endpoint: ${error instanceof Error ? error.message : String(error)}`,
+            message: "Access denied: Failed to retrieve the signing key from the configured JWKS endpoint.",
             detail: {
               reasonCode: "signing_key_retrieval_failed",
               identityId: identity.id,

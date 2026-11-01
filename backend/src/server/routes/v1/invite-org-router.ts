@@ -79,6 +79,12 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      const projects = req.body.projectIds?.length
+        ? await server.services.project.getProjectNamesByIds({
+            orgId: req.permission.orgId,
+            projectIds: req.body.projectIds
+          })
+        : undefined;
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
@@ -87,7 +93,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           metadata: {
             inviteeEmails: req.body.inviteeEmails,
             organizationRoleSlug: req.body.organizationRoleSlug,
-            projectIds: req.body.projectIds
+            projects
           }
         }
       });

@@ -2307,7 +2307,7 @@ interface InviteOrgMembersEvent {
   metadata: {
     inviteeEmails: string[];
     organizationRoleSlug: string;
-    projectIds?: string[];
+    projects?: { id: string; name: string }[];
   };
 }
 

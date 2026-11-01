@@ -2,6 +2,7 @@ package gateway_test
 
 import (
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -281,5 +282,39 @@ func TestRelay_MemberPermission(t *testing.T) {
 		connect, err := running.API.ConnectRelayWithResponse(t.Context())
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, connect.StatusCode(), connect.Body)
+	})
+}
+
+func TestRelay_ConcurrentFirstConnect(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should create one relay CA when an organization's first relays connect at once", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		agents := make([]agent, concurrentFirstUses)
+		for i := range agents {
+			agents[i] = enrollRelay(t, tn, newRelay(t, tn).ID)
+		}
+
+		// Action
+		results := make([]*api.ConnectRelayResponse, len(agents))
+		errs := make([]error, len(agents))
+		var wg sync.WaitGroup
+		for i, a := range agents {
+			wg.Go(func() { results[i], errs[i] = a.API.ConnectRelayWithResponse(t.Context()) })
+		}
+		wg.Wait()
+
+		// Assert
+		issuers := map[string]bool{}
+		for i, res := range results {
+			require.NoError(t, errs[i])
+			requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+			issuers[string(parseCert(t, res.JSON200.Pki.ServerCertificate).AuthorityKeyId)] = true
+		}
+		require.Len(t, issuers, 1, "the concurrent connects were issued certificates under different relay CAs")
 	})
 }

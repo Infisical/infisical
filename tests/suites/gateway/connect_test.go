@@ -3,6 +3,7 @@ package gateway_test
 import (
 	"crypto/x509"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -225,4 +226,45 @@ func connectedRoot(t *testing.T, tn *harness.Tenant, res *api.ConnectGatewayResp
 	require.Equal(t, "Infisical Gateway Root CA", root.Subject.CommonName)
 	require.Equal(t, []string{tn.OrgID.String()}, root.Subject.Organization)
 	return root
+}
+
+// concurrentFirstUses is how many agents make an organization's first connect at once: enough
+// that, without the re-check under the advisory lock, more than one would create the CA.
+const concurrentFirstUses = 6
+
+func TestGatewayConnect_ConcurrentFirstConnect(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should create one gateway CA when an organization's first gateways connect at once", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		relay := newRelay(t, tn)
+		agents := make([]agent, concurrentFirstUses)
+		for i := range agents {
+			agents[i] = enrollGateway(t, tn, newGateway(t, tn).ID)
+		}
+
+		// Action
+		results := make([]*api.ConnectGatewayResponse, len(agents))
+		errs := make([]error, len(agents))
+		var wg sync.WaitGroup
+		for i, a := range agents {
+			wg.Go(func() {
+				results[i], errs[i] = a.API.ConnectGatewayWithResponse(t.Context(), api.ConnectGatewayJSONRequestBody{RelayName: &relay.Name})
+			})
+		}
+		wg.Wait()
+
+		// Assert
+		roots := map[string]bool{}
+		for i, res := range results {
+			require.NoError(t, errs[i])
+			requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+			roots[string(connectedRoot(t, tn, res).SubjectKeyId)] = true
+		}
+		require.Len(t, roots, 1, "the concurrent connects were issued certificates under different root CAs")
+	})
 }

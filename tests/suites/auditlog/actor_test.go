@@ -235,6 +235,30 @@ func TestAuditLog_OrgInvite(t *testing.T) {
 		})
 		require.Equal(t, "member", event.Metadata["organizationRoleSlug"])
 	})
+
+	t.Run("should name each project the invitation grants access to", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		invitee := tn.Email("invitee")
+
+		// Action
+		res, err := tn.Admin.API.InviteUsersToOrganizationWithResponse(t.Context(), api.InviteUsersToOrganizationJSONRequestBody{
+			InviteeEmails:  []openapi_types.Email{openapi_types.Email(invitee)},
+			OrganizationId: tn.OrgID.String(),
+			ProjectIds:     &[]string{proj.ID},
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		event := waitForEvent(t, tn.Admin, "invite-org-members", func(e entry) bool {
+			return strings.Contains(strings.ToLower(jsonString(t, e.Metadata)), invitee)
+		})
+		require.Equal(t, []any{map[string]any{"id": proj.ID, "name": proj.Name}}, event.Metadata["projects"])
+	})
 }
 
 func selectionsBy(user *harness.Principal) filter {

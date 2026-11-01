@@ -3,13 +3,19 @@ import net from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
+import {
+  OrganizationActionScope,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  TGatewaysV2Update,
+  TRelays
+} from "@app/db/schemas";
 import { assertHostNotInfisicalInfrastructure } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -781,6 +787,24 @@ export const gatewayV2ServiceFactory = ({
     };
   };
 
+  // Revoking clears a gateway's transports and bumps its token version. A connect authenticated just
+  // before the revoke would otherwise write them back after it, so the write only lands while the
+  // version the request authenticated with is still current.
+  const $writeAgentTransports = async (
+    gatewayId: string,
+    tokenVersion: number | undefined,
+    transports: Pick<TGatewaysV2Update, "directAddress" | "directHeartbeat" | "heartbeat" | "relayId">
+  ) => {
+    if (tokenVersion === undefined) {
+      throw new UnauthorizedError({ message: "Gateway token has been revoked" });
+    }
+    const [updated] = await gatewayV2DAL.update({ id: gatewayId, tokenVersion }, transports);
+    if (!updated) {
+      throw new UnauthorizedError({ message: "Gateway token has been revoked" });
+    }
+    return updated;
+  };
+
   const registerGateway = async ({
     orgId,
     actorId,
@@ -788,7 +812,8 @@ export const gatewayV2ServiceFactory = ({
     actorAuthMethod,
     relayName,
     directAddress,
-    name
+    name,
+    tokenVersion
   }: {
     orgId: string;
     actorId: string;
@@ -797,6 +822,8 @@ export const gatewayV2ServiceFactory = ({
     relayName?: string;
     directAddress?: string;
     name?: string;
+    /** The gateway access token's version, when a gateway agent is the actor. */
+    tokenVersion?: number;
   }) => {
     if (directAddress) {
       if (getConfig().isCloud) {
@@ -829,7 +856,7 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
-      const registeredGateway = await gatewayV2DAL.updateById(gateway.id, {
+      const registeredGateway = await $writeAgentTransports(gateway.id, tokenVersion, {
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
         heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,
@@ -1503,13 +1530,16 @@ export const gatewayV2ServiceFactory = ({
     actorId,
     actorType,
     relayName,
-    directAddress
+    directAddress,
+    tokenVersion
   }: {
     orgId: string;
     actorId: string;
     actorType: ActorType;
     relayName?: string;
     directAddress?: string;
+    /** The gateway access token's version the request authenticated with. */
+    tokenVersion?: number;
   }) => {
     if (directAddress) {
       if (getConfig().isCloud) {
@@ -1540,7 +1570,7 @@ export const gatewayV2ServiceFactory = ({
       }
 
       // The gateway declares its full transport set every call, so an omitted transport is removed.
-      const registeredGateway = await gatewayV2DAL.updateById(gateway.id, {
+      const registeredGateway = await $writeAgentTransports(gateway.id, tokenVersion, {
         directAddress: directAddress ?? null,
         directHeartbeat: directAddress === gateway.directAddress ? gateway.directHeartbeat : null,
         heartbeat: resolvedRelay?.id === gateway.relayId ? gateway.heartbeat : null,
