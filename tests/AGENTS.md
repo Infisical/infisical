@@ -64,7 +64,8 @@ fixture/<product>/  one package per product: secretmanager, pki, pam
 fixture/sso/        SAML and OIDC logins, for any suite whose claim needs an SSO session
 fakes/              one package per external provider
 internal/           wait, mail, id, apierr, spec
-clients/api/        generated client; never edit by hand
+clients/api/        generated client; never edit by hand. Its own Go module (required through
+                    a replace in go.mod), so `./...` leaves it out of vet, staticcheck and test
 ```
 
 - Platform fixtures live in `fixture`; each product's fixtures live in

@@ -3,6 +3,7 @@ module github.com/Infisical/infisical/tests
 go 1.27.0
 
 require (
+	github.com/Infisical/infisical/tests/clients/api v0.0.0
 	github.com/beevik/etree v1.8.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
@@ -99,3 +100,5 @@ tool (
 	github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 	honnef.co/go/tools/cmd/staticcheck
 )
+
+replace github.com/Infisical/infisical/tests/clients/api => ./clients/api

@@ -10,11 +10,17 @@ INFISICAL_OPENAPI_URL ?= http://localhost:8080
 
 .PHONY: fmt lint test test-unit test-docker test-suites test-isolated test-harness test-all up down status generate-client
 
+# The generated client (clients/api) is its own Go module, so ./... leaves it out of vet,
+# staticcheck and test: regenerating fixes it, nothing in it is for a person to correct, and
+# analysing its 400k lines was most of lint's run time. gofmt walks folders rather than
+# modules, so it is given this module's package folders.
+GO_DIRS = $$(go list -f '{{.Dir}}' ./...)
+
 fmt:
-	$(GOFMT) -w .
+	$(GOFMT) -w $(GO_DIRS)
 
 lint:
-	@out="$$($(GOFMT) -l .)"; \
+	@out="$$($(GOFMT) -l $(GO_DIRS))"; \
 	if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
 	go vet ./...
 	go tool staticcheck ./...

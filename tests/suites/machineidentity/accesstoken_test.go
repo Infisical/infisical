@@ -213,10 +213,14 @@ func TestAccessToken_TTL(t *testing.T) {
 			require.LessOrEqual(t, exp, deadline+1, "a renewed token outlived the max TTL")
 		}
 		require.GreaterOrEqual(t, time.Now().Unix(), deadline-1, "renewal was refused before the max TTL ran out: %s", refused.Body)
-		// A renewed token never outlives the budget, so once it runs out the presented token has
-		// itself expired and is refused before the max TTL check could name the budget.
-		requireStatus(t, http.StatusForbidden, refused.StatusCode(), refused.Body)
-		require.Contains(t, string(refused.Body), "Your token has expired")
+		// A renewed token expires exactly when the budget does, so which check refuses depends on
+		// the second the last renewal lands: still inside it, the budget check answers 401; past
+		// it, the token has itself expired and is refused first with 403. Both mean the budget ran out.
+		budgetSpent := refused.StatusCode() == http.StatusUnauthorized &&
+			strings.Contains(string(refused.Body), "reached its max TTL")
+		tokenExpired := refused.StatusCode() == http.StatusForbidden &&
+			strings.Contains(string(refused.Body), "Your token has expired")
+		require.Truef(t, budgetSpent || tokenExpired, "renewal past the max TTL answered %d: %s", refused.StatusCode(), apierr.Body(refused.Body))
 	})
 
 	t.Run("should cap expiresIn at the remaining max TTL budget", func(t *testing.T) {
