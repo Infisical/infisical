@@ -493,9 +493,11 @@ output-options:
     - createAdminEmailDomain
     - createAdminOrganization
     - createAlert
+    - createAzureAuditLogStream
     - createCriblAuditLogStream
     - createCustomAuditLogStream
     - createDatadogAuditLogStream
+    - createSplunkAuditLogStream
     - createSumoLogicAuditLogStream
     - createGateway
     - createGatewayPool
@@ -548,9 +550,11 @@ output-options:
     - getAwsAuth
     - getAzureAuth
     - getCurrentUserV1
+    - getAzureAuditLogStream
     - getCriblAuditLogStream
     - getCustomAuditLogStream
     - getDatadogAuditLogStream
+    - getSplunkAuditLogStream
     - getSumoLogicAuditLogStream
     - getGateway
     - getGatewayConnectedResources

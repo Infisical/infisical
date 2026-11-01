@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Infisical/infisical/tests/fakes/azure"
 	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fakes/webhook"
 	"github.com/Infisical/infisical/tests/fixture"
@@ -18,6 +19,7 @@ import (
 	"github.com/Infisical/infisical/tests/internal/id"
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/Infisical/infisical/tests/internal/wait"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -253,6 +255,71 @@ func TestAuditLogStream_Credentials(t *testing.T) {
 		} {
 			require.NotContainsf(t, body, token, "%s revealed the token", name)
 			require.Containsf(t, body, sink.URL, "%s dropped the URL", name)
+		}
+	})
+
+	t.Run("should omit a Splunk HEC token in every read", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sink := fixture.NewSplunkSink(t, tn)
+
+		// Action
+		created, err := tn.Admin.API.CreateSplunkAuditLogStreamWithBodyWithResponse(t.Context(), "application/json",
+			jsonBody(t, map[string]any{"credentials": map[string]any{"hostname": webhook.Splunk.Host(), "port": 443, "token": sink.Token}}))
+		require.NoError(t, err)
+		require.NotNilf(t, created.JSON200, "creating a stream returned %d: %s", created.StatusCode(), apierr.Body(created.Body))
+		got, err := tn.Admin.API.GetSplunkAuditLogStreamWithResponse(t.Context(), created.JSON200.AuditLogStream.Id)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, got.StatusCode(), "reading the stream: %s", apierr.Body(got.Body))
+		listed := streams(t, tn)
+
+		// Assert
+		require.Equal(t, "Splunk "+sink.Token, sink.ExpectEvent[webhook.DeliveryReceived](t, isPing).Header.Get("Authorization"),
+			"the test delivery should carry the token")
+		require.Len(t, listed, 1)
+		for name, body := range map[string]string{
+			"create": string(created.Body), "get": string(got.Body), "list": jsonString(t, listed),
+		} {
+			require.NotContainsf(t, body, sink.Token, "%s revealed the token", name)
+			require.Containsf(t, body, webhook.Splunk.Host(), "%s dropped the hostname", name)
+		}
+	})
+
+	t.Run("should omit an Azure Monitor client secret in every read", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
+		tenantID, clientID := uuid.NewString(), uuid.NewString()
+		entra := azure.Open(t, fixture.FakenetAdmin(t, tn), tenantID)
+		secret := strings.Repeat("Az9~", 10)
+
+		// Action
+		created, err := tn.Admin.API.CreateAzureAuditLogStreamWithBodyWithResponse(t.Context(), "application/json",
+			jsonBody(t, map[string]any{"credentials": map[string]any{
+				"tenantId": tenantID, "clientId": clientID, "clientSecret": secret,
+				"dceUrl": sink.URL, "dcrId": "dcr-" + strings.Repeat("0a", 16), "cltName": "Infisical",
+			}}))
+		require.NoError(t, err)
+		require.NotNilf(t, created.JSON200, "creating a stream returned %d: %s", created.StatusCode(), apierr.Body(created.Body))
+		got, err := tn.Admin.API.GetAzureAuditLogStreamWithResponse(t.Context(), created.JSON200.AuditLogStream.Id)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, got.StatusCode(), "reading the stream: %s", apierr.Body(got.Body))
+		listed := streams(t, tn)
+
+		// Assert
+		require.Equal(t, "Bearer azure-"+clientID, sink.ExpectEvent[webhook.DeliveryReceived](t, isPing).Header.Get("Authorization"),
+			"the test delivery should carry the token Entra issued for the client secret")
+		require.Equal(t, []azure.SecretGrant{{ClientID: clientID, Scope: "https://monitor.azure.com/.default"}}, entra.State(t).SecretGrants)
+		require.Len(t, listed, 1)
+		for name, body := range map[string]string{
+			"create": string(created.Body), "get": string(got.Body), "list": jsonString(t, listed),
+		} {
+			require.NotContainsf(t, body, secret, "%s revealed the client secret", name)
+			require.Containsf(t, body, clientID, "%s dropped the client id", name)
 		}
 	})
 

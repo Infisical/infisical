@@ -50,6 +50,7 @@ func main() {
 		oidcidp.Service,
 		webhook.Service,
 		webhook.Slack,
+		webhook.Splunk,
 		aws.STS, aws.STSGlobal, aws.SSM, aws.SecretsManager, aws.IAM, aws.CloudFormation,
 		vercel.Service,
 		oauth.Google, oauth.GitHub, oauth.GitLab,

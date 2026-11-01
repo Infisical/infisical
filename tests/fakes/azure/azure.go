@@ -45,8 +45,18 @@ type Tenant struct {
 	// test does that itself against the issuer's JWKS.
 	Assertions []Assertion `json:"assertions"`
 
+	// SecretGrants are the client credentials requests made with a client secret, as an
+	// Azure Monitor log stream makes them. The secret itself is not kept.
+	SecretGrants []SecretGrant `json:"secretGrants"`
+
 	mu  sync.Mutex
 	mux *http.ServeMux
+}
+
+// SecretGrant is one client credentials request authenticated by a client secret.
+type SecretGrant struct {
+	ClientID string `json:"clientId"`
+	Scope    string `json:"scope"`
 }
 
 // Key is a signing key as Entra publishes it: x5c holds the base64 DER certificate.
@@ -69,6 +79,13 @@ func (t *Tenant) ServeHTTP(w http.ResponseWriter, r *http.Request) { t.mux.Serve
 func (t *Tenant) token(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request"})
+		return
+	}
+	if secret := r.PostForm.Get("client_secret"); secret != "" {
+		t.mu.Lock()
+		t.SecretGrants = append(t.SecretGrants, SecretGrant{ClientID: r.PostForm.Get("client_id"), Scope: r.PostForm.Get("scope")})
+		t.mu.Unlock()
+		writeJSON(w, http.StatusOK, map[string]any{"token_type": "Bearer", "expires_in": 3599, "access_token": "azure-" + r.PostForm.Get("client_id")})
 		return
 	}
 	if r.PostForm.Get("client_assertion_type") != "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" || r.PostForm.Get("client_assertion") == "" {
@@ -104,9 +121,10 @@ func (t *Tenant) Snapshot() ([]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return json.Marshal(struct {
-		Keys       []Key       `json:"keys"`
-		Assertions []Assertion `json:"assertions"`
-	}{t.Keys, t.Assertions})
+		Keys         []Key         `json:"keys"`
+		Assertions   []Assertion   `json:"assertions"`
+		SecretGrants []SecretGrant `json:"secretGrants"`
+	}{t.Keys, t.Assertions, t.SecretGrants})
 }
 
 func (t *Tenant) Seed(raw []byte) error {
