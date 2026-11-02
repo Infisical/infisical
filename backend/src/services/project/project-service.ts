@@ -888,8 +888,13 @@ export const projectServiceFactory = ({
       ? await projectDAL.findProjectsImportingFrom(project.id)
       : [];
     if (importingProjects.length) {
+      const preview = importingProjects
+        .slice(0, 5)
+        .map(({ name }) => `'${name}'`)
+        .join(", ");
+      const remaining = importingProjects.length - 5;
       throw new BadRequestError({
-        message: `Project '${project.name}' can't be deleted while other projects import secrets from it: ${importingProjects.map(({ name }) => `'${name}'`).join(", ")}. Remove those secret imports first, then retry.`
+        message: `Project '${project.name}' can't be deleted while other projects import secrets from it: ${remaining > 0 ? `${preview}, and ${remaining} more` : preview}. Remove those secret imports first, then retry.`
       });
     }
 
