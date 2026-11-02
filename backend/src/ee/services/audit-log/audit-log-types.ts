@@ -3760,7 +3760,6 @@ interface SelectOrganizationRefusedEvent {
   metadata: {
     organizationId: string;
     organizationName: string;
-    issuingOrganizationId: string;
   };
 }
 

@@ -1265,11 +1265,7 @@ export const authLoginServiceFactory = ({
       })
       .catch(async (error: unknown) => {
         // getOrgPermission enforces SSO, so it is what refuses a session another org's IdP issued.
-        if (
-          error instanceof ForbiddenRequestError &&
-          error.name === FOREIGN_SSO_SESSION_ERROR_NAME &&
-          issuingRootOrgId
-        ) {
+        if (error instanceof ForbiddenRequestError && error.name === FOREIGN_SSO_SESSION_ERROR_NAME) {
           await auditLogService.createAuditLog({
             orgId: organizationId,
             ipAddress,
@@ -1288,8 +1284,7 @@ export const authLoginServiceFactory = ({
               type: EventType.SELECT_ORGANIZATION_REFUSED,
               metadata: {
                 organizationId,
-                organizationName: selectedOrg.name,
-                issuingOrganizationId: issuingRootOrgId
+                organizationName: selectedOrg.name
               }
             }
           });
