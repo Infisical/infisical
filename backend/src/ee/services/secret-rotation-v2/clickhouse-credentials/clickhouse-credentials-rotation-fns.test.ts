@@ -114,6 +114,13 @@ describe("ClickHouse credentials rotation", () => {
     );
   });
 
+  it("refuses the same user for both usernames", () => {
+    expect(() => makeFactory({ parameters: { username1: "user_1", username2: "user_1" } })).toThrow(
+      "Rotation usernames must be two different users"
+    );
+    expect(clickhouse.commands).toEqual([]);
+  });
+
   it("refuses to rotate the connection user", () => {
     expect(() => makeFactory({ parameters: { username1: "manager", username2: "user_2" } })).toThrow(
       "Rotation username cannot be the same as the connection username"

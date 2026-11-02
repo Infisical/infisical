@@ -58,6 +58,13 @@ export const clickhouseCredentialsRotationFactory: TRotationFactory<
     });
   }
 
+  if (username1 === username2) {
+    throw new BadRequestError({
+      message:
+        "Rotation usernames must be two different users. Rotation alternates between them so one user's password stays valid while the other's changes."
+    });
+  }
+
   const $setPasswords = async (credentialsSet: TClickHouseCredentialsRotationGeneratedCredentials) => {
     let client: ClickHouseClient | null = null;
     try {
