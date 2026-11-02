@@ -19,7 +19,7 @@ import {
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -808,6 +808,10 @@ export const certificateServiceFactory = ({
         });
       } catch (err) {
         logger.error(err, `certificate revocation: CRL rebuild failed [certificateId=${cert.id}] [caId=${ca.id}]`);
+        throw new InternalServerError({
+          message: `Certificate '${getCertificateDisplayName(cert)}' was revoked, but the CRL of certificate authority '${ca.name}' couldn't be updated, so it doesn't list the revocation yet.`,
+          error: err
+        });
       }
     }
 

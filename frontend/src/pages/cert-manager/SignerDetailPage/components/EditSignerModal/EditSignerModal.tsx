@@ -55,7 +55,7 @@ type Props = {
 };
 
 export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
-  const [step, setStep] = useState(0);
+  const [selectedStep, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   const cas = useListCasByProjectId();
@@ -195,6 +195,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
   const adcsTemplateChanged = isAdcs && (watchedAdcsTemplate?.trim() ?? "") !== signerAdcsTemplate;
   const isCertificateRevoked = signer.status === SignerStatus.Revoked;
   const visibleSteps = isCertificateRevoked ? STEPS.slice(0, 1) : STEPS;
+  const step = Math.min(selectedStep, visibleSteps.length - 1);
   const shouldReissue =
     !isCertificateRevoked &&
     (caSwap ||

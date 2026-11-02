@@ -1352,7 +1352,20 @@ export const signerServiceFactory = ({
         const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(existingSigner.caId);
         if (ca?.externalCa?.type === CaType.DIGICERT) {
           const cert = await certificateDAL.findById(existingSigner.certificateId);
-          if (cert?.serialNumber && cert.status !== CertStatus.REVOKED) {
+          const digicertOrder = DigiCertExternalMetadataSchema.safeParse(cert?.externalMetadata);
+          const signerSharingCertificate = cert
+            ? await signerDAL.findOneByCertificateOrDigiCertOrder({
+                certificateId: cert.id,
+                caId: cert.caId ?? null,
+                digicertOrderId: digicertOrder.success ? digicertOrder.data.orderId : undefined,
+                excludeSignerId: existingSigner.id
+              })
+            : undefined;
+          if (signerSharingCertificate) {
+            logger.info(
+              `signer delete: kept the DigiCert order because signer '${signerSharingCertificate.name}' still uses it [signerId=${existingSigner.id}] [certificateId=${cert?.id}]`
+            );
+          } else if (cert?.serialNumber && cert.status !== CertStatus.REVOKED) {
             await digicertFns.revokeCertificate({
               caId: existingSigner.caId,
               serialNumber: cert.serialNumber,
@@ -1869,21 +1882,6 @@ export const signerServiceFactory = ({
       })
       .catch(() => null);
 
-  const renewCertificate = async (dto: TRenewCertificateDTO) => {
-    const signer = await $authorizeReissue(dto);
-    const renewLock = await $acquireSignerCertificateLock(signer.id);
-    if (!renewLock) {
-      throw new BadRequestError({
-        message: `Signer '${signer.name}' is already being renewed or revoked. Wait for that request to finish.`
-      });
-    }
-    try {
-      return await $renewCertificate(signer, dto);
-    } finally {
-      await renewLock.release().catch(() => {});
-    }
-  };
-
   const $renewCertificate = async (signer: TPkiSigners, dto: TRenewCertificateDTO) => {
     const hasIssuanceInProgress = await signerDAL.transaction(async (tx) => {
       const hasOpenJobs = await signerIssuanceService.hasOpenJobs(signer.id, tx);
@@ -1911,6 +1909,21 @@ export const signerServiceFactory = ({
     const { caId } = signer;
     const renewed = await $reissueCertificate(signer, { ...dto, caId }, DigiCertLifecycleMode.Renew);
     return { ...renewed, caId };
+  };
+
+  const renewCertificate = async (dto: TRenewCertificateDTO) => {
+    const signer = await $authorizeReissue(dto);
+    const renewLock = await $acquireSignerCertificateLock(signer.id);
+    if (!renewLock) {
+      throw new BadRequestError({
+        message: `Signer '${signer.name}' is already being renewed or revoked. Wait for that request to finish.`
+      });
+    }
+    try {
+      return await $renewCertificate(signer, dto);
+    } finally {
+      await renewLock.release().catch(() => {});
+    }
   };
 
   const revokeCertificate = async (dto: TRevokeSignerCertificateDTO) => {
@@ -1949,21 +1962,23 @@ export const signerServiceFactory = ({
           throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
         }
         const digicertOrder = DigiCertExternalMetadataSchema.safeParse(currentCert?.externalMetadata);
-        if (digicertOrder.success) {
-          const signerSharingOrder = await signerDAL.findOneByCertificateOrDigiCertOrder(
-            {
-              certificateId: lockedSigner.certificateId,
-              caId: currentCert?.caId ?? null,
-              digicertOrderId: digicertOrder.data.orderId,
-              excludeSignerId: signer.id
-            },
-            tx
-          );
-          if (signerSharingOrder) {
-            throw new BadRequestError({
-              message: `Signer '${signer.name}' shares DigiCert order ${digicertOrder.data.orderId} with another signer. Revoking it would revoke that signer's certificate too.`
-            });
-          }
+        const digicertOrderId = digicertOrder.success ? digicertOrder.data.orderId : undefined;
+        const signerSharingCertificate = await signerDAL.findOneByCertificateOrDigiCertOrder(
+          {
+            certificateId: lockedSigner.certificateId,
+            caId: currentCert?.caId ?? null,
+            digicertOrderId,
+            excludeSignerId: signer.id
+          },
+          tx
+        );
+        if (signerSharingCertificate) {
+          throw new BadRequestError({
+            message:
+              signerSharingCertificate.certificateId !== lockedSigner.certificateId && digicertOrderId !== undefined
+                ? `Signer '${signer.name}' shares DigiCert order ${digicertOrderId} with signer '${signerSharingCertificate.name}'. Revoking it would revoke that signer's certificate too.`
+                : `Signer '${signer.name}' shares its certificate with signer '${signerSharingCertificate.name}'. Revoking it would revoke that signer's certificate too.`
+          });
         }
         if (hasOpenJobs || lockedSigner.status === SignerStatus.Pending) {
           throw new BadRequestError({ message: revokeInProgressMessage(signer.name) });
@@ -2583,19 +2598,6 @@ export const signerServiceFactory = ({
     );
   };
 
-  const autoRenewCertificate = async (signerId: string) => {
-    const autoRenewLock = await $acquireSignerCertificateLock(signerId);
-    if (!autoRenewLock) {
-      logger.info(`signer auto-renewal: signer [signerId=${signerId}] is being renewed or revoked, skipping`);
-      return;
-    }
-    try {
-      await $autoRenewCertificate(signerId);
-    } finally {
-      await autoRenewLock.release().catch(() => {});
-    }
-  };
-
   const $autoRenewCertificate = async (signerId: string) => {
     const signer = await signerDAL.findById(signerId);
     if (!signer) {
@@ -2741,6 +2743,19 @@ export const signerServiceFactory = ({
         certificateFailureReason: formatSignerIssuanceErrorReason(err, "Internal CA auto-renewal failed")
       });
       logger.error(err, `signer auto-renewal: internal CA issuance failed [signerId=${signer.id}]`);
+    }
+  };
+
+  const autoRenewCertificate = async (signerId: string) => {
+    const autoRenewLock = await $acquireSignerCertificateLock(signerId);
+    if (!autoRenewLock) {
+      logger.info(`signer auto-renewal: signer [signerId=${signerId}] is being renewed or revoked, skipping`);
+      return;
+    }
+    try {
+      await $autoRenewCertificate(signerId);
+    } finally {
+      await autoRenewLock.release().catch(() => {});
     }
   };
 
