@@ -414,7 +414,21 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         ]
       });
 
-      return data;
+      // SSO enforcement is set on the root org only (sub-orgs cannot change it), so a sub-org takes its
+      // root's settings; otherwise a sub-org session would never be checked against them.
+      const rootOrgId = data[0]?.rootOrgId;
+      if (!rootOrgId) return data;
+      const rootOrg = await (tx || db)
+        .replicaNode()(TableName.Organization)
+        .where({ id: rootOrgId })
+        .select("authEnforced", "googleSsoAuthEnforced", "bypassOrgAuthEnabled")
+        .first();
+      return data.map((membership) => ({
+        ...membership,
+        orgAuthEnforced: rootOrg?.authEnforced,
+        orgGoogleSsoAuthEnforced: Boolean(rootOrg?.googleSsoAuthEnforced),
+        bypassOrgAuthEnabled: Boolean(rootOrg?.bypassOrgAuthEnabled)
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Get Permission" });
     }

@@ -450,7 +450,24 @@ export const permissionServiceFactory = ({
         conditionsMatcher
       });
 
-      const canBypassSso = fullPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+      let canBypassSso = fullPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+
+      // A sub-org inherits its root's enforcement, so only a root org role may bypass it, the same as
+      // selectOrganization and project permissions decide it; a sub-org role must not exempt anyone.
+      const isSsoEnforced = permissionData[0].orgAuthEnforced || permissionData[0].orgGoogleSsoAuthEnforced;
+      if (actor === ActorType.USER && rootOrgId && isSsoEnforced) {
+        const rootPermissionData = await permissionDAL.getPermission({
+          scopeData: { scope: AccessScope.Organization, orgId: rootOrgId },
+          actorId,
+          actorType: ActorType.USER
+        });
+        canBypassSso =
+          rootPermissionData.length > 0 &&
+          createMongoAbility<OrgPermissionSet>(
+            buildOrgPermissionRules(flattenActiveRolesFromMemberships(rootPermissionData, OrgMembershipRole.Custom)),
+            { conditionsMatcher }
+          ).can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+      }
 
       // SSO enforcement applies only to users. Evaluate it against the full ability — SSO bypass is a
       // property of the user's roles, not of what an OAuth client was delegated.

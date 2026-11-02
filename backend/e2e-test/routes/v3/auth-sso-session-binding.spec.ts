@@ -157,6 +157,83 @@ describe("Auth SSO session binding", () => {
     expect(refused.json().message).toMatch(/another organization's identity provider/);
   });
 
+  describe("Sub-organizations", () => {
+    let subOrgId: string;
+
+    const addMemberToSubOrg = async (userId: string, role: OrgMembershipRole) => {
+      const db = getDb();
+      const [membership] = await db(TableName.Membership)
+        .insert({
+          scope: AccessScope.Organization,
+          actorUserId: userId,
+          scopeOrgId: subOrgId,
+          status: OrgMembershipStatus.Accepted,
+          isActive: true
+        })
+        .returning("*");
+      await db(TableName.MembershipRole).insert({ membershipId: membership.id, role });
+    };
+
+    // A session another org's IdP issued, already open in a sub-org of org A before A enforces SSO.
+    const openSubOrgSession = async (subOrgRole: OrgMembershipRole) => {
+      const { userId, tokens } = await loginThroughOrgBIdp();
+      await addMemberToOrgA(userId);
+      await addMemberToSubOrg(userId, subOrgRole);
+      const { statusCode, payload } = await selectOrg(tokens.access, subOrgId);
+      expect(statusCode).toBe(200);
+      return () =>
+        testServer.inject({
+          method: "GET",
+          url: `/api/v2/organizations/${subOrgId}/memberships`,
+          headers: { authorization: `Bearer ${payload.token}` }
+        });
+    };
+
+    beforeAll(async () => {
+      const [subOrg] = await getDb()(TableName.Organization)
+        .insert({
+          name: "Session Binding Sub Org",
+          slug: `binding-sub-${crypto.randomUUID().slice(0, 8)}`,
+          rootOrgId: ORG_A_ID,
+          parentOrgId: ORG_A_ID
+        })
+        .returning("*");
+      subOrgId = subOrg.id;
+    });
+
+    afterEach(async () => {
+      await getDb()(TableName.Organization).where({ id: ORG_A_ID }).update({ bypassOrgAuthEnabled: false });
+    });
+
+    afterAll(async () => {
+      const db = getDb();
+      await db(TableName.Membership).where({ scopeOrgId: subOrgId }).del();
+      await db(TableName.Organization).where({ id: subOrgId }).del();
+    });
+
+    test("A sub-org session another org's IdP issued stops working once the root org starts enforcing SSO", async () => {
+      const listSubOrgMemberships = await openSubOrgSession(OrgMembershipRole.Member);
+      expect((await listSubOrgMemberships()).statusCode).toBe(200);
+
+      await setAuthEnforced(ORG_A_ID, true);
+      const refused = await listSubOrgMemberships();
+
+      expect(refused.statusCode).toBe(403);
+      expect(refused.json().message).toMatch(/another organization's identity provider/);
+    });
+
+    test("A sub-org admin role does not bypass the root org's enforcement", async () => {
+      const listSubOrgMemberships = await openSubOrgSession(OrgMembershipRole.Admin);
+
+      await getDb()(TableName.Organization).where({ id: ORG_A_ID }).update({ bypassOrgAuthEnabled: true });
+      await setAuthEnforced(ORG_A_ID, true);
+      const refused = await listSubOrgMemberships();
+
+      expect(refused.statusCode).toBe(403);
+      expect(refused.json().message).toMatch(/another organization's identity provider/);
+    });
+  });
+
   test("An enforced org's OAuth application refuses consent from a session another org's IdP issued", async () => {
     const created = await testServer.inject({
       method: "POST",

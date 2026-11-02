@@ -306,7 +306,10 @@ enforces SSO admits only sessions its own IdP issued: `validateOrgSSO` compares 
 org's root org on every user permission check, reading it from `userAuthInfo` in the request context
 (only when the check is for the requester), so it covers `selectOrganization`, OAuth consent, and a
 session that was already open when enforcement was turned on. Members who can bypass SSO are let
-through, and a token with no claim (issued before it existed) is taken at its auth method.
+through, and a token with no claim (issued before it existed) is taken at its auth method. A sub-org
+has no enforcement of its own: `permissionDAL.getPermission` reads `authEnforced`,
+`googleSsoAuthEnforced` and `bypassOrgAuthEnabled` from its root org, and only a root org role can
+bypass them, so a sub-org admin role exempts no one.
 
 **Every path that issues or re-issues a user token must carry the claim forward** (MFA, refresh,
 signup, org deletion, delegated OAuth codes and tokens). A dropped claim reads as a pre-claim token
