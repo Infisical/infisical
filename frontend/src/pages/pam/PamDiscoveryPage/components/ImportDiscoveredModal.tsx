@@ -11,6 +11,7 @@ import {
   DialogTitle,
   Field,
   FieldContent,
+  FieldDescription,
   FieldLabel,
   Select,
   SelectContent,
@@ -20,9 +21,11 @@ import {
   Toggle
 } from "@app/components/v3";
 import {
+  buildPamAccountCan,
   isRotatablePamAccountType,
   PamAccountAccessibilityIssue,
   PamAccountType,
+  PamResourcePermissionActions,
   PamRotationStatus,
   TImportPamDiscoveredAccountResult,
   TPamDiscoveredAccount,
@@ -75,13 +78,18 @@ export const ImportDiscoveredModal = ({
   const rotatableTypes = accountTypes.filter(isRotatablePamAccountType);
   const isRotating = rotateOnImport && rotatableTypes.length > 0;
 
-  // a rotation account authenticates with its own stored password, so one without it can't rotate
+  // setting a rotation account needs a stored password on it and permission to view that password
+  const credentialCandidates = useMemo(
+    () =>
+      pamAccounts.filter(
+        (a) =>
+          !a.accessibilityIssues.includes(PamAccountAccessibilityIssue.NoCredential) &&
+          buildPamAccountCan(a.permissions)(PamResourcePermissionActions.ViewCredentials)
+      ),
+    [pamAccounts]
+  );
   const rotationCandidates = (type: string) =>
-    pamAccounts.filter(
-      (a) =>
-        a.accountType === type &&
-        !a.accessibilityIssues.includes(PamAccountAccessibilityIssue.NoCredential)
-    );
+    credentialCandidates.filter((a) => a.accountType === type);
 
   const rotationAccountIdFor = (type: string) => {
     const selected = rotationAccountByType[type];
@@ -249,6 +257,9 @@ export const ImportDiscoveredModal = ({
                       }
                       placeholder={`Select a ${typeName} account`}
                     />
+                    <FieldDescription>
+                      Only accounts whose credentials you can view are listed.
+                    </FieldDescription>
                   </FieldContent>
                 </Field>
               );
