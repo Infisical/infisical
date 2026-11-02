@@ -89,6 +89,8 @@ INFISICAL_AGENT_VAULT_PROXY_TOKEN
 
 Only the sidecar gets the `agent-vault-proxy` secret. Modal runs each sidecar in its own container with its own kernel, so the agent can't read the sidecar's environment or files.
 
+Your code can also pass the token to the sidecar each time it creates a sandbox, such as with [`modal.Secret.from_dict`](https://modal.com/docs/reference/modal.Secret#from_dict) in Python.
+
 <Info>
 If you use EU Cloud or self-host Infisical, add this key as well:
 
