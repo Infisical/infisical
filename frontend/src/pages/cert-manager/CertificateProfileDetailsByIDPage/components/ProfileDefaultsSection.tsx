@@ -40,12 +40,12 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
 
   const hasSubjectDefaults = Boolean(
     defaults?.commonName ||
-      defaults?.organization ||
-      defaults?.organizationalUnit ||
-      defaults?.country ||
-      defaults?.state ||
-      defaults?.locality ||
-      (defaults?.domainComponents && defaults.domainComponents.length > 0)
+    defaults?.organization ||
+    defaults?.organizationalUnit ||
+    defaults?.country ||
+    defaults?.state ||
+    defaults?.locality ||
+    (defaults?.domainComponents && defaults.domainComponents.length > 0)
   );
 
   const hasCryptoDefaults = Boolean(
@@ -54,7 +54,7 @@ export const ProfileDefaultsSection = ({ profile }: Props) => {
 
   const hasKeyUsages = Boolean(
     (defaults?.keyUsages && defaults.keyUsages.length > 0) ||
-      (defaults?.extendedKeyUsages && defaults.extendedKeyUsages.length > 0)
+    (defaults?.extendedKeyUsages && defaults.extendedKeyUsages.length > 0)
   );
 
   const hasBasicConstraints = Boolean(defaults?.basicConstraints);

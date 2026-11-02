@@ -9,6 +9,15 @@ import { buildCsrWithExternalSigner } from "@app/lib/csr/build-csr-with-external
 import { BadRequestError, ConflictError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
+import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
+import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
+import { keyAlgorithmToAlgCfg } from "../certificate-authority/certificate-authority-fns";
+import { TCertificateIssuanceQueueFactory } from "../certificate-authority/certificate-issuance-queue";
+import {
+  CodeSigningOrderStatus,
+  DigiCertLifecycleMode
+} from "../certificate-authority/digicert/digicert-certificate-authority-enums";
+import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
@@ -21,15 +30,6 @@ import {
   CertStatus,
   CrlReason
 } from "../certificate/certificate-types";
-import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
-import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
-import { keyAlgorithmToAlgCfg } from "../certificate-authority/certificate-authority-fns";
-import { TCertificateIssuanceQueueFactory } from "../certificate-authority/certificate-issuance-queue";
-import {
-  CodeSigningOrderStatus,
-  DigiCertLifecycleMode
-} from "../certificate-authority/digicert/digicert-certificate-authority-enums";
-import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
 import { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { THsmConnectorServiceActor } from "../hsm-connector/hsm-connector-types";
 import { TKmsServiceFactory } from "../kms/kms-service";

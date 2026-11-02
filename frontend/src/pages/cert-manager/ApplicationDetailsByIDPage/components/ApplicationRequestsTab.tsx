@@ -1,7 +1,6 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { CertificateRequestsSection } from "../../CertificateRequestsPage/components/CertificateRequestsSection";
-import { ApplicationTab } from "../application-tabs";
 
 type Props = {
   applicationId: string;
@@ -14,12 +13,9 @@ export const ApplicationRequestsTab = ({ applicationId, applicationName }: Props
 
   const handleViewCertificateFromRequest = (certificateId: string) => {
     navigate({
-      to: "/organizations/$orgId/cert-manager/applications/$applicationName",
-      params: {
-        orgId: orgId ?? "",
-        applicationName
-      },
-      search: { selectedTab: ApplicationTab.Certificates, search: certificateId }
+      to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
+      params: { orgId: orgId ?? "", certificateId },
+      search: { fromApplication: applicationName }
     });
   };
 

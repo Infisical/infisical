@@ -51,6 +51,14 @@ import {
   hasPkiSyncRemovalOptions,
   PkiSyncRemovalOptionsFields
 } from "../PkiSyncRemovalOptionsFields";
+import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
+import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
+import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
+import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
+import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
+import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
+import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
+import { PkiSyncTargetHostField } from "./PkiSyncTargetHostField";
 import {
   isPaloAltoNetworksTemplateMissing,
   PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
@@ -60,14 +68,6 @@ import {
   TUpdatePkiSyncForm,
   UpdatePkiSyncFormSchema
 } from "./schemas/pki-sync-schema";
-import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
-import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
-import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
-import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
-import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
-import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
-import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
-import { PkiSyncTargetHostField } from "./PkiSyncTargetHostField";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
@@ -339,10 +339,10 @@ export const EditPkiSyncForm = ({
 
   const needsUnlinkRemovalOptions = Boolean(
     pendingUnlink &&
-      hasPkiSyncRemovalOptions(pkiSync.destination) &&
-      (pendingUnlink.formData.syncOptions as { canRemoveCertificates?: boolean } | undefined)
-        ?.canRemoveCertificates &&
-      pendingUnlink.preview.toUnlinkAtDestinationCount > 0
+    hasPkiSyncRemovalOptions(pkiSync.destination) &&
+    (pendingUnlink.formData.syncOptions as { canRemoveCertificates?: boolean } | undefined)
+      ?.canRemoveCertificates &&
+    pendingUnlink.preview.toUnlinkAtDestinationCount > 0
   );
 
   const areUnlinkRemovalOptionsComplete =

@@ -16,8 +16,8 @@ import {
   TFindOpt
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
-import { SecretSortField } from "@app/services/secret/secret-types";
 import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { SecretSortField } from "@app/services/secret/secret-types";
 
 export const SecretServiceCacheKeys = {
   get productKey() {
@@ -48,6 +48,16 @@ interface TSecretV2DalArg {
 export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
 export const SECRET_DAL_VERSION_TTL = "15m";
 export const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
+
+const SECRET_V2_COLUMNS = Object.keys(SecretsV2Schema.shape) as (keyof TSecretsV2)[];
+
+// Same output as SecretsV2Schema.parse for a row selected with selectAllTableCols, without parsing every row.
+const pickSecretV2Columns = (row: TSecretsV2) => {
+  const secret: Record<string, unknown> = {};
+  for (const column of SECRET_V2_COLUMNS) secret[column] = row[column];
+  return secret as TSecretsV2;
+};
+
 export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
@@ -895,7 +905,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         key: "id",
         parentMapper: (el) => ({
           _id: el.id,
-          ...SecretsV2Schema.parse(el),
+          ...pickSecretV2Columns(el),
           isHoneyTokenSecret: Boolean(el.honeyTokenId),
           rotationId: el.rotationId,
           isRotatedSecret: Boolean(el.rotationId)
@@ -1110,6 +1120,25 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindReferencedSecretReferences" });
+    }
+  };
+
+  const findSecretReferencesByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretReferenceV2)
+        .whereNull(`${TableName.SecretReferenceV2}.targetProjectSlug`)
+        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretReferenceV2}.secretId`)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where("projectId", projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .select(selectAllTableCols(TableName.SecretReferenceV2))
+        .select("folderId")
+        .select(db.ref("userId").withSchema(TableName.SecretV2));
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSecretReferencesByProjectId" });
     }
   };
 
@@ -1829,6 +1858,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findBySecretKeys,
     upsertSecretReferences,
     findReferencedSecretReferences,
+    findSecretReferencesByProjectId,
     findAllProjectSecretValues,
     findSecretsInFolderAfter,
     batchSetBlindIndexes,

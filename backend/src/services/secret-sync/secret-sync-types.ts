@@ -39,7 +39,7 @@ import {
   TGitHubSyncListItem,
   TGitHubSyncWithCredentials
 } from "@app/services/secret-sync/github";
-import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
+import { TSecretSyncWithFolder } from "@app/services/secret-sync/secret-sync-dal";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
   TWindmillSync,
@@ -555,7 +555,9 @@ export type TSyncSecretsResult = {
   deletedSecretKeys: string[];
 };
 
-export type TSecretSyncRaw = NonNullable<Awaited<ReturnType<TSecretSyncDALFactory["findById"]>>>;
+// ReturnType<> resolves findById's includeFolderPath generic to boolean, a union whose members may
+// lack `folder`, so the default row (path resolved) is named here directly.
+export type TSecretSyncRaw = TSecretSyncWithFolder;
 
 export type TQueueSecretSyncsByPathDTO = {
   secretPath: string;

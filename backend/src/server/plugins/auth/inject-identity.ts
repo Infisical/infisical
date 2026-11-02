@@ -1,7 +1,7 @@
 import { requestContext, RequestContextData } from "@fastify/request-context";
 import { FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
-import type { JwtPayload } from "jsonwebtoken";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 
 import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
@@ -21,9 +21,12 @@ import {
   TKmipServerAccessTokenJwtPayload,
   TRelayAccessTokenJwtPayload
 } from "@app/services/auth/auth-type";
+import { readClientCertificateHeader } from "@app/services/identity-access-token/identity-access-token-fns";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+
+import { invalidSignatureMessage } from "./invalid-signature-message";
 
 export type TAuthMode =
   | {
@@ -150,7 +153,16 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     } as const;
   }
 
-  const decodedToken = crypto.jwt().verify(authTokenValue, jwtSecret) as JwtPayload;
+  let decodedToken: JwtPayload;
+  try {
+    decodedToken = crypto.jwt().verify(authTokenValue, jwtSecret) as JwtPayload;
+  } catch (error) {
+    // Rethrown as the same error class so the response keeps its 403 TokenError shape.
+    if (error instanceof jwt.JsonWebTokenError && error.message === "invalid signature") {
+      throw new jwt.JsonWebTokenError(invalidSignatureMessage(getConfig()));
+    }
+    throw error;
+  }
 
   switch (decodedToken.authTokenType) {
     case AuthTokenType.ACCESS_TOKEN: {
@@ -286,6 +298,11 @@ export const injectIdentity = fp(
         return;
       }
 
+      // Authenticated on the route by an Agent Vault session token, which is not a JWT.
+      if (pathname === "/api/v1/agent-vault/session/skills") {
+        return;
+      }
+
       // Authentication is handled on a route-level here.
       if (pathname.startsWith("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
         return;
@@ -357,7 +374,8 @@ export const injectIdentity = fp(
         case AuthMode.IDENTITY_ACCESS_TOKEN: {
           const identity = await server.services.identityAccessToken.fnValidateIdentityAccessTokenFast(
             token,
-            req.realIp
+            req.realIp,
+            readClientCertificateHeader(req.headers)
           );
           const serverCfg = await getServerCfg();
           requestContext.set(RequestContextKey.OrgId, identity.orgId);

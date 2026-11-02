@@ -7,8 +7,8 @@ import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/
 import { InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import { TMembershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
+import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TIdentityV2Factory } from "../identity-types";

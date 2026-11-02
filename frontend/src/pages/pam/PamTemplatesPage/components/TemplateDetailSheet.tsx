@@ -42,9 +42,9 @@ import {
 } from "@app/hooks/api/appConnections";
 import {
   accountTypeRequiresRecording,
+  getRotationIntervalOptions,
   isRotatablePamAccountType,
   maxGeneratedPasswordLength,
-  PAM_ROTATION_INTERVAL_OPTIONS,
   PamAccountType,
   pamAccountTypeSupportsSessionLogMasking,
   PamPolicyType,
@@ -410,6 +410,10 @@ const SettingsTab = ({
   )?.app;
   const rotationEnabled = watch("settings.rotationEnabled");
   const heartbeatEnabled = watch("settings.heartbeatEnabled");
+  const savedSettings = (template.settings ?? {}) as {
+    rotation?: { intervalSeconds?: number | null };
+    heartbeat?: { intervalSeconds?: number | null };
+  };
   const requiresRecording = accountTypeRequiresRecording(template.type);
   const showGatewaySettings = accountTypeMap[template.type]?.requiresGateway !== false;
   const supportsSessionLogMasking = pamAccountTypeSupportsSessionLogMasking(template.type);
@@ -526,6 +530,7 @@ const SettingsTab = ({
           }
           createNotification({ type: "error", text: "Failed to update template" });
         },
+        // oxlint-disable-next-line react/no-unstable-nested-components -- a callback that builds a toast, not a component
         onSuccess: async (result) => {
           createNotification({ type: "success", text: "Template updated" });
           const { corsProbeUrl } = result as { corsProbeUrl?: string | null };
@@ -736,11 +741,13 @@ const SettingsTab = ({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
-                          {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
-                            <SelectItem key={option.seconds} value={String(option.seconds)}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
+                          {getRotationIntervalOptions(savedSettings.rotation?.intervalSeconds).map(
+                            (option) => (
+                              <SelectItem key={option.seconds} value={String(option.seconds)}>
+                                {option.label}
+                              </SelectItem>
+                            )
+                          )}
                         </SelectContent>
                       </Select>
                       <FieldDescription>
@@ -795,11 +802,13 @@ const SettingsTab = ({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent position="popper">
-                        {PAM_ROTATION_INTERVAL_OPTIONS.map((option) => (
-                          <SelectItem key={option.seconds} value={String(option.seconds)}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
+                        {getRotationIntervalOptions(savedSettings.heartbeat?.intervalSeconds).map(
+                          (option) => (
+                            <SelectItem key={option.seconds} value={String(option.seconds)}>
+                              {option.label}
+                            </SelectItem>
+                          )
+                        )}
                       </SelectContent>
                     </Select>
                     <FieldDescription>

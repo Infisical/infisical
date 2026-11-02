@@ -174,7 +174,7 @@ const Page = () => {
             <DiscoveryDetailsSection discovery={discovery} />
             <DiscoveryTargetSection discovery={discovery} />
           </div>
-          <div className="flex flex-1 flex-col gap-y-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-y-5">
             <DiscoveryScanLogsSection
               discoveryId={discoveryId}
               onTriggerScan={handleTriggerScan}

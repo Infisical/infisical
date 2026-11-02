@@ -18,8 +18,8 @@ func TestSecret_ListTagPermissions(t *testing.T) {
 
 		// Setup
 		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
-		newTaggedSecret(t, proj, "ALLOWED_KEY", newTag(t, proj, "read-allowed"))
-		newTaggedSecret(t, proj, "OTHER_KEY", newTag(t, proj, "other"))
+		newTaggedSecret(t, proj, "ALLOWED_KEY", secretmanager.CreateTag(t, proj, "read-allowed"))
+		newTaggedSecret(t, proj, "OTHER_KEY", secretmanager.CreateTag(t, proj, "other"))
 		secretmanager.CreateSecret(t, proj, "dev", "UNTAGGED", "v")
 		proj.NewRole(t, "tag-reader", readSecretsTagged("read-allowed"))
 		reader := proj.NewMachineIdentity(t, fixture.WithRoles("tag-reader"))
@@ -36,7 +36,7 @@ func TestSecret_ListTagPermissions(t *testing.T) {
 
 		// Setup
 		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
-		plain, restricted := newTag(t, proj, "plain"), newTag(t, proj, "restricted")
+		plain, restricted := secretmanager.CreateTag(t, proj, "plain"), secretmanager.CreateTag(t, proj, "restricted")
 		newTaggedSecret(t, proj, "PLAIN_KEY", plain)
 		newTaggedSecret(t, proj, "RESTRICTED_KEY", plain, restricted)
 		deny := readSecretsTagged("restricted")
@@ -56,7 +56,7 @@ func TestSecret_ListTagPermissions(t *testing.T) {
 
 		// Setup
 		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
-		plain, restricted := newTag(t, proj, "plain"), newTag(t, proj, "restricted")
+		plain, restricted := secretmanager.CreateTag(t, proj, "plain"), secretmanager.CreateTag(t, proj, "restricted")
 		newTaggedSecret(t, proj, "PLAIN_KEY", plain)
 		newTaggedSecret(t, proj, "RESTRICTED_KEY", plain, restricted)
 		deny := readSecretsTagged("restricted")
@@ -79,7 +79,7 @@ func TestSecret_ListTagPermissions(t *testing.T) {
 
 		// Setup
 		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
-		newTaggedSecret(t, proj, "SHARED_KEY", newTag(t, proj, "shared"))
+		newTaggedSecret(t, proj, "SHARED_KEY", secretmanager.CreateTag(t, proj, "shared"))
 		deny := readSecretsTagged("shared")
 		deny.Inverted = true
 		proj.NewRole(t, "shared-allow", readSecretsTagged("shared"))

@@ -1,5 +1,6 @@
-import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
+import { EnforcementLevel, OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod } from "@app/services/auth/auth-type";
+import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 
@@ -23,6 +24,8 @@ export enum BypasserType {
   User = "user"
 }
 
+export type TDelegatedApprovalPolicyOutput = TDelegatedApprovalPolicyInput;
+
 export type TCreateAccessApprovalPolicy = {
   approvals: number;
   secretPath: string;
@@ -39,10 +42,12 @@ export type TCreateAccessApprovalPolicy = {
   projectSlug: string;
   name: string;
   enforcementLevel: EnforcementLevel;
-  allowedSelfApprovals: boolean;
+  allowedSelfApprovals?: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  delegatedApproval?: TDelegatedApprovalPolicyInput;
+  orgActor: OrgServiceActor;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
@@ -59,11 +64,13 @@ export type TUpdateAccessApprovalPolicy = {
   secretPath?: string;
   name?: string;
   enforcementLevel?: EnforcementLevel;
-  allowedSelfApprovals: boolean;
+  allowedSelfApprovals?: boolean;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   environments?: string[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  delegatedApproval?: TDelegatedApprovalPolicyInput | null;
+  orgActor: OrgServiceActor;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {
@@ -142,6 +149,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
     requestExpirationTime?: string | null;
+    delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
   }>;
   deleteAccessApprovalPolicy: ({
     policyId,
@@ -179,6 +187,7 @@ export interface TAccessApprovalPolicyServiceFactory {
       slug: string;
     }[];
     projectId: string;
+    delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
   }>;
   updateAccessApprovalPolicy: ({
     policyId,
@@ -219,6 +228,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     secretPath: string;
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
+    delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
   }>;
   getAccessApprovalPolicyByProjectSlug: ({
     actorId,
@@ -276,6 +286,7 @@ export interface TAccessApprovalPolicyServiceFactory {
             type: BypasserType;
           }
       )[];
+      delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
     }[]
   >;
   getAccessApprovalPolicyById: ({
@@ -334,5 +345,6 @@ export interface TAccessApprovalPolicyServiceFactory {
           type: BypasserType.Group;
         }
     )[];
+    delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
   }>;
 }

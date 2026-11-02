@@ -18,11 +18,11 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { TPamAccountServiceFactory } from "../pam-account/pam-account-service";
 import { PamAccountType, PamPostgresAuthMethod, PamProductRole, PamSshAuthMethod } from "../pam/pam-enums";
 import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
 import { validateGatewayAttachment } from "../pam/pam-validators";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { TPamAccountServiceFactory } from "../pam-account/pam-account-service";
 import { TPamAccountDependencyDALFactory } from "./pam-account-dependency-dal";
 import { TPamDiscoveredAccountDALFactory } from "./pam-discovered-account-dal";
 import {

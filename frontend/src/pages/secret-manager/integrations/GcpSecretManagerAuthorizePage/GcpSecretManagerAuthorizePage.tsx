@@ -1,5 +1,4 @@
 import crypto from "crypto";
-
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";

@@ -52,6 +52,7 @@ import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AccountPlatformIcon } from "../components/AccountPlatformIcon";
+import { CopyIdMenuItem } from "../components/CopyIdMenuItem";
 import { PAM_TEMPLATE_TABS } from "../components/pamResourceTabs";
 import { PamDocsUrls } from "../pam-docs-urls";
 import { CreateTemplateModal } from "./components/CreateTemplateModal";
@@ -102,6 +103,7 @@ const TemplateRow = ({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={4} onClick={(e) => e.stopPropagation()}>
+            <CopyIdMenuItem id={template.id} />
             {PAM_TEMPLATE_TABS.map((tab) => (
               <DropdownMenuItem
                 key={tab.value}

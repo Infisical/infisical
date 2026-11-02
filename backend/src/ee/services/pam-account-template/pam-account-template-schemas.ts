@@ -3,8 +3,8 @@ import { z } from "zod";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general/password-requirements-schema";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { patternsStringSchema } from "../pam/pam-policies";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { patternsStringSchema } from "../pam/pam-policies";
 
 export const PamRotationConfigSchema = z.object({
   enabled: z.boolean(),

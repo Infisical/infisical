@@ -12,8 +12,8 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { safeRequest } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TWebhookDALFactory } from "./webhook-dal";
 import { TWebhookPayloads, WebhookEvents, WebhookType } from "./webhook-types";
 

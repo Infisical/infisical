@@ -136,6 +136,13 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     preValidation: [
       async (req, res) => {
         const oidcIdentifier = req.session.get<any>("oidcIdentifier");
+        // The login session holds which org the callback belongs to; without it (expired, never
+        // started, or already used) there is nothing to resolve the strategy from.
+        if (!oidcIdentifier) {
+          throw new BadRequestError({
+            message: "Your OIDC login session has expired or was not started. Start the login again."
+          });
+        }
         const oidcIdentifierType = req.session.get<any>("oidcIdentifierType") || "domain";
         const callbackPort = req.session.get<any>("callbackPort");
         const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(

@@ -85,7 +85,6 @@ const CapabilityUpgradeDialog = ({
     eventPropertiesRef.current = eventProperties;
     analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, currentOrg.id, eventProperties);
     // Capture the opening intent once, even when the triggering popup data changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   if (!isOpen) return null;

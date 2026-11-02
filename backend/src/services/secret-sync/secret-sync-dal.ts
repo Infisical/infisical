@@ -11,6 +11,13 @@ export type TSecretSyncDALFactory = ReturnType<typeof secretSyncDALFactory>;
 
 type SecretSyncFindFilter = Parameters<typeof buildFindFilter<TSecretSyncs>>[0];
 
+// Resolving a folder path loads every folder in the sync's environment. Callers that don't need the
+// path pass includeFolderPath: false, and the row omits `folder`. `folder: null` means the path was
+// resolved and the folder is gone, which secret loading treats as "folder no longer exists".
+type TFolderPathOptions<IncludeFolderPath extends boolean = true> = {
+  includeFolderPath?: IncludeFolderPath;
+};
+
 const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: SecretSyncFindFilter; tx?: Knex }) => {
   const query = (tx || db.replicaNode())(TableName.SecretSync)
     .leftJoin(TableName.SecretFolder, `${TableName.SecretSync}.folderId`, `${TableName.SecretFolder}.id`)
@@ -112,13 +119,31 @@ const expandSecretSync = (
   };
 };
 
+export type TSecretSyncWithFolder = ReturnType<typeof expandSecretSync>;
+type TSecretSyncWithoutFolder = Omit<TSecretSyncWithFolder, "folder">;
+type TSecretSyncForFolderOption<IncludeFolderPath extends boolean> = IncludeFolderPath extends false
+  ? TSecretSyncWithoutFolder
+  : TSecretSyncWithFolder;
+
+const withoutFolder = ({ folder, ...rest }: TSecretSyncWithFolder): TSecretSyncWithoutFolder => rest;
+
+const applyFolderOption = <IncludeFolderPath extends boolean>(
+  expanded: TSecretSyncWithFolder,
+  includeFolderPath: IncludeFolderPath
+): TSecretSyncForFolderOption<IncludeFolderPath> =>
+  (includeFolderPath ? expanded : withoutFolder(expanded)) as TSecretSyncForFolderOption<IncludeFolderPath>;
+
 export const secretSyncDALFactory = (
   db: TDbClient,
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">
 ) => {
   const secretSyncOrm = ormify(db, TableName.SecretSync);
 
-  const findById = async (id: string, tx?: Knex) => {
+  const findById = async <IncludeFolderPath extends boolean = true>(
+    id: string,
+    tx?: Knex,
+    { includeFolderPath = true as IncludeFolderPath }: TFolderPathOptions<IncludeFolderPath> = {}
+  ): Promise<TSecretSyncForFolderOption<IncludeFolderPath> | undefined> => {
     try {
       const secretSync = await baseSecretSyncQuery({
         filter: { id },
@@ -128,10 +153,11 @@ export const secretSyncDALFactory = (
 
       if (secretSync) {
         // TODO (scott): replace with cached folder path once implemented
-        const [folderWithPath] = secretSync.folderId
-          ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId])
-          : [];
-        return expandSecretSync(secretSync, folderWithPath);
+        const [folderWithPath] =
+          includeFolderPath && secretSync.folderId
+            ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId])
+            : [];
+        return applyFolderOption(expandSecretSync(secretSync, folderWithPath), includeFolderPath);
       }
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by ID - Secret Sync" });
@@ -156,7 +182,11 @@ export const secretSyncDALFactory = (
     return expandSecretSync(secretSync, folderWithPath);
   };
 
-  const updateById = async (syncId: string, data: Parameters<(typeof secretSyncOrm)["updateById"]>[1]) => {
+  const updateById = async <IncludeFolderPath extends boolean = true>(
+    syncId: string,
+    data: Parameters<(typeof secretSyncOrm)["updateById"]>[1],
+    { includeFolderPath = true as IncludeFolderPath }: TFolderPathOptions<IncludeFolderPath> = {}
+  ): Promise<TSecretSyncForFolderOption<IncludeFolderPath>> => {
     const secretSync = (await secretSyncOrm.transaction(async (tx) => {
       const sync = await secretSyncOrm.updateById(syncId, data, tx);
 
@@ -168,10 +198,11 @@ export const secretSyncDALFactory = (
     }))!;
 
     // TODO (scott): replace with cached folder path once implemented
-    const [folderWithPath] = secretSync.folderId
-      ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId])
-      : [];
-    return expandSecretSync(secretSync, folderWithPath);
+    const [folderWithPath] =
+      includeFolderPath && secretSync.folderId
+        ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, [secretSync.folderId])
+        : [];
+    return applyFolderOption(expandSecretSync(secretSync, folderWithPath), includeFolderPath);
   };
 
   const findOne = async (filter: Parameters<(typeof secretSyncOrm)["findOne"]>[0], tx?: Knex) => {
@@ -190,29 +221,54 @@ export const secretSyncDALFactory = (
     }
   };
 
-  const find = async (filter: Parameters<(typeof secretSyncOrm)["find"]>[0], tx?: Knex) => {
+  const find = async <IncludeFolderPath extends boolean = true>(
+    filter: Parameters<(typeof secretSyncOrm)["find"]>[0],
+    tx?: Knex,
+    { includeFolderPath = true as IncludeFolderPath }: TFolderPathOptions<IncludeFolderPath> = {}
+  ): Promise<TSecretSyncForFolderOption<IncludeFolderPath>[]> => {
     try {
       const secretSyncs = await baseSecretSyncQuery({ filter, db, tx });
 
       if (!secretSyncs.length) return [];
 
-      const foldersWithPath = await folderDAL.findSecretPathByFolderIds(
-        secretSyncs[0].projectId,
-        secretSyncs.filter((sync) => Boolean(sync.folderId)).map((sync) => sync.folderId!)
-      );
+      const folderRecord: Record<
+        string,
+        Awaited<ReturnType<TSecretFolderDALFactory["findSecretPathByFolderIds"]>>[number]
+      > = {};
 
-      // TODO (scott): replace with cached folder path once implemented
-      const folderRecord: Record<string, (typeof foldersWithPath)[number]> = {};
+      if (includeFolderPath) {
+        const foldersWithPath = await folderDAL.findSecretPathByFolderIds(
+          secretSyncs[0].projectId,
+          secretSyncs.filter((sync) => Boolean(sync.folderId)).map((sync) => sync.folderId!)
+        );
 
-      foldersWithPath.forEach((folder) => {
-        if (folder) folderRecord[folder.id] = folder;
-      });
+        // TODO (scott): replace with cached folder path once implemented
+        foldersWithPath.forEach((folder) => {
+          if (folder) folderRecord[folder.id] = folder;
+        });
+      }
 
       return secretSyncs.map((secretSync) =>
-        expandSecretSync(secretSync, secretSync.folderId ? folderRecord[secretSync.folderId] : undefined)
+        applyFolderOption(
+          expandSecretSync(secretSync, secretSync.folderId ? folderRecord[secretSync.folderId] : undefined),
+          includeFolderPath
+        )
       );
     } catch (error) {
       throw new DatabaseError({ error, name: "Find - Secret Sync" });
+    }
+  };
+
+  const findConnectionId = async (id: string, tx?: Knex) => {
+    try {
+      const secretSync = await (tx || db.replicaNode())(TableName.SecretSync)
+        .where({ id })
+        .select("connectionId")
+        .first<{ connectionId: string } | undefined>();
+
+      return secretSync?.connectionId;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Connection ID - Secret Sync" });
     }
   };
 
@@ -265,6 +321,7 @@ export const secretSyncDALFactory = (
     find,
     create,
     updateById,
+    findConnectionId,
     updateAndReturnIds,
     countByOrgId,
     findByDestinationAndOrgId

@@ -2,7 +2,11 @@ import z from "zod";
 
 import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccountType, PamAccountWarning, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
+import { ROTATION_STATUS } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
+import {
+  PamAccountSettingsOverridesSchema,
+  PamTemplateSettingsSchema
+} from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import {
   ACCOUNT_TYPE_CONFIGS,
   buildPamAccountTypeMetadata,
@@ -10,17 +14,13 @@ import {
   PamAccountTypeMetadataSchema,
   revealedCredentialsSchema
 } from "@app/ee/services/pam-account/pam-account-schemas";
-import { ROTATION_STATUS } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
-import {
-  PamAccountSettingsOverridesSchema,
-  PamTemplateSettingsSchema
-} from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { SESSION_HANDLERS } from "@app/ee/services/pam-web-access/pam-session-handlers";
+import { PamAccountType, PamAccountWarning, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general/password-requirements-schema";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { auditSafeText, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
@@ -895,10 +895,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PamAccounts],
       params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
       body: z.object({
-        reason: z
-          .string()
-          .trim()
-          .max(500)
+        reason: auditSafeText(z.string().trim().max(500), { allowMultiline: true })
           .optional()
           .describe("Why the credentials are being viewed. Required when the template requires a reason."),
         mfaSessionId: z

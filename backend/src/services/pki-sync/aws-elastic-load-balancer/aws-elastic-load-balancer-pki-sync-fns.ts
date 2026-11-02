@@ -23,8 +23,8 @@ import {
   AwsConnectionAssumeRoleCredentialsSchema
 } from "@app/services/app-connection/aws/aws-connection-schemas";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { awsCertificateManagerPkiSyncFactory } from "@app/services/pki-sync/aws-certificate-manager/aws-certificate-manager-pki-sync-fns";

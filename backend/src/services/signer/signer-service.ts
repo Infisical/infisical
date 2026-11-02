@@ -67,12 +67,6 @@ import {
   TCodeSigningRequestData
 } from "../approval-policy/code-signing/code-signing-policy-types";
 import { ActorType } from "../auth/auth-type";
-import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
-import { extractCertificateAlgorithms, getCertificateCredentials } from "../certificate/certificate-fns";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { TCertificateServiceFactory } from "../certificate/certificate-service";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertStatus, CrlReason } from "../certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import {
@@ -83,6 +77,16 @@ import { TDigiCertCertificateAuthorityFns } from "../certificate-authority/digic
 import { MAX_CS_VALIDITY_DAYS } from "../certificate-authority/digicert/digicert-code-signing-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "../certificate-authority/internal/internal-certificate-authority-service";
 import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
+import {
+  assertCertificateNotDeleted,
+  extractCertificateAlgorithms,
+  getCertificateCredentials
+} from "../certificate/certificate-fns";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { TCertificateServiceFactory } from "../certificate/certificate-service";
+import { CertExtendedKeyUsage, CertKeyAlgorithm, CertStatus, CrlReason } from "../certificate/certificate-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -190,7 +194,7 @@ type TSignerServiceFactoryDep = {
     THsmConnectorServiceFactory,
     "sign" | "signWithKeyId" | "generateKeyPair" | "getPublicKey" | "assertAttachPermission"
   >;
-  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "findByIdForUpdate">;
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "findByIdForUpdate" | "findByIdForShare">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -611,7 +615,11 @@ export const signerServiceFactory = ({
     const certificateId = preparedCertificate.insert
       ? await preparedCertificate.insert(tx)
       : preparedCertificate.existingCertificateId;
-    await certificateDAL.findByIdForUpdate(certificateId, tx);
+    const lockedCertificate = await certificateDAL.findByIdForUpdate(certificateId, tx);
+    if (!lockedCertificate) {
+      throw new NotFoundError({ message: `The certificate in DigiCert order ${imported.orderId} no longer exists.` });
+    }
+    assertCertificateNotDeleted(lockedCertificate, "It can't be used by a signer.");
     const signerUsingCertificate = await signerDAL.findOne({ certificateId }, tx);
     if (signerUsingCertificate && signerUsingCertificate.id !== signerId) {
       throw new ConflictError({
@@ -700,6 +708,7 @@ export const signerServiceFactory = ({
       if (certificate.projectId !== dto.projectId) {
         throw new BadRequestError({ message: "Certificate must belong to the same organization" });
       }
+      assertCertificateNotDeleted(certificate, "It can't be used by a signer.");
       if (certificate.status === CertStatus.REVOKED) {
         throw new BadRequestError({ message: "Certificate has been revoked" });
       }
@@ -824,6 +833,14 @@ export const signerServiceFactory = ({
 
     try {
       const result = await signerDAL.transaction(async (tx) => {
+        if (usingExistingCert) {
+          const lockedCertificate = await certificateDAL.findByIdForShare(dto.certificateId as string, tx);
+          if (!lockedCertificate) {
+            throw new NotFoundError({ message: `Certificate with ID '${dto.certificateId}' not found` });
+          }
+          assertCertificateNotDeleted(lockedCertificate, "It can't be used by a signer.");
+        }
+
         const importedCertificateId = importedCertificate
           ? await $attachImportedCertificate(importedCertificate, undefined, tx)
           : null;

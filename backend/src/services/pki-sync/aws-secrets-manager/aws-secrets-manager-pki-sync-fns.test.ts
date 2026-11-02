@@ -33,11 +33,17 @@ vi.mock("@aws-sdk/client-secrets-manager", async (importOriginal) => {
 const CERT_ID = "550e8400-e29b-41d4-a716-446655440000";
 const SECRET_NAME = "infisical-550e8400e29b41d4a716446655440000";
 
-const makeFactory = (ownedByOtherSync: string[] = []) =>
+const makeFactory = (
+  ownedByOtherSync: string[] = [],
+  {
+    certificate = { id: CERT_ID } as Record<string, unknown>,
+    syncRecords = [] as Array<{ certificateId: string; externalIdentifier: string }>
+  } = {}
+) =>
   awsSecretsManagerPkiSyncFactory({
-    certificateDAL: { findById: async () => ({ id: CERT_ID }) } as never,
+    certificateDAL: { findById: async () => certificate } as never,
     certificateSyncDAL: {
-      findByPkiSyncId: async () => [],
+      findByPkiSyncId: async () => syncRecords,
       claimExternalIdentifier: async (_syncId: string, _certId: string, name: string) => {
         events.push(`claim:${name}`);
       },
@@ -80,5 +86,39 @@ describe("AWS Secrets Manager PKI sync destination ownership", () => {
     await makeFactory([otherSyncSecret]).syncCertificates(pkiSync, {} as never);
 
     expect(events).toEqual([`DeleteSecretCommand:${orphanSecret}`]);
+  });
+
+  test("updates the preserved secret after a renewal once the old certificate's link is gone", async () => {
+    const renewedCertId = "660e8400-e29b-41d4-a716-446655440000";
+    const renewedSecretName = "infisical-660e8400e29b41d4a716446655440000";
+    existingSecretNames.push(SECRET_NAME);
+
+    await makeFactory([], {
+      certificate: { id: renewedCertId, renewedFromCertificateId: CERT_ID },
+      syncRecords: [{ certificateId: renewedCertId, externalIdentifier: SECRET_NAME }]
+    }).syncCertificates({ ...pkiSync, syncOptions: { ...pkiSync.syncOptions, preserveSecretOnRenewal: true } }, {
+      [renewedSecretName]: { cert: "CERT", privateKey: "KEY", certificateId: renewedCertId }
+    } as never);
+
+    expect(events).toEqual([`claim:${SECRET_NAME}`, `UpdateSecretCommand:${SECRET_NAME}`]);
+  });
+
+  test("removes the pre-renewal secret when preserve on renewal is off", async () => {
+    const renewedCertId = "660e8400-e29b-41d4-a716-446655440000";
+    const renewedSecretName = "infisical-660e8400e29b41d4a716446655440000";
+    existingSecretNames.push(SECRET_NAME);
+
+    await makeFactory([], {
+      certificate: { id: renewedCertId, renewedFromCertificateId: CERT_ID },
+      syncRecords: [{ certificateId: renewedCertId, externalIdentifier: SECRET_NAME }]
+    }).syncCertificates({ ...pkiSync, syncOptions: { ...pkiSync.syncOptions, preserveSecretOnRenewal: false } }, {
+      [renewedSecretName]: { cert: "CERT", privateKey: "KEY", certificateId: renewedCertId }
+    } as never);
+
+    expect(events).toEqual([
+      `claim:${renewedSecretName}`,
+      `CreateSecretCommand:${renewedSecretName}`,
+      `DeleteSecretCommand:${SECRET_NAME}`
+    ]);
   });
 });

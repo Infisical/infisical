@@ -20,9 +20,6 @@ import {
 import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 
-import { useAsRef } from "./hooks/use-as-ref";
-import { useIsomorphicLayoutEffect } from "./hooks/use-isomorphic-layout-effect";
-import { useLazyRef } from "./hooks/use-lazy-ref";
 import type {
   CellPosition,
   CellUpdate,
@@ -46,6 +43,9 @@ import {
   sanitizeCssId,
   scrollCellIntoView
 } from "./data-grid-utils";
+import { useAsRef } from "./hooks/use-as-ref";
+import { useIsomorphicLayoutEffect } from "./hooks/use-isomorphic-layout-effect";
+import { useLazyRef } from "./hooks/use-lazy-ref";
 
 const DEFAULT_ROW_HEIGHT = "short";
 const OVERSCAN = 6;
@@ -93,8 +93,10 @@ function useStore<T>(store: DataGridStore, selector: (state: DataGridState) => T
   return React.useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
 }
 
-interface UseDataGridProps<TData>
-  extends Omit<TableOptions<TData>, "pageCount" | "getCoreRowModel"> {
+interface UseDataGridProps<TData> extends Omit<
+  TableOptions<TData>,
+  "pageCount" | "getCoreRowModel"
+> {
   onDataChange?: (data: TData[]) => void;
   onRowAdd?: (
     event?: React.MouseEvent<HTMLDivElement>

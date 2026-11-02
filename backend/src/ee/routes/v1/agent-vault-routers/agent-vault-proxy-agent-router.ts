@@ -2,20 +2,20 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import {
+  MAX_OAUTH_SCOPE_LENGTH,
+  OAUTH_SCOPE_TOKEN_PATTERN
+} from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-discovery-fns";
+import {
+  AgentVaultSessionLogChunkCreateResponseSchema,
+  AgentVaultSessionLogChunkCreateSchema
+} from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
+import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
+import {
   AgentVaultCredentialType,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultTrafficPolicy
 } from "@app/ee/services/agent-vault/agent-vault-enums";
-import {
-  MAX_OAUTH_SCOPE_LENGTH,
-  OAUTH_SCOPE_TOKEN_PATTERN
-} from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-discovery-fns";
-import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
-import {
-  AgentVaultSessionLogChunkCreateResponseSchema,
-  AgentVaultSessionLogChunkCreateSchema
-} from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { UnauthorizedError } from "@app/lib/errors";

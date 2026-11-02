@@ -8,8 +8,8 @@ import {
   TCodeSigningRequestScopeInput,
   TCodeSigningScope
 } from "../approval-policy/code-signing/code-signing-policy-types";
-import { CertKeyAlgorithm, CrlReason } from "../certificate/certificate-types";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
+import { CertKeyAlgorithm, CrlReason } from "../certificate/certificate-types";
 import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
 
 type TActorPermission = Omit<TProjectPermission, "projectId">;

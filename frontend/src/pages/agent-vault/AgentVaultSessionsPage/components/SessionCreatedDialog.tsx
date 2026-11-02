@@ -22,65 +22,74 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
 };
 
-const runCommand = (token: string) =>
+const runCommand = (token: string, siteUrl: string) =>
   `infisical agent-vault run \\
   --session-token ${token} \\
   --proxy <proxy-host>:17323 \\
+  --domain ${siteUrl} \\
   -- <agent-command>`;
 
-export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
-  <Dialog open={Boolean(session)} onOpenChange={onOpenChange}>
-    <DialogContent className="max-w-2xl" onInteractOutside={(event) => event.preventDefault()}>
-      <DialogHeader>
-        <DialogTitle>Session Created</DialogTitle>
-        <DialogDescription>
-          Run this where your agent runs. The agent&apos;s traffic goes through the proxy, which
-          attaches the credentials this session carries.
-        </DialogDescription>
-      </DialogHeader>
+export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => {
+  const { protocol, hostname, port } = window.location;
+  const siteUrl = `${protocol}//${hostname}${port && port !== "80" ? `:${port}` : ""}`;
 
-      <div className="flex flex-col gap-4">
-        <Alert variant="warning">
-          <TriangleAlertIcon />
-          <AlertDescription>
-            This command is shown once. Copy it now, since the session token cannot be retrieved
-            later.
-          </AlertDescription>
-        </Alert>
+  return (
+    <Dialog open={Boolean(session)} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl" onInteractOutside={(event) => event.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Session Created</DialogTitle>
+          <DialogDescription>
+            Run this where your agent runs. The agent&apos;s traffic goes through the proxy, which
+            attaches the credentials this session carries.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="flex flex-col gap-2">
-          <CodeBlock label="Run an agent with it" value={runCommand(session?.token ?? "")} />
-          <p className="text-xs text-accent">
-            Replace <span className="font-mono">&lt;proxy-host&gt;</span> with the host your proxy
-            runs on and <span className="font-mono">&lt;agent-command&gt;</span> with the agent to
-            run, such as <span className="font-mono">claude</span>.
+        <div className="flex flex-col gap-4">
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              This command is shown once. Copy it now, since the session token cannot be retrieved
+              later.
+            </AlertDescription>
+          </Alert>
+
+          <div className="flex flex-col gap-2">
+            <CodeBlock
+              label="Run an agent with it"
+              value={runCommand(session?.token ?? "", siteUrl)}
+            />
+            <p className="text-xs text-accent">
+              Replace <span className="font-mono">&lt;proxy-host&gt;</span> with the host your proxy
+              runs on and <span className="font-mono">&lt;agent-command&gt;</span> with the agent to
+              run, such as <span className="font-mono">claude</span>.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs text-accent">Expires</span>
+            <span className="text-sm">{formatSessionExpiry(session?.expiresAt ?? null)}</span>
+          </div>
+
+          <p className="mt-2 text-xs text-accent">
+            Learn how to{" "}
+            <a
+              href={AgentVaultDocsUrls.sessions}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:opacity-80"
+            >
+              create a session using the CLI or a machine identity
+            </a>
+            .
           </p>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs text-accent">Expires</span>
-          <span className="text-sm">{formatSessionExpiry(session?.expiresAt ?? null)}</span>
-        </div>
-
-        <p className="mt-2 text-xs text-accent">
-          Learn how to{" "}
-          <a
-            href={AgentVaultDocsUrls.sessions}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:opacity-80"
-          >
-            create a session using the CLI or a machine identity
-          </a>
-          .
-        </p>
-      </div>
-
-      <DialogFooter>
-        <Button variant="av" onClick={() => onOpenChange(false)}>
-          Done
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-);
+        <DialogFooter>
+          <Button variant="av" onClick={() => onOpenChange(false)}>
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
