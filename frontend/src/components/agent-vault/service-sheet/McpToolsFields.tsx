@@ -69,7 +69,7 @@ export const McpToolsFields = ({
   // An expired sign-in changes the request, but the list it loaded is still the server's, so it stays on screen.
   const serverTools =
     loaded?.source === source || (isAuthorizationExpired && loaded) ? loaded.tools : null;
-  // Each connection is loaded on its own once; after a failure the admin retries with the button.
+  // Each connection is loaded on its own once; after a failure the admin retries from the error.
   const [autoLoadedSource, setAutoLoadedSource] = useState<string | null>(null);
 
   const options = useMemo<TToolOption[]>(() => {
@@ -163,75 +163,51 @@ export const McpToolsFields = ({
             <Field>
               <FieldLabel htmlFor={`${baseId}-tools`}>Allowed Tools</FieldLabel>
               <FieldContent className="gap-3">
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <Combobox
-                      id={`${baseId}-tools`}
-                      multiple
-                      modal
-                      isError={Boolean(fieldState.error)}
-                      isLoading={listTools.isPending}
-                      options={options}
-                      value={selectedOptions}
-                      onValueChange={(next) => setAllowedTools(next.map((option) => option.name))}
-                      getOptionValue={(option) => option.name}
-                      getOptionLabel={(option) => option.name}
-                      isOptionDisabled={(option) => isAtLimit && !selectedNames.has(option.name)}
-                      includeMissingSelectedOptions
-                      renderOption={(option) => (
-                        <span className="flex min-w-0 flex-col">
-                          <span className="flex items-center gap-2">
-                            <span className="truncate font-mono">{option.name}</span>
-                            {option.isUnlisted && <Badge variant="neutral">Custom</Badge>}
-                          </span>
-                          {option.description && (
-                            <span
-                              className="truncate text-xs text-muted"
-                              title={option.description}
-                            >
-                              {option.description}
-                            </span>
-                          )}
+                <Combobox
+                  id={`${baseId}-tools`}
+                  multiple
+                  modal
+                  isError={Boolean(fieldState.error)}
+                  isLoading={listTools.isPending}
+                  options={options}
+                  value={selectedOptions}
+                  onValueChange={(next) => setAllowedTools(next.map((option) => option.name))}
+                  getOptionValue={(option) => option.name}
+                  getOptionLabel={(option) => option.name}
+                  isOptionDisabled={(option) => isAtLimit && !selectedNames.has(option.name)}
+                  includeMissingSelectedOptions
+                  renderOption={(option) => (
+                    <span className="flex min-w-0 flex-col">
+                      <span className="flex items-center gap-2">
+                        <span className="truncate font-mono">{option.name}</span>
+                        {option.isUnlisted && <Badge variant="neutral">Custom</Badge>}
+                      </span>
+                      {option.description && (
+                        <span className="truncate text-xs text-muted" title={option.description}>
+                          {option.description}
                         </span>
                       )}
-                      placeholder="Select tools..."
-                      searchPlaceholder="Search or add a tool..."
-                      searchAriaLabel="Search tools"
-                      clearAriaLabel="Clear all tools"
-                      emptyMessage={(inputValue) =>
-                        (inputValue && toolNameError(inputValue.trim())) ||
-                        (serverTools
-                          ? "No tools match your search."
-                          : "Type a tool's name to add it.")
-                      }
-                      creation={{
-                        isDisabled: isAtLimit,
-                        isValid: (inputValue) => !toolNameError(inputValue),
-                        // The proxy matches names exactly, so a name differing only in case from a listed tool
-                        // is almost certainly a typo for it.
-                        isDuplicate: (inputValue, option) =>
-                          option.name.toLowerCase() === inputValue.toLowerCase(),
-                        formatLabel: formatAddLabel,
-                        onCreate: (inputValue) => setAllowedTools([...allowedTools, inputValue])
-                      }}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={loadTools}
-                    isPending={listTools.isPending}
-                    isDisabled={isAuthorizationExpired}
-                  >
-                    <RefreshCwIcon />
-                    {serverTools ? "Reload Tools" : "Load Tools"}
-                  </Button>
-                </div>
-
-                <span className="text-xs text-muted">
-                  {allowedTools.length} selected
-                  {serverTools ? ` of ${serverTools.length} listed by the server` : ""}
-                </span>
+                    </span>
+                  )}
+                  placeholder="Select tools..."
+                  searchPlaceholder="Search or add a tool..."
+                  searchAriaLabel="Search tools"
+                  clearAriaLabel="Clear all tools"
+                  emptyMessage={(inputValue) =>
+                    (inputValue && toolNameError(inputValue.trim())) ||
+                    (serverTools ? "No tools match your search." : "Type a tool's name to add it.")
+                  }
+                  creation={{
+                    isDisabled: isAtLimit,
+                    isValid: (inputValue) => !toolNameError(inputValue),
+                    // The proxy matches names exactly, so a name differing only in case from a listed tool
+                    // is almost certainly a typo for it.
+                    isDuplicate: (inputValue, option) =>
+                      option.name.toLowerCase() === inputValue.toLowerCase(),
+                    formatLabel: formatAddLabel,
+                    onCreate: (inputValue) => setAllowedTools([...allowedTools, inputValue])
+                  }}
+                />
 
                 {isAuthorizationExpired && (
                   <Alert variant="warning">
@@ -259,6 +235,16 @@ export const McpToolsFields = ({
                     <AlertTitle>Couldn&apos;t load the tools</AlertTitle>
                     <AlertDescription>
                       {loadError} You can still add a tool by typing its name.
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        className="mt-2"
+                        onClick={loadTools}
+                      >
+                        <RefreshCwIcon />
+                        Try Again
+                      </Button>
                     </AlertDescription>
                   </Alert>
                 )}
