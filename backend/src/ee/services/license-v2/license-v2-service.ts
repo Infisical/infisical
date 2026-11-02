@@ -639,7 +639,8 @@ export const licenseV2ServiceFactory = ({
                         segment.estimatedAmountCents === null || segment.estimatedAmountCents === undefined
                           ? null
                           : centsToDollars(segment.estimatedAmountCents)
-                    }))
+                    })),
+                    trial: dimension.usage.trial
                   }
                 }
               : {}),

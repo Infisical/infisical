@@ -218,7 +218,10 @@ export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) 
         {dim.limit !== null
           ? ` / ${dim.limit.toLocaleString()}`
           : ` ${unitForCount(dim.noun, dim.used)}`}
-        {monthlyRate > 0 && <span> · {`${fmtMoney(monthlyRate)}/${dim.noun}/mo`}</span>}
+        {/* A metered price is its bands, described by the usage caption, not one rate. */}
+        {!dim.metered && monthlyRate > 0 && (
+          <span> · {`${fmtMoney(monthlyRate)}/${dim.noun}/mo`}</span>
+        )}
       </>
     );
   }

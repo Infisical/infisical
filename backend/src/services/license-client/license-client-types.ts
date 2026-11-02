@@ -199,7 +199,9 @@ const subscriptionItemDimensionSchema = z
               })
               .passthrough()
           )
-          .default([])
+          .default([]),
+        // The period rates a free trial: its usage is shown but never billed.
+        trial: z.boolean().default(false)
       })
       .passthrough()
       .nullish(),

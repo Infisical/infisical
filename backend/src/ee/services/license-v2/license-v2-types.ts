@@ -48,6 +48,7 @@ export type BillingV2MeteredUsage = {
     used: number;
     estimatedAmount: number | null;
   }[];
+  trial: boolean;
 };
 
 // A comparison row's cells are keyed by plan tier ("pro" | "advanced" | "enterprise" | ...) so the UI

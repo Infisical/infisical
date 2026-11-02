@@ -77,7 +77,8 @@ const BillingV2MeteredUsageSchema = z.object({
       used: z.number(),
       estimatedAmount: z.number().nullable()
     })
-    .array()
+    .array(),
+  trial: z.boolean()
 });
 
 const BillingV2CompareRowSchema = z.object({

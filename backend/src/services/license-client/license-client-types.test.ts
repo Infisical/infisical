@@ -56,6 +56,7 @@ describe("subscriptionResponseSchema metered fields", () => {
     const dimension = parsed.items[0].dimensions[0];
     expect(dimension.usage?.estimatedAmountCents).toBe(60000);
     expect(dimension.usage?.currentTier).toBe(2);
+    expect(dimension.usage?.trial).toBe(false);
     expect(dimension.pricing?.tiers[1].unitAmountDecimal).toBe("0.5");
     expect(dimension.pricing?.tiers[2].upTo).toBeNull();
     expect(parsed.billing?.estimatedUsageCents).toBe(60000);

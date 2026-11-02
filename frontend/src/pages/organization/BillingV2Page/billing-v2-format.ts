@@ -342,6 +342,10 @@ export const meteredUsageCaption = (dim: BillingV2EntitlementDim): string | null
   if (!dim.metered || !dim.usage) {
     return null;
   }
+  // A trial's usage is free, so it carries no amount; the plan card shows which band it reached.
+  if (dim.usage.trial) {
+    return "free during your trial";
+  }
   const parts: string[] = [];
   if (dim.usage.estimatedAmount !== null) {
     parts.push(`≈ ${fmtMoneyCents(dim.usage.estimatedAmount)} so far`);

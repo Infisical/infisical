@@ -43,6 +43,8 @@ export type BillingV2MeteredUsage = {
     used: number;
     estimatedAmount: number | null;
   }[];
+  // A free trial's usage: shown, never billed, so the UI shows no amount for it.
+  trial: boolean;
 };
 
 // A comparison row's cells are keyed by plan tier ("pro" | "advanced" | "enterprise" | ...) so the

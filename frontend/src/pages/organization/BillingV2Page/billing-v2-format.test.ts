@@ -81,11 +81,31 @@ describe("meteredUsageCaption", () => {
           estimatedAmount: 600,
           currentTier: 2,
           nextTierAt: null,
-          earlierInPeriod: []
+          earlierInPeriod: [],
+          trial: false
         }
       })
     );
     expect(caption).toBe("≈ $600 so far · band 3: $3 per 1,000 minutes");
+  });
+
+  test("shows no amount for a free trial's usage", () => {
+    const caption = meteredUsageCaption(
+      dim({
+        bands,
+        usage: {
+          periodStart: "Nov 1, 2026",
+          periodEnd: "Nov 30, 2026",
+          asOf: null,
+          estimatedAmount: 600,
+          currentTier: 2,
+          nextTierAt: null,
+          earlierInPeriod: [],
+          trial: true
+        }
+      })
+    );
+    expect(caption).toBe("free during your trial");
   });
 
   test("is empty for a dimension with no rated usage", () => {

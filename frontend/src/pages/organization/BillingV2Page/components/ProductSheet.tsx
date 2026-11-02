@@ -75,6 +75,8 @@ type PriceLine = {
   metered?: boolean;
   bands?: BillingV2Bands;
   noun?: string;
+  // The band a free trial's usage has reached, marked on the band table.
+  trialBand?: number;
 };
 
 // The plan's headline price for a cadence: a base fee, else the first priced dimension's rate.
@@ -148,9 +150,10 @@ const PriceLineView = ({ line, headline }: { line: PriceLine; headline?: boolean
             key={index}
             className="flex justify-between gap-3 py-2 text-sm tabular-nums"
           >
-            <span className="text-muted">
+            <span className="flex items-center gap-2 text-muted">
               {bandRangeLabel(line.bands as BillingV2Bands, index)}{" "}
               {pluralizeUnit(line.noun ?? "unit")}
+              {line.trialBand === index && <Badge variant="info">You&apos;re here</Badge>}
             </span>
             <span className="text-foreground">{bandTableRate(band)}</span>
           </div>
@@ -162,8 +165,18 @@ const PriceLineView = ({ line, headline }: { line: PriceLine; headline?: boolean
 
 // A plan's price: a base fee leads as the headline, else the first priced dimension is promoted; the
 // remaining priced dimensions list below. A metered dimension renders with its usage-based framing.
-const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV2Cadence }) => {
+const PlanPricing = ({
+  plan,
+  cadence,
+  trialBands
+}: {
+  plan: BillingV2Plan;
+  cadence: BillingV2Cadence;
+  trialBands?: Record<string, number>;
+}) => {
   const dims = plan.dims ?? [];
+  const withTrialBand = (key: string, line: PriceLine): PriceLine =>
+    line.bands && trialBands?.[key] !== undefined ? { ...line, trialBand: trialBands[key] } : line;
 
   // Render at a cadence the plan actually prices. A single-cadence plan (e.g. annual-only) shown at the
   // sheet's default "monthly" would read "$0 / mo", so fall back to the cadence that has real pricing.
@@ -186,7 +199,7 @@ const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV
     : null;
   let usageDims = dims;
   if (!headline && dims.length > 0) {
-    headline = dimPriceLine(dims[0], cad, "headline");
+    headline = withTrialBand(dims[0].key, dimPriceLine(dims[0], cad, "headline"));
     usageDims = dims.slice(1);
   }
 
@@ -196,7 +209,7 @@ const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV
 
   const usageLines = usageDims.map((dim) => ({
     key: dim.key,
-    line: dimPriceLine(dim, cad, "usage")
+    line: withTrialBand(dim.key, dimPriceLine(dim, cad, "usage"))
   }));
 
   return (
@@ -230,6 +243,8 @@ type PlanCardProps = {
   plan: BillingV2Plan;
   cadence: BillingV2Cadence;
   isCurrent: boolean;
+  // Current plan in a free trial only: the band each metered dimension's usage has reached.
+  trialBands?: Record<string, number>;
   entitled: boolean;
   canChangeCommitment: boolean;
   // Whether a commitment already exists, so the CTA reads "Change" vs "Set" commitment.
@@ -248,6 +263,7 @@ const PlanCard = ({
   plan,
   cadence,
   isCurrent,
+  trialBands,
   entitled,
   canChangeCommitment,
   hasCommitment,
@@ -396,7 +412,7 @@ const PlanCard = ({
         {isCustom ? (
           <span className="text-2xl font-medium text-foreground">Custom</span>
         ) : (
-          <PlanPricing plan={plan} cadence={cardCadence} />
+          <PlanPricing plan={plan} cadence={cardCadence} trialBands={trialBands} />
         )}
       </div>
     </div>
@@ -596,6 +612,11 @@ export const ProductSheet = ({
     .sort(byDisplayOrder);
   const currentTier =
     entitlement?.planTier ?? (entitled ? plans.find((plan) => plan.selfServe)?.tier : undefined);
+  const trialBands = Object.fromEntries(
+    (entitlement?.dimensions ?? [])
+      .filter((dim) => dim.usage?.trial)
+      .map((dim) => [dim.key, dim.usage?.currentTier ?? 0])
+  );
   const gridCols = GRID_COLS[Math.min(plans.length, 3)] ?? GRID_COLS[3];
   const showCompare = Boolean(prod.compare && prod.compare.length > 0 && plans.length > 1);
 
@@ -772,6 +793,7 @@ export const ProductSheet = ({
                       cadence={displayCadence}
                       entitled={entitled}
                       isCurrent={entitled && plan.tier === currentTier}
+                      trialBands={entitled && plan.tier === currentTier ? trialBands : undefined}
                       canChangeCommitment={showChangeCommitment}
                       hasCommitment={hasCommitment}
                       selfServe={selfServe}
