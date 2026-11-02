@@ -61,6 +61,7 @@ import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { useSlashFocusSearch } from "@app/hooks/useSlashFocusSearch";
 
+import { CopyIdMenuItem } from "../../components/CopyIdMenuItem";
 import { LaunchSessionSheet } from "../../components/LaunchSessionSheet";
 import { PAM_FOLDER_TABS } from "../../components/pamResourceTabs";
 import { RequestAccessSheet } from "../../components/RequestAccessSheet";
@@ -240,6 +241,7 @@ export const PamFolderPage = () => {
                 </IconButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" sideOffset={4} className="min-w-48">
+                <CopyIdMenuItem id={folderId} />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div>
