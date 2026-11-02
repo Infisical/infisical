@@ -23,7 +23,6 @@ import {
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
 import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
-import { ProxiedServiceSubstitutionSurface } from "@app/ee/services/proxied-service/proxied-service-enums";
 import { TSettableAuthMethod } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
@@ -316,9 +315,6 @@ export enum PostHogEventTypes {
   BillingProductActivated = "Billing Product Activated",
   BillingPlanUpgraded = "Billing Plan Upgraded",
 
-  // Agent Proxy
-  ProxiedServiceCreated = "Proxied Service Created",
-
   // Agent Vault
   AgentVaultAccessBundleCreated = "Agent Vault Access Bundle Created",
   AgentVaultAccessBundleUpdated = "Agent Vault Access Bundle Updated",
@@ -349,6 +345,8 @@ export enum PostHogEventTypes {
   AgentVaultProductMemberAdded = "Agent Vault Product Member Added",
   AgentVaultProductMemberUpdated = "Agent Vault Product Member Updated",
   AgentVaultProductMemberRemoved = "Agent Vault Product Member Removed",
+  AgentVaultDelegationSet = "Agent Vault Delegation Set",
+  AgentVaultDelegationDeleted = "Agent Vault Delegation Deleted",
 
   // Billing trials. Cloud-only: the self-hosted license backend rejects startTrial outright.
   // "awaiting_card" gets its own event rather than an outcome property on TrialStarted, because it
@@ -2400,20 +2398,6 @@ export type TSecretRotationV2FailedEvent = {
   };
 };
 
-export type TProxiedServiceCreatedEvent = {
-  event: PostHogEventTypes.ProxiedServiceCreated;
-  properties: {
-    projectId: string;
-    headerRewriteCount: number;
-    substitutionCount: number;
-    substitutionSurfaces: ProxiedServiceSubstitutionSurface[];
-    hostPatternCount: number;
-    usesDynamicSecret: boolean;
-    usesBasicAuth: boolean;
-    isEnabled: boolean;
-  };
-};
-
 export type TBillingCheckoutSessionCreatedEvent = {
   event: PostHogEventTypes.BillingCheckoutSessionCreated;
   properties: {
@@ -2581,6 +2565,7 @@ export type TAgentVaultSessionCreatedEvent = {
     sessionId: string;
     accessBundleId: string;
     ttlSeconds: number | null;
+    isOnBehalfOfUser: boolean;
   };
 };
 
@@ -2658,6 +2643,17 @@ export type TAgentVaultProductMemberRemovedEvent = {
   properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType };
 };
 
+// Counts only: a delegation's users and groups are never sent.
+export type TAgentVaultDelegationSetEvent = {
+  event: PostHogEventTypes.AgentVaultDelegationSet;
+  properties: TAgentVaultEventBase & { scope: string; userCount: number; groupCount: number };
+};
+
+export type TAgentVaultDelegationDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultDelegationDeleted;
+  properties: TAgentVaultEventBase & { scope: string; userCount: number; groupCount: number };
+};
+
 export type TAgentVaultPostHogEvent =
   | TAgentVaultAccessBundleCreatedEvent
   | TAgentVaultAccessBundleUpdatedEvent
@@ -2687,7 +2683,9 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultSessionLogChunkAcceptedEvent
   | TAgentVaultProductMemberAddedEvent
   | TAgentVaultProductMemberUpdatedEvent
-  | TAgentVaultProductMemberRemovedEvent;
+  | TAgentVaultProductMemberRemovedEvent
+  | TAgentVaultDelegationSetEvent
+  | TAgentVaultDelegationDeletedEvent;
 
 export type TAgentVaultActorPostHogEvent = Exclude<
   TAgentVaultPostHogEvent,
@@ -2944,7 +2942,6 @@ export type TPostHogEvent = {
   | TSecretApprovalPolicyUpdatedEvent
   | TAccessApprovalPolicyUpdatedEvent
   | TSecretRotationV2FailedEvent
-  | TProxiedServiceCreatedEvent
   | TBillingCheckoutSessionCreatedEvent
   | TBillingProductActivatedEvent
   | TBillingPlanUpgradedEvent

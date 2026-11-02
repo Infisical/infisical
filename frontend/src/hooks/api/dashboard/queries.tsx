@@ -16,7 +16,6 @@ import {
   TDashboardProjectSecretsQuickSearch,
   TDashboardProjectSecretsQuickSearchResponse,
   TFolderMoveDestinationCheck,
-  TGetAccessibleSecretsDTO,
   TGetDashboardProjectSecretsByKeys,
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
@@ -74,17 +73,6 @@ export const dashboardKeys = {
     ] as const,
   searchSecretsByMetadata: ({ projectId, ...params }: TSearchSecretsByMetadataDTO) =>
     [...dashboardKeys.all(), "secrets-by-metadata", projectId, params] as const,
-  getAccessibleSecrets: ({
-    projectId,
-    secretPath,
-    environment,
-    filterByAction
-  }: TGetAccessibleSecretsDTO) =>
-    [
-      ...dashboardKeys.all(),
-      "accessible-secrets",
-      { projectId, secretPath, environment, filterByAction }
-    ] as const,
   getSecretValuesRoot: () => [...dashboardKeys.all(), "secrets-values"] as const,
   getSecretValue: ({
     projectId,
@@ -484,23 +472,6 @@ export const fetchProjectSecretsQuickSearch = async ({
   return data;
 };
 
-const fetchAccessibleSecrets = async ({
-  projectId,
-  secretPath,
-  environment,
-  filterByAction,
-  recursive = false
-}: TGetAccessibleSecretsDTO) => {
-  const { data } = await apiRequest.get<{ secrets: SecretV3Raw[] }>(
-    "/api/v1/dashboard/accessible-secrets",
-    {
-      params: { projectId, secretPath, environment, filterByAction, recursive }
-    }
-  );
-
-  return data.secrets;
-};
-
 export const useGetProjectSecretsQuickSearch = (
   {
     projectId,
@@ -643,38 +614,6 @@ export const useSearchSecretsByMetadata = (
         secretPath
       }),
     placeholderData: (previousData) => previousData
-  });
-};
-
-export const useGetAccessibleSecrets = ({
-  projectId,
-  secretPath,
-  environment,
-  filterByAction,
-  options,
-  recursive = false
-}: TGetAccessibleSecretsDTO & {
-  options?: Omit<
-    UseQueryOptions<
-      SecretV3Raw[],
-      unknown,
-      SecretV3Raw[],
-      ReturnType<typeof dashboardKeys.getAccessibleSecrets>
-    >,
-    "queryKey" | "queryFn"
-  >;
-}) => {
-  return useQuery({
-    ...options,
-    queryKey: dashboardKeys.getAccessibleSecrets({
-      projectId,
-      secretPath,
-      environment,
-      filterByAction,
-      recursive
-    }),
-    queryFn: () =>
-      fetchAccessibleSecrets({ projectId, secretPath, environment, filterByAction, recursive })
   });
 };
 

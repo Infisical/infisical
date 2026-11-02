@@ -2,7 +2,6 @@ import { useState } from "react";
 import { EyeIcon, MoreHorizontalIcon, PlusIcon, TrashIcon } from "lucide-react";
 
 import { CreateSkillSheet } from "@app/components/agent-vault/skills/CreateSkillSheet";
-import { SkillDescription } from "@app/components/agent-vault/skills/SkillDescription";
 import { SkillSheet } from "@app/components/agent-vault/skills/SkillSheet";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -161,14 +160,12 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
                       to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
                       params={{ orgId: currentOrg.id, accessBundleId }}
                       search={(prev) => ({ ...prev, skillId: skill.id })}
-                      title={skill.name}
+                      title={skill.description}
                     >
                       {skill.name}
                     </RowLink>
                   </TableCell>
-                  <TableCell isTruncatable>
-                    <SkillDescription description={skill.description} />
-                  </TableCell>
+                  <TableCell isTruncatable>{skill.description}</TableCell>
                   <TableCell variant="action">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

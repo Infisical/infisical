@@ -33,6 +33,7 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultBundleSkill,
   TAgentVaultDecryptedSessionLogPage,
+  TAgentVaultDelegationDetail,
   TAgentVaultMember,
   TAgentVaultOauthAuthorization,
   TAgentVaultProductActor,
@@ -145,6 +146,18 @@ export const agentVaultKeys = {
   availableMembers: (orgId: string) => [...agentVaultKeys.members(orgId), "available"] as const,
   availableMemberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.availableMembers(orgId), params] as const,
+  delegations: (orgId: string) => [...agentVaultKeys.all(orgId), "delegations"] as const,
+  delegation: (orgId: string, machineIdentityId: string) =>
+    [...agentVaultKeys.delegations(orgId), machineIdentityId] as const,
+  // Nested under delegation() so changing the delegation can invalidate the candidates alone: the
+  // delegation itself is written from each change's result.
+  availableDelegationSubjects: (orgId: string, machineIdentityId: string) =>
+    [...agentVaultKeys.delegation(orgId, machineIdentityId), "available"] as const,
+  availableDelegationSubjectList: (
+    orgId: string,
+    machineIdentityId: string,
+    params?: TListAgentVaultMembersDTO
+  ) => [...agentVaultKeys.availableDelegationSubjects(orgId, machineIdentityId), params] as const,
   sessionLogSettings: (orgId: string) =>
     [...agentVaultKeys.all(orgId), "settings", "session-logs"] as const,
   sessionLogHealth: (orgId: string) =>
@@ -206,6 +219,29 @@ export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentV
   });
 };
 
+// An identity with no delegation reads as null rather than an error. Admins only. Refetched on every visit, because the
+// bundles the identity can't act on change with grants and roles anywhere in Agent Vault.
+export const useGetAgentVaultDelegation = (machineIdentityId: string, enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.delegation(currentOrg.id, machineIdentityId),
+    queryFn: async () => {
+      try {
+        const { data } = await apiRequest.get<{ delegation: TAgentVaultDelegationDetail }>(
+          `/api/v1/agent-vault/delegations/${machineIdentityId}`
+        );
+        return data.delegation;
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) return null;
+        throw error;
+      }
+    },
+    enabled,
+    staleTime: 0
+  });
+};
+
 // One page is enough for a picker: past it the admin searches. The default lives here so both add
 // dialogs page the same way.
 const AVAILABLE_MEMBER_LIMIT = 50;
@@ -228,6 +264,33 @@ export const useListAvailableAgentVaultAccessBundleMembers = (
       return data;
     },
     enabled: enabled && Boolean(accessBundleId),
+    placeholderData: (prev) => prev
+  });
+};
+
+// The Agent Vault users and groups not yet in the machine identity's delegation. Admins only.
+export const useListAvailableAgentVaultDelegationSubjects = (
+  machineIdentityId: string,
+  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: TListAgentVaultMembersDTO = {},
+  enabled = true
+) => {
+  const { currentOrg } = useOrganization();
+  const params = { ...rest, limit };
+
+  return useQuery({
+    queryKey: agentVaultKeys.availableDelegationSubjectList(
+      currentOrg.id,
+      machineIdentityId,
+      params
+    ),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        members: TAgentVaultProductMember[];
+        totalCount: number;
+      }>(`/api/v1/agent-vault/delegations/${machineIdentityId}/subjects/available`, { params });
+      return data;
+    },
+    enabled: enabled && Boolean(machineIdentityId),
     placeholderData: (prev) => prev
   });
 };

@@ -2,10 +2,6 @@ import { z } from "zod";
 
 import { AgentVaultAccessBundlesSchema } from "@app/db/schemas";
 import { auditActorFields } from "@app/ee/services/agent-vault/agent-vault-actor-name-fns";
-import {
-  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
-  AGENT_VAULT_NO_CONTROL_CHARS_RE
-} from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
 import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -23,6 +19,7 @@ import {
   AgentVaultBundleSkillSchema,
   AgentVaultCreatedMemberSchema,
   AgentVaultCreateServiceBodySchema,
+  AgentVaultDescriptionSchema,
   agentVaultListQuery,
   AgentVaultMemberIdsSchema,
   AgentVaultMemberRevokeIdsSchema,
@@ -35,12 +32,7 @@ import {
   AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
 
-const AccessBundleDescriptionSchema = z
-  .string()
-  .trim()
-  .max(256, "A description can be at most 256 characters")
-  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-  .describe(AGENT_VAULT.ACCESS_BUNDLE.description);
+const AccessBundleDescriptionSchema = AgentVaultDescriptionSchema.describe(AGENT_VAULT.ACCESS_BUNDLE.description);
 
 const AccessBundleSchema = AgentVaultAccessBundlesSchema.pick({
   id: true,
@@ -64,24 +56,41 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       operationId: "listAgentVaultAccessBundles",
       description: "List the Agent Vault access bundles you can reach",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
-      querystring: z.object({
-        requiresSetup: z
-          .enum(["true", "false"])
-          .transform((value) => value === "true")
-          .optional()
-          .describe(AGENT_VAULT.ACCESS_BUNDLE.requiresSetup),
-        granted: z
-          .enum(["true", "false"])
-          .transform((value) => value === "true")
-          .optional()
-          .describe(AGENT_VAULT.ACCESS_BUNDLE.granted),
-        orderBy: z
-          .enum(["name", "serviceCount", "createdAt"])
-          .default("createdAt")
-          .describe(AGENT_VAULT.ACCESS_BUNDLE.orderBy),
-        orderDirection: z.enum(["asc", "desc"]).default("desc").describe(AGENT_VAULT.ACCESS_BUNDLE.orderDirection),
-        ...agentVaultListQuery(AGENT_VAULT.ACCESS_BUNDLE)
-      }),
+      querystring: z
+        .object({
+          requiresSetup: z
+            .enum(["true", "false"])
+            .transform((value) => value === "true")
+            .optional()
+            .describe(AGENT_VAULT.ACCESS_BUNDLE.requiresSetup),
+          granted: z
+            .enum(["true", "false"])
+            .transform((value) => value === "true")
+            .optional()
+            .describe(AGENT_VAULT.ACCESS_BUNDLE.granted),
+          orderBy: z
+            .enum(["name", "serviceCount", "createdAt"])
+            .default("createdAt")
+            .describe(AGENT_VAULT.ACCESS_BUNDLE.orderBy),
+          orderDirection: z.enum(["asc", "desc"]).default("desc").describe(AGENT_VAULT.ACCESS_BUNDLE.orderDirection),
+          onBehalfOfUserId: z.string().uuid().optional().describe(AGENT_VAULT.ACCESS_BUNDLE.onBehalfOfUserId),
+          onBehalfOfUserEmail: z
+            .string()
+            .trim()
+            .toLowerCase()
+            .email()
+            .max(255)
+            .optional()
+            .describe(AGENT_VAULT.ACCESS_BUNDLE.onBehalfOfUserEmail),
+          ...agentVaultListQuery(AGENT_VAULT.ACCESS_BUNDLE)
+        })
+        .refine((query) => !(query.onBehalfOfUserId && query.onBehalfOfUserEmail), {
+          message: "Name the user by onBehalfOfUserId or by onBehalfOfUserEmail, not both"
+        })
+        .refine((query) => query.granted === undefined || !(query.onBehalfOfUserId || query.onBehalfOfUserEmail), {
+          message:
+            "granted filters your own access bundles, so it can't be combined with onBehalfOfUserId or onBehalfOfUserEmail"
+        }),
       response: {
         200: z.object({
           accessBundles: AccessBundleSchema.extend({
@@ -101,12 +110,18 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultAccessBundle.listAccessBundles({
+    handler: async (req) => {
+      const { onBehalfOfUserId, onBehalfOfUserEmail, ...query } = req.query;
+      return server.services.agentVaultAccessBundle.listAccessBundles({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
-        ...req.query
-      })
+        ...query,
+        onBehalfOf:
+          onBehalfOfUserId || onBehalfOfUserEmail
+            ? { userId: onBehalfOfUserId, userEmail: onBehalfOfUserEmail }
+            : undefined
+      });
+    }
   });
 
   server.route({
@@ -228,7 +243,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE,
           metadata: {
             accessBundleId: accessBundle.id,
-            name: req.body.name,
+            name: accessBundle.name,
             description: req.body.description
           }
         }

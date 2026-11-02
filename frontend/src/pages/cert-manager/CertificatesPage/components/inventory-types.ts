@@ -26,7 +26,8 @@ export const FILTER_FIELDS: FilterFieldDefinition[] = [
       { value: CertStatus.ACTIVE, label: "Active" },
       { value: CertStatus.RENEWED, label: "Renewed" },
       { value: CertStatus.EXPIRED, label: "Expired" },
-      { value: CertStatus.REVOKED, label: "Revoked" }
+      { value: CertStatus.REVOKED, label: "Revoked" },
+      { value: CertStatus.DELETED, label: "Deleted" }
     ]
   },
   {

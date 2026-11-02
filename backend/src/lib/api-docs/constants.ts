@@ -110,6 +110,7 @@ export enum ApiDocsTags {
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
+  AgentVaultDelegations = "Agent Vault Delegations",
   AgentVaultSessionLogs = "Agent Vault Session Logs",
   AgentVaultSettings = "Agent Vault Settings",
   AgentVaultAppConnections = "Agent Vault App Connections",
@@ -444,6 +445,8 @@ export const TLS_CERT_AUTH = {
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     verifyClientCertificateChain:
       "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
+    bindAccessTokenToCertificate:
+      "When true, access tokens issued by this auth method only work on requests that present the same client certificate used to log in.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
@@ -458,6 +461,8 @@ export const TLS_CERT_AUTH = {
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     verifyClientCertificateChain:
       "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
+    bindAccessTokenToCertificate:
+      "When true, access tokens issued by this auth method only work on requests that present the same client certificate used to log in. Turning this on revokes the identity's existing TLS Certificate Auth access tokens.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
@@ -1208,7 +1213,9 @@ export const PROJECTS = {
     forPkiSync: "Retrieve only certificates available for PKI sync.",
     search: "Search by SAN, CN, certificate ID, or serial number.",
     status:
-      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired and revoked. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked.",
+      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired, revoked and deleted. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked. Deleted certificates match only deleted.",
+    includeDeleted:
+      "Include deleted certificates in the results when no status filter is set. Deleted certificates are excluded by default.",
     profileIds: "Filter by certificate profile IDs.",
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",
@@ -2389,11 +2396,17 @@ export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
+    includeDeleted: "Return the certificate even if it was deleted. Without it, a deleted certificate returns 404.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
     externalMetadata:
       "Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.",
     latestRenewalCertificateId:
-      "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked. Use this to follow renewals without walking the chain one certificate at a time."
+      "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked and deleted certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked or deleted. Use this to follow renewals without walking the chain one certificate at a time.",
+    deletedAt:
+      "When this certificate was deleted, or null if it has not been. A deleted certificate keeps its record, metadata and renewal history, but its certificate and private key are no longer available.",
+    deletedByActorType: "The type of actor that deleted this certificate: 'user' or 'identity'.",
+    deletedByActorId: "The ID of the user or machine identity that deleted this certificate.",
+    deletedByActorName: "The name of the user or machine identity that deleted this certificate, if it still exists."
   },
   RENEW: {
     id: "The ID of the certificate to renew.",
@@ -3025,6 +3038,12 @@ export const AppConnections = {
     }
   },
   CREDENTIALS: {
+    IMPERVA: {
+      apiId: "The API ID of an Imperva API key, shown beside the key in the Cloud Security Console.",
+      apiKey: "The Imperva API key. It has to be enabled, and its role needs the Manage SSL Certificates permission.",
+      accountId:
+        "The numeric Imperva account ID to act on. Set it to manage websites in a sub-account. Defaults to the account the API key belongs to."
+    },
     PALO_ALTO_NETWORKS: {
       hostname: "The IP address or hostname of the management interface of the firewall or Panorama.",
       port: "The HTTPS port of the management interface. Defaults to 443.",
@@ -4605,6 +4624,10 @@ export const AGENT_VAULT = {
       "true lists only the access bundles granted to you, directly or through a group. false lists the ones you reach only as an admin. Omit to list them all.",
     servicesRequiringSetup: "The services in this access bundle that still require your personal values.",
     servicesRequiringSetupId: "The ID of the service, for setting your personal values on it.",
+    onBehalfOfUserId:
+      "List the access bundles a session on behalf of this user could use: those both the user and your machine identity can use. requiresSetup and servicesRequiringSetup then refer to the user's personal values. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
+    onBehalfOfUserEmail:
+      "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     servicesRequiringSetupName: "The name of the service."
   },
   SERVICE: {
@@ -4676,9 +4699,9 @@ export const AGENT_VAULT = {
     referenceCustomHeaderId: "The custom header whose value uses the variable.",
     referenceSubstitutionId: "The substitution whose value uses the variable.",
     bearerMemberProvidedFields:
-      "Leave the token to each member: send `credential-value` here and no `value`. Every member sets their own, and a session uses the token of whoever it belongs to. Omit on update to keep the current setting; send an empty list to set the token yourself again, which then needs a `value`. Changing this clears every member's saved values for the service.",
+      "Leave the token to each member: send `credential-value` here and no `value`. Every member sets their own, and a session uses the token of the member who started it. A session a machine identity started on behalf of a user uses that user's token instead. Omit on update to keep the current setting; send an empty list to set the token yourself again, which then needs a `value`. Changing this clears every member's saved values for the service.",
     basicMemberProvidedFields:
-      "The halves of the basic credential each member sets for themselves: `credential-username`, `credential-value` (the password) or both. Send no value for a half listed here. A session uses the values of whoever it belongs to. Omit on update to keep the current setting. Adding a half keeps what members saved, and taking one back deletes only that half's values. Changing the credential type deletes every member's values for the service.",
+      "The halves of the basic credential each member sets for themselves: `credential-username`, `credential-value` (the password) or both. Send no value for a half listed here. A session uses the values of the member who started it. A session a machine identity started on behalf of a user uses that user's values instead. Omit on update to keep the current setting. Adding a half keeps what members saved, and taking one back deletes only that half's values. Changing the credential type deletes every member's values for the service.",
     memberProvidedFields:
       "The credential fields each member sets for themselves: credential-value (a bearer token or a basic password) and credential-username. Empty when the admin sets the whole credential."
   },
@@ -4865,9 +4888,10 @@ export const AGENT_VAULT = {
   PROXY: {
     proxyId: "The ID of the proxy.",
     name: "The name of the proxy.",
+    description: "A description of what this proxy is for.",
     orderBy: "What to sort proxies by: name or createdAt.",
     orderDirection: "Which way to sort: asc or desc.",
-    search: "Match proxies by name.",
+    search: "Match proxies by name or description.",
     limit: "The maximum number of proxies to return.",
     offset: "How many proxies to skip.",
     heartbeat: "When the proxy last checked in, or `null` if it never has.",
@@ -4942,17 +4966,22 @@ export const AGENT_VAULT = {
   SESSION: {
     sessionId: "The ID of the session.",
     accessBundle: "The name of the access bundle this session carries.",
-    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
+    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d, or to 1h for a session started on behalf of a user.",
     label:
       "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",
     updateLabel:
-      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. You can't change the label once the session's owner is deleted.",
+      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. You can't change the label once the session's owner, or the user it was started on behalf of, is deleted.",
+    onBehalfOf:
+      "Start the session on behalf of a user instead of yourself. Only a machine identity whose delegation covers the user can do this. The session can use only an access bundle that both the user and the machine identity can use, and it uses the user's personal values. The session still belongs to the machine identity, so only the machine identity and Agent Vault admins can see it and its session logs, not the user. Name the user by userId or by userEmail, not both.",
+    onBehalfOfUserId: "The ID of the user to start the session on behalf of.",
+    onBehalfOfUserEmail: "The email address of the user to start the session on behalf of.",
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
     status:
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
-    search: "Match sessions by label, actor name, actor email or access bundle name.",
+    search:
+      "Match sessions by label, actor name, actor email, the name or email of the user a session was started on behalf of, or access bundle name.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip.",
     actorType: "Whether the session belongs to a user or a machine identity.",
@@ -4963,8 +4992,68 @@ export const AGENT_VAULT = {
       "The first name of the user. Once the user is deleted, the full name recorded when the session was created.",
     lastName: "The last name of the user, or null once the user is deleted.",
     identityName:
-      "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created."
+      "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created.",
+    onBehalfOfSession:
+      "The user the machine identity in actor started this session on behalf of, or null when the session is the actor's own.",
+    onBehalfOfType: "Always user: a machine identity starts sessions only on behalf of users.",
+    onBehalfOfUserIdRead: "The ID of the user, or null once the user is deleted."
+  },
+  DELEGATION: {
+    machineIdentityId: "The ID of the machine identity the delegation belongs to.",
+    machineIdentityIds:
+      "Return only the delegations of these machine identities. Separate several IDs with commas, up to 100.",
+    machineIdentity: "The machine identity that can start sessions on behalf of users.",
+    machineIdentityName: "The name of the machine identity.",
+    scope:
+      "Which users the machine identity can start sessions on behalf of: every Agent Vault member (all-members), or only the users and the members of the groups in the delegation (selected).",
+    userIds:
+      "The users the machine identity can act on behalf of, up to 100. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+    groupIds:
+      "The groups whose members the machine identity can act on behalf of, up to 100. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+    users: "The users in the delegation.",
+    groups: "The groups in the delegation. Their members are covered while they stay in the group.",
+    userId: "The ID of the user.",
+    username: "The username of the user.",
+    email: "The email address of the user.",
+    firstName: "The first name of the user.",
+    lastName: "The last name of the user.",
+    groupId: "The ID of the group.",
+    groupName: "The name of the group.",
+    addedAt: "When the user or group was added to the delegation.",
+    missingAccessBundles:
+      "The access bundles that users the delegation covers can use and the machine identity can't. A session on behalf of a user can use only an access bundle that both can use, so the machine identity can't start sessions over these. With all-members, this is every access bundle the machine identity can't use, since Agent Vault admins can use every bundle. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
+    userMissingAccessBundles:
+      "The access bundles this user can use and the machine identity can't, so the machine identity can't start sessions over them on the user's behalf. For an Agent Vault admin, this is every access bundle the machine identity can't use. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
+    groupMissingAccessBundles:
+      "The access bundles granted to this group, or every bundle if the group has the Admin role, that the machine identity can't use. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
+    accessBundleId: "The ID of the access bundle.",
+    accessBundleName: "The name of the access bundle.",
+    createdAt: "When the delegation was set up.",
+    updatedAt: "When the delegation was last saved.",
+    limit: "The maximum number of delegations to return.",
+    offset: "How many delegations to skip.",
+    totalCount: "How many delegations match, across every page.",
+    addUserIds:
+      "The users to add, up to 100. Each must be a member of Agent Vault. Users the delegation already names are skipped.",
+    addGroupIds:
+      "The groups to add, up to 100. Each must be a member of Agent Vault. Groups the delegation already names are skipped.",
+    removeUserIds: "The users to take out of the delegation, up to 100. Users it doesn't name are skipped.",
+    removeGroupIds: "The groups to take out of the delegation, up to 100. Groups it doesn't name are skipped.",
+    afterRemove:
+      "The delegation after the change, or null if it no longer names anyone. A delegation that names no one is removed."
+  },
+  AVAILABLE_DELEGATION_SUBJECT: {
+    actorTypeFilter: "List only users, or only groups.",
+    search: "Match users by name, username or email address, and groups by name.",
+    limit: "The maximum number of users and groups to return.",
+    offset: "How many users and groups to skip.",
+    totalCount: "How many users and groups match, across every page."
   }
+};
+
+export const IMPERVA_PKI_SYNC_DESTINATION_CONFIG = {
+  siteId: "The numeric ID of the Imperva website that receives the certificate.",
+  siteName: "The website's name, kept for display. Imperva's website ID is what the sync acts on."
 };
 
 export const PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATION_CONFIG = {

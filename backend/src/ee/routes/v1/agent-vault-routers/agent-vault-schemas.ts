@@ -51,6 +51,14 @@ import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 
 export const AgentVaultNameSchema = slugSchema({ max: 64, field: "Name" });
 
+export const AgentVaultDescriptionSchema = z
+  .string()
+  .trim()
+  .max(256, "A description can be at most 256 characters")
+  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  // Blank and absent read the same, so a blank description is stored as null rather than "".
+  .transform((description) => description || null);
+
 export const AgentVaultHostPatternSchema = hostPatternSchema.describe(AGENT_VAULT.SERVICE.hostPattern);
 
 const bearerMemberProvidedFieldsSchema = z
@@ -680,6 +688,12 @@ export const AgentVaultSessionActorSchema = z.discriminatedUnion("type", [
   sessionActorSchemas.user,
   sessionActorSchemas.machineIdentity
 ]);
+
+// Shaped like a session's user actor, so a client shows the user a session acts for the way it shows an owner.
+export const AgentVaultSessionOnBehalfOfSchema = sessionActorSchemas.user.extend({
+  type: z.literal(AgentVaultMemberType.User).describe(AGENT_VAULT.SESSION.onBehalfOfType),
+  id: z.string().uuid().nullable().describe(AGENT_VAULT.SESSION.onBehalfOfUserIdRead)
+});
 
 // No .default().optional(): the optional wraps the default and the default never applies.
 export const agentVaultListQuery = (docs: { search: string; limit: string; offset: string }) => ({

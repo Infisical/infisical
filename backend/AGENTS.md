@@ -285,6 +285,7 @@ Auth extraction happens in `src/server/plugins/auth/`:
 **Auth modes** (defined in `AuthMode` enum):
 - **JWT** — user browser sessions (decoded from `Authorization: Bearer` header)
 - **IDENTITY_ACCESS_TOKEN** — machine-to-machine identity tokens
+  A TLS Certificate Auth token may carry an RFC 8705 `cnf` (`x5t#S256`) claim. `fnValidateIdentityAccessTokenFast` and renewal then reject it unless the proxy-forwarded client certificate matches (`assertCertificateBinding`).
 - **SCIM_TOKEN** — SCIM provisioning tokens
 - **OAUTH** — delegated user tokens from the `oauth-client` module. Same JWT shape and session binding as
   `JWT`, told apart by an `oauthClientId` claim. See [Delegated OAuth tokens](#delegated-oauth-tokens).
@@ -1094,6 +1095,55 @@ logger.error({ sessionId, err }, "Failed to get connection details");
 
 Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
 
+### Certificate soft delete
+
+Deleting a certificate goes through `softDeleteCertificates` (`certificate-fns.ts`), which both the delete
+endpoint and the expiry cleanup job (`certificate-cleanup-queue.ts`) call: it stamps `deletedAt`,
+`deletedByActorType` and `deletedByActorId` on the row and, in the same transaction, removes its
+`certificate_bodies`, `certificate_secrets` and PKI collection items and clears the private key copy on
+`certificate_requests.encryptedPrivateKey`. The row itself stays, so the inventory, audit trail and renewal
+chain keep pointing at something. Nothing hard deletes certificates any more, so deleted rows accumulate;
+instance-level hard delete is a possible future option. Things that rely on that:
+
+- **`certificate_syncs` rows are kept.** Linux, Windows and Azure (free-text naming) find what they delivered
+  only through those rows (`syncMetadata.files`, `externalIdentifier`), so the delete queues the auto-sync
+  syncs holding the certificate, the run sees a tracked certificate that is no longer active and removes it
+  from the destination, and the provider untracks the row. A sync with Auto-Sync or "Remove certificates from
+  destination" off keeps the row and the copy until a later run that removes it. The sync's certificate list
+  (`findWithDetails`) hides deleted certificates.
+
+- **Every background or enumeration query filters `whereNull("deletedAt")`**: expiry alerts, auto-renewal,
+  syncs, discovery, HSM connector usage and stats. A new query over `certificates` needs the same filter unless
+  it is deliberately showing deleted rows. Reads the API serves skip deleted certificates by default too:
+  `GET /certificates/:id` returns 404 unless the caller passes `includeDeleted`, and list or search returns
+  them only for a `deleted` status filter or `includeDeleted` (the **All Certificates** view; **Default**
+  hides them), so clients written before soft delete keep seeing what they saw
+  when the row was hard deleted. The one background job that still reads deleted rows is the DigiCert
+  revocation sync: it records an upstream revocation on a deleted certificate (without alerts) so the quota
+  stops counting it.
+- **The licence quota still counts a deleted certificate Infisical issued until it expires or is revoked**,
+  because deleting neither revokes it nor requires it to be expired, so excluding it would let an org free
+  its cap while the certificate stays trusted. Deleted imported and discovered certificates stop counting, as
+  the hard delete used to make them.
+- **CRL and OCSP keep deleted certificates.** Deletion is not revocation, so a revoked certificate stays on
+  the CRL after it is deleted, and revoking a deleted certificate is still allowed.
+- **A deleted certificate is never renewed or changed.** `assertCertificateNotDeleted` guards the renewal
+  entry points and the first attempt of the issuance job, and EST re-enroll and SCEP renewal refuse a deleted
+  client certificate. A renewal the CA already accepted before the delete (an ACM renewal still polling, a
+  DigiCert or GoDaddy order) still completes and links to the deleted original, because the CA has issued
+  that certificate and discarding it would lose it.
+- **A sync can still write a link for a certificate deleted mid-run.** `certificate_syncs` inserts are not
+  filtered on `deletedAt`, so a provider that uploads and then records the link leaves a tracking row, and the
+  sync the delete queued removes that copy from the destination through it.
+- **Cleanup skips certificates a code signing signer uses**, the same rule the delete endpoint enforces.
+- **Deleted certificates are not restored.** Serial numbers stay globally unique
+  (`certificates_serialnumber_unique`), so re-importing a deleted certificate into the same project fails with
+  the deleted message (any other project gets the generic serial conflict, so nothing about it leaks), and
+  rediscovery links the installation to the deleted row instead of creating a new one.
+- **A deleted certificate keeps its HSM key reference** (`keySource`, connector, key label and id), so the
+  record stays true for audits. Deleting the connector detaches deleted rows (`hsmConnectorId` set to null),
+  which is why the key source CHECK requires a connector only while `deletedAt` is null.
+
 ### Certificate revocation: CRL and OCSP
 
 Internal CAs publish revocation two ways, both unauthenticated public endpoints under
@@ -1216,6 +1266,19 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP.
 - **Fresh keys are read on the primary.** Signing and the JWKS a rotation caches pass a `tx` to
   `getPublicKey` and `signWithKmsKey`, because a read replica may not have a key created moments earlier.
+- **Every signed token is audit logged** (`issue-oidc-token`, with the connection's ID and name) inside
+  `signToken`, so a new consumer gets it for free and never logs on its own.
+- **Connections sign for their own ID only.** `signToken` takes the connection, not a subject, and builds
+  `app-connection:<id>` itself, and the token is only ever sent to the provider's token endpoint, never
+  returned to a caller. Never let a caller choose the ID: a deleted connection's ID would
+  regain whatever the provider still trusts. So the connection is created first, without a token exchange,
+  and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
+  `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which
+  caches the provider's access token in the credentials like the secret-based methods do.
+- **The API returns the values the customer copies.** Connection responses carry
+  `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
+  `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.
+  The issuer is null when `SITE_URL` is unset, so reading a connection never fails on it.
 
 ### Enterprise (EE) Features
 
@@ -1232,6 +1295,13 @@ EE routes register before community routes so they can override/extend endpoints
 **Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/AGENTS.md`](src/ee/services/agent-vault/AGENTS.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
 
 **Secret Scanning** is single-project (see the root `AGENTS.md`): `secret-scanning-v2-project-bootstrap.ts` creates the project with the org when it has a creator to make admin (like PAM and Agent Vault), `secret-scanning-v2-project-resolver.ts` picks the active project and lazily creates it, with every org admin as project admin, for older orgs and for orgs created from the admin console, whose admins are only invited after the org exists, and routes that take `projectId` read `req.internalSecretScanningProjectId`. A data source covers the resources it has rows for (added by a user or discovered from a push); its `config` only says where to look (Bitbucket workspace, GitLab group), never which resources, so scans, "included" state and GitLab account-scope webhooks all key off rows. Stored configs may still carry the old `includeRepos` / `includeProjects` keys, which nothing reads.
+
+**Secret scanning scans and GitHub pull request checks**:
+- A scan's `trigger` (`SecretScanningScanTrigger`) records what started it, separate from `type` (`historical` / `realtime`). `metadata` (jsonb) holds trigger-specific data, is parsed by trigger, and is never returned raw by the API.
+- `secret-scanning-v2-queue.ts` stays provider-agnostic. Provider behavior goes behind optional hooks on the data source factory (`getRealtimeScanReport` / `getScanReport` for reporting a scan back, `processEvent` for webhook events beyond pushes), never behind a provider check in the queue.
+- PR checks are realtime scans with `trigger: pull-request`, gated on `isScanNewCommitsEnabled`. Webhook handlers only enqueue; `processGitHubPullRequestEvent` does the work. The check run is created before the scan, with the scan's ID as its `external_id`, which is how re-runs and skip actions find the scan.
+- Every exit of a PR scan closes its check (including the stuck-scan reaper, which also fails realtime scans left `queued`), since a check left open blocks merging when it is required.
+- Fork PRs aren't scanned: they get a `skipped` check under the same name, unless the commit already has one of our checks (checks belong to the commit, so it would replace a real result).
 
 **Dynamic secret lease secrets needed at revoke time go in `dynamic_secret_leases.encryptedLeaseData`**, never in `externalEntityId` or `config` (both plaintext, and `externalEntityId` is returned by every lease route and logged in audit events). A provider opts in by listing the `create()` `data` keys in `persistedLeaseFields`; the lease service encrypts them with the project's SecretManager key and every revoke path passes them back as `metadata.leaseData`. Lease routes return `SanitizedDynamicSecretLeaseSchema` so the column never reaches a response. Secret *config* fields are listed separately in `DYNAMIC_SECRET_SECRET_FIELDS` (`providers/redact.ts`), as dotted paths so nested secrets work (`clientAuth.clientSecret`): reads strip them via `redactStoredInputs`, and an update that omits one keeps the stored value via `restoreOmittedSecretFields`, because the update merge is shallow.
 
