@@ -1087,6 +1087,21 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Other live projects this project shares folders with. Reads the primary so a grant made just before a
+  // delete is seen.
+  const findProjectsSharedWith = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db)(TableName.ProjectFolderGrant)
+        .join(TableName.Project, `${TableName.ProjectFolderGrant}.targetProjectId`, `${TableName.Project}.id`)
+        .where(`${TableName.ProjectFolderGrant}.sourceProjectId`, projectId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .distinct(db.ref("id").withSchema(TableName.Project), db.ref("name").withSchema(TableName.Project));
+      return docs as { id: string; name: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find projects shared with" });
+    }
+  };
+
   const countOfBillableOrgProjects = async (orgId: string | null, tx?: Knex) => {
     try {
       const subOrgProjects = db.replicaNode()(TableName.Organization).where({ rootOrgId: orgId }).select("id");
@@ -1151,6 +1166,7 @@ export const projectDALFactory = (db: TDbClient) => {
     findProjectByEnvId,
     findProjectDeletedEnvironments,
     findDeletedProjects,
+    findProjectsSharedWith,
     countOfBillableOrgProjects
   };
 };
