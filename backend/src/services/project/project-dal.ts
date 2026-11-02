@@ -1087,13 +1087,16 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Other live projects this project shares folders with. Reads the primary so a grant made just before a
-  // delete is seen.
+  // Other live projects this project shares folders of live environments with. A deleted environment's grants
+  // are inactive and can't be revoked. Reads the primary so a grant made just before a delete is seen.
   const findProjectsSharedWith = async (projectId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db)(TableName.ProjectFolderGrant)
+        .join(TableName.SecretFolder, `${TableName.ProjectFolderGrant}.sourceFolderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(TableName.Project, `${TableName.ProjectFolderGrant}.targetProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.ProjectFolderGrant}.sourceProjectId`, projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .distinct(db.ref("id").withSchema(TableName.Project), db.ref("name").withSchema(TableName.Project));
       return docs as { id: string; name: string }[];
