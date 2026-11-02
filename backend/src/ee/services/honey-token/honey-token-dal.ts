@@ -94,6 +94,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     const [result] = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.Project}.orgId`, orgId)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .whereNot(`${TableName.HoneyToken}.status`, "revoked")
       .count<{ count: string | number }>({
         count: `${TableName.HoneyToken}.id`
