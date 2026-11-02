@@ -152,10 +152,17 @@ export const OverflowBadgeList = <T,>({
 
     const linkProps = getLinkProps?.(item);
     const itemIcon = iconOf(item);
+    const hoverCard = getHoverCard?.(item);
+    // A hover card opens on focus too, so a badge without a link takes focus to let keyboard users open it.
+    const isFocusable = Boolean(hoverCard) && !linkProps;
     const badge = (
       <Badge
         variant={getVariant?.(item) ?? "neutral"}
-        className={getClassName?.(item)}
+        className={cn(
+          isFocusable && "outline-hidden focus-visible:ring-2 focus-visible:ring-ring/50",
+          getClassName?.(item)
+        )}
+        tabIndex={isFocusable ? 0 : undefined}
         isTruncatable
         iconPosition={itemIcon ? "left" : undefined}
         asChild={Boolean(linkProps)}
@@ -183,7 +190,6 @@ export const OverflowBadgeList = <T,>({
       </Badge>
     );
 
-    const hoverCard = getHoverCard?.(item);
     if (hoverCard) {
       return (
         <HoverCard key={getKey(item)} openDelay={150} closeDelay={100}>
