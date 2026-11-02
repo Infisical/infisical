@@ -1808,6 +1808,7 @@ const (
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultAccessBundles     UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-access-bundles"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultProxies           UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-proxies"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSessions          UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-sessions"
+	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSkills            UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "agent-vault-skills"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAppConnections              UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "app-connections"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectApprovalRequestGrants       UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "approval-request-grants"
 	UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectApprovalRequests            UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubject = "approval-requests"
@@ -1871,6 +1872,8 @@ func (e UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermis
 	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultProxies:
 		return true
 	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSessions:
+		return true
+	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAgentVaultSkills:
 		return true
 	case UpdateIdentityProjectAdditionalPrivilegeV1JSONBodyPrivilegeDetailsPermissionsSubjectAppConnections:
 		return true
@@ -2156,6 +2159,7 @@ const (
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultAccessBundles     CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-access-bundles"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies           CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-proxies"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions          CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-sessions"
+	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills            CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-skills"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAppConnections              CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "app-connections"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectApprovalRequestGrants       CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "approval-request-grants"
 	CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectApprovalRequests            CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject = "approval-requests"
@@ -2219,6 +2223,8 @@ func (e CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubject) Val
 	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies:
 		return true
 	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions:
+		return true
+	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills:
 		return true
 	case CreateIdentityProjectPermanentPrivilegeV1JSONBodyPermissionsSubjectAppConnections:
 		return true
@@ -2489,6 +2495,7 @@ const (
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultAccessBundles     CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-access-bundles"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies           CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-proxies"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions          CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-sessions"
+	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills            CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "agent-vault-skills"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAppConnections              CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "app-connections"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectApprovalRequestGrants       CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "approval-request-grants"
 	CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectApprovalRequests            CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject = "approval-requests"
@@ -2552,6 +2559,8 @@ func (e CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubject) Val
 	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultProxies:
 		return true
 	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSessions:
+		return true
+	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAgentVaultSkills:
 		return true
 	case CreateIdentityProjectTemporaryPrivilegeV1JSONBodyPermissionsSubjectAppConnections:
 		return true
@@ -8154,114 +8163,6 @@ const (
 func (e LoginWithUniversalAuth500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case LoginWithUniversalAuth500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAccessibleSecretsParamsFilterByAction.
-const (
-	GetAccessibleSecretsParamsFilterByActionDescribeSecret GetAccessibleSecretsParamsFilterByAction = "describeSecret"
-	GetAccessibleSecretsParamsFilterByActionReadValue      GetAccessibleSecretsParamsFilterByAction = "readValue"
-)
-
-// Valid indicates whether the value is a known member of the GetAccessibleSecretsParamsFilterByAction enum.
-func (e GetAccessibleSecretsParamsFilterByAction) Valid() bool {
-	switch e {
-	case GetAccessibleSecretsParamsFilterByActionDescribeSecret:
-		return true
-	case GetAccessibleSecretsParamsFilterByActionReadValue:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAccessibleSecrets400JSONResponseBodyStatusCode.
-const (
-	GetAccessibleSecrets400JSONResponseBodyStatusCodeN400 GetAccessibleSecrets400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the GetAccessibleSecrets400JSONResponseBodyStatusCode enum.
-func (e GetAccessibleSecrets400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetAccessibleSecrets400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAccessibleSecrets401JSONResponseBodyStatusCode.
-const (
-	GetAccessibleSecrets401JSONResponseBodyStatusCodeN401 GetAccessibleSecrets401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the GetAccessibleSecrets401JSONResponseBodyStatusCode enum.
-func (e GetAccessibleSecrets401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetAccessibleSecrets401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAccessibleSecrets403JSONResponseBodyStatusCode.
-const (
-	GetAccessibleSecrets403JSONResponseBodyStatusCodeN403 GetAccessibleSecrets403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the GetAccessibleSecrets403JSONResponseBodyStatusCode enum.
-func (e GetAccessibleSecrets403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetAccessibleSecrets403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAccessibleSecrets404JSONResponseBodyStatusCode.
-const (
-	GetAccessibleSecrets404JSONResponseBodyStatusCodeN404 GetAccessibleSecrets404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the GetAccessibleSecrets404JSONResponseBodyStatusCode enum.
-func (e GetAccessibleSecrets404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetAccessibleSecrets404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAccessibleSecrets422JSONResponseBodyStatusCode.
-const (
-	GetAccessibleSecrets422JSONResponseBodyStatusCodeN422 GetAccessibleSecrets422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the GetAccessibleSecrets422JSONResponseBodyStatusCode enum.
-func (e GetAccessibleSecrets422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetAccessibleSecrets422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAccessibleSecrets500JSONResponseBodyStatusCode.
-const (
-	GetAccessibleSecrets500JSONResponseBodyStatusCodeN500 GetAccessibleSecrets500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the GetAccessibleSecrets500JSONResponseBodyStatusCode enum.
-func (e GetAccessibleSecrets500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetAccessibleSecrets500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -43239,6 +43140,27 @@ func (e ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0Sco
 	}
 }
 
+// Defines values for ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretType.
+const (
+	ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretTypeActions    ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretType = "actions"
+	ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretTypeCodespaces ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretType = "codespaces"
+	ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretTypeDependabot ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretType enum.
+func (e ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretType) Valid() bool {
+	switch e {
+	case ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretTypeActions:
+		return true
+	case ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretTypeCodespaces:
+		return true
+	case ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0Visibility.
 const (
 	ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0VisibilityAll      ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0Visibility = "all"
@@ -43275,6 +43197,27 @@ func (e ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1Sco
 	}
 }
 
+// Defines values for ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretType.
+const (
+	ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretTypeActions    ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretType = "actions"
+	ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretTypeCodespaces ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretType = "codespaces"
+	ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretTypeDependabot ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretType enum.
+func (e ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretType) Valid() bool {
+	switch e {
+	case ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretTypeActions:
+		return true
+	case ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretTypeCodespaces:
+		return true
+	case ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2Scope.
 const (
 	ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2ScopeRepositoryEnvironment ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2Scope = "repository-environment"
@@ -43284,6 +43227,27 @@ const (
 func (e ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2Scope) Valid() bool {
 	switch e {
 	case ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretType.
+const (
+	ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretTypeActions    ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretType = "actions"
+	ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretTypeCodespaces ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretType = "codespaces"
+	ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretTypeDependabot ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretType enum.
+func (e ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretType) Valid() bool {
+	switch e {
+	case ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretTypeActions:
+		return true
+	case ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretTypeCodespaces:
+		return true
+	case ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretTypeDependabot:
 		return true
 	default:
 		return false
@@ -44028,6 +43992,27 @@ func (e GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0
 	}
 }
 
+// Defines values for GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretType.
+const (
+	GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions    GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretType = "actions"
+	GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretType = "codespaces"
+	GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretType enum.
+func (e GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretType) Valid() bool {
+	switch e {
+	case GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions:
+		return true
+	case GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces:
+		return true
+	case GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0Visibility.
 const (
 	GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
@@ -44064,6 +44049,27 @@ func (e GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1
 	}
 }
 
+// Defines values for GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretType.
+const (
+	GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions    GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretType = "actions"
+	GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretType = "codespaces"
+	GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretType enum.
+func (e GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretType) Valid() bool {
+	switch e {
+	case GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions:
+		return true
+	case GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces:
+		return true
+	case GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2Scope.
 const (
 	GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
@@ -44073,6 +44079,27 @@ const (
 func (e GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
 	switch e {
 	case GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretType.
+const (
+	GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions    GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretType = "actions"
+	GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretType = "codespaces"
+	GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretType enum.
+func (e GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretType) Valid() bool {
+	switch e {
+	case GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions:
+		return true
+	case GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces:
+		return true
+	case GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot:
 		return true
 	default:
 		return false
@@ -44745,6 +44772,27 @@ func (e UpdateGitHubSecretSyncJSONBodyDestinationConfig0Scope) Valid() bool {
 	}
 }
 
+// Defines values for UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretType.
+const (
+	UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeActions    UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretType = "actions"
+	UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeCodespaces UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretType = "codespaces"
+	UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeDependabot UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretType enum.
+func (e UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretType) Valid() bool {
+	switch e {
+	case UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeActions:
+		return true
+	case UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeCodespaces:
+		return true
+	case UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UpdateGitHubSecretSyncJSONBodyDestinationConfig0Visibility.
 const (
 	UpdateGitHubSecretSyncJSONBodyDestinationConfig0VisibilityAll      UpdateGitHubSecretSyncJSONBodyDestinationConfig0Visibility = "all"
@@ -44781,6 +44829,27 @@ func (e UpdateGitHubSecretSyncJSONBodyDestinationConfig1Scope) Valid() bool {
 	}
 }
 
+// Defines values for UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretType.
+const (
+	UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeActions    UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretType = "actions"
+	UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeCodespaces UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretType = "codespaces"
+	UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeDependabot UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretType enum.
+func (e UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretType) Valid() bool {
+	switch e {
+	case UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeActions:
+		return true
+	case UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeCodespaces:
+		return true
+	case UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UpdateGitHubSecretSyncJSONBodyDestinationConfig2Scope.
 const (
 	UpdateGitHubSecretSyncJSONBodyDestinationConfig2ScopeRepositoryEnvironment UpdateGitHubSecretSyncJSONBodyDestinationConfig2Scope = "repository-environment"
@@ -44790,6 +44859,27 @@ const (
 func (e UpdateGitHubSecretSyncJSONBodyDestinationConfig2Scope) Valid() bool {
 	switch e {
 	case UpdateGitHubSecretSyncJSONBodyDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretType.
+const (
+	UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeActions    UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretType = "actions"
+	UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeCodespaces UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretType = "codespaces"
+	UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeDependabot UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretType enum.
+func (e UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretType) Valid() bool {
+	switch e {
+	case UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeActions:
+		return true
+	case UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeCodespaces:
+		return true
+	case UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeDependabot:
 		return true
 	default:
 		return false
@@ -44856,6 +44946,27 @@ func (e UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Sco
 	}
 }
 
+// Defines values for UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType.
+const (
+	UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions    UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "actions"
+	UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "codespaces"
+	UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType enum.
+func (e UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType) Valid() bool {
+	switch e {
+	case UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions:
+		return true
+	case UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces:
+		return true
+	case UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility.
 const (
 	UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
@@ -44892,6 +45003,27 @@ func (e UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Sco
 	}
 }
 
+// Defines values for UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType.
+const (
+	UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions    UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "actions"
+	UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "codespaces"
+	UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType enum.
+func (e UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType) Valid() bool {
+	switch e {
+	case UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions:
+		return true
+	case UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces:
+		return true
+	case UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope.
 const (
 	UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
@@ -44901,6 +45033,27 @@ const (
 func (e UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
 	switch e {
 	case UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType.
+const (
+	UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions    UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "actions"
+	UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "codespaces"
+	UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType enum.
+func (e UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType) Valid() bool {
+	switch e {
+	case UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions:
+		return true
+	case UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces:
+		return true
+	case UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot:
 		return true
 	default:
 		return false
@@ -45075,6 +45228,27 @@ func (e ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationCon
 	}
 }
 
+// Defines values for ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType.
+const (
+	ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions    ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType = "actions"
+	ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType = "codespaces"
+	ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType enum.
+func (e ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType) Valid() bool {
+	switch e {
+	case ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeActions:
+		return true
+	case ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeCodespaces:
+		return true
+	case ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility.
 const (
 	ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0VisibilityAll      ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility = "all"
@@ -45111,6 +45285,27 @@ func (e ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationCon
 	}
 }
 
+// Defines values for ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType.
+const (
+	ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions    ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType = "actions"
+	ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType = "codespaces"
+	ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType enum.
+func (e ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType) Valid() bool {
+	switch e {
+	case ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeActions:
+		return true
+	case ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeCodespaces:
+		return true
+	case ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretTypeDependabot:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope.
 const (
 	ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope = "repository-environment"
@@ -45120,6 +45315,27 @@ const (
 func (e ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope) Valid() bool {
 	switch e {
 	case ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2ScopeRepositoryEnvironment:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType.
+const (
+	ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions    ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType = "actions"
+	ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType = "codespaces"
+	ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType = "dependabot"
+)
+
+// Valid indicates whether the value is a known member of the ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType enum.
+func (e ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType) Valid() bool {
+	switch e {
+	case ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeActions:
+		return true
+	case ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeCodespaces:
+		return true
+	case ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretTypeDependabot:
 		return true
 	default:
 		return false
@@ -66273,36 +66489,6 @@ type LoginWithUniversalAuth422JSONResponseBodyStatusCode float32
 // LoginWithUniversalAuth500JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
 type LoginWithUniversalAuth500JSONResponseBodyStatusCode float32
 
-// GetAccessibleSecretsParams defines parameters for GetAccessibleSecrets.
-type GetAccessibleSecretsParams struct {
-	ProjectId      string                                    `form:"projectId" json:"projectId"`
-	Environment    string                                    `form:"environment" json:"environment"`
-	SecretPath     *string                                   `form:"secretPath,omitempty" json:"secretPath,omitempty"`
-	Recursive      *bool                                     `form:"recursive,omitempty" json:"recursive,omitempty"`
-	FilterByAction *GetAccessibleSecretsParamsFilterByAction `form:"filterByAction,omitempty" json:"filterByAction,omitempty"`
-}
-
-// GetAccessibleSecretsParamsFilterByAction defines parameters for GetAccessibleSecrets.
-type GetAccessibleSecretsParamsFilterByAction string
-
-// GetAccessibleSecrets400JSONResponseBodyStatusCode defines parameters for GetAccessibleSecrets.
-type GetAccessibleSecrets400JSONResponseBodyStatusCode float32
-
-// GetAccessibleSecrets401JSONResponseBodyStatusCode defines parameters for GetAccessibleSecrets.
-type GetAccessibleSecrets401JSONResponseBodyStatusCode float32
-
-// GetAccessibleSecrets403JSONResponseBodyStatusCode defines parameters for GetAccessibleSecrets.
-type GetAccessibleSecrets403JSONResponseBodyStatusCode float32
-
-// GetAccessibleSecrets404JSONResponseBodyStatusCode defines parameters for GetAccessibleSecrets.
-type GetAccessibleSecrets404JSONResponseBodyStatusCode float32
-
-// GetAccessibleSecrets422JSONResponseBodyStatusCode defines parameters for GetAccessibleSecrets.
-type GetAccessibleSecrets422JSONResponseBodyStatusCode float32
-
-// GetAccessibleSecrets500JSONResponseBodyStatusCode defines parameters for GetAccessibleSecrets.
-type GetAccessibleSecrets500JSONResponseBodyStatusCode float32
-
 // GetAccessibleSecretMetadataParams defines parameters for GetAccessibleSecretMetadata.
 type GetAccessibleSecretMetadataParams struct {
 	// ProjectId The ID of the project containing the secrets.
@@ -82565,13 +82751,19 @@ type ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0 struc
 	Org string `json:"org"`
 
 	// Scope The GitHub scope that secrets should be synced to
-	Scope                 ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0Scope      `json:"scope"`
-	SelectedRepositoryIds *[]float32                                                                      `json:"selectedRepositoryIds,omitempty"`
-	Visibility            ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0Visibility `json:"visibility"`
+	Scope ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType            *ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretType `json:"secretType,omitempty"`
+	SelectedRepositoryIds *[]float32                                                                       `json:"selectedRepositoryIds,omitempty"`
+	Visibility            ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0Visibility  `json:"visibility"`
 }
 
 // ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0Scope defines parameters for ListGitHubSecretSyncs.
 type ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0Scope string
+
+// ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretType defines parameters for ListGitHubSecretSyncs.
+type ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0SecretType string
 
 // ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0Visibility defines parameters for ListGitHubSecretSyncs.
 type ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig0Visibility string
@@ -82586,10 +82778,16 @@ type ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1 struc
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretType `json:"secretType,omitempty"`
 }
 
 // ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1Scope defines parameters for ListGitHubSecretSyncs.
 type ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1Scope string
+
+// ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretType defines parameters for ListGitHubSecretSyncs.
+type ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig1SecretType string
 
 // ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2 defines parameters for ListGitHubSecretSyncs.
 type ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2 struct {
@@ -82604,10 +82802,16 @@ type ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2 struc
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretType `json:"secretType,omitempty"`
 }
 
 // ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2Scope defines parameters for ListGitHubSecretSyncs.
 type ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2Scope string
+
+// ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretType defines parameters for ListGitHubSecretSyncs.
+type ListGitHubSecretSyncs200JSONResponseBodySecretSyncsDestinationConfig2SecretType string
 
 // ListGitHubSecretSyncs200JSONResponseBody_SecretSyncs_DestinationConfig defines parameters for ListGitHubSecretSyncs.
 type ListGitHubSecretSyncs200JSONResponseBody_SecretSyncs_DestinationConfig struct {
@@ -82924,13 +83128,19 @@ type GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0 st
 	Org string `json:"org"`
 
 	// Scope The GitHub scope that secrets should be synced to
-	Scope                 GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
-	SelectedRepositoryIds *[]float32                                                                         `json:"selectedRepositoryIds,omitempty"`
-	Visibility            GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+	Scope GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType            *GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretType `json:"secretType,omitempty"`
+	SelectedRepositoryIds *[]float32                                                                          `json:"selectedRepositoryIds,omitempty"`
+	Visibility            GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0Visibility  `json:"visibility"`
 }
 
 // GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for GetGitHubSecretSyncByName.
 type GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretType defines parameters for GetGitHubSecretSyncByName.
+type GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0SecretType string
 
 // GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for GetGitHubSecretSyncByName.
 type GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig0Visibility string
@@ -82945,10 +83155,16 @@ type GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1 st
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretType `json:"secretType,omitempty"`
 }
 
 // GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for GetGitHubSecretSyncByName.
 type GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretType defines parameters for GetGitHubSecretSyncByName.
+type GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig1SecretType string
 
 // GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for GetGitHubSecretSyncByName.
 type GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2 struct {
@@ -82963,10 +83179,16 @@ type GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2 st
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretType `json:"secretType,omitempty"`
 }
 
 // GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for GetGitHubSecretSyncByName.
 type GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretType defines parameters for GetGitHubSecretSyncByName.
+type GetGitHubSecretSyncByName200JSONResponseBodySecretSyncDestinationConfig2SecretType string
 
 // GetGitHubSecretSyncByName200JSONResponseBody_SecretSync_DestinationConfig defines parameters for GetGitHubSecretSyncByName.
 type GetGitHubSecretSyncByName200JSONResponseBody_SecretSync_DestinationConfig struct {
@@ -83246,13 +83468,19 @@ type UpdateGitHubSecretSyncJSONBodyDestinationConfig0 struct {
 	Org string `json:"org"`
 
 	// Scope The GitHub scope that secrets should be synced to
-	Scope                 UpdateGitHubSecretSyncJSONBodyDestinationConfig0Scope      `json:"scope"`
-	SelectedRepositoryIds *[]float32                                                 `json:"selectedRepositoryIds,omitempty"`
-	Visibility            UpdateGitHubSecretSyncJSONBodyDestinationConfig0Visibility `json:"visibility"`
+	Scope UpdateGitHubSecretSyncJSONBodyDestinationConfig0Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType            *UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretType `json:"secretType,omitempty"`
+	SelectedRepositoryIds *[]float32                                                  `json:"selectedRepositoryIds,omitempty"`
+	Visibility            UpdateGitHubSecretSyncJSONBodyDestinationConfig0Visibility  `json:"visibility"`
 }
 
 // UpdateGitHubSecretSyncJSONBodyDestinationConfig0Scope defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSyncJSONBodyDestinationConfig0Scope string
+
+// UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretType defines parameters for UpdateGitHubSecretSync.
+type UpdateGitHubSecretSyncJSONBodyDestinationConfig0SecretType string
 
 // UpdateGitHubSecretSyncJSONBodyDestinationConfig0Visibility defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSyncJSONBodyDestinationConfig0Visibility string
@@ -83267,10 +83495,16 @@ type UpdateGitHubSecretSyncJSONBodyDestinationConfig1 struct {
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope UpdateGitHubSecretSyncJSONBodyDestinationConfig1Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretType `json:"secretType,omitempty"`
 }
 
 // UpdateGitHubSecretSyncJSONBodyDestinationConfig1Scope defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSyncJSONBodyDestinationConfig1Scope string
+
+// UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretType defines parameters for UpdateGitHubSecretSync.
+type UpdateGitHubSecretSyncJSONBodyDestinationConfig1SecretType string
 
 // UpdateGitHubSecretSyncJSONBodyDestinationConfig2 defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSyncJSONBodyDestinationConfig2 struct {
@@ -83285,10 +83519,16 @@ type UpdateGitHubSecretSyncJSONBodyDestinationConfig2 struct {
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope UpdateGitHubSecretSyncJSONBodyDestinationConfig2Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretType `json:"secretType,omitempty"`
 }
 
 // UpdateGitHubSecretSyncJSONBodyDestinationConfig2Scope defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSyncJSONBodyDestinationConfig2Scope string
+
+// UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretType defines parameters for UpdateGitHubSecretSync.
+type UpdateGitHubSecretSyncJSONBodyDestinationConfig2SecretType string
 
 // UpdateGitHubSecretSyncJSONBody_DestinationConfig defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSyncJSONBody_DestinationConfig struct {
@@ -83310,13 +83550,19 @@ type UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struc
 	Org string `json:"org"`
 
 	// Scope The GitHub scope that secrets should be synced to
-	Scope                 UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
-	SelectedRepositoryIds *[]float32                                                                      `json:"selectedRepositoryIds,omitempty"`
-	Visibility            UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+	Scope UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType            *UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType `json:"secretType,omitempty"`
+	SelectedRepositoryIds *[]float32                                                                       `json:"selectedRepositoryIds,omitempty"`
+	Visibility            UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility  `json:"visibility"`
 }
 
 // UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType defines parameters for UpdateGitHubSecretSync.
+type UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0SecretType string
 
 // UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig0Visibility string
@@ -83331,10 +83577,16 @@ type UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struc
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType `json:"secretType,omitempty"`
 }
 
 // UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType defines parameters for UpdateGitHubSecretSync.
+type UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig1SecretType string
 
 // UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struct {
@@ -83349,10 +83601,16 @@ type UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2 struc
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType `json:"secretType,omitempty"`
 }
 
 // UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType defines parameters for UpdateGitHubSecretSync.
+type UpdateGitHubSecretSync200JSONResponseBodySecretSyncDestinationConfig2SecretType string
 
 // UpdateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for UpdateGitHubSecretSync.
 type UpdateGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
@@ -83401,13 +83659,19 @@ type ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig
 	Org string `json:"org"`
 
 	// Scope The GitHub scope that secrets should be synced to
-	Scope                 ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope      `json:"scope"`
-	SelectedRepositoryIds *[]float32                                                                             `json:"selectedRepositoryIds,omitempty"`
-	Visibility            ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility `json:"visibility"`
+	Scope ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType            *ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType `json:"secretType,omitempty"`
+	SelectedRepositoryIds *[]float32                                                                              `json:"selectedRepositoryIds,omitempty"`
+	Visibility            ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility  `json:"visibility"`
 }
 
 // ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for ImportGitHubSecretSyncSecrets.
 type ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType defines parameters for ImportGitHubSecretSyncSecrets.
+type ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0SecretType string
 
 // ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility defines parameters for ImportGitHubSecretSyncSecrets.
 type ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig0Visibility string
@@ -83422,10 +83686,16 @@ type ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType `json:"secretType,omitempty"`
 }
 
 // ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for ImportGitHubSecretSyncSecrets.
 type ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType defines parameters for ImportGitHubSecretSyncSecrets.
+type ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig1SecretType string
 
 // ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2 defines parameters for ImportGitHubSecretSyncSecrets.
 type ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2 struct {
@@ -83440,10 +83710,16 @@ type ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig
 
 	// Scope The GitHub scope that secrets should be synced to
 	Scope ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope `json:"scope"`
+
+	// SecretType The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server.
+	SecretType *ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType `json:"secretType,omitempty"`
 }
 
 // ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope defines parameters for ImportGitHubSecretSyncSecrets.
 type ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2Scope string
+
+// ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType defines parameters for ImportGitHubSecretSyncSecrets.
+type ImportGitHubSecretSyncSecrets200JSONResponseBodySecretSyncDestinationConfig2SecretType string
 
 // ImportGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig defines parameters for ImportGitHubSecretSyncSecrets.
 type ImportGitHubSecretSyncSecrets200JSONResponseBody_SecretSync_DestinationConfig struct {
@@ -110484,9 +110760,6 @@ type ClientInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetAccessibleSecrets performs a GET /api/v1/dashboard/accessible-secrets (the `GetAccessibleSecrets` operationId) request.
-	GetAccessibleSecrets(ctx context.Context, params *GetAccessibleSecretsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetAccessibleSecretMetadata performs a GET /api/v1/dashboard/accessible-secrets/metadata (the `GetAccessibleSecretMetadata` operationId) request.
 	//
 	// List shared secret metadata recursively without reading secret values.
@@ -114103,19 +114376,6 @@ func (c *Client) LoginWithUniversalAuthWithBody(ctx context.Context, contentType
 // Login with Universal Auth for machine identity.
 func (c *Client) LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLoginWithUniversalAuthRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// GetAccessibleSecrets performs a GET /api/v1/dashboard/accessible-secrets (the `GetAccessibleSecrets` operationId) request.
-func (c *Client) GetAccessibleSecrets(ctx context.Context, params *GetAccessibleSecretsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetAccessibleSecretsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -124324,100 +124584,6 @@ func NewLoginWithUniversalAuthRequestWithBody(server string, contentType string,
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetAccessibleSecretsRequest constructs an http.Request for the GetAccessibleSecrets method
-func NewGetAccessibleSecretsRequest(server string, params *GetAccessibleSecretsParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/dashboard/accessible-secrets")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "environment", params.Environment, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if params.SecretPath != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "secretPath", *params.SecretPath, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.Recursive != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "recursive", *params.Recursive, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.FilterByAction != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filterByAction", *params.FilterByAction, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -144960,11 +145126,6 @@ type ClientWithResponsesInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuthWithResponse(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithUniversalAuthResponse, error)
 
-	// GetAccessibleSecretsWithResponse performs a GET /api/v1/dashboard/accessible-secrets (the `GetAccessibleSecrets` operationId) request.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	GetAccessibleSecretsWithResponse(ctx context.Context, params *GetAccessibleSecretsParams, reqEditors ...RequestEditorFn) (*GetAccessibleSecretsResponse, error)
-
 	// GetAccessibleSecretMetadataWithResponse performs a GET /api/v1/dashboard/accessible-secrets/metadata (the `GetAccessibleSecretMetadata` operationId) request.
 	//
 	// List shared secret metadata recursively without reading secret values.
@@ -156295,209 +156456,6 @@ func (r LoginWithUniversalAuthResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r LoginWithUniversalAuthResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetAccessibleSecretsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		Secrets *[]struct {
-			UnderscoreId string `json:"_id"`
-			Actor        *struct {
-				ActorId      *string `json:"actorId,omitempty"`
-				ActorType    *string `json:"actorType,omitempty"`
-				GroupId      *string `json:"groupId,omitempty"`
-				MembershipId *string `json:"membershipId,omitempty"`
-				Name         *string `json:"name,omitempty"`
-			} `json:"actor,omitempty"`
-			CreatedAt                time.Time           `json:"createdAt"`
-			Environment              string              `json:"environment"`
-			Id                       string              `json:"id"`
-			IsRotatedSecret          *bool               `json:"isRotatedSecret,omitempty"`
-			RotationId               *openapi_types.UUID `json:"rotationId,omitempty"`
-			SecretComment            string              `json:"secretComment"`
-			SecretKey                string              `json:"secretKey"`
-			SecretPath               *string             `json:"secretPath,omitempty"`
-			SecretReminderNote       *string             `json:"secretReminderNote,omitempty"`
-			SecretReminderRepeatDays *float32            `json:"secretReminderRepeatDays,omitempty"`
-			SecretValue              string              `json:"secretValue"`
-			SecretValueHidden        bool                `json:"secretValueHidden"`
-			SkipMultilineEncoding    *bool               `json:"skipMultilineEncoding,omitempty"`
-			Type                     string              `json:"type"`
-			UpdatedAt                time.Time           `json:"updatedAt"`
-			Version                  float32             `json:"version"`
-			Workspace                string              `json:"workspace"`
-		} `json:"secrets,omitempty"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                       `json:"details,omitempty"`
-		Error      string                                            `json:"error"`
-		Message    string                                            `json:"message"`
-		ReqId      string                                            `json:"reqId"`
-		StatusCode GetAccessibleSecrets400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                            `json:"error"`
-		Message    string                                            `json:"message"`
-		ReqId      string                                            `json:"reqId"`
-		StatusCode GetAccessibleSecrets401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                       `json:"details,omitempty"`
-		Error      string                                            `json:"error"`
-		Message    string                                            `json:"message"`
-		ReqId      string                                            `json:"reqId"`
-		StatusCode GetAccessibleSecrets403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                            `json:"error"`
-		Message    string                                            `json:"message"`
-		ReqId      string                                            `json:"reqId"`
-		StatusCode GetAccessibleSecrets404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                            `json:"error"`
-		Message    interface{}                                       `json:"message,omitempty"`
-		ReqId      string                                            `json:"reqId"`
-		StatusCode GetAccessibleSecrets422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                            `json:"error"`
-		Message    string                                            `json:"message"`
-		ReqId      string                                            `json:"reqId"`
-		StatusCode GetAccessibleSecrets500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetAccessibleSecretsResponse) GetJSON200() *struct {
-	Secrets *[]struct {
-		UnderscoreId string `json:"_id"`
-		Actor        *struct {
-			ActorId      *string `json:"actorId,omitempty"`
-			ActorType    *string `json:"actorType,omitempty"`
-			GroupId      *string `json:"groupId,omitempty"`
-			MembershipId *string `json:"membershipId,omitempty"`
-			Name         *string `json:"name,omitempty"`
-		} `json:"actor,omitempty"`
-		CreatedAt                time.Time           `json:"createdAt"`
-		Environment              string              `json:"environment"`
-		Id                       string              `json:"id"`
-		IsRotatedSecret          *bool               `json:"isRotatedSecret,omitempty"`
-		RotationId               *openapi_types.UUID `json:"rotationId,omitempty"`
-		SecretComment            string              `json:"secretComment"`
-		SecretKey                string              `json:"secretKey"`
-		SecretPath               *string             `json:"secretPath,omitempty"`
-		SecretReminderNote       *string             `json:"secretReminderNote,omitempty"`
-		SecretReminderRepeatDays *float32            `json:"secretReminderRepeatDays,omitempty"`
-		SecretValue              string              `json:"secretValue"`
-		SecretValueHidden        bool                `json:"secretValueHidden"`
-		SkipMultilineEncoding    *bool               `json:"skipMultilineEncoding,omitempty"`
-		Type                     string              `json:"type"`
-		UpdatedAt                time.Time           `json:"updatedAt"`
-		Version                  float32             `json:"version"`
-		Workspace                string              `json:"workspace"`
-	} `json:"secrets,omitempty"`
-} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r GetAccessibleSecretsResponse) GetJSON400() *struct {
-	Details    interface{}                                       `json:"details,omitempty"`
-	Error      string                                            `json:"error"`
-	Message    string                                            `json:"message"`
-	ReqId      string                                            `json:"reqId"`
-	StatusCode GetAccessibleSecrets400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r GetAccessibleSecretsResponse) GetJSON401() *struct {
-	Error      string                                            `json:"error"`
-	Message    string                                            `json:"message"`
-	ReqId      string                                            `json:"reqId"`
-	StatusCode GetAccessibleSecrets401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r GetAccessibleSecretsResponse) GetJSON403() *struct {
-	Details    interface{}                                       `json:"details,omitempty"`
-	Error      string                                            `json:"error"`
-	Message    string                                            `json:"message"`
-	ReqId      string                                            `json:"reqId"`
-	StatusCode GetAccessibleSecrets403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r GetAccessibleSecretsResponse) GetJSON404() *struct {
-	Error      string                                            `json:"error"`
-	Message    string                                            `json:"message"`
-	ReqId      string                                            `json:"reqId"`
-	StatusCode GetAccessibleSecrets404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r GetAccessibleSecretsResponse) GetJSON422() *struct {
-	Error      string                                            `json:"error"`
-	Message    interface{}                                       `json:"message,omitempty"`
-	ReqId      string                                            `json:"reqId"`
-	StatusCode GetAccessibleSecrets422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r GetAccessibleSecretsResponse) GetJSON500() *struct {
-	Error      string                                            `json:"error"`
-	Message    string                                            `json:"message"`
-	ReqId      string                                            `json:"reqId"`
-	StatusCode GetAccessibleSecrets500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r GetAccessibleSecretsResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r GetAccessibleSecretsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetAccessibleSecretsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetAccessibleSecretsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -234130,17 +234088,6 @@ func (c *ClientWithResponses) LoginWithUniversalAuthWithResponse(ctx context.Con
 	return ParseLoginWithUniversalAuthResponse(rsp)
 }
 
-// GetAccessibleSecretsWithResponse performs a GET /api/v1/dashboard/accessible-secrets (the `GetAccessibleSecrets` operationId) request.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetAccessibleSecretsWithResponse(ctx context.Context, params *GetAccessibleSecretsParams, reqEditors ...RequestEditorFn) (*GetAccessibleSecretsResponse, error) {
-	rsp, err := c.GetAccessibleSecrets(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetAccessibleSecretsResponse(rsp)
-}
-
 // GetAccessibleSecretMetadataWithResponse performs a GET /api/v1/dashboard/accessible-secrets/metadata (the `GetAccessibleSecretMetadata` operationId) request.
 //
 // List shared secret metadata recursively without reading secret values.
@@ -246038,134 +245985,6 @@ func ParseLoginWithUniversalAuthResponse(rsp *http.Response) (*LoginWithUniversa
 			Message    string                                              `json:"message"`
 			ReqId      string                                              `json:"reqId"`
 			StatusCode LoginWithUniversalAuth500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetAccessibleSecretsResponse parses an HTTP response from a GetAccessibleSecretsWithResponse call
-func ParseGetAccessibleSecretsResponse(rsp *http.Response) (*GetAccessibleSecretsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetAccessibleSecretsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			Secrets *[]struct {
-				UnderscoreId string `json:"_id"`
-				Actor        *struct {
-					ActorId      *string `json:"actorId,omitempty"`
-					ActorType    *string `json:"actorType,omitempty"`
-					GroupId      *string `json:"groupId,omitempty"`
-					MembershipId *string `json:"membershipId,omitempty"`
-					Name         *string `json:"name,omitempty"`
-				} `json:"actor,omitempty"`
-				CreatedAt                time.Time           `json:"createdAt"`
-				Environment              string              `json:"environment"`
-				Id                       string              `json:"id"`
-				IsRotatedSecret          *bool               `json:"isRotatedSecret,omitempty"`
-				RotationId               *openapi_types.UUID `json:"rotationId,omitempty"`
-				SecretComment            string              `json:"secretComment"`
-				SecretKey                string              `json:"secretKey"`
-				SecretPath               *string             `json:"secretPath,omitempty"`
-				SecretReminderNote       *string             `json:"secretReminderNote,omitempty"`
-				SecretReminderRepeatDays *float32            `json:"secretReminderRepeatDays,omitempty"`
-				SecretValue              string              `json:"secretValue"`
-				SecretValueHidden        bool                `json:"secretValueHidden"`
-				SkipMultilineEncoding    *bool               `json:"skipMultilineEncoding,omitempty"`
-				Type                     string              `json:"type"`
-				UpdatedAt                time.Time           `json:"updatedAt"`
-				Version                  float32             `json:"version"`
-				Workspace                string              `json:"workspace"`
-			} `json:"secrets,omitempty"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                       `json:"details,omitempty"`
-			Error      string                                            `json:"error"`
-			Message    string                                            `json:"message"`
-			ReqId      string                                            `json:"reqId"`
-			StatusCode GetAccessibleSecrets400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                            `json:"error"`
-			Message    string                                            `json:"message"`
-			ReqId      string                                            `json:"reqId"`
-			StatusCode GetAccessibleSecrets401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                       `json:"details,omitempty"`
-			Error      string                                            `json:"error"`
-			Message    string                                            `json:"message"`
-			ReqId      string                                            `json:"reqId"`
-			StatusCode GetAccessibleSecrets403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                            `json:"error"`
-			Message    string                                            `json:"message"`
-			ReqId      string                                            `json:"reqId"`
-			StatusCode GetAccessibleSecrets404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                            `json:"error"`
-			Message    interface{}                                       `json:"message,omitempty"`
-			ReqId      string                                            `json:"reqId"`
-			StatusCode GetAccessibleSecrets422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                            `json:"error"`
-			Message    string                                            `json:"message"`
-			ReqId      string                                            `json:"reqId"`
-			StatusCode GetAccessibleSecrets500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

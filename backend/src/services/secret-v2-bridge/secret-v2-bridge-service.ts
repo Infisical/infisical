@@ -86,7 +86,6 @@ import {
   TSecretV2BridgeDALFactory
 } from "./secret-v2-bridge-dal";
 import {
-  buildHierarchy,
   createFetchFolderSecretsWithImports,
   createRelativeImportExpander,
   expandSecretReferencesGroupedByPath,
@@ -95,7 +94,6 @@ import {
   fnSecretBulkUpdate,
   fnSecretMoveInTransaction,
   fnUpdateSecretLinkedReferences,
-  generatePaths,
   recursivelyGetSecretPaths,
   reshapeBridgeSecret
 } from "./secret-v2-bridge-fns";
@@ -108,7 +106,6 @@ import {
   TDeleteSecretDTO,
   TDispatchSecretCreateSideEffectsDTO,
   TDispatchSecretMoveSideEffectsDTO,
-  TGetAccessibleSecretsDTO,
   TGetASecretDTO,
   TGetSecretReferencesTreeDTO,
   TGetSecretsDTO,
@@ -3717,137 +3714,6 @@ export const secretV2BridgeServiceFactory = ({
     return { tree };
   };
 
-  const getAccessibleSecrets = async ({
-    projectId,
-    secretPath,
-    environment,
-    filterByAction,
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId,
-    recursive
-  }: TGetAccessibleSecretsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment,
-      secretPath
-    });
-
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) return { secrets: [] };
-
-    const env = await projectEnvDAL.findOne({
-      projectId,
-      slug: environment
-    });
-
-    if (!env) {
-      throw new NotFoundError({
-        message: `Environment with slug '${environment}' in project with ID ${projectId} not found`
-      });
-    }
-
-    // Path conditions in permission rules match absolute paths, so every secret is checked against
-    // its folder's full path from the environment root, never one relative to the requested folder.
-    let paths: Record<string, string>;
-    if (recursive) {
-      const envFolders = await folderDAL.find({
-        envId: env.id,
-        isReserved: false
-      });
-      paths = Object.fromEntries(
-        generatePaths(buildHierarchy(envFolders)).map(({ folderId, path }) => [
-          folderId,
-          path === "/" ? path : path.substring(1)
-        ])
-      );
-    } else {
-      const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folder.id]);
-      if (!folderWithPath) return { secrets: [] };
-      paths = { [folder.id]: folderWithPath.path };
-    }
-
-    const folderIds = Object.keys(paths);
-    if (folderIds.length === 0) return { secrets: [] };
-
-    const secrets = await secretDAL.findByFolderIds({ folderIds });
-
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const decryptedSecrets = secrets
-      .filter((el) => {
-        if (
-          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-            environment,
-            secretPath: paths[el.folderId],
-            secretName: el.key,
-            secretTags: el.tags.map((i) => i.slug)
-          })
-        ) {
-          return false;
-        }
-
-        if (filterByAction === ProjectPermissionSecretActions.ReadValue) {
-          return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment,
-            secretPath: paths[el.folderId],
-            secretName: el.key,
-            secretTags: el.tags.map((i) => i.slug)
-          });
-        }
-
-        return true;
-      })
-      .map((secret) => {
-        const secretValueHidden =
-          filterByAction === ProjectPermissionSecretActions.DescribeSecret &&
-          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment,
-            secretPath: paths[secret.folderId],
-            secretName: secret.key,
-            secretTags: secret.tags.map((i) => i.slug)
-          });
-
-        return reshapeBridgeSecret(
-          projectId,
-          environment,
-          paths[secret.folderId],
-          {
-            ...secret,
-            secretMetadata: secret.secretMetadata?.map((el) => ({
-              isEncrypted: Boolean(el.encryptedValue),
-              key: el.key,
-              value: el.encryptedValue
-                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-                : el.value || ""
-            })),
-            value: secret.encryptedValue
-              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-              : "",
-            comment: secret.encryptedComment
-              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-              : ""
-          },
-          secretValueHidden
-        );
-      });
-
-    return {
-      secrets: decryptedSecrets
-    };
-  };
-
   const getSecretVersionsByIds = async ({
     actorId,
     actor,
@@ -4107,7 +3973,6 @@ export const secretV2BridgeServiceFactory = ({
     getSecretReferenceDependencyTree,
     getSecretsByFolderMappings,
     getSecretById,
-    getAccessibleSecrets,
     getSecretMetadata,
     getSecretVersionsByIds,
     findSecretIdsByFolderIdAndKeys,
