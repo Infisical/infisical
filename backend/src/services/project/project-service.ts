@@ -92,6 +92,7 @@ import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
 import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { SOFT_DELETE_GRACE_MS } from "../project-env/project-env-queue";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { getPredefinedRoles } from "../project-role/project-role-fns";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -215,6 +216,7 @@ type TProjectServiceFactoryDep = {
     TDynamicSecretLeaseQueueServiceFactory,
     "setLeaseRevocation" | "unsetRestoredLeaseRevocation"
   >;
+  projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "listBySourceProject">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -267,7 +269,8 @@ export const projectServiceFactory = ({
   projectAccessRequestDAL,
   usageMeteringService,
   dynamicSecretLeaseDAL,
-  dynamicSecretQueueService
+  dynamicSecretQueueService,
+  projectFolderGrantDAL
 }: TProjectServiceFactoryDep) => {
   // The (orgId, slug) unique index already refuses a taken slug; this only names the cause when the holder is
   // a project pending deletion.
@@ -880,23 +883,7 @@ export const projectServiceFactory = ({
       }
     }
 
-    // Deleting a project that others import from would silently drop those secrets from their reads and
-    // syncs, and the deleter may not be a member of those projects, so the imports must be removed first.
-    // With cross-project sharing off, those imports are already ignored by reads and hidden from the list.
     const { allowCrossProjectSecretSharing } = (await orgDAL.findOne({ id: project.orgId })) ?? {};
-    const importingProjects = allowCrossProjectSecretSharing
-      ? await projectDAL.findProjectsImportingFrom(project.id)
-      : [];
-    if (importingProjects.length) {
-      const preview = importingProjects
-        .slice(0, 5)
-        .map(({ name }) => `'${name}'`)
-        .join(", ");
-      const remaining = importingProjects.length - 5;
-      throw new BadRequestError({
-        message: `Project '${project.name}' can't be deleted while other projects import secrets from it: ${remaining > 0 ? `${preview}, and ${remaining} more` : preview}. Remove those secret imports first, then retry.`
-      });
-    }
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
     try {
@@ -917,12 +904,36 @@ export const projectServiceFactory = ({
       // unchanged; otherwise the slug is freed so a same-named project can be recreated right away.
       const now = new Date();
       const hasGracePeriod = !hardDelete && project.type === ProjectType.SecretManager;
-      const softDeletedProject = await projectDAL.softDeleteById(project.id, {
-        deleteAfter: hasGracePeriod ? new Date(now.getTime() + SOFT_DELETE_GRACE_MS) : now,
-        softDeletedAt: now,
-        deletedByActorType: actor,
-        deletedByActorId: actorId,
-        slug: hasGracePeriod ? project.slug : `del-${alphaNumericNanoId(20)}`
+      const softDeletedProject = await projectDAL.transaction(async (tx) => {
+        // Deleting a project that shares folders with other projects would silently drop those secrets from
+        // their imports, references and syncs, so that access must be revoked first. Read under the lock from
+        // the primary so a grant made just before the delete is seen. With sharing off, grants are ignored.
+        const grants = allowCrossProjectSecretSharing
+          ? await projectFolderGrantDAL.listBySourceProject(project.id, tx)
+          : [];
+        const sharedWith = [...new Set(grants.map(({ targetProjectName }) => targetProjectName))];
+        if (sharedWith.length) {
+          const preview = sharedWith
+            .slice(0, 5)
+            .map((name) => `'${name}'`)
+            .join(", ");
+          const remaining = sharedWith.length - 5;
+          throw new BadRequestError({
+            message: `Project '${project.name}' can't be deleted while it shares secrets with other projects: ${remaining > 0 ? `${preview}, and ${remaining} more` : preview}. Revoke their access in Project Settings → Cross-Project Secret Sharing first, then retry.`
+          });
+        }
+
+        return projectDAL.softDeleteById(
+          project.id,
+          {
+            deleteAfter: hasGracePeriod ? new Date(now.getTime() + SOFT_DELETE_GRACE_MS) : now,
+            softDeletedAt: now,
+            deletedByActorType: actor,
+            deletedByActorId: actorId,
+            slug: hasGracePeriod ? project.slug : `del-${alphaNumericNanoId(20)}`
+          },
+          tx
+        );
       });
 
       if (!softDeletedProject) {

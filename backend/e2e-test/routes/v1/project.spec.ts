@@ -186,44 +186,32 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
     expect((await permanentlyDeleteProject(project.id)).statusCode).toBe(200);
   });
 
-  test("refuses to delete a project that another project imports secrets from", async () => {
+  test("refuses to delete a project that shares secrets with another project", async () => {
     const orgId = seedData1.organization.id;
     const headers = { authorization: `Bearer ${jwtAuthToken}` };
     const restoreLicense = overrideLicenseFeatures({ crossProjectSecretSharing: true });
     const org = await testDb(TableName.Organization).where({ id: orgId }).first();
     await testDb(TableName.Organization).where({ id: orgId }).update({ allowCrossProjectSecretSharing: true });
     try {
-      const source = await createProject("e2e-import-source");
-      const importer = await createProject("e2e-import-target");
+      const source = await createProject("e2e-share-source");
+      const target = await createProject("e2e-share-target");
       const grantRes = await testServer.inject({
         method: "POST",
         url: "/api/v1/project-folder-grants",
         headers,
-        body: { sourceProjectId: source.id, environment: "dev", secretPath: "/", targetProjectId: importer.id }
+        body: { sourceProjectId: source.id, environment: "dev", secretPath: "/", targetProjectId: target.id }
       });
       expect(grantRes.statusCode).toBe(200);
-      const importRes = await testServer.inject({
-        method: "POST",
-        url: "/api/v2/secret-imports",
-        headers,
-        body: {
-          projectId: importer.id,
-          environment: "dev",
-          path: "/",
-          import: { sourceProjectId: source.id, environment: "dev", path: "/" }
-        }
-      });
-      expect(importRes.statusCode).toBe(200);
 
       const blockedRes = await deleteProject(source.id);
       expect(blockedRes.statusCode).toBe(400);
-      expect(JSON.parse(blockedRes.payload).message).toContain(importer.name);
+      expect(JSON.parse(blockedRes.payload).message).toContain(target.name);
 
-      // with sharing off the import is inactive (and hidden), so it no longer blocks the delete
+      // with sharing off the grant is ignored, so it no longer blocks the delete
       await testDb(TableName.Organization).where({ id: orgId }).update({ allowCrossProjectSecretSharing: false });
       expect((await deleteProject(source.id, true)).statusCode).toBe(200);
 
-      await deleteProject(importer.id, true);
+      await deleteProject(target.id, true);
     } finally {
       await testDb(TableName.Organization)
         .where({ id: orgId })

@@ -2560,7 +2560,8 @@ export const registerRoutes = async (
     projectAccessRequestDAL,
     usageMeteringService,
     dynamicSecretLeaseDAL,
-    dynamicSecretQueueService
+    dynamicSecretQueueService,
+    projectFolderGrantDAL
   });
 
   const projectEnvQueue = projectEnvQueueFactory({
