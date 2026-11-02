@@ -44,9 +44,7 @@ import {
 } from "@app/hooks/api";
 
 import {
-  bandRangeLabel,
   bandRateLabel,
-  bandTableRate,
   byDisplayOrder,
   cadencePeriod,
   cadenceWord,
@@ -57,13 +55,13 @@ import {
   fmtMoneyCents,
   isMeteredCadence,
   meteredUsageCaption,
-  pluralizeUnit,
   unitForCount,
   unitPrice
 } from "../billing-v2-format";
 import { ActivateView } from "./ActivateView";
 import { CancellationFeedbackDialog } from "./CancellationFeedbackDialog";
 import { CommitmentView } from "./CommitmentView";
+import { MeteredBandTable } from "./MeteredBandTable";
 import { ActiveBadge, DimensionMeter, ProductIcon } from "./shared";
 import { UpgradeView } from "./UpgradeView";
 
@@ -143,21 +141,12 @@ const PriceLineView = ({ line, headline }: { line: PriceLine; headline?: boolean
       {line.metered && <Badge variant="neutral">Usage-based</Badge>}
     </div>
     {line.bands && (
-      <div className="mt-2 flex flex-col divide-y divide-border">
-        {line.bands.tiers.map((band, index) => (
-          <div
-            // eslint-disable-next-line react/no-array-index-key
-            key={index}
-            className="flex justify-between gap-3 py-2 text-sm tabular-nums"
-          >
-            <span className="flex items-center gap-2 text-muted">
-              {bandRangeLabel(line.bands as BillingV2Bands, index)}{" "}
-              {pluralizeUnit(line.noun ?? "unit")}
-              {line.trialBand === index && <Badge variant="info">You&apos;re here</Badge>}
-            </span>
-            <span className="text-foreground">{bandTableRate(band)}</span>
-          </div>
-        ))}
+      <div className="mt-2">
+        <MeteredBandTable
+          bands={line.bands}
+          noun={line.noun ?? "unit"}
+          highlight={line.trialBand}
+        />
       </div>
     )}
   </div>
