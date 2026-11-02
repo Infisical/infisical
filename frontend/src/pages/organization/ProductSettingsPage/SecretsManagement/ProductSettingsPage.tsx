@@ -1,4 +1,5 @@
-import { KeyRound } from "lucide-react";
+import { useState } from "react";
+import { KeyRound, Unlink } from "lucide-react";
 
 import {
   CrossProjectSecretSharingUpgradeIntent,
@@ -8,6 +9,15 @@ import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Card,
   CardContent,
   CardDescription,
@@ -38,6 +48,7 @@ export const ProductSettingsPage = () => {
   const { mutateAsync: updateOrg, isPending } = useUpdateOrg();
   const { subscription } = useSubscription();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+  const [isDisableSharingConfirmOpen, setIsDisableSharingConfirmOpen] = useState(false);
 
   const handleToggle = async (state: boolean) => {
     if (!currentOrg?.id) return;
@@ -139,7 +150,13 @@ export const ProductSettingsPage = () => {
                           id="allow-cross-project-secret-sharing"
                           variant="project"
                           checked={currentOrg?.allowCrossProjectSecretSharing ?? false}
-                          onCheckedChange={(value) => handleCrossProjectSharingToggle(value)}
+                          onCheckedChange={(value) => {
+                            if (!value) {
+                              setIsDisableSharingConfirmOpen(true);
+                              return;
+                            }
+                            handleCrossProjectSharingToggle(value);
+                          }}
                           disabled={!isAllowed || isPending}
                         />
                       )}
@@ -158,6 +175,30 @@ export const ProductSettingsPage = () => {
           </div>
         </div>
       </div>
+      <AlertDialog open={isDisableSharingConfirmOpen} onOpenChange={setIsDisableSharingConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <Unlink />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Disable cross-project secret sharing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Existing secret imports and secret references that point to other projects will stop
+              resolving, which can break secret syncs and other integrations that depend on them.
+              You can turn sharing back on later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={() => handleCrossProjectSharingToggle(false)}
+            >
+              Disable
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {upgradeGate}
     </>
   );

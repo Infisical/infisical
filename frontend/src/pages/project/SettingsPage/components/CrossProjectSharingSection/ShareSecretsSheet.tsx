@@ -1,8 +1,18 @@
 import { useEffect, useState } from "react";
-import { ArrowDown, Box, FolderIcon, Layers, Plus, Trash2, X } from "lucide-react";
+import { useQueries } from "@tanstack/react-query";
+import { ArrowDown, Box, FolderIcon, Layers, Plus, Trash2, Unlink, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Button,
   Combobox,
   Field,
@@ -28,6 +38,10 @@ import {
   useCreateProjectFolderGrant,
   useDeleteProjectFolderGrant
 } from "@app/hooks/api/projectFolderGrants";
+import {
+  fetchProjectFolderGrantUsage,
+  projectFolderGrantKeys
+} from "@app/hooks/api/projectFolderGrants/queries";
 import { useGetUserProjectsByType } from "@app/hooks/api/projects";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
@@ -239,6 +253,7 @@ export const ShareSecretsSheet = ({
   const [targetProjects, setTargetProjects] = useState<Project[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmUpdateOpen, setIsConfirmUpdateOpen] = useState(false);
   const createGrant = useCreateProjectFolderGrant();
   const deleteGrant = useDeleteProjectFolderGrant();
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjectsByType(
@@ -280,6 +295,29 @@ export const ShareSecretsSheet = ({
   const availableProjects = projects.filter((p) => p.id !== currentProject.id);
 
   const usedEnvironments = new Set(groups.map((g) => g.environment).filter(Boolean));
+
+  const remainingKeys = new Set(
+    flattenGroups(groups).map((e) => entryKey(e.environment, e.secretPath))
+  );
+  const revokedGrants = (editData?.grants ?? []).filter(
+    (g) =>
+      !remainingKeys.has(entryKey(g.environmentSlug, g.secretPath)) &&
+      canRevokeGrant(g.environmentSlug, g.secretPath)
+  );
+
+  const revokedGrantUsage = useQueries({
+    queries: revokedGrants.map((g) => ({
+      queryKey: projectFolderGrantKeys.usage(g.id, currentProject.id),
+      queryFn: () => fetchProjectFolderGrantUsage(g.id, currentProject.id),
+      enabled: isConfirmUpdateOpen
+    }))
+  });
+  const affectedUsageCount = revokedGrantUsage.every((q) => q.isSuccess)
+    ? revokedGrantUsage.reduce(
+        (sum, q) => sum + (q.data?.importCount ?? 0) + (q.data?.referenceCount ?? 0),
+        0
+      )
+    : null;
 
   const hasValidEntry =
     groups.length > 0 && groups.every((g) => g.environment && g.secretPaths.length > 0);
@@ -489,12 +527,51 @@ export const ShareSecretsSheet = ({
             variant="project"
             disabled={!hasValidEntry || (!isEditMode && targetProjects.length === 0)}
             isPending={isSubmitting}
-            onClick={handleSubmit}
+            onClick={() => {
+              if (revokedGrants.length > 0) {
+                setIsConfirmUpdateOpen(true);
+                return;
+              }
+              handleSubmit();
+            }}
           >
             {isEditMode ? "Save" : "Share"}
           </Button>
         </SheetFooter>
       </SheetContent>
+      <AlertDialog open={isConfirmUpdateOpen} onOpenChange={setIsConfirmUpdateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <Unlink />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Remove access to shared folders?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{editData?.targetProjectName}</strong> will lose access to{" "}
+              {revokedGrants.length} shared {revokedGrants.length === 1 ? "folder" : "folders"}.
+              Secret imports and secret references in that project that point to{" "}
+              {revokedGrants.length === 1 ? "it" : "them"} will stop resolving, which can break
+              secret syncs and other integrations that depend on them.
+              {affectedUsageCount !== null && (
+                <>
+                  {" "}
+                  <strong>
+                    {affectedUsageCount}{" "}
+                    {affectedUsageCount === 1 ? "import or reference" : "imports and references"}
+                  </strong>{" "}
+                  currently {affectedUsageCount === 1 ? "depends" : "depend"} on this access.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={handleSubmit}>
+              Save
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 };

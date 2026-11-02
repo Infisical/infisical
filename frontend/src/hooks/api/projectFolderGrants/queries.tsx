@@ -47,6 +47,14 @@ export const useListProjectFolderGrantsReceived = (targetProjectId: string) =>
     enabled: Boolean(targetProjectId)
   });
 
+export const fetchProjectFolderGrantUsage = async (grantId: string, sourceProjectId: string) => {
+  const { data } = await apiRequest.get<TProjectFolderGrantUsage>(
+    `/api/v1/project-folder-grants/${grantId}/usage`,
+    { params: { sourceProjectId } }
+  );
+  return data;
+};
+
 export const useGetProjectFolderGrantUsage = (
   grantId: string,
   sourceProjectId: string,
@@ -54,12 +62,6 @@ export const useGetProjectFolderGrantUsage = (
 ) =>
   useQuery({
     queryKey: projectFolderGrantKeys.usage(grantId, sourceProjectId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<TProjectFolderGrantUsage>(
-        `/api/v1/project-folder-grants/${grantId}/usage`,
-        { params: { sourceProjectId } }
-      );
-      return data;
-    },
+    queryFn: () => fetchProjectFolderGrantUsage(grantId, sourceProjectId),
     enabled: Boolean(grantId) && Boolean(sourceProjectId) && enabled
   });
