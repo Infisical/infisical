@@ -298,6 +298,22 @@ If you encounter `API_KEY` or `SERVICE_TOKEN` in existing code, do not replicate
 
 Token detection logic in `inject-identity.ts` checks `x-api-key` header first, then parses `Authorization: Bearer` and inspects JWT `authTokenType` field to determine mode.
 
+#### SSO session binding
+
+A session minted by a SAML, OIDC or LDAP login carries `issuingRootOrgId`, the root org whose IdP
+issued it (`processProviderCallback` sets it; own-credential sessions never have it). An org that
+enforces SSO admits only sessions its own IdP issued: `validateOrgSSO` compares the claim with the
+org's root org on every user permission check, reading it from `userAuthInfo` in the request context
+(only when the check is for the requester), so it covers `selectOrganization`, OAuth consent, and a
+session that was already open when enforcement was turned on. Members who can bypass SSO are let
+through, and a token with no claim (issued before it existed) is taken at its auth method.
+
+**Every path that issues or re-issues a user token must carry the claim forward** (MFA, refresh,
+signup, org deletion, delegated OAuth codes and tokens). A dropped claim reads as a pre-claim token
+and passes every org's enforcement. `selectOrganization` audits the refusal
+(`SELECT_ORGANIZATION_REFUSED`) by catching the `FOREIGN_SSO_SESSION_ERROR_NAME` error
+`getOrgPermission` throws.
+
 #### Delegated OAuth tokens
 
 Two grants issue them: the authorization code flow (consented `scopes`) and the RFC 8693 token exchange
@@ -562,7 +578,8 @@ exists, and every audit entry written from then on records it. `syncSsoUserProfi
 and is called from all three login services right after `ensureSsoAccountVerified`, outside the
 caller's transaction, with its result flowing into the session.
 
-The gate is `organization.authEnforced` **and** a verified alias, and both halves matter. Enforcement
+The gate is `isIdpAuthoritative` (`isIdpAuthoritativeForDomain`: the org enforces SSO and owns the
+asserted domain) **and** a verified alias, and both halves matter. Enforcement on an owned domain
 is the org saying the IdP is authoritative for identity, which is the same claim that already skips
 email verification at signup. The verified alias is the proof that the IdP controls *this* account:
 an unverified alias asserting an unrecognized email is exactly what `isStaleSsoAlias` exists to

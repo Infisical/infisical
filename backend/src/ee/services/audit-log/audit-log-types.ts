@@ -488,6 +488,7 @@ export enum EventType {
   ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
   USER_LOGIN = "user-login",
   SELECT_ORGANIZATION = "select-organization",
+  SELECT_ORGANIZATION_REFUSED = "select-organization-refused",
   SELECT_SUB_ORGANIZATION = "select-sub-organization",
   CREATE_CERTIFICATE_POLICY = "create-certificate-policy",
   UPDATE_CERTIFICATE_POLICY = "update-certificate-policy",
@@ -3750,6 +3751,16 @@ interface SelectOrganizationEvent {
   metadata: {
     organizationId: string;
     organizationName: string;
+  };
+}
+
+// The session was issued by another root org's IdP, which does not satisfy this org's enforcement.
+interface SelectOrganizationRefusedEvent {
+  type: EventType.SELECT_ORGANIZATION_REFUSED;
+  metadata: {
+    organizationId: string;
+    organizationName: string;
+    issuingOrganizationId: string;
   };
 }
 
@@ -9036,6 +9047,7 @@ export type Event =
   | CertificateIssuanceFailedEvent
   | UserLoginEvent
   | SelectOrganizationEvent
+  | SelectOrganizationRefusedEvent
   | SelectSubOrganizationEvent
   | ApprovalPolicyCreateEvent
   | ApprovalPolicyUpdateEvent

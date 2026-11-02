@@ -100,6 +100,7 @@ type TOauthTokenClaims = {
   userId: string;
   tokenVersionId: string;
   organizationId: string;
+  issuingRootOrgId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
 } & ({ scopes: string[]; delegation?: never } | { delegation: OauthDelegationMode.Full; scopes?: never });
@@ -132,6 +133,7 @@ const signOauthToken = (
       // refreshVersion. Emit whichever claim matches this token's type under its expected name.
       ...(isAccessToken ? { accessVersion: claims.version } : { refreshVersion: claims.version }),
       organizationId: claims.organizationId,
+      issuingRootOrgId: claims.issuingRootOrgId,
       isMfaVerified: claims.isMfaVerified,
       mfaMethod: claims.mfaMethod,
       // Marks this as a delegated OAuth token. extractAuth maps tokens carrying this claim to
@@ -571,6 +573,7 @@ export const oauthClientServiceFactory = ({
         orgId: client.orgId,
         userId: dto.userId,
         authMethod: dto.authMethod,
+        issuingRootOrgId: dto.issuingRootOrgId,
         isMfaVerified: dto.isMfaVerified,
         mfaMethod: dto.mfaMethod,
         tokenVersionId: tokenSession.id,
@@ -761,6 +764,7 @@ export const oauthClientServiceFactory = ({
         userId: user.id,
         tokenVersionId: tokenSession.id,
         organizationId: client.orgId,
+        issuingRootOrgId: client.orgId,
         isMfaVerified: client.tokenExchangeIdpSatisfiesMfa || undefined,
         delegation: OauthDelegationMode.Full,
         tokenType: AuthTokenType.ACCESS_TOKEN,
@@ -864,6 +868,7 @@ export const oauthClientServiceFactory = ({
         userId: codePayload.userId,
         tokenVersionId: tokenSession.id,
         organizationId: codePayload.orgId,
+        issuingRootOrgId: codePayload.issuingRootOrgId,
         isMfaVerified: codePayload.isMfaVerified,
         mfaMethod: codePayload.mfaMethod,
         scopes: grantedScopes
@@ -931,6 +936,7 @@ export const oauthClientServiceFactory = ({
       userId: decodedToken.userId,
       tokenVersionId: tokenVersion.id,
       organizationId: decodedToken.organizationId,
+      issuingRootOrgId: decodedToken.issuingRootOrgId,
       isMfaVerified: decodedToken.isMfaVerified,
       mfaMethod: decodedToken.mfaMethod,
       scopes: grantedScopes

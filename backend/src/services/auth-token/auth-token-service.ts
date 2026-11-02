@@ -348,6 +348,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         refreshVersion: updatedSession.refreshVersion,
         organizationId: decodedToken.organizationId,
         ...(decodedToken.subOrganizationId && { subOrganizationId: decodedToken.subOrganizationId }),
+        issuingRootOrgId: decodedToken.issuingRootOrgId,
         isMfaVerified: decodedToken.isMfaVerified,
         mfaMethod: decodedToken.mfaMethod
       },

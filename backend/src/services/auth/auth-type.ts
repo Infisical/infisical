@@ -111,6 +111,10 @@ export type AuthModeJwtTokenPayload = {
   accessVersion: number;
   organizationId?: string;
   subOrganizationId?: string;
+  // Root org whose IdP issued this session. Set only by SAML, OIDC and LDAP logins; absent on
+  // own-credential sessions and on tokens issued before the claim existed, which are taken at
+  // their auth method as before.
+  issuingRootOrgId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
   // Present only on delegated OAuth 2.0 access tokens. Its presence marks the token as
@@ -129,6 +133,7 @@ export type AuthModeMfaJwtTokenPayload = {
   authMethod: AuthMethod;
   userId: string;
   organizationId?: string;
+  issuingRootOrgId?: string;
   requiredMfaMethod: MfaMethod;
 };
 
@@ -141,6 +146,7 @@ export type AuthModeRefreshJwtTokenPayload = {
   refreshVersion: number;
   organizationId?: string;
   subOrganizationId?: string;
+  issuingRootOrgId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
   oauthClientId?: string;
@@ -154,6 +160,7 @@ export type AuthModeSignUpTokenPayload = {
   isEmailVerified: boolean;
   aliasId?: string;
   organizationId?: string;
+  issuingRootOrgId?: string;
   callbackPort?: string;
   // User profile fields for the frontend signup page
   email?: string;

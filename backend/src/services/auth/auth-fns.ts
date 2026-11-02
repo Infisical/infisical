@@ -1,3 +1,4 @@
+import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -70,6 +71,25 @@ export const getRequiredMfaMethod = (
 
   return { isMfaRequired, requiredMfaMethod };
 };
+
+export const isSsoAuthMethod = (authMethod: AuthMethod) =>
+  isAuthMethodSaml(authMethod) || authMethod === AuthMethod.OIDC || authMethod === AuthMethod.LDAP;
+
+/**
+ * Whether a session counts as this root org's own SSO. The method alone is not enough: a SAML
+ * session another org's IdP minted would otherwise satisfy this org's enforcement without its IdP,
+ * MFA or deprovisioning ever seeing the login. Tokens issued before the claim existed carry no
+ * issuer and are taken at their method, as before.
+ */
+export const isSsoSessionIssuedByOrg = ({
+  authMethod,
+  issuingRootOrgId,
+  rootOrgId
+}: {
+  authMethod: AuthMethod;
+  issuingRootOrgId?: string;
+  rootOrgId: string;
+}) => isSsoAuthMethod(authMethod) && (!issuingRootOrgId || issuingRootOrgId === rootOrgId);
 
 export const RECOVERY_CODE_MFA_ASSURANCE = "recovery-code";
 export type TMfaAssurance = MfaMethod | typeof RECOVERY_CODE_MFA_ASSURANCE;

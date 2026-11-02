@@ -114,6 +114,13 @@ const getDelegatedOauthScopes = (): OauthScope[] | undefined => {
   return raw.filter(isValidOauthScope);
 };
 
+// The issuing org belongs to the request's own session, so it only applies when the permission
+// being resolved is the requester's; a check made on another user's behalf has no session of its own.
+const getSessionIssuingRootOrgId = (actorId: string) => {
+  const userAuthInfo = requestContext.get(RequestContextKey.UserAuthInfo);
+  return userAuthInfo?.userId === actorId ? userAuthInfo.issuingRootOrgId : undefined;
+};
+
 const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
   const rules = orgUserRoles
     .map(({ role, permissions }) => {
@@ -448,13 +455,15 @@ export const permissionServiceFactory = ({
       // SSO enforcement applies only to users. Evaluate it against the full ability — SSO bypass is a
       // property of the user's roles, not of what an OAuth client was delegated.
       if (actor === ActorType.USER) {
-        validateOrgSSO(
+        validateOrgSSO({
           actorAuthMethod,
-          permissionData?.[0].orgAuthEnforced,
-          Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
-          Boolean(permissionData?.[0].bypassOrgAuthEnabled),
-          canBypassSso
-        );
+          isOrgSsoEnforced: permissionData?.[0].orgAuthEnforced,
+          isOrgGoogleSsoEnforced: Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
+          isOrgSsoBypassEnabled: Boolean(permissionData?.[0].bypassOrgAuthEnabled),
+          isAdmin: canBypassSso,
+          issuingRootOrgId: getSessionIssuingRootOrgId(actorId),
+          rootOrgId: rootOrgId ?? orgId
+        });
       }
 
       // Delegated OAuth tokens get a scope-narrowed ability; first-party sessions get the full one.
@@ -787,13 +796,15 @@ export const permissionServiceFactory = ({
 
       // SSO enforcement runs on every request (uses per-request actorAuthMethod, not cached)
       if (actor === ActorType.USER) {
-        validateOrgSSO(
+        validateOrgSSO({
           actorAuthMethod,
-          permissionData?.[0].orgAuthEnforced,
-          Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
-          Boolean(permissionData?.[0].bypassOrgAuthEnabled),
-          canBypassSso
-        );
+          isOrgSsoEnforced: permissionData?.[0].orgAuthEnforced,
+          isOrgGoogleSsoEnforced: Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
+          isOrgSsoBypassEnabled: Boolean(permissionData?.[0].bypassOrgAuthEnabled),
+          isAdmin: canBypassSso,
+          issuingRootOrgId: getSessionIssuingRootOrgId(actorId),
+          rootOrgId: permissionData?.[0].rootOrgId ?? projectDetails.orgId
+        });
       }
 
       const rules = buildProjectPermissionRules(permissionFromRoles, projectDetails.type, folderScopedPrivileges);
