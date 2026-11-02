@@ -139,7 +139,8 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                     commonName: cert.commonName ?? undefined,
                     altNames: cert.altNames?.split(",").map((s) => s.trim()),
                     serialNumber: cert.serialNumber ?? undefined,
-                    friendlyName: cert.friendlyName ?? undefined
+                    friendlyName: cert.friendlyName ?? undefined,
+                    metadata: cert.metadata
                   })
                 );
 
@@ -193,7 +194,8 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                               e.stopPropagation();
                               handlePopUpOpen("certificateExport", {
                                 certificateId: cert.certificateId,
-                                serialNumber: cert.serialNumber
+                                serialNumber: cert.serialNumber,
+                                hasPrivateKey: cert.hasPrivateKey
                               });
                             }}
                           >

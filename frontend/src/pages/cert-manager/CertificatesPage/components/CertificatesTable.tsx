@@ -134,6 +134,7 @@ type Props = {
       renewalError?: string;
       renewedFromCertificateId?: string;
       renewedByCertificateId?: string;
+      hasPrivateKey?: boolean;
     }
   ) => void;
   externalFilter?: {
@@ -1128,7 +1129,8 @@ export const CertificatesTable = ({
                                   e.stopPropagation();
                                   handlePopUpOpen("certificateExport", {
                                     certificateId: certificate.id,
-                                    serialNumber: certificate.serialNumber
+                                    serialNumber: certificate.serialNumber,
+                                    hasPrivateKey: certificate.hasPrivateKey
                                   });
                                 }}
                               >

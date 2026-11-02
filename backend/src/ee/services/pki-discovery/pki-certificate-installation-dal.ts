@@ -245,19 +245,34 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.subjectOrganizationalUnit`,
           `${TableName.Certificate}.subjectCountry`,
           `${TableName.Certificate}.subjectState`,
-          `${TableName.Certificate}.subjectLocality`
+          `${TableName.Certificate}.subjectLocality`,
+          `${TableName.CertificateSecret}.certId as privateKeyRef`
         )
         .join(
           TableName.Certificate,
           `${TableName.PkiCertificateInstallationCert}.certificateId`,
           `${TableName.Certificate}.id`
         )
+        .leftJoin(TableName.CertificateSecret, `${TableName.CertificateSecret}.certId`, `${TableName.Certificate}.id`)
         .where(`${TableName.PkiCertificateInstallationCert}.installationId`, id)
         .orderBy(`${TableName.PkiCertificateInstallationCert}.lastSeenAt`, "desc");
 
+      const certificateIds = certLinks.map((link) => link.certificateId);
+      const metadataRows = certificateIds.length
+        ? await knex(TableName.ResourceMetadata)
+            .select("certificateId", "key", "value")
+            .whereIn("certificateId", certificateIds)
+        : [];
+
       return {
         ...installation,
-        certificates: certLinks
+        certificates: certLinks.map(({ privateKeyRef, ...link }) => ({
+          ...link,
+          hasPrivateKey: Boolean(privateKeyRef),
+          metadata: metadataRows
+            .filter((row) => row.certificateId === link.certificateId)
+            .map(({ key, value }) => ({ key, value: value || "" }))
+        }))
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PKI certificate installation by ID with certificates" });

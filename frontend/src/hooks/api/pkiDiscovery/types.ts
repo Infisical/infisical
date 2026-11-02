@@ -166,6 +166,8 @@ export type TPkiInstallationCert = {
   fingerprintSha256?: string | null;
   altNames?: string | null;
   applicationId?: string | null;
+  hasPrivateKey?: boolean;
+  metadata?: { key: string; value: string }[];
 };
 
 export type TPkiDiscoveryScan = {
