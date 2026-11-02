@@ -140,6 +140,7 @@ export type TImportPamDiscoveredAccountResult = {
   discoveredAccountId: string;
   status: string;
   accountId?: string;
+  name?: string;
   message?: string;
   rotationAccountId?: string;
   rotationStatus?: PamRotationStatus;

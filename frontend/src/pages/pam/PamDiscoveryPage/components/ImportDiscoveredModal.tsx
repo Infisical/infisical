@@ -38,6 +38,8 @@ import {
 
 const MAX_ROTATIONS_PER_IMPORT = 50;
 
+const MAX_LISTED_ROTATION_FAILURES = 5;
+
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -148,13 +150,21 @@ export const ImportDiscoveredModal = ({
     const imported = results.filter((r) => r.status === "imported").length;
     const failed = results.length - imported;
     const rotationFailures = results.filter((r) => r.rotationStatus === PamRotationStatus.Failed);
-    const rotationNote =
-      rotationFailures.length > 0
-        ? `. ${rotationFailures.length} could not be rotated: ${rotationFailures[0].rotationMessage}`
-        : "";
+    const summary = `Imported ${imported} account${imported === 1 ? "" : "s"}${failed > 0 ? `, ${failed} failed` : ""}`;
+    const failureLines = rotationFailures
+      .slice(0, MAX_LISTED_ROTATION_FAILURES)
+      .map((r) => `${r.name ?? r.discoveredAccountId}: ${r.rotationMessage}`);
+    if (rotationFailures.length > MAX_LISTED_ROTATION_FAILURES) {
+      failureLines.push(`and ${rotationFailures.length - MAX_LISTED_ROTATION_FAILURES} more`);
+    }
     createNotification({
       type: failed > 0 || rotationFailures.length > 0 ? "info" : "success",
-      text: `Imported ${imported} account${imported === 1 ? "" : "s"}${failed > 0 ? `, ${failed} failed` : ""}${rotationNote}`
+      ...(rotationFailures.length > 0
+        ? {
+            title: `${summary}. ${rotationFailures.length} could not be rotated`,
+            text: failureLines.join("\n")
+          }
+        : { text: summary })
     });
     // earlier batches already went through, so drop them from the selection and keep the rest for a retry
     onImported(results.map((r) => r.discoveredAccountId));
