@@ -897,7 +897,7 @@ To pass `session.token` to the agent, follow the steps in [Start the agent with 
 If the client logs in as a machine identity with a [delegation](/documentation/platform/agent-vault/sessions-on-behalf-of-users#set-up-a-delegation), the client can create sessions on behalf of the users that the delegation covers. For each of those sessions, the proxy uses the user's [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values) instead of the machine identity's.
 
 <Note>
-  `on_behalf_of_user_email` and `on_behalf_of_user_id` require `infisicalsdk` version 1.1.1 or newer.
+  `on_behalf_of_user_email` and `on_behalf_of_user_id` require `infisicalsdk` version 1.2.0 or newer.
 </Note>
 
 ```python
@@ -1004,7 +1004,7 @@ response = client.agent_vault.proxies.create(
 - `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `AgentVaultTrafficPolicy.ANY_HOST` (`"any-host"`) to forward requests to any host or `AgentVaultTrafficPolicy.BUNDLE_HOSTS` (`"bundle-hosts"`) to refuse requests to hosts that no service in the session's access bundle covers (defaults to `AgentVaultTrafficPolicy.ANY_HOST`)
 - `allowed_hosts` (Union[List[str], str], optional): hosts that agents can reach under `AgentVaultTrafficPolicy.BUNDLE_HOSTS` even if no service covers them, as a list or a comma-separated string (see [Exceptions](/documentation/platform/agent-vault/proxies#exceptions))
 - `poll_interval` (int, optional): how often, in seconds, the proxy checks its sessions and settings with Infisical, from 10 to 300 (defaults to `60`)
-- `description` (str, optional): what the proxy is for, up to 256 characters without line breaks or tabs (requires `infisicalsdk` version 1.1.1 or newer)
+- `description` (str, optional): what the proxy is for, up to 256 characters without line breaks or tabs (requires `infisicalsdk` version 1.2.0 or newer)
 
 **Returns:**
 - `AgentVaultProxyWithTokenResponse`: the proxy in `proxy`, and its proxy token in `proxyToken` (Infisical returns the token only once)
@@ -1032,9 +1032,9 @@ proxy = client.agent_vault.proxies.update(
 - `proxy_id` (str): the ID of the proxy
 - `name` (str, optional): the new name of the proxy
 - `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the new traffic policy
-- `allowed_hosts` (Union[List[str], str], optional): the new exceptions, which replace the current ones, or an empty list or string to remove every exception (removing them requires `infisicalsdk` version 1.1.1 or newer)
+- `allowed_hosts` (Union[List[str], str], optional): the new exceptions, which replace the current ones, or an empty list or string to remove every exception (removing them requires `infisicalsdk` version 1.2.0 or newer)
 - `poll_interval` (int, optional): the new poll interval in seconds, from 10 to 300
-- `description` (str, optional): the new description, or an empty string to remove the description (requires `infisicalsdk` version 1.1.1 or newer)
+- `description` (str, optional): the new description, or an empty string to remove the description (requires `infisicalsdk` version 1.2.0 or newer)
 
 **Returns:**
 - `AgentVaultProxy`: the updated proxy
@@ -1096,7 +1096,7 @@ This sub-class manages [Agent Vault access bundles](/documentation/platform/agen
 To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
-  `agent_vault.access_bundles` requires `infisicalsdk` version 1.1.1 or newer.
+  `agent_vault.access_bundles` requires `infisicalsdk` version 1.2.0 or newer.
 </Note>
 
 #### List access bundles
@@ -1294,7 +1294,7 @@ This sub-class manages [delegations](/documentation/platform/agent-vault/session
 To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership). A machine identity without the role can still get its own delegation.
 
 <Note>
-  `agent_vault.delegations` requires `infisicalsdk` version 1.1.1 or newer.
+  `agent_vault.delegations` requires `infisicalsdk` version 1.2.0 or newer.
 </Note>
 
 #### List delegations
