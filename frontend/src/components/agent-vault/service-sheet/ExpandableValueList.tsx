@@ -27,8 +27,8 @@ export const ExpandableValueList = ({
         <Button
           type="button"
           variant="link"
-          size="sm"
-          className="ml-1.5 align-baseline text-xs"
+          size="xs"
+          className="ml-1.5 align-baseline"
           onClick={() => setIsExpanded(true)}
         >
           +{hidden} more
