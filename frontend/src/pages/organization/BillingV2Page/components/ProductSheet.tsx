@@ -103,10 +103,12 @@ const dimPriceLine = (
   cadence: BillingV2Cadence,
   variant: "headline" | "usage"
 ): PriceLine => {
-  // Usage stays billed monthly when the customer commits yearly, so a monthly-only meter keeps its
-  // monthly price on the yearly card.
+  // Usage stays billed monthly when the customer commits yearly, so a meter with no annual price keeps
+  // its monthly price on the yearly card.
   const cad: BillingV2Cadence =
-    cadence === "annual" && !dim.meteredAnnual && dim.meteredMonthly ? "monthly" : cadence;
+    cadence === "annual" && dim.annual === 0 && !dim.meteredAnnual && dim.meteredMonthly
+      ? "monthly"
+      : cadence;
   const metered = isMeteredCadence(dim, cad);
   // A yearly commitment is always divisible by 12, so a per_resource annual price is shown as its
   // per-month equivalent (÷12); metered rates are usage-based consumption prices, shown as-is. The
