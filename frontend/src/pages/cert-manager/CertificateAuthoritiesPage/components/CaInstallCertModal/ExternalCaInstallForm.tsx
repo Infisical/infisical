@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
 import FileSaver from "file-saver";
 import { DownloadIcon } from "lucide-react";
 import { z } from "zod";
@@ -67,12 +68,20 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     ca?.type === CaType.INTERNAL ? ca.configuration.maxPathLength : undefined;
   const isPathLengthLocked = typeof storedPathLength === "number" && storedPathLength >= 0;
   const maxPathLength = watch("maxPathLength");
-  const { data: csr, isFetching: isCsrFetching } = useGetCaCsr(
-    caId,
-    isPathLengthLocked ? undefined : Number(maxPathLength),
-    { enabled: maxPathLength !== "" }
-  );
-  const isCsrReady = Boolean(csr) && !isCsrFetching;
+  const {
+    data: csr,
+    isFetching: isCsrFetching,
+    isError: isCsrError,
+    error: csrError,
+    refetch: refetchCsr
+  } = useGetCaCsr(caId, isPathLengthLocked ? undefined : Number(maxPathLength), {
+    enabled: maxPathLength !== ""
+  });
+  const showCsrError = isCsrError && !isCsrFetching;
+  const isCsrReady = Boolean(csr) && !isCsrFetching && !isCsrError;
+  const csrErrorMessage =
+    (csrError as AxiosError<{ message?: string }>)?.response?.data?.message ??
+    "The CSR could not be generated.";
   const { mutateAsync: importCaCertificate } = useImportCaCertificate();
 
   useEffect(() => {
@@ -174,7 +183,15 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                 outline={false}
                 containerClassName="rounded-md border border-border bg-container"
               >
-                {csr ? (
+                {showCsrError && (
+                  <div className="flex h-40 flex-col items-center justify-center gap-2 p-3 text-center">
+                    <p className="text-xs text-danger">{csrErrorMessage}</p>
+                    <Button type="button" variant="outline" size="xs" onClick={() => refetchCsr()}>
+                      Retry
+                    </Button>
+                  </div>
+                )}
+                {!showCsrError && csr && (
                   <div className="relative">
                     <pre
                       className={cn(
@@ -190,7 +207,8 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                       </div>
                     )}
                   </div>
-                ) : (
+                )}
+                {!showCsrError && !csr && (
                   <div className="flex h-40 items-center justify-center">
                     <Spinner size="sm" label="Generating CSR" />
                   </div>
