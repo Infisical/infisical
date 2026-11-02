@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { DatabaseError } from "@app/lib/errors";
 import { orgTreeIds } from "@app/lib/knex";
 import { CertStatus } from "@app/services/certificate/certificate-types";
@@ -87,7 +88,13 @@ export const usageCounterDALFactory = (db: TDbClient) => {
       .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
       .whereNull(`${TableName.Project}.deleteAfter`)
       .where(`${TableName.Certificate}.notAfter`, ">", new Date())
-      .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED);
+      .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
+      .where((liveOrIssued) => {
+        void liveOrIssued
+          .whereNull(`${TableName.Certificate}.deletedAt`)
+          .orWhereNull(`${TableName.Certificate}.source`)
+          .orWhereNotIn(`${TableName.Certificate}.source`, [CertificateSource.Imported, CertificateSource.Discovered]);
+      });
 
     if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, orgTreeIds(db.replicaNode(), orgId));
 

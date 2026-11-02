@@ -62,6 +62,7 @@ export const digicertRevocationSyncQueueFactory = ({
     serialNumber: string;
     projectId: string;
     applicationId?: string | null;
+    deletedAt?: Date | null;
   }) => {
     await certificateDAL.updateById(cert.id, {
       status: CertStatus.REVOKED,
@@ -69,12 +70,14 @@ export const digicertRevocationSyncQueueFactory = ({
       revocationReason: revocationReasonToCrlCode(CrlReason.UNSPECIFIED)
     });
 
-    await certificateAlertEventEmitter.notify({
-      certificateId: cert.id,
-      projectId: cert.projectId,
-      eventType: CertificateApplicationAlertEvent.Revocation,
-      applicationId: cert.applicationId ?? null
-    });
+    if (!cert.deletedAt) {
+      await certificateAlertEventEmitter.notify({
+        certificateId: cert.id,
+        projectId: cert.projectId,
+        eventType: CertificateApplicationAlertEvent.Revocation,
+        applicationId: cert.applicationId ?? null
+      });
+    }
 
     await auditLogService.createAuditLog({
       projectId: cert.projectId,
@@ -89,6 +92,8 @@ export const digicertRevocationSyncQueueFactory = ({
         }
       }
     });
+
+    if (cert.deletedAt) return;
 
     try {
       await pkiAlertV2Queue?.queueCertificateEvent({
