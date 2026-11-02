@@ -25,8 +25,8 @@ import {
 import { useCreateAdminUser, useSelectOrganization } from "@app/hooks/api";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
-import { AdminSignUpForm } from "./components/AdminSignUpForm";
 import { AdminSignUpFormData } from "./adminSignUpSchema";
+import { AdminSignUpForm } from "./components/AdminSignUpForm";
 
 enum BootstrapStep {
   Account,

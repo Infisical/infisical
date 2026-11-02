@@ -7,8 +7,23 @@ ARG INFISICAL_CLI_VERSION=0.44.6
 FROM node:26.12.1-trixie-slim AS base
 
 # Node 26.12.1 bundles npm 11.20.0, whose own dependencies are outdated. 11.21.1 updates them
-# and stays on the npm major that Node ships.
-RUN npm install -g npm@11.21.1 && npm cache clean --force
+# and stays on the npm major that Node ships. Its bundled ip-address and undici are swapped for
+# in-range patch releases. The swap fails if npm bundles other versions; drop it once an npm
+# release bundles the patched ones.
+RUN npm install -g npm@11.21.1 \
+    && cd /tmp \
+    && NPM_DEPS=/usr/local/lib/node_modules/npm/node_modules \
+    && for dep in ip-address@10.7.2 undici@6.29.0; do \
+         bundled="$(node -p "require('$NPM_DEPS/${dep%@*}/package.json').version")"; \
+         [ "$bundled" = "${dep##*@}" ] || { echo "npm bundles ${dep%@*} $bundled, expected ${dep##*@}" >&2; exit 1; }; \
+       done \
+    && npm pack ip-address@10.7.4 undici@6.29.1 --silent \
+    && rm -rf "$NPM_DEPS/ip-address" "$NPM_DEPS/undici" \
+    && mkdir "$NPM_DEPS/ip-address" "$NPM_DEPS/undici" \
+    && tar -xzf ip-address-10.7.4.tgz -C "$NPM_DEPS/ip-address" --strip-components=1 --no-same-owner \
+    && tar -xzf undici-6.29.1.tgz -C "$NPM_DEPS/undici" --strip-components=1 --no-same-owner \
+    && rm ip-address-10.7.4.tgz undici-6.29.1.tgz \
+    && npm cache clean --force
 
 FROM base AS frontend-dependencies
 WORKDIR /app

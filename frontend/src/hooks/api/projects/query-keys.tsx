@@ -79,6 +79,7 @@ export const projectKeys = {
     forPkiSync,
     search,
     status,
+    includeDeleted,
     profileIds,
     fromDate,
     toDate,
@@ -107,6 +108,7 @@ export const projectKeys = {
     forPkiSync?: boolean;
     search?: string;
     status?: string | string[];
+    includeDeleted?: boolean;
     profileIds?: string[];
     fromDate?: Date;
     toDate?: Date;
@@ -137,6 +139,7 @@ export const projectKeys = {
         forPkiSync,
         search,
         status,
+        includeDeleted,
         profileIds,
         fromDate,
         toDate,

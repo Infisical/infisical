@@ -73,6 +73,8 @@ export type TGetSecretsDTO = {
   excludeRotatedSecrets?: boolean;
   ifNoneMatch?: string;
   abortSignal?: AbortSignal;
+  // Called with each secret in the project a reference resolved to, a personal override included.
+  onSecretReferenced?: (secretId: string) => void;
 } & TProjectPermission;
 
 export type TGetSecretsMissingReadValuePermissionDTO = Omit<
@@ -91,6 +93,8 @@ export type TGetASecretDTO = {
   version?: number;
   projectId: string;
   viewSecretValue: boolean;
+  // Called with each secret in the project a reference resolved to, a personal override included.
+  onSecretReferenced?: (secretId: string) => void;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretDTO = TProjectPermission & {

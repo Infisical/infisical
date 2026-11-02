@@ -46,9 +46,9 @@ import { CertificateRequestStatus } from "@app/services/certificate-request/cert
 import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import {
   CertExtendedKeyUsage,
-  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
+  CertStatus,
   CrlReason
 } from "@app/services/certificate/certificate-types";
 import type { ExternalMigrationImportStatus } from "@app/services/external-migration/external-migration-types";
@@ -751,6 +751,7 @@ export enum EventType {
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS = "view-insights-secrets-management-unused-access",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION = "view-insights-secrets-management-org-auth-method-distribution",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
@@ -828,6 +829,15 @@ export enum EventType {
   AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
   AGENT_VAULT_PERSONAL_VALUES_SET = "agent-vault-personal-values-set",
   AGENT_VAULT_PERSONAL_VALUES_DELETE = "agent-vault-personal-values-delete",
+  AGENT_VAULT_SKILL_CREATE = "agent-vault-skill-create",
+  AGENT_VAULT_SKILL_VERSION_CREATE = "agent-vault-skill-version-create",
+  AGENT_VAULT_SKILL_RENAME = "agent-vault-skill-rename",
+  AGENT_VAULT_SKILL_VERSION_RESTORE = "agent-vault-skill-version-restore",
+  AGENT_VAULT_SKILL_VERSION_VIEW = "agent-vault-skill-version-view",
+  AGENT_VAULT_SKILL_DELETE = "agent-vault-skill-delete",
+  AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD = "agent-vault-access-bundle-skill-add",
+  AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE = "agent-vault-access-bundle-skill-remove",
+  AGENT_VAULT_SKILLS_DELIVERED = "agent-vault-skills-delivered",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
@@ -836,6 +846,8 @@ export enum EventType {
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
   AGENT_VAULT_SESSION_UPDATE = "agent-vault-session-update",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_DELEGATION_SET = "agent-vault-delegation-set",
+  AGENT_VAULT_DELEGATION_DELETE = "agent-vault-delegation-delete",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
   AGENT_VAULT_PROXY_TOKEN_ROTATE = "agent-vault-proxy-token-rotate",
@@ -957,6 +969,9 @@ export enum EventType {
   ROTATE_OAUTH_CLIENT_SECRET = "rotate-oauth-client-secret",
   OAUTH_CLIENT_AUTHORIZE = "oauth-client-authorize",
   OAUTH_CLIENT_TOKEN_EXCHANGE = "oauth-client-token-exchange",
+
+  // OIDC Issuer
+  ISSUE_OIDC_TOKEN = "issue-oidc-token",
 
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
@@ -2038,6 +2053,7 @@ interface AddIdentityTlsCertAuthEvent {
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
     verifyClientCertificateChain: boolean;
+    bindAccessTokenToCertificate: boolean;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -2059,6 +2075,7 @@ interface UpdateIdentityTlsCertAuthEvent {
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
     verifyClientCertificateChain?: boolean;
+    bindAccessTokenToCertificate?: boolean;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -3304,7 +3321,7 @@ interface DeleteCert {
     serialNumber: string;
     notAfter: string;
     source: CertificateSource;
-    deletionAllowedReason: CertificateDeletionEligibility;
+    statusAtDeletion: CertStatus;
     applicationId?: string | null;
     applicationName?: string | null;
   };
@@ -6019,6 +6036,17 @@ interface ViewSecretManagementInsightsAccessVolumeEvent {
   };
 }
 
+interface ViewSecretManagementInsightsUnusedAccessEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS;
+  metadata: {
+    projectId: string;
+    // Set when one principal's unused secrets were viewed rather than the project list.
+    principalType?: string;
+    principalId?: string;
+    principalName?: string;
+  };
+}
+
 interface ViewSecretManagementInsightsOrgAuthMethodDistributionEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION;
   metadata: {
@@ -6730,6 +6758,100 @@ interface AgentVaultPersonalValuesDeleteEvent {
   };
 }
 
+interface AgentVaultSkillCreateEvent {
+  type: EventType.AGENT_VAULT_SKILL_CREATE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+    sha256: string;
+  };
+}
+
+interface AgentVaultSkillVersionCreateEvent {
+  type: EventType.AGENT_VAULT_SKILL_VERSION_CREATE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+    sha256: string;
+  };
+}
+
+interface AgentVaultSkillRenameEvent {
+  type: EventType.AGENT_VAULT_SKILL_RENAME;
+  metadata: {
+    skillId: string;
+    oldName: string;
+    newName: string;
+  };
+}
+
+interface AgentVaultSkillVersionRestoreEvent {
+  type: EventType.AGENT_VAULT_SKILL_VERSION_RESTORE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+    restoredFromVersion: number;
+    sha256: string;
+  };
+}
+
+interface AgentVaultSkillVersionViewEvent {
+  type: EventType.AGENT_VAULT_SKILL_VERSION_VIEW;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    version: number;
+  };
+}
+
+interface AgentVaultSkillDeleteEvent {
+  type: EventType.AGENT_VAULT_SKILL_DELETE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    // The access bundles the skill was in when it was deleted.
+    removedFromBundles: { id: string; name: string }[];
+  };
+}
+
+interface AgentVaultAccessBundleSkillAddEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    accessBundleId: string;
+    accessBundleName: string;
+  };
+}
+
+interface AgentVaultAccessBundleSkillRemoveEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE;
+  metadata: {
+    skillId: string;
+    skillName: string;
+    accessBundleId: string;
+    accessBundleName: string;
+  };
+}
+
+// Recorded once per fetch when the CLI gets a session's skills at agent start, not when the agent reads them.
+interface AgentVaultSkillsDeliveredEvent {
+  type: EventType.AGENT_VAULT_SKILLS_DELIVERED;
+  metadata: {
+    sessionId: string;
+    accessBundleId: string;
+    accessBundleName: string;
+    skills: { skillId: string; skillName: string; version: number; sha256: string }[];
+    // Set when the machine identity in the actor started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
+  };
+}
+
 interface AgentVaultProductMemberAddEvent {
   type: EventType.AGENT_VAULT_MEMBER_ADD;
   metadata: {
@@ -6809,6 +6931,10 @@ interface AgentVaultSessionMintEvent {
     accessBundleId: string;
     accessBundleName: string;
     expiresAt: string | null;
+    // Set when a machine identity started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 
@@ -6820,6 +6946,10 @@ interface AgentVaultSessionUpdateEvent {
     previousLabel: string | null;
     sessionOwner: string;
     accessBundleName: string | null;
+    // Set when the machine identity in sessionOwner started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 
@@ -6830,6 +6960,32 @@ interface AgentVaultSessionRevokeEvent {
     label: string | null;
     sessionOwner: string;
     accessBundleName: string | null;
+    // Set when the machine identity in sessionOwner started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
+  };
+}
+
+interface AgentVaultDelegationSetEvent {
+  type: EventType.AGENT_VAULT_DELEGATION_SET;
+  metadata: {
+    machineIdentityId: string;
+    machineIdentityName: string;
+    scope: string;
+    users: { userId: string; userName: string }[];
+    groups: { groupId: string; groupName: string }[];
+  };
+}
+
+interface AgentVaultDelegationDeleteEvent {
+  type: EventType.AGENT_VAULT_DELEGATION_DELETE;
+  metadata: {
+    machineIdentityId: string;
+    machineIdentityName: string;
+    scope: string;
+    users: { userId: string; userName: string }[];
+    groups: { groupId: string; groupName: string }[];
   };
 }
 
@@ -7877,6 +8033,15 @@ interface OauthClientTokenExchangeEvent {
   };
 }
 
+interface IssueOidcTokenEvent {
+  type: EventType.ISSUE_OIDC_TOKEN;
+  metadata: {
+    connectionId: string;
+    connectionName: string;
+    audience: string;
+  };
+}
+
 interface CreateEmailDomainEvent {
   type: EventType.CREATE_EMAIL_DOMAIN;
   metadata: {
@@ -8764,6 +8929,7 @@ export type Event =
   | DashboardGetSecretVersionValueEvent
   | ViewSecretManagementInsightsCalendarEvent
   | ViewSecretManagementInsightsAccessVolumeEvent
+  | ViewSecretManagementInsightsUnusedAccessEvent
   | ViewSecretManagementInsightsOrgAuthMethodDistributionEvent
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent
@@ -8826,12 +8992,23 @@ export type Event =
   | AgentVaultVariableValueViewEvent
   | AgentVaultPersonalValuesSetEvent
   | AgentVaultPersonalValuesDeleteEvent
+  | AgentVaultSkillCreateEvent
+  | AgentVaultSkillVersionCreateEvent
+  | AgentVaultSkillVersionRestoreEvent
+  | AgentVaultSkillVersionViewEvent
+  | AgentVaultSkillRenameEvent
+  | AgentVaultSkillDeleteEvent
+  | AgentVaultAccessBundleSkillAddEvent
+  | AgentVaultAccessBundleSkillRemoveEvent
+  | AgentVaultSkillsDeliveredEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
   | AgentVaultProductMemberRemoveEvent
   | AgentVaultAccessBundleMemberAddEvent
   | AgentVaultAccessBundleMemberRemoveEvent
   | AgentVaultSessionMintEvent
+  | AgentVaultDelegationSetEvent
+  | AgentVaultDelegationDeleteEvent
   | AgentVaultSessionUpdateEvent
   | AgentVaultSessionRevokeEvent
   | AgentVaultProxyRegisterEvent
@@ -8939,6 +9116,7 @@ export type Event =
   | RotateOauthClientSecretEvent
   | OauthClientAuthorizeEvent
   | OauthClientTokenExchangeEvent
+  | IssueOidcTokenEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent

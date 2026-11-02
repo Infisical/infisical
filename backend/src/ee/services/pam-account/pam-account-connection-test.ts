@@ -469,12 +469,13 @@ export const CLOUD_CONNECTION_VALIDATORS: Partial<Record<PamAccountType, CloudCo
       scope: AZURE_SCOPES.arm
     });
   },
-  [PamAccountType.GcpServiceAccount]: async ({ connectionDetails, credentials }) => {
+  [PamAccountType.GcpServiceAccount]: async ({ connectionDetails, credentials, orgId }) => {
     if (!credentials) return;
     await mintGcpAccessToken({
       serviceAccountEmail: connectionDetails.serviceAccountEmail as string,
       authMethod: credentials.authMethod as string,
-      serviceAccountKeyJson: credentials.serviceAccountKeyJson as string | undefined
+      serviceAccountKeyJson: credentials.serviceAccountKeyJson as string | undefined,
+      orgId
     });
   }
 };

@@ -2856,3 +2856,13 @@ html[data-cli-nav] #sidebar-content li > a[aria-current="page"] {
 html.dark[data-cli-nav] #sidebar-content li > a[aria-current="page"] {
   color: #9f9f9f;
 }
+
+/* Card and sidebar icons take one image, and this file is inlined into each page, so a
+   url() swap resolves against the page path and 404s. These logos' dark versions are
+   inversions of the light ones, so invert instead. */
+html.dark img[src*="/images/agent-vault-agents/OpenAI.png"],
+html.dark img[src*="/images/agent-vault-agents/hermes.png"],
+html.dark img[src*="/images/agent-vault-agents/opencode.svg"],
+html.dark img[src*="/images/agent-vault-agents/daytona.svg"] {
+  filter: invert(1);
+}

@@ -526,6 +526,7 @@ const SettingsTab = ({
           }
           createNotification({ type: "error", text: "Failed to update template" });
         },
+        // oxlint-disable-next-line react/no-unstable-nested-components -- a callback that builds a toast, not a component
         onSuccess: async (result) => {
           createNotification({ type: "success", text: "Template updated" });
           const { corsProbeUrl } = result as { corsProbeUrl?: string | null };

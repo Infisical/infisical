@@ -12,8 +12,8 @@ import {
 } from "@app/components/v3";
 import { PkiSync, TKempVirtualService, useListKempVirtualServices } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncConnectionField } from "./PkiSyncConnectionField";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 const getVirtualServiceLabel = (vs: TKempVirtualService) =>
   vs.name ? `${vs.name} (${vs.address}:${vs.port})` : `${vs.address}:${vs.port}`;

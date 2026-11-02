@@ -1,5 +1,8 @@
+import { IncomingHttpHeaders } from "node:http";
+
 import jwt from "jsonwebtoken";
 
+import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
@@ -8,6 +11,8 @@ import { TIp } from "@app/lib/ip";
 
 import { AuthTokenType } from "../auth/auth-type";
 import {
+  CERTIFICATE_THUMBPRINT_CLAIM,
+  TCertificateConfirmation,
   TComputeIssuedTtlInput,
   TCoreTokenClaims,
   TIdentityAccessTokenJwtPayload,
@@ -404,10 +409,64 @@ export const signIdentityAccessToken = (input: TSignIdentityAccessTokenInput): T
     payload.numUsesLimit = input.numUsesLimit;
   }
 
+  if (input.cnf) {
+    payload.cnf = input.cnf;
+  }
+
   const accessToken = crypto.jwt().sign(payload, appCfg.AUTH_SECRET, {
     jwtid: jti,
     expiresIn: input.ttlSeconds
   });
 
   return { accessToken, jti, expiresIn: input.ttlSeconds };
+};
+
+export const computeCertificateThumbprint = (certificateDer: Buffer): string =>
+  crypto.nativeCrypto.createHash("sha256").update(certificateDer).digest("base64url");
+
+const parsePresentedLeafCertificate = (clientCertificate: string): Buffer | null => {
+  try {
+    const [leaf] = extractX509CertFromChain(decodeURIComponent(clientCertificate));
+    return new crypto.nativeCrypto.X509Certificate(leaf).raw;
+  } catch {
+    return null;
+  }
+};
+
+export const assertCertificateBinding = ({
+  cnf,
+  clientCertificate,
+  messagePrefix
+}: {
+  cnf?: TCertificateConfirmation;
+  clientCertificate?: string;
+  messagePrefix: "Failed to authorize" | "Cannot renew";
+}) => {
+  if (!cnf) return;
+
+  if (!clientCertificate) {
+    throw new UnauthorizedError({
+      message: `${messagePrefix}: access token is bound to a client certificate, but no client certificate was presented. Send every request through the TLS-terminating proxy with the same client certificate used to log in`
+    });
+  }
+
+  const leafDer = parsePresentedLeafCertificate(clientCertificate);
+  if (!leafDer) {
+    throw new UnauthorizedError({
+      message: `${messagePrefix}: the client certificate header could not be read. The TLS-terminating proxy must forward the URL-encoded certificate chain`
+    });
+  }
+
+  const presented = Buffer.from(computeCertificateThumbprint(leafDer));
+  const expected = Buffer.from(cnf[CERTIFICATE_THUMBPRINT_CLAIM] ?? "");
+  if (presented.length !== expected.length || !crypto.nativeCrypto.timingSafeEqual(presented, expected)) {
+    throw new UnauthorizedError({
+      message: `${messagePrefix}: the presented client certificate does not match the certificate the access token is bound to`
+    });
+  }
+};
+
+export const readClientCertificateHeader = (headers: IncomingHttpHeaders): string | undefined => {
+  const value = headers[getConfig().IDENTITY_TLS_CERT_AUTH_CLIENT_CERTIFICATE_HEADER_KEY];
+  return typeof value === "string" ? value : undefined;
 };

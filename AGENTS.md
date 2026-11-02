@@ -297,9 +297,9 @@ Run `make lint-docs-branch` after any change under `docs/` (or `make lint-docs` 
 
 When building frontend UI, follow [DESIGN.md](DESIGN.md) for the v3 design system — colors, typography, components, and voice.
 
-Before changing a shared frontend component's lifecycle, read the [shared component lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) for current deprecations, blockers, and replacement decisions.
+Before deprecating or removing a shared frontend component, follow the component lifecycle rules in [`frontend/AGENTS.md`](frontend/AGENTS.md).
 
-Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row; `Combobox` replaces both the deprecated `FilterableSelect` and `CreatableSelect`. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `components/app-connections/useConnectionCreation.tsx`). A v2 `Modal` parent sits at `z-[60]`, above v3 overlays, so migrate it to the v3 `Dialog` when it hosts one (see `CaInstallCertModal/CaInstallCertModal.tsx`).
+Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `components/app-connections/useConnectionCreation.tsx`).
 
 ## Issue and PR Guidelines
 

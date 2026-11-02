@@ -113,7 +113,7 @@ export const useCaCreation = <TOption,>(
               </DialogDescription>
             </DialogHeader>
             <form
-              className="flex min-h-0 flex-1 flex-col"
+              className="flex min-h-0 flex-1 flex-col gap-6"
               onSubmit={(event) => {
                 event.preventDefault();
                 startCreation();

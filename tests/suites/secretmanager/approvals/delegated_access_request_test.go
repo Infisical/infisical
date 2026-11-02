@@ -47,7 +47,7 @@ func TestDelegatedAccessRequest_Decision(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusOK, code)
-		require.Equal(t, delegatedState{status: "approved", delegated: "approved", granted: true}, req.await(t, "approved"))
+		require.Equal(t, delegatedState{status: "approved", delegated: "approved", granted: true}, req.await(t, "approved", "approved"))
 		wait.Until(t, "the requester to read the secret", func() bool { return req.readSecret(t) == http.StatusOK },
 			wait.Timeout(outboxWait), wait.Interval(time.Second))
 	})
@@ -64,7 +64,7 @@ func TestDelegatedAccessRequest_Decision(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusOK, code)
-		require.Equal(t, delegatedState{status: "rejected", delegated: "rejected"}, req.await(t, "rejected"))
+		require.Equal(t, delegatedState{status: "rejected", delegated: "rejected"}, req.await(t, "rejected", "rejected"))
 		require.Equal(t, http.StatusForbidden, req.readSecret(t))
 	})
 
@@ -82,7 +82,7 @@ func TestDelegatedAccessRequest_Decision(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusOK, code)
-		closed := req.await(t, "failed")
+		closed := req.await(t, "rejected", "failed")
 		require.Equal(t, delegatedState{status: "rejected", delegated: "failed", reason: closed.reason}, closed)
 		require.Contains(t, closed.reason, "does not recognise ('cancelled')")
 		require.Equal(t, http.StatusForbidden, req.readSecret(t))
@@ -217,7 +217,7 @@ func TestDelegatedAccessRequest_CallbackLimit(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusOK, code)
-		require.Equal(t, delegatedState{status: "approved", delegated: "approved", granted: true}, req.await(t, "approved"))
+		require.Equal(t, delegatedState{status: "approved", delegated: "approved", granted: true}, req.await(t, "approved", "approved"))
 	})
 }
 
@@ -304,7 +304,7 @@ func newWaitingDelegatedRequest(t *testing.T) *delegatedRequest {
 	req.sn.ExpectEvent[servicenow.AccessRequestCreated](t, func(e servicenow.AccessRequestCreated) bool {
 		return e.RequestID == req.id.String()
 	}, fakenet.Within(outboxWait))
-	req.await(t, "waiting_approval")
+	req.await(t, "pending", "waiting_approval")
 	req.record = req.sn.AccessRequest(t, req.id.String())
 	return req
 }
@@ -346,14 +346,17 @@ func (r *delegatedRequest) state(ctx context.Context) (delegatedState, error) {
 	return delegatedState{}, fmt.Errorf("access request %s is not listed", r.id)
 }
 
-// await waits for the delegated approval system's status to reach want.
-func (r *delegatedRequest) await(t *testing.T, want string) delegatedState {
+// await waits for Infisical's status and the delegated approval system's status to reach
+// status and delegated. Both are committed together, but the list reads the approval
+// request before the delegated row, so one read can show the new delegated status beside
+// the old approval status. Once the approval status matches, the rest of that read is current.
+func (r *delegatedRequest) await(t *testing.T, status, delegated string) delegatedState {
 	t.Helper()
 	got, err := wait.For(t.Context(), func(ctx context.Context) (delegatedState, bool, error) {
 		st, err := r.state(ctx)
-		return st, err == nil && st.delegated == want, err
+		return st, err == nil && st.status == status && st.delegated == delegated, err
 	}, wait.Timeout(outboxWait))
-	require.NoErrorf(t, err, "waiting for the delegated request to reach %s", want)
+	require.NoErrorf(t, err, "waiting for the request to reach %s / %s", status, delegated)
 	return got
 }
 

@@ -1594,6 +1594,7 @@ export const projectServiceFactory = ({
     forPkiSync = false,
     search,
     status,
+    includeDeleted,
     profileIds,
     fromDate,
     toDate,
@@ -1666,6 +1667,7 @@ export const projectServiceFactory = ({
       ...(status && {
         status: Array.isArray(status) ? status : status.split(",").map((s) => s.trim())
       }),
+      ...(includeDeleted && { includeDeleted }),
       ...(profileIds && { profileIds }),
       ...(fromDate && { fromDate }),
       ...(toDate && { toDate }),
