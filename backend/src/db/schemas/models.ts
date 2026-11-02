@@ -285,8 +285,13 @@ export enum TableName {
   AgentVaultPersonalValueReference = "agent_vault_personal_value_references",
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
+  AgentVaultDelegation = "agent_vault_delegations",
+  AgentVaultDelegationSubject = "agent_vault_delegation_subjects",
   AgentVaultProxy = "agent_vault_proxies",
   AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
+  AgentVaultSkill = "agent_vault_skills",
+  AgentVaultSkillVersion = "agent_vault_skill_versions",
+  AgentVaultAccessBundleSkill = "agent_vault_access_bundle_skills",
   // Dropped; kept only for the migrations that create and drop it.
   AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 

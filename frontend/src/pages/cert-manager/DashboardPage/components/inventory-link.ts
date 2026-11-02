@@ -9,7 +9,6 @@ export const getInventoryLink = (
 ) => {
   const pinnedLink = getInstancePinningLink(project.orgId, project, "inventory");
   if (!pinnedLink) throw new Error("The inventory link needs a Certificate Manager project");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { ...pinnedLink, search: filters as any };
 };
 

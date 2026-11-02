@@ -1,5 +1,3 @@
-/* eslint-disable jsx-a11y/no-static-element-interactions */
-/* eslint-disable jsx-a11y/click-events-have-key-events */
 import { useRef, useState } from "react";
 import { EyeIcon, EyeOffIcon, TriangleAlertIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";

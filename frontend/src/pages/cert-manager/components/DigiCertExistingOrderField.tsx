@@ -25,7 +25,6 @@ export const isUsingExistingCertificate = (data: {
 }) => Boolean(data.externalOrderId) && data.externalOrderMode === ExternalOrderMode.UseExisting;
 
 type DigiCertExistingOrderFieldProps = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: UseFormReturn<any>;
   digicert: { appConnectionId: string; organizationId: number; productNameId: string };
 };

@@ -1456,6 +1456,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         forPkiSync: z.boolean().default(false).optional().describe(PROJECTS.SEARCH_CERTIFICATES.forPkiSync),
         search: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.search),
         status: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
+        includeDeleted: z.boolean().optional().describe(PROJECTS.SEARCH_CERTIFICATES.includeDeleted),
         profileIds: z.array(z.string().uuid()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.profileIds),
         fromDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.fromDate),
         toDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.toDate),

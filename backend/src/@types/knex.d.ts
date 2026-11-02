@@ -22,7 +22,16 @@ import {
   TAdditionalPrivilegesUpdate,
   TAgentVaultAccessBundles,
   TAgentVaultAccessBundlesInsert,
+  TAgentVaultAccessBundleSkills,
+  TAgentVaultAccessBundleSkillsInsert,
+  TAgentVaultAccessBundleSkillsUpdate,
   TAgentVaultAccessBundlesUpdate,
+  TAgentVaultDelegations,
+  TAgentVaultDelegationsInsert,
+  TAgentVaultDelegationSubjects,
+  TAgentVaultDelegationSubjectsInsert,
+  TAgentVaultDelegationSubjectsUpdate,
+  TAgentVaultDelegationsUpdate,
   TAgentVaultPersonalValueReferences,
   TAgentVaultPersonalValueReferencesInsert,
   TAgentVaultPersonalValueReferencesUpdate,
@@ -53,6 +62,12 @@ import {
   TAgentVaultSessions,
   TAgentVaultSessionsInsert,
   TAgentVaultSessionsUpdate,
+  TAgentVaultSkills,
+  TAgentVaultSkillsInsert,
+  TAgentVaultSkillsUpdate,
+  TAgentVaultSkillVersions,
+  TAgentVaultSkillVersionsInsert,
+  TAgentVaultSkillVersionsUpdate,
   TAgentVaultVariables,
   TAgentVaultVariablesInsert,
   TAgentVaultVariablesUpdate,
@@ -1884,6 +1899,16 @@ declare module "knex/types/tables" {
       TAgentVaultSessionAccessBundlesInsert,
       TAgentVaultSessionAccessBundlesUpdate
     >;
+    [TableName.AgentVaultDelegation]: KnexOriginal.CompositeTableType<
+      TAgentVaultDelegations,
+      TAgentVaultDelegationsInsert,
+      TAgentVaultDelegationsUpdate
+    >;
+    [TableName.AgentVaultDelegationSubject]: KnexOriginal.CompositeTableType<
+      TAgentVaultDelegationSubjects,
+      TAgentVaultDelegationSubjectsInsert,
+      TAgentVaultDelegationSubjectsUpdate
+    >;
     [TableName.AgentVaultProxy]: KnexOriginal.CompositeTableType<
       TAgentVaultProxies,
       TAgentVaultProxiesInsert,
@@ -1893,6 +1918,21 @@ declare module "knex/types/tables" {
       TAgentVaultSessionLogConfigs,
       TAgentVaultSessionLogConfigsInsert,
       TAgentVaultSessionLogConfigsUpdate
+    >;
+    [TableName.AgentVaultSkill]: KnexOriginal.CompositeTableType<
+      TAgentVaultSkills,
+      TAgentVaultSkillsInsert,
+      TAgentVaultSkillsUpdate
+    >;
+    [TableName.AgentVaultSkillVersion]: KnexOriginal.CompositeTableType<
+      TAgentVaultSkillVersions,
+      TAgentVaultSkillVersionsInsert,
+      TAgentVaultSkillVersionsUpdate
+    >;
+    [TableName.AgentVaultAccessBundleSkill]: KnexOriginal.CompositeTableType<
+      TAgentVaultAccessBundleSkills,
+      TAgentVaultAccessBundleSkillsInsert,
+      TAgentVaultAccessBundleSkillsUpdate
     >;
     [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
       TPamAccountPolicies,

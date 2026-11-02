@@ -120,7 +120,6 @@ const SignUpSettingsCard = ({ allowSignUp, allowedSignUpDomain }: SignUpSettings
   } = useForm<TSignUpForm>({
     resolver: zodResolver(signUpFormSchema),
     defaultValues: {
-      // eslint-disable-next-line
       signUpMode: allowSignUp ? SignUpModes.Anyone : SignUpModes.Disabled,
       allowedSignUpDomain
     }
@@ -128,7 +127,6 @@ const SignUpSettingsCard = ({ allowSignUp, allowedSignUpDomain }: SignUpSettings
 
   useEffect(() => {
     reset({
-      // eslint-disable-next-line
       signUpMode: allowSignUp ? SignUpModes.Anyone : SignUpModes.Disabled,
       allowedSignUpDomain
     });

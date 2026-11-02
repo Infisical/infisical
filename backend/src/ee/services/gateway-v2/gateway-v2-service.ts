@@ -1055,6 +1055,7 @@ export const gatewayV2ServiceFactory = ({
     orgPermission: OrgServiceActor;
     capabilities?: {
       pkcs11?: boolean;
+      pkcs11MlDsa?: boolean;
       sessionLogMaskingBuiltInDetection?: boolean;
       clickhouseNativeProtocol?: boolean;
       certificateScan?: boolean;

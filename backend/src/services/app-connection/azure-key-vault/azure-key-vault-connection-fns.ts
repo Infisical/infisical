@@ -21,6 +21,9 @@ import {
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { getAppConnectionOidcSubject, getOidcIssuerUrl } from "@app/services/oidc-issuer/oidc-issuer-fns";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
+import { TSignOidcIssuerTokenDTO } from "@app/services/oidc-issuer/oidc-issuer-types";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
@@ -31,8 +34,51 @@ import {
   TAzureKeyVaultConnectionCertificateCredentials,
   TAzureKeyVaultConnectionClientSecretCredentials,
   TAzureKeyVaultConnectionConfig,
-  TAzureKeyVaultConnectionCredentials
+  TAzureKeyVaultConnectionCredentials,
+  TAzureKeyVaultConnectionManagedIdentityCredentials
 } from "./azure-key-vault-connection-types";
+
+// Entra only accepts federated tokens with this audience
+const AZURE_FEDERATED_TOKEN_AUDIENCE = "api://AzureADTokenExchange";
+
+// Not stored with the credentials, so the issuer follows SITE_URL if it changes. Without SITE_URL there is no issuer,
+// but reading the connection must still work.
+export const getAzureKeyVaultConnectionFederatedCredential = ({ id, orgId }: { id: string; orgId: string }) => {
+  const { SITE_URL } = getConfig();
+
+  return {
+    issuerUrl: SITE_URL ? getOidcIssuerUrl(SITE_URL, orgId) : null,
+    subjectIdentifier: getAppConnectionOidcSubject(id),
+    audience: AZURE_FEDERATED_TOKEN_AUDIENCE
+  };
+};
+
+const getManagedIdentityAccessToken = async (
+  {
+    appConnection,
+    tenantId,
+    clientId
+  }: { appConnection: TSignOidcIssuerTokenDTO["appConnection"]; tenantId: string; clientId: string },
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+) => {
+  const clientAssertion = await oidcIssuerService.signToken({
+    appConnection,
+    audience: AZURE_FEDERATED_TOKEN_AUDIENCE
+  });
+
+  const { data } = await request.post<ExchangeCodeAzureResponse>(
+    IntegrationUrls.AZURE_TOKEN_URL.replace("common", tenantId),
+    new URLSearchParams({
+      grant_type: "client_credentials",
+      scope: `https://vault.azure.net/.default`,
+      client_id: clientId,
+      client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+      client_assertion: clientAssertion
+    })
+  );
+
+  return { accessToken: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 };
+};
 
 /**
  * Proxies an Azure Key Vault data-plane request through a gateway when the connection has one
@@ -132,7 +178,8 @@ export const requestWithAzureKeyVaultGateway = async <T>(
 export const getAzureConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -301,6 +348,44 @@ export const getAzureConnectionAccessToken = async (
 
       return { accessToken: certificateData.access_token };
 
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+      const managedIdentityCredentials = (await decryptAppConnectionCredentials({
+        orgId: appConnection.orgId,
+        kmsService,
+        encryptedCredentials: appConnection.encryptedCredentials,
+        projectId: appConnection.projectId
+      })) as TAzureKeyVaultConnectionManagedIdentityCredentials;
+
+      if (
+        managedIdentityCredentials.accessToken &&
+        managedIdentityCredentials.expiresAt &&
+        managedIdentityCredentials.expiresAt > currentTime + 300000
+      ) {
+        return { accessToken: managedIdentityCredentials.accessToken };
+      }
+
+      const managedIdentityToken = await getManagedIdentityAccessToken(
+        {
+          appConnection,
+          tenantId: managedIdentityCredentials.tenantId,
+          clientId: managedIdentityCredentials.clientId
+        },
+        oidcIssuerService
+      );
+
+      const encryptedManagedIdentityCredentials = await encryptAppConnectionCredentials({
+        credentials: { ...managedIdentityCredentials, ...managedIdentityToken },
+        orgId: appConnection.orgId,
+        kmsService,
+        projectId: appConnection.projectId
+      });
+
+      await appConnectionDAL.updateById(appConnection.id, {
+        encryptedCredentials: encryptedManagedIdentityCredentials
+      });
+
+      return { accessToken: managedIdentityToken.accessToken };
+
     default:
       throw new InternalServerError({
         message: `Unhandled Azure Key Vault connection method: ${appConnection.method as AzureKeyVaultConnectionMethod}`
@@ -317,14 +402,18 @@ export const getAzureKeyVaultConnectionListItem = () => {
     methods: Object.values(AzureKeyVaultConnectionMethod) as [
       AzureKeyVaultConnectionMethod.OAuth,
       AzureKeyVaultConnectionMethod.ClientSecret,
-      AzureKeyVaultConnectionMethod.Certificate
+      AzureKeyVaultConnectionMethod.Certificate,
+      AzureKeyVaultConnectionMethod.ManagedIdentity
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID
   };
 };
 
-export const validateAzureKeyVaultConnectionCredentials = async (config: TAzureKeyVaultConnectionConfig) => {
-  const { credentials: inputCredentials, method } = config;
+export const validateAzureKeyVaultConnectionCredentials = async (
+  config: TAzureKeyVaultConnectionConfig,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+) => {
+  const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
   const { INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID, INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET, SITE_URL } =
     getConfig();
@@ -479,6 +568,38 @@ export const validateAzureKeyVaultConnectionCredentials = async (config: TAzureK
             message: "Failed to get access token"
           });
         }
+      }
+
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+      const { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId } = inputCredentials as {
+        tenantId: string;
+        clientId: string;
+      };
+
+      // A new connection has no ID yet, so Azure cannot trust its subject. Verifying it after create runs the
+      // exchange once the customer has added the federated credential.
+      if (!connection) return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId };
+
+      try {
+        const managedIdentityToken = await getManagedIdentityAccessToken(
+          {
+            appConnection: { ...connection, orgId, projectId },
+            tenantId: managedIdentityTenantId,
+            clientId: managedIdentityClientId
+          },
+          oidcIssuerService
+        );
+
+        return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId, ...managedIdentityToken };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to get access token: ${
+              (e?.response?.data as { error_description?: string })?.error_description || "Unknown error"
+            }`
+          });
+        }
+        throw e;
       }
 
     default:

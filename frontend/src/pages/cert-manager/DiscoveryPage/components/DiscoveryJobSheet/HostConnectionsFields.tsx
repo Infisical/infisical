@@ -21,8 +21,8 @@ import {
   useListAvailableAppConnectionsForApps
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { GatewayCapability } from "@app/hooks/api/gateways-v2/types";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 
 import { THostDiscoveryJobForm } from "./discovery-job-form-schema";
 

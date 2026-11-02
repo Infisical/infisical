@@ -1,6 +1,8 @@
 import { z } from "zod";
 
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
 import type { THsmConnectorServiceFactoryDep } from "./hsm-connector-service";
 import type { THsmConnectorCredentials } from "./hsm-connector-types";
@@ -16,6 +18,24 @@ export const HsmKeyLabelSchema = z
     (v) => Buffer.byteLength(v, "utf8") <= HSM_KEY_LABEL_MAX_BYTES,
     `Key label must be at most ${HSM_KEY_LABEL_MAX_BYTES} bytes`
   );
+
+export enum HsmGatewayCapability {
+  MlDsa = "pkcs11MlDsa"
+}
+
+const HSM_KEY_ALGORITHM_BY_CERT_KEY_ALGORITHM: Partial<Record<string, HsmKeyAlgorithm>> = {
+  [CertKeyAlgorithm.RSA_2048]: HsmKeyAlgorithm.RSA_2048,
+  [CertKeyAlgorithm.RSA_3072]: HsmKeyAlgorithm.RSA_3072,
+  [CertKeyAlgorithm.RSA_4096]: HsmKeyAlgorithm.RSA_4096,
+  [CertKeyAlgorithm.ECDSA_P256]: HsmKeyAlgorithm.ECC_P256,
+  [CertKeyAlgorithm.ECDSA_P384]: HsmKeyAlgorithm.ECC_P384,
+  [CertKeyAlgorithm.ML_DSA_44]: HsmKeyAlgorithm.ML_DSA_44,
+  [CertKeyAlgorithm.ML_DSA_65]: HsmKeyAlgorithm.ML_DSA_65,
+  [CertKeyAlgorithm.ML_DSA_87]: HsmKeyAlgorithm.ML_DSA_87
+};
+
+export const certKeyAlgorithmToHsmKeyAlgorithm = (keyAlgorithm: string): HsmKeyAlgorithm | undefined =>
+  HSM_KEY_ALGORITHM_BY_CERT_KEY_ALGORITHM[keyAlgorithm];
 
 export const HSM_CREDENTIALS_LIMITS = {
   slotLabelMax: 128,

@@ -113,7 +113,6 @@ function DataGridColumnResizerImpl<TData, TValue>({
   }, [header.column]);
 
   return (
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex
     <div
       role="separator"
       aria-orientation="vertical"
@@ -121,7 +120,7 @@ function DataGridColumnResizerImpl<TData, TValue>({
       aria-valuenow={header.column.getSize()}
       aria-valuemin={defaultColumnDef.minSize}
       aria-valuemax={defaultColumnDef.maxSize}
-      tabIndex={0} // eslint-disable-line jsx-a11y/no-noninteractive-tabindex
+      tabIndex={0}
       className={cn(
         "absolute -end-px top-0 z-50 h-full w-0.5 cursor-ew-resize touch-none bg-border transition-opacity select-none after:absolute after:inset-y-0 after:start-1/2 after:h-full after:w-[18px] after:-translate-x-1/2 after:content-[''] hover:bg-foreground focus:bg-foreground focus:outline-none",
         header.column.getIsResizing() ? "bg-foreground" : "opacity-0 hover:opacity-100"

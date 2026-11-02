@@ -324,6 +324,13 @@ export enum ProjectPermissionAgentVaultProxyActions {
   Revoke = "revoke"
 }
 
+export enum ProjectPermissionAgentVaultSkillActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -403,6 +410,7 @@ export enum ProjectPermissionSub {
   AgentVaultAccessBundles = "agent-vault-access-bundles",
   AgentVaultSessions = "agent-vault-sessions",
   AgentVaultProxies = "agent-vault-proxies",
+  AgentVaultSkills = "agent-vault-skills",
   Insights = "insights"
 }
 
@@ -725,6 +733,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
   | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
+  | [ProjectPermissionAgentVaultSkillActions, ProjectPermissionSub.AgentVaultSkills]
   | [
       ProjectPermissionCertificateProfileActions,
       (
@@ -1676,6 +1685,13 @@ const GeneralPermissionSchema = [
     subject: z.literal(ProjectPermissionSub.AgentVaultProxies).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultProxyActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.AgentVaultSkills).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultSkillActions).describe(
       "Describe what action an entity can take."
     )
   }),

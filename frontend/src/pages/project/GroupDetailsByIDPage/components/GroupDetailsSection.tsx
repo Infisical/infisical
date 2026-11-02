@@ -32,7 +32,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
   const { currentProject } = useProject();
   const projectLabel = getProjectLabel(currentProject?.type);
 
-  // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });

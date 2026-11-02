@@ -1,4 +1,4 @@
-import { createMongoAbility, MongoAbility, RawRuleOf, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { describe, expect, test } from "vitest";
 
 import { conditionsMatcher } from "@app/lib/casl";
@@ -233,6 +233,21 @@ describe("throwIfMissingSecretReadValueOrDescribePermission", () => {
     expect(() =>
       throwIfMissingSecretReadValueOrDescribePermission(ability, ProjectPermissionSecretActions.DescribeSecret)
     ).toThrow();
+  });
+
+  test("throws a ForbiddenError for the requested action, not the legacy one", () => {
+    const ability = buildAbility([]);
+    let thrown: unknown;
+    try {
+      throwIfMissingSecretReadValueOrDescribePermission(ability, ProjectPermissionSecretActions.ReadValue, {
+        environment: "prod",
+        secretPath: "/"
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(ForbiddenError);
+    expect((thrown as ForbiddenError<MongoAbility>).action).toBe(ProjectPermissionSecretActions.ReadValue);
   });
 
   test("respects conditions on the DescribeSecret rule", () => {

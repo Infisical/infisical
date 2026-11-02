@@ -63,9 +63,9 @@ import {
   parsePorts
 } from "@app/pages/cert-manager/pki-discovery-utils";
 
-import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 import { DeleteDiscoveryModal } from "./DeleteDiscoveryModal";
 import { DiscoveryJobSheet } from "./DiscoveryJobSheet";
+import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 
 type Props = {
   projectId: string;
