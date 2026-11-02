@@ -278,7 +278,10 @@ export const projectServiceFactory = ({
     const [slugHolder] = await projectDAL.findIncludingExpired({ orgId, slug }, { tx });
     if (slugHolder?.deleteAfter) {
       throw new BadRequestError({
-        message: `Project slug '${slug}' is held by a pending-deletion project. Permanently delete that project first, then retry.`
+        message:
+          new Date(slugHolder.deleteAfter).getTime() > Date.now()
+            ? `Project slug '${slug}' is held by a pending-deletion project. Permanently delete that project first, then retry.`
+            : `Project slug '${slug}' is held by a project that is being permanently deleted. Try again in a few minutes.`
       });
     }
   };
