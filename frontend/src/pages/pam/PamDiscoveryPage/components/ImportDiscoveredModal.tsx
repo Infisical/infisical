@@ -44,7 +44,7 @@ type Props = {
   sourceId: string;
   credentialAccountId?: string;
   accounts: TPamDiscoveredAccount[];
-  onImported: () => void;
+  onImported: (discoveredAccountIds: string[]) => void;
 };
 
 export const ImportDiscoveredModal = ({
@@ -125,6 +125,7 @@ export const ImportDiscoveredModal = ({
       : [items];
 
     const results: TImportPamDiscoveredAccountResult[] = [];
+    let isComplete = false;
     setIsImporting(true);
     try {
       for (const batch of batches) {
@@ -136,12 +137,13 @@ export const ImportDiscoveredModal = ({
         });
         results.push(...batchResults);
       }
+      isComplete = true;
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
-      return;
     } finally {
       setIsImporting(false);
     }
+    if (results.length === 0) return;
 
     const imported = results.filter((r) => r.status === "imported").length;
     const failed = results.length - imported;
@@ -154,8 +156,10 @@ export const ImportDiscoveredModal = ({
       type: failed > 0 || rotationFailures.length > 0 ? "info" : "success",
       text: `Imported ${imported} account${imported === 1 ? "" : "s"}${failed > 0 ? `, ${failed} failed` : ""}${rotationNote}`
     });
+    // earlier batches already went through, so drop them from the selection and keep the rest for a retry
+    onImported(results.map((r) => r.discoveredAccountId));
+    if (!isComplete) return;
     reset();
-    onImported();
     onOpenChange(false);
   };
 
