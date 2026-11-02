@@ -1199,6 +1199,7 @@ export const SecretEditTableRow = ({
       setActionBarWidth(0);
       return;
     }
+    setActionBarWidth(node.offsetWidth);
     const observer = new ResizeObserver(() => setActionBarWidth(node.offsetWidth));
     observer.observe(node);
     actionBarResizeObserverRef.current = observer;
