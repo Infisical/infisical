@@ -266,7 +266,7 @@ export const OrgIdentitiesTab = () => {
           </div>
           <Gate allowed={can("identity", "create")}>
             <Button
-              variant="primary"
+              variant="accent"
               icon="plus"
               disabled={!can("identity", "create")}
               onClick={() => setCreating(true)}

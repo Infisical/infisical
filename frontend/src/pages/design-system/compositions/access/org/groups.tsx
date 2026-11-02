@@ -163,7 +163,7 @@ export const OrgGroupsTab = () => {
         </div>
         <Gate allowed={can("groups", "create")}>
           <Button
-            variant="primary"
+            variant="accent"
             icon="plus"
             disabled={!can("groups", "create")}
             onClick={() => setDialog({})}

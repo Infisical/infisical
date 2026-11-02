@@ -91,7 +91,7 @@ export const ProjectGroupsTab = () => {
         </div>
         <Gate allowed={can("groups", "create")}>
           <Button
-            variant="primary"
+            variant="accent"
             icon="plus"
             disabled={!can("groups", "create")}
             onClick={() => setAdding(true)}

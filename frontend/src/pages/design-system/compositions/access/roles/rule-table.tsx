@@ -381,7 +381,7 @@ export const RuleTable = (props: RuleTableProps) => {
         </div>
         <Gate allowed={editable} reason={reason}>
           <Button
-            variant="outline"
+            variant="accent"
             icon="plus"
             disabled={!editable}
             onClick={() =>

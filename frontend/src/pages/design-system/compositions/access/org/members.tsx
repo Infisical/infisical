@@ -374,7 +374,7 @@ export const OrgMembersTab = () => {
         </div>
         <Gate allowed={can("member", "create")}>
           <Button
-            variant="primary"
+            variant="accent"
             icon="user-plus"
             disabled={!can("member", "create")}
             onClick={() => setInviting(true)}

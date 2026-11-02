@@ -118,7 +118,7 @@ export const ServiceTokensTab = () => {
         </div>
         <Gate allowed={can("service-token", "create")}>
           <Button
-            variant="primary"
+            variant="accent"
             icon="plus"
             disabled={!can("service-token", "create")}
             onClick={() => setCreating(true)}

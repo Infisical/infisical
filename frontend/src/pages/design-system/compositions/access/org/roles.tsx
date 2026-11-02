@@ -267,7 +267,7 @@ export const OrgRolesTab = () => {
         </div>
         <Gate allowed={can("role", "create")}>
           <Button
-            variant="primary"
+            variant="accent"
             icon="plus"
             disabled={!can("role", "create")}
             onClick={() => setDialog({})}

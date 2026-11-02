@@ -165,7 +165,7 @@ export const ProjectMembersTab = () => {
           reason="You don't have permission to add users to this project"
         >
           <Button
-            variant="primary"
+            variant="accent"
             icon="user-plus"
             disabled={!can("member", "create")}
             onClick={() => setAdding(true)}

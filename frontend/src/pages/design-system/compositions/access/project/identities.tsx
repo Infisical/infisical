@@ -193,7 +193,7 @@ export const ProjectIdentitiesTab = () => {
         </div>
         <Gate allowed={can("identity", "create")}>
           <Button
-            variant="primary"
+            variant="accent"
             icon="plus"
             disabled={!can("identity", "create")}
             onClick={() => setAdding(true)}
