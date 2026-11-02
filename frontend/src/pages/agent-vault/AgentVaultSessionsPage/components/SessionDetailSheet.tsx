@@ -80,7 +80,7 @@ export const SessionDetailSheet = ({
         size="workspace"
         // At the workspace default of three quarters, the sidebar would leave the logs table less
         // than its minimum width on most laptop screens.
-        className="flex h-full max-h-full flex-col gap-y-0 sm:w-[90vw]"
+        className="flex h-full max-h-full w-full flex-col gap-y-0 sm:w-[90vw]"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         {!session && isPending && (
@@ -101,9 +101,10 @@ export const SessionDetailSheet = ({
           </Empty>
         )}
         {session && (
-          // The headers share the first grid row, so their bottom borders line up however tall either one is.
-          <div className="grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">
-            <SheetHeader className="border-r">
+          // The headers share the first grid row, so their bottom borders line up however tall either one
+          // is. Below 85rem the cells stack in reading order and the sheet scrolls as a whole.
+          <div className="grid min-h-0 thin-scrollbar flex-1 auto-rows-max grid-cols-1 overflow-y-auto min-[85rem]:grid-cols-[18rem_minmax(0,1fr)] min-[85rem]:grid-rows-[auto_minmax(0,1fr)] min-[85rem]:overflow-hidden">
+            <SheetHeader className="order-1 pr-12 min-[85rem]:order-none min-[85rem]:border-r min-[85rem]:pr-4">
               <div className="flex items-start justify-between gap-2">
                 <h3
                   className={twMerge(
@@ -136,7 +137,7 @@ export const SessionDetailSheet = ({
             </SheetHeader>
 
             {/* pr-12 keeps the button clear of the sheet's close button */}
-            <SheetHeader className="flex-row items-start justify-between gap-4 pr-12">
+            <SheetHeader className="order-3 flex-row flex-wrap items-start justify-between gap-4 pr-12 min-[85rem]:order-none">
               <div className="flex min-w-0 flex-col gap-1.5">
                 <SheetTitle>Session Logs</SheetTitle>
                 <SheetDescription>
@@ -156,8 +157,8 @@ export const SessionDetailSheet = ({
               )}
             </SheetHeader>
 
-            <div className="flex min-h-0 flex-col border-r border-border">
-              <DetailGroup className="min-h-0 thin-scrollbar flex-1 overflow-y-auto p-4">
+            <div className="order-2 flex min-h-0 flex-col border-b border-border min-[85rem]:order-none min-[85rem]:border-r min-[85rem]:border-b-0">
+              <DetailGroup className="min-h-0 thin-scrollbar flex-1 flex-row flex-wrap gap-x-10 overflow-y-auto p-4 min-[85rem]:flex-col">
                 <Detail className="items-start">
                   <DetailLabel>Status</DetailLabel>
                   <SessionStatusBadge status={session.status} />
@@ -236,7 +237,7 @@ export const SessionDetailSheet = ({
               </DetailGroup>
             </div>
 
-            <div className="flex min-h-0 min-w-0 flex-col p-4">
+            <div className="order-4 flex h-[80vh] min-h-0 min-w-0 flex-col p-4 min-[85rem]:order-none min-[85rem]:h-auto">
               <SessionLogsPanel session={session} />
             </div>
           </div>

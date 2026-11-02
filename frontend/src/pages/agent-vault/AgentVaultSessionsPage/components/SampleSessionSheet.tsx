@@ -201,16 +201,21 @@ export const SampleSessionSheet = ({ isOpen, onOpenChange, onSetUp }: Props) => 
         size="workspace"
         // At the workspace default of three quarters, the sidebar would leave the table less than its
         // minimum width on most laptop screens.
-        className="flex h-full max-h-full flex-col gap-y-0 sm:w-[90vw]"
+        className="flex h-full max-h-full w-full flex-col gap-y-0 sm:w-[90vw]"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
-        {/* The headers share the first grid row, so their bottom borders line up however tall either one is. */}
-        <div className="grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">
-          <SheetHeader className="border-r">
-            <h3 className="font-alliance font-normal text-foreground">release-bot</h3>
+        {/* The headers share the first grid row, so their bottom borders line up however tall either
+            one is. Below 85rem the cells stack in reading order and the sheet scrolls as a whole. */}
+        <div className="grid min-h-0 thin-scrollbar flex-1 auto-rows-max grid-cols-1 overflow-y-auto min-[85rem]:grid-cols-[18rem_minmax(0,1fr)] min-[85rem]:grid-rows-[auto_minmax(0,1fr)] min-[85rem]:overflow-hidden">
+          <SheetHeader className="order-1 pr-12 min-[85rem]:order-none min-[85rem]:border-r min-[85rem]:pr-4">
+            <h3 className="font-alliance font-normal text-foreground">Draft release notes</h3>
+            <p className="flex items-start gap-1.5 text-sm text-accent">
+              <BotIcon className="mt-0.5 size-4 shrink-0" />
+              release-bot
+            </p>
           </SheetHeader>
 
-          <SheetHeader>
+          <SheetHeader className="order-3 min-[85rem]:order-none">
             <SheetTitle className="flex items-center gap-2">
               Sample Session
               <Badge variant="info">
@@ -223,7 +228,7 @@ export const SampleSessionSheet = ({ isOpen, onOpenChange, onSetUp }: Props) => 
             </SheetDescription>
           </SheetHeader>
 
-          <DetailGroup className="min-h-0 thin-scrollbar overflow-y-auto border-r border-border p-4">
+          <DetailGroup className="order-2 min-h-0 thin-scrollbar flex-row flex-wrap gap-x-10 overflow-y-auto border-b border-border p-4 min-[85rem]:order-none min-[85rem]:flex-col min-[85rem]:border-r min-[85rem]:border-b-0">
             <Detail className="items-start">
               <DetailLabel>Status</DetailLabel>
               <SessionStatusBadge status={AgentVaultSessionStatus.Active} />
@@ -245,7 +250,7 @@ export const SampleSessionSheet = ({ isOpen, onOpenChange, onSetUp }: Props) => 
             </Detail>
           </DetailGroup>
 
-          <div className="flex min-h-0 min-w-0 flex-col">
+          <div className="order-4 flex h-[80vh] min-h-0 min-w-0 flex-col min-[85rem]:order-none min-[85rem]:h-auto">
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
               <div className="flex shrink-0 flex-col gap-2">
                 <span className="text-sm font-medium">How the first request was brokered</span>
