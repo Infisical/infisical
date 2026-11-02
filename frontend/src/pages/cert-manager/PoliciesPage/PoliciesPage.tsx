@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { AccessRestrictedDialog, PageHeader, PageLoader } from "@app/components/v3";
-import { useProject, useProjectPermission } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificatePolicyActions,
@@ -25,6 +25,7 @@ enum TabSections {
 }
 
 export const PoliciesPage = () => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const navigate = useNavigate();
@@ -33,7 +34,6 @@ export const PoliciesPage = () => {
   });
 
   const activeTab = (searchParams.selectedTab as TabSections) || TabSections.Certificates;
-  const [certificateFilter, setCertificateFilter] = useState<{ search?: string }>({});
 
   const dashboardFilters = useMemo(() => {
     const filters: Array<{
@@ -100,9 +100,9 @@ export const PoliciesPage = () => {
   }, [searchParams]);
 
   const handleViewCertificateFromRequest = (certificateId: string) => {
-    setCertificateFilter({ search: certificateId });
     navigate({
-      search: { selectedTab: TabSections.Certificates } as any
+      to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
+      params: { orgId: currentOrg.id, certificateId }
     });
   };
 
@@ -145,7 +145,6 @@ export const PoliciesPage = () => {
           {activeTab === TabSections.Certificates &&
             (canReadCertificates ? (
               <CertificatesTab
-                externalFilter={certificateFilter}
                 dashboardFilters={dashboardFilters}
                 dashboardViewId={searchParams.viewId}
               />

@@ -50,7 +50,8 @@ export const pkiAlertDALFactory = (db: TDbClient) => {
               "pci.pkiCollectionId"
             )
             .from(`${TableName.Certificate} as ${PkiItemType.CERTIFICATE}`)
-            .join(`${TableName.PkiCollectionItem} as pci`, `${PkiItemType.CERTIFICATE}.id`, "pci.certId");
+            .join(`${TableName.PkiCollectionItem} as pci`, `${PkiItemType.CERTIFICATE}.id`, "pci.certId")
+            .whereNull(`${PkiItemType.CERTIFICATE}.deletedAt`);
         });
 
       /**
