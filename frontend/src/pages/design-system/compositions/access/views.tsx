@@ -29,7 +29,7 @@ export const accessViews: AccessView[] = [
   {
     value: "org-users-row-menu",
     label: "Organization: Users, row actions",
-    start: { overlay: "row-menu" }
+    start: {}
   },
   {
     value: "org-users-bulk",
@@ -51,7 +51,7 @@ export const accessViews: AccessView[] = [
   {
     value: "org-identity-row-menu",
     label: "Organization: Machine identities, row actions",
-    start: { nav: { orgTab: "identities" }, overlay: "row-menu" }
+    start: { nav: { orgTab: "identities" } }
   },
   {
     value: "org-loading",
@@ -82,7 +82,7 @@ export const accessViews: AccessView[] = [
   {
     value: "org-group-row-menu",
     label: "Organization: Groups, row actions",
-    start: { nav: { orgTab: "groups" }, overlay: "row-menu" }
+    start: { nav: { orgTab: "groups" } }
   },
   {
     value: "org-empty-groups",
@@ -104,7 +104,7 @@ export const accessViews: AccessView[] = [
   {
     value: "org-role-row-menu",
     label: "Organization: Roles, row actions",
-    start: { nav: { orgTab: "roles" }, overlay: "row-menu" }
+    start: { nav: { orgTab: "roles" } }
   },
   {
     value: "org-role-create",
@@ -140,7 +140,7 @@ export const accessViews: AccessView[] = [
   {
     value: "proj-members-row-menu",
     label: "Project: Users, row actions",
-    start: { nav: { scope: "project" }, overlay: "row-menu" }
+    start: { nav: { scope: "project" } }
   },
   {
     value: "proj-add-member",
@@ -186,7 +186,7 @@ export const accessViews: AccessView[] = [
   {
     value: "proj-identities-row-menu",
     label: "Project: Machine identities, row actions",
-    start: { nav: { scope: "project", projectTab: "identities" }, overlay: "row-menu" }
+    start: { nav: { scope: "project", projectTab: "identities" } }
   },
   {
     value: "proj-identity-add",
