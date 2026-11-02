@@ -12,7 +12,7 @@ Agent Vault lets an AI agent call APIs and MCP servers without having access to 
 To find the architecture that best fits what you're building, [plan your setup](/documentation/platform/agent-vault/plan-your-setup).
 </Tip>
 
-Every Agent Vault setup has an orchestrator that creates a session and starts the agent. Then, the agent sends every request through the proxy:
+Every Agent Vault setup has an [orchestrator](#orchestrators) that creates a session and starts the agent. Then, the agent sends every request through the proxy:
 
 ```mermaid
 flowchart LR
@@ -41,7 +41,7 @@ flowchart LR
 
 An orchestrator is the program (or person) that creates a session and starts an agent with the session token. Agent Vault works with any orchestrator, such as:
 
-- **Your own service:** a backend service [uses the Infisical API to create a session](/documentation/platform/agent-vault/sessions-api) and starts an agent for each task. It can call the API directly or through the [Python SDK](/sdks/languages/python#agent_vault-sessions). For example: an internal coding agent that picks up tickets, or a product feature that starts an agent when a customer asks for something
+- **Your own service:** a backend service [uses the Infisical API to create a session](/documentation/platform/agent-vault/sessions-api) and starts an agent for each task. It can call the API directly or through the [Python SDK](/sdks/languages/python#agent_vault-sessions). For example: a Slack bot that starts an agent in a new sandbox for each message, an internal coding agent that picks up tickets, or a product feature that starts an agent when a customer asks for something
 - **A scheduled job:** a cron job or CI pipeline [uses the Infisical CLI to create a session](/documentation/platform/agent-vault/sessions-cli) and starts the agent. For example: an agent that labels new issues every hour
 - **You:** a person who [creates a session in the Infisical dashboard](/documentation/platform/agent-vault/sessions#create-a-session) and starts an agent with the session token. For example: a coding agent on a dev box, or an assistant on a home server
 

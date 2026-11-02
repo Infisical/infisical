@@ -423,7 +423,7 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const proxySub = {
     single: "Its own host",
     shared: "Shared by every agent",
-    "per-agent": "One per agent",
+    "per-agent": "Separate container per agent",
   }[proxyLayout];
 
   const lanes = [
