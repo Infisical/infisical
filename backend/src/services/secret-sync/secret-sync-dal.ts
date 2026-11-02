@@ -305,6 +305,15 @@ export const secretSyncDALFactory = (
     }
   };
 
+  const countByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.SecretSync).where({ projectId }).count();
+      return Number(doc?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count By Project ID - Secret Sync" });
+    }
+  };
+
   const findByDestinationAndOrgId = async (destination: string, orgId: string, tx?: Knex) => {
     try {
       const response = await (tx || db.replicaNode())(TableName.SecretSync)
@@ -329,6 +338,7 @@ export const secretSyncDALFactory = (
     findConnectionId,
     updateAndReturnIds,
     countByOrgId,
+    countByProjectId,
     findByDestinationAndOrgId
   };
 };

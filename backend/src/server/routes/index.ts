@@ -2562,7 +2562,8 @@ export const registerRoutes = async (
     dynamicSecretLeaseDAL,
     dynamicSecretQueueService,
     secretV2BridgeDAL,
-    honeyTokenDAL
+    honeyTokenDAL,
+    secretSyncDAL
   });
 
   const projectEnvQueue = projectEnvQueueFactory({

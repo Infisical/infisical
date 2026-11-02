@@ -70,6 +70,7 @@ import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
+import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
@@ -219,6 +220,7 @@ type TProjectServiceFactoryDep = {
   >;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByOrgId" | "countByProjectId">;
+  secretSyncDAL: Pick<TSecretSyncDALFactory, "countByOrgId" | "countByProjectId">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -273,7 +275,8 @@ export const projectServiceFactory = ({
   dynamicSecretLeaseDAL,
   dynamicSecretQueueService,
   secretV2BridgeDAL,
-  honeyTokenDAL
+  honeyTokenDAL,
+  secretSyncDAL
 }: TProjectServiceFactoryDep) => {
   // The (orgId, slug) unique index already refuses a taken slug; this only names the cause when the holder is
   // a project pending deletion.
@@ -1035,7 +1038,8 @@ export const projectServiceFactory = ({
         // Read before the transaction: a plan cache miss queries on its own connection.
         const plan = await licenseService.getPlan(project.orgId);
 
-        // A deleted project's honey tokens don't count toward the limit, so restoring it can exceed it.
+        // A deleted project's honey tokens and syncs don't count toward their limits, so restoring it can
+        // exceed them.
         if (plan.honeyTokenLimit !== null) {
           const projectHoneyTokenCount = await honeyTokenDAL.countByProjectId(project.id);
           if (
@@ -1045,6 +1049,19 @@ export const projectServiceFactory = ({
             throw new BadRequestError({
               message:
                 "Failed to restore project due to honey token limit reached. Upgrade plan or revoke an existing honey token."
+            });
+          }
+        }
+
+        if (typeof plan.secretSyncLimit === "number") {
+          const projectSecretSyncCount = await secretSyncDAL.countByProjectId(project.id);
+          if (
+            projectSecretSyncCount &&
+            (await secretSyncDAL.countByOrgId(project.orgId)) + projectSecretSyncCount > plan.secretSyncLimit
+          ) {
+            throw new BadRequestError({
+              message:
+                "Failed to restore project due to secret sync limit reached. Upgrade plan or remove an existing secret sync."
             });
           }
         }
