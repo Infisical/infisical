@@ -5206,7 +5206,7 @@ interface RenewPkiSignerCertificateEvent {
   metadata: {
     signerId: string;
     name: string;
-    caId: string | null | undefined;
+    caId: string;
     caName: string;
     previousSerialNumber: string | null;
   };
@@ -5217,7 +5217,7 @@ interface RevokePkiSignerCertificateEvent {
   metadata: {
     signerId: string;
     name: string;
-    certificateId: string | null | undefined;
+    certificateId: string;
     certificateCommonName: string;
     serialNumber: string;
     revocationReason: CrlReason;

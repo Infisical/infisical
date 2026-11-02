@@ -30,7 +30,7 @@ export const SignerCertificateDetailsCard = ({ signer }: Props) => {
     <Card>
       <CardHeader>
         <CardTitle>Certificate Details</CardTitle>
-        <CardDescription>The certificate this signer signs with.</CardDescription>
+        <CardDescription>The certificate issued to this signer.</CardDescription>
       </CardHeader>
       <CardContent>
         {hasDetails ? (

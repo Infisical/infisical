@@ -124,7 +124,7 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
       const { data } = await request.put<{ status?: DigiCertRevocationRequestStatus } | "">(
         `${baseURL}/order/certificate/${orderId}/revoke`,
         { comments, skip_approval: true },
-        { headers }
+        { headers, timeout: ORDER_REQUEST_TIMEOUT_MS }
       );
       return { requestStatus: typeof data === "object" ? data?.status : undefined };
     }, `order revocation for ${orderId}`);

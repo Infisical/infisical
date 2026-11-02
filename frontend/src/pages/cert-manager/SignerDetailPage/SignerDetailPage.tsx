@@ -102,6 +102,7 @@ export const SignerDetailPage = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isRevokeOpen, setIsRevokeOpen] = useState(false);
+  const [isRenewOpen, setIsRenewOpen] = useState(false);
 
   const { data: signer, isLoading } = useGetSigner(signerId);
   const cas = useListCasByProjectId();
@@ -283,7 +284,7 @@ export const SignerDetailPage = () => {
                   )}
                   {canRenewCertificate && (
                     <DropdownMenuItem
-                      onClick={() => renewSigner.mutate(signer.id)}
+                      onClick={() => setIsRenewOpen(true)}
                       isDisabled={
                         renewSigner.isPending || !can(SignerPermissionActions.ReissueCertificate)
                       }
@@ -380,6 +381,37 @@ export const SignerDetailPage = () => {
         signerId={signer.id}
         signerName={signer.name}
       />
+      <AlertDialog open={isRenewOpen} onOpenChange={setIsRenewOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <RefreshCwIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Renew certificate for &apos;{signer.name}&apos;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A new certificate is requested from the signer&apos;s certificate authority. The
+              signer switches to it once it&apos;s issued.
+              {isDigicertSigner && (
+                <span className="mt-2 block font-medium text-warning">
+                  This places a renewal order on DigiCert.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={renewSigner.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              isDisabled={renewSigner.isPending}
+              onClick={async () => {
+                await renewSigner.mutateAsync(signer.id);
+                setIsRenewOpen(false);
+              }}
+            >
+              Renew
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

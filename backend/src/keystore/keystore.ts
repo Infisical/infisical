@@ -71,7 +71,7 @@ export const KeyStorePrefixes = {
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
   PkiSyncFilterLock: (syncId: string) => `pki-sync-filter-mutex-${syncId}` as const,
-  SignerCertificateRevokeLock: (signerId: string) => `signer-certificate-revoke-mutex-${signerId}` as const,
+  SignerCertificateLock: (signerId: string) => `signer-certificate-mutex-${signerId}` as const,
   AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>
     `app-connection-concurrency-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
   AppConnectionCommandLock: (connectionId: string, targetHost?: string) =>

@@ -109,7 +109,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { signer, caName, previousSerialNumber } = await server.services.pkiSigner.renewCertificate({
+      const { signer, caId, caName, previousSerialNumber } = await server.services.pkiSigner.renewCertificate({
         signerId: req.params.signerId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -122,7 +122,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
         projectId: signer.projectId,
         event: {
           type: EventType.RENEW_PKI_SIGNER_CERTIFICATE,
-          metadata: { signerId: signer.id, name: signer.name, caId: signer.caId, caName, previousSerialNumber }
+          metadata: { signerId: signer.id, name: signer.name, caId, caName, previousSerialNumber }
         }
       });
 
@@ -152,7 +152,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { signer, serialNumber, commonName } = await server.services.pkiSigner.revokeCertificate({
+      const { signer, certificateId, serialNumber, commonName } = await server.services.pkiSigner.revokeCertificate({
         signerId: req.params.signerId,
         revocationReason: req.body.revocationReason,
         actor: req.permission.type,
@@ -169,7 +169,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
           metadata: {
             signerId: signer.id,
             name: signer.name,
-            certificateId: signer.certificateId,
+            certificateId,
             certificateCommonName: commonName,
             serialNumber,
             revocationReason: req.body.revocationReason

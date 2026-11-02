@@ -196,7 +196,9 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
               <EmptyHeader>
                 <EmptyTitle>No signing activity yet</EmptyTitle>
                 <EmptyDescription>
-                  Set up a signing tool on your machine to start signing with this Signer.
+                  {signer.status === SignerStatus.Revoked
+                    ? "This signer's certificate was revoked. Create a new signer to keep signing."
+                    : "Set up a signing tool on your machine to start signing with this Signer."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
