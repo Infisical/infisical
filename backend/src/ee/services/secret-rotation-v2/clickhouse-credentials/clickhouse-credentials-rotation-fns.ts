@@ -1,0 +1,166 @@
+/* eslint-disable no-await-in-loop */
+import { ClickHouseClient } from "@clickhouse/client";
+
+import {
+  TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
+  TRotationFactoryGetSecretsPayload,
+  TRotationFactoryIssueCredentials,
+  TRotationFactoryRevokeCredentials,
+  TRotationFactoryRotateCredentials
+} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { BadRequestError } from "@app/lib/errors";
+import { createClickHouseClient } from "@app/services/app-connection/clickhouse";
+
+import { DEFAULT_PASSWORD_REQUIREMENTS, generatePassword } from "../shared/utils";
+import {
+  TClickHouseCredentialsRotationGeneratedCredentials,
+  TClickHouseCredentialsRotationWithConnection
+} from "./clickhouse-credentials-rotation-types";
+
+// ClickHouse servers can enforce password complexity rules that require a symbol
+const CLICKHOUSE_PASSWORD_REQUIREMENTS = {
+  ...DEFAULT_PASSWORD_REQUIREMENTS,
+  required: { ...DEFAULT_PASSWORD_REQUIREMENTS.required, symbols: 1 }
+};
+
+const redactPasswords = (e: unknown, credentials: TClickHouseCredentialsRotationGeneratedCredentials) => {
+  const error = e as Error;
+
+  if (!error?.message) return "Unknown error";
+
+  let redactedMessage = error.message;
+
+  credentials.forEach(({ password }) => {
+    redactedMessage = redactedMessage.replaceAll(password, "*******************");
+  });
+
+  return redactedMessage;
+};
+
+const escapeIdentifier = (identifier: string) => identifier.replaceAll("\\", "\\\\").replaceAll("`", "\\`");
+
+export const clickhouseCredentialsRotationFactory: TRotationFactory<
+  TClickHouseCredentialsRotationWithConnection,
+  TClickHouseCredentialsRotationGeneratedCredentials
+> = (secretRotation) => {
+  const {
+    connection,
+    parameters: { username1, username2 },
+    activeIndex,
+    secretsMapping
+  } = secretRotation;
+
+  if (connection.credentials.username === username1 || connection.credentials.username === username2) {
+    throw new BadRequestError({
+      message:
+        "Rotation username cannot be the same as the connection username. The connection credentials are used to execute rotation operations and changing their password would break the connection."
+    });
+  }
+
+  const $setPasswords = async (credentialsSet: TClickHouseCredentialsRotationGeneratedCredentials) => {
+    let client: ClickHouseClient | null = null;
+    try {
+      client = await createClickHouseClient(connection.credentials);
+
+      for (const { username, password } of credentialsSet) {
+        await client.command({
+          query: `ALTER USER \`${escapeIdentifier(username)}\` IDENTIFIED WITH sha256_password BY '${password}'`
+        });
+      }
+    } catch (error) {
+      throw new Error(redactPasswords(error, credentialsSet));
+    } finally {
+      if (client) await client.close();
+    }
+  };
+
+  const $validateCredentials = async (credentials: TClickHouseCredentialsRotationGeneratedCredentials[number]) => {
+    try {
+      const client = await createClickHouseClient(connection.credentials, {
+        authCredentials: credentials,
+        validateConnection: true
+      });
+      await client.close();
+    } catch (error) {
+      throw new Error(redactPasswords(error, [credentials]));
+    }
+  };
+
+  const issueCredentials: TRotationFactoryIssueCredentials<TClickHouseCredentialsRotationGeneratedCredentials> = async (
+    callback
+  ) => {
+    // For ClickHouse, since we get existing users, we change both their passwords
+    // on issue to invalidate their existing passwords
+    const credentialsSet = [
+      { username: username1, password: generatePassword(CLICKHOUSE_PASSWORD_REQUIREMENTS) },
+      { username: username2, password: generatePassword(CLICKHOUSE_PASSWORD_REQUIREMENTS) }
+    ];
+
+    await $setPasswords(credentialsSet);
+
+    for (const credentials of credentialsSet) {
+      await $validateCredentials(credentials);
+    }
+
+    return callback(credentialsSet[0]);
+  };
+
+  const revokeCredentials: TRotationFactoryRevokeCredentials<
+    TClickHouseCredentialsRotationGeneratedCredentials
+  > = async (credentialsToRevoke, callback) => {
+    await $setPasswords(
+      credentialsToRevoke.map(({ username }) => ({
+        username,
+        password: generatePassword(CLICKHOUSE_PASSWORD_REQUIREMENTS)
+      }))
+    );
+
+    return callback();
+  };
+
+  const rotateCredentials: TRotationFactoryRotateCredentials<
+    TClickHouseCredentialsRotationGeneratedCredentials
+  > = async (_, callback) => {
+    const credentials = {
+      username: activeIndex === 0 ? username2 : username1,
+      password: generatePassword(CLICKHOUSE_PASSWORD_REQUIREMENTS)
+    };
+
+    await $setPasswords([credentials]);
+    await $validateCredentials(credentials);
+
+    return callback(credentials);
+  };
+
+  const getSecretsPayload: TRotationFactoryGetSecretsPayload<TClickHouseCredentialsRotationGeneratedCredentials> = (
+    generatedCredentials
+  ) => {
+    const { username, password } = secretsMapping;
+
+    return [
+      {
+        key: username,
+        value: generatedCredentials.username
+      },
+      {
+        key: password,
+        value: generatedCredentials.password
+      }
+    ];
+  };
+
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TClickHouseCredentialsRotationGeneratedCredentials
+  > = async (activeCredentials) => {
+    await $validateCredentials(activeCredentials);
+  };
+
+  return {
+    issueCredentials,
+    revokeCredentials,
+    rotateCredentials,
+    getSecretsPayload,
+    checkActiveCredentials
+  };
+};
