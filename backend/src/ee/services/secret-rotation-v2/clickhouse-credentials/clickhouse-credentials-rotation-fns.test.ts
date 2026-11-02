@@ -7,18 +7,28 @@ import { TClickHouseCredentialsRotationWithConnection } from "./clickhouse-crede
 
 const clickhouse = vi.hoisted(() => ({
   commands: [] as string[],
-  failing: false
+  failing: false,
+  agentRequests: [] as unknown[][],
+  agents: [] as unknown[]
 }));
 
-vi.mock("@app/ee/services/dynamic-secret/dynamic-secret-fns", () => ({ verifyHostInputValidity: vi.fn() }));
+vi.mock("@app/lib/validator", () => ({
+  buildUncachedSsrfSafeAgent: async (...args: unknown[]) => {
+    clickhouse.agentRequests.push(args);
+    return "pinned-agent";
+  }
+}));
 vi.mock("@clickhouse/client", () => ({
-  createClient: ({ username }: { username: string }) => ({
-    command: async ({ query }: { query: string }) => {
-      clickhouse.commands.push(`${username}: ${query}`);
-      if (clickhouse.failing) throw new Error(`Cannot execute ${query}`);
-    },
-    close: async () => {}
-  })
+  createClient: ({ username, http_agent }: { username: string; http_agent: unknown }) => {
+    clickhouse.agents.push(http_agent);
+    return {
+      command: async ({ query }: { query: string }) => {
+        clickhouse.commands.push(`${username}: ${query}`);
+        if (clickhouse.failing) throw new Error(`Cannot execute ${query}`);
+      },
+      close: async () => {}
+    };
+  }
 }));
 
 const COMMITTED = "committed" as unknown as TSecretRotationV2Raw;
@@ -63,6 +73,8 @@ describe("ClickHouse credentials rotation", () => {
   beforeEach(() => {
     clickhouse.commands = [];
     clickhouse.failing = false;
+    clickhouse.agentRequests = [];
+    clickhouse.agents = [];
   });
 
   it("sets new passwords on both users when issued and stores the first", async () => {
@@ -84,6 +96,14 @@ describe("ClickHouse credentials rotation", () => {
 
     expect(statements()).toEqual([alterUser(username), `${username}: SELECT 1`]);
     expect(callback).toHaveBeenCalledWith({ username, password: expect.any(String) as string });
+  });
+
+  it("connects through an agent pinned to the connection's host", async () => {
+    await makeFactory().rotateCredentials(undefined, vi.fn().mockResolvedValue(COMMITTED), ACTIVE_CREDENTIALS);
+
+    const agentRequest = ["https://clickhouse.example.com:8443", { ca: undefined, rejectUnauthorized: true }];
+    expect(clickhouse.agentRequests).toEqual([agentRequest, agentRequest]);
+    expect(clickhouse.agents).toEqual(["pinned-agent", "pinned-agent"]);
   });
 
   it("escapes backticks and backslashes in usernames", async () => {

@@ -1,8 +1,7 @@
 import { createClient } from "@clickhouse/client";
-import https from "https";
 
-import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { BadRequestError } from "@app/lib/errors";
+import { buildUncachedSsrfSafeAgent } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { ClickHouseConnectionMethod } from "./clickhouse-connection-enums";
@@ -29,22 +28,20 @@ export const createClickHouseClient = async (
   options?: TCreateClickHouseClientOptions
 ) => {
   const host = credentials.host.replace(/^https?:\/\//, "");
-  await verifyHostInputValidity({ host, isDynamicSecret: false });
+  const url = `${credentials.sslEnabled ? "https" : "http"}://${host}:${credentials.port}`;
 
   const { username, password } = options?.authCredentials ?? credentials;
 
   const client = createClient({
-    url: `${credentials.sslEnabled ? "https" : "http"}://${host}:${credentials.port}`,
+    url,
     username,
     password,
     database: credentials.database,
     request_timeout: REQUEST_TIMEOUT_MS,
-    // the client's own tls option only accepts a CA, so an agent is needed to honor sslRejectUnauthorized
-    ...(credentials.sslEnabled && {
-      http_agent: new https.Agent({
-        ca: credentials.sslCertificate,
-        rejectUnauthorized: credentials.sslRejectUnauthorized
-      })
+    // pins DNS to the validated IPs, and carries the TLS options the client's own tls config can't express
+    http_agent: await buildUncachedSsrfSafeAgent(url, {
+      ca: credentials.sslCertificate,
+      rejectUnauthorized: credentials.sslRejectUnauthorized
     })
   });
 
