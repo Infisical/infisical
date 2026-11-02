@@ -72,16 +72,15 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return Number(result?.count ?? 0);
   };
 
-  // A null folderId or projectId means the folder or project was deleted and the cleanup queue has not
-  // reaped the row yet, so it is treated as gone.
+  // A null folderId means the folder was deleted and the cleanup queue has not reaped the row yet, so it is
+  // treated as gone.
   const findLiveById = async (id: string, tx?: Knex) => {
     const row = await (tx || db.replicaNode())(TableName.HoneyToken)
       .where(`${TableName.HoneyToken}.id`, id)
       .whereNotNull(`${TableName.HoneyToken}.folderId`)
-      .whereNotNull(`${TableName.HoneyToken}.projectId`)
       .first();
 
-    return row?.folderId && row.projectId ? { ...row, folderId: row.folderId, projectId: row.projectId } : null;
+    return row?.folderId ? { ...row, folderId: row.folderId } : null;
   };
 
   const findOneByTokenIdentifierAndOrgId = async (tokenIdentifier: string, orgId: string, tx?: Knex) => {
@@ -174,8 +173,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
 
   const $selectForCleanup = (knex: Knex) =>
     knex(TableName.HoneyToken)
-      // left join: a row whose project was deleted before it was revoked still has to be found and reported
-      .leftJoin(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
+      .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .select(
         db.ref("id").withSchema(TableName.HoneyToken),
         db.ref("type").withSchema(TableName.HoneyToken),

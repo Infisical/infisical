@@ -119,7 +119,7 @@ export type THoneyTokenServiceFactoryDep = {
 
 type TSendTriggerNotificationInput = {
   orgId: string;
-  honeyToken: THoneyTokens & { folderId: string; projectId: string };
+  honeyToken: THoneyTokens & { folderId: string };
   eventMetadata: {
     eventName: string;
     eventTime: string;
@@ -422,7 +422,7 @@ export const honeyTokenServiceFactory = ({
     });
 
     return {
-      honeyToken: { ...honeyToken, projectId },
+      honeyToken,
       ...(stackDeployment ? { stackDeployment } : {})
     };
   };
@@ -633,7 +633,7 @@ export const honeyTokenServiceFactory = ({
     }
 
     return {
-      honeyToken: { ...updated, projectId },
+      honeyToken: updated,
       folderInfo
     };
   };
@@ -794,7 +794,7 @@ export const honeyTokenServiceFactory = ({
       resetByUserId: actor.id
     });
 
-    return { honeyToken: { ...updated, projectId: honeyToken.projectId } };
+    return { honeyToken: updated };
   };
 
   const getDashboardHoneyTokenCount = async (
@@ -1130,10 +1130,10 @@ export const honeyTokenServiceFactory = ({
       eventMetadata.accessKeyId,
       honeyTokenWithOrg.orgId
     );
-    if (!honeyToken?.folderId || !honeyToken.projectId || honeyToken.status === HoneyTokenStatus.Revoked) {
+    if (!honeyToken?.folderId || honeyToken.status === HoneyTokenStatus.Revoked) {
       return { acknowledged: true };
     }
-    const honeyTokenWithFolder = { ...honeyToken, folderId: honeyToken.folderId, projectId: honeyToken.projectId };
+    const honeyTokenWithFolder = { ...honeyToken, folderId: honeyToken.folderId };
 
     await honeyTokenEventDAL.create({
       honeyTokenId: honeyToken.id,

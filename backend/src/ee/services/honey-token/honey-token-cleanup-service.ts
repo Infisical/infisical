@@ -6,14 +6,14 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
-import { HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { getHoneyTokenServiceHooksByType, HONEY_TOKEN_PROVIDER_MAP } from "./honey-token-provider-fns";
 import { THoneyTokenProviderHooksDep } from "./honey-token-service-types";
 
 type THoneyTokenCleanupServiceFactoryDep = {
   honeyTokenDAL: Pick<
     THoneyTokenDALFactory,
-    "findUnrevokedByProjectIdForCleanup" | "findUnrevokedByOrgTreeForCleanup" | "delete"
+    "findUnrevokedByProjectIdForCleanup" | "findUnrevokedByOrgTreeForCleanup" | "update"
   >;
   honeyTokenConfigDAL: Pick<THoneyTokenConfigDALFactory, "findOne">;
 } & THoneyTokenProviderHooksDep;
@@ -60,10 +60,6 @@ export const honeyTokenCleanupServiceFactory = ({
       }
       const type = honeyToken.type as HoneyTokenType;
 
-      if (!honeyToken.projectId || !honeyToken.orgId) {
-        throw new NotFoundError({ message: "Honey token's project was deleted before it was revoked" });
-      }
-
       const appConnection = await findConnection(honeyToken.orgId, type);
       if (!appConnection) {
         throw new NotFoundError({ message: "Organization has no honey token connection" });
@@ -81,34 +77,43 @@ export const honeyTokenCleanupServiceFactory = ({
     };
   };
 
-  // Best effort: a provider failure is logged and the row is deleted regardless, so it never blocks the delete.
-  const $revokeAndDelete = async (honeyTokens: THoneyTokenCleanupRow[], reason: string) => {
+  // Best effort: a provider failure is logged and never blocks the delete. The rows are left for the project's
+  // cascade to remove, so if the delete itself fails the tokens are still there, marked revoked.
+  const $revokeHoneyToken = async (honeyTokens: THoneyTokenCleanupRow[], reason: string) => {
     if (!honeyTokens.length) return;
 
     const revoke = $createRevoker();
+    const revokedIds: string[] = [];
     await Promise.all(
       honeyTokens.map((honeyToken) =>
-        revoke(honeyToken).catch((err) =>
-          logger.error(
-            { err: err as unknown },
-            `honey-token-cleanup: could not clean up honey token on ${reason} ${honeyTokenCleanupLogContext(honeyToken)}`
+        revoke(honeyToken)
+          .then(() => revokedIds.push(honeyToken.id))
+          .catch((err) =>
+            logger.error(
+              { err: err as unknown },
+              `honey-token-cleanup: could not revoke honey token on ${reason} ${honeyTokenCleanupLogContext(honeyToken)}`
+            )
           )
-        )
       )
     );
 
-    await honeyTokenDAL.delete({ $in: { id: honeyTokens.map((honeyToken) => honeyToken.id) } });
+    if (revokedIds.length) {
+      await honeyTokenDAL.update(
+        { $in: { id: revokedIds } },
+        { status: HoneyTokenStatus.Revoked, revokedAt: new Date() }
+      );
+    }
   };
 
   // Runs before the project is soft-deleted: after that its KMS key no longer resolves and the credentials
   // cannot be decrypted.
   const revokeProjectHoneyTokens = async (projectId: string) =>
-    $revokeAndDelete(await honeyTokenDAL.findUnrevokedByProjectIdForCleanup(projectId), "project deletion");
+    $revokeHoneyToken(await honeyTokenDAL.findUnrevokedByProjectIdForCleanup(projectId), "project deletion");
 
   // Runs before the org row is deleted: the cascade drops the honey token configuration and the app
   // connection needed to reach the provider.
   const revokeOrgHoneyTokens = async (orgId: string) =>
-    $revokeAndDelete(await honeyTokenDAL.findUnrevokedByOrgTreeForCleanup(orgId), "org deletion");
+    $revokeHoneyToken(await honeyTokenDAL.findUnrevokedByOrgTreeForCleanup(orgId), "org deletion");
 
   const revokeHoneyToken = async (honeyToken: THoneyTokenCleanupRow) => $createRevoker()(honeyToken);
 

@@ -52,16 +52,6 @@ export const honeyTokenCleanupQueueFactory = ({
     const honeyToken = await honeyTokenDAL.findByIdForCleanup(honeyTokenId);
     if (!honeyToken) return;
 
-    // Its project, and the KMS key its credentials are encrypted with, are gone: it was created while the
-    // project or org was being deleted, so retrying cannot revoke it.
-    if (!honeyToken.projectId && honeyToken.status !== HoneyTokenStatus.Revoked) {
-      logger.error(
-        `honey-token-cleanup: could not clean up honey token, its project was deleted before it was revoked ${honeyTokenCleanupLogContext(honeyToken)}`
-      );
-      await honeyTokenDAL.deleteById(honeyToken.id);
-      return;
-    }
-
     try {
       if (honeyToken.status !== HoneyTokenStatus.Revoked) {
         await honeyTokenCleanupService.revokeHoneyToken(honeyToken);
