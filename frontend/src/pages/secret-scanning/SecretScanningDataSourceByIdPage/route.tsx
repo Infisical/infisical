@@ -6,7 +6,8 @@ import { DataSourceTab } from "./data-source-tabs";
 import { SecretScanningDataSourceByIdPage } from "./SecretScanningDataSourceByIdPage";
 
 const SearchSchema = z.object({
-  selectedTab: z.nativeEnum(DataSourceTab).catch(DataSourceTab.Findings).optional()
+  selectedTab: z.nativeEnum(DataSourceTab).catch(DataSourceTab.Findings).optional(),
+  resourceId: z.string().uuid().optional().catch(undefined)
 });
 
 export const Route = createFileRoute(

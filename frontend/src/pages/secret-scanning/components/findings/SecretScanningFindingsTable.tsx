@@ -125,6 +125,8 @@ type Props = {
   initialStatus?: FindingsStatusFilter;
   initialDataSourceId?: string;
   initialResourceId?: string;
+  resourceId?: string | null;
+  onResourceIdChange?: (resourceId: string | null) => void;
   description: string;
 };
 
@@ -133,6 +135,8 @@ export const SecretScanningFindingsTable = ({
   initialStatus = SecretScanningFindingStatus.Unresolved,
   initialDataSourceId,
   initialResourceId,
+  resourceId,
+  onResourceIdChange,
   description
 }: Props) => {
   const { currentProject } = useProject();
@@ -142,7 +146,11 @@ export const SecretScanningFindingsTable = ({
   const [dataSourceFilter, setDataSourceFilter] = useState<string | null>(
     dataSource?.id ?? initialDataSourceId ?? null
   );
-  const [resourceFilter, setResourceFilter] = useState<string | null>(initialResourceId ?? null);
+  const [localResourceFilter, setLocalResourceFilter] = useState<string | null>(
+    initialResourceId ?? null
+  );
+  const resourceFilter = onResourceIdChange ? (resourceId ?? null) : localResourceFilter;
+  const setResourceFilter = onResourceIdChange ?? setLocalResourceFilter;
   const [sort, setSort] = useState<TSort>(DEFAULT_SORT);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
