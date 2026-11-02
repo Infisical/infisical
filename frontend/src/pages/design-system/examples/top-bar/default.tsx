@@ -110,7 +110,7 @@ export default function Example() {
                   title="Secrets"
                   badges={<Badge tone="warn">Production</Badge>}
                   description="3 secrets are missing in production."
-                  actions={<Button variant="primary">Add secret</Button>}
+                  actions={<Button variant="accent">Add secret</Button>}
                 />
               </PageGutter>
             </AppInset>

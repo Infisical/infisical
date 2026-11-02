@@ -182,7 +182,7 @@
         "selected",
         "link target"
       ],
-      "behavior": "One strongly emphasized lime Button per task region; default/primary/accent share the authored face, clipped lower-edge light and inward bloom without texture, shadows or lift; stable-width pending feedback; icon-only requires accessible name and tooltip; native semantics for button versus anchor. Default/sm32 aliases, explicit md36/lg40 and xs24; text controls use 14px labels.",
+      "behavior": "One strongly emphasized Button per task region: default/primary is the ink fill, accent the yellow face for a page's one create action and approvals, with clipped lower-edge light and inward bloom without texture, shadows or lift; a fill that holds across themes keeps its label color (on-accent, white on-bad); stable-width pending feedback; icon-only requires accessible name and tooltip; native semantics for button versus anchor. Default/sm32 aliases, explicit md36/lg40 and xs24; text controls use 14px labels.",
       "acceptance": [
         "Busy action cannot double-submit",
         "Icon-only label",

@@ -14,9 +14,9 @@ Owner: button.
 
 When a form has one save action and several supporting actions.
 
-Do: Use the shared lime Button for Save changes, use outline or ghost for Review draft and Discard, and keep the button's size and name while saving.
+Do: Use the ink primary Button for Save changes, use outline or ghost for Review draft and Discard, and keep the button's size and name while saving.
 
-Avoid: Give every action the strongest lime emphasis, repaint the shared material in caller styles or replace Save changes with an unlabeled spinner.
+Avoid: Give every action the strongest emphasis, paint Save changes with the accent, repaint the shared material in caller styles or replace Save changes with an unlabeled spinner.
 
 Why: Emphasis identifies the next action, while a stable name preserves task context during pending work.
 
@@ -32,7 +32,7 @@ Owner: button.
 
 When primary and supporting actions appear beside one another.
 
-Do: Use the supported size recipes for peer actions and keep the shared lime paint. Passing loading never changes padding, so pass it whenever the operation can become pending.
+Do: Use the supported size recipes for peer actions and keep the shared paint. Passing loading never changes padding, so pass it whenever the operation can become pending.
 
 Avoid: Compensate for a borderless appearance with caller padding, add a new gradient or remove the action label while loading.
 
@@ -86,7 +86,7 @@ Exports: Button, buttonVariants. Source TypeScript defines the API.
 
 ## Behavior
 
-- Primary (and default, its alias) is the ink fill with an on-ink label at 600 for the one main action in a view or dialog; hover moves to text2. Accent keeps the bright lime face with owned inset illumination, for approval and grant moments only, never as a second primary. Ghost hover is ink at opacity-hover (6% light, 12% dark), so it shows on raised surfaces. destructive is the solid danger recipe: bad fill and border, on-bad label at 600, bad-hover on hover, and the neutral disabled control (line-soft fill, faint label) when disabled. link is ink text with a 1px underline at a 3px offset; hover moves to text2 with a 2px underline and never adds a background. Loading morphs the label into the spinner inside the same box: with loading set, the whole label group (icons included) fades, shrinks and blurs out on duration-moderate while the pixel Spinner fades in centered over it, and the reverse when loading ends. The idle spinner is absolutely positioned, so a button with loading={false} lays out exactly like one without it and never shifts or resizes; the spinner never sits beside an icon. While loading the accessible name stays, aria-busy is set and activation is inert. Reduced motion is a short opacity fade. Pressing never moves or resizes the box: the label and its icons scale to 0.97 inside it and spring back, the pressed fill stays on the box, and reduced motion keeps the fill only. link has no control height or padding: its box is its text, it sits on the surrounding baseline, and only the focus ring extends past it. Native button and slot composition preserve interaction semantics.
+- Primary (and default, its alias) is the ink fill with an on-ink label at 600 for the one main action in a view or dialog; hover moves to text2. Accent keeps the light accent face (one yellow in both themes) with owned inset illumination and an on-accent label in both themes, for a page's one primary create action in its header or toolbar and for approval and grant moments, never as a second primary. Ghost hover is ink at opacity-hover (6% light, 12% dark), so it shows on raised surfaces. destructive is the solid danger recipe: bad-fill fill and border with a white on-bad label at 600 in both themes, bad-hover on hover, and the neutral disabled control (line-soft fill, faint label) when disabled. link is ink text with a 1px underline at a 3px offset; hover moves to text2 with a 2px underline and never adds a background. Loading morphs the label into the spinner inside the same box: with loading set, the whole label group (icons included) fades, shrinks and blurs out on duration-moderate while the pixel Spinner fades in centered over it, and the reverse when loading ends. The idle spinner is absolutely positioned, so a button with loading={false} lays out exactly like one without it and never shifts or resizes; the spinner never sits beside an icon. While loading the accessible name stays, aria-busy is set and activation is inert. Reduced motion is a short opacity fade. Pressing never moves or resizes the box: the label and its icons scale to 0.97 inside it and spring back, the pressed fill stays on the box, and reduced motion keeps the fill only. link has no control height or padding: its box is its text, it sits on the surrounding baseline, and only the focus ring extends past it. Native button and slot composition preserve interaction semantics.
 - The text sizes are 32px (default, with sm as its alias), 36px (md) and 40px (lg), with 10, 14 and 16px insets and the shared 14px label. icon matches default at 32px and icon-lg matches lg at 40px; iconOnly makes any text size square. xs, icon-xs (24px) and icon-sm (28px) are nested and chrome sizes. icon-row is the table row action: a size-target-row (28px) box with a size-glyph (16px) glyph, separate from icon-sm so field and nested actions keep their 12 and 14px glyphs. Nested control actions consume the host slot instead of inheriting a standalone action's geometry. Size names do not guarantee a touch target.
 
 ## Accessibility
@@ -95,7 +95,7 @@ Exports: Button, buttonVariants. Source TypeScript defines the API.
 
 ## Use cases
 
-- Choose emphasis with variant and geometry with size. default, primary and accent share one lime treatment; default and sm are size aliases. Give a pending action a leading icon when its label must stay visible while it works.
+- Choose emphasis with variant and geometry with size. default and primary share the ink fill and accent is the yellow fill for a page's create action; default and sm are size aliases. Give a pending action a leading icon when its label must stay visible while it works.
 
 ## Limits
 

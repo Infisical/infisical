@@ -209,7 +209,7 @@ export default function Example() {
             <AppInset>
               <Bar />
               <PageGutter>
-                <PageHeader title="Secrets" badges={<Badge tone="warn">Production</Badge>} description="3 secrets are missing in production." actions={<Button variant="primary">Add secret</Button>}/>
+                <PageHeader title="Secrets" badges={<Badge tone="warn">Production</Badge>} description="3 secrets are missing in production." actions={<Button variant="accent">Add secret</Button>}/>
               </PageGutter>
             </AppInset>
           </AppShell>

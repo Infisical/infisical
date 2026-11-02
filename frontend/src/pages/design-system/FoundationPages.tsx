@@ -27,7 +27,11 @@ const inventoryLabel = (id: string, kind: string) => {
 };
 
 const foundationLinks = [
-  { href: "#colors", title: "Color", description: "Warm neutrals, neon lime and semantic pairs." },
+  {
+    href: "#colors",
+    title: "Color",
+    description: "Warm neutrals, Infisical yellow and semantic pairs."
+  },
   {
     href: "#typography",
     title: "Typography",
@@ -69,7 +73,7 @@ export const OverviewPage = () => (
         </a>
       ))}
     </div>
-    <DocSection title="Ink for the main action, lime for approvals.">
+    <DocSection title="Ink for the main action, the accent for creation and approvals.">
       <PreviewFrame>
         <Button asChild>
           <a href="#button">Explore Button</a>
@@ -87,8 +91,9 @@ export const OverviewPage = () => (
       </PreviewFrame>
       <p className="text-muted-foreground mt-4 text-sm leading-6">
         Primary (the default) is the ink fill for the one main action in a view or dialog. Accent is
-        the lime finish for approval and grant moments only, never a second primary. Use outline or
-        ghost for supporting actions. Menus and row selection keep their neutral interaction fills.
+        the yellow finish for a page&apos;s one create action in its header or toolbar, and for
+        approval and grant moments, never a second primary. Use outline or ghost for supporting
+        actions. Menus and row selection keep their neutral interaction fills.
       </p>
     </DocSection>
     <DocDisclosure title="Foundation scope">
@@ -248,7 +253,9 @@ const AccentSwatch = ({ mode }: { mode: "light" | "dark" }) => {
         className="flex min-h-40 flex-col justify-between gap-6 p-5"
         style={{ backgroundColor: "var(--v4-accent)", color: "var(--v4-on-accent)" }}
       >
-        <p className="text-sm font-medium">{mode === "light" ? "Light" : "Dark"} neon lime</p>
+        <p className="text-sm font-medium">
+          {mode === "light" ? "Light" : "Dark"} Infisical yellow
+        </p>
         <div>
           <p style={typeSpecimenStyle("title-lg")}>Infisical</p>
           <code className="mt-2 block text-xs">
@@ -277,24 +284,25 @@ export const ColorPage = () => (
       ))}
     </div>
     <p className="text-muted-foreground mt-4 text-sm leading-6">
-      Use lime as a fill with <code>on-accent</code> ink. Do not use the light lime value as text on
-      a light surface. For a text or icon accent, <code>--v4-accent-fg</code> resolves to ink in
-      light mode and lime in dark mode.
+      Use the yellow as a fill with <code>on-accent</code> ink, which stays ink in both themes
+      because the fill does too. Do not use it as text on a light surface. For a text or icon
+      accent, <code>--v4-accent-fg</code> resolves to ink in light mode and the yellow in dark mode.
     </p>
     <DocDisclosure title="Brand accent and neutral accent">
       <div className="space-y-4 text-sm leading-6">
         <p>
-          <code>--v4-accent</code> is the neon brand fill. Its foreground is{" "}
+          <code>--v4-accent</code> is the yellow brand fill. Its foreground is{" "}
           <code>--v4-on-accent</code>.
         </p>
         <p>
           <code>bg-accent</code> is the shadcn semantic role for a neutral interaction surface. It
-          maps to the source <code>select</code> token, not the neon brand color. Keep these roles
+          maps to the source <code>select</code> token, not the yellow brand color. Keep these roles
           separate.
         </p>
         <p>
-          The primary Button is ink; only the accent Button uses the lime material, for approval and
-          grant moments. Changing the accent does not recolor checked controls or selected rows.
+          The primary Button is ink; only the accent Button uses the yellow material, for a
+          page&apos;s create action and for approval and grant moments. Changing the accent does not
+          recolor checked controls or selected rows.
         </p>
       </div>
     </DocDisclosure>

@@ -6,8 +6,8 @@
     {
       "id": "identity",
       "title": "Preserve the Infisical identity",
-      "instruction": "Use warm neutral surfaces, Archivo, Geist Mono and square corners everywhere (there is no radius scale and no corner mode). Primary (and default) Buttons are the ink fill for the one main action; accent Buttons use the shared lime finish for approval and grant moments only. Keep selection neutral. Pair brand lime fills with on-accent ink, not light-theme lime text.",
-      "good": "One ink primary Button for the task's main action, an accent Button only for an approval or grant, and neutral alternatives and selection.",
+      "instruction": "Use warm neutral surfaces, Archivo, Geist Mono and square corners everywhere (there is no radius scale and no corner mode). Primary (and default) Buttons are the ink fill for the one main action; accent Buttons use the shared accent finish for a page's one primary create action (rule/accent-create) and for approval and grant moments. Keep selection neutral. Pair brand lime fills with on-accent ink, not light-theme lime text.",
+      "good": "One ink primary Button for the task's main action, an accent Button only for the page's create action or an approval, and neutral alternatives and selection.",
       "avoid": "A locally painted gradient, third font or pill-shaped control introduced by an example.",
       "detect": {
         "by": "review"
@@ -45,7 +45,7 @@
     {
       "id": "button-material",
       "title": "Use the shared Button material",
-      "instruction": "For accent Buttons, use the shared bright light neon lime face and its owned colored inset illumination in both themes. Keep the entire face light, all glow inside the control, paint below the label, the control stationary and keyboard focus separate. Do not add dark upper shading, narrow hard light rims, noise, patterns, outside or drop shadows, lift, scale or whole-button filters. Primary and default Buttons are the flat ink fill; other component fills and neutral selection retain their own roles.",
+      "instruction": "For accent Buttons, use the shared light accent face (Infisical yellow, #e3f047) and its owned colored inset illumination in both themes. Keep the entire face light, all glow inside the control, paint below the label, the control stationary and keyboard focus separate. Do not add dark upper shading, narrow hard light rims, noise, patterns, outside or drop shadows, lift, scale or whole-button filters. Primary and default Buttons are the flat ink fill; other component fills and neutral selection retain their own roles.",
       "good": "A shared lime Grant for 1 hour Button beside an ink primary and outline and ghost alternatives, with the same label while saving.",
       "avoid": "A dark upper Button face, hard edge-light band, glow outside the control, local material replicas or lime paint on every selected row.",
       "detect": {
@@ -57,6 +57,21 @@
       },
       "category": "Visual",
       "exceptions": "The canonical accent Button material owns its colored inset glow. This exception does not authorize shadows on other primitives or caller-created material."
+    },
+    {
+      "id": "accent-create",
+      "title": "Give a page's create action the accent",
+      "instruction": "A page's primary create action uses the accent Button variant: the one action that adds a new item to what the page lists, such as Add new, Create key, Add rule, Invite members or New connection. Use at most one per page, in the page header or in the toolbar above the list it fills; tab panels under that header share it. Every other primary stays the ink primary Button: Save, Confirm, Submit, Download, Done, and the submit button of a sheet or dialog, including the Create at the foot of a create form. Empty-state actions and buttons inside sheets and dialogs stay ink, because the page header or toolbar already carries the accent. Destructive actions stay destructive, and approval and grant moments keep the accent.",
+      "good": "An accent Add new in the Secrets toolbar beside outline filter and download buttons, with the Create button inside its sheet in ink.",
+      "avoid": "Two accent Buttons on one page, an accent Save changes or Download, or an accent submit at the foot of a create sheet.",
+      "detect": {
+        "by": "review"
+      },
+      "source": {
+        "title": "Button material and states",
+        "url": "#button"
+      },
+      "category": "Visual"
     },
     {
       "id": "semantic-pairs",

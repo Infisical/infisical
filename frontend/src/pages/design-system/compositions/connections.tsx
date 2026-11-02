@@ -259,7 +259,7 @@ const NewConnection = ({ onCreate }: { onCreate: (connection: Connection) => voi
       title="New connection"
       description="Connect a third-party app once and reuse it across your projects."
       trigger={
-        <Button variant="primary" icon="plus">
+        <Button variant="accent" icon="plus">
           New connection
         </Button>
       }
