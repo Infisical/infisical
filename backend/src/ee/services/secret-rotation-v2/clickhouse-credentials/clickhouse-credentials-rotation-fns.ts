@@ -10,7 +10,7 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { BadRequestError } from "@app/lib/errors";
-import { createClickHouseClient } from "@app/services/app-connection/clickhouse";
+import { createClickHouseClient, executeClickHouseStatement } from "@app/services/app-connection/clickhouse";
 
 import { DEFAULT_PASSWORD_REQUIREMENTS, generatePassword } from "../shared/utils";
 import {
@@ -71,9 +71,10 @@ export const clickhouseCredentialsRotationFactory: TRotationFactory<
       client = await createClickHouseClient(connection.credentials);
 
       for (const { username, password } of credentialsSet) {
-        await client.command({
-          query: `ALTER USER \`${escapeIdentifier(username)}\` IDENTIFIED WITH sha256_password BY '${password}'`
-        });
+        await executeClickHouseStatement(
+          client,
+          `ALTER USER \`${escapeIdentifier(username)}\` IDENTIFIED WITH sha256_password BY '${password}'`
+        );
       }
     } catch (error) {
       throw new Error(redactPasswords(error, credentialsSet));

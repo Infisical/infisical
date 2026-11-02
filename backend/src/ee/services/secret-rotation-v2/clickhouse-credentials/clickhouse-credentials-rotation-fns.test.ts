@@ -1,3 +1,5 @@
+import { Readable } from "node:stream";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TSecretRotationV2Raw } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
@@ -20,12 +22,19 @@ vi.mock("@app/lib/validator", () => ({
   }
 }));
 vi.mock("@clickhouse/client", () => ({
+  parseError: (text: string) => new Error(text),
   createClient: ({ username, http_agent }: { username: string; http_agent: unknown }) => {
     clickhouse.agents.push(http_agent);
     return {
-      command: async ({ query }: { query: string }) => {
+      exec: async ({ query }: { query: string }) => {
         clickhouse.commands.push(`${username}: ${query}`);
-        if (clickhouse.failing) throw new Error(`Cannot execute ${query}`);
+        return clickhouse.failing
+          ? {
+              stream: Readable.from([Buffer.from(`Cannot execute ${query}`)]),
+              http_status_code: 500,
+              response_headers: {}
+            }
+          : { stream: Readable.from([]), http_status_code: 200, response_headers: {} };
       },
       close: async () => {}
     };
