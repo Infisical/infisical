@@ -1,9 +1,6 @@
 /* eslint-disable no-await-in-loop */
-import { ClickHouseClient } from "@clickhouse/client";
-
 import {
   TRotationFactory,
-  TRotationFactoryCheckActiveCredentials,
   TRotationFactoryGetSecretsPayload,
   TRotationFactoryIssueCredentials,
   TRotationFactoryRevokeCredentials,
@@ -66,10 +63,8 @@ export const clickhouseCredentialsRotationFactory: TRotationFactory<
   }
 
   const $setPasswords = async (credentialsSet: TClickHouseCredentialsRotationGeneratedCredentials) => {
-    let client: ClickHouseClient | null = null;
+    const client = await createClickHouseClient(connection.credentials);
     try {
-      client = await createClickHouseClient(connection.credentials);
-
       for (const { username, password } of credentialsSet) {
         await executeClickHouseStatement(
           client,
@@ -79,7 +74,7 @@ export const clickhouseCredentialsRotationFactory: TRotationFactory<
     } catch (error) {
       throw new Error(redactPasswords(error, credentialsSet));
     } finally {
-      if (client) await client.close();
+      await client.close();
     }
   };
 
@@ -143,32 +138,16 @@ export const clickhouseCredentialsRotationFactory: TRotationFactory<
 
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TClickHouseCredentialsRotationGeneratedCredentials> = (
     generatedCredentials
-  ) => {
-    const { username, password } = secretsMapping;
-
-    return [
-      {
-        key: username,
-        value: generatedCredentials.username
-      },
-      {
-        key: password,
-        value: generatedCredentials.password
-      }
-    ];
-  };
-
-  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
-    TClickHouseCredentialsRotationGeneratedCredentials
-  > = async (activeCredentials) => {
-    await $validateCredentials(activeCredentials);
-  };
+  ) => [
+    { key: secretsMapping.username, value: generatedCredentials.username },
+    { key: secretsMapping.password, value: generatedCredentials.password }
+  ];
 
   return {
     issueCredentials,
     revokeCredentials,
     rotateCredentials,
     getSecretsPayload,
-    checkActiveCredentials
+    checkActiveCredentials: $validateCredentials
   };
 };
