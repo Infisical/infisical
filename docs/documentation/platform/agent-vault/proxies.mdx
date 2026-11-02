@@ -342,8 +342,7 @@ To serve your own certificate instead, such as one from a publicly trusted CA, p
 - **Formats:** each value can be the PEM text, the PEM encoded as base64, or the path to a PEM file
 - **Key types:** RSA, ECDSA, or Ed25519
 - **Expired certificates:** the proxy doesn't start if the certificate has expired
-- **Renewal with file paths:** the proxy loads a renewed certificate within a minute of the files changing (and warns in its log when fewer than 14 days are left)
-- **Renewal with PEM text:** restart the proxy each time you renew the certificate
+- **Renewal:** the proxy reads the certificate only when it starts, so restart the proxy each time you renew the certificate (the proxy warns in its log when fewer than 14 days are left)
 
 ### Sessions on the SOCKS5 port
 
