@@ -13,7 +13,11 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +42,7 @@ import { PageHeader } from "@app/components/v4/ui/page-header";
 
 import { useAccess } from "../context";
 import { type AccessData, displayName, type OrgGroup } from "../model";
-import { Gate, ListToolbar, Muted, useCan, usePagedList } from "../ui";
+import { Gate, ListToolbar, Muted, useCan, usePagedList, RESTRICTED } from "../ui";
 import { BackButton, CopyButton, Section, Value } from "./detail-parts";
 import { GroupDialog } from "./group-dialog";
 import { ADDED_TODAY, reapGroup } from "./memberships";
@@ -259,32 +263,21 @@ const GroupMembersSection = ({ group }: { group: OrgGroup }) => {
         </Inline>
       )
     },
-    { id: "added", header: "Added on", render: (row) => row.addedOn },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (row) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {`Actions for ${row.name}`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!canEdit}
-              onSelect={() => setRemoving(row)}
-            >
-              <Icon name="trash" />
-              {row.kind === "user" ? "Remove user from group" : "Remove identity from group"}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
+    { id: "added", header: "Added on", render: (row) => row.addedOn }
   ];
+
+  const rowActions: DataTableRowActions<MemberRow> = {
+    inline: [
+      {
+        label: (row) =>
+          row.kind === "user" ? "Remove user from group" : "Remove identity from group",
+        icon: "trash",
+        disabledReason: () => (canEdit ? undefined : RESTRICTED),
+        onSelect: setRemoving
+      }
+    ]
+  };
+
   return (
     <Section
       title="Group members"
@@ -314,6 +307,7 @@ const GroupMembersSection = ({ group }: { group: OrgGroup }) => {
         label={`Members of ${group.name}`}
         rows={list.pageRows}
         columns={columns}
+        rowActions={rowActions}
         getRowId={(row) => `${row.kind}:${row.id}`}
         rowLabel={(row) => row.name}
         sort={list.sort}

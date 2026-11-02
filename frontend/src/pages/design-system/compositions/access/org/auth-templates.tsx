@@ -11,14 +11,13 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@app/components/v4/ui/dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@app/components/v4/ui/dialog";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -37,7 +36,7 @@ import {
 
 import { useAccess } from "../context";
 import { type AuthTemplate, type AuthTemplateMethod, type OrgIdentity } from "../model";
-import { Gate, useCan, usePagedList } from "../ui";
+import { Gate, useCan, usePagedList, RESTRICTED } from "../ui";
 import { Section } from "./detail-parts";
 
 const methods: {
@@ -246,43 +245,36 @@ export const AuthTemplatesSection = () => {
       id: "endpoint",
       header: "Host / URL",
       render: (template) => <span>{template.endpoint}</span>
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (template) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {`Actions for ${template.name}`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setUsages(template)}>
-              <Icon name="eye" />
-              View usages
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={!can("identity", "edit")}
-              onSelect={() => setEditing({ template })}
-            >
-              <Icon name="settings" />
-              Edit template
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!can("identity", "delete")}
-              onSelect={() => setDeleting(template)}
-            >
-              <Icon name="trash" />
-              Delete template
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     }
   ];
+
+  const rowActions: DataTableRowActions<AuthTemplate> = {
+    inline: [
+      {
+        label: "Edit template",
+        icon: "settings",
+        disabledReason: () => (can("identity", "edit") ? undefined : RESTRICTED),
+        onSelect: (template) => setEditing({ template })
+      }
+    ],
+    renderMenu: (template) => (
+      <>
+        <DropdownMenuItem onSelect={() => setUsages(template)}>
+          <Icon name="eye" />
+          View usages
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={!can("identity", "delete")}
+          onSelect={() => setDeleting(template)}
+        >
+          <Icon name="trash" />
+          Delete template
+        </DropdownMenuItem>
+      </>
+    )
+  };
+
   return (
     <Section
       title="Machine identity auth templates"
@@ -314,6 +306,7 @@ export const AuthTemplatesSection = () => {
               label="Machine identity auth templates"
               rows={list.pageRows}
               columns={columns}
+              rowActions={rowActions}
               getRowId={(template) => template.id}
               rowLabel={(template) => template.name}
               loading={loading}

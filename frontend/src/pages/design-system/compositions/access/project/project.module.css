@@ -18,11 +18,6 @@
   border-block-end: var(--v4-size-control-border) solid var(--v4-line);
   color: var(--v4-muted);
 }
-.menuHint {
-  display: inline-flex;
-  margin-inline-start: auto;
-  color: var(--v4-muted);
-}
 .grantList {
   display: flex;
   flex-direction: column;

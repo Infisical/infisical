@@ -13,20 +13,21 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
+import {
   DropdownMenuItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger
+  DropdownMenuSubTrigger
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { Tabs } from "@app/components/v4/ui/tabs";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
@@ -111,7 +112,19 @@ export const OrgIdentitiesTab = () => {
       header: "Name",
       sortable: true,
       grow: true,
-      render: (identity) => <span>{identity.name}</span>
+      render: (identity) => {
+        const locked = lockedMethods(identity);
+        return (
+          <Inline gap={8} wrap={false}>
+            <span>{identity.name}</span>
+            {locked.length > 0 && (
+              <LockBadge
+                label={`Locked out: ${locked.map((m) => authMethodNames[m]).join(", ")}`}
+              />
+            )}
+          </Inline>
+        );
+      }
     },
     {
       id: "role",
@@ -151,82 +164,57 @@ export const OrgIdentitiesTab = () => {
         ) : (
           <Muted>{identity.lastLogin ?? "Never"}</Muted>
         )
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (identity) => {
-        const locked = lockedMethods(identity);
-        return (
-          <>
-            {locked.length > 0 && (
-              <LockBadge
-                label={`Locked out: ${locked.map((m) => authMethodNames[m]).join(", ")}`}
-              />
-            )}
-            <DropdownMenu defaultOpen={startsWith("row-menu") && identity.name === "ci-deployer"}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-                  {`Actions for ${identity.name}`}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {identity.managedByProject ? (
-                  <DropdownMenuItem onSelect={() => openDetail(identity)}>
-                    <Icon name="external" />
-                    Open in project
-                  </DropdownMenuItem>
-                ) : (
-                  <>
-                    <DropdownMenuItem
-                      disabled={!can("identity", "edit")}
-                      onSelect={() => openDetail(identity)}
-                    >
-                      <Icon icon={PencilIcon} />
-                      Edit machine identity
-                    </DropdownMenuItem>
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <Icon name="key" />
-                        Manage auth methods
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        {identity.authMethods.map((method) => (
-                          <DropdownMenuItem
-                            key={method}
-                            onSelect={() => setAuthView({ identity, method })}
-                          >
-                            {authMethodNames[method]}
-                            {locked.includes(method) && <Icon name="lock" />}
-                          </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuItem
-                          disabled={!can("identity", "edit")}
-                          onSelect={() => setAuthForm({ identity })}
-                        >
-                          <Icon name="plus" />
-                          Add auth method
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      disabled={!can("identity", "delete")}
-                      onSelect={() => setDeleting(identity)}
-                    >
-                      <Icon name="trash" />
-                      Delete machine identity
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        );
-      }
     }
   ];
+
+  const rowActions: DataTableRowActions<OrgIdentity> = {
+    renderMenu: (identity) =>
+      identity.managedByProject ? (
+        <DropdownMenuItem onSelect={() => openDetail(identity)}>
+          <Icon name="external" />
+          Open in project
+        </DropdownMenuItem>
+      ) : (
+        <>
+          <DropdownMenuItem
+            disabled={!can("identity", "edit")}
+            onSelect={() => openDetail(identity)}
+          >
+            <Icon icon={PencilIcon} />
+            Edit machine identity
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Icon name="key" />
+              Manage auth methods
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {identity.authMethods.map((method) => (
+                <DropdownMenuItem key={method} onSelect={() => setAuthView({ identity, method })}>
+                  {authMethodNames[method]}
+                  {lockedMethods(identity).includes(method) && <Icon name="lock" />}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem
+                disabled={!can("identity", "edit")}
+                onSelect={() => setAuthForm({ identity })}
+              >
+                <Icon name="plus" />
+                Add auth method
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={!can("identity", "delete")}
+            onSelect={() => setDeleting(identity)}
+          >
+            <Icon name="trash" />
+            Delete machine identity
+          </DropdownMenuItem>
+        </>
+      )
+  };
 
   const scopeLabel = scope === "project" ? "project" : "organization";
   let empty = {
@@ -292,6 +280,7 @@ export const OrgIdentitiesTab = () => {
             label="Organization machine identities"
             rows={list.pageRows}
             columns={columns}
+            rowActions={rowActions}
             getRowId={(identity) => identity.id}
             rowLabel={(identity) => identity.name}
             loading={loading}

@@ -13,13 +13,12 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -31,12 +30,14 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useAccess } from "../context";
 import { displayName, type OrgMember, type Role, roleName, SELF_USER_ID } from "../model";
-import { FabDock, Gate, ListToolbar, Muted, useCan, usePagedList } from "../ui";
+import { FabDock, Gate, ListToolbar, Muted, useCan, usePagedList, RESTRICTED } from "../ui";
 import { InviteUsersSheet } from "./invite-users-sheet";
 
 import styles from "../access.module.css";
 
 const GROUP_ONLY = "Access is managed through groups";
+
+const SELF_REASON = "You cannot modify your own membership";
 
 const usernameOf = (member: OrgMember) => member.user.username;
 
@@ -102,9 +103,6 @@ export const OrgMembersTab = () => {
   const roles = data.orgRoles;
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [filterOpen, setFilterOpen] = useState(() => startsWith("filter"));
-  const [menuFor, setMenuFor] = useState<string | undefined>(() =>
-    startsWith("row-menu") ? "m-marcus" : undefined
-  );
   const [selected, setSelected] = useState<string[]>(() =>
     startsWith("bulk") ? ["m-priya", "m-diego", "m-sarah"] : []
   );
@@ -114,7 +112,6 @@ export const OrgMembersTab = () => {
   );
   const [deactivating, setDeactivating] = useState<OrgMember>();
   const [bulkRemoving, setBulkRemoving] = useState<OrgMember[]>();
-  const [resending, setResending] = useState<string>();
 
   const roleRefs = (member: OrgMember) => [
     ...(member.membership ? [member.membership.role] : []),
@@ -245,130 +242,107 @@ export const OrgMembersTab = () => {
         ) : (
           <Muted>No direct access</Muted>
         )
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (member) => {
-        const { membership } = member;
-        const isSelf = member.user.id === SELF_USER_ID;
-        const menuId = membership?.id ?? member.user.id;
-        return (
-          <>
-            {membership &&
-              membership.isActive &&
-              (membership.status === "invited" || membership.status === "verified") && (
-                <Gate allowed={can("member", "create")}>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    loading={resending === membership.id}
-                    disabled={!can("member", "create")}
-                    onClick={() => {
-                      setResending(membership.id);
-                      window.setTimeout(() => {
-                        setResending(undefined);
-                        toast({
-                          tone: "ok",
-                          title: "Successfully resent org invitation",
-                          description: "Local demo only. No email was sent."
-                        });
-                      }, 600);
-                    }}
-                  >
-                    <Icon icon={MailIcon} size={12} />
-                    Resend invite
-                  </Button>
-                </Gate>
-              )}
-            <DropdownMenu
-              open={menuFor === menuId}
-              onOpenChange={(open) => setMenuFor(open ? menuId : undefined)}
-            >
-              <Gate allowed={!isSelf} reason="You cannot modify your own membership">
-                <DropdownMenuTrigger asChild disabled={isSelf}>
-                  <Button variant="ghost" size="icon-row" icon="more" iconOnly disabled={isSelf}>
-                    {`Actions for ${usernameOf(member)}`}
-                  </Button>
-                </DropdownMenuTrigger>
-              </Gate>
-              <DropdownMenuContent align="end">
-                {membership ? (
-                  <>
-                    <DropdownMenuItem
-                      disabled={!can("member", "edit")}
-                      onSelect={() =>
-                        navigate({
-                          detail: {
-                            kind: "org-member",
-                            id: membership.id,
-                            label: displayName(member.user) ?? usernameOf(member)
-                          }
-                        })
-                      }
-                    >
-                      <Icon name="settings" />
-                      Edit user
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      disabled={!can("member", "edit")}
-                      onSelect={() => {
-                        if (!membership.isActive) {
-                          setMembership(membership.id, { isActive: true });
-                          saved("Successfully activated user in organization");
-                          return;
-                        }
-                        setDeactivating(member);
-                      }}
-                    >
-                      <Icon name="user" />
-                      {membership.isActive ? "Deactivate user" : "Activate user"}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      disabled={!can("member", "delete")}
-                      onSelect={() => setRemoving(member)}
-                    >
-                      <Icon name="trash" />
-                      Remove user
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <DropdownMenuItem
-                    disabled={!can("member", "create")}
-                    onSelect={() => {
-                      update((current) => ({
-                        ...current,
-                        orgMembers: current.orgMembers.map((item) =>
-                          item.user.id === member.user.id
-                            ? {
-                                ...item,
-                                membership: {
-                                  id: `m-${item.user.id}`,
-                                  role: "member",
-                                  isActive: true,
-                                  status: "invited",
-                                  createdAt: "Oct 30, 2026"
-                                }
-                              }
-                            : item
-                        )
-                      }));
-                      saved("Successfully invited user to the organization.");
-                    }}
-                  >
-                    <Icon name="user-plus" />
-                    Invite as direct member
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        );
-      }
     }
   ];
+
+  const rowActions: DataTableRowActions<OrgMember> = {
+    inline: [
+      {
+        label: "Remove user",
+        icon: "trash",
+        disabledReason: (member) => {
+          if (member.user.id === SELF_USER_ID) return SELF_REASON;
+          if (!member.membership) return GROUP_ONLY;
+          return can("member", "delete") ? undefined : RESTRICTED;
+        },
+        onSelect: setRemoving
+      }
+    ],
+    menuDisabledReason: (member) => (member.user.id === SELF_USER_ID ? SELF_REASON : undefined),
+    renderMenu: (member) => {
+      const { membership } = member;
+      if (!membership)
+        return (
+          <DropdownMenuItem
+            disabled={!can("member", "create")}
+            onSelect={() => {
+              update((current) => ({
+                ...current,
+                orgMembers: current.orgMembers.map((item) =>
+                  item.user.id === member.user.id
+                    ? {
+                        ...item,
+                        membership: {
+                          id: `m-${item.user.id}`,
+                          role: "member",
+                          isActive: true,
+                          status: "invited",
+                          createdAt: "Oct 30, 2026"
+                        }
+                      }
+                    : item
+                )
+              }));
+              saved("Successfully invited user to the organization.");
+            }}
+          >
+            <Icon name="user-plus" />
+            Invite as direct member
+          </DropdownMenuItem>
+        );
+      const pending =
+        membership.isActive &&
+        (membership.status === "invited" || membership.status === "verified");
+      return (
+        <>
+          <DropdownMenuItem
+            disabled={!can("member", "edit")}
+            onSelect={() =>
+              navigate({
+                detail: {
+                  kind: "org-member",
+                  id: membership.id,
+                  label: displayName(member.user) ?? usernameOf(member)
+                }
+              })
+            }
+          >
+            <Icon name="settings" />
+            Edit user
+          </DropdownMenuItem>
+          {pending && (
+            <DropdownMenuItem
+              disabled={!can("member", "create")}
+              onSelect={() =>
+                toast({
+                  tone: "ok",
+                  title: "Successfully resent org invitation",
+                  description: "Local demo only. No email was sent."
+                })
+              }
+            >
+              <Icon icon={MailIcon} />
+              Resend invite
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            disabled={!can("member", "edit")}
+            onSelect={() => {
+              if (!membership.isActive) {
+                setMembership(membership.id, { isActive: true });
+                saved("Successfully activated user in organization");
+                return;
+              }
+              setDeactivating(member);
+            }}
+          >
+            <Icon name="user" />
+            {membership.isActive ? "Deactivate user" : "Activate user"}
+          </DropdownMenuItem>
+        </>
+      );
+    }
+  };
 
   const selectedMembers = data.orgMembers.filter(
     (member) => member.membership && selected.includes(member.membership.id)
@@ -414,6 +388,7 @@ export const OrgMembersTab = () => {
           label="Organization users"
           rows={list.pageRows}
           columns={columns}
+          rowActions={rowActions}
           getRowId={(member) => member.membership?.id ?? member.user.id}
           rowLabel={usernameOf}
           loading={loading}

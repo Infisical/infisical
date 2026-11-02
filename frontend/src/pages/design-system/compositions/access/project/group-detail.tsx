@@ -14,7 +14,11 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +35,7 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useAccess } from "../context";
 import type { OrgGroup } from "../model";
-import { ListToolbar, useCan, usePagedList } from "../ui";
+import { ListToolbar, useCan, usePagedList, RESTRICTED } from "../ui";
 import { GroupRoles } from "./group-roles";
 
 import styles from "./group.module.css";
@@ -215,33 +219,20 @@ const GroupMembersTable = ({ group }: { group: OrgGroup }) => {
       id: "joined",
       header: "Joined group",
       render: (member) => <span>{member.joinedGroupAt}</span>
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (member) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {member.type === "users"
-                ? `Actions for ${member.email}`
-                : `Actions for machine identity ${member.name}`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              disabled={!can(member.type === "users" ? "member" : "identity", "edit")}
-              onSelect={() => setAssuming(member)}
-            >
-              <Icon name="user" />
-              Assume privileges
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     }
   ];
+
+  const rowActions: DataTableRowActions<Member> = {
+    inline: [
+      {
+        label: "Assume privileges",
+        icon: "user",
+        disabledReason: (member) =>
+          can(member.type === "users" ? "member" : "identity", "edit") ? undefined : RESTRICTED,
+        onSelect: setAssuming
+      }
+    ]
+  };
 
   const filtered = Boolean(list.search.trim()) || typeFilter.length > 0;
   return (
@@ -271,6 +262,7 @@ const GroupMembersTable = ({ group }: { group: OrgGroup }) => {
           label="Group members"
           rows={list.pageRows}
           columns={columns}
+          rowActions={rowActions}
           getRowId={(member) => `${member.type}-${member.id}`}
           rowLabel={(member) => member.email ?? member.name}
           loading={loading}

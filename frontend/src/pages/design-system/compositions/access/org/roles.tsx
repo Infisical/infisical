@@ -13,7 +13,11 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -22,12 +26,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -37,7 +36,7 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useAccess } from "../context";
 import type { Role } from "../model";
-import { Gate, ListToolbar, useCan, usePagedList } from "../ui";
+import { Gate, ListToolbar, useCan, usePagedList, RESTRICTED } from "../ui";
 import { slugify } from "./group-dialog";
 
 import styles from "../access.module.css";
@@ -208,61 +207,53 @@ export const OrgRolesTab = () => {
           {role.builtIn ? "Platform" : "Custom"}
         </Badge>
       )
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (role) => {
-        const isDefault = role.slug === data.defaultOrgRole;
-        return (
-          <DropdownMenu defaultOpen={startsWith("row-menu") && role.slug === "release-manager"}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-                {`Actions for ${role.name}`}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem disabled={!can("role", "edit")} onSelect={() => openRole(role)}>
-                {role.builtIn ? <Icon name="eye" /> : <Icon icon={PencilIcon} />}
-                {role.builtIn ? "View role" : "Edit role"}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!can("role", "create")}
-                onSelect={() => setDialog({ source: role })}
-              >
-                <Icon name="copy" />
-                Duplicate role
-              </DropdownMenuItem>
-              {!isDefault && (
-                <DropdownMenuItem
-                  disabled={!can("role", "edit")}
-                  onSelect={() => {
-                    update((current) => ({ ...current, defaultOrgRole: role.slug }));
-                    saved("Successfully updated default membership role");
-                  }}
-                >
-                  <Icon icon={IdCardIcon} />
-                  Set as default role
-                </DropdownMenuItem>
-              )}
-              {!role.builtIn && (
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={!can("role", "delete") || isDefault}
-                  description={isDefault ? DEFAULT_REASON : undefined}
-                  onSelect={() => setDeleting(role)}
-                >
-                  <Icon name="trash" />
-                  Delete role
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      }
     }
   ];
+
+  const rowActions: DataTableRowActions<Role> = {
+    inline: [
+      {
+        label: "Duplicate role",
+        icon: "copy",
+        disabledReason: () => (can("role", "create") ? undefined : RESTRICTED),
+        onSelect: (role) => setDialog({ source: role })
+      }
+    ],
+    renderMenu: (role) => {
+      const isDefault = role.slug === data.defaultOrgRole;
+      return (
+        <>
+          <DropdownMenuItem disabled={!can("role", "edit")} onSelect={() => openRole(role)}>
+            {role.builtIn ? <Icon name="eye" /> : <Icon icon={PencilIcon} />}
+            {role.builtIn ? "View role" : "Edit role"}
+          </DropdownMenuItem>
+          {!isDefault && (
+            <DropdownMenuItem
+              disabled={!can("role", "edit")}
+              onSelect={() => {
+                update((current) => ({ ...current, defaultOrgRole: role.slug }));
+                saved("Successfully updated default membership role");
+              }}
+            >
+              <Icon icon={IdCardIcon} />
+              Set as default role
+            </DropdownMenuItem>
+          )}
+          {!role.builtIn && (
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={!can("role", "delete") || isDefault}
+              description={isDefault ? DEFAULT_REASON : undefined}
+              onSelect={() => setDeleting(role)}
+            >
+              <Icon name="trash" />
+              Delete role
+            </DropdownMenuItem>
+          )}
+        </>
+      );
+    }
+  };
 
   return (
     <Stack gap={16}>
@@ -290,6 +281,7 @@ export const OrgRolesTab = () => {
           label="Organization roles"
           rows={list.pageRows}
           columns={columns}
+          rowActions={rowActions}
           getRowId={(role) => role.id}
           rowLabel={(role) => role.name}
           loading={loading}

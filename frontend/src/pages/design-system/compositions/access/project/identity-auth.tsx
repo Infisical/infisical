@@ -13,13 +13,12 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -38,7 +37,7 @@ import { Snippet } from "@app/components/v4/ui/snippet";
 
 import { useAccess } from "../context";
 import { type AuthMethod, authMethodNames, type OrgIdentity } from "../model";
-import { Gate, useCan } from "../ui";
+import { Gate, useCan, RESTRICTED } from "../ui";
 import { LockedBadge, lockedMethods } from "./identity-common";
 
 const allMethods = Object.keys(authMethodNames) as AuthMethod[];
@@ -351,40 +350,36 @@ export const ProjectIdentityAuthSection = ({ identity }: { identity: OrgIdentity
           {locked.includes(method) && <LockedBadge label={ACTIVE_LOCKOUTS} />}
         </Inline>
       )
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (method) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              Auth method actions
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => flows.view(method)}>
-              <Icon name="eye" />
-              View auth method
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!canEdit} onSelect={() => flows.edit(method)}>
-              <Icon name="settings" />
-              Edit auth method
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!can("identity", "delete")}
-              onSelect={() => flows.remove(method)}
-            >
-              <Icon name="trash" />
-              Remove auth method
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     }
   ];
+
+  const rowActions: DataTableRowActions<AuthMethod> = {
+    inline: [
+      {
+        label: "Edit auth method",
+        icon: "settings",
+        disabledReason: () => (canEdit ? undefined : RESTRICTED),
+        onSelect: flows.edit
+      }
+    ],
+    renderMenu: (method) => (
+      <>
+        <DropdownMenuItem onSelect={() => flows.view(method)}>
+          <Icon name="eye" />
+          View auth method
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={!can("identity", "delete")}
+          onSelect={() => flows.remove(method)}
+        >
+          <Icon name="trash" />
+          Remove auth method
+        </DropdownMenuItem>
+      </>
+    )
+  };
+
   return (
     <>
       <Card
@@ -402,6 +397,7 @@ export const ProjectIdentityAuthSection = ({ identity }: { identity: OrgIdentity
             label="Auth methods"
             rows={identity.authMethods}
             columns={columns}
+            rowActions={rowActions}
             getRowId={(method) => method}
             rowLabel={(method) => authMethodNames[method]}
             onRowActivate={flows.view}

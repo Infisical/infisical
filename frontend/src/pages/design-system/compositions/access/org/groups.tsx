@@ -12,13 +12,12 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
@@ -26,7 +25,7 @@ import { Select } from "@app/components/v4/ui/select";
 
 import { useAccess } from "../context";
 import { type OrgGroup, roleName } from "../model";
-import { Gate, ListToolbar, useCan, usePagedList } from "../ui";
+import { Gate, ListToolbar, useCan, usePagedList, RESTRICTED } from "../ui";
 import { GroupDialog, setGroupRole } from "./group-dialog";
 import { reapGroup } from "./memberships";
 
@@ -101,52 +100,44 @@ export const OrgGroupsTab = () => {
           </Gate>
         </span>
       )
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (group) => (
-        <DropdownMenu defaultOpen={startsWith("row-menu") && group.id === "g-platform"}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {`Actions for ${group.name}`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onSelect={() => {
-                navigator.clipboard?.writeText(group.id);
-                toast({ tone: "neutral", title: "Copied group ID to clipboard" });
-              }}
-            >
-              <Icon name="copy" />
-              Copy group ID
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={!can("groups", "edit")}
-              onSelect={() => setDialog({ group })}
-            >
-              <Icon icon={PencilIcon} />
-              Edit group
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!can("groups", "edit")} onSelect={() => openDetail(group)}>
-              <Icon name="user" />
-              Manage members
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!can("groups", "delete")}
-              onSelect={() => setDeleting(group)}
-            >
-              <Icon name="trash" />
-              Delete group
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     }
   ];
+
+  const rowActions: DataTableRowActions<OrgGroup> = {
+    inline: [
+      {
+        label: "Edit group",
+        icon: PencilIcon,
+        disabledReason: () => (can("groups", "edit") ? undefined : RESTRICTED),
+        onSelect: (group) => setDialog({ group })
+      }
+    ],
+    renderMenu: (group) => (
+      <>
+        <DropdownMenuItem
+          onSelect={() => {
+            navigator.clipboard?.writeText(group.id);
+            toast({ tone: "neutral", title: "Copied group ID to clipboard" });
+          }}
+        >
+          <Icon name="copy" />
+          Copy group ID
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={!can("groups", "edit")} onSelect={() => openDetail(group)}>
+          <Icon name="user" />
+          Manage members
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={!can("groups", "delete")}
+          onSelect={() => setDeleting(group)}
+        >
+          <Icon name="trash" />
+          Delete group
+        </DropdownMenuItem>
+      </>
+    )
+  };
 
   const searching = Boolean(list.search.trim());
   return (
@@ -186,6 +177,7 @@ export const OrgGroupsTab = () => {
           label="Organization groups"
           rows={list.pageRows}
           columns={columns}
+          rowActions={rowActions}
           getRowId={(group) => group.id}
           rowLabel={(group) => group.name}
           loading={loading}

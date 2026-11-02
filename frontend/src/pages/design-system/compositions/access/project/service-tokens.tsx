@@ -13,20 +13,18 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
 
 import { useAccess } from "../context";
 import type { ServiceToken } from "../model";
-import { Gate, ListToolbar, Muted, useCan, usePagedList } from "../ui";
+import { Gate, ListToolbar, Muted, useCan, usePagedList, RESTRICTED } from "../ui";
 import { ServiceTokenCreateSheet } from "./service-token-create-sheet";
 
 import shared from "../access.module.css";
@@ -92,32 +90,19 @@ export const ServiceTokensTab = () => {
         ) : (
           <Muted>-</Muted>
         )
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (token) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {`${token.name} actions`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!can("service-token", "delete")}
-              onSelect={() => setDeleting(token)}
-            >
-              <Icon name="trash" />
-              Delete token
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     }
   ];
+
+  const rowActions: DataTableRowActions<ServiceToken> = {
+    inline: [
+      {
+        label: "Delete token",
+        icon: "trash",
+        disabledReason: () => (can("service-token", "delete") ? undefined : RESTRICTED),
+        onSelect: setDeleting
+      }
+    ]
+  };
 
   const searching = Boolean(list.search.trim());
 
@@ -147,6 +132,7 @@ export const ServiceTokensTab = () => {
           label="Service tokens"
           rows={list.pageRows}
           columns={columns}
+          rowActions={rowActions}
           getRowId={(token) => token.id}
           rowLabel={(token) => token.name}
           loading={loading}

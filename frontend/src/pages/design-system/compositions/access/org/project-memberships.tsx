@@ -11,7 +11,11 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -20,15 +24,8 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
@@ -48,7 +45,7 @@ import {
   projectTypeNames,
   roleName
 } from "../model";
-import { Gate, Muted, usePagedList } from "../ui";
+import { Gate, Muted, usePagedList, RESTRICTED } from "../ui";
 import { Section } from "./detail-parts";
 import {
   addProjectMembership,
@@ -338,45 +335,25 @@ export const ProjectMembershipsSection = ({
       : { id: "role", header: "Role", render: roleLabel },
     ...(subject === "user"
       ? []
-      : [
-          { id: "added", header: "Added on", render: (row: ProjectMembershipRow) => row.createdAt }
-        ]),
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (row) => {
-        const isCurrent = row.project.id === CURRENT_PROJECT_ID;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-                {`Actions for ${row.project.name}`}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                disabled={!isCurrent}
-                description={isCurrent ? undefined : PREVIEW_ONLY}
-                onSelect={openProject}
-              >
-                <Icon name="external" />
-                Access project
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                disabled={!canEdit}
-                onSelect={() => setRemoving(row)}
-              >
-                <Icon name="trash" />
-                Remove from project
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      }
-    }
+      : [{ id: "added", header: "Added on", render: (row: ProjectMembershipRow) => row.createdAt }])
   ];
+
+  const rowActions: DataTableRowActions<ProjectMembershipRow> = {
+    inline: [
+      {
+        label: "Access project",
+        icon: "external",
+        disabledReason: (row) => (row.project.id === CURRENT_PROJECT_ID ? undefined : PREVIEW_ONLY),
+        onSelect: openProject
+      },
+      {
+        label: "Remove from project",
+        icon: "trash",
+        disabledReason: () => (canEdit ? undefined : RESTRICTED),
+        onSelect: setRemoving
+      }
+    ]
+  };
 
   const addButton = (variant: "outline" | "primary") => (
     <Gate allowed={canEdit}>
@@ -411,6 +388,7 @@ export const ProjectMembershipsSection = ({
         label={`Projects for ${subjectName}`}
         rows={list.pageRows}
         columns={columns}
+        rowActions={rowActions}
         getRowId={(row) => row.id}
         rowLabel={(row) => row.project.name}
         sort={list.sort}

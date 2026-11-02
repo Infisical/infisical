@@ -12,20 +12,19 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
 
 import { useAccess } from "../context";
 import type { Role } from "../model";
-import { Gate, ListToolbar, useCan, usePagedList } from "../ui";
+import { Gate, ListToolbar, useCan, usePagedList, RESTRICTED } from "../ui";
 import { RoleListRoleSheet, type RoleSheetMode } from "./role-list-role-sheet";
 
 import shared from "../access.module.css";
@@ -94,44 +93,36 @@ export const ProjectRolesTab = () => {
             Custom
           </span>
         )
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (role) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {`Open actions for ${role.name}`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem disabled={!can("role", "edit")} onSelect={() => openRole(role)}>
-              {role.builtIn ? <Icon name="eye" /> : <Icon icon={PencilIcon} />}
-              {role.builtIn ? "View role" : "Edit role"}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={!can("role", "create")}
-              onSelect={() => openSheet({ kind: "duplicate", source: role })}
-            >
-              <Icon name="copy" />
-              Duplicate role
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={role.builtIn || !can("role", "delete")}
-              description={role.builtIn ? "Built-in roles cannot be deleted" : undefined}
-              onSelect={() => setDeleting(role)}
-            >
-              <Icon name="trash" />
-              Delete role
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     }
   ];
+
+  const rowActions: DataTableRowActions<Role> = {
+    inline: [
+      {
+        label: "Duplicate role",
+        icon: "copy",
+        disabledReason: () => (can("role", "create") ? undefined : RESTRICTED),
+        onSelect: (role) => openSheet({ kind: "duplicate", source: role })
+      }
+    ],
+    renderMenu: (role) => (
+      <>
+        <DropdownMenuItem disabled={!can("role", "edit")} onSelect={() => openRole(role)}>
+          {role.builtIn ? <Icon name="eye" /> : <Icon icon={PencilIcon} />}
+          {role.builtIn ? "View role" : "Edit role"}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={role.builtIn || !can("role", "delete")}
+          description={role.builtIn ? "Built-in roles cannot be deleted" : undefined}
+          onSelect={() => setDeleting(role)}
+        >
+          <Icon name="trash" />
+          Delete role
+        </DropdownMenuItem>
+      </>
+    )
+  };
 
   return (
     <Stack gap={16}>
@@ -159,6 +150,7 @@ export const ProjectRolesTab = () => {
           label="Project roles"
           rows={list.pageRows}
           columns={columns}
+          rowActions={rowActions}
           getRowId={(role) => role.id}
           rowLabel={(role) => role.name}
           loading={loading}

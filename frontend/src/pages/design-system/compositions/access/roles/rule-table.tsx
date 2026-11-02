@@ -3,18 +3,14 @@ import { useMemo, useState } from "react";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Combobox } from "@app/components/v4/ui/combobox";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
-import { Icon } from "@app/components/v4/ui/icon";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
 import {
@@ -326,54 +322,37 @@ export const RuleTable = (props: RuleTableProps) => {
         ) : (
           <Muted>Everywhere</Muted>
         )
-    },
-    {
-      id: "menu",
-      header: "Actions",
-      actions: true,
-      render: (row) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {`Actions for ${row.config.title} rule`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => edit(row)}>
-              <Icon name="settings" />
-              {editable ? "Edit rule" : "View rule"}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={!editable}
-              description={editable ? undefined : reason}
-              onSelect={() =>
-                onChange({
-                  ...draft,
-                  [row.config.subject]: [
-                    ...(draft[row.config.subject] ?? []),
-                    { ...structuredClone(row.rule), id: ruleId() }
-                  ]
-                })
-              }
-            >
-              <Icon name="copy" />
-              Duplicate rule
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!editable}
-              description={editable ? undefined : reason}
-              onSelect={() => removeRows([row.key])}
-            >
-              <Icon name="trash" />
-              Delete rule
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     }
   ];
+
+  const rowActions: DataTableRowActions<Row> = {
+    inline: [
+      {
+        label: editable ? "Edit rule" : "View rule",
+        icon: "settings",
+        onSelect: edit
+      },
+      {
+        label: "Duplicate rule",
+        icon: "copy",
+        disabledReason: () => (editable ? undefined : reason),
+        onSelect: (row) =>
+          onChange({
+            ...draft,
+            [row.config.subject]: [
+              ...(draft[row.config.subject] ?? []),
+              { ...structuredClone(row.rule), id: ruleId() }
+            ]
+          })
+      },
+      {
+        label: "Delete rule",
+        icon: "trash",
+        disabledReason: () => (editable ? undefined : reason),
+        onSelect: (row) => removeRows([row.key])
+      }
+    ]
+  };
 
   const policyCount = subjects.filter((config) => draft[config.subject]?.length).length;
   const filtering = Boolean(search || filter.length);
@@ -420,6 +399,7 @@ export const RuleTable = (props: RuleTableProps) => {
         label="Role rules"
         rows={rows}
         columns={columns}
+        rowActions={rowActions}
         getRowId={(row) => row.key}
         rowLabel={(row) => `${row.config.title} rule`}
         onRowActivate={edit}

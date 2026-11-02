@@ -1,31 +1,32 @@
 import { useMemo, useState } from "react";
-import { InfoIcon, UserXIcon } from "lucide-react";
+import { UserXIcon } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
-import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useAccess } from "../context";
 import { displayName, type OrgUser, type ProjectMember, SELF_USER_ID } from "../model";
-import { Gate, ListToolbar, Muted, RoleBadges, useCan, usePagedList } from "../ui";
+import { Gate, ListToolbar, Muted, RoleBadges, useCan, usePagedList, RESTRICTED } from "../ui";
 import { AddMemberDialog } from "./member-add-dialog";
 import { AssumePrivilegesDialog, RemoveMemberDialog } from "./member-dialogs";
 
 import styles from "../access.module.css";
-import local from "./project.module.css";
 
 export { ProjectMemberDetail } from "./member-detail";
 
 type Row = ProjectMember & { user: OrgUser };
+
+const SELF_REASON = "You cannot modify your own membership";
+const ASSUME_DESCRIPTION =
+  "Assume the privileges of this user, allowing you to replicate their access behavior.";
 
 export const ProjectMembersTab = () => {
   const { data, update, saved, loading, navigate, startsWith } = useAccess();
@@ -35,9 +36,6 @@ export const ProjectMembersTab = () => {
     startsWith("filter") ? ["admin"] : []
   );
   const [filterOpen, setFilterOpen] = useState(() => startsWith("filter"));
-  const [menuFor, setMenuFor] = useState<string | undefined>(() =>
-    startsWith("row-menu") ? "pm-marcus" : undefined
-  );
   const [adding, setAdding] = useState(() => startsWith("add") || startsWith("add-user-picker"));
   const [removing, setRemoving] = useState<Row | undefined>(() => {
     if (!startsWith("remove")) return undefined;
@@ -108,59 +106,33 @@ export const ProjectMembersTab = () => {
       id: "role",
       header: "Project role",
       render: (member) => <RoleBadges roles={member.roles} catalog={roles} />
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (member) => {
-        const isSelf = member.userId === SELF_USER_ID;
-        return (
-          <DropdownMenu
-            open={menuFor === member.id}
-            onOpenChange={(next) => setMenuFor(next ? member.id : undefined)}
-          >
-            <Gate allowed={!isSelf} reason="You cannot modify your own membership">
-              <DropdownMenuTrigger asChild disabled={isSelf}>
-                <Button variant="ghost" size="icon-row" icon="more" iconOnly disabled={isSelf}>
-                  {`Actions for ${member.user.email}`}
-                </Button>
-              </DropdownMenuTrigger>
-            </Gate>
-            <DropdownMenuContent align="end">
-              <Tooltip
-                side="left"
-                content={
-                  can("member", "edit")
-                    ? "Assume the privileges of this user, allowing you to replicate their access behavior."
-                    : undefined
-                }
-              >
-                <DropdownMenuItem
-                  disabled={!can("member", "edit")}
-                  onSelect={() => setAssuming(true)}
-                >
-                  <Icon name="user" />
-                  Assume privileges
-                  <span className={local.menuHint}>
-                    <Icon icon={InfoIcon} size={14} />
-                  </span>
-                </DropdownMenuItem>
-              </Tooltip>
-              <DropdownMenuItem
-                variant="destructive"
-                disabled={!can("member", "delete")}
-                onSelect={() => setRemoving(member)}
-              >
-                <Icon icon={UserXIcon} />
-                Remove user from project
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      }
     }
   ];
+
+  const rowActions: DataTableRowActions<Row> = {
+    inline: [
+      {
+        label: "Remove user from project",
+        icon: UserXIcon,
+        disabledReason: (member) => {
+          if (member.userId === SELF_USER_ID) return SELF_REASON;
+          return can("member", "delete") ? undefined : RESTRICTED;
+        },
+        onSelect: setRemoving
+      }
+    ],
+    menuDisabledReason: (member) => (member.userId === SELF_USER_ID ? SELF_REASON : undefined),
+    renderMenu: () => (
+      <DropdownMenuItem
+        disabled={!can("member", "edit")}
+        description={can("member", "edit") ? ASSUME_DESCRIPTION : undefined}
+        onSelect={() => setAssuming(true)}
+      >
+        <Icon name="user" />
+        Assume privileges
+      </DropdownMenuItem>
+    )
+  };
 
   const searching = Boolean(list.search.trim() || roleFilter.length);
 
@@ -207,6 +179,7 @@ export const ProjectMembersTab = () => {
           label="Project users"
           rows={list.pageRows}
           columns={columns}
+          rowActions={rowActions}
           getRowId={(member) => member.id}
           rowLabel={(member) => member.user.email}
           loading={loading}

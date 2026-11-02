@@ -2,20 +2,17 @@ import { useMemo, useState } from "react";
 import { UserRoundXIcon } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
 import { EmptyState } from "@app/components/v4/ui/empty";
-import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
 
 import { useAccess } from "../context";
 import type { OrgGroup, ProjectGroup } from "../model";
-import { Gate, ListToolbar, useCan, usePagedList } from "../ui";
+import { Gate, ListToolbar, useCan, usePagedList, RESTRICTED } from "../ui";
 import { RemoveGroupDialog } from "./group-detail";
 import { GroupModal } from "./group-modal";
 import { GroupRoles } from "./group-roles";
@@ -68,32 +65,19 @@ export const ProjectGroupsTab = () => {
       id: "added",
       header: "Added on",
       render: (row) => <span>{row.createdAt}</span>
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (row) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {`Actions for ${row.group.name}`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!can("groups", "delete")}
-              onSelect={() => setRemoving(row)}
-            >
-              <Icon icon={UserRoundXIcon} />
-              Remove group from project
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     }
   ];
+
+  const rowActions: DataTableRowActions<Row> = {
+    inline: [
+      {
+        label: "Remove group from project",
+        icon: UserRoundXIcon,
+        disabledReason: () => (can("groups", "delete") ? undefined : RESTRICTED),
+        onSelect: setRemoving
+      }
+    ]
+  };
 
   return (
     <Stack gap={16}>
@@ -121,6 +105,7 @@ export const ProjectGroupsTab = () => {
           label="Project groups"
           rows={list.pageRows}
           columns={columns}
+          rowActions={rowActions}
           getRowId={(row) => row.groupId}
           rowLabel={(row) => row.group.name}
           loading={loading}

@@ -14,7 +14,11 @@ import {
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -39,7 +43,7 @@ import { Select } from "@app/components/v4/ui/select";
 
 import { useAccess } from "../context";
 import { displayName, type GroupRef, type OrgMember, roleName, SELF_USER_ID } from "../model";
-import { Gate, useCan, usePagedList } from "../ui";
+import { Gate, useCan, usePagedList, RESTRICTED } from "../ui";
 import { roleOptions } from "./create-identity-sheet";
 import {
   BackButton,
@@ -157,32 +161,20 @@ const UserGroupsSection = ({ member }: { member: OrgMember }) => {
     compare: (a, b) => a.name.localeCompare(b.name)
   });
   const columns: DataTableColumn<GroupRef>[] = [
-    { id: "name", header: "Name", sortable: true, render: (group) => <span>{group.name}</span> },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (group) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {`Actions for ${group.name}`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!can("groups", "edit")}
-              onSelect={() => setRemoving(group)}
-            >
-              <Icon name="trash" />
-              Unassign from group
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
+    { id: "name", header: "Name", sortable: true, render: (group) => <span>{group.name}</span> }
   ];
+
+  const rowActions: DataTableRowActions<GroupRef> = {
+    inline: [
+      {
+        label: "Unassign from group",
+        icon: "trash",
+        disabledReason: () => (can("groups", "edit") ? undefined : RESTRICTED),
+        onSelect: setRemoving
+      }
+    ]
+  };
+
   return (
     <Section title="Groups" description="Manage user group memberships">
       <Input
@@ -196,6 +188,7 @@ const UserGroupsSection = ({ member }: { member: OrgMember }) => {
         label={`Groups for ${member.user.username}`}
         rows={list.pageRows}
         columns={columns}
+        rowActions={rowActions}
         getRowId={(group) => group.id}
         rowLabel={(group) => group.name}
         sort={list.sort}

@@ -1,24 +1,24 @@
 import { useMemo, useState } from "react";
-import { UserRoundXIcon } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
+import {
   DropdownMenuItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger
+  DropdownMenuSubTrigger
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Inline, Stack } from "@app/components/v4/ui/layout";
 
 import { useAccess } from "../context";
 import { authMethodNames } from "../model";
-import { Gate, ListToolbar, RoleBadges, useCan, usePagedList } from "../ui";
+import { Gate, ListToolbar, RoleBadges, useCan, usePagedList, RESTRICTED } from "../ui";
 import { AddProjectIdentitySheet } from "./identity-add-sheet";
 import { useAuthMethodFlows } from "./identity-auth";
 import {
@@ -43,11 +43,6 @@ export const ProjectIdentitiesTab = () => {
   const can = useCan("project");
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [adding, setAdding] = useState(() => startsWith("add") || startsWith("add-create-new"));
-  const [menuFor, setMenuFor] = useState<string | undefined>(() =>
-    startsWith("row-menu")
-      ? data.orgIdentities.find((i) => i.name === "ci-deployer")?.id
-      : undefined
-  );
   const [assuming, setAssuming] = useState(false);
   const [removing, setRemoving] = useState<ProjectIdentityRow>();
   const [authFor, setAuthFor] = useState<string>();
@@ -86,7 +81,15 @@ export const ProjectIdentitiesTab = () => {
       header: "Name",
       sortable: true,
       grow: true,
-      render: (row) => <span>{row.identity.name}</span>
+      render: (row) => {
+        const lockout = lockoutText(row.identity);
+        return (
+          <Inline gap={8} wrap={false}>
+            <span>{row.identity.name}</span>
+            {lockout && <LockedBadge label={lockout} />}
+          </Inline>
+        );
+      }
     },
     {
       id: "role",
@@ -98,86 +101,72 @@ export const ProjectIdentitiesTab = () => {
       id: "managed",
       header: "Managed by",
       render: (row) => <ManagedByBadge identity={row.identity} />
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (row) => {
-        const { identity } = row;
-        const isProjectIdentity = Boolean(identity.managedByProject);
-        const locked = lockedMethods(identity);
-        const lockout = lockoutText(identity);
-        const deleteBlocked = isProjectIdentity && identity.hasDeleteProtection;
-        return (
-          <>
-            {lockout && <LockedBadge label={lockout} />}
-            <DropdownMenu
-              open={menuFor === identity.id}
-              onOpenChange={(open) => setMenuFor(open ? identity.id : undefined)}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-                  {`Open actions for ${identity.name}`}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {isProjectIdentity && (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <Icon name="key" />
-                      Manage auth methods
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      {identity.authMethods.map((method) => (
-                        <DropdownMenuItem
-                          key={method}
-                          onSelect={() => {
-                            setAuthFor(identity.id);
-                            flows.view(method);
-                          }}
-                        >
-                          {locked.includes(method) ? <Icon name="lock" /> : <Icon name="key" />}
-                          {authMethodNames[method]}
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuItem
-                        disabled={!can("identity", "edit")}
-                        onSelect={() => {
-                          setAuthFor(identity.id);
-                          flows.add();
-                        }}
-                      >
-                        <Icon name="plus" />
-                        Add auth method
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                )}
-                <DropdownMenuItem
-                  disabled={!can("identity", "edit")}
-                  description={ASSUME_HINT}
-                  onSelect={() => setAssuming(true)}
-                >
-                  <Icon name="user" />
-                  Assume privileges
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={!can("identity", "delete") || deleteBlocked}
-                  description={deleteBlocked ? DELETE_PROTECTED : undefined}
-                  onSelect={() => setRemoving(row)}
-                >
-                  {isProjectIdentity ? <Icon name="trash" /> : <Icon icon={UserRoundXIcon} />}
-                  {isProjectIdentity ? "Delete machine identity" : "Remove from project"}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        );
-      }
     }
   ];
+
+  const rowActions: DataTableRowActions<ProjectIdentityRow> = {
+    inline: [
+      {
+        label: (row) =>
+          row.identity.managedByProject ? "Delete machine identity" : "Remove from project",
+        icon: "trash",
+        disabledReason: (row) => {
+          if (row.identity.managedByProject && row.identity.hasDeleteProtection)
+            return DELETE_PROTECTED;
+          return can("identity", "delete") ? undefined : RESTRICTED;
+        },
+        onSelect: setRemoving
+      }
+    ],
+    renderMenu: ({ identity }) => (
+      <>
+        {identity.managedByProject && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Icon name="key" />
+              Manage auth methods
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {identity.authMethods.map((method) => (
+                <DropdownMenuItem
+                  key={method}
+                  onSelect={() => {
+                    setAuthFor(identity.id);
+                    flows.view(method);
+                  }}
+                >
+                  {lockedMethods(identity).includes(method) ? (
+                    <Icon name="lock" />
+                  ) : (
+                    <Icon name="key" />
+                  )}
+                  {authMethodNames[method]}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem
+                disabled={!can("identity", "edit")}
+                onSelect={() => {
+                  setAuthFor(identity.id);
+                  flows.add();
+                }}
+              >
+                <Icon name="plus" />
+                Add auth method
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
+        <DropdownMenuItem
+          disabled={!can("identity", "edit")}
+          description={ASSUME_HINT}
+          onSelect={() => setAssuming(true)}
+        >
+          <Icon name="user" />
+          Assume privileges
+        </DropdownMenuItem>
+      </>
+    )
+  };
 
   const searching = Boolean(list.search.trim() || roleFilter.length);
 
@@ -218,6 +207,7 @@ export const ProjectIdentitiesTab = () => {
           label="Project machine identities"
           rows={list.pageRows}
           columns={columns}
+          rowActions={rowActions}
           getRowId={(row) => row.identity.id}
           rowLabel={(row) => row.identity.name}
           loading={loading}

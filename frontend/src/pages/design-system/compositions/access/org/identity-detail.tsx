@@ -14,7 +14,11 @@ import {
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -41,7 +45,7 @@ import { Switch } from "@app/components/v4/ui/switch";
 
 import { useAccess } from "../context";
 import { type AuthMethod, authMethodNames, type OrgIdentity, roleName } from "../model";
-import { Gate, useCan } from "../ui";
+import { Gate, useCan, RESTRICTED } from "../ui";
 import {
   AUTH_METHOD_ORDER,
   AuthMethodFormSheet,
@@ -210,40 +214,35 @@ export const OrgIdentityDetail = ({ id }: { id: string }) => {
           {locked.includes(method) && <LockBadge label="Auth method has active lockouts" />}
         </Inline>
       )
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (method) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              Auth method actions
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setAuthView(method)}>
-              <Icon name="eye" />
-              View auth method
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!canEdit} onSelect={() => setAuthForm({ method })}>
-              <Icon icon={PencilIcon} />
-              Edit auth method
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!can("identity", "delete")}
-              onSelect={() => setRemovingAuth(method)}
-            >
-              <Icon name="trash" />
-              Remove auth method
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     }
   ];
+
+  const authActions: DataTableRowActions<AuthMethod> = {
+    inline: [
+      {
+        label: "Edit auth method",
+        icon: PencilIcon,
+        disabledReason: () => (canEdit ? undefined : RESTRICTED),
+        onSelect: (method) => setAuthForm({ method })
+      }
+    ],
+    renderMenu: (method) => (
+      <>
+        <DropdownMenuItem onSelect={() => setAuthView(method)}>
+          <Icon name="eye" />
+          View auth method
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={!can("identity", "delete")}
+          onSelect={() => setRemovingAuth(method)}
+        >
+          <Icon name="trash" />
+          Remove auth method
+        </DropdownMenuItem>
+      </>
+    )
+  };
 
   return (
     <div className={css.detailPage}>
@@ -370,6 +369,7 @@ export const OrgIdentityDetail = ({ id }: { id: string }) => {
                 label={`Auth methods for ${identity.name}`}
                 rows={identity.authMethods}
                 columns={authColumns}
+                rowActions={authActions}
                 getRowId={(method) => method}
                 rowLabel={(method) => authMethodNames[method]}
                 onRowActivate={setAuthView}

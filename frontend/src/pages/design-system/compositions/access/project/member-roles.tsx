@@ -20,7 +20,11 @@ import {
   CardHeader,
   CardTitle
 } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -29,12 +33,6 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -52,7 +50,7 @@ import {
 
 import { useAccess } from "../context";
 import { type ProjectMember, type ProjectRoleGrant, roleName } from "../model";
-import { Gate, useCan } from "../ui";
+import { Gate, RESTRICTED, useCan } from "../ui";
 import { DurationBadge, DurationPicker, type GrantDraft, permanent } from "./temporary-access";
 
 import styles from "./project.module.css";
@@ -291,40 +289,25 @@ export const MemberRolesSection = ({
       id: "duration",
       header: "Duration",
       render: (grant) => <DurationBadge grant={grant} />
-    },
-    ...(isSelf
-      ? []
-      : [
-          {
-            id: "actions",
-            header: "Actions",
-            actions: true,
-            render: (grant: ProjectRoleGrant) => (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-                    {`Actions for role ${roleName(catalog, grant.role)}`}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem disabled={!canEdit} onSelect={() => setEditing(grant)}>
-                    <Icon name="settings" />
-                    Modify role
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={!canEdit}
-                    onSelect={() => setRemoving(grant)}
-                  >
-                    <Icon name="trash" />
-                    Remove role
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )
-          } satisfies DataTableColumn<ProjectRoleGrant>
-        ])
+    }
   ];
+
+  const rowActions: DataTableRowActions<ProjectRoleGrant> = {
+    inline: [
+      {
+        label: "Modify role",
+        icon: "settings",
+        disabledReason: () => (canEdit ? undefined : RESTRICTED),
+        onSelect: setEditing
+      },
+      {
+        label: "Remove role",
+        icon: "trash",
+        disabledReason: () => (canEdit ? undefined : RESTRICTED),
+        onSelect: setRemoving
+      }
+    ]
+  };
 
   const removingCustom = catalog.find((role) => role.slug === removing?.role)?.builtIn === false;
   const removingLabel = removingCustom ? roleName(catalog, removing?.role ?? "") : removing?.role;
@@ -345,6 +328,7 @@ export const MemberRolesSection = ({
               label="Project roles"
               rows={member.roles}
               columns={columns}
+              rowActions={isSelf ? undefined : rowActions}
               getRowId={(grant) => grant.id}
               rowLabel={(grant) => roleName(catalog, grant.role)}
               onRowActivate={(grant) => {

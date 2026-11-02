@@ -12,7 +12,11 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
-import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -21,15 +25,8 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
-import { Icon } from "@app/components/v4/ui/icon";
 import { Stack, Inline } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
 import {
@@ -44,7 +41,7 @@ import {
 
 import { useAccess } from "../context";
 import { type ProjectIdentity, type ProjectRoleGrant, roleName } from "../model";
-import { Gate, useCan } from "../ui";
+import { Gate, useCan, RESTRICTED } from "../ui";
 import { DurationBadge, DurationPicker, type GrantDraft, permanent } from "./temporary-access";
 
 import styles from "./identity.module.css";
@@ -272,7 +269,6 @@ export const IdentityRoleDetailsSection = ({ membership }: { membership: Project
   const [editing, setEditing] = useState<number>();
   const [modifying, setModifying] = useState<ProjectRoleGrant>();
   const [removing, setRemoving] = useState<ProjectRoleGrant>();
-  const [menuFor, setMenuFor] = useState<string>();
   const canEdit = can("identity", "edit");
   const nameOf = (grant: ProjectRoleGrant) => roleName(data.projectRoles, grant.role);
   const editButton = (variant: "outline" | "primary") => (
@@ -295,39 +291,26 @@ export const IdentityRoleDetailsSection = ({ membership }: { membership: Project
       header: "Duration",
       grow: true,
       render: (grant) => <DurationBadge grant={grant} />
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (grant) => (
-        <DropdownMenu
-          open={menuFor === grant.id}
-          onOpenChange={(open) => setMenuFor(open ? grant.id : undefined)}
-        >
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {`Open actions for ${nameOf(grant)} role`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem disabled={!canEdit} onSelect={() => setModifying(grant)}>
-              <Icon name="settings" />
-              Modify role
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!canEdit}
-              onSelect={() => setRemoving(grant)}
-            >
-              <Icon name="trash" />
-              Remove role
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
     }
   ];
+
+  const rowActions: DataTableRowActions<ProjectRoleGrant> = {
+    inline: [
+      {
+        label: "Modify role",
+        icon: "settings",
+        disabledReason: () => (canEdit ? undefined : RESTRICTED),
+        onSelect: setModifying
+      },
+      {
+        label: "Remove role",
+        icon: "trash",
+        disabledReason: () => (canEdit ? undefined : RESTRICTED),
+        onSelect: setRemoving
+      }
+    ]
+  };
+
   const hasRoles = membership.roles.length > 0;
   return (
     <>
@@ -342,6 +325,7 @@ export const IdentityRoleDetailsSection = ({ membership }: { membership: Project
             label="Project roles"
             rows={membership.roles}
             columns={columns}
+            rowActions={rowActions}
             getRowId={(grant) => grant.id}
             rowLabel={nameOf}
             onRowActivate={(grant) => {
