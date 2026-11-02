@@ -322,22 +322,23 @@ infisical agent-vault proxy \
 ```
 
 - **Interfaces:** the SOCKS5 port listens on all interfaces, on a different port from `--port`
+- **Who can reach it:** only the clients that connect to the SOCKS5 port need to reach it, so limit the port to their addresses with a firewall, a private network, or a VPN where you can
 - **The HTTP port:** on a public machine, keep the HTTP port (`17323` by default) off the internet, such as with `--listen-host 127.0.0.1`, because agents send their session token to it unencrypted
 - **Environment variables:** each flag has an environment variable, listed in the [CLI reference](/cli/reference#agent-vault-proxy)
 
-When the port is ready, the proxy logs `agent-vault: SOCKS5 listening`. Each log line about a SOCKS5 connection has the field `door` set to `socks5`.
+When the port is ready, the proxy logs `agent-vault: SOCKS5 listening`. Log lines about SOCKS5 sign-ins and requests have the field `door` set to `socks5`.
 
 ### Certificate for the SOCKS5 port
 
-With `--socks5-tls-name`, the proxy makes the port's certificate from its CA and renews the certificate before it expires. Clients check the certificate with the proxy's CA, which you can [download from Infisical](#download-the-certificate-authority).
+With `--socks5-tls-name`, the proxy makes the port's certificate from its CA and renews the certificate before it expires. Clients check the certificate with the proxy's CA, which you can [download from Infisical](#download-the-certificate-authority), or with your own CA's certificate if you [use your own](#use-your-own-certificate-authority).
 
-To serve your own certificate instead, such as one from a publicly trusted CA, pass `--socks5-tls-cert` and `--socks5-tls-key` in place of `--socks5-tls-name`. Each value can be the PEM text, the PEM encoded as base64, or the path to a PEM file, and the key can be of any type. The proxy reads the certificate only when it starts, and doesn't start if the certificate has expired, so restart the proxy each time you renew the certificate.
+To serve your own certificate instead, such as one from a publicly trusted CA, pass `--socks5-tls-cert` and `--socks5-tls-key` in place of `--socks5-tls-name`. Each value can be the PEM text, the PEM encoded as base64, or the path to a PEM file, and the key can be RSA, ECDSA, or Ed25519. The proxy doesn't start if the certificate has expired. If you pass file paths, the proxy loads a renewed certificate within a minute of the files changing, and warns in its log when fewer than 14 days are left. If you pass the PEM text itself, restart the proxy each time you renew the certificate.
 
 ### Sessions on the SOCKS5 port
 
 Clients sign in with a SOCKS5 username and password. The proxy ignores the username, so you can use any value, such as `x-agent-vault`. Set the password to the session token. After sign-in, the proxy handles requests the same way it handles them on the HTTP port, including the [traffic policy](#traffic-policy) and the limits in [Supported connections](#supported-connections).
 
-- If the session isn't valid, the proxy refuses the sign-in, so the client sees the connection close, and the proxy logs the reason
+- If the session isn't valid, the proxy refuses the sign-in and logs the reason (only with `--log-level debug` if the password isn't a session token), so the client sees the connection close
 - If you revoke a session while a connection is open, the next request on that connection gets a 403 with `the session is no longer valid` (within one [poll interval](#poll-interval))
 
 ### Requests to private addresses
@@ -347,7 +348,7 @@ If the traffic policy is **Any host**, the SOCKS5 port refuses requests to priva
 ```text
 HTTP/1.1 403 Forbidden
 
-the destination is a private, loopback or link-local address
+the destination is a private or internal address
 ```
 
 The proxy still lets the request through if a service in the session's access bundle names the host. The HTTP port doesn't refuse these addresses. To turn the check off for the SOCKS5 port, pass `--socks5-allow-private-destinations`.
@@ -373,6 +374,7 @@ The current token will stop working, and the proxy gets a new certificate author
 - Restart every agent that uses the proxy, because those agents still trust the old certificate
 - Update any `--ca-fingerprint` pin
 - Replace any `ca.pem` file you mounted for an agent
+- Download the CA again for any SOCKS5 client you gave it to
 - On macOS, replace the certificate in your login keychain
 
 If you [use your own certificate authority](#use-your-own-certificate-authority), only the token changes, so your agents don't need these updates.

@@ -23,7 +23,8 @@ flowchart LR
   proxy["Agent Vault proxy<br/>(SOCKS5 over TLS)"]
   apis["api.anthropic.com<br/>api.github.com<br/>..."]
   infisical["Infisical"]
-  orchestrator -->|"creates a session and the sandbox"| e2b
+  orchestrator -->|"creates the sandbox"| e2b
+  orchestrator -->|"gets the CA and creates a session"| infisical
   agent -->|"HTTP and HTTPS connections"| host
   host -->|"SOCKS5 over TLS, with the session token"| proxy
   proxy -->|"request with the credential"| apis
@@ -49,7 +50,7 @@ One proxy serves every sandbox, so you set it up once.
   - **A local HTTP port:** The proxy's HTTP port stays local to the proxy's machine, and only the SOCKS5 port is public
   - **Private destinations blocked:** Through the SOCKS5 port, the proxy refuses requests to private and internal addresses, such as cloud metadata endpoints, unless a service names the host
 
-  You can also limit the SOCKS5 port with a firewall to the Google Cloud address ranges of E2B's region, as [E2B describes](https://e2b.dev/docs/faq/egress-ip-ranges). Other Google Cloud customers share those ranges, so the firewall adds to these protections rather than replacing them.
+  You can also limit the SOCKS5 port with a firewall to the Google Cloud address ranges of the regions your sandboxes run in, as [E2B describes](https://e2b.dev/docs/faq/egress-ip-ranges). E2B publishes no ranges for its AWS region, and other Google Cloud customers share the Google Cloud ranges, so the firewall adds to these protections rather than replacing them.
 </Accordion>
 
 ## Prerequisites
@@ -59,7 +60,7 @@ One proxy serves every sandbox, so you set it up once.
 - An [E2B](https://e2b.dev) account with [bring your own proxy](https://e2b.dev/docs/network/byop) turned on (E2B lists it as a private beta, so you may need to ask E2B to turn it on), and an [E2B API key](https://e2b.dev/docs/api-key) in the `E2B_API_KEY` environment variable on the machine that runs your code
 - The E2B SDK version 2.57.0 or later for your language: [Python](https://pypi.org/project/e2b/) (with [`requests`](https://pypi.org/project/requests/)) or [TypeScript](https://www.npmjs.com/package/e2b)
 - A Linux machine or Kubernetes cluster to run the proxy, reachable from the internet, with a DNS name that points to it
-- For the systemd setup, the [Infisical CLI](/cli/overview) installed on that machine
+- For the systemd setup, the [Infisical CLI](/cli/install) installed on that machine
 
 ## Step 1: Set up Agent Vault
 
@@ -89,7 +90,7 @@ These commands turn on the SOCKS5 port, on port `1080`. With `--socks5-tls-name`
 
     [Service]
     EnvironmentFile=/etc/infisical/agent-vault-proxy.env
-    ExecStart=/usr/local/bin/infisical agent-vault proxy --domain <your-instance-url> --listen-host 127.0.0.1 --socks5-port 1080 --socks5-tls-name <proxy-dns-name>
+    ExecStart=infisical agent-vault proxy --domain <your-instance-url> --listen-host 127.0.0.1 --socks5-port 1080 --socks5-tls-name <proxy-dns-name>
     Restart=always
 
     [Install]
@@ -176,7 +177,7 @@ These commands turn on the SOCKS5 port, on port `1080`. With `--socks5-tls-name`
 
 To check that the proxy is up, such as in a load balancer's health check, open a TCP connection to port `1080`.
 
-When the proxy starts, it logs `agent-vault: proxy listening`, with the proxy's ID in the `proxyId` field, then `agent-vault: SOCKS5 listening`. Copy the ID for [Step 4](#step-4-run-a-command-in-a-sandbox).
+When the proxy starts, it logs `agent-vault: proxy listening`, with the proxy's ID in the `proxyId` field, then `agent-vault: SOCKS5 listening`. Copy the ID for [Step 4](#step-4-run-a-command-in-a-sandbox). To read the log, run `journalctl -u agent-vault-proxy` for systemd, `docker logs agent-vault-proxy` for Docker, or `kubectl logs deploy/agent-vault-proxy` for Kubernetes.
 
 <Info>
   To serve a certificate you already have on the SOCKS5 port instead, pass `--socks5-tls-cert` and `--socks5-tls-key` in place of `--socks5-tls-name`. Then change the `tls` setting in [Step 4](#step-4-run-a-command-in-a-sandbox) to match the certificate:
@@ -475,9 +476,11 @@ The agent calls its APIs the same way it does without Agent Vault, and E2B sends
 
 ### Network access from the sandbox
 
-The sandbox can look up hostnames over DNS at `8.8.8.8`, which E2B lets through without the proxy. Every other connection goes through the proxy:
+The sandbox can look up hostnames over DNS at `8.8.8.8`, which E2B lets through without the proxy. The traffic policy doesn't apply to these lookups, so an agent can still send data out in the names it looks up, though never a credential. To control this, run a DNS resolver that only answers the names you allow, and pass its address in `dns_servers` (`dnsServers` in TypeScript).
 
-- **Hosts through the proxy:** with **Access bundle hosts only**, the sandbox can reach the hosts that services in the session's access bundle cover, and the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions)
+Every other connection goes through the proxy:
+
+- **Hosts through the proxy:** under the default [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), **Any host**, the proxy forwards the sandbox's requests to any host on the internet (to allow only the hosts that services in the session's access bundle cover, set the traffic policy to **Access bundle hosts only** and add any other hosts the agent needs, such as `registry.npmjs.org`, to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions))
 - **Ports:** E2B only sends connections on ports `80` and `443` to the proxy, so the sandbox can't reach a service on any other port
 
 ### Compromised sandboxes or leaked tokens
@@ -489,22 +492,34 @@ The proxy token is only on the proxy's machine. If you think someone took contro
 ## Troubleshooting
 
 <AccordionGroup>
+  <Accordion title="The proxy's systemd service fails to start">
+    If `sudo systemctl status agent-vault-proxy` shows `status=203/EXEC`, systemd couldn't find the Infisical CLI. Run `which infisical` to find your CLI's path. In `/etc/systemd/system/agent-vault-proxy.service`, replace `infisical` at the start of the `ExecStart=` line with that path, then reload and restart the proxy:
+
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl restart agent-vault-proxy
+    ```
+  </Accordion>
   <Accordion title="Requests fail with a certificate error, or reach the API without a credential">
     E2B sent the proxy an IP address instead of a hostname, so HTTPS requests fail with a certificate error and no service matches. E2B only sends hostnames for traffic that a domain entry allows, so create the sandbox with `allow_out` set to `["*"]` and `deny_out` set to `["0.0.0.0/0"]`, as the function in [Step 4](#step-4-run-a-command-in-a-sandbox) does.
+
+    The proxy's log shows `closed a SOCKS5 connection the proxy can't handle` with a TLS handshake error for the host's IP address.
   </Accordion>
   <Accordion title="Connections from the sandbox fail right away">
     The proxy refused the connection before any request. Check the proxy's log for one of these lines:
 
     - `agent-vault: refused, the session is no longer valid`: the session expired or was revoked
+    - `agent-vault: refused, Infisical rejected this proxy's token`: someone rotated or revoked the proxy's token, so restart the proxy with the new token
+    - `agent-vault: refused, the session could not be resolved`: the proxy couldn't reach Infisical to check the session
     - `agent-vault: a client spoke plain SOCKS5 to the TLS port`: the sandbox's `egress_proxy` has no `tls` setting
 
-    If neither line appears, the password might not be a session token, or E2B might not trust the SOCKS5 port's certificate. Start the proxy with `--log-level debug` to log these refusals too.
+    If none of these lines appears, the password might not be a session token, or E2B might not trust the SOCKS5 port's certificate. Start the proxy with `--log-level debug` to log these refusals too.
   </Accordion>
   <Accordion title="Requests fail with a 403 partway through a run">
     The session expired or was revoked while the sandbox was running. Set the session's `ttl` a few minutes longer than the sandbox's timeout, so the session lasts as long as the sandbox can run.
   </Accordion>
   <Accordion title="Requests to a host fail with a 403 from the start">
-    The proxy's traffic policy blocks hosts that no service in the access bundle covers. Add a service for the host, or add the host to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
+    If the proxy's traffic policy is **Access bundle hosts only**, the proxy blocks hosts that no service in the access bundle covers. Add a service for the host, or add the host to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
   </Accordion>
   <Accordion title="A service on a port other than 80 or 443 doesn't work">
     E2B only sends connections on ports `80` and `443` to the proxy. Use the service's HTTPS endpoint on port `443` instead.
