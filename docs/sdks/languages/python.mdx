@@ -75,7 +75,7 @@ The SDK methods are organized into the following high-level categories:
 3. `dynamic_secrets`: Manages dynamic secrets and leases.
 4. `kms`: Perform cryptographic operations with Infisical KMS.
 5. `folders`: Manages folder-related operations.
-6. `agent_vault`: Manages [Agent Vault](/documentation/platform/agent-vault/overview) sessions and proxies.
+6. `agent_vault`: Manages [Agent Vault](/documentation/platform/agent-vault/overview) sessions, proxies, access bundles, and delegations.
 
 ### `auth`
 
@@ -911,6 +911,8 @@ session = client.agent_vault.sessions.create(
 - The session belongs to the machine identity, so the user can't see the session
 - In each session that the `get`, `list`, `update`, and `revoke` methods return, `onBehalfOf` is the user, or `None` if the session is the machine identity's own
 
+To find the access bundles that a session on behalf of the user can use, pass the user's email address or ID to [`access_bundles.list`](#list-access-bundles).
+
 #### Update session label
 
 Add, change, or remove a session's label, for example to record what the agent is working on. You can also change the label after the session expires or is revoked, unless the user or machine identity that owns the session was deleted.
@@ -1083,3 +1085,356 @@ proxy = client.agent_vault.proxies.revoke(
 
 **Returns:**
 - `AgentVaultProxy`: the revoked proxy
+
+### `agent_vault.access_bundles`
+
+This sub-class manages [Agent Vault access bundles](/documentation/platform/agent-vault/access-bundles) and who they're [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to. An access bundle is a list of services that an agent can use during a session.
+
+To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
+
+<Note>
+  `agent_vault.access_bundles` requires `infisicalsdk` version 1.1.1 or newer.
+</Note>
+
+#### List access bundles
+
+```python
+bundles = client.agent_vault.access_bundles.list(
+    search="release", # Optional
+    requires_setup=False, # Optional
+    granted=True, # Optional
+    order_by="name", # Optional
+    order_direction="asc", # Optional
+    limit=20, # Optional
+    offset=0 # Optional
+)
+```
+
+**Parameters:**
+- `search` (str, optional): text to find in access bundle names and descriptions
+- `requires_setup` (bool, optional): `True` to list only the access bundles with services that still need your [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), or `False` to list the rest (defaults to listing both)
+- `granted` (bool, optional): `True` to list only the access bundles granted to you, directly or through a group, or `False` to list the ones you can use only because you're an admin (defaults to listing both)
+- `on_behalf_of_user_email` (str, optional): the email address of a user, to list the access bundles that a session on behalf of the user could use (raises a `ValueError` if you also pass `on_behalf_of_user_id`)
+- `on_behalf_of_user_id` (str, optional): the ID of a user, to list the access bundles that a session on behalf of the user could use (raises a `ValueError` if you also pass `on_behalf_of_user_email`)
+- `order_by` (str, optional): what to sort the access bundles by, `name`, `serviceCount`, or `createdAt` (defaults to `createdAt`)
+- `order_direction` (str, optional): the direction to sort in, `asc` or `desc` (defaults to `desc`)
+- `limit` (int, optional): the maximum number of access bundles to return, from 1 to 100 (defaults to `20`)
+- `offset` (int, optional): the number of access bundles to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultAccessBundlesResponse`: the access bundles in `accessBundles`, and the total number of matching access bundles in `totalCount`
+
+If the client logs in as a member, `list` returns only the access bundles granted to the member. In each access bundle, `servicesRequiringSetup` lists the services that still need your personal values.
+
+If you pass `on_behalf_of_user_email` or `on_behalf_of_user_id`, the client must log in as a machine identity with a [delegation](/documentation/platform/agent-vault/sessions-on-behalf-of-users#set-up-a-delegation) that covers the user. `list` then returns only the access bundles that both the user and the machine identity can use, and `requires_setup` and `servicesRequiringSetup` refer to the user's personal values. You can't combine those parameters with `granted`.
+
+#### Get access bundle
+
+```python
+bundle = client.agent_vault.access_bundles.get(
+    access_bundle_id="<access-bundle-id>"
+)
+```
+
+**Parameters:**
+- `access_bundle_id` (str): the ID of the access bundle
+
+**Returns:**
+- `AgentVaultAccessBundle`: the access bundle, with its services in `services`
+
+#### Create access bundle
+
+```python
+bundle = client.agent_vault.access_bundles.create(
+    name="release",
+    description="Release and deploy tools" # Optional
+)
+```
+
+**Parameters:**
+- `name` (str): the name of the access bundle, in lowercase letters, numbers, and hyphens (up to 64 characters)
+- `description` (str, optional): what the access bundle is for (up to 256 characters, without line breaks or tabs)
+
+**Returns:**
+- `AgentVaultAccessBundle`: the new access bundle
+
+Infisical grants the new access bundle to you, unless you're in Agent Vault only through a group. To add services to the access bundle, follow the steps in [Create an access bundle](/documentation/platform/agent-vault/access-bundles#create-an-access-bundle).
+
+#### Update access bundle
+
+The values that you don't pass stay as they are.
+
+```python
+bundle = client.agent_vault.access_bundles.update(
+    access_bundle_id="<access-bundle-id>",
+    name="release-tools", # Optional
+    description="Release and deploy tools" # Optional
+)
+```
+
+**Parameters:**
+- `access_bundle_id` (str): the ID of the access bundle
+- `name` (str, optional): the new name of the access bundle
+- `description` (str, optional): the new description
+- `clear_description` (bool, optional): set to `True` to remove the description (raises a `ValueError` if you also pass `description`)
+
+**Returns:**
+- `AgentVaultAccessBundle`: the updated access bundle
+
+#### Delete access bundle
+
+```python
+bundle = client.agent_vault.access_bundles.delete(
+    access_bundle_id="<access-bundle-id>"
+)
+```
+
+**Parameters:**
+- `access_bundle_id` (str): the ID of the access bundle
+
+**Returns:**
+- `AgentVaultAccessBundle`: the deleted access bundle
+
+Sessions that use the access bundle stop getting credentials, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes.
+
+#### List grantees
+
+List the users, machine identities, and groups that an access bundle is granted to.
+
+```python
+grantees = client.agent_vault.access_bundles.list_grantees(
+    access_bundle_id="<access-bundle-id>",
+    search="jsmith", # Optional
+    limit=20, # Optional
+    offset=0 # Optional
+)
+```
+
+**Parameters:**
+- `access_bundle_id` (str): the ID of the access bundle
+- `search` (str, optional): text to find in names, usernames, and email addresses
+- `limit` (int, optional): the maximum number of grantees to return, from 1 to 100 (defaults to `20`)
+- `offset` (int, optional): the number of grantees to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultGranteesResponse`: the grantees in `members`, and the total number of matching grantees in `totalCount`
+
+#### List available grantees
+
+List the Agent Vault members that an access bundle isn't granted to yet.
+
+```python
+members = client.agent_vault.access_bundles.list_available_grantees(
+    access_bundle_id="<access-bundle-id>",
+    search="jsmith", # Optional
+    limit=20, # Optional
+    offset=0 # Optional
+)
+```
+
+**Parameters:**
+- `access_bundle_id` (str): the ID of the access bundle
+- `search` (str, optional): text to find in names, usernames, and email addresses
+- `limit` (int, optional): the maximum number of members to return, from 1 to 100 (defaults to `20`)
+- `offset` (int, optional): the number of members to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultMembersResponse`: the members in `members`, and the total number of matching members in `totalCount`
+
+#### Grant access
+
+Grant an access bundle to users, machine identities, or groups. Each user, machine identity, and group must be a member of Agent Vault. Pass at least one ID, and at most 100 in total.
+
+```python
+response = client.agent_vault.access_bundles.grant(
+    access_bundle_id="<access-bundle-id>",
+    user_ids=["<user-id>"], # Optional
+    machine_identity_ids=["<machine-identity-id>"], # Optional
+    group_ids=["<group-id>"] # Optional
+)
+```
+
+**Parameters:**
+- `access_bundle_id` (str): the ID of the access bundle
+- `user_ids` (List[str], optional): the IDs of the users to grant the access bundle to
+- `machine_identity_ids` (List[str], optional): the IDs of the machine identities to grant the access bundle to
+- `group_ids` (List[str], optional): the IDs of the groups to grant the access bundle to
+
+**Returns:**
+- `AgentVaultGrantChangeResponse`: the new grants in `members`, and the users, machine identities, and groups that already had the access bundle in `skipped`
+
+#### Revoke access
+
+Revoke an access bundle from users, machine identities, or groups. Pass at least one ID, and at most 100 in total. [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes how revoking access affects their sessions.
+
+```python
+response = client.agent_vault.access_bundles.revoke(
+    access_bundle_id="<access-bundle-id>",
+    user_ids=["<user-id>"], # Optional
+    machine_identity_ids=["<machine-identity-id>"], # Optional
+    group_ids=["<group-id>"] # Optional
+)
+```
+
+**Parameters:**
+- `access_bundle_id` (str): the ID of the access bundle
+- `user_ids` (List[str], optional): the IDs of the users to revoke the access bundle from
+- `machine_identity_ids` (List[str], optional): the IDs of the machine identities to revoke the access bundle from
+- `group_ids` (List[str], optional): the IDs of the groups to revoke the access bundle from
+
+**Returns:**
+- `AgentVaultGrantChangeResponse`: the revoked grants in `members`, and the users, machine identities, and groups that didn't have the access bundle in `skipped`
+
+### `agent_vault.delegations`
+
+This sub-class manages [delegations](/documentation/platform/agent-vault/sessions-on-behalf-of-users), which let a machine identity [create sessions on behalf of users](#create-a-session-on-behalf-of-a-user).
+
+To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership). A machine identity without the role can still get its own delegation.
+
+<Note>
+  `agent_vault.delegations` requires `infisicalsdk` version 1.1.1 or newer.
+</Note>
+
+#### List delegations
+
+```python
+delegations = client.agent_vault.delegations.list(
+    machine_identity_ids=["<machine-identity-id>"], # Optional
+    limit=100, # Optional
+    offset=0 # Optional
+)
+```
+
+**Parameters:**
+- `machine_identity_ids` (List[str], optional): the IDs of the machine identities whose delegations to list (up to 100)
+- `limit` (int, optional): the maximum number of delegations to return, from 1 to 100 (defaults to `100`)
+- `offset` (int, optional): the number of delegations to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultDelegationsResponse`: the delegations in `delegations`, and the total number of matching delegations in `totalCount` (each delegation's `missingAccessBundles` is `None`; call `get` for it)
+
+#### Get delegation
+
+Get which users a machine identity can create sessions on behalf of. If the machine identity has no delegation, `get` raises an `APIError` with status code 404.
+
+```python
+delegation = client.agent_vault.delegations.get(
+    machine_identity_id="<machine-identity-id>"
+)
+```
+
+**Parameters:**
+- `machine_identity_id` (str): the ID of the machine identity
+
+**Returns:**
+- `AgentVaultDelegation`: the delegation, including `missingAccessBundles`
+
+`missingAccessBundles` lists the access bundles that the delegation's users can use and the machine identity can't. A session on behalf of a user can use only an access bundle that both the user and the machine identity can use, so the machine identity can't create sessions over those access bundles. If a machine identity without the **Admin** role gets its own delegation, `missingAccessBundles` is empty.
+
+#### Set delegation
+
+Set which users a machine identity can create sessions on behalf of. The new delegation replaces any delegation that the machine identity has.
+
+```python
+from infisical_sdk import AgentVaultDelegationScope
+
+delegation = client.agent_vault.delegations.set(
+    machine_identity_id="<machine-identity-id>",
+    scope=AgentVaultDelegationScope.SELECTED,
+    user_ids=["<user-id>"], # Optional
+    group_ids=["<group-id>"] # Optional
+)
+```
+
+**Parameters:**
+- `machine_identity_id` (str): the ID of the machine identity, which must be a member of Agent Vault
+- `scope` (Union[AgentVaultDelegationScope, str]): either `AgentVaultDelegationScope.SELECTED` (`"selected"`) for only the users and groups that you pass, or `AgentVaultDelegationScope.ALL_MEMBERS` (`"all-members"`) for every Agent Vault member, admins included
+- `user_ids` (List[str], optional): with `AgentVaultDelegationScope.SELECTED`, the IDs of the users that the machine identity can act on behalf of (up to 100)
+- `group_ids` (List[str], optional): with `AgentVaultDelegationScope.SELECTED`, the IDs of the groups whose members the machine identity can act on behalf of (up to 100)
+
+**Returns:**
+- `AgentVaultDelegation`: the delegation, with `missingAccessBundles`
+
+Each user and group must be a member of Agent Vault. If a user is in Agent Vault only through a group, pass the group instead.
+
+#### List available users and groups
+
+List the Agent Vault users and groups that you can add to a machine identity's delegation.
+
+```python
+from infisical_sdk import AgentVaultMemberType
+
+members = client.agent_vault.delegations.list_available_subjects(
+    machine_identity_id="<machine-identity-id>",
+    actor_type=AgentVaultMemberType.USER, # Optional
+    search="jsmith", # Optional
+    limit=20, # Optional
+    offset=0 # Optional
+)
+```
+
+**Parameters:**
+- `machine_identity_id` (str): the ID of the machine identity
+- `actor_type` (Union[AgentVaultMemberType, str], optional): either `AgentVaultMemberType.USER` (`"user"`) to list only users or `AgentVaultMemberType.GROUP` (`"group"`) to list only groups (defaults to listing both)
+- `search` (str, optional): text to find in user names, usernames, email addresses, and group names
+- `limit` (int, optional): the maximum number of users and groups to return, from 1 to 100 (defaults to `20`)
+- `offset` (int, optional): the number of users and groups to skip (defaults to `0`)
+
+**Returns:**
+- `ListAgentVaultMembersResponse`: the users and groups in `members`, and the total number of matching users and groups in `totalCount`
+
+#### Add users and groups
+
+Add users and groups to a machine identity's delegation. The users and groups already in the delegation stay. If the machine identity has no delegation, `add_subjects` creates one with the `AgentVaultDelegationScope.SELECTED` scope. You can't add users or groups to a delegation for all members.
+
+```python
+delegation = client.agent_vault.delegations.add_subjects(
+    machine_identity_id="<machine-identity-id>",
+    user_ids=["<user-id>"], # Optional
+    group_ids=["<group-id>"] # Optional
+)
+```
+
+**Parameters:**
+- `machine_identity_id` (str): the ID of the machine identity
+- `user_ids` (List[str], optional): the IDs of the users to add (up to 100)
+- `group_ids` (List[str], optional): the IDs of the groups to add (up to 100)
+
+**Returns:**
+- `AgentVaultDelegation`: the delegation after the change, with `missingAccessBundles`
+
+#### Remove users and groups
+
+Remove users and groups from a machine identity's delegation. The sessions that the machine identity created on behalf of users it no longer covers stop working. If you remove the last user or group, Infisical deletes the delegation.
+
+```python
+delegation = client.agent_vault.delegations.remove_subjects(
+    machine_identity_id="<machine-identity-id>",
+    user_ids=["<user-id>"], # Optional
+    group_ids=["<group-id>"] # Optional
+)
+```
+
+**Parameters:**
+- `machine_identity_id` (str): the ID of the machine identity
+- `user_ids` (List[str], optional): the IDs of the users to remove (up to 100)
+- `group_ids` (List[str], optional): the IDs of the groups to remove (up to 100)
+
+**Returns:**
+- `Optional[AgentVaultDelegation]`: the delegation after the change, with `missingAccessBundles`, or `None` if Infisical deleted the delegation
+
+#### Delete delegation
+
+Stop a machine identity from creating sessions on behalf of users. The sessions that it already created on behalf of users stop working.
+
+```python
+delegation = client.agent_vault.delegations.delete(
+    machine_identity_id="<machine-identity-id>"
+)
+```
+
+**Parameters:**
+- `machine_identity_id` (str): the ID of the machine identity
+
+**Returns:**
+- `AgentVaultDelegation`: the deleted delegation, with `missingAccessBundles` set to `None`
