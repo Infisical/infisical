@@ -219,7 +219,7 @@ type TProjectServiceFactoryDep = {
     "setLeaseRevocation" | "unsetRestoredLeaseRevocation"
   >;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
-  honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByOrgId" | "countByProjectId">;
+  honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByOrgId" | "countByProjectIdIncludingDeletedEnvironments">;
   secretSyncDAL: Pick<TSecretSyncDALFactory, "countByOrgId" | "countByProjectId">;
 };
 
@@ -1041,7 +1041,7 @@ export const projectServiceFactory = ({
         // A deleted project's honey tokens and syncs don't count toward their limits, so restoring it can
         // exceed them.
         if (plan.honeyTokenLimit !== null) {
-          const projectHoneyTokenCount = await honeyTokenDAL.countByProjectId(project.id);
+          const projectHoneyTokenCount = await honeyTokenDAL.countByProjectIdIncludingDeletedEnvironments(project.id);
           if (
             projectHoneyTokenCount &&
             (await honeyTokenDAL.countByOrgId(project.orgId)) + projectHoneyTokenCount > plan.honeyTokenLimit

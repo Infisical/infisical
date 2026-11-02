@@ -155,6 +155,16 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return Number(result?.count ?? 0);
   };
 
+  // Unlike countByProjectId, includes tokens in deleted environments, matching countByOrgId.
+  const countByProjectIdIncludingDeletedEnvironments = async (projectId: string, tx?: Knex) => {
+    const [result] = await (tx || db.replicaNode())(TableName.HoneyToken)
+      .where({ projectId })
+      .whereNot("status", "revoked")
+      .count<{ count: string | number }>({ count: "id" });
+
+    return Number(result?.count ?? 0);
+  };
+
   return {
     ...orm,
     findByFolderIds,
@@ -163,6 +173,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     findOneByTokenIdentifier,
     countByOrgId,
     countByProjectId,
+    countByProjectIdIncludingDeletedEnvironments,
     tryMarkTriggered,
     createSecretMappings,
     deleteSecretMappingsByHoneyTokenId
