@@ -167,7 +167,7 @@ export const ImportDiscoveredModal = ({
         : { text: summary })
     });
     // earlier batches already went through, so drop them from the selection and keep the rest for a retry
-    onImported(results.map((r) => r.discoveredAccountId));
+    onImported(results.filter((r) => r.status === "imported").map((r) => r.discoveredAccountId));
     if (!isComplete) return;
     reset();
     onOpenChange(false);
