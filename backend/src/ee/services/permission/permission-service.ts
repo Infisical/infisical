@@ -51,7 +51,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";
 import {
@@ -416,6 +416,35 @@ export const permissionServiceFactory = ({
     ).can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
   };
 
+  // Bypass is looked up only when enforcement would refuse the session, and never cached, so revoking it
+  // applies on the next request and a request enforcement admits pays nothing for it.
+  const assertOrgSso = async ({
+    actorId,
+    actorAuthMethod,
+    rootOrgId,
+    canBypassSso
+  }: {
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    rootOrgId: string;
+    canBypassSso: () => boolean | Promise<boolean>;
+  }) => {
+    const ssoPolicy = await getOrgSsoPolicy(rootOrgId);
+    try {
+      validateOrgSSO({
+        actorAuthMethod,
+        ...ssoPolicy,
+        isAdmin: false,
+        issuingRootOrgId: getSessionIssuingRootOrgId(actorId),
+        rootOrgId
+      });
+    } catch (error) {
+      if (!(error instanceof ForbiddenRequestError) || !ssoPolicy.isOrgSsoBypassEnabled || !(await canBypassSso())) {
+        throw error;
+      }
+    }
+  };
+
   const getOrgPermission: TPermissionServiceFactory["getOrgPermission"] = async ({
     actor,
     actorId,
@@ -478,20 +507,14 @@ export const permissionServiceFactory = ({
       // SSO enforcement applies only to users. Evaluate it against the full ability — SSO bypass is a
       // property of the user's roles, not of what an OAuth client was delegated.
       if (actor === ActorType.USER) {
-        const ssoPolicy = await getOrgSsoPolicy(rootOrgId ?? orgId);
-        const isSsoEnforced = ssoPolicy.isOrgSsoEnforced || ssoPolicy.isOrgGoogleSsoEnforced;
-        let canBypassSso = false;
-        if (isSsoEnforced) {
-          canBypassSso = rootOrgId
-            ? await canBypassRootOrgSso(actorId, rootOrgId)
-            : fullPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
-        }
-        validateOrgSSO({
+        await assertOrgSso({
+          actorId,
           actorAuthMethod,
-          ...ssoPolicy,
-          isAdmin: canBypassSso,
-          issuingRootOrgId: getSessionIssuingRootOrgId(actorId),
-          rootOrgId: rootOrgId ?? orgId
+          rootOrgId: rootOrgId ?? orgId,
+          canBypassSso: () =>
+            rootOrgId
+              ? canBypassRootOrgSso(actorId, rootOrgId)
+              : fullPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso)
         });
       }
 
@@ -597,7 +620,6 @@ export const permissionServiceFactory = ({
     permissionData: Awaited<ReturnType<TPermissionDALFactory["getPermission"]>>;
     projectDetails: TProjects;
     username: string;
-    canBypassSso: boolean;
     folderScopedPrivileges: TCachedFolderScopedPrivileges["privileges"];
   };
 
@@ -671,11 +693,6 @@ export const permissionServiceFactory = ({
       username = identityDetails?.name ?? "";
     }
 
-    const canBypassSso =
-      actor === ActorType.USER
-        ? await canBypassRootOrgSso(actorId, permissionData?.[0].rootOrgId ?? projectDetails.orgId)
-        : false;
-
     // Folder-scoped grants ride in the same cached blob, behind the same fingerprint. Admins cannot
     // receive folder grants, but a grant can predate a promotion to admin; skip the fetch so such a
     // stale grant never restricts an admin.
@@ -685,7 +702,7 @@ export const permissionServiceFactory = ({
             .privileges
         : [];
 
-    return { permissionData, projectDetails, username, canBypassSso, folderScopedPrivileges };
+    return { permissionData, projectDetails, username, folderScopedPrivileges };
   };
 
   const getProjectPermission: TPermissionServiceFactory["getProjectPermission"] = async ({
@@ -771,7 +788,7 @@ export const permissionServiceFactory = ({
         }
       });
 
-      const { permissionData, projectDetails, username, canBypassSso } = cached;
+      const { permissionData, projectDetails, username } = cached;
 
       if (projectDetails.orgId !== actorOrgId) {
         throw new ForbiddenRequestError({ message: "This project does not belong to your selected organization." });
@@ -807,12 +824,11 @@ export const permissionServiceFactory = ({
       // SSO enforcement runs on every request (uses per-request actorAuthMethod, not cached)
       if (actor === ActorType.USER) {
         const rootOrgId = permissionData?.[0].rootOrgId ?? projectDetails.orgId;
-        validateOrgSSO({
+        await assertOrgSso({
+          actorId,
           actorAuthMethod,
-          ...(await getOrgSsoPolicy(rootOrgId)),
-          isAdmin: canBypassSso,
-          issuingRootOrgId: getSessionIssuingRootOrgId(actorId),
-          rootOrgId
+          rootOrgId,
+          canBypassSso: () => canBypassRootOrgSso(actorId, rootOrgId)
         });
       }
 

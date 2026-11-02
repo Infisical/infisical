@@ -302,6 +302,49 @@ describe("Auth SSO session binding", () => {
       expect(refused.statusCode).toBe(403);
       expect(refused.json().message).toMatch(/another organization's identity provider/);
     });
+
+    test("Revoking the root org bypass refuses a sub-org project read on the next request", async () => {
+      const { userId, tokens } = await loginThroughOrgBIdp();
+      await addMemberToOrgA(userId);
+      await addMemberToSubOrg(userId, OrgMembershipRole.Admin);
+      const setRootOrgRole = (role: OrgMembershipRole) =>
+        getDb()(TableName.MembershipRole)
+          .whereIn(
+            "membershipId",
+            getDb()(TableName.Membership).where({ actorUserId: userId, scopeOrgId: ORG_A_ID }).select("id")
+          )
+          .update({ role });
+      await setRootOrgRole(OrgMembershipRole.Admin);
+
+      const { payload: selected } = await selectOrg(tokens.access, subOrgId);
+      const authorization = `Bearer ${selected.token}`;
+      const created = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/projects",
+        headers: { authorization },
+        body: { projectName: `binding-sub-${crypto.randomUUID().slice(0, 8)}` }
+      });
+      expect(created.statusCode).toBe(200);
+      const projectId = created.json().project.id as string;
+      const readProject = () =>
+        testServer.inject({ method: "GET", url: `/api/v1/projects/${projectId}`, headers: { authorization } });
+
+      try {
+        await getDb()(TableName.Organization).where({ id: ORG_A_ID }).update({ bypassOrgAuthEnabled: true });
+        await setAuthEnforced(ORG_A_ID, true);
+        expect((await readProject()).statusCode).toBe(200);
+
+        // The project permission is cached and the sub-org project's fingerprint does not track root org roles.
+        await setRootOrgRole(OrgMembershipRole.Member);
+        const refused = await readProject();
+
+        expect(refused.statusCode).toBe(403);
+        expect(refused.json().message).toMatch(/another organization's identity provider/);
+      } finally {
+        await setAuthEnforced(ORG_A_ID, false);
+        await testServer.inject({ method: "DELETE", url: `/api/v1/projects/${projectId}`, headers: { authorization } });
+      }
+    });
   });
 
   test("An enforced org's OAuth application refuses consent from a session another org's IdP issued", async () => {
