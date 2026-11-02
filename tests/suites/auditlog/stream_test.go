@@ -313,7 +313,8 @@ func TestAuditLogStream_Credentials(t *testing.T) {
 		// Assert
 		require.Equal(t, "Bearer azure-"+clientID, sink.ExpectEvent[webhook.DeliveryReceived](t, isPing).Header.Get("Authorization"),
 			"the test delivery should carry the token Entra issued for the client secret")
-		require.Equal(t, []azure.SecretGrant{{ClientID: clientID, Scope: "https://monitor.azure.com/.default"}}, entra.State(t).SecretGrants)
+		// Later deliveries (the tenant's own audit events) can fetch more tokens, so require the grant, not a count.
+		require.Contains(t, entra.State(t).SecretGrants, azure.SecretGrant{ClientID: clientID, Scope: "https://monitor.azure.com/.default"})
 		require.Len(t, listed, 1)
 		for name, body := range map[string]string{
 			"create": string(created.Body), "get": string(got.Body), "list": jsonString(t, listed),
