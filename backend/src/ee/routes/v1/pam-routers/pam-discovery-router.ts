@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { PamDiscoverySourceRunsSchema, PamDiscoverySourcesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ROTATION_STATUS } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import {
   PamDiscoveryImportStatus,
   PamDiscoveryRunStatus,
@@ -541,6 +542,32 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
           properties: { orgId: req.permission.orgId, importedCount: importedAccounts.length }
         })
         .catch(() => {});
+
+      results.forEach((r) => {
+        if (!r.rotationAccountId || !r.accountType) return;
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.PamAccountRotationConfigured,
+            distinctId: getTelemetryDistinctId(req),
+            organizationId: req.permission.orgId,
+            properties: {
+              accountType: r.accountType,
+              orgId: req.permission.orgId,
+              hasRotationAccount: true,
+              scheduledRotationEnabled: r.scheduledRotationEnabled ?? false
+            }
+          })
+          .catch(() => {});
+        if (r.rotationStatus !== ROTATION_STATUS.Success) return;
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.PamAccountRotated,
+            distinctId: getTelemetryDistinctId(req),
+            organizationId: req.permission.orgId,
+            properties: { accountType: r.accountType, orgId: req.permission.orgId }
+          })
+          .catch(() => {});
+      });
 
       return { results };
     }

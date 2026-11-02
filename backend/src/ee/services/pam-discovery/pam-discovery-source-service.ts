@@ -51,6 +51,7 @@ import {
   TDeleteDiscoverySourceDTO,
   TGetDiscoverySourceDTO,
   TImportDiscoveredDTO,
+  TImportDiscoveredResult,
   TListAccountDependenciesDTO,
   TListDiscoveredDTO,
   TListDiscoverySourcesDTO,
@@ -778,7 +779,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     const rotationLimit = pLimit(IMPORT_ROTATION_CONCURRENCY);
 
     const rotateImported = async (accountId: string, accountType: string, rotationAccountId: string) => {
-      let names: { accountName: string; rotationAccountName: string | null };
+      let names: { accountName: string; rotationAccountName: string | null; scheduledRotationEnabled: boolean };
       try {
         // the Rotation tab warns before rotating a password another account stores; an import can't ask, so it skips
         const shared = await pamAccountRotationService.getSharedIdentity({ accountId, projectId, ...ctx });
@@ -799,7 +800,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           )
         };
       }
-      const { accountName, rotationAccountName } = names;
+      const { accountName, rotationAccountName, scheduledRotationEnabled } = names;
       await auditLogService.createAuditLog({
         ...auditLogInfo,
         orgId: ctx.actorOrgId,
@@ -838,11 +839,11 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           }
         }
       });
-      return { rotationAccountId, rotationStatus, rotationMessage: message };
+      return { rotationAccountId, rotationStatus, rotationMessage: message, accountType, scheduledRotationEnabled };
     };
 
     const results = await Promise.all(
-      accounts.map(async (item) => {
+      accounts.map(async (item): Promise<TImportDiscoveredResult> => {
         try {
           const discovered = await pamDiscoveredAccountDAL.findById(item.discoveredAccountId);
           if (!discovered || discovered.discoverySourceId !== sourceId) {

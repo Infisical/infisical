@@ -3,7 +3,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 
 import { PamAccountType } from "../pam/pam-enums";
 import { TActorContext } from "../pam/pam-permission";
-import { PamDiscoverySchedule, PamDiscoveryType } from "./pam-discovery-enums";
+import { PamDiscoveryImportStatus, PamDiscoverySchedule, PamDiscoveryType } from "./pam-discovery-enums";
 
 export type TDiscoveredAccount = {
   accountType: PamAccountType;
@@ -107,6 +107,19 @@ export type TImportDiscoveredDTO = {
   accounts: { discoveredAccountId: string; templateId: string; name?: string; rotationAccountId?: string }[];
   auditLogInfo: AuditLogInfo;
 } & TActorContext;
+
+export type TImportDiscoveredResult = {
+  discoveredAccountId: string;
+  status: PamDiscoveryImportStatus;
+  accountId?: string;
+  name?: string;
+  message?: string;
+  rotationAccountId?: string;
+  rotationStatus?: string;
+  rotationMessage?: string;
+  accountType?: string;
+  scheduledRotationEnabled?: boolean;
+};
 
 export type TListAccountDependenciesDTO = {
   projectId: string;
