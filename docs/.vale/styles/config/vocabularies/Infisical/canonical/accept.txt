@@ -336,6 +336,7 @@ Patroni
 # --- Databases ---
 PostgreSQL
 MySQL
+CockroachDB
 MongoDB
 MongoDB Atlas
 Redis
