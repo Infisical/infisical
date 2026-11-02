@@ -62,7 +62,7 @@ export const OrgIdentitiesTab = () => {
   const { data, update, saved, toast, loading, navigate, startsWith } = useAccess();
   const can = useCan("org");
   const [scope, setScope] = useState<ScopeTab>("organization");
-  const [creating, setCreating] = useState(() => startsWith("create"));
+  const [creating, setCreating] = useState(() => startsWith("create") && can("identity", "create"));
   const [deleting, setDeleting] = useState<OrgIdentity>();
   const [authForm, setAuthForm] = useState<{ identity: OrgIdentity; method?: AuthMethod }>();
   const [authView, setAuthView] = useState<{ identity: OrgIdentity; method: AuthMethod }>();

@@ -64,7 +64,7 @@ const RoleDialog = ({
   const formId = source ? "duplicate-org-role" : "create-org-role";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>{source ? "Duplicate role" : "Create role"}</DialogTitle>
           {source && (
@@ -96,7 +96,16 @@ const RoleDialog = ({
                 description,
                 builtIn: false
               };
-              update((current) => ({ ...current, orgRoles: [...current.orgRoles, role] }));
+              update((current) => ({
+                ...current,
+                orgRoles: [...current.orgRoles, role],
+                rolePermissions: source
+                  ? {
+                      ...current.rolePermissions,
+                      [role.id]: structuredClone(current.rolePermissions[source.id] ?? {})
+                    }
+                  : current.rolePermissions
+              }));
               setPending(false);
               saved(source ? "Role duplicated successfully" : "Successfully created role");
               onOpenChange(false);
@@ -154,7 +163,7 @@ export const OrgRolesTab = () => {
   const { data, update, saved, loading, navigate, startsWith } = useAccess();
   const can = useCan("org");
   const [dialog, setDialog] = useState<{ source?: Role } | undefined>(() =>
-    startsWith("create") ? {} : undefined
+    startsWith("create") && can("role", "create") ? {} : undefined
   );
   const [deleting, setDeleting] = useState<Role>();
   const list = usePagedList({

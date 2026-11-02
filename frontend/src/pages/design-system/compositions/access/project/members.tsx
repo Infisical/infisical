@@ -36,7 +36,9 @@ export const ProjectMembersTab = () => {
     startsWith("filter") ? ["admin"] : []
   );
   const [filterOpen, setFilterOpen] = useState(() => startsWith("filter"));
-  const [adding, setAdding] = useState(() => startsWith("add") || startsWith("add-user-picker"));
+  const [adding, setAdding] = useState(
+    () => (startsWith("add") || startsWith("add-user-picker")) && can("member", "create")
+  );
   const [removing, setRemoving] = useState<Row | undefined>(() => {
     if (!startsWith("remove")) return undefined;
     const member = data.projectMembers.find((item) => item.id === "pm-diego");

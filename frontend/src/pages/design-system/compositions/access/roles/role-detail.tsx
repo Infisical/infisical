@@ -30,7 +30,7 @@ import { Gate, RESTRICTED, useCan } from "../ui";
 import {
   type PermissionErrors,
   type RolePermissions,
-  ruleId,
+  sanitizeDuplicate,
   subjectsFor,
   validatePermissions
 } from "./permissions-model";
@@ -42,38 +42,12 @@ import { VAULT_CONNECTIONS, VaultImportSheet } from "./vault-import-sheet";
 import styles from "./roles.module.css";
 
 const BUILT_IN = "Built-in roles are read only";
+const DEFAULT_ROLE =
+  "Cannot delete default organization membership role. Re-assign default to allow deletion.";
 
 type Overlay = "edit" | "duplicate" | "delete" | "discard" | "template" | "vault";
 
 const rolesKey = (scope: Scope) => (scope === "org" ? "orgRoles" : "projectRoles");
-
-const sanitizeDuplicate = (permissions: RolePermissions): RolePermissions =>
-  Object.fromEntries(
-    Object.entries(permissions).map(([subject, rules]) => [
-      subject,
-      rules.map((rule) => {
-        let { actions } = rule;
-        if (
-          subject === "secrets" &&
-          (actions.includes("describeSecret") || actions.includes("readValue"))
-        )
-          actions = actions.filter((action) => action !== "read");
-        if (
-          ["member", "identity", "groups"].includes(subject) &&
-          actions.some(
-            (action) => action === "assign-role" || action === "assign-additional-privileges"
-          )
-        )
-          actions = actions.filter((action) => action !== "grant-privileges");
-        return {
-          ...rule,
-          id: ruleId(),
-          actions,
-          conditions: rule.conditions.map((item) => ({ ...item }))
-        };
-      })
-    ])
-  );
 
 const renameSlug = (data: AccessData, scope: Scope, from: string, to: string): AccessData => {
   if (from === to) return data;
@@ -96,7 +70,8 @@ const renameSlug = (data: AccessData, scope: Scope, from: string, to: string): A
       orgIdentities: data.orgIdentities.map((identity) => ({
         ...identity,
         role: swap(identity.role)
-      }))
+      })),
+      defaultOrgRole: swap(data.defaultOrgRole)
     };
   const grants = <T extends { roles: { role: string }[] }>(items: T[]) =>
     items.map((item) => ({
@@ -225,6 +200,7 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
   };
 
   const builtInNote = isCustom ? undefined : BUILT_IN;
+  const isDefault = scope === "org" && role.slug === data.defaultOrgRole;
   const ruleStart = startsWith("conditions") ? "conditions" : undefined;
   const importMenu = scope === "project" && (
     <Gate allowed={editable} reason={reason}>
@@ -295,8 +271,8 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
-                  disabled={!isCustom || !can("role", "delete")}
-                  description={builtInNote}
+                  disabled={!isCustom || !can("role", "delete") || isDefault}
+                  description={isDefault ? DEFAULT_ROLE : builtInNote}
                   onSelect={() => setOverlay("delete")}
                 >
                   <Icon name="trash" />

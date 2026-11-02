@@ -36,7 +36,9 @@ const expiryOf = (token: ServiceToken) =>
 export const ServiceTokensTab = () => {
   const { data, update, saved, loading, startsWith } = useAccess();
   const can = useCan("project");
-  const [creating, setCreating] = useState(() => startsWith("create"));
+  const [creating, setCreating] = useState(
+    () => startsWith("create") && can("service-token", "create")
+  );
   const [deleting, setDeleting] = useState<ServiceToken>();
 
   const list = usePagedList({

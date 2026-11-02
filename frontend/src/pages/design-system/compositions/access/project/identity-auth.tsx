@@ -72,7 +72,7 @@ export const AuthMethodFormSheet = ({
   const isUpdate = Boolean(identity?.authMethods.includes(selected as AuthMethod));
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
+      <SheetContent pending={pending}>
         <SheetHeader>
           <SheetTitle>{isUpdate ? "Edit auth method" : "Add auth method"}</SheetTitle>
         </SheetHeader>

@@ -42,7 +42,9 @@ export const ProjectIdentitiesTab = () => {
   const { data, loading, navigate, startsWith } = useAccess();
   const can = useCan("project");
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
-  const [adding, setAdding] = useState(() => startsWith("add") || startsWith("add-create-new"));
+  const [adding, setAdding] = useState(
+    () => (startsWith("add") || startsWith("add-create-new")) && can("identity", "create")
+  );
   const [assuming, setAssuming] = useState(false);
   const [removing, setRemoving] = useState<ProjectIdentityRow>();
   const [authFor, setAuthFor] = useState<string>();

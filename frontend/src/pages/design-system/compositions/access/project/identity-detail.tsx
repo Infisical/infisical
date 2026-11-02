@@ -73,7 +73,7 @@ const EditIdentityDialog = ({
     !name.trim() || metadata.some((entry) => !entry.key.trim() || !entry.value.trim());
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>Edit project identity</DialogTitle>
           <DialogDescription>

@@ -138,7 +138,15 @@ const RuleSheet = ({
                   value={subject ?? ""}
                   onChange={(value) => {
                     setSubject(value);
-                    setRule((current) => ({ ...current, actions: [], conditions: [] }));
+                    setRule((current) => ({
+                      ...current,
+                      actions: [],
+                      conditions: [],
+                      inverted:
+                        scope === "project" &&
+                        Boolean(subjects.find((item) => item.subject === value)?.conditional) &&
+                        current.inverted
+                    }));
                     setPolicyError(undefined);
                     setErrors(undefined);
                   }}

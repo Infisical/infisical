@@ -25,9 +25,13 @@ export type AddIdentityMode = "create" | "assign";
 
 const AddIdentityForm = ({
   initialMode,
+  pending,
+  setPending,
   onClose
 }: {
   initialMode?: AddIdentityMode;
+  pending: boolean;
+  setPending: (pending: boolean) => void;
   onClose: () => void;
 }) => {
   const { data, update, saved, navigate } = useAccess();
@@ -43,7 +47,6 @@ const AddIdentityForm = ({
   const [identityId, setIdentityId] = useState("");
   const [role, setRole] = useState("no-access");
   const [errors, setErrors] = useState<{ name?: string; identity?: string }>({});
-  const [pending, setPending] = useState(false);
 
   const submit = () => {
     if (mode === "create" && !name.trim()) {
@@ -197,14 +200,26 @@ export const AddProjectIdentitySheet = ({
   open: boolean;
   initialMode?: AddIdentityMode;
   onOpenChange: (open: boolean) => void;
-}) => (
-  <Sheet open={open} onOpenChange={onOpenChange}>
-    <SheetContent>
-      <SheetHeader>
-        <SheetTitle>Add machine identity to project</SheetTitle>
-        <SheetDescription>Create a new machine identity or assign an existing one</SheetDescription>
-      </SheetHeader>
-      {open && <AddIdentityForm initialMode={initialMode} onClose={() => onOpenChange(false)} />}
-    </SheetContent>
-  </Sheet>
-);
+}) => {
+  const [pending, setPending] = useState(false);
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent pending={pending}>
+        <SheetHeader>
+          <SheetTitle>Add machine identity to project</SheetTitle>
+          <SheetDescription>
+            Create a new machine identity or assign an existing one
+          </SheetDescription>
+        </SheetHeader>
+        {open && (
+          <AddIdentityForm
+            initialMode={initialMode}
+            pending={pending}
+            setPending={setPending}
+            onClose={() => onOpenChange(false)}
+          />
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+};

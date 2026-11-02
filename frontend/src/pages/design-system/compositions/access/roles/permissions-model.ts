@@ -239,3 +239,31 @@ export const fromFlatRules = (flat: readonly Record<string, unknown>[]): Rule[] 
     inverted: Boolean(item.inverted),
     conditions: (item.conditions as Condition[] | undefined) ?? []
   }));
+
+export const sanitizeDuplicate = (permissions: RolePermissions): RolePermissions =>
+  Object.fromEntries(
+    Object.entries(permissions).map(([subject, rules]) => [
+      subject,
+      rules.map((item) => {
+        let { actions } = item;
+        if (
+          subject === "secrets" &&
+          (actions.includes("describeSecret") || actions.includes("readValue"))
+        )
+          actions = actions.filter((action) => action !== "read");
+        if (
+          ["member", "identity", "groups"].includes(subject) &&
+          actions.some(
+            (action) => action === "assign-role" || action === "assign-additional-privileges"
+          )
+        )
+          actions = actions.filter((action) => action !== "grant-privileges");
+        return {
+          ...item,
+          id: ruleId(),
+          actions,
+          conditions: item.conditions.map((condition) => ({ ...condition }))
+        };
+      })
+    ])
+  );

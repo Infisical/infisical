@@ -155,7 +155,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
   }
 
   return (
-    <DialogContent>
+    <DialogContent pending={pending}>
       <DialogHeader>
         <DialogTitle>Add group to project</DialogTitle>
         <DialogDescription>

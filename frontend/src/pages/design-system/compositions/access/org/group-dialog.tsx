@@ -70,7 +70,7 @@ export const GroupDialog = ({
   const [pending, setPending] = useState(false);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>{isCreate ? "Create group" : "Update group"}</DialogTitle>
         </DialogHeader>

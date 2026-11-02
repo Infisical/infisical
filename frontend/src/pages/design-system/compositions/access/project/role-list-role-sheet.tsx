@@ -18,6 +18,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 import { useAccess } from "../context";
 import type { Role } from "../model";
+import { sanitizeDuplicate } from "../roles/permissions-model";
 
 export type RoleSheetMode =
   | { kind: "create"; prefill?: { name: string; description: string } }
@@ -69,7 +70,17 @@ export const RoleListRoleSheet = ({
         description,
         builtIn: false
       };
-      update((current) => ({ ...current, projectRoles: [...current.projectRoles, role] }));
+      update((current) => ({
+        ...current,
+        projectRoles: [...current.projectRoles, role],
+        rolePermissions:
+          mode.kind === "duplicate"
+            ? {
+                ...current.rolePermissions,
+                [role.id]: sanitizeDuplicate(current.rolePermissions[mode.source.id] ?? {})
+              }
+            : current.rolePermissions
+      }));
       setPending(false);
       saved(`Project role "${name}" ${duplicate ? "duplicated" : "created"}`);
       onOpenChange(false);
@@ -79,7 +90,7 @@ export const RoleListRoleSheet = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
+      <SheetContent pending={pending}>
         <SheetHeader>
           <SheetTitle>{duplicate ? "Duplicate role" : "Create role"}</SheetTitle>
           <SheetDescription>

@@ -12,11 +12,10 @@ import {
 } from "@app/components/v4/ui/dialog";
 import { Stack } from "@app/components/v4/ui/layout";
 import { MultiSelect } from "@app/components/v4/ui/multi-select";
+import { isValidEmail, normalizeEmail } from "@app/helpers/email";
 
 import { useAccess } from "../context";
 import { displayName, type OrgMember, type ProjectMember } from "../model";
-
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const userLabel = (member: OrgMember) => displayName(member.user) ?? member.user.email;
 
@@ -107,6 +106,7 @@ export const AddMemberDialog = ({
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
       <DialogContent
+        pending={pending}
         onOpenAutoFocus={openUserPicker ? (event) => event.preventDefault() : undefined}
       >
         <DialogHeader>
@@ -137,8 +137,8 @@ export const AddMemberDialog = ({
               value={users}
               onChange={setUsers}
               onCreate={(query) => {
-                const email = query.trim();
-                if (!EMAIL.test(email) || known.has(email))
+                const email = normalizeEmail(query);
+                if (!isValidEmail(email) || known.has(email))
                   throw new Error("Enter an email address that isn't already in this organization");
                 setInvited((current) => [...new Set([...current, email])]);
                 setUsers((current) => [...new Set([...current, email])]);

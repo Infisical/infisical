@@ -42,7 +42,14 @@ import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
 
 import { useAccess } from "../context";
-import { displayName, type GroupRef, type OrgMember, roleName, SELF_USER_ID } from "../model";
+import {
+  displayName,
+  type GroupRef,
+  type OrgMember,
+  removeOrgUsers,
+  roleName,
+  SELF_USER_ID
+} from "../model";
 import { Gate, useCan, usePagedList, RESTRICTED } from "../ui";
 import { roleOptions } from "./create-identity-sheet";
 import {
@@ -457,12 +464,7 @@ export const OrgMemberDetail = ({ id }: { id: string }) => {
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                update((current) => ({
-                  ...current,
-                  orgMembers: current.orgMembers.filter(
-                    (item) => item.membership?.id !== membership.id
-                  )
-                }));
+                update((current) => removeOrgUsers(current, [member.user.id]));
                 saved("Successfully removed user from org");
                 back();
               }}

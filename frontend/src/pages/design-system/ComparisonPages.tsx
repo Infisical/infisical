@@ -1,7 +1,6 @@
 import { type ComponentType, lazy, Suspense } from "react";
 
 import { ComparisonSlider } from "./comparison-slider";
-import { AccessComparison } from "./compositions/access/views";
 import { SecretsScenarios } from "./compositions/secrets-scenarios";
 import { PageHeading } from "./doc-parts";
 import { type ComparisonPage, comparisonPages } from "./navigation";
@@ -13,6 +12,10 @@ const shots = import.meta.glob<string>("./assets/comparisons/*.webp", {
 });
 const shot = (screen: string, theme: "light" | "dark") =>
   shots[`./assets/comparisons/${screen}-${theme}.webp`];
+
+const AccessComparison = lazy(() =>
+  import("./compositions/access/views").then((module) => ({ default: module.AccessComparison }))
+);
 
 const screens: Record<string, ComponentType> = {
   shell: lazy(() => import("./compositions/shell")),

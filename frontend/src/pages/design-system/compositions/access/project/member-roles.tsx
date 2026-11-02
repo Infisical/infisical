@@ -128,13 +128,7 @@ export const EditRolesSheet = ({
   const [drafts, setDrafts] = useState(initial);
   const dirty = JSON.stringify(drafts) !== JSON.stringify(initial);
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(next) => {
-        if (next) setDrafts(member.roles.map(draftOf));
-        onOpenChange(next);
-      }}
-    >
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className={styles.wideSheet}>
         <SheetHeader>
           <SheetTitle>Roles</SheetTitle>
@@ -152,7 +146,9 @@ export const EditRolesSheet = ({
                 index={index}
                 labels={index === 0}
                 disabled={disabled}
-                durationOpen={member.roles[index]?.id === openDurationOf}
+                durationOpen={
+                  openDurationOf !== undefined && member.roles[index]?.id === openDurationOf
+                }
                 onChange={(next) =>
                   setDrafts((current) => current.map((item, i) => (i === index ? next : item)))
                 }
@@ -257,6 +253,7 @@ export const MemberRolesSection = ({
   const can = useCan("project");
   const catalog = data.projectRoles;
   const [sheetOpen, setSheetOpen] = useState(Boolean(initialSheet));
+  const [sheetKey, setSheetKey] = useState(0);
   const [editing, setEditing] = useState<ProjectRoleGrant>();
   const [removing, setRemoving] = useState<ProjectRoleGrant>();
   const canEdit = can("member", "edit");
@@ -269,9 +266,14 @@ export const MemberRolesSection = ({
       )
     }));
 
+  const openSheet = () => {
+    setSheetKey((current) => current + 1);
+    setSheetOpen(true);
+  };
+
   const editButton = (variant: "outline" | "primary", disabled: boolean) => (
     <Gate allowed={!disabled} reason={NO_EDIT}>
-      <Button variant={variant} size="xs" disabled={disabled} onClick={() => setSheetOpen(true)}>
+      <Button variant={variant} size="xs" disabled={disabled} onClick={openSheet}>
         <Icon icon={PencilIcon} size={12} />
         Edit roles
       </Button>
@@ -348,6 +350,7 @@ export const MemberRolesSection = ({
         </CardContent>
       </Card>
       <EditRolesSheet
+        key={sheetKey}
         member={member}
         open={sheetOpen}
         openDurationOf={

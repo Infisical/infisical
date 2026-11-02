@@ -29,7 +29,14 @@ import { Separator } from "@app/components/v4/ui/separator";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useAccess } from "../context";
-import { displayName, type OrgMember, type Role, roleName, SELF_USER_ID } from "../model";
+import {
+  displayName,
+  type OrgMember,
+  removeOrgUsers,
+  type Role,
+  roleName,
+  SELF_USER_ID
+} from "../model";
 import { FabDock, Gate, ListToolbar, Muted, useCan, usePagedList, RESTRICTED } from "../ui";
 import { InviteUsersSheet } from "./invite-users-sheet";
 
@@ -106,7 +113,7 @@ export const OrgMembersTab = () => {
   const [selected, setSelected] = useState<string[]>(() =>
     startsWith("bulk") ? ["m-priya", "m-diego", "m-sarah"] : []
   );
-  const [inviting, setInviting] = useState(() => startsWith("invite"));
+  const [inviting, setInviting] = useState(() => startsWith("invite") && can("member", "create"));
   const [removing, setRemoving] = useState<OrgMember | undefined>(() =>
     startsWith("remove") ? data.orgMembers.find((m) => m.user.id === "u-diego") : undefined
   );
@@ -152,12 +159,14 @@ export const OrgMembersTab = () => {
       )
     }));
   const removeMembers = (ids: string[]) =>
-    update((current) => ({
-      ...current,
-      orgMembers: current.orgMembers.filter(
-        (member) => !member.membership || !ids.includes(member.membership.id)
+    update((current) =>
+      removeOrgUsers(
+        current,
+        current.orgMembers
+          .filter((member) => member.membership && ids.includes(member.membership.id))
+          .map((member) => member.user.id)
       )
-    }));
+    );
 
   const columns: DataTableColumn<OrgMember>[] = [
     {

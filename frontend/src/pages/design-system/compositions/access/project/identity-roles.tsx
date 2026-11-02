@@ -130,7 +130,7 @@ const EditRolesSheet = ({
   const canEdit = can("identity", "edit");
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
+      <SheetContent pending={pending}>
         <SheetHeader>
           <SheetTitle>Roles</SheetTitle>
           <SheetDescription>
@@ -229,7 +229,7 @@ const EditRoleDialog = ({
   const dirty = Boolean(grant) && JSON.stringify(draft) !== JSON.stringify(grant && draftOf(grant));
   return (
     <Dialog open={Boolean(grant)} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent pending={pending}>
         <DialogHeader>
           <DialogTitle>Edit role</DialogTitle>
           <DialogDescription>

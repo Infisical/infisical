@@ -15,13 +15,11 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v4/ui/sheet";
+import { isValidEmail, MAX_INVITE_EMAILS, parseEmailList } from "@app/helpers/email";
 
 import { useAccess } from "../context";
-import type { OrgMember } from "../model";
+import { CURRENT_PROJECT_ID, type OrgMember } from "../model";
 import { LabelHint } from "../ui";
-
-const MAX_INVITE_EMAILS = 100;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const products = [
   { value: "none", label: "None" },
@@ -106,7 +104,26 @@ export const InviteUsersSheet = ({
           },
           groups: []
         }));
-      update((current) => ({ ...current, orgMembers: [...current.orgMembers, ...invited] }));
+      const joinsProject = product === "secret-manager" && projects.includes(CURRENT_PROJECT_ID);
+      update((current) => ({
+        ...current,
+        orgMembers: [...current.orgMembers, ...invited],
+        projectMembers: joinsProject
+          ? [
+              ...current.projectMembers,
+              ...invited
+                .filter(
+                  (member) => !current.projectMembers.some((m) => m.userId === member.user.id)
+                )
+                .map((member) => ({
+                  id: `pm-${member.user.id}`,
+                  userId: member.user.id,
+                  roles: [{ id: crypto.randomUUID(), role: projectRole, isTemporary: false }],
+                  createdAt: "Oct 30, 2026"
+                }))
+            ]
+          : current.projectMembers
+      }));
       setPending(false);
       saved(`Successfully invited user${emails.length > 1 ? "s" : ""} to the organization.`);
       reset();
@@ -123,7 +140,7 @@ export const InviteUsersSheet = ({
         onOpenChange(next);
       }}
     >
-      <SheetContent onOpenAutoFocus={(event) => event.preventDefault()}>
+      <SheetContent pending={pending} onOpenAutoFocus={(event) => event.preventDefault()}>
         <SheetHeader>
           <SheetTitle>Invite others to Acme Corp</SheetTitle>
           <SheetDescription>
@@ -153,11 +170,8 @@ export const InviteUsersSheet = ({
                     setError(undefined);
                   }}
                   onCreate={(query) => {
-                    const values = query
-                      .split(/[s,]+/)
-                      .map((value) => value.trim())
-                      .filter(Boolean);
-                    const invalid = values.find((value) => !EMAIL.test(value));
+                    const values = parseEmailList([query]);
+                    const invalid = values.find((value) => !isValidEmail(value));
                     if (invalid) {
                       setError(`${invalid} is not a valid email`);
                       return;

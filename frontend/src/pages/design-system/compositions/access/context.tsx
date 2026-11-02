@@ -83,6 +83,7 @@ export const AccessProvider = ({
     ...start?.nav
   });
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [fresh, setFresh] = useState(true);
   const value = useMemo<AccessContextValue>(() => {
     const toast = (item: Omit<ToastItem, "id">) =>
       setToasts((current) => [...current, { ...item, id: crypto.randomUUID() }]);
@@ -98,13 +99,16 @@ export const AccessProvider = ({
         return true;
       },
       nav,
-      navigate: (next) => setNav((current) => ({ ...current, detail: undefined, ...next })),
-      startsWith: (overlay) => start?.overlay === overlay,
+      navigate: (next) => {
+        setFresh(false);
+        setNav((current) => ({ ...current, detail: undefined, ...next }));
+      },
+      startsWith: (overlay) => fresh && start?.overlay === overlay,
       toast,
       saved: (title) => toast({ tone: "ok", title, description: LOCAL_ONLY }),
       toasts,
       dismissToast: (id) => setToasts((current) => current.filter((item) => item.id !== id))
     };
-  }, [scenario, start?.overlay, data, nav, toasts]);
+  }, [scenario, start?.overlay, data, nav, toasts, fresh]);
   return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;
 };

@@ -30,7 +30,8 @@ import shared from "./project.module.css";
 
 type Draft = Record<string, { checked: boolean; grant: GrantDraft }>;
 
-const stop = (event: MouseEvent | KeyboardEvent) => event.stopPropagation();
+const stopClick = (event: MouseEvent) => event.stopPropagation();
+const stopKey = (event: KeyboardEvent) => event.stopPropagation();
 
 const toDraft = ({
   role,
@@ -74,15 +75,15 @@ const RoleTimer = ({
             variant="ghost"
             size="icon-xs"
             aria-label={expired ? "Configure expired access" : "Configure temporary access"}
-            onClick={stop}
-            onKeyDown={stop}
+            onClick={stopClick}
+            onKeyDown={stopKey}
           >
             {expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />}
           </Button>
         </PopoverTrigger>
       </Tooltip>
       <PopoverContent side="right" align="start" className={shared.panel}>
-        <div onClick={stop} onKeyDown={stop} role="presentation">
+        <div onClick={stopClick} onKeyDown={stopKey} role="presentation">
           <TimedAccessPanel
             key={String(open)}
             grant={grant}
@@ -216,7 +217,7 @@ export const GroupRoles = ({
   const [open, setOpen] = useState(false);
   const allowed = can("groups", "edit");
   return (
-    <span className={styles.roleCell} onClick={stop} role="presentation">
+    <span className={styles.roleCell} onClick={stopClick} role="presentation">
       <RoleBadges roles={roles} catalog={data.projectRoles} />
       <Popover open={open} onOpenChange={setOpen}>
         <Gate allowed={allowed}>

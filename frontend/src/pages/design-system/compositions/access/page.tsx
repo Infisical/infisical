@@ -66,7 +66,21 @@ const projectTabBody: Record<ProjectTab, () => ReactNode> = {
   roles: () => <ProjectRolesTab />
 };
 
+const detailSubject: Record<Detail["kind"], Subject> = {
+  "org-member": "member",
+  "org-group": "groups",
+  "org-identity": "identity",
+  "org-role": "role",
+  "project-member": "member",
+  "project-group": "groups",
+  "project-identity": "identity",
+  "project-role": "role"
+};
+
 const DetailView = ({ detail }: { detail: Detail }) => {
+  const { can } = useAccess();
+  const scope = detail.kind.startsWith("org-") ? "org" : "project";
+  if (!can(scope, detailSubject[detail.kind], "read")) return <AccessRestricted />;
   switch (detail.kind) {
     case "org-member":
       return <OrgMemberDetail id={detail.id} />;

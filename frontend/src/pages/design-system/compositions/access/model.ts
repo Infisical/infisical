@@ -792,3 +792,13 @@ export const isExpired = (grant: ProjectRoleGrant) =>
     grant.temporaryAccessEndTime &&
     new Date(grant.temporaryAccessEndTime).getTime() < DEMO_NOW
   );
+
+export const removeOrgUsers = (data: AccessData, userIds: readonly string[]): AccessData => ({
+  ...data,
+  orgMembers: data.orgMembers.filter((member) => !userIds.includes(member.user.id)),
+  orgGroups: data.orgGroups.map((group) => ({
+    ...group,
+    memberIds: group.memberIds.filter((id) => !userIds.includes(id))
+  })),
+  projectMembers: data.projectMembers.filter((member) => !userIds.includes(member.userId))
+});

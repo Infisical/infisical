@@ -34,7 +34,7 @@ export const ProjectRolesTab = () => {
   const { data, update, saved, loading, navigate, startsWith } = useAccess();
   const can = useCan("project");
   const [sheet, setSheet] = useState<{ open: boolean; mode: RoleSheetMode; key: number }>(() => ({
-    open: startsWith("create"),
+    open: startsWith("create") && can("role", "create"),
     mode: {
       kind: "create",
       prefill: startsWith("create")

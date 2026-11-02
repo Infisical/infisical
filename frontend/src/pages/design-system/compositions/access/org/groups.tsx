@@ -38,7 +38,7 @@ export const OrgGroupsTab = () => {
   const can = useCan("org");
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [dialog, setDialog] = useState<{ group?: OrgGroup } | undefined>(() =>
-    startsWith("create") ? {} : undefined
+    startsWith("create") && can("groups", "create") ? {} : undefined
   );
   const [deleting, setDeleting] = useState<OrgGroup>();
   const rows = useMemo(

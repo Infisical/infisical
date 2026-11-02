@@ -120,7 +120,7 @@ export const ServiceTokenCreateSheet = ({
         onOpenChange(next);
       }}
     >
-      <SheetContent>
+      <SheetContent pending={pending}>
         <SheetHeader>
           <SheetTitle>{`Add a service token for ${project.label}`}</SheetTitle>
           <SheetDescription>

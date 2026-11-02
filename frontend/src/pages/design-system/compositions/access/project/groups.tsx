@@ -26,7 +26,7 @@ type Row = ProjectGroup & { group: OrgGroup };
 export const ProjectGroupsTab = () => {
   const { data, loading, navigate, startsWith } = useAccess();
   const can = useCan("project");
-  const [adding, setAdding] = useState(() => startsWith("add"));
+  const [adding, setAdding] = useState(() => startsWith("add") && can("groups", "create"));
   const [removing, setRemoving] = useState<Row>();
 
   const rows = useMemo(

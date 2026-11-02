@@ -50,7 +50,7 @@ export const CreateIdentitySheet = ({
   };
   return (
     <Sheet open={open} onOpenChange={close}>
-      <SheetContent>
+      <SheetContent pending={pending}>
         <SheetHeader>
           <SheetTitle>Create organization machine identity</SheetTitle>
           <SheetDescription>Create a new machine identity in the organization</SheetDescription>

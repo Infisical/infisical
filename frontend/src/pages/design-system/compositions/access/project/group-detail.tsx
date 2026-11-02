@@ -40,10 +40,6 @@ import { GroupRoles } from "./group-roles";
 
 import styles from "./group.module.css";
 
-const groupIdentityMembers: Record<string, string[]> = {
-  "g-platform": ["4b1e8c2a-93f0-4d55-a1c6-0e7d2f9b3a11", "1f6c3e9b-7a24-4d0e-8b51-c2e9a7d40f36"]
-};
-
 const ASSUME_CONFIRM = "assume";
 
 type MemberType = "users" | "machine-identities";
@@ -166,7 +162,7 @@ const GroupMembersTable = ({ group }: { group: OrgGroup }) => {
         }
       ];
     });
-    const identities = (groupIdentityMembers[group.id] ?? []).flatMap((identityId) => {
+    const identities = (group.identityIds ?? []).flatMap((identityId) => {
       const identity = data.orgIdentities.find((item) => item.id === identityId);
       return identity
         ? [
