@@ -46,6 +46,7 @@ import {
 import {
   bandRangeLabel,
   bandRateLabel,
+  bandTableRate,
   byDisplayOrder,
   cadencePeriod,
   cadenceWord,
@@ -56,6 +57,7 @@ import {
   fmtMoneyCents,
   isMeteredCadence,
   meteredUsageCaption,
+  pluralizeUnit,
   unitForCount,
   unitPrice
 } from "../billing-v2-format";
@@ -139,15 +141,18 @@ const PriceLineView = ({ line, headline }: { line: PriceLine; headline?: boolean
       {line.metered && <Badge variant="neutral">Usage-based</Badge>}
     </div>
     {line.bands && (
-      <div className="mt-1 flex flex-col gap-0.5">
+      <div className="mt-2 flex flex-col divide-y divide-border">
         {line.bands.tiers.map((band, index) => (
           <div
             // eslint-disable-next-line react/no-array-index-key
             key={index}
-            className="flex justify-between gap-3 text-xs text-muted tabular-nums"
+            className="flex justify-between gap-3 py-2 text-sm tabular-nums"
           >
-            <span>{bandRangeLabel(line.bands as BillingV2Bands, index)}</span>
-            <span className="text-foreground">{bandRateLabel(band, line.noun ?? "unit")}</span>
+            <span className="text-muted">
+              {bandRangeLabel(line.bands as BillingV2Bands, index)}{" "}
+              {pluralizeUnit(line.noun ?? "unit")}
+            </span>
+            <span className="text-foreground">{bandTableRate(band)}</span>
           </div>
         ))}
       </div>

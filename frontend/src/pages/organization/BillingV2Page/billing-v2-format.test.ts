@@ -2,7 +2,12 @@ import { describe, expect, test } from "vitest";
 
 import type { BillingV2EntitlementDim } from "@app/hooks/api";
 
-import { bandRangeLabel, bandRateLabel, meteredUsageCaption } from "./billing-v2-format";
+import {
+  bandRangeLabel,
+  bandRateLabel,
+  bandTableRate,
+  meteredUsageCaption
+} from "./billing-v2-format";
 
 const bands = {
   mode: "graduated" as const,
@@ -29,10 +34,22 @@ describe("bandRateLabel", () => {
   });
 });
 
+describe("bandTableRate", () => {
+  test.each([
+    ["a free band", { upTo: 10, unitPrice: 0, flatFee: 0 }, "Included"],
+    ["a sub-cent rate per 1,000", { upTo: null, unitPrice: 0.005, flatFee: 0 }, "$5 per 1,000"],
+    ["a whole-cent rate per unit", { upTo: null, unitPrice: 0.25, flatFee: 0 }, "$0.25 each"],
+    ["a flat fee only", { upTo: null, unitPrice: 0, flatFee: 50 }, "$50 flat"],
+    ["a rate plus a flat fee", { upTo: null, unitPrice: 0.003, flatFee: 10 }, "$3 per 1,000 + $10"]
+  ])("%s", (_name, band, want) => {
+    expect(bandTableRate(band)).toBe(want);
+  });
+});
+
 describe("bandRangeLabel", () => {
   test("ranges start where the previous band ended", () => {
-    expect(bandRangeLabel(bands, 0)).toBe("0 - 10,000");
-    expect(bandRangeLabel(bands, 1)).toBe("10,001 - 100,000");
+    expect(bandRangeLabel(bands, 0)).toBe("0 – 10,000");
+    expect(bandRangeLabel(bands, 1)).toBe("10,001 – 100,000");
     expect(bandRangeLabel(bands, 2)).toBe("100,001+");
   });
 });
