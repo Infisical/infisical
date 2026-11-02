@@ -23,6 +23,7 @@ import {
   getRestoredLeaseRevocationJobId,
   TDynamicSecretLeaseQueueServiceFactory
 } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
+import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
@@ -217,6 +218,7 @@ type TProjectServiceFactoryDep = {
     "setLeaseRevocation" | "unsetRestoredLeaseRevocation"
   >;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
+  honeyTokenDAL: Pick<THoneyTokenDALFactory, "countByOrgId" | "countByProjectId">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -270,7 +272,8 @@ export const projectServiceFactory = ({
   usageMeteringService,
   dynamicSecretLeaseDAL,
   dynamicSecretQueueService,
-  secretV2BridgeDAL
+  secretV2BridgeDAL,
+  honeyTokenDAL
 }: TProjectServiceFactoryDep) => {
   // The (orgId, slug) unique index already refuses a taken slug; this only names the cause when the holder is
   // a project pending deletion.
@@ -1031,6 +1034,20 @@ export const projectServiceFactory = ({
       try {
         // Read before the transaction: a plan cache miss queries on its own connection.
         const plan = await licenseService.getPlan(project.orgId);
+
+        // A deleted project's honey tokens don't count toward the limit, so restoring it can exceed it.
+        if (plan.honeyTokenLimit !== null) {
+          const projectHoneyTokenCount = await honeyTokenDAL.countByProjectId(project.id);
+          if (
+            projectHoneyTokenCount &&
+            (await honeyTokenDAL.countByOrgId(project.orgId)) + projectHoneyTokenCount > plan.honeyTokenLimit
+          ) {
+            throw new BadRequestError({
+              message:
+                "Failed to restore project due to honey token limit reached. Upgrade plan or revoke an existing honey token."
+            });
+          }
+        }
 
         const restored = await projectDAL.transaction(async (tx) => {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(project.orgId)]);
