@@ -766,8 +766,19 @@ export const certificateDALFactory = (db: TDbClient) => {
           void qb
             .select(db.raw("1"))
             .from(TableName.ApprovalRequests)
-            .whereNotNull(`${TableName.Certificate}.source`)
-            .whereNot(`${TableName.Certificate}.source`, CertificateSource.Issued)
+            .where((heldQb) => {
+              void heldQb
+                .where((importedOrDiscoveredQb) => {
+                  void importedOrDiscoveredQb
+                    .whereNotNull(`${TableName.Certificate}.source`)
+                    .whereNot(`${TableName.Certificate}.source`, CertificateSource.Issued);
+                })
+                .orWhere((raisedByAutoRenewalQb) => {
+                  void raisedByAutoRenewalQb
+                    .whereNull(`${TableName.ApprovalRequests}.requesterId`)
+                    .whereNull(`${TableName.ApprovalRequests}.machineIdentityId`);
+                });
+            })
             .where(`${TableName.ApprovalRequests}.type`, ApprovalPolicyType.CertRequest)
             .where(`${TableName.ApprovalRequests}.status`, ApprovalRequestStatus.Pending)
             .whereRaw(`"${TableName.ApprovalRequests}"."projectId" = "${TableName.Certificate}"."projectId"`)

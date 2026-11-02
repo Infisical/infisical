@@ -1029,6 +1029,7 @@ export const pkiScepServiceFactory = ({
         state: certRequest.state,
         locality: certRequest.locality,
         domainComponents: certRequest.domainComponents,
+        ...(certRequest.basicConstraints && { basicConstraints: certRequest.basicConstraints }),
         tx
       });
 
@@ -1058,7 +1059,8 @@ export const pkiScepServiceFactory = ({
                 validity: { ttl },
                 signatureAlgorithm,
                 keyAlgorithm,
-                customExtensions: validationResult.resolvedCustomExtensions
+                customExtensions: validationResult.resolvedCustomExtensions,
+                basicConstraints: certRequest.basicConstraints
               }
             },
             justification: `SCEP certificate request for ${certRequest.commonName || profile.slug}`,
