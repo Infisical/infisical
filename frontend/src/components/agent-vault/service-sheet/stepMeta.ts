@@ -91,7 +91,7 @@ export const MCP_SERVICE_STEPS: StepMeta[] = [
     rightDescription:
       "The proxy refuses a call to any tool that isn't selected and hides it from the agent's tool list. The rule applies to every member and session using this service.",
     rightTip:
-      "Choosing Selected tools asks the server for its list with the credential from the previous step; Reload Tools asks again. A tool the server doesn't list, such as one the credential lacks the scope for, can be added by typing its exact name in the search field."
+      "Turning off All Tools asks the server for its list with the credential from the previous step; Reload Tools asks again. To allow a tool the server doesn't list, type its exact name in Allowed Tools."
   },
   REVIEW_STEP
 ];

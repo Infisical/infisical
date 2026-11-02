@@ -720,11 +720,18 @@ export const ServiceSheet = ({
   };
 
   const current = steps[step];
-  const [credentialType, serverUrl, oauthAuthorizationId, oauthAuthorizedUrl] = watch([
+  const [
+    credentialType,
+    serverUrl,
+    oauthAuthorizationId,
+    oauthAuthorizedUrl,
+    oauthAuthorizationRejection
+  ] = watch([
     "credentialType",
     "serverUrl",
     "oauthAuthorizationId",
-    "oauthAuthorizedUrl"
+    "oauthAuthorizedUrl",
+    "oauthAuthorizationRejection"
   ]);
 
   useEffect(() => {
@@ -743,18 +750,19 @@ export const ServiceSheet = ({
     return () => window.clearTimeout(timeout);
   }, [oauthAuthorizationId, getValues, setValue, setError]);
 
-  const isAwaitingAuthorization =
-    current.step === ServiceStep.Credential &&
-    isOAuthAuthorizationMissing(
-      {
-        serviceType: isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http,
-        credentialType,
-        serverUrl,
-        oauthAuthorizationId,
-        oauthAuthorizedUrl
-      },
-      service
-    );
+  const isAuthorizationMissing = isOAuthAuthorizationMissing(
+    {
+      serviceType: isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http,
+      credentialType,
+      serverUrl,
+      oauthAuthorizationId,
+      oauthAuthorizedUrl
+    },
+    service
+  );
+  const isAwaitingAuthorization = current.step === ServiceStep.Credential && isAuthorizationMissing;
+  // Set once a sign-in expired or was refused; only authorizing again on the Credential step clears it.
+  const isAuthorizationRejected = isAuthorizationMissing && Boolean(oauthAuthorizationRejection);
   const isTemplateStep = current.step === ServiceStep.Template;
   const saveLabel = isUpdate ? "Save" : "Add Service";
 
@@ -819,6 +827,11 @@ export const ServiceSheet = ({
                           index={index}
                           title={meta.name}
                           description={stepDescription(meta)}
+                          status={
+                            meta.step === ServiceStep.Credential && isAuthorizationRejected
+                              ? "error"
+                              : undefined
+                          }
                         />
                       ))}
                     </StepperList>
@@ -873,6 +886,8 @@ export const ServiceSheet = ({
                       serviceId={service?.id}
                       loaded={loadedTools}
                       onLoaded={setLoadedTools}
+                      isAuthorizationExpired={isAuthorizationRejected}
+                      onGoToCredential={() => setStep(stepKeys.indexOf(ServiceStep.Credential))}
                     />
                   )}
                   {current.step === ServiceStep.Review && (

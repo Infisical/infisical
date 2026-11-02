@@ -35,6 +35,7 @@ import {
   OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE,
   TAgentVaultOauthServiceFactory
 } from "../agent-vault-oauth/agent-vault-oauth-service";
+import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
   AGENT_VAULT_OAUTH_HEADER_NAME,
   AGENT_VAULT_OAUTH_HEADER_PREFIX,
@@ -119,7 +120,7 @@ import {
   splitCredential,
   TCredentialWrite
 } from "./agent-vault-credential-write-fns";
-import { listMcpServerTools } from "./agent-vault-mcp-tool-list-fns";
+import { listMcpServerTools, McpListError } from "./agent-vault-mcp-tool-list-fns";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "./agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceDALFactory } from "./agent-vault-service-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "./agent-vault-service-substitution-dal";
@@ -1718,7 +1719,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     // An OAuth token is issued by the provider, never typed, so like resolve this never expands one.
     let credentialHeader: { name: string; prefix?: string; value: string; isTyped: boolean };
-    let usesStoredSecret = false;
+    // Set when the token is the service's saved OAuth token, which can be refreshed if the server refuses it.
+    let refreshSavedToken: ((rejectedTokenHash: string) => Promise<string>) | undefined;
     const credentialType = credential?.type ?? (service?.credentialType as AgentVaultCredentialType | undefined);
     if (credentialType === AgentVaultCredentialType.OAuth) {
       let accessToken: string;
@@ -1736,18 +1738,25 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         // The stored tokens only ever go to the server they were authorized for.
         if (serverUrl !== storedServerUrl)
           throw new BadRequestError({ message: OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE });
-        const refreshed = await agentVaultOauthService.refreshServiceToken({
-          serviceId: service!.id,
-          projectId: rest.projectId,
-          expiresWithinSeconds: 60,
-          destination: { hostPattern: service!.hostPattern, serverUrl: storedServerUrl }
-        });
-        if (refreshed.status === AgentVaultOauthStatus.NeedsReauthorization) {
-          throw new BadRequestError({
-            message: "This service's sign-in is no longer accepted. Reauthorize the service, then load the tools again."
+        const savedService = service!;
+        const refreshToken = async (rejectedTokenHash?: string) => {
+          const refreshed = await agentVaultOauthService.refreshServiceToken({
+            serviceId: savedService.id,
+            projectId: rest.projectId,
+            expiresWithinSeconds: 60,
+            rejectedTokenHash,
+            destination: { hostPattern: savedService.hostPattern, serverUrl: storedServerUrl }
           });
-        }
-        accessToken = refreshed.credential.value;
+          if (refreshed.status === AgentVaultOauthStatus.NeedsReauthorization) {
+            throw new BadRequestError({
+              message:
+                "This service's sign-in is no longer accepted. Reauthorize the service, then load the tools again."
+            });
+          }
+          return refreshed.credential.value;
+        };
+        accessToken = await refreshToken();
+        refreshSavedToken = refreshToken;
       }
       credentialHeader = {
         name: AGENT_VAULT_OAUTH_HEADER_NAME,
@@ -1769,7 +1778,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       if (write.memberProvidedFields?.length) throw noAdminTokenError();
 
       const config = write.config as Extract<TAgentVaultCredentialConfig, { type: AgentVaultCredentialType.Bearer }>;
-      usesStoredSecret = write.secret?.value === undefined;
       const value =
         write.secret?.value ?? (stored?.encryptedCredential ? openValue(stored.encryptedCredential) : undefined);
       if (value === undefined) throw noAdminTokenError();
@@ -1799,16 +1807,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           message: `Enter a value for the custom header '${header.name}', then load the tools.`
         });
       }
-      usesStoredSecret = true;
       return { name: header.name, prefix: header.prefix, text: openValue(match.encryptedValue) };
     });
-    // Like the OAuth tokens, saved values only go to the saved server, so a changed URL can't pull them elsewhere.
-    if (usesStoredSecret && service && serverUrl !== getServiceServerUrl(service.config)) {
-      throw new BadRequestError({
-        message:
-          "The server URL changed, so Infisical won't send the saved credential or custom header values to it. Enter them again, then load the tools."
-      });
-    }
     assertCustomHeadersDoNotShadowCredential({ type: credentialType, headerName: credentialHeader.name }, headerTexts);
 
     const texts = [
@@ -1825,16 +1825,26 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const headerValues = headerTexts.map((header) => ({ ...header, value: expand(header.text) }));
     const credentialValue = credentialHeader.isTyped ? expand(credentialHeader.value) : credentialHeader.value;
-    const tools = await listMcpServerTools({
-      serverUrl,
-      transport,
-      headers: {
-        ...Object.fromEntries(headerValues.map((header) => [header.name, withPrefix(header.prefix, header.value)])),
-        [credentialHeader.name]: withPrefix(credentialHeader.prefix, credentialValue)
-      },
-      secrets: [credentialValue, ...headerValues.map((header) => header.value)]
-    });
-    return { tools };
+    const listWith = (token: string) =>
+      listMcpServerTools({
+        serverUrl,
+        transport,
+        headers: {
+          ...Object.fromEntries(headerValues.map((header) => [header.name, withPrefix(header.prefix, header.value)])),
+          [credentialHeader.name]: withPrefix(credentialHeader.prefix, token)
+        },
+        secrets: [token, ...headerValues.map((header) => header.value)]
+      });
+    try {
+      return { tools: await listWith(credentialValue) };
+    } catch (err) {
+      // A saved token can be refused before it expires (revoked, or no expiry from the provider), so it is refreshed
+      // once, as the proxy does, before the admin is asked to reauthorize.
+      if (!(err instanceof McpListError && err.isCredentialRejected) || !refreshSavedToken) throw err;
+      const refreshedToken = await refreshSavedToken(hashAccessToken(credentialValue));
+      if (refreshedToken === credentialValue) throw err;
+      return { tools: await listWith(refreshedToken) };
+    }
   };
 
   const deleteService = async ({ accessBundleId, serviceId, ...rest }: TDeleteServiceDTO) => {

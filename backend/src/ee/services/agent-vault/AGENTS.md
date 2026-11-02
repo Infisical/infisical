@@ -172,24 +172,25 @@ the matching at runtime and reimplements the same rules, so a change here needs 
 ## Tool allowlist
 
 `allowedTools` on an MCP service names the tools agents may call. Like `allowedMethods`, NULL is every tool and an
-empty array is never stored. Names are exact and case-sensitive, and the proxy compares them byte for byte whatever
-characters they hold. `agent-vault-tool-name-schemas.ts` (mirrored in the frontend's `serviceSchema.ts`) only refuses
-what is never a real tool name: empty, over 128 characters, edge whitespace, control characters. The CLI's
-`mcpNamePattern` is narrower but only decides whether the session log records a name; a call outside it is logged
-unparsed and still checked against the list.
+empty array is never stored. Names are exact and case-sensitive, and the proxy compares them byte for byte.
+`agent-vault-tool-name-schemas.ts` (mirrored in the frontend's `serviceSchema.ts`) holds the MCP spec's SHOULD as a
+must: 1 to 128 of `A-Z a-z 0-9 _ - .`, which keeps out lone surrogates and U+FFFD (node-pg rewrites the first, Go
+folds both). The Tools step drops server tools outside it, since they could never be allowed. The CLI's
+`mcpNamePattern` is wider (it also takes `:` and `/`) and only decides whether the session log records a name; a call
+outside it is logged unparsed and still checked against the list.
 
 - **The proxy's `tools/call` check is the control.** While a list is set it reads every POST to the service, up to
   32 MiB, logs on or off, and refuses the whole request when any call names an unlisted tool, before the credential is
   attached. A larger body gets a 413. The check goes by the body, not the `Content-Type`: a body declared
   `application/json`, or one whose first byte after whitespace or a BOM is `{` or `[`, is parsed strictly, and any
-  other body (a form-encoded OAuth token request) is forwarded. It fails closed: a compressed body, JSON it can't parse
-  strictly (duplicate or case-variant keys) and a `tools/call` with no tool name get a 400, and so does any other
-  method that carries a body. In a refused batch only the entries that call an unlisted tool name it. A Streamable HTTP
-  client (its `Accept` lists both `application/json` and `text/event-stream`) gets the refusal as a JSON-RPC error
-  with status 200, since MCP clients read a 403 as an auth failure; any other client, legacy SSE included, gets the
-  same body with a 403, because those clients ignore the body of a successful POST. When a body substitution rewrites
-  the request, the rewritten body is checked again, and a refusal there is a 403 that doesn't name the tool, since the
-  body can now hold a real value.
+  other body (a form-encoded OAuth token request) is forwarded. It fails closed: a compressed body, a charset other
+  than UTF-8, `Mcp-Method`/`Mcp-Name` headers that differ from the body, JSON it can't parse strictly (duplicate or
+  case-variant keys) and a `tools/call` with no tool name get a 400, and so does any other method that carries a body.
+  In a refused batch only the entries that call an unlisted tool name it. A Streamable HTTP client (its `Accept` lists
+  both `application/json` and `text/event-stream`) gets the refusal as a JSON-RPC error with status 200, since MCP
+  clients read a 403 as an auth failure; a legacy SSE client gets 202 and the error on the event stream whose
+  `endpoint` event named the POST's URL, as the server would answer, and the same body with a 403 only when the proxy
+  hasn't seen that stream.
 - **Hiding unlisted tools from `tools/list` is only a convenience.** The proxy filters any result shaped like a tool
   list, in JSON and SSE responses, by shape rather than by request id. It drops the agent's `Accept-Encoding` so the
   response arrives uncompressed. A response it can't rewrite (still compressed, over 1 MiB, unparseable) passes

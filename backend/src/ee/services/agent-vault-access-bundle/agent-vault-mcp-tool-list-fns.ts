@@ -5,7 +5,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { PRIVATE_ADDRESS_REFUSED_MESSAGE, safeRequest } from "@app/lib/validator";
 
-import { describeServer } from "../agent-vault-oauth/agent-vault-oauth-discovery-fns";
+import { describeServer, privateNetworkHint } from "../agent-vault-oauth/agent-vault-oauth-discovery-fns";
 import { headerValue, MCP_CLIENT_INFO, MCP_PROTOCOL_VERSION } from "../agent-vault-oauth/agent-vault-oauth-http-fns";
 import { normalizeProviderText } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import { AgentVaultHttpMethod, AgentVaultMcpTransport } from "../agent-vault/agent-vault-enums";
@@ -19,12 +19,23 @@ const MAX_MESSAGE_BYTES = 4 * 1024 * 1024;
 const MAX_STREAM_BYTES = 16 * 1024 * 1024;
 const MAX_DESCRIPTION_LENGTH = 1000;
 const MAX_PING_REPLIES = 20;
+// An SSE server announces its message endpoint as soon as the stream opens, so a stream still silent after this is
+// most likely a Streamable HTTP server.
+const SSE_ENDPOINT_TIMEOUT_MS = 5000;
+const MAX_ERROR_BODY_BYTES = 4096;
+const MAX_ERROR_DETAIL_LENGTH = 300;
 
 type TMcpHttpMethod = AgentVaultHttpMethod.Get | AgentVaultHttpMethod.Post | AgentVaultHttpMethod.Delete;
 
 type TMcpTool = { name: string; description: string | null };
 
-type TMcpHttpResponse = { status: number; contentType: string; sessionId: string | null; body: Readable };
+type TMcpHttpResponse = {
+  status: number;
+  contentType: string;
+  sessionId: string | null;
+  location?: string | null;
+  body: Readable;
+};
 
 // Narrow on purpose, so the client is tested against stubbed servers without a network.
 export type TMcpHttpClient = {
@@ -55,17 +66,25 @@ const agentVaultMcpHttpClient: TMcpHttpClient = {
       status: response.status,
       contentType: headerValue(response.headers["content-type"]).toLowerCase(),
       sessionId: headerValue(response.headers["mcp-session-id"]) || null,
+      location: headerValue(response.headers.location) || null,
       body: response.data
     };
   }
 };
 
-class McpListError extends BadRequestError {}
+export class McpListError extends BadRequestError {
+  // The server refused the credential, so a caller holding a refreshable token can refresh it and try once more.
+  isCredentialRejected = false;
+}
 
 type TJsonRpcMessage = { id?: unknown; method?: unknown; result?: unknown; error?: { message?: unknown } };
 
-// A server request can reuse a client request's id (ids are unique per sender), so only a response answers one.
-const isResponseTo = (id: number) => (message: TJsonRpcMessage) => message.id === id && message.method === undefined;
+// A server request can reuse a client request's id (ids are unique per sender), so only a response answers one. Some
+// servers echo a numeric id back as a string, which both MCP SDKs accept.
+const isResponseTo = (id: number) => (message: TJsonRpcMessage) =>
+  (typeof message.id === "number" || typeof message.id === "string") &&
+  Number(message.id) === id &&
+  message.method === undefined;
 
 const toMessages = (parsed: unknown): TJsonRpcMessage[] =>
   (Array.isArray(parsed) ? parsed : [parsed]).filter(
@@ -87,13 +106,15 @@ const readText = async (body: Readable, tooLarge: () => McpListError) => {
   return Buffer.concat(chunks).toString("utf-8");
 };
 
-// One event per yield, in order. An event's data lines are joined with newlines, as the SSE spec says.
+// One event per yield, in order. An event's data lines are joined with newlines, as the SSE spec says. Only the newly
+// decoded text is scanned for line ends, so a server sending one huge line slowly costs linear time, not quadratic.
 async function* readSseEvents(body: Readable, tooLarge: () => McpListError) {
   const decoder = new StringDecoder("utf8");
-  let buffer = "";
   let isStart = true;
   let skipLeadingLf = false;
   let total = 0;
+  let partial: string[] = [];
+  let partialSize = 0;
   let event = "";
   let data: string[] = [];
   let dataSize = 0;
@@ -102,21 +123,39 @@ async function* readSseEvents(body: Readable, tooLarge: () => McpListError) {
   for await (const chunk of body) {
     total += (chunk as Buffer).length;
     if (total > MAX_STREAM_BYTES) throw tooLarge();
-    buffer += decoder.write(chunk as Buffer);
+    let text = decoder.write(chunk as Buffer);
     // The stream may start with one BOM, which isn't part of the first field name.
-    if (isStart && buffer) {
-      if (buffer.startsWith("\uFEFF")) buffer = buffer.slice(1);
+    if (isStart && text) {
+      if (text.startsWith("\uFEFF")) text = text.slice(1);
       isStart = false;
     }
     // A CR ends its line at once, so an event ending in CRs isn't held until the server sends more. When it
     // ended the last chunk, an LF opening this one is the rest of that CRLF.
-    if (skipLeadingLf && buffer) {
-      if (buffer.startsWith("\n")) buffer = buffer.slice(1);
+    if (skipLeadingLf && text) {
+      if (text.startsWith("\n")) text = text.slice(1);
       skipLeadingLf = false;
     }
-    if (buffer.endsWith("\r")) skipLeadingLf = true;
-    const lines = buffer.split(/\r\n|\r|\n/);
-    buffer = lines.pop()!;
+
+    const lines: string[] = [];
+    let lineStart = 0;
+    for (let i = 0; i < text.length; i += 1) {
+      const code = text.charCodeAt(i);
+      if (code === 10 || code === 13) {
+        partial.push(text.slice(lineStart, i));
+        lines.push(partial.join(""));
+        partial = [];
+        partialSize = 0;
+        if (code === 13) {
+          if (i + 1 === text.length) skipLeadingLf = true;
+          else if (text.charCodeAt(i + 1) === 10) i += 1;
+        }
+        lineStart = i + 1;
+      }
+    }
+    if (lineStart < text.length) {
+      partial.push(text.slice(lineStart));
+      partialSize += text.length - lineStart;
+    }
 
     // eslint-disable-next-line no-restricted-syntax
     for (const line of lines) {
@@ -138,9 +177,44 @@ async function* readSseEvents(body: Readable, tooLarge: () => McpListError) {
         }
       }
     }
-    if (buffer.length > MAX_MESSAGE_BYTES) throw tooLarge();
+    if (partialSize > MAX_MESSAGE_BYTES) throw tooLarge();
   }
 }
+
+// What a refusing server said, for the error the admin sees: a JSON-RPC or JSON error message, or a plain-text body.
+// HTML error pages say nothing useful and are left out.
+const readErrorDetail = async (response: TMcpHttpResponse, sensitiveValues: string[]) => {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  try {
+    // eslint-disable-next-line no-restricted-syntax
+    for await (const chunk of response.body) {
+      const bytes = Buffer.from(chunk as Buffer);
+      chunks.push(bytes);
+      size += bytes.length;
+      if (size >= MAX_ERROR_BODY_BYTES) break;
+    }
+  } catch {
+    return "";
+  } finally {
+    response.body.destroy();
+  }
+  const text = Buffer.concat(chunks).subarray(0, MAX_ERROR_BODY_BYTES).toString("utf-8").trim();
+  let detail: unknown = null;
+  if (response.contentType.startsWith("application/json")) {
+    try {
+      const parsed = JSON.parse(text) as { error?: unknown; message?: unknown };
+      const { error } = parsed;
+      if (typeof error === "object" && error !== null) detail = (error as { message?: unknown }).message;
+      else detail = typeof error === "string" ? error : parsed.message;
+    } catch {
+      detail = null;
+    }
+  } else if (response.contentType.startsWith("text/plain")) {
+    detail = text;
+  }
+  return normalizeProviderText(detail, MAX_ERROR_DETAIL_LENGTH, sensitiveValues).replace(/[.\s]+$/, "");
+};
 
 export const listMcpServerTools = async ({
   serverUrl,
@@ -148,7 +222,8 @@ export const listMcpServerTools = async ({
   headers: authHeaders,
   secrets,
   http = agentVaultMcpHttpClient,
-  budgetMs = MCP_TOOL_LIST_BUDGET_MS
+  budgetMs = MCP_TOOL_LIST_BUDGET_MS,
+  sseEndpointTimeoutMs = SSE_ENDPOINT_TIMEOUT_MS
 }: {
   serverUrl: string;
   transport: AgentVaultMcpTransport;
@@ -158,9 +233,11 @@ export const listMcpServerTools = async ({
   secrets: string[];
   http?: TMcpHttpClient;
   budgetMs?: number;
+  sseEndpointTimeoutMs?: number;
 }): Promise<TMcpTool[]> => {
   const server = describeServer(serverUrl);
   const transportLabel = transport === AgentVaultMcpTransport.Sse ? "SSE" : "Streamable HTTP";
+  const otherTransportLabel = transport === AgentVaultMcpTransport.Sse ? "Streamable HTTP" : "SSE";
   const notMcp = (detail = "") =>
     new McpListError({
       message: `'${server}' didn't answer like an MCP server over ${transportLabel}.${detail ? ` ${detail}` : ""} Check the server URL and transport.`
@@ -171,20 +248,48 @@ export const listMcpServerTools = async ({
   const openBodies: Readable[] = [];
   const sensitiveValues = [...Object.values(authHeaders), ...secrets];
 
-  const checkStatus = (response: TMcpHttpResponse) => {
-    if (response.status >= 200 && response.status < 300) return;
-    response.body.destroy();
-    if (response.status === 401 || response.status === 403) {
+  const checkStatus = async (response: TMcpHttpResponse, requestUrl: string) => {
+    const { status } = response;
+    if (status >= 200 && status < 300) return;
+    if (status >= 300 && status < 400) {
+      response.body.destroy();
+      let target: URL | null = null;
+      try {
+        target = response.location ? new URL(response.location, requestUrl) : null;
+      } catch {
+        target = null;
+      }
+      // Only the origin and path: a redirect's query string can carry anything.
       throw new McpListError({
-        message: `'${server}' rejected the credential (HTTP ${response.status}). Check the token or reauthorize the service, then load the tools again.`
+        message: target
+          ? `'${server}' redirected the request to '${target.origin}${target.pathname}'. Use that address as the server URL, then load the tools again.`
+          : `'${server}' redirected the request (HTTP ${status}). Check the server URL.`
       });
     }
-    if (response.status === 429 || response.status >= 500) {
+    const detail = await readErrorDetail(response, sensitiveValues);
+    const said = detail ? `: ${detail}.` : ".";
+    if (status === 401 || status === 403) {
+      throw Object.assign(
+        new McpListError({
+          message: `'${server}' rejected the credential (HTTP ${status})${said} Check the token or reauthorize the service, then load the tools again.`
+        }),
+        { isCredentialRejected: true }
+      );
+    }
+    if (status === 429 || status >= 500) {
       throw new McpListError({
-        message: `'${server}' couldn't answer right now (HTTP ${response.status}). Try again in a few minutes.`
+        message: `'${server}' couldn't answer right now (HTTP ${status})${said} Try again in a few minutes.`
       });
     }
-    throw notMcp(`It answered with HTTP ${response.status}.`);
+    if (detail) {
+      throw new McpListError({ message: `'${server}' refused the request (HTTP ${status}): ${detail}.` });
+    }
+    if (status === 404 || status === 405) {
+      throw notMcp(
+        `It answered with HTTP ${status}. If the server uses ${otherTransportLabel}, choose that transport.`
+      );
+    }
+    throw notMcp(`It answered with HTTP ${status}.`);
   };
 
   const send = async (
@@ -265,7 +370,7 @@ export const listMcpServerTools = async ({
         seen.add(name);
         tools.push({
           name,
-          description: normalizeProviderText(description, MAX_DESCRIPTION_LENGTH, sensitiveValues) || null
+          description: normalizeProviderText(description, MAX_DESCRIPTION_LENGTH) || null
         });
       });
       if (tools.length > MCP_TOOL_LIST_MAX_TOOLS) {
@@ -301,7 +406,7 @@ export const listMcpServerTools = async ({
         method,
         params
       });
-      checkStatus(response);
+      await checkStatus(response, serverUrl);
       if (method === "initialize") sessionId = response.sessionId;
 
       if (response.contentType.startsWith("application/json")) {
@@ -341,7 +446,7 @@ export const listMcpServerTools = async ({
         jsonrpc: "2.0",
         method: "notifications/initialized"
       });
-      checkStatus(notified);
+      await checkStatus(notified, serverUrl);
       notified.body.destroy();
 
       return await collectTools(request);
@@ -364,7 +469,7 @@ export const listMcpServerTools = async ({
 
   const listOverSse = async () => {
     const stream = await send(serverUrl, AgentVaultHttpMethod.Get, { Accept: "text/event-stream" });
-    checkStatus(stream);
+    await checkStatus(stream, serverUrl);
     if (!stream.contentType.startsWith("text/event-stream")) {
       stream.body.destroy();
       throw notMcp();
@@ -377,11 +482,32 @@ export const listMcpServerTools = async ({
       return value;
     };
 
-    let endpointEvent = await next();
-    while (endpointEvent.event !== "endpoint") {
-      // eslint-disable-next-line no-await-in-loop
-      endpointEvent = await next();
-    }
+    const awaitEndpoint = async () => {
+      let found = await next();
+      while (found.event !== "endpoint") {
+        // eslint-disable-next-line no-await-in-loop
+        found = await next();
+      }
+      return found;
+    };
+    const endpointWait = awaitEndpoint();
+    // Settles after the race is lost too, once the stream is torn down.
+    endpointWait.catch(() => {});
+    let endpointTimer: NodeJS.Timeout | undefined;
+    const endpointEvent = await Promise.race([
+      endpointWait,
+      new Promise<never>((_, reject) => {
+        endpointTimer = setTimeout(
+          () =>
+            reject(
+              notMcp(
+                `It didn't announce where to send messages, which an SSE server does first. If the server uses ${otherTransportLabel}, choose that transport.`
+              )
+            ),
+          sseEndpointTimeoutMs
+        );
+      })
+    ]).finally(() => clearTimeout(endpointTimer));
     let endpoint: URL;
     try {
       endpoint = new URL(endpointEvent.data.trim(), serverUrl);
@@ -403,7 +529,7 @@ export const listMcpServerTools = async ({
         { Accept: "application/json, text/event-stream" },
         message
       );
-      checkStatus(response);
+      await checkStatus(response, endpoint.toString());
       response.body.destroy();
     };
 
@@ -460,7 +586,7 @@ export const listMcpServerTools = async ({
     if (err instanceof McpListError) throw err;
     if (err instanceof BadRequestError && err.message === PRIVATE_ADDRESS_REFUSED_MESSAGE) {
       throw new BadRequestError({
-        message: `Infisical can't reach '${server}' because it's on a private network.`
+        message: `Infisical can't reach '${server}' because it's on a private network.${privateNetworkHint()}`
       });
     }
     if (timedOut) {

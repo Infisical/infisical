@@ -4568,7 +4568,7 @@ export const AGENT_VAULT = {
     allowedPathPrefixes:
       "The path prefixes this service allows, matched on whole segments, so `/repos` covers `/repos/octo` but not `/repositories`. `null` allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
     allowedTools:
-      "The MCP tools agents can call through this service, by exact, case-sensitive name. `null` allows every tool. The proxy refuses a call to any other tool and leaves it out of the server's tool list. MCP services only.",
+      "The MCP tools agents can call through this service, by exact, case-sensitive name. Each name is 1 to 128 letters, numbers, underscores (_), hyphens (-), or dots (.). `null` allows every tool. The proxy refuses a call to any other tool and leaves it out of the server's tool list. MCP services only.",
     mcpToolName: "The tool's name, as the MCP server reports it.",
     mcpToolDescription: "The server's description of the tool, or null if it gave none.",
     customHeaders:

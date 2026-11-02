@@ -6,17 +6,16 @@ import { refineNoDuplicates } from "./agent-vault-list-schema-fns";
 const AGENT_VAULT_MAX_TOOL_NAME_LENGTH = 128;
 export const AGENT_VAULT_MAX_ALLOWED_TOOLS = 500;
 
-// The proxy compares names exactly, whatever characters they hold. Edge whitespace is refused as a likely typo, and
-// control characters because the name is shown in the UI and audit logs.
-// eslint-disable-next-line no-control-regex
-const CONTROL_CHARACTER_RE = new RE2(/[\u0000-\u001f\u007f-\u009f]/);
+// The MCP spec says a tool name SHOULD be 1-128 of these characters; held as a must so a name can't carry characters
+// that Postgres drivers rewrite or that the Go backend folds together. The proxy compares names exactly.
+const TOOL_NAME_RE = new RE2(/^[A-Za-z0-9_.-]+$/);
 
 const toolNameError = (name: string) => {
   if (!name) return "A tool name can't be empty.";
   if (name.length > AGENT_VAULT_MAX_TOOL_NAME_LENGTH)
     return `"${name.slice(0, 40)}…" is longer than ${AGENT_VAULT_MAX_TOOL_NAME_LENGTH} characters.`;
-  if (name !== name.trim()) return `"${name}" can't start or end with a space.`;
-  if (CONTROL_CHARACTER_RE.test(name)) return "A tool name can't contain control characters.";
+  if (!TOOL_NAME_RE.test(name))
+    return `"${name}" can only contain letters, numbers, underscores (_), hyphens (-), and dots (.).`;
   return null;
 };
 

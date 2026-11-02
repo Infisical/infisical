@@ -99,19 +99,19 @@ By default, agents can call every tool the MCP server offers. To keep agents awa
 
 <Steps>
   <Step>
-    On the **Tools** step, select **Selected tools**.
+    On the **Tools** step, turn off **All Tools**.
   </Step>
   <Step>
-    Infisical loads the server's list of tools with the service's credential. Select the tools agents can call.
+    Infisical loads the server's list of tools with the service's credential. In **Allowed Tools**, select the tools that agents can call.
   </Step>
   <Step>
-    To allow a tool that the list doesn't include, such as a tool the credential lacks the scope for, type its exact name in the search field and press Enter.
+    To allow a tool that the list doesn't include, type the tool's exact name in **Allowed Tools**, then select the option to add it. A tool name can contain only letters, numbers, underscores, hyphens, and dots, so the list leaves out any server tool with other characters in its name.
   </Step>
 </Steps>
 
 When an agent calls a tool you didn't allow, the proxy refuses the call and doesn't send it to the server. The agent gets an error that names the tool, and the call appears in the [session's logs](/documentation/platform/agent-vault/session-logs) as blocked. The proxy also leaves the tools you didn't allow out of the list of tools the server returns to the agent.
 
-The proxy picks up a changed list within its [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default) and refuses calls to the tools you removed from then on. Most agents fetch the list of tools only when they connect, so a running agent shows the new list after you restart it or reconnect the MCP server. To allow every tool again, edit the service and select **All tools**.
+The proxy picks up a changed list within its [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default) and refuses calls to the tools you removed from then on. Most agents fetch the list of tools only when they connect, so a running agent shows the new list after you restart it or reconnect the MCP server. To allow every tool again, edit the service and turn on **All Tools**.
 
 ## Connect your agent
 
@@ -177,7 +177,6 @@ The proxy picks up a changed list within its [poll interval](/documentation/plat
 - **Remote servers only:** An MCP service covers MCP servers that the agent reaches over HTTPS. A local MCP server that the agent starts as a process isn't an MCP service, but you can add [HTTP services](/documentation/platform/agent-vault/http-apis) for the APIs that the local server calls
 - **No OAuth on private networks:** Infisical connects to the MCP server and to the provider to set up OAuth and refresh the access token, so if either one is on a private network, use a [Bearer token](#bearer-token) instead, or set [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) to `true` if you self-host Infisical on that network
 - **No connectors that run in a vendor's cloud:** Custom connectors in claude.ai or ChatGPT connect from the vendor's servers, so their traffic never reaches your proxy
-- **Refusals on the SSE transport:** An agent built on the Python MCP SDK that connects over the SSE transport gets no error when it calls a tool you didn't allow, and waits until the call times out. Use the Streamable HTTP transport if the server supports it
 - **No WebSocket transports:** The proxy doesn't support [WebSocket connections](/documentation/platform/agent-vault/proxies#supported-connections)
 
 ## Troubleshooting
@@ -197,7 +196,12 @@ The proxy picks up a changed list within its [poll interval](/documentation/plat
     - `SITE_URL` uses `https://` (providers such as Linear refuse a redirect URI on plain `http://` unless the host is `localhost`)
   </Accordion>
   <Accordion title="The tools don't load">
-    If Infisical can't get the server's list of tools, the **Tools** step shows the reason, such as a credential the server rejected or a server on a private network. You can still add tools by typing their names in the search field.
+    If Infisical can't get the server's list of tools, the **Tools** step shows the reason, such as a credential that the server rejected. You can still add tools by typing their names in **Allowed Tools**.
+
+    Infisical can't load the list in these cases:
+
+    - The MCP server is on a private network (if you self-host Infisical on that network, set [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) to `true`)
+    - Each member sets the service's token, so Infisical has no token to load the list with
   </Accordion>
   <Accordion title="The agent asks you to sign in to the MCP server">
     The request reached the server without a credential. Check that:

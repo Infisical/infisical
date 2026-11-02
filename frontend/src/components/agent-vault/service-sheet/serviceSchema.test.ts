@@ -341,32 +341,33 @@ describe("buildServiceSchema with allowed tools", () => {
     ).toBe(true);
   });
 
-  it("accepts any selected tool name, case-sensitive", () => {
+  it("accepts names in the MCP spec's characters, case-sensitive", () => {
     expect(
       toolIssues({
-        allowedTools: [
-          "read_file",
-          "Read_File",
-          "github:issues/create.v2-beta",
-          "query+sum",
-          "read file"
-        ]
+        allowedTools: ["read_file", "Read_File", "issues.create-v2"]
       })
     ).toEqual([]);
   });
 
   it("requires at least one selected tool", () => {
     expect(toolIssues({ allowedTools: [] })).toEqual([
-      ["allowedTools", "Select at least one tool, or allow all tools."]
+      ["allowedTools", "Select at least one tool, or turn on All Tools."]
     ]);
   });
 
-  it("refuses untrimmed names, control characters, names over 128 characters, and duplicates", () => {
+  it("refuses names outside the MCP spec's characters, names over 128 characters, and duplicates", () => {
     expect(
       toolIssues({
-        allowedTools: [" read_file", "a".repeat(129), "read\u0000file", "ok", "ok"]
+        allowedTools: [" read_file", "a".repeat(129), "read\u0000file", "ns:tool", "ok", "ok"]
       }).map(([path]) => path)
-    ).toEqual(["allowedTools", "allowedTools", "allowedTools", "allowedTools"]);
+    ).toEqual(["allowedTools", "allowedTools", "allowedTools", "allowedTools", "allowedTools"]);
+    expect(toolIssues({ allowedTools: ["read file"] })).toEqual([
+      [
+        "allowedTools",
+        '"read file": A tool name can only contain letters, numbers, underscores (_), hyphens (-), and dots (.).'
+      ]
+    ]);
+    expect(toolIssues({ allowedTools: ["Tool-v2.beta_1"] })).toEqual([]);
     expect(toolIssues({ allowedTools: ["ok", "ok"] })).toEqual([
       ["allowedTools", '"ok" is listed twice.']
     ]);

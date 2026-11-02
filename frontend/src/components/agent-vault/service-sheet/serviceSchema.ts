@@ -106,8 +106,8 @@ export enum McpToolScope {
   Selected = "selected"
 }
 
-// Mirrors agent-vault-tool-name-schemas.ts on the backend. The proxy compares names exactly, whatever characters
-// they hold.
+// Mirrors agent-vault-tool-name-schemas.ts on the backend: the MCP spec's recommended tool name characters, held as
+// a must. The proxy compares names exactly.
 export const MAX_ALLOWED_TOOLS = 500;
 const MAX_TOOL_NAME_LENGTH = 128;
 
@@ -117,10 +117,8 @@ export const toolNameError = (name: string): string | null => {
   if (name.length > MAX_TOOL_NAME_LENGTH) {
     return `A tool name can be at most ${MAX_TOOL_NAME_LENGTH} characters.`;
   }
-  if (name !== name.trim()) return "A tool name can't start or end with a space.";
-  // eslint-disable-next-line no-control-regex
-  if (/[\u0000-\u001f\u007f-\u009f]/.test(name)) {
-    return "A tool name can't contain control characters.";
+  if (!/^[A-Za-z0-9_.-]+$/.test(name)) {
+    return "A tool name can only contain letters, numbers, underscores (_), hyphens (-), and dots (.).";
   }
   return null;
 };
@@ -425,7 +423,7 @@ export const buildServiceSchema = (
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["allowedTools"],
-            message: "Select at least one tool, or allow all tools."
+            message: "Select at least one tool, or turn on All Tools."
           });
         } else if (data.allowedTools.length > MAX_ALLOWED_TOOLS) {
           ctx.addIssue({

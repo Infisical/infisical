@@ -2,8 +2,13 @@ import { PassThrough, Readable } from "node:stream";
 
 import { describe, expect, test, vi } from "vitest";
 
+import { BadRequestError } from "@app/lib/errors";
+import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
+
 import { AgentVaultHttpMethod, AgentVaultMcpTransport } from "../agent-vault/agent-vault-enums";
 import { listMcpServerTools, MCP_TOOL_LIST_MAX_TOOLS, TMcpHttpClient } from "./agent-vault-mcp-tool-list-fns";
+
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ isCloud: false }) }));
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
@@ -99,6 +104,72 @@ describe("listing an MCP server's tools", () => {
     ).rejects.toThrow("'mcp.example.com' rejected the credential (HTTP 401).");
   });
 
+  test("a rejected credential is told apart, so a refreshable token can be refreshed", async () => {
+    const http: TMcpHttpClient = { request: async () => json(403, {}) };
+    await expect(
+      listMcpServerTools({
+        serverUrl: SERVER_URL,
+        transport: AgentVaultMcpTransport.StreamableHttp,
+        headers: AUTH,
+        secrets: SECRETS,
+        http
+      })
+    ).rejects.toMatchObject({ isCredentialRejected: true });
+  });
+
+  const list = (http: TMcpHttpClient, transport = AgentVaultMcpTransport.StreamableHttp) =>
+    listMcpServerTools({ serverUrl: SERVER_URL, transport, headers: AUTH, secrets: SECRETS, http, budgetMs: 1000 });
+
+  test("an answer whose id is the request's id as a string is matched", async () => {
+    const { http } = streamableServer((message) =>
+      json(200, { jsonrpc: "2.0", id: String(message.id), result: toolsPage(["read_file"]) })
+    );
+    expect(await list(http)).toEqual([{ name: "read_file", description: "Does read_file" }]);
+  });
+
+  test("a refusal says what the server said, without echoing the credential", async () => {
+    const http: TMcpHttpClient = {
+      request: async () =>
+        json(400, { jsonrpc: "2.0", id: null, error: { code: -32000, message: "Session not found secret-token" } })
+    };
+    await expect(list(http)).rejects.toThrow(
+      "'mcp.example.com' refused the request (HTTP 400): Session not found [redacted]."
+    );
+  });
+
+  test("a 405 with nothing to say suggests the other transport", async () => {
+    const http: TMcpHttpClient = {
+      request: async () => ({ status: 405, contentType: "text/html", sessionId: null, body: Readable.from(["<h1>"]) })
+    };
+    await expect(list(http)).rejects.toThrow("If the server uses SSE, choose that transport.");
+  });
+
+  test("a redirect names where it points, without its query string", async () => {
+    const http: TMcpHttpClient = {
+      request: async () => ({
+        status: 307,
+        contentType: "",
+        sessionId: null,
+        location: "/mcp/?token=x",
+        body: Readable.from([])
+      })
+    };
+    await expect(list(http)).rejects.toThrow(
+      "'mcp.example.com' redirected the request to 'https://mcp.example.com/mcp/'. Use that address as the server URL"
+    );
+  });
+
+  test("a server on a private network says so, with the setting a self-hosted instance can change", async () => {
+    const http: TMcpHttpClient = {
+      request: async () => {
+        throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
+      }
+    };
+    await expect(list(http)).rejects.toThrow(
+      "Infisical can't reach 'mcp.example.com' because it's on a private network. If you're self-hosting Infisical, set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to allow it."
+    );
+  });
+
   test.each(["bad token Bearer secret-token", "bad token secret-token"])(
     "a server error is reported without echoing the credential (%s)",
     async (errorMessage) => {
@@ -117,7 +188,7 @@ describe("listing an MCP server's tools", () => {
     }
   );
 
-  test("a token echoed in a description is redacted and a repeated name is listed once", async () => {
+  test("a description is kept as the server wrote it and a repeated name is listed once", async () => {
     const { http } = streamableServer((message) =>
       json(200, {
         jsonrpc: "2.0",
@@ -137,7 +208,7 @@ describe("listing an MCP server's tools", () => {
       secrets: SECRETS,
       http
     });
-    expect(tools).toEqual([{ name: "read_file", description: "Uses [redacted]" }]);
+    expect(tools).toEqual([{ name: "read_file", description: "Uses secret-token" }]);
   });
 
   test("a server ping is answered, and its id, the pending one reused, isn't taken for the answer", async () => {
@@ -311,6 +382,53 @@ describe("listing an MCP server's tools", () => {
     });
     expect(tools).toEqual([{ name: "search", description: "Does search" }]);
     expect(posts[0].url).toBe("https://mcp.example.com/messages");
+  });
+
+  test("legacy SSE reads a long line sent in small pieces, with a CRLF split between them", async () => {
+    const stream = new PassThrough();
+    const description = "x".repeat(5000);
+    const http: TMcpHttpClient = {
+      request: async (request) => {
+        if (request.method === AgentVaultHttpMethod.Get) {
+          stream.write("event: endpoint\r");
+          stream.write("\ndata: /messages\r\n\r\n");
+          return { status: 200, contentType: "text/event-stream", sessionId: null, body: stream };
+        }
+        const message = JSON.parse(request.body!) as TMessage;
+        if (message.id !== undefined) {
+          const result =
+            message.method === "initialize"
+              ? { protocolVersion: "2024-11-05" }
+              : { tools: [{ name: "search", description }] };
+          const text = `event: message\ndata: ${JSON.stringify({ jsonrpc: "2.0", id: message.id, result })}\n\n`;
+          for (let i = 0; i < text.length; i += 7) stream.write(text.slice(i, i + 7));
+        }
+        return accepted();
+      }
+    };
+    const tools = await listMcpServerTools({
+      serverUrl: "https://mcp.example.com/sse",
+      transport: AgentVaultMcpTransport.Sse,
+      headers: AUTH,
+      secrets: SECRETS,
+      http,
+      budgetMs: 1000
+    });
+    expect(tools).toEqual([{ name: "search", description: description.slice(0, 1000) }]);
+  });
+
+  test("legacy SSE gives up early on a stream that never announces an endpoint", async () => {
+    const { http } = sseServer("", ": just a comment\n\n");
+    await expect(
+      listMcpServerTools({
+        serverUrl: "https://mcp.example.com/sse",
+        transport: AgentVaultMcpTransport.Sse,
+        headers: AUTH,
+        secrets: SECRETS,
+        http,
+        sseEndpointTimeoutMs: 20
+      })
+    ).rejects.toThrow("If the server uses Streamable HTTP, choose that transport.");
   });
 
   test("legacy SSE never sends the credential to an endpoint on another host", async () => {

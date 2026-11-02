@@ -3,22 +3,18 @@ import { describe, expect, it } from "vitest";
 import { AGENT_VAULT_MAX_ALLOWED_TOOLS, agentVaultAllowedToolsSchema } from "./agent-vault-tool-name-schemas";
 
 describe("agent vault allowed tools", () => {
-  it.each([
-    ["read_file"],
-    ["github.create_issue"],
-    ["ns:tool/v2-beta"],
-    ["query+sum"],
-    ["read file"],
-    ["a".repeat(128)]
-  ])("accepts %s", (name) => {
+  it.each([["read_file"], ["github.create_issue"], ["Tool-v2.beta"], ["a".repeat(128)]])("accepts %s", (name) => {
     expect(agentVaultAllowedToolsSchema.parse([name])).toEqual([name]);
   });
 
   it.each([
     ["", "can't be empty"],
-    [" read_file", "start or end with a space"],
-    ["read_file\t", "start or end with a space"],
-    ["read\u0000file", "control characters"],
+    [" read_file", "can only contain"],
+    ["read file", "can only contain"],
+    ["ns:tool/v2", "can only contain"],
+    ["read\u0000file", "can only contain"],
+    ["read\ud800file", "can only contain"],
+    ["read\ufffdfile", "can only contain"],
     ["a".repeat(129), "longer than 128"]
   ])("refuses %j", (name, message) => {
     const result = agentVaultAllowedToolsSchema.safeParse([name]);
