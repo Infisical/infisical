@@ -1035,8 +1035,7 @@ proxy = client.agent_vault.proxies.update(
 - `allowed_hosts` (Union[List[str], str], optional): the new exceptions, which replace the current ones
 - `poll_interval` (int, optional): the new poll interval in seconds, from 10 to 300
 - `clear_allowed_hosts` (bool, optional): set to `True` to remove every exception (raises a `ValueError` if you also pass `allowed_hosts`)
-- `description` (str, optional): the new description (requires `infisicalsdk` version 1.1.1 or newer)
-- `clear_description` (bool, optional): set to `True` to remove the description (raises a `ValueError` if you also pass `description`, and requires `infisicalsdk` version 1.1.1 or newer)
+- `description` (str, optional): the new description, or an empty string to remove the description (requires `infisicalsdk` version 1.1.1 or newer)
 
 **Returns:**
 - `AgentVaultProxy`: the updated proxy
@@ -1180,8 +1179,7 @@ bundle = client.agent_vault.access_bundles.update(
 **Parameters:**
 - `access_bundle_id` (str): the ID of the access bundle
 - `name` (str, optional): the new name of the access bundle
-- `description` (str, optional): the new description
-- `clear_description` (bool, optional): set to `True` to remove the description (raises a `ValueError` if you also pass `description`)
+- `description` (str, optional): the new description, or an empty string to remove the description
 
 **Returns:**
 - `AgentVaultAccessBundle`: the updated access bundle
