@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TSecretRotationV2Raw } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { createClickHouseClient } from "@app/services/app-connection/clickhouse";
 
 import { clickhouseCredentialsRotationFactory } from "./clickhouse-credentials-rotation-fns";
 import { TClickHouseCredentialsRotationWithConnection } from "./clickhouse-credentials-rotation-types";
@@ -32,6 +33,15 @@ vi.mock("@clickhouse/client", () => ({
 }));
 
 const COMMITTED = "committed" as unknown as TSecretRotationV2Raw;
+const CONNECTION_CREDENTIALS = {
+  host: "clickhouse.example.com",
+  port: 8443,
+  database: "default",
+  username: "manager",
+  password: "manager-password",
+  sslEnabled: true,
+  sslRejectUnauthorized: true
+};
 const ACTIVE_CREDENTIALS = { username: "user_1", password: "active-password" };
 
 const alterUser = (username: string) =>
@@ -44,17 +54,7 @@ const makeFactory = (
 ) =>
   clickhouseCredentialsRotationFactory(
     {
-      connection: {
-        credentials: {
-          host: "clickhouse.example.com",
-          port: 8443,
-          database: "default",
-          username: "manager",
-          password: "manager-password",
-          sslEnabled: true,
-          sslRejectUnauthorized: true
-        }
-      },
+      connection: { credentials: CONNECTION_CREDENTIALS },
       parameters: { username1: "user_1", username2: "user_2" },
       activeIndex: 0,
       secretsMapping: { username: "CLICKHOUSE_DB_USERNAME", password: "CLICKHOUSE_DB_PASSWORD" },
@@ -104,6 +104,12 @@ describe("ClickHouse credentials rotation", () => {
     const agentRequest = ["https://clickhouse.example.com:8443", { ca: undefined, rejectUnauthorized: true }];
     expect(clickhouse.agentRequests).toEqual([agentRequest, agentRequest]);
     expect(clickhouse.agents).toEqual(["pinned-agent", "pinned-agent"]);
+  });
+
+  it("brackets IPv6 hosts in the connection URL", async () => {
+    await createClickHouseClient({ ...CONNECTION_CREDENTIALS, host: "2001:db8::10" });
+
+    expect(clickhouse.agentRequests[0][0]).toBe("https://[2001:db8::10]:8443");
   });
 
   it("escapes backticks and backslashes in usernames", async () => {

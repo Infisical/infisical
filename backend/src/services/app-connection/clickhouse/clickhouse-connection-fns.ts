@@ -1,3 +1,5 @@
+import { isIPv6 } from "node:net";
+
 import { createClient } from "@clickhouse/client";
 
 import { BadRequestError } from "@app/lib/errors";
@@ -28,7 +30,7 @@ export const createClickHouseClient = async (
   options?: TCreateClickHouseClientOptions
 ) => {
   const host = credentials.host.replace(/^https?:\/\//, "");
-  const url = `${credentials.sslEnabled ? "https" : "http"}://${host}:${credentials.port}`;
+  const url = `${credentials.sslEnabled ? "https" : "http"}://${isIPv6(host) ? `[${host}]` : host}:${credentials.port}`;
 
   const { username, password } = options?.authCredentials ?? credentials;
 
