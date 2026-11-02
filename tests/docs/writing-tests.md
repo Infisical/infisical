@@ -46,8 +46,12 @@ func TestSecret_Create(t *testing.T) {
 | `harness.Shared` | one instance for the run, a fresh organization per test | almost always |
 | `harness.Isolated` | the package's own Postgres, Redis, and Infisical | the test writes instance-wide state: super-admin config, login methods, encryption strategy, run modes |
 
-`Isolated` costs a full boot per package. Containers the test talks to through Infisical,
-such as a rotation target database, are added with `harness.WithInfra(...)`.
+`Isolated` costs a full boot per package, so an `Isolated` package lives under
+`suitesisolated/`, where `make test-isolated` and CI run one package at a time after the
+shared suites; a layout test in `harness/` fails a misplaced one. Containers the test talks to through Infisical,
+such as a rotation target database, are added with `harness.WithInfra(...)`. Instance-wide
+environment, such as `RELAY_AUTH_SECRET`, is set with `harness.WithInfisicalEnv(k, v)`,
+which only an `Isolated` package may use.
 
 ## Structure
 

@@ -21,7 +21,6 @@ import {
   TAgentVaultOauthAuthorization,
   TAgentVaultPersonalValues,
   TAgentVaultProxy,
-  TAgentVaultProxySettingsDTO,
   TAgentVaultProxyWithToken,
   TAgentVaultService,
   TAgentVaultSession,
@@ -35,6 +34,7 @@ import {
   TCreateAgentVaultAccessBundleDTO,
   TCreateAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultOauthAuthorizationResponse,
+  TCreateAgentVaultProxyDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultSkillDTO,
@@ -44,6 +44,7 @@ import {
   TSetAgentVaultPersonalValuesDTO,
   TUpdateAgentVaultAccessBundleDTO,
   TUpdateAgentVaultMemberRolesDTO,
+  TUpdateAgentVaultProxyDTO,
   TUpdateAgentVaultServiceDTO,
   TUpdateAgentVaultSessionLabelDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
@@ -356,7 +357,7 @@ export const useCreateAgentVaultProxy = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (params: TAgentVaultProxySettingsDTO) => {
+    mutationFn: async (params: TCreateAgentVaultProxyDTO) => {
       const { data } = await apiRequest.post<TAgentVaultProxyWithToken>(
         "/api/v1/agent-vault/proxies",
         params
@@ -373,10 +374,7 @@ export const useUpdateAgentVaultProxy = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      proxyId,
-      ...params
-    }: Partial<TAgentVaultProxySettingsDTO> & { proxyId: string }) => {
+    mutationFn: async ({ proxyId, ...params }: TUpdateAgentVaultProxyDTO) => {
       const { data } = await apiRequest.patch<{ proxy: TAgentVaultProxy }>(
         `/api/v1/agent-vault/proxies/${proxyId}`,
         params
