@@ -443,7 +443,7 @@ describe("AWS KMS CA key source", () => {
         keySource: CertKeySource.Hsm,
         projectId: "project",
         caName: "root-ca",
-        keyAlgorithm: CertKeyAlgorithm.ML_DSA_65,
+        keyAlgorithm: CertKeyAlgorithm.ECDSA_P521,
         input: { hsmConnectorId: "connector" }
       })
     ).rejects.toThrow(/not supported for HSM-backed/);

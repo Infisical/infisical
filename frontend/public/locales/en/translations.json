@@ -65,6 +65,7 @@
   },
   "common": {
     "head-title": "{{title}} | Infisical",
+    "head-title-scoped": "{{title}} · {{scope}} | Infisical",
     "error_project-already-exists": "A project with this name already exists.",
     "email": "Email",
     "password": "Password",

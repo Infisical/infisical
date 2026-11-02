@@ -22,6 +22,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createUserProjectAdditionalPrivilege",
       body: z.object({
         projectMembershipId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.projectMembershipId),
         slug: slugSchema({ min: 1, max: 60 }).optional().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.slug),
@@ -91,6 +92,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateUserProjectAdditionalPrivilege",
       params: z.object({
         privilegeId: z.string().min(1).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.privilegeId)
       }),
@@ -189,6 +191,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteUserProjectAdditionalPrivilege",
       params: z.object({
         privilegeId: z.string().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.DELETE.privilegeId)
       }),
@@ -245,6 +248,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listUserProjectAdditionalPrivileges",
       querystring: z.object({
         projectMembershipId: z.string().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.LIST.projectMembershipId)
       }),
@@ -300,6 +304,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getUserProjectAdditionalPrivilege",
       params: z.object({
         privilegeId: z.string().describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.GET_BY_PRIVILEGE_ID.privilegeId)
       }),

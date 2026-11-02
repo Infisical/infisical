@@ -76,7 +76,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         ipAddress: req.realIp,
         userId: req.auth.userId,
         userAuthMethod: req.auth.authMethod,
-        actorOrgId: req.auth.orgId,
+        actorRootOrgId: req.auth.rootOrgId,
         isMfaVerified: req.auth.isMfaVerified,
         mfaMethod: req.auth.mfaMethod
       });

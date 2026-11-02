@@ -30,9 +30,9 @@ import {
 import { usePopUp } from "@app/hooks/usePopUp";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
+import { UserDetailsSection, UserOrgMembershipModal, UserProjectsSection } from "./components";
 import { UserAuditLogsSection } from "./components/UserProjectsSection/UserAuditLogsSection";
 import { UserGroupsSection } from "./components/UserProjectsSection/UserGroupsSection";
-import { UserDetailsSection, UserOrgMembershipModal, UserProjectsSection } from "./components";
 
 const Page = withPermission(
   () => {

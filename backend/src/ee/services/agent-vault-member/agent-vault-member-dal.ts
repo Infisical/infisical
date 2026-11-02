@@ -95,13 +95,24 @@ type TFindProductMembersDTO = {
   offset: number;
   // Set to list the members who could still be granted that bundle.
   excludeAccessBundleId?: string;
+  // Set to list the members who could still be added to that delegation.
+  excludeDelegationId?: string;
 };
 
-type TFindAvailableActorsDTO = Omit<TFindProductMembersDTO, "excludeAccessBundleId">;
+type TFindAvailableActorsDTO = Omit<TFindProductMembersDTO, "excludeAccessBundleId" | "excludeDelegationId">;
 
 export const agentVaultMemberDALFactory = (db: TDbClient) => {
   const findProductMembers = async (
-    { projectId, orgId, actorTypes, search, limit, offset, excludeAccessBundleId }: TFindProductMembersDTO,
+    {
+      projectId,
+      orgId,
+      actorTypes,
+      search,
+      limit,
+      offset,
+      excludeAccessBundleId,
+      excludeDelegationId
+    }: TFindProductMembersDTO,
     tx?: Knex
   ): Promise<{ members: TAgentVaultProductMember[]; totalCount: number }> => {
     if (!actorTypes.length) return { members: [], totalCount: 0 };
@@ -141,6 +152,21 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
             });
           });
         });
+
+        // A delegation names a member by its membership row, so this needs no per-type column.
+        if (excludeDelegationId) {
+          void query.whereNotExists(
+            conn(TableName.AgentVaultDelegationSubject)
+              .where(`${TableName.AgentVaultDelegationSubject}.delegationId`, excludeDelegationId)
+              .whereRaw(`??.?? = ??.??`, [
+                TableName.AgentVaultDelegationSubject,
+                "membershipId",
+                TableName.Membership,
+                "id"
+              ])
+              .select(conn.raw("1"))
+          );
+        }
 
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;

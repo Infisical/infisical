@@ -45,9 +45,9 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
 
         - Valid Until: The date until which the CA is valid in the date time string format specified [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format). For example, the following formats would be valid: `YYYY`, `YYYY-MM`, `YYYY-MM-DD`, `YYYY-MM-DDTHH:mm:ss.sssZ`.
         - Path Length: The maximum number of intermediate CAs that can be chained to this CA. A path of `-1` implies no limit; a path of `0` implies no intermediate CAs can be chained.
-        - Key Algorithm: The type of public key algorithm and size, in bits, of the key pair that the CA creates when it issues a certificate. Supported key algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` with the default being `RSA 2048`.
+        - Key Algorithm: The algorithm of the CA key pair. The default is `RSA 2048`, and the choices depend on **Key Source**.
         - Key Source: Where the CA's signing key is generated and stored. **Infisical** (the default) generates and manages the key for you. **HSM** generates the key inside your own Hardware Security Module through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors), and every signing operation the CA performs runs on the HSM. See [HSM-backed Internal CAs](#hsm-backed-internal-cas) below. **AWS KMS** creates the key in your AWS account, and every signing operation runs in [AWS KMS](#aws-kms-backed-internal-cas).
-        - HSM Connector: The [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) Infisical uses to reach your HSM. Shown only when **Key Source** is **HSM**. With an HSM key source the algorithm choices stay limited to `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384`.
+        - HSM Connector: The [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) Infisical uses to reach your HSM. Shown only when **Key Source** is **HSM**. With an HSM key source, the algorithm choices are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, `ECDSA P-384`, `ML-DSA-44`, `ML-DSA-65`, and `ML-DSA-87`.
         - AWS Connection: The [AWS connection](/integrations/app-connections/aws) used to create the key and sign with it. Shown only when **Key Source** is **AWS KMS**.
         - Region: The AWS region to create the key in. Shown only when **Key Source** is **AWS KMS**.
         - Name: A slug-friendly name for the CA.
@@ -260,7 +260,12 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
 
 By default, Infisical generates and manages the signing key for an Internal CA. You can instead keep the CA's signing key inside your own Hardware Security Module. When **Key Source** is set to **HSM**, Infisical generates the keypair on the HSM through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) and performs every signing operation the CA does on the HSM. That covers the self-signed root certificate, intermediate CSRs, the certificates the CA issues, and its CRLs.
 
-Both root and intermediate CAs can be HSM-backed. HSM-backed CAs support the `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` key algorithms.
+Both root and intermediate CAs can be HSM-backed. HSM-backed CAs support the `RSA 2048`, `RSA 4096`, `ECDSA P-256`, `ECDSA P-384`, `ML-DSA-44`, `ML-DSA-65`, and `ML-DSA-87` key algorithms.
+
+To use an ML-DSA key on an HSM, you need:
+
+- An HSM whose PKCS#11 driver supports ML-DSA, such as Fortanix DSM with PKCS#11 client 5.7 or later
+- A [Gateway](/documentation/platform/gateways/overview) updated to the latest version
 
 <Note>
   Set up an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) before creating an HSM-backed CA. Creating one requires the **Attach** permission on HSM Connectors in addition to permission to create Certificate Authorities.
@@ -356,7 +361,7 @@ Deleting the CA schedules its key for deletion in AWS KMS with a 30-day waiting 
     Yes. You can either manually obtain a CSR and import the signed certificate, or use an integrated external CA provider like [Venafi TLS Protect Cloud](/documentation/platform/pki/ca/venafi) or [Microsoft ADCS](/documentation/platform/pki/ca/adcs) to automate the signing process.
   </Accordion>
   <Accordion title="Can the CA signing key be kept in my own HSM?">
-    Yes. Set **Key Source** to **HSM** when creating the CA and pick an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). The keypair is generated on your HSM and every signing operation the CA performs runs there. Both root and intermediate CAs support this. Supported algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384`. See [HSM-backed Internal CAs](#hsm-backed-internal-cas).
+    Yes. Set **Key Source** to **HSM** when creating the CA and pick an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). The keypair is generated on your HSM and every signing operation the CA performs runs there. Both root and intermediate CAs support this. Supported algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, `ECDSA P-384`, `ML-DSA-44`, `ML-DSA-65`, and `ML-DSA-87`. See [HSM-backed Internal CAs](#hsm-backed-internal-cas).
   </Accordion>
   <Accordion title="Can the CA signing key be kept in AWS KMS?">
     Yes, including post-quantum ML-DSA keys. Set **Key Source** to **AWS KMS** and [create the CA through an AWS connection](#aws-kms-backed-internal-cas).

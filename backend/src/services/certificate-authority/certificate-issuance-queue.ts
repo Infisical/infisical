@@ -8,19 +8,20 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import {
   getIssuanceAlertEvent,
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
 import {
   CertExtendedKeyUsage,
   CertKeyUsage,
   CertSubjectAlternativeNameType
 } from "@app/services/certificate/certificate-types";
-import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
-import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
-import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -28,8 +29,6 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
-import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CertificateIssuanceOperation, CertKeyAlgorithm } from "../certificate-common/certificate-constants";
 import {
   calculateFinalRenewBeforeDays,
@@ -45,6 +44,8 @@ import { TCertificateRequestDALFactory } from "../certificate-request/certificat
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import { TPkiAlertV2QueueServiceFactory } from "../pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "../pki-alert-v2/pki-alert-v2-types";
@@ -379,7 +380,11 @@ export const certificateIssuanceQueueFactory = ({
   /**
    * Process certificate issuance jobs
    */
-  const processCertificateIssuanceJobs = async (data: TIssueCertificateFromProfileJobData, signal?: AbortSignal) => {
+  const processCertificateIssuanceJobs = async (
+    data: TIssueCertificateFromProfileJobData,
+    signal?: AbortSignal,
+    attemptsMade = 0
+  ) => {
     const {
       certificateId,
       profileId,
@@ -443,6 +448,11 @@ export const certificateIssuanceQueueFactory = ({
         throw new NotFoundError({
           message: `Certificate authority ID is required for external CA certificate issuance`
         });
+      }
+
+      if (isRenewal && originalCertificateId && attemptsMade === 0) {
+        const originalCertificate = await certificateDAL.findById(originalCertificateId, certificateDAL.primaryNode());
+        if (originalCertificate) assertCertificateNotDeleted(originalCertificate);
       }
 
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
@@ -1309,7 +1319,7 @@ export const certificateIssuanceQueueFactory = ({
   queueService.start(QueueName.CertificateIssuance, async (job, _token, signal) => {
     const work = (async () => {
       try {
-        await processCertificateIssuanceJobs(job.data, signal);
+        await processCertificateIssuanceJobs(job.data, signal, job.attemptsMade ?? 0);
       } catch (error) {
         // AcmPendingError is rethrown on every retry so BullMQ keeps polling; the in-handler
         // FAILED-update branch never runs for it. On the final attempt we still need to flip the request

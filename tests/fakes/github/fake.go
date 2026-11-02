@@ -47,11 +47,16 @@ func (a *Account) routes() *http.ServeMux {
 	// test registered anything.
 	mux.HandleFunc("GET /user", a.user)
 
-	// One group per GitHubSyncScope. They differ only in the path they address, which
-	// is why storeKey can fold all three into one address.
+	// One group per GitHubSyncScope, plus one per secret type GitHub keeps apart from
+	// Actions secrets. They differ only in the path they address, which is why
+	// storeKey can fold them all into one address.
 	a.secretRoutes(mux, "/orgs/{org}/actions/secrets")
 	a.secretRoutes(mux, "/repos/{owner}/{repo}/actions/secrets")
 	a.secretRoutes(mux, "/repos/{owner}/{repo}/environments/{env}/secrets")
+	for _, secretType := range secretTypes {
+		a.secretRoutes(mux, "/orgs/{org}/"+secretType+"/secrets")
+		a.secretRoutes(mux, "/repos/{owner}/{repo}/"+secretType+"/secrets")
+	}
 
 	return mux
 }
@@ -126,11 +131,19 @@ func (a *Account) put(w http.ResponseWriter, r *http.Request) {
 	st, name := a.store(storeKey(r)), r.PathValue("name")
 
 	var body struct {
-		EncryptedValue string `json:"encrypted_value"`
-		KeyID          string `json:"key_id"`
+		EncryptedValue        string `json:"encrypted_value"`
+		KeyID                 string `json:"key_id"`
+		Visibility            string `json:"visibility"`
+		SelectedRepositoryIDs []int  `json:"selected_repository_ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeErr(w, http.StatusBadRequest, "Problems parsing JSON")
+		return
+	}
+	// GitHub requires a visibility on every organization secret, whatever its type.
+	if r.PathValue("org") != "" && !slices.Contains([]string{"all", "private", "selected"}, body.Visibility) {
+		writeErr(w, http.StatusUnprocessableEntity,
+			fmt.Sprintf("visibility %q is not one of all, private, selected", body.Visibility))
 		return
 	}
 	if body.KeyID != st.KeyID {
@@ -153,7 +166,12 @@ func (a *Account) put(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, existed := st.Secrets[name]
-	st.Secrets[name] = Secret{Value: string(plain), UpdatedAt: time.Now().UTC()}
+	st.Secrets[name] = Secret{
+		Value:                 string(plain),
+		Visibility:            body.Visibility,
+		SelectedRepositoryIDs: body.SelectedRepositoryIDs,
+		UpdatedAt:             time.Now().UTC(),
+	}
 	detail := SecretDetail{Scope: storeKey(r), SecretName: name}
 	if existed {
 		a.events.Publish(SecretUpdated{detail})
@@ -236,12 +254,22 @@ func (a *Account) store(key string) *Store {
 
 // storeKey folds whichever route matched into one address.
 func storeKey(r *http.Request) string {
+	var key string
 	if org := r.PathValue("org"); org != "" {
-		return "orgs/" + org
+		key = "orgs/" + org
+	} else {
+		key = "repos/" + r.PathValue("owner") + "/" + r.PathValue("repo")
+		if env := r.PathValue("env"); env != "" {
+			key += "/envs/" + env
+		}
 	}
-	key := "repos/" + r.PathValue("owner") + "/" + r.PathValue("repo")
-	if env := r.PathValue("env"); env != "" {
-		key += "/envs/" + env
+
+	// Read from the matched pattern rather than the path, so an organization or
+	// repository named after a secret type cannot be mistaken for one.
+	for _, secretType := range secretTypes {
+		if strings.Contains(r.Pattern, "/"+secretType+"/secrets") {
+			return key + "/" + secretType
+		}
 	}
 	return key
 }

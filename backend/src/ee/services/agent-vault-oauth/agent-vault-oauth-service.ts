@@ -17,6 +17,8 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
+import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
+import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthAuthorizationStatus,
@@ -25,8 +27,6 @@ import {
 } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
-import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
-import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
 import {
   manualOauthClient,
   OauthRegistrationError,

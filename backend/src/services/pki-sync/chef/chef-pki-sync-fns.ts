@@ -11,9 +11,9 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TChefDataBagItemContent } from "@app/ee/services/secret-sync/chef";
 import { logger } from "@app/lib/logger";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
 import { certificateNameSchemaHasFreeTextPlaceholder } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";

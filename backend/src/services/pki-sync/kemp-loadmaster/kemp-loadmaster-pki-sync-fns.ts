@@ -16,10 +16,10 @@ import {
   TKempRequestFn
 } from "@app/services/app-connection/kemp-loadmaster/kemp-loadmaster-connection-fns";
 import { TKempLoadMasterConnection } from "@app/services/app-connection/kemp-loadmaster/kemp-loadmaster-connection-types";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { buildCertificateBundle, splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { buildCertificateBundle, splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
 import {

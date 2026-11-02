@@ -100,7 +100,9 @@ The unit is (operation, outcome), not line coverage.
 - Interval-driven features: use the product's manual trigger instead of waiting for the
   interval.
 - Deadline-driven features: move the deadline, not the clock.
-- Budget: no single wait should need more than about 10 seconds.
+- Budget: a single wait fits inside `wait.For`'s default 30 second timeout. Delays the
+  product builds in count against it, such as a sync job's random 0-10 second start
+  jitter plus the 3 second debounce before an auto-sync.
 
 ## The harness API
 

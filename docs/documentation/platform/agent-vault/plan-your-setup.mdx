@@ -186,35 +186,38 @@ Follow these pages in order:
 
 <ol>
   <AgentVaultSetupBranch building="personal,assistant" agent="none">
-    <li>[Quickstart](/documentation/platform/agent-vault/quickstart): create an access bundle, create a proxy, create a session, and start your agent with the session token</li>
+    <li>[Quickstart](/documentation/platform/agent-vault/quickstart): create an access bundle with a service for each API the agent calls, then follow the guide for where your agent runs</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="personal,assistant" agent="claude-code,codex,opencode,hermes,openclaw,custom">
+    <li>[Quickstart](/documentation/platform/agent-vault/quickstart): create an access bundle with a service for each key the agent uses</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal,assistant" agent="claude-code">
-    <li>[Agent Vault with Claude Code](/documentation/platform/agent-vault/guides/claude-code): create an access bundle, create a proxy, create a session, and start Claude Code with the session token</li>
+    <li>[Agent Vault with Claude Code](/documentation/platform/agent-vault/guides/claude-code): create a proxy, create a session, and start Claude Code with the session token</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal,assistant" agent="codex">
-    <li>[Agent Vault with Codex](/documentation/platform/agent-vault/guides/codex): create an access bundle, create a proxy, create a session, and start Codex with the session token</li>
+    <li>[Agent Vault with Codex](/documentation/platform/agent-vault/guides/codex): create a proxy, create a session, and start Codex with the session token</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal,assistant" agent="opencode">
-    <li>[Agent Vault with OpenCode](/documentation/platform/agent-vault/guides/opencode): create an access bundle, create a proxy, create a session, and start OpenCode with the session token</li>
+    <li>[Agent Vault with OpenCode](/documentation/platform/agent-vault/guides/opencode): create a proxy, create a session, and start OpenCode with the session token</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal" agent="hermes">
-    <li>[Agent Vault with Hermes Agent](/documentation/platform/agent-vault/guides/hermes): create an access bundle, create a proxy, create a session, and start Hermes in your terminal with the session token</li>
+    <li>[Agent Vault with Hermes Agent](/documentation/platform/agent-vault/guides/hermes): create a proxy, create a session, and start Hermes in your terminal with the session token</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal" agent="openclaw">
-    <li>[Agent Vault with OpenClaw](/documentation/platform/agent-vault/guides/openclaw): create an access bundle, create a proxy, create a session, and start OpenClaw in your terminal with the session token</li>
+    <li>[Agent Vault with OpenClaw](/documentation/platform/agent-vault/guides/openclaw): create a proxy, create a session, and start OpenClaw in your terminal with the session token</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="assistant" agent="hermes">
-    <li>[Agent Vault with the Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway): create a session that never expires, then send the Hermes gateway's requests through the proxy</li>
+    <li>[Agent Vault with the Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway): add Hermes's keys to the access bundle, create a session that never expires, then send the Hermes gateway's requests through the proxy</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="assistant" agent="openclaw">
-    <li>[Agent Vault with the OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway): create a session that never expires, then send the OpenClaw gateway's requests through the proxy</li>
+    <li>[Agent Vault with the OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway): add OpenClaw's keys to the access bundle, create a session that never expires, then send the OpenClaw gateway's requests through the proxy</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal,assistant" agent="custom">
-    <li>[Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent): create an access bundle, create a proxy, create a session, and send your agent's requests through the proxy</li>
+    <li>[Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent): create a proxy, create a session, and send your agent's requests through the proxy</li>
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="scheduled,platform">
-    <li>[Create an access bundle](/documentation/platform/agent-vault/access-bundles#create-an-access-bundle), with a service for each external system the agent uses</li>
+    <li>[Quickstart](/documentation/platform/agent-vault/quickstart): create an access bundle with a service for each external system the agent uses</li>
     <li>[Create a proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it), and run it with Docker, Kubernetes, or systemd so that it keeps running between jobs</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="scheduled" runs="none,computer,server">

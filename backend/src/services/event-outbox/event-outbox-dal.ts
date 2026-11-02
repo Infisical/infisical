@@ -251,9 +251,10 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.EventOutbox)
         .whereIn("status", [EventOutboxStatus.Pending, EventOutboxStatus.Retry, EventOutboxStatus.Processing])
         .groupBy("consumer")
-        .select<
-          { consumer: string; ageSeconds: string }[]
-        >("consumer", db.raw('EXTRACT(EPOCH FROM (NOW() - MIN("occurredAt")))::float8 as "ageSeconds"'));
+        .select<{ consumer: string; ageSeconds: string }[]>(
+          "consumer",
+          db.raw('EXTRACT(EPOCH FROM (NOW() - MIN("occurredAt")))::float8 as "ageSeconds"')
+        );
 
       return rows.map((row) => ({ consumer: row.consumer, ageSeconds: Number(row.ageSeconds) }));
     } catch (error) {

@@ -53,7 +53,6 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
       return;
     }
     preview.mutate({ orgId, removeProductId: product.id });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, product.id, isOnlyProduct]);
 
   const handleRemove = () => removeProduct.mutateAsync({ orgId, productId: product.id });

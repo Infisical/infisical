@@ -30,9 +30,9 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
@@ -1456,6 +1456,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         forPkiSync: z.boolean().default(false).optional().describe(PROJECTS.SEARCH_CERTIFICATES.forPkiSync),
         search: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.search),
         status: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
+        includeDeleted: z.boolean().optional().describe(PROJECTS.SEARCH_CERTIFICATES.includeDeleted),
         profileIds: z.array(z.string().uuid()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.profileIds),
         fromDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.fromDate),
         toDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.toDate),

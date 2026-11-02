@@ -1,12 +1,275 @@
 ---
-title: "Quickstart: Agent Vault"
+title: "Add your credentials to Agent Vault"
 sidebarTitle: "Quickstart"
-description: "Launch an agent that makes authenticated API calls without needing an actual token."
+description: "Store your credentials in an access bundle and connect the agents that use them."
 ---
 
-import { AgentVaultQuickstartPicker } from "/snippets/AgentVaultQuickstartConfigurator.jsx";
-import QuickstartBody from "/snippets/agent-vault/QuickstartBody.mdx";
+This quickstart walks you through the setup shared by every Agent Vault workflow. You'll create an [access bundle](/documentation/platform/agent-vault/access-bundles), add a [service](/documentation/platform/agent-vault/services) for each key your agent uses, and then continue with the guide for where your agent runs.
 
-<AgentVaultQuickstartPicker />
+## Prerequisites
 
-<QuickstartBody />
+- An Infisical organization where you're an [Agent Vault admin](/documentation/platform/agent-vault/access-control#product-membership)
+- The API keys your agent uses, such as its model provider's key
+
+## Step 1: Add your credentials
+
+<Tabs>
+  <Tab title="Infisical dashboard">
+    ### Create an access bundle
+
+    In Agent Vault, an [access bundle](/documentation/platform/agent-vault/access-bundles) defines the [services](/documentation/platform/agent-vault/services) your agents can reach. To create an access bundle:
+
+    <Steps>
+      <Step>
+        In Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**.
+      </Step>
+      <Step>
+        Select **Create Access Bundle**. Give the access bundle a **Name**, such as `code-review`, then select **Create Access Bundle**.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with code-review entered as the name" />
+        </Frame>
+      </Step>
+    </Steps>
+
+    ### Add a service
+
+    Next, add a service for each key your agent uses.
+
+    <Accordion title="What services do I need?">
+      - Its model provider's API key, such as `ANTHROPIC_API_KEY`, if the agent uses one
+      - Each API it calls, such as GitHub
+      - For a messaging gateway, the platform's token (see the keys that [Hermes](/documentation/platform/agent-vault/guides/hermes-gateway#step-1-list-the-api-keys-hermes-uses) or [OpenClaw](/documentation/platform/agent-vault/guides/openclaw-gateway#step-1-list-the-api-keys-openclaw-uses) uses)
+      - Each remote MCP server it connects to, such as Linear's, which you can sign in to with OAuth instead of a key (see [add an MCP server](/documentation/platform/agent-vault/mcp-servers#add-an-mcp-server))
+    </Accordion>
+
+    <Steps>
+      <Step>
+        In the access bundle, select **Add Service**.
+      </Step>
+      <Step>
+        On the **Choose a template** panel, pick the template for the API, or select **Custom HTTP API**.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with GitHub among the available services" />
+        </Frame>
+      </Step>
+      <Step>
+        On the **Details** step, check the hosts the service covers, or enter the API's host if you selected **Custom HTTP API**. Select **Continue**.
+      </Step>
+      <Step>
+        On the **Credential** step, paste the real key, then select **Continue**.
+
+        <Note>
+          If the API takes the key somewhere other than a header, such as a bot token in the URL, [add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) instead. Your agent sends the placeholder you enter in **Replace**.
+        </Note>
+      </Step>
+      <Step>
+        On the **Review** step, select **Add Service**. Repeat from the first step for each remaining key.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    ### Log in as a machine identity
+
+    You call the Infisical API as a [machine identity](/documentation/platform/identities/machine-identities) with the **Admin** role in Agent Vault.
+
+    <Steps>
+      <Step>
+        In Agent Vault, go to **Access Control** > **Machine Identities** and select **Add Machine Identity**.
+      </Step>
+      <Step>
+        On the **Create New** tab, enter a **Name**, choose **Admin** in **Role**, then select **Create**.
+      </Step>
+      <Step>
+        On the machine identity's page, select **Universal Auth** under **Authentication**. Copy the **Client ID**, then select **Add Client Secret** and copy the client secret.
+      </Step>
+    </Steps>
+
+    Use this machine identity only for setup. If your agents' sessions come from code, the guide for your agents has you create a separate machine identity with access to only one access bundle.
+
+    Call [the login endpoint for Universal Auth](/api-reference/endpoints/universal-auth/login) with the client ID and client secret:
+
+    <CodeGroup>
+      ```bash US Cloud
+      curl -X POST https://app.infisical.com/api/v1/auth/universal-auth/login \
+        -H "Content-Type: application/json" \
+        -d '{"clientId": "<client-id>", "clientSecret": "<client-secret>"}'
+      ```
+
+      ```bash EU Cloud
+      curl -X POST https://eu.infisical.com/api/v1/auth/universal-auth/login \
+        -H "Content-Type: application/json" \
+        -d '{"clientId": "<client-id>", "clientSecret": "<client-secret>"}'
+      ```
+
+      ```bash Self-hosted
+      curl -X POST <your-instance-url>/api/v1/auth/universal-auth/login \
+        -H "Content-Type: application/json" \
+        -d '{"clientId": "<client-id>", "clientSecret": "<client-secret>"}'
+      ```
+    </CodeGroup>
+
+    The response includes an `accessToken`, which you send with each request in the next steps.
+
+    ### Create an access bundle
+
+    In Agent Vault, an [access bundle](/documentation/platform/agent-vault/access-bundles) defines the [services](/documentation/platform/agent-vault/services) your agents can reach. Call [the endpoint to create an access bundle](/api-reference/endpoints/agent-vault-access-bundles/create), replacing `<access-token>` with the `accessToken` from the login response. In the body, send a name for the access bundle:
+
+    <CodeGroup>
+      ```bash US Cloud
+      curl -X POST https://app.infisical.com/api/v1/agent-vault/access-bundles \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{"name": "code-review"}'
+      ```
+
+      ```bash EU Cloud
+      curl -X POST https://eu.infisical.com/api/v1/agent-vault/access-bundles \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{"name": "code-review"}'
+      ```
+
+      ```bash Self-hosted
+      curl -X POST <your-instance-url>/api/v1/agent-vault/access-bundles \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{"name": "code-review"}'
+      ```
+    </CodeGroup>
+
+    The response includes the access bundle's `id`, which you need to add a service.
+
+    ### Add a service
+
+    Add a service for each key your agent uses.
+
+    <Accordion title="What services do I need?">
+      - Its model provider's API key, such as `ANTHROPIC_API_KEY`, if the agent uses one
+      - Each API it calls, such as GitHub
+      - For a messaging gateway, the platform's token (see the keys that [Hermes](/documentation/platform/agent-vault/guides/hermes-gateway#step-1-list-the-api-keys-hermes-uses) or [OpenClaw](/documentation/platform/agent-vault/guides/openclaw-gateway#step-1-list-the-api-keys-openclaw-uses) uses)
+      - Each remote MCP server it connects to, such as Linear's (see [add an MCP server](/documentation/platform/agent-vault/mcp-servers#add-an-mcp-server))
+    </Accordion>
+
+    Call [the endpoint to create a service](/api-reference/endpoints/agent-vault-services/create), replacing `<access-bundle-id>` in the URL with the `id` from the previous step and `<access-token>` with the `accessToken` from the login response.
+    
+    In the body, send the hosts that the credential applies to and the credential itself. For example, to add a GitHub personal access token:
+
+    <CodeGroup>
+      ```bash US Cloud
+      curl -X POST https://app.infisical.com/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "type": "http",
+          "name": "github",
+          "hostPattern": "api.github.com, github.com",
+          "credential": {
+            "type": "basic",
+            "username": "x-access-token",
+            "password": "<github-token>"
+          }
+        }'
+      ```
+
+      ```bash EU Cloud
+      curl -X POST https://eu.infisical.com/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "type": "http",
+          "name": "github",
+          "hostPattern": "api.github.com, github.com",
+          "credential": {
+            "type": "basic",
+            "username": "x-access-token",
+            "password": "<github-token>"
+          }
+        }'
+      ```
+
+      ```bash Self-hosted
+      curl -X POST <your-instance-url>/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "type": "http",
+          "name": "github",
+          "hostPattern": "api.github.com, github.com",
+          "credential": {
+            "type": "basic",
+            "username": "x-access-token",
+            "password": "<github-token>"
+          }
+        }'
+      ```
+    </CodeGroup>
+
+    Set `credential.type` to `bearer` for an API that takes a token in a header, `basic` for an API that takes a username and password, or `passthrough` for a host that the agent can call without a credential.
+    
+    <Note>
+    For a key that goes somewhere other than a header, set `credential` to `{"type": "passthrough"}` and send the key as a [substitution](/documentation/platform/agent-vault/http-apis#substitutions):
+
+    ```json
+    "credential": { "type": "passthrough" },
+    "substitutions": [
+      { "placeholder": "__TELEGRAM_BOT_TOKEN__", "surfaces": ["path"], "value": "<telegram-bot-token>" }
+    ]
+    ```
+    </Note>
+
+    Repeat this request for each remaining key.
+  </Tab>
+</Tabs>
+
+## Step 2: Connect your agents
+
+Pick the guide for where your agents run. Each guide continues from the access bundle you just created.
+
+<Tip>
+If you're not sure which guide fits, [plan your setup](/documentation/platform/agent-vault/plan-your-setup) to get a recommendation.
+</Tip>
+
+### Sandboxes
+
+Start each agent in its own sandbox, with its own proxy.
+
+<CardGroup cols={2}>
+  <Card title="Modal sandboxes" icon="/images/agent-vault-agents/modal.svg" href="/documentation/platform/agent-vault/guides/modal">
+    Run an Agent Vault proxy in each Modal sandbox so the agent never has access to a credential.
+  </Card>
+  <Card title="Daytona sandboxes" icon="/images/agent-vault-agents/daytona.svg" href="/documentation/platform/agent-vault/guides/daytona">
+    Run an Agent Vault proxy beside each Daytona sandbox so the agent never has access to a credential.
+  </Card>
+  <Card title="Docker containers" icon="/images/agent-vault-agents/docker.svg" href="/documentation/platform/agent-vault/guides/docker">
+    Run an Agent Vault proxy beside each agent container so the agent never has access to a credential.
+  </Card>
+</CardGroup>
+
+### Messaging gateways
+
+Keep an assistant running on a server so people can message it from Slack, Telegram, or another platform.
+
+<CardGroup cols={2}>
+  <Card title="Hermes gateway" icon="/images/agent-vault-agents/hermes.png" href="/documentation/platform/agent-vault/guides/hermes-gateway" />
+  <Card title="OpenClaw gateway" icon="/images/agent-vault-agents/openclaw.svg" href="/documentation/platform/agent-vault/guides/openclaw-gateway" />
+</CardGroup>
+
+### Your own code
+
+<Card title="Your own agent" icon="code" href="/documentation/platform/agent-vault/guides/custom-agent">
+  Launch your custom agent with Agent Vault so it can call HTTP APIs and MCP servers without having access to their credentials.
+</Card>
+
+### Local development
+
+Launch an agent from your terminal with the Infisical CLI.
+
+<CardGroup cols={3}>
+  <Card title="Claude Code" icon="/images/agent-vault-agents/claude-code.svg" href="/documentation/platform/agent-vault/guides/claude-code" />
+  <Card title="Codex" icon="/images/agent-vault-agents/OpenAI.png" href="/documentation/platform/agent-vault/guides/codex" />
+  <Card title="OpenCode" icon="/images/agent-vault-agents/opencode.svg" href="/documentation/platform/agent-vault/guides/opencode" />
+  <Card title="Hermes Agent" icon="/images/agent-vault-agents/hermes.png" href="/documentation/platform/agent-vault/guides/hermes" />
+  <Card title="OpenClaw" icon="/images/agent-vault-agents/openclaw.svg" href="/documentation/platform/agent-vault/guides/openclaw" />
+</CardGroup>

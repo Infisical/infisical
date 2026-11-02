@@ -18,8 +18,6 @@ import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-uti
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import {
   CertificateIssuanceOperation,
@@ -31,6 +29,8 @@ import {
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -366,14 +366,15 @@ export const certificateRequestServiceFactory = ({
     } | null;
 
     // If no certificate is attached, return basic info
-    if (!certificateRequest.certificate) {
+    if (!certificateRequest.certificate || certificateRequest.certificate.deletedAt) {
       return {
         certificateRequest: {
           status: certificateRequest.status as CertificateRequestStatus,
           certificate: null,
-          certificateId: null,
+          certificateId: certificateRequest.certificate?.id ?? null,
           privateKey: null,
-          serialNumber: null,
+          serialNumber: certificateRequest.certificate?.serialNumber ?? null,
+          certificateDeletedAt: certificateRequest.certificate?.deletedAt ?? null,
           errorMessage: certificateRequest.errorMessage || null,
           pendingMessage: certificateRequest.pendingMessage || null,
           commonName: certificateRequest.commonName || null,

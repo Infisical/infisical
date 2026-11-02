@@ -14,7 +14,7 @@ import {
 import { PKI_DISCOVERY_TYPE_MAP } from "@app/helpers/pkiDiscovery";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
-import { PkiDiscoveryType } from "@app/hooks/api/pkiDiscovery/types";
+import { PkiDiscoveryType, WindowsCertificateStoreLabels } from "@app/hooks/api/pkiDiscovery/types";
 import { getItemLabel } from "@app/pages/cert-manager/pki-discovery-utils";
 
 import { parseTargets, TDiscoveryJobForm } from "./discovery-job-form-schema";
@@ -104,6 +104,27 @@ export const DiscoveryReviewFields = () => {
           <ReviewGroup title="Options">
             <ReviewDetail label="Folder Depth">{String(values.maxFolderDepth)}</ReviewDetail>
             <ReviewDetail label="Include trust stores and CA bundles">
+              <Badge variant={values.importStandaloneCaCertificates ? "success" : "neutral"}>
+                {values.importStandaloneCaCertificates ? "Enabled" : "Disabled"}
+              </Badge>
+            </ReviewDetail>
+          </ReviewGroup>
+        </>
+      )}
+      {values.discoveryType === PkiDiscoveryType.WindowsServer && (
+        <>
+          <ReviewGroup title="Hosts">
+            <ReviewBadgesDetail
+              label="Windows (WinRM) Connections"
+              items={values.connections.map((connection) => connection.name)}
+            />
+          </ReviewGroup>
+          <ReviewGroup title="Stores">
+            <ReviewBadgesDetail
+              label="Certificate Stores"
+              items={values.certificateStores.map((store) => WindowsCertificateStoreLabels[store])}
+            />
+            <ReviewDetail label="Include CA Certificates">
               <Badge variant={values.importStandaloneCaCertificates ? "success" : "neutral"}>
                 {values.importStandaloneCaCertificates ? "Enabled" : "Disabled"}
               </Badge>

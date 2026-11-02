@@ -96,7 +96,9 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		// every call it makes and has no hand-written client to fall back on, so a
 		// route missing from the spec is a route no test can reach.
 		"OPENAPI_FULL_SPEC": "true",
-		"SITE_URL":          fmt.Sprintf("http://%s:%d", self, port),
+		// https although the server listens on plain http: nothing dials SITE_URL, and a
+		// delegated approval system refuses a callback URL that is not https.
+		"SITE_URL": fmt.Sprintf("https://%s:%d", self, port),
 	}
 	if m.runModes != "" {
 		env["INFISICAL_RUN_MODES"] = m.runModes
@@ -171,7 +173,7 @@ func (h *Handle) BaseURL(m infra.Mode) string { return h.Endpoint(m).URL("http")
 
 // SiteURL is the SITE_URL the server was started with: the SAML audience, and the
 // origin of every redirect it builds. Not reachable from the test process.
-func (h *Handle) SiteURL() string { return h.BaseURL(infra.Internal) }
+func (h *Handle) SiteURL() string { return h.Endpoint(infra.Internal).URL("https") }
 
 // Logs is what a failure dumps. Under a Shared profile one instance serves every
 // parallel tenant, so a caller filters by org id rather than printing all of it.

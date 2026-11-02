@@ -16,6 +16,7 @@ import {
   ApproverType,
   EnforcementLevel
 } from "@app/services/approval-policy/approval-policy-enums";
+import { isApprovalRequestExpired } from "@app/services/approval-policy/approval-policy-service";
 import { ApprovalPolicyStep } from "@app/services/approval-policy/approval-policy-types";
 import { resolveStepApproverUserIds } from "@app/services/approval-policy/approval-request-fns";
 import {
@@ -23,6 +24,7 @@ import {
   parseSecretAccessRequestData
 } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
+import { TDelegatedApprovalRequest } from "@app/services/delegated-approval/delegated-approval-types";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TSecretAccessApprovalGlobalPolicyBridgeDALFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-dal";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
@@ -331,6 +333,7 @@ export type TSecretAccessRequestListInput = {
   groupMembers: { groupId: string; userId: string }[];
   users: Pick<TUsers, "id" | "email" | "username" | "firstName" | "lastName">[];
   orgMemberships: { actorUserId?: string | null; isActive: boolean }[];
+  delegatedRequests: Pick<TDelegatedApprovalRequest, "requestId" | "status" | "details">[];
 };
 
 export type TPolicySubject = { type: string; id?: string | null };
@@ -385,13 +388,18 @@ export const composeSecretAccessRequestRows = ({
   approvals,
   groupMembers,
   users,
-  orgMemberships
+  orgMemberships,
+  delegatedRequests
 }: TSecretAccessRequestListInput) => {
   const policiesById = new Map(policies.map((policy) => [policy.id, policy]));
   const userById = new Map(users.map((user) => [user.id, user]));
   const privilegeByGrantId = new Map(privileges.map((privilege) => [privilege.grantId as string, privilege]));
   const isOrgMembershipActive = new Map(
     orgMemberships.map((membership) => [membership.actorUserId as string, membership.isActive])
+  );
+
+  const delegatedRequestByRequestId = new Map(
+    delegatedRequests.map((delegatedRequest) => [delegatedRequest.requestId, delegatedRequest])
   );
 
   const grantByRequestId = new Map<string, TApprovalRequestGrants>();
@@ -443,6 +451,7 @@ export const composeSecretAccessRequestRows = ({
       }))
     );
     const bypassers = (policy?.bypassers ?? []).flatMap(expandSubject);
+    const delegatedRequest = delegatedRequestByRequestId.get(request.id);
 
     return {
       request,
@@ -474,7 +483,15 @@ export const composeSecretAccessRequestRows = ({
             maxTimePeriod: policy.maxTimePeriod,
             requestExpirationTime: policy.requestExpirationTime,
             approvers,
-            bypassers
+            bypassers,
+            delegatedApproval: policy.delegatedApproval ? { type: policy.delegatedApproval.type } : null
+          }
+        : null,
+      delegatedApproval: delegatedRequest
+        ? {
+            status: delegatedRequest.status,
+            statusReason: delegatedRequest.details.statusReason ?? null,
+            provider: delegatedRequest.details.provider ?? null
           }
         : null,
       environment: policy?.environment ?? null,
@@ -546,7 +563,8 @@ export const toSecretAccessRequestListItem = (
       maxTimePeriod: null,
       requestExpirationTime: null,
       approvers: [],
-      bypassers: []
+      bypassers: [],
+      delegatedApproval: null
     };
     // Legacy left a deleted policy's open requests pending, and the UI shows "Policy Deleted" only for a
     // request that was neither approved nor rejected.
@@ -567,7 +585,8 @@ export const toSecretAccessRequestListItem = (
     isApproved: status === ApprovalStatus.APPROVED,
     reviewers: row.reviewers,
     approvers: policy.approvers,
-    bypassers: policy.bypassers
+    bypassers: policy.bypassers,
+    delegatedApproval: row.delegatedApproval
   };
 };
 
@@ -583,4 +602,4 @@ export const isPendingSecretAccessRequestItem = (
   !item.policy.deletedAt &&
   item.status === ApprovalStatus.PENDING &&
   !item.reviewers.some((reviewer) => reviewer.status === ApprovalRequestApprovalDecision.Rejected) &&
-  !(item.expiresAt && new Date(item.expiresAt) < now);
+  !isApprovalRequestExpired(item, now);

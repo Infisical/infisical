@@ -51,8 +51,8 @@ import {
   useGetHoneyTokenCredentials
 } from "@app/hooks/api/honeyTokens/queries";
 
-import { CredentialField } from "./ViewHoneyTokenCredentials/CredentialField";
 import { HoneyTokenEventsSection } from "./HoneyTokenEventsSection";
+import { CredentialField } from "./ViewHoneyTokenCredentials/CredentialField";
 
 type Props = {
   projectId: string;

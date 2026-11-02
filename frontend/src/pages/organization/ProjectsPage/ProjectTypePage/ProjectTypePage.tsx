@@ -307,18 +307,21 @@ export const ProjectTypePage = () => {
 
   if (projectType === ProjectType.CertificateManager) {
     return (
-      <CertManagerNotConfiguredModal
-        isOpen={isCertManagerSetupOpen}
-        onOpenChange={(open) => {
-          setIsCertManagerSetupOpen(open);
-          if (!open) {
-            navigate({
-              to: "/organizations/$orgId/projects",
-              params: { orgId }
-            });
-          }
-        }}
-      />
+      <>
+        <PageTitle title={getProjectTitle(projectType)} />
+        <CertManagerNotConfiguredModal
+          isOpen={isCertManagerSetupOpen}
+          onOpenChange={(open) => {
+            setIsCertManagerSetupOpen(open);
+            if (!open) {
+              navigate({
+                to: "/organizations/$orgId/projects",
+                params: { orgId }
+              });
+            }
+          }}
+        />
+      </>
     );
   }
 
