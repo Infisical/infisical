@@ -105,6 +105,10 @@ Configure the following options to get custom guidance and best practices tailor
 
   <AgentVaultSetupBranch building="scheduled">
     The CLI starts the agent right after it creates the session. The agent can read the machine identity's credentials [from its environment](/documentation/platform/agent-vault/sessions-cli#step-2-start-the-agent), and could use them to create a session for any access bundle the machine identity has. That's why the machine identity only has the access bundle that this agent uses.
+    
+    <Tip>
+    To keep the machine identity's credentials off the agent's host, choose **A service that starts agents for tasks** instead, where the orchestrator gives the agent only the session token.
+    </Tip>
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="platform" runs="none,server">

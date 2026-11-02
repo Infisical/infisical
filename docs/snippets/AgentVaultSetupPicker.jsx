@@ -422,7 +422,7 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   }
   const proxySub = {
     single: "Its own host",
-    shared: selection.runs === "kubernetes" ? "Shared, own namespace" : "Shared by every agent",
+    shared: "Shared by every agent",
     "per-agent": "One per agent",
   }[proxyLayout];
 

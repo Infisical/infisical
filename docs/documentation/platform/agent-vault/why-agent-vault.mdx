@@ -1,6 +1,6 @@
 ---
 title: "Why use Agent Vault?"
-description: "Why AI agents shouldn't hold credentials and what Agent Vault does instead."
+description: "Why AI agents shouldn't have direct access to credentials and what Agent Vault does instead."
 ---
 
 Traditional secrets management involves returning credentials back to applications and services. This works for traditional applications because they're *deterministic*: they run *trusted* code that specifies every request it makes with the credential. The same input always produces the same output.
@@ -13,7 +13,7 @@ There are several risks that come with giving regular API access to AI agents th
 
 ### Prompt injection
 
-If an attacker writes instructions into a GitHub issue or a web page that your agent reads, your agent can follow those instructions and send the credential to the attacker.
+If an attacker writes instructions into a GitHub issue or a web page that your agent reads, your agent can follow those instructions and send the credential to the attacker. This is called credential exfiltration.
 
 <Card title="Example: Prompt injection attack" icon="shield-alert" href="#example-prompt-injection-attack" horizontal>
   What happens to a GitHub token with and without Agent Vault.
@@ -123,6 +123,6 @@ Imagine an agent that reads issues on your GitHub repository and drafts response
     Store your credentials in an access bundle and connect the agents that use them.
   </Card>
   <Card title="How it works" icon="settings-2" href="/documentation/platform/agent-vault/how-it-works">
-    The pieces of an Agent Vault setup and how a session gives an agent access to APIs.
+    The pieces of an Agent Vault setup and how a session gives an agent access to APIs and MCP servers.
   </Card>
 </CardGroup>
