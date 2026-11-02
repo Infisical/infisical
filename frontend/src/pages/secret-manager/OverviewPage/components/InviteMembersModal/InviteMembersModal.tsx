@@ -111,7 +111,6 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
         baseEventProps
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const onInvite = async ({ emails, projectRole }: TInviteMembersForm) => {

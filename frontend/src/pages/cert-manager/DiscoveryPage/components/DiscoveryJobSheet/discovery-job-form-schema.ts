@@ -4,10 +4,15 @@ import {
   DEFAULT_LINUX_SEARCH_FOLDERS,
   DEFAULT_MAX_FILE_SIZE_KB,
   DEFAULT_MAX_FOLDER_DEPTH,
+  DEFAULT_WINDOWS_CERTIFICATE_STORES,
   MAX_FILE_SIZE_KB,
   MAX_FOLDER_DEPTH
 } from "@app/helpers/pkiDiscovery";
-import { PkiDiscoveryType, TPkiDiscovery } from "@app/hooks/api/pkiDiscovery/types";
+import {
+  PkiDiscoveryType,
+  TPkiDiscovery,
+  WindowsCertificateStore
+} from "@app/hooks/api/pkiDiscovery/types";
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 export const MAX_PORTS = 5;
@@ -15,7 +20,7 @@ export const MAX_IPS = 256;
 export const MAX_DOMAINS = 20;
 export const MIN_CIDR_PREFIX = 24;
 export const DEFAULT_TLS_PORTS = "443,8443,636,993,995";
-const MAX_LINUX_CONNECTIONS = 100;
+const MAX_HOST_CONNECTIONS = 100;
 export const MAX_SEARCH_FOLDERS = 20;
 export const MAX_SKIP_FOLDERS = 50;
 
@@ -127,12 +132,18 @@ const NetworkSchema = BaseSchema.extend({
   gatewayPoolId: z.string().nullable().optional()
 });
 
+const hostConnectionsSchema = (connectionLabel: string) =>
+  z
+    .array(z.object({ id: z.string(), name: z.string() }))
+    .min(1, `Select at least one ${connectionLabel} connection`)
+    .max(
+      MAX_HOST_CONNECTIONS,
+      `Select up to ${MAX_HOST_CONNECTIONS} ${connectionLabel} connections`
+    );
+
 const LinuxServerSchema = BaseSchema.extend({
   discoveryType: z.literal(PkiDiscoveryType.LinuxServer),
-  connections: z
-    .array(z.object({ id: z.string(), name: z.string() }))
-    .min(1, "Select at least one SSH connection")
-    .max(MAX_LINUX_CONNECTIONS, `Select up to ${MAX_LINUX_CONNECTIONS} SSH connections`),
+  connections: hostConnectionsSchema("SSH"),
   searchFolderPaths: z
     .array(z.string())
     .min(1, "Add at least one folder to search")
@@ -153,14 +164,31 @@ const LinuxServerSchema = BaseSchema.extend({
   importStandaloneCaCertificates: z.boolean()
 });
 
+const WindowsServerSchema = BaseSchema.extend({
+  discoveryType: z.literal(PkiDiscoveryType.WindowsServer),
+  connections: hostConnectionsSchema("Windows (WinRM)"),
+  certificateStores: z
+    .array(z.nativeEnum(WindowsCertificateStore))
+    .min(1, "Select at least one certificate store"),
+  importStandaloneCaCertificates: z.boolean()
+});
+
+export const CA_CERTIFICATE_STORES = [
+  WindowsCertificateStore.IntermediateCertificationAuthorities,
+  WindowsCertificateStore.TrustedRootCertificationAuthorities
+];
+
 export const DiscoveryJobFormSchema = z.discriminatedUnion("discoveryType", [
   NetworkSchema,
-  LinuxServerSchema
+  LinuxServerSchema,
+  WindowsServerSchema
 ]);
 
 export type TDiscoveryJobForm = z.infer<typeof DiscoveryJobFormSchema>;
 export type TNetworkDiscoveryJobForm = z.infer<typeof NetworkSchema>;
 export type TLinuxServerDiscoveryJobForm = z.infer<typeof LinuxServerSchema>;
+export type TWindowsServerDiscoveryJobForm = z.infer<typeof WindowsServerSchema>;
+export type THostDiscoveryJobForm = TLinuxServerDiscoveryJobForm | TWindowsServerDiscoveryJobForm;
 
 export const getDefaultFormValues = (
   type: PkiDiscoveryType,
@@ -172,6 +200,22 @@ export const getDefaultFormValues = (
     isAutoScanEnabled: discovery?.isAutoScanEnabled ?? false,
     scanIntervalDays: discovery?.scanIntervalDays ?? 7
   };
+
+  if (type === PkiDiscoveryType.WindowsServer) {
+    const config = discovery?.targetConfig;
+    const importStandaloneCaCertificates = config?.importStandaloneCaCertificates ?? false;
+    return {
+      ...base,
+      discoveryType: PkiDiscoveryType.WindowsServer,
+      connections: discovery?.connections ?? [],
+      certificateStores: Object.values(WindowsCertificateStore).filter(
+        (store) =>
+          (config?.certificateStores ?? DEFAULT_WINDOWS_CERTIFICATE_STORES).includes(store) &&
+          (importStandaloneCaCertificates || !CA_CERTIFICATE_STORES.includes(store))
+      ),
+      importStandaloneCaCertificates
+    };
+  }
 
   if (type === PkiDiscoveryType.LinuxServer) {
     const config = discovery?.targetConfig;

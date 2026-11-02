@@ -4,7 +4,7 @@ sidebarTitle: "Docker"
 description: "Store secrets in Infisical and deliver them to a Dockerized application at runtime."
 ---
 
-This guide walks you through injecting secrets from Infisical into a Dockerized application as environment variables. You can [fetch secrets when the container starts](#fetch-at-startup) or [export them from the host](#pass-with-docker-run) when you run the container.
+This guide walks you through injecting secrets from Infisical into a Dockerized application as environment variables. You can [fetch secrets when the container starts](#fetch-at-startup-recommended) or [export them from the host](#docker-run-interactive) when you run the container.
 
 <Tip>
   Visual learner? Watch an [overview of managing secrets in Docker with Infisical](https://www.youtube.com/watch?v=oU2nNBwlOTA).
@@ -292,7 +292,7 @@ Choose how Docker should receive your application secrets:
 
 ## Use with Docker Compose
 
-If you [fetch secrets at startup](#fetch-at-startup), you can use [Docker Compose](https://docs.docker.com/compose/) to build and run one or more configured service images.
+If you [fetch secrets at startup](#fetch-at-startup-recommended), you can use [Docker Compose](https://docs.docker.com/compose/) to build and run one or more configured service images.
 
 [Configure each image](/integrations/platforms/docker#step-4-update-your-dockerfile) to start through `infisical sm run`, then configure your Compose file for your Infisical deployment:
 

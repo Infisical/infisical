@@ -84,13 +84,14 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
           <TableBody>
             {paginatedInstallations.map((installation) => (
               <TableRow key={installation.id} linked>
-                <TableCell>
+                <TableCell className="max-w-80">
                   <RowLink
                     {...getInstancePinningLink(
                       currentProject.orgId,
                       currentProject,
                       `discovery/installations/${installation.id}`
                     )!}
+                    title={installation.name || getEndpoint(installation)}
                   >
                     {installation.name || getEndpoint(installation)}
                   </RowLink>

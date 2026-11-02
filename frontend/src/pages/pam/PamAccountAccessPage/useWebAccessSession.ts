@@ -142,7 +142,7 @@ export const useWebAccessSession = ({
 
       if (longestLine <= terminal.cols) return;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-underscore-dangle
+      // eslint-disable-next-line no-underscore-dangle
       const cellWidth = (terminal as any)._core._renderService.dimensions.css.cell.width as number;
       if (!cellWidth) return;
 

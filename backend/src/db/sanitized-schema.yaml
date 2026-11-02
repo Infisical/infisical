@@ -43,6 +43,25 @@ tables:
       - createdAt
       - updatedAt
 
+  - name: agent_vault_delegation_subjects
+    source: public.agent_vault_delegation_subjects
+    columns:
+      - id
+      - delegationId
+      - membershipId
+      - createdAt
+
+  - name: agent_vault_delegations
+    source: public.agent_vault_delegations
+    columns:
+      - id
+      - projectId
+      - identityId
+      - membershipId
+      - scope
+      - createdAt
+      - updatedAt
+
   - name: agent_vault_personal_values
     source: public.agent_vault_personal_values
     columns:
@@ -120,6 +139,7 @@ tables:
       - userId
       - identityId
       - actorType
+      - onBehalfOfUserId
       - expiresAt
       - revokedAt
       - createdAt

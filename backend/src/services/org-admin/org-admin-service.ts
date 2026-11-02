@@ -9,12 +9,12 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TAccessProjectDTO, TListOrgProjectsDTO } from "./org-admin-types";
 

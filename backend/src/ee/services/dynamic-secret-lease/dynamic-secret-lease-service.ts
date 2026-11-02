@@ -14,6 +14,10 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import {
+  recordDynamicSecretRevocationOutcomeMetric,
+  recordDynamicSecretUnrecordedCredentialMetric
+} from "@app/lib/telemetry/metrics";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -29,7 +33,11 @@ import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
 import { toSafeUsername } from "../dynamic-secret/providers/templateUtils";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
-import { decryptLeaseData, pickPersistedLeaseData } from "./dynamic-secret-lease-fns";
+import {
+  decryptLeaseData,
+  pickPersistedLeaseData,
+  recordDynamicSecretRevocationResult
+} from "./dynamic-secret-lease-fns";
 import { TDynamicSecretLeaseQueueServiceFactory } from "./dynamic-secret-lease-queue";
 import {
   DynamicSecretLeaseStatus,
@@ -39,7 +47,7 @@ import {
 
 type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretLeaseDAL: TDynamicSecretLeaseDALFactory;
-  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne">;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "update">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -222,12 +230,13 @@ export const dynamicSecretLeaseServiceFactory = ({
       // the credential already exists upstream; without a lease row nothing would ever revoke it
       await selectedProvider
         .revoke(decryptedStoredInput, entityId, { projectId, leaseData }, config)
-        .catch((revokeError: Error) =>
+        .catch((revokeError: Error) => {
+          recordDynamicSecretUnrecordedCredentialMetric({ provider: dynamicSecretCfg.type });
           logger.error(
             revokeError,
             `Failed to revoke credential after lease insert failed [dynamicSecretId=${dynamicSecretCfg.id}] [provider=${dynamicSecretCfg.type}]`
-          )
-        );
+          );
+        });
       throw error;
     }
 
@@ -409,6 +418,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       secretManagerDecryptor({ cipherTextBlob: Buffer.from(dynamicSecretCfg.encryptedInput) }).toString()
     ) as object;
 
+    let isRevokeErrorSwallowed = false;
     const revokeResponse = await selectedProvider
       .revoke(
         decryptedStoredInput,
@@ -419,7 +429,18 @@ export const dynamicSecretLeaseServiceFactory = ({
       .catch(async (err) => {
         // only propogate this error if forced is false
         if (!isForced) return { error: err as Error };
+        isRevokeErrorSwallowed = true;
       });
+
+    // A forced revoke that failed upstream is the user discarding the lease, not a revocation result.
+    if (!isRevokeErrorSwallowed) {
+      recordDynamicSecretRevocationOutcomeMetric({
+        provider: dynamicSecretCfg.type,
+        trigger: "manual",
+        outcome: (revokeResponse as { error?: Error })?.error ? "failure" : "success",
+        attemptsExhausted: true
+      });
+    }
 
     if ((revokeResponse as { error?: Error })?.error) {
       const { error } = revokeResponse as { error?: Error };
@@ -437,6 +458,16 @@ export const dynamicSecretLeaseServiceFactory = ({
         environment: environmentSlug,
         secretPath: path
       };
+    }
+
+    if (!isRevokeErrorSwallowed) {
+      await recordDynamicSecretRevocationResult({
+        dynamicSecretDAL,
+        dynamicSecretId: dynamicSecretCfg.id,
+        provider: dynamicSecretCfg.type,
+        isRevoked: true,
+        wasFailing: dynamicSecretCfg.revocationFailing
+      });
     }
 
     await dynamicSecretQueueService.unsetLeaseRevocation(dynamicSecretLease.id);

@@ -10,14 +10,25 @@ package main
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/Infisical/infisical/tests/fakes/alicloud"
+	"github.com/Infisical/infisical/tests/fakes/aws"
+	"github.com/Infisical/infisical/tests/fakes/azure"
 	"github.com/Infisical/infisical/tests/fakes/github"
+	"github.com/Infisical/infisical/tests/fakes/kubernetes"
+	"github.com/Infisical/infisical/tests/fakes/ldap"
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/oauth"
+	"github.com/Infisical/infisical/tests/fakes/oci"
 	"github.com/Infisical/infisical/tests/fakes/oidcidp"
+	"github.com/Infisical/infisical/tests/fakes/servicenow"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
+	"github.com/Infisical/infisical/tests/fakes/vercel"
+	"github.com/Infisical/infisical/tests/fakes/webhook"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
@@ -35,8 +46,19 @@ func main() {
 	srv := fakenet.New(
 		github.Service,
 		license.Service,
+		servicenow.Service,
 		oidcidp.Service,
+		webhook.Service,
+		webhook.Slack,
+		webhook.Splunk,
+		aws.STS, aws.STSGlobal, aws.SSM, aws.SecretsManager, aws.IAM, aws.CloudFormation,
+		vercel.Service,
+		oauth.Google, oauth.GitHub, oauth.GitLab,
+		kubernetes.Service, azure.Service, alicloud.Service, oci.Service,
+		ldap.Service,
 	)
+
+	go func() { log.Fatalf("fakenet: ldap listener: %v", ldap.Serve(fmt.Sprintf(":%d", ldap.Port), srv)) }()
 
 	mail := smtp.New(func(domain string) fakenet.Emitter { return srv.Emitter(smtp.Host, domain) })
 	if err := mail.Start(); err != nil {

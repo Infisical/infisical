@@ -66,16 +66,16 @@ import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subsc
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { validateMicrosoftTeamsChannelsSchema } from "../microsoft-teams/microsoft-teams-fns";
 import { TMicrosoftTeamsIntegrationDALFactory } from "../microsoft-teams/microsoft-teams-integration-dal";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
@@ -274,9 +274,9 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager,
     hasDeleteProtection
   }: TCreateProjectDTO) => {
-    if (type === ProjectType.AgentVault) {
+    if (type === ProjectType.AgentVault || type === ProjectType.PAM) {
       throw new BadRequestError({
-        message: "Agent Vault projects cannot be created directly. One is created for your organization automatically."
+        message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[type]} projects cannot be created directly. One is created for your organization automatically.`
       });
     }
 
@@ -1396,6 +1396,7 @@ export const projectServiceFactory = ({
     forPkiSync = false,
     search,
     status,
+    includeDeleted,
     profileIds,
     fromDate,
     toDate,
@@ -1468,6 +1469,7 @@ export const projectServiceFactory = ({
       ...(status && {
         status: Array.isArray(status) ? status : status.split(",").map((s) => s.trim())
       }),
+      ...(includeDeleted && { includeDeleted }),
       ...(profileIds && { profileIds }),
       ...(fromDate && { fromDate }),
       ...(toDate && { toDate }),
@@ -2376,9 +2378,18 @@ export const projectServiceFactory = ({
   const getSecretBlindIndexMigrationStatus = async (dto: TEnableSecretBlindIndexDTO) =>
     secretValueTrackingService.getProjectStatus(dto);
 
+  // Labels for audit metadata only, so no permission check. Scoped to the org, so an id from
+  // another org resolves to nothing.
+  const getProjectNamesByIds = async ({ orgId, projectIds }: { orgId: string; projectIds: string[] }) => {
+    if (!projectIds.length) return [];
+    const projects = await projectDAL.find({ orgId, $in: { id: projectIds } });
+    return projects.map(({ id, name }) => ({ id, name }));
+  };
+
   return {
     createProject,
     deleteProject,
+    getProjectNamesByIds,
     getProjects,
     getAccessibleProjectsWithSubOrgs,
     updateProject,

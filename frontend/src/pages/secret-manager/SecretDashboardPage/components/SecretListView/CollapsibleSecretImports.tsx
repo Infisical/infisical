@@ -1,4 +1,3 @@
-/* eslint-disable no-nested-ternary */
 import React, { useMemo } from "react";
 import { AlertTriangleIcon, ImportIcon, KeyIcon, RefreshCwIcon } from "lucide-react";
 

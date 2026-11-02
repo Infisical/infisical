@@ -1,4 +1,5 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
@@ -12,8 +13,12 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
+import { GITHUB_SYNC_SECRET_TYPES } from "@app/helpers/secretSyncs";
 import {
   useGitHubConnectionListEnvironments,
   useGitHubConnectionListOrganizations,
@@ -22,6 +27,7 @@ import {
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import {
   GitHubSyncScope,
+  GitHubSyncSecretType,
   GitHubSyncVisibility
 } from "@app/hooks/api/secretSyncs/types/github-sync";
 
@@ -34,6 +40,10 @@ export const GitHubSyncFields = () => {
 
   const connectionId = useWatch({ name: "connection.id", control });
   const currentScope = watch("destinationConfig.scope");
+  const currentSecretType = watch("destinationConfig.secretType");
+  // Unset until the secret type field registers its default, which is Actions
+  const isActionsSecretType =
+    !currentSecretType || currentSecretType === GitHubSyncSecretType.Actions;
   const currentVisibility = watch("destinationConfig.visibility");
   const currentOrg = watch("destinationConfig.org");
   const currentRepo = watch("destinationConfig.repo");
@@ -59,9 +69,9 @@ export const GitHubSyncFields = () => {
       {
         enabled: Boolean(
           connectionId &&
-            currentRepo &&
-            currentOwner &&
-            currentScope === GitHubSyncScope.RepositoryEnvironment
+          currentRepo &&
+          currentOwner &&
+          currentScope === GitHubSyncScope.RepositoryEnvironment
         )
       }
     );
@@ -77,6 +87,65 @@ export const GitHubSyncFields = () => {
         }}
       />
       <Controller
+        name="destinationConfig.secretType"
+        control={control}
+        defaultValue={GitHubSyncSecretType.Actions}
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <Field>
+            <FieldLabel>
+              Secret Type
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-lg">
+                  <div className="flex flex-col gap-3">
+                    <p>Choose which type of GitHub secret Infisical should sync to:</p>
+                    <ul className="flex list-disc flex-col gap-3 pl-4">
+                      {Object.values(GITHUB_SYNC_SECRET_TYPES).map(({ name, description }) => (
+                        <li key={name}>
+                          <p className="text-label">
+                            <span className="font-medium text-foreground-soft">{name}</span>:{" "}
+                            {description}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Select
+                value={value}
+                onValueChange={(val) => {
+                  onChange(val);
+                  if (
+                    val !== GitHubSyncSecretType.Actions &&
+                    currentScope === GitHubSyncScope.RepositoryEnvironment
+                  ) {
+                    setValue("destinationConfig.scope", GitHubSyncScope.Repository);
+                    setValue("destinationConfig.env", "");
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a secret type..." />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {Object.values(GitHubSyncSecretType).map((secretType) => (
+                    <SelectItem value={secretType} key={secretType}>
+                      {GITHUB_SYNC_SECRET_TYPES[secretType].name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
+        )}
+      />
+      <Controller
         name="destinationConfig.scope"
         control={control}
         defaultValue={GitHubSyncScope.Repository}
@@ -89,11 +158,16 @@ export const GitHubSyncFields = () => {
                   <SelectValue placeholder="Select a scope..." />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {Object.values(GitHubSyncScope).map((scope) => (
-                    <SelectItem className="capitalize" value={scope} key={scope}>
-                      {scope.replace("-", " ")}
-                    </SelectItem>
-                  ))}
+                  {Object.values(GitHubSyncScope)
+                    .filter(
+                      (scope) =>
+                        scope !== GitHubSyncScope.RepositoryEnvironment || isActionsSecretType
+                    )
+                    .map((scope) => (
+                      <SelectItem className="capitalize" value={scope} key={scope}>
+                        {scope.replace("-", " ")}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <FieldError errors={[error]} />

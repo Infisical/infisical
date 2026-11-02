@@ -5,7 +5,6 @@ import { TableName, TPamAccounts } from "@app/db/schemas";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { ormify } from "@app/lib/knex";
 
-import { PamAccountType, PamHeartbeatStatus } from "../pam/pam-enums";
 import { computeNextHeartbeatAt, heartbeatJitterCapSeconds } from "../pam-account-heartbeat/pam-heartbeat-fns";
 import {
   ACCOUNT_NEEDS_ROTATION_ACCOUNT_SQL,
@@ -17,6 +16,7 @@ import {
 } from "../pam-account-rotation/pam-rotation-fns";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { PamAccountType, PamHeartbeatStatus } from "../pam/pam-enums";
 import { ACCOUNT_TYPE_CONFIGS, accountTypeRequiresCredential } from "./pam-account-schemas";
 
 const ROTATABLE_TYPE_VALUES = ROTATABLE_ACCOUNT_TYPES as readonly string[];

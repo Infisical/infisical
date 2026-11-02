@@ -45,7 +45,6 @@ export const NativeIntegrationsCreationBlockedModal = ({ isOpen, onOpenChange }:
         projectType: currentProject.type
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleGoToSecretSyncs = () => {

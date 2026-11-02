@@ -14,12 +14,14 @@ import { twMerge } from "tailwind-merge";
 import {
   Checkbox,
   IconButton,
+  RowLink,
   TableCell,
   TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
@@ -32,6 +34,8 @@ import {
 
 type Props = {
   folderName: string;
+  secretPath: string;
+  isNavigationDisabled: boolean;
   description?: string;
   environments: { name: string; slug: string }[];
   isFolderPresentInEnv: (name: string, env: string) => boolean;
@@ -53,6 +57,8 @@ type Props = {
 
 export const FolderTableRow = ({
   folderName,
+  secretPath,
+  isNavigationDisabled,
   description,
   environments = [],
   isFolderPresentInEnv,
@@ -71,26 +77,18 @@ export const FolderTableRow = ({
   onPendingSave,
   isSelectionDisabled
 }: Props) => {
-  const [isClicking, setIsClicking] = useState(false);
   const [isSavingPendingChange, setIsSavingPendingChange] = useState(false);
-  const handleClick = () => {
-    if (isClicking) return;
-
-    setIsClicking(true);
-    onClick(folderName);
-    setTimeout(() => setIsClicking(false), 1000);
-  };
 
   const isSingleEnvView = environments.length === 1;
 
   return (
     <TableRow
+      linked
       className={twMerge(
         "group hover:z-10",
         isSelected && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
         pendingActionRowClass(pendingAction)
       )}
-      onClick={handleClick}
     >
       <TableCell
         className={twMerge(
@@ -130,12 +128,32 @@ export const FolderTableRow = ({
         colSpan={isSingleEnvView ? 2 : undefined}
         className={
           isSingleEnvView
-            ? "relative transition-all duration-75"
+            ? "transition-all duration-75"
             : "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover"
         }
       >
         <div className="flex min-w-0 items-center">
-          <span
+          <RowLink
+            disabled={isNavigationDisabled}
+            from={ROUTE_PATHS.SecretManager.OverviewPage.path}
+            to="."
+            search={(prev) => ({
+              ...prev,
+              secretPath: `${secretPath === "/" ? "" : secretPath}/${folderName}`,
+              environments: environments.map(({ slug }) => slug)
+            })}
+            onClick={(event) => {
+              if (
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return;
+              event.preventDefault();
+              onClick(folderName);
+            }}
             title={folderName}
             className={twMerge(
               "min-w-0 truncate",
@@ -143,7 +161,7 @@ export const FolderTableRow = ({
             )}
           >
             {folderName}
-          </span>
+          </RowLink>
           {description && (
             <Tooltip>
               <TooltipTrigger asChild>

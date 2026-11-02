@@ -419,7 +419,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props)
     if (popUp?.ca?.isOpen && isEditMode && editType) {
       reset(getInitialValuesForType(editType));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [popUp?.ca?.isOpen, isEditMode]);
 
   const { data: availableRoute53Connections, isPending: isRoute53Pending } =

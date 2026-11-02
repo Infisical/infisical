@@ -7,7 +7,7 @@ on:
       - "backend/**"
       - "!backend/README.md"
       - "!backend/.*"
-      - "backend/.eslintrc.js"
+      - "backend/.oxlintrc.json"
       - "build-versions.env"
   workflow_call:
 

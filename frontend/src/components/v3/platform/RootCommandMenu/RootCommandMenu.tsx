@@ -194,7 +194,7 @@ const navigateToProject = (
       });
     case ProjectType.AgentVault:
       return navigate({
-        to: "/organizations/$orgId/agent-vault/sessions",
+        to: "/organizations/$orgId/agent-vault",
         params: { orgId: project.orgId }
       });
     case ProjectType.KMS:

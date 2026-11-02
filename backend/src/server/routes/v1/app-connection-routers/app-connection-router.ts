@@ -146,6 +146,10 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import {
+  ImpervaConnectionListItemSchema,
+  SanitizedImpervaConnectionSchema
+} from "@app/services/app-connection/imperva";
 import { JiraConnectionListItemSchema, SanitizedJiraConnectionSchema } from "@app/services/app-connection/jira";
 import { KeeperConnectionListItemSchema, SanitizedKeeperConnectionSchema } from "@app/services/app-connection/keeper";
 import {
@@ -237,6 +241,10 @@ import {
   SalesforceConnectionListItemSchema,
   SanitizedSalesforceConnectionSchema
 } from "@app/services/app-connection/salesforce";
+import {
+  SanitizedServiceNowConnectionSchema,
+  ServiceNowConnectionListItemSchema
+} from "@app/services/app-connection/servicenow";
 import { SanitizedSmbConnectionSchema, SmbConnectionListItemSchema } from "@app/services/app-connection/smb";
 import {
   SanitizedSnowflakeConnectionSchema,
@@ -359,6 +367,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedNetScalerConnectionSchema.options,
   ...SanitizedPaloAltoNetworksConnectionSchema.options,
   ...SanitizedKempLoadMasterConnectionSchema.options,
+  ...SanitizedImpervaConnectionSchema.options,
   ...SanitizedDopplerConnectionSchema.options,
   ...SanitizedOvhConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
@@ -382,6 +391,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedStripeConnectionSchema.options,
   ...SanitizedKeeperConnectionSchema.options,
   ...SanitizedHpeIloConnectionSchema.options,
+  ...SanitizedServiceNowConnectionSchema.options,
   ...SanitizedS3CompatibleConnectionSchema.options,
   ...SanitizedJiraConnectionSchema.options
 ]);
@@ -454,6 +464,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   NetScalerConnectionListItemSchema,
   PaloAltoNetworksConnectionListItemSchema,
   KempLoadMasterConnectionListItemSchema,
+  ImpervaConnectionListItemSchema,
   AnthropicConnectionListItemSchema,
   OvhConnectionListItemSchema,
   DevinConnectionListItemSchema,
@@ -478,6 +489,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   StripeConnectionListItemSchema,
   KeeperConnectionListItemSchema,
   HpeIloConnectionListItemSchema,
+  ServiceNowConnectionListItemSchema,
   S3CompatibleConnectionListItemSchema,
   JiraConnectionListItemSchema
 ]);

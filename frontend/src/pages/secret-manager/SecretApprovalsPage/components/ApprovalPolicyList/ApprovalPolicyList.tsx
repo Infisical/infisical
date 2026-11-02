@@ -595,9 +595,9 @@ export const ApprovalPolicyList = ({ projectId, openAddPolicy, onAddPolicyOpened
               )}
               {Boolean(
                 !filteredPolicies.length &&
-                  policies.length &&
-                  !isPoliciesLoading &&
-                  !isPoliciesError
+                policies.length &&
+                !isPoliciesLoading &&
+                !isPoliciesError
               ) && (
                 <Empty className="border">
                   <EmptyHeader>

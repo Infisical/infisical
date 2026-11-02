@@ -14,8 +14,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateAltNamesField } from "@app/services/certificate-authority/certificate-authority-validators";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 const loginRateLimit = { windowMs: 60 * 1000, max: 10 };
 
