@@ -5,6 +5,7 @@ import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
@@ -131,11 +132,31 @@ describe("Auth SSO session binding", () => {
     const { userId, tokens } = await loginThroughOrgBIdp();
     await addMemberToOrgA(userId);
     await setAuthEnforced(ORG_A_ID, true);
+    // Recorded at the call: the e2e plan keeps no audit logs, so none reach the audit_logs table.
+    const auditLogSpy = vi.spyOn(getServices().auditLog, "createAuditLog");
 
-    const { statusCode, payload } = await selectOrg(tokens.access, ORG_A_ID);
+    try {
+      const { statusCode, payload } = await selectOrg(tokens.access, ORG_A_ID);
 
-    expect(statusCode).toBe(403);
-    expect(payload.message).toMatch(/another organization's identity provider/);
+      expect(statusCode).toBe(403);
+      expect(payload.message).toMatch(/another organization's identity provider/);
+
+      const calls = auditLogSpy.mock.calls.map(([dto]) => dto as { orgId: string; actor: unknown; event: unknown });
+      const refusals = calls.filter(
+        ({ event }) => (event as { type: string }).type === EventType.SELECT_ORGANIZATION_REFUSED
+      );
+      expect(refusals).toHaveLength(1);
+      expect(refusals[0]).toMatchObject({
+        orgId: ORG_A_ID,
+        actor: { metadata: { userId } },
+        event: { metadata: { organizationId: ORG_A_ID, organizationName: seedData1.organization.name } }
+      });
+      // The refusal is recorded in the org that refused; nothing about the issuing org reaches its audit log.
+      expect(JSON.stringify(refusals[0])).not.toContain(orgBId);
+      expect(calls.some(({ event }) => (event as { type: string }).type === EventType.SELECT_ORGANIZATION)).toBe(false);
+    } finally {
+      auditLogSpy.mockRestore();
+    }
   });
 
   test("A session another org's IdP issued stops working once the org starts enforcing SSO", async () => {
