@@ -778,6 +778,11 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     const { decryptor } = await getProjectCipher(projectId);
     const rotationLimit = pLimit(IMPORT_ROTATION_CONCURRENCY);
 
+    const auditAfterImport = (event: Parameters<typeof auditLogService.createAuditLog>[0]) =>
+      auditLogService
+        .createAuditLog(event)
+        .catch((err) => logger.error(err, `PAM discovery import audit log write failed [sourceId=${sourceId}]`));
+
     const rotateImported = async (accountId: string, accountType: string, rotationAccountId: string) => {
       let names: { accountName: string; rotationAccountName: string | null; scheduledRotationEnabled: boolean };
       try {
@@ -801,7 +806,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         };
       }
       const { accountName, rotationAccountName, scheduledRotationEnabled } = names;
-      await auditLogService.createAuditLog({
+      await auditAfterImport({
         ...auditLogInfo,
         orgId: ctx.actorOrgId,
         projectId,
@@ -821,7 +826,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
             `PAM discovery import rotation failed [accountId=${accountId}]`
           )
         }));
-      await auditLogService.createAuditLog({
+      await auditAfterImport({
         ...auditLogInfo,
         orgId: ctx.actorOrgId,
         projectId,
