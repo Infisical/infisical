@@ -25,6 +25,10 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Build output without dev dependencies, copied whole into the production stage
+FROM build AS build-output
+RUN rm -rf ./node_modules ./bdd ./e2e-test
+
 # Oracle Instant Client (parallel stage — downloads while other stages build)
 FROM debian:trixie-slim AS oracle
 RUN apt-get update && apt-get install -y unzip wget ca-certificates \
@@ -102,8 +106,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
     echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
     ldconfig
 
-COPY --from=build /app .
-RUN rm -rf ./node_modules ./bdd ./e2e-test
+COPY --from=build-output /app .
 COPY --from=prod-deps /app/node_modules ./node_modules
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \
