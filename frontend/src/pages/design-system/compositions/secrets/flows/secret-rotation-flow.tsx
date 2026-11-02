@@ -482,7 +482,7 @@ function RotationSteps({
   const current = FORM_STEPS[step];
   const offset = isUpdate ? 0 : 1;
   return (
-    <div className="flex min-h-0 flex-1 border-y border-[color:var(--v4-line-soft)]">
+    <div className="flex min-h-0 flex-1">
       <aside className="flex w-60 shrink-0 flex-col gap-5 border-r border-[color:var(--v4-line-soft)] px-5 py-6">
         <SmallText muted>Setup steps</SmallText>
         <Steps
@@ -764,7 +764,7 @@ export function SecretRotationFlow({
             ) : (
               <div
                 data-scroll-fade="y"
-                className="min-h-0 flex-1 overflow-y-auto border-t border-[color:var(--v4-line-soft)] p-[var(--v4-space-overlay-inset)]"
+                className="min-h-0 flex-1 overflow-y-auto p-[var(--v4-space-overlay-inset)]"
               >
                 <ProviderSelect onSelect={select} />
               </div>

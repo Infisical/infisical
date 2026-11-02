@@ -416,8 +416,9 @@
   );
 }
 /* Overlay scroll model: when Content holds the section slots it lays out as a column with no gap.
-   Header and body share one scroller that carries the edge fade; a subheader pins itself and the
-   header above the scroller; the footer and the corner close stay outside it, always visible. */
+   Dialog and Sheet pin the header and any subheader above a line rule and the footer below one,
+   and only the body scrolls; the rules mark those edges, so the scroller fades only where no rule
+   sits. AlertDialog keeps its header in the scroller with the edge fade. */
 .v4 :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"])[data-sections] {
   padding: 0;
   gap: 0;
@@ -442,7 +443,7 @@
   flex-direction: column;
   padding: var(--v4-dialog-pad);
   gap: var(--v4-space-content-group);
-  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line);
 }
 .v4
   :is(
@@ -458,7 +459,7 @@
   margin: 0 calc(-1 * var(--v4-dialog-pad)) calc(-1 * var(--v4-dialog-pad));
   padding: var(--v4-dialog-pad);
   gap: var(--v4-space-12);
-  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
+  border-top: var(--v4-size-control-border) solid var(--v4-line);
   background: var(--v4-paper);
   border-radius: 0;
 }
@@ -546,7 +547,15 @@
 /* v4-check-ignore overlay-section-padding -- its block-start space comes from the padded header above it */
 .v4 :is([data-slot="sheet-subheader"]) {
   padding: 0 var(--v4-space-overlay-inset) var(--v4-space-overlay-inset);
-  border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
+}
+.v4 [data-slot="sheet-head"] {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  border-bottom: var(--v4-size-control-border) solid var(--v4-line);
+}
+.v4 [data-sections] > [data-slot="sheet-footer"] {
+  border-top: var(--v4-size-control-border) solid var(--v4-line);
 }
 .v4
   :is(
@@ -570,17 +579,22 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.v4
-  :is([data-slot="sheet-subheader"])
-  + :is([data-slot="sheet-scroll"]) {
+.v4 [data-slot="sheet-head"] + [data-slot="sheet-scroll"] > [data-slot="sheet-body"]:first-child {
   padding-top: var(--v4-space-overlay-inset);
 }
-.v4
-  :is([data-slot="sheet-scroll"]):not(
-    :has(+ :is([data-slot="sheet-footer"]))
-  )
-  > :is([data-slot="sheet-body"]):last-child {
+.v4 [data-slot="sheet-scroll"] > [data-slot="sheet-body"]:last-child {
   padding-bottom: var(--v4-space-overlay-inset);
+}
+.v4
+  :is([data-slot="sheet-head"], [data-slot="dialog-head"])
+  + :is([data-slot="sheet-scroll"], [data-slot="dialog-scroll"])[data-scroll-start-y] {
+  --v4-fade-y-start: 0px;
+}
+.v4
+  :is([data-slot="sheet-scroll"], [data-slot="dialog-scroll"]):has(
+    + :is([data-slot="sheet-footer"], [data-slot="dialog-footer"])
+  )[data-scroll-end-y] {
+  --v4-fade-y-end: 0px;
 }
 
 .v4 [data-slot="chart-tooltip"] .font-mono {

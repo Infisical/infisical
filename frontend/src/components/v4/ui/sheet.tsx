@@ -85,12 +85,16 @@ function SheetContent({
     onPointerDownOutside,
     onInteractOutside
   });
-  const sections = splitOverlaySections(children, {
-    header: SheetHeader,
-    subheader: SheetSubheader,
-    body: SheetBody,
-    footer: SheetFooter
-  });
+  const sections = splitOverlaySections(
+    children,
+    {
+      header: SheetHeader,
+      subheader: SheetSubheader,
+      body: SheetBody,
+      footer: SheetFooter
+    },
+    { pinHeader: true }
+  );
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -114,7 +118,7 @@ function SheetContent({
         <OverlayPendingContext value={pending}>
           {sections ? (
             <>
-              {sections.pinned}
+              {sections.pinned.length > 0 && <div data-slot="sheet-head">{sections.pinned}</div>}
               {sections.scroll.length > 0 && (
                 <div data-slot="sheet-scroll" data-scroll-fade="y">
                   {sections.scroll}

@@ -85,11 +85,15 @@ function DialogContent({
     onPointerDownOutside,
     onInteractOutside
   });
-  const sections = splitOverlaySections(children, {
-    header: DialogHeader,
-    subheader: DialogSubheader,
-    footer: DialogFooter
-  });
+  const sections = splitOverlaySections(
+    children,
+    {
+      header: DialogHeader,
+      subheader: DialogSubheader,
+      footer: DialogFooter
+    },
+    { pinHeader: true }
+  );
   return (
     <DialogPortal>
       <DialogOverlay />
