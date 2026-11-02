@@ -631,6 +631,7 @@ interface GetCaCsr {
   metadata: {
     caId: string;
     dn: string;
+    maxPathLength?: number;
   };
 }
 

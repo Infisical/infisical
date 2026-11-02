@@ -73,7 +73,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
       }
     },
     handler: async (req) => {
-      const { ca, csr } = await server.services.internalCertificateAuthority.getCaCsr({
+      const { ca, csr, maxPathLength } = await server.services.internalCertificateAuthority.getCaCsr({
         caId: req.params.caId,
         maxPathLength: req.query.maxPathLength,
         actor: req.permission.type,
@@ -89,7 +89,8 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
           type: EventType.GET_CA_CSR,
           metadata: {
             caId: ca.id,
-            dn: ca.dn
+            dn: ca.dn,
+            maxPathLength
           }
         }
       });

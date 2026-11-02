@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FileSaver from "file-saver";
@@ -24,6 +24,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Spinner,
   TextArea,
   Tooltip,
   TooltipContent,
@@ -32,7 +33,10 @@ import {
 import { CaType, useGetCa, useGetCaCsr, useImportCaCertificate } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { PATH_LENGTH_OPTIONS } from "./pathLengthOptions";
+
 const schema = z.object({
+  maxPathLength: z.string().min(1, "Select a path length"),
   certificate: z.string().min(1),
   certificateChain: z.string().min(1)
 });
@@ -49,26 +53,34 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema)
+    resolver: zodResolver(schema),
+    defaultValues: { maxPathLength: "" }
   });
 
   const { data: ca } = useGetCa({ caId, type: CaType.INTERNAL });
   const storedPathLength =
     ca?.type === CaType.INTERNAL ? ca.configuration.maxPathLength : undefined;
   const isPathLengthLocked = typeof storedPathLength === "number" && storedPathLength >= 0;
-  const [selectedPathLength, setSelectedPathLength] = useState("-1");
-  const maxPathLength = isPathLengthLocked ? String(storedPathLength) : selectedPathLength;
-  const { data: csr } = useGetCaCsr(
+  const maxPathLength = watch("maxPathLength");
+  const { data: csr, isFetching: isCsrFetching } = useGetCaCsr(
     caId,
-    isPathLengthLocked ? undefined : Number(selectedPathLength)
+    isPathLengthLocked ? undefined : Number(maxPathLength),
+    { enabled: maxPathLength !== "" }
   );
+  const isCsrReady = Boolean(csr) && !isCsrFetching;
   const { mutateAsync: importCaCertificate } = useImportCaCertificate();
 
   useEffect(() => {
     reset();
   }, []);
+
+  useEffect(() => {
+    if (isPathLengthLocked) setValue("maxPathLength", String(storedPathLength));
+  }, [isPathLengthLocked, storedPathLength]);
 
   const onFormSubmit = async ({ certificate, certificateChain }: FormData) => {
     if (!csr || !caId) return;
@@ -97,38 +109,43 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     <form className="contents" onSubmit={handleSubmit(onFormSubmit)}>
       <DialogBody>
         <FieldGroup>
-          <Field>
-            <FieldLabel>Path Length</FieldLabel>
-            <Select
-              value={maxPathLength}
-              onValueChange={setSelectedPathLength}
-              disabled={isPathLengthLocked}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                {(isPathLengthLocked ? [storedPathLength] : [-1, 0, 1, 2, 3]).map((value) => (
-                  <SelectItem value={String(value)} key={`ca-csr-path-length-${value}`}>
-                    {String(value)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldDescription>
-              {isPathLengthLocked
-                ? "Set by this CA's current certificate and kept on renewal."
-                : "How many intermediate CAs may follow this CA in the chain. -1 means no limit."}
-            </FieldDescription>
-          </Field>
-          {csr && (
+          <Controller
+            control={control}
+            name="maxPathLength"
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel>Path Length</FieldLabel>
+                <Select value={value} onValueChange={onChange} disabled={isPathLengthLocked}>
+                  <SelectTrigger className="w-full" isError={Boolean(error)}>
+                    <SelectValue placeholder="Select a path length" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {(isPathLengthLocked ? [storedPathLength] : PATH_LENGTH_OPTIONS).map(
+                      (option) => (
+                        <SelectItem value={String(option)} key={`ca-csr-path-length-${option}`}>
+                          {String(option)}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  {isPathLengthLocked
+                    ? "Matches this CA's current certificate and can't be changed."
+                    : "How many intermediate CAs may follow this CA in the chain. -1 means no limit."}
+                </FieldDescription>
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          {maxPathLength !== "" && (
             <Field>
               <div className="flex items-center justify-between">
                 <FieldLabel>Certificate Signing Request</FieldLabel>
                 <div className="flex items-center gap-1">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <CopyButton value={csr} ariaLabel="Copy CSR" />
+                      <CopyButton value={csr ?? ""} ariaLabel="Copy CSR" disabled={!isCsrReady} />
                     </TooltipTrigger>
                     <TooltipContent>Copy CSR</TooltipContent>
                   </Tooltip>
@@ -139,7 +156,8 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                         variant="ghost"
                         size="xs"
                         aria-label="Download CSR"
-                        onClick={() => downloadTxtFile("csr.pem", csr)}
+                        isDisabled={!isCsrReady}
+                        onClick={() => csr && downloadTxtFile("csr.pem", csr)}
                       >
                         <DownloadIcon />
                       </IconButton>
@@ -155,9 +173,15 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                 outline={false}
                 containerClassName="rounded-md border border-border bg-container"
               >
-                <pre className="p-3 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-foreground">
-                  {csr}
-                </pre>
+                {isCsrReady ? (
+                  <pre className="p-3 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-foreground">
+                    {csr}
+                  </pre>
+                ) : (
+                  <div className="flex h-40 items-center justify-center">
+                    <Spinner size="sm" label="Generating CSR" />
+                  </div>
+                )}
               </ScrollableContent>
             </Field>
           )}

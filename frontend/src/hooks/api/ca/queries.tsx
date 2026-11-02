@@ -196,7 +196,11 @@ export const useGetCaCert = (caId: string) => {
   });
 };
 
-export const useGetCaCsr = (caId: string, maxPathLength?: number) => {
+export const useGetCaCsr = (
+  caId: string,
+  maxPathLength?: number,
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: [...caKeys.getCaCsr(caId), { maxPathLength }],
     queryFn: async () => {
@@ -209,7 +213,7 @@ export const useGetCaCsr = (caId: string, maxPathLength?: number) => {
       });
       return csr;
     },
-    enabled: Boolean(caId)
+    enabled: Boolean(caId) && (options?.enabled ?? true)
   });
 };
 

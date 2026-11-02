@@ -809,14 +809,16 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const storedPathLength = ca.internalCa.maxPathLength ?? -1;
+    // Signing-config install jobs pass -1 to mean "keep the stored value".
+    const isInternalDefault = isInternal && maxPathLength === -1;
     if (
       storedPathLength >= 0 &&
       maxPathLength !== undefined &&
-      maxPathLength !== -1 &&
-      maxPathLength !== storedPathLength
+      maxPathLength !== storedPathLength &&
+      !isInternalDefault
     ) {
       throw new BadRequestError({
-        message: `Path length must be ${storedPathLength} to match this CA's existing certificate`
+        message: `Path length ${maxPathLength} doesn't match this CA's current certificate (${storedPathLength}). Use ${storedPathLength} or leave it out.`
       });
     }
     const effectivePathLength = storedPathLength >= 0 ? storedPathLength : (maxPathLength ?? -1);
@@ -833,6 +835,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     return {
       csr: csrObj.toString("pem"),
+      maxPathLength: effectivePathLength,
       ca: expandInternalCa(ca)
     };
   };
@@ -911,6 +914,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const caCertObj = new x509.X509Certificate(decryptedCaCert);
+    // Copy the active certificate's limit so renewal never breaks sub-CAs already issued under it.
+    const currentPathLength = caCertObj.getExtension(x509.BasicConstraintsExtension)?.pathLength;
 
     let certificate = "";
     let certificateChain = "";
@@ -934,13 +939,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           notAfter: new Date(notAfter),
           publicKey: signer.caPublicKey,
           extensions: [
-            new x509.BasicConstraintsExtension(
-              true,
-              ca.internalCa.maxPathLength === -1 || ca.internalCa.maxPathLength == null
-                ? undefined
-                : ca.internalCa.maxPathLength,
-              true
-            ),
+            new x509.BasicConstraintsExtension(true, currentPathLength, true),
             new x509.KeyUsagesExtension(
               isPqcAlgorithm(ca.internalCa.keyAlgorithm) ? PQC_ROOT_CA_KEY_USAGES : ROOT_CA_KEY_USAGES,
               true
@@ -1050,13 +1049,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           publicKey: csrObj.publicKey,
           extensions: [
             new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES, true),
-            new x509.BasicConstraintsExtension(
-              true,
-              ca.internalCa.maxPathLength === -1 || ca.internalCa.maxPathLength == null
-                ? undefined
-                : ca.internalCa.maxPathLength,
-              true
-            ),
+            new x509.BasicConstraintsExtension(true, currentPathLength, true),
             await x509.AuthorityKeyIdentifierExtension.create(parentCaCertObj, false),
             await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey)
           ]
