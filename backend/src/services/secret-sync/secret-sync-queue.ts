@@ -585,6 +585,7 @@ export const secretSyncQueueFactory = ({
       });
 
       syncResult = result ?? undefined;
+      syncMessage = syncResult?.message ?? null;
 
       isSynced = true;
     } catch (err) {

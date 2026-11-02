@@ -133,3 +133,13 @@ description: "Learn how to configure a Cloudflare Workers Sync for Infisical."
 
   </Tab>
 </Tabs>
+
+## Syncing while a version is pending
+
+If someone uploads a version of the Worker without deploying it, for example with `wrangler versions upload`, that version is pending, and Cloudflare doesn't let Infisical change the Worker's secrets directly. Instead, Infisical uploads a new version with the pending version's code and settings and the updated secrets, and labels the new version with the `infisical-sync` tag in Cloudflare.
+
+Infisical doesn't deploy the new version, because deploying it also deploys the pending changes. The sync's status shows the ID of the new version, and the secrets take effect when you deploy that version in Cloudflare.
+
+### When Infisical can't upload a new version
+
+If the pending version serves static assets, the sync fails without changing the Worker. To sync the secrets, deploy the pending version in Cloudflare, then sync again.
