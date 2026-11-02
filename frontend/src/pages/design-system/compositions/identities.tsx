@@ -625,7 +625,7 @@ export default function Identities() {
             title="Access control"
             description="Manage fine-grained access for users, groups, roles, and machine identities within your organization."
             actions={
-              <Button variant="primary" icon="plus">
+              <Button variant="accent" icon="plus">
                 Create machine identity
               </Button>
             }

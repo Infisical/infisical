@@ -298,7 +298,7 @@ export default function Kms() {
                 <Button variant="outline" icon="upload">
                   Import keys
                 </Button>
-                <Button variant="primary" icon="plus">
+                <Button variant="accent" icon="plus">
                   Create key
                 </Button>
               </>

@@ -114,7 +114,7 @@ export default function Example() {
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
         <PageHeader title="Organization overview" description="2 approvals and 1 failed sync need you." actions={<>
               <Button variant="outline">Invite members</Button>
-              <Button variant="primary">New project</Button>
+              <Button variant="accent">New project</Button>
             </>}/>
       </div><figcaption className="text-muted-foreground text-xs">{"lg"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">

@@ -18,15 +18,15 @@ export type AccentChoice = { light: string; dark: string };
 
 export const accentPresets = [
   {
-    id: "vlad",
-    name: "Current (Vlad)",
+    id: "default",
+    name: "Default",
     light: resolveColorToken("accent", "light").toLowerCase(),
     dark: resolveColorToken("accent", "dark").toLowerCase()
   },
   // v4-check-ignore raw-color -- workbench preset under comparison, not a token
-  { id: "jadden", name: "Jadden", light: "#f0f707", dark: "#f0f707" },
+  { id: "vlad", name: "Vlad", light: "#e3ef59", dark: "#e7f256" },
   // v4-check-ignore raw-color -- workbench preset under comparison, not a token
-  { id: "bright", name: "Bright", light: "#f7fe62", dark: "#f7fe62" }
+  { id: "jadden", name: "Jadden", light: "#f0f707", dark: "#f0f707" }
 ] as const;
 
 const hexRe = /^#?([0-9a-f]{6})$/i;

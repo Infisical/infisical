@@ -209,8 +209,8 @@
   text-decoration-thickness: var(--v4-space-2);
 }
 .danger {
-  border-color: var(--v4-bad);
-  background-color: var(--v4-bad);
+  border-color: var(--v4-bad-fill);
+  background-color: var(--v4-bad-fill);
   color: var(--v4-on-bad);
   font-weight: 600;
 }

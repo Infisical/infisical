@@ -16,7 +16,7 @@ export default function Example() {
           actions={
             <>
               <Button variant="outline">Invite members</Button>
-              <Button variant="primary">New project</Button>
+              <Button variant="accent">New project</Button>
             </>
           }
         />
