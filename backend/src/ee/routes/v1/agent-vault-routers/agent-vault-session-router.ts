@@ -6,7 +6,6 @@ import {
   describeSessionForAudit
 } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
 import {
-  AGENT_VAULT_MAX_SESSION_BUNDLES,
   AGENT_VAULT_SESSION_DEFAULT_TTL,
   AGENT_VAULT_SESSION_MAX_TTL_MS,
   AGENT_VAULT_SESSION_TTL_NEVER
@@ -19,6 +18,7 @@ import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/service
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -33,8 +33,7 @@ import { AgentVaultSessionActorSchema } from "./agent-vault-schemas";
 
 const SessionAccessBundleSchema = z.object({
   id: z.string().uuid().nullable(),
-  name: z.string(),
-  position: z.number()
+  name: z.string()
 });
 
 const SessionSchema = z.object({
@@ -47,9 +46,23 @@ const SessionSchema = z.object({
   createdAt: z.date()
 });
 
-const SessionWithAccessBundlesSchema = SessionSchema.extend({
-  accessBundles: SessionAccessBundleSchema.array()
+const SessionWithAccessBundleSchema = SessionSchema.extend({
+  accessBundle: SessionAccessBundleSchema
 });
+
+// CLI 0.43.132+ and the Python SDK send the list form. Remove once those clients send accessBundle.
+// Done in a preprocess so the API reference only shows accessBundle.
+const mapLegacyAccessBundles = (body: unknown) => {
+  if (!body || typeof body !== "object" || !("accessBundles" in body)) return body;
+  const { accessBundles, ...rest } = body as { accessBundles: unknown } & Record<string, unknown>;
+  if ("accessBundle" in rest) {
+    throw new BadRequestError({ message: "Send the access bundle as accessBundle only, not accessBundles as well" });
+  }
+  if (!Array.isArray(accessBundles) || accessBundles.length !== 1) {
+    throw new BadRequestError({ message: "A session carries one access bundle. Send its name as accessBundle." });
+  }
+  return { ...rest, accessBundle: accessBundles[0] as unknown };
+};
 
 export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -86,7 +99,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          sessions: SessionWithAccessBundlesSchema.array(),
+          sessions: SessionWithAccessBundleSchema.array(),
           totalCount: z.number()
         })
       }
@@ -114,7 +127,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       tags: [ApiDocsTags.AgentVaultSessions],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       response: {
-        200: z.object({ session: SessionWithAccessBundlesSchema })
+        200: z.object({ session: SessionWithAccessBundleSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -135,41 +148,40 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       operationId: "createAgentVaultSession",
       description: "Create an Agent Vault session with an access bundle you can reach",
       tags: [ApiDocsTags.AgentVaultSessions],
-      body: z.object({
-        accessBundles: slugSchema({ max: 64, field: "Access bundle" })
-          .array()
-          .min(1)
-          .max(AGENT_VAULT_MAX_SESSION_BUNDLES)
-          .describe(AGENT_VAULT.SESSION.accessBundles),
-        ttl: z
-          .string()
-          .trim()
-          .default(AGENT_VAULT_SESSION_DEFAULT_TTL)
-          .superRefine((val, ctx) => {
-            if (val === AGENT_VAULT_SESSION_TTL_NEVER) return;
-            let parsed: number | undefined;
-            try {
-              parsed = ms(val);
-            } catch {
-              parsed = undefined;
-            }
-            if (typeof parsed !== "number" || Number.isNaN(parsed) || parsed < 60 * 1000) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "TTL must be a duration of at least 1 minute, such as 30m, 8h, 7d, or never"
-              });
-              return;
-            }
-            if (parsed > AGENT_VAULT_SESSION_MAX_TTL_MS) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "TTL must be at most 100 years. Use never for a session that doesn't expire"
-              });
-            }
-          })
-          .describe(AGENT_VAULT.SESSION.ttl),
-        label: agentVaultSessionLabelSchema.describe(AGENT_VAULT.SESSION.label)
-      }),
+      body: z.preprocess(
+        mapLegacyAccessBundles,
+        z.object({
+          accessBundle: slugSchema({ max: 64, field: "Access bundle" }).describe(AGENT_VAULT.SESSION.accessBundle),
+          ttl: z
+            .string()
+            .trim()
+            .default(AGENT_VAULT_SESSION_DEFAULT_TTL)
+            .superRefine((val, ctx) => {
+              if (val === AGENT_VAULT_SESSION_TTL_NEVER) return;
+              let parsed: number | undefined;
+              try {
+                parsed = ms(val);
+              } catch {
+                parsed = undefined;
+              }
+              if (typeof parsed !== "number" || Number.isNaN(parsed) || parsed < 60 * 1000) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: "TTL must be a duration of at least 1 minute, such as 30m, 8h, 7d, or never"
+                });
+                return;
+              }
+              if (parsed > AGENT_VAULT_SESSION_MAX_TTL_MS) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: "TTL must be at most 100 years. Use never for a session that doesn't expire"
+                });
+              }
+            })
+            .describe(AGENT_VAULT.SESSION.ttl),
+          label: agentVaultSessionLabelSchema.describe(AGENT_VAULT.SESSION.label)
+        })
+      ),
       response: {
         200: z.object({
           session: z.object({
@@ -178,7 +190,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             token: z.string().describe(AGENT_VAULT.SESSION.token),
             expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
             createdAt: z.date(),
-            accessBundles: SessionAccessBundleSchema.array()
+            accessBundle: SessionAccessBundleSchema
           })
         })
       }
@@ -213,8 +225,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           metadata: {
             sessionId: session.id,
             label: session.label,
-            accessBundleId: session.accessBundles[0].id,
-            accessBundleName: session.accessBundles[0].name,
+            accessBundleId: session.accessBundle.id,
+            accessBundleName: session.accessBundle.name,
             expiresAt: session.expiresAt?.toISOString() ?? null
           }
         }
@@ -224,7 +236,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         event: PostHogEventTypes.AgentVaultSessionCreated,
         properties: {
           sessionId: session.id,
-          accessBundleId: session.accessBundles[0].id,
+          accessBundleId: session.accessBundle.id,
           ttlSeconds: req.body.ttl === AGENT_VAULT_SESSION_TTL_NEVER ? null : Math.floor(ms(req.body.ttl) / 1000)
         }
       });
@@ -246,7 +258,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       body: z.object({
         label: agentVaultSessionLabelUpdateSchema.describe(AGENT_VAULT.SESSION.updateLabel)
       }),
-      response: { 200: z.object({ session: SessionWithAccessBundlesSchema }) }
+      response: { 200: z.object({ session: SessionWithAccessBundleSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, linkOptions } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -28,6 +28,7 @@ import {
   Alert,
   AlertAction,
   AlertDescription,
+  Badge,
   Button,
   Card,
   CardAction,
@@ -50,7 +51,6 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  OverflowBadgeList,
   PageHeader,
   Pagination,
   Skeleton,
@@ -474,26 +474,43 @@ export const AgentVaultSessionsPage = () => {
                         </Tooltip>
                       </TableCell>
                       <TableCell>
-                        <div className="max-w-72">
-                          <OverflowBadgeList
-                            items={session.accessBundles}
-                            getKey={(bundle) => bundle.id ?? bundle.name}
-                            getLabel={(bundle) => bundle.name}
-                            icon={<PackageIcon />}
-                            getClassName={(bundle) => (bundle.id ? undefined : "text-muted")}
-                            getTooltip={(bundle) =>
-                              bundle.id ? bundle.name : `${bundle.name} (deleted)`
-                            }
-                            getLinkProps={(bundle) =>
-                              bundle.id
-                                ? linkOptions({
-                                    to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-                                    params: { orgId: currentOrg.id, accessBundleId: bundle.id }
-                                  })
-                                : undefined
-                            }
-                          />
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant="neutral"
+                              className={
+                                session.accessBundle.id ? "max-w-40" : "max-w-40 text-muted"
+                              }
+                              isTruncatable
+                              iconPosition="left"
+                              asChild={Boolean(session.accessBundle.id)}
+                            >
+                              {session.accessBundle.id ? (
+                                <Link
+                                  to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                                  params={{
+                                    orgId: currentOrg.id,
+                                    accessBundleId: session.accessBundle.id
+                                  }}
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <PackageIcon />
+                                  <span>{session.accessBundle.name}</span>
+                                </Link>
+                              ) : (
+                                <>
+                                  <PackageIcon />
+                                  <span>{session.accessBundle.name}</span>
+                                </>
+                              )}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {session.accessBundle.id
+                              ? session.accessBundle.name
+                              : `${session.accessBundle.name} (deleted)`}
+                          </TooltipContent>
+                        </Tooltip>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {format(new Date(session.createdAt), "MMM dd, yyyy hh:mm a")}

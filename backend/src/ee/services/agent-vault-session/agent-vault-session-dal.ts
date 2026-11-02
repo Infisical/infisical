@@ -21,7 +21,7 @@ export type TAgentVaultSessionListRow = {
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
-  accessBundles: { id: string | null; name: string; position: number }[];
+  accessBundle: { id: string | null; name: string };
 };
 
 // Mirrors deriveSessionStatus: a session with neither actor id counts as revoked.
@@ -244,11 +244,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("actorEmail").withSchema(TableName.AgentVaultSession),
           db.ref("accessBundleId").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
-          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
-          db.ref("position").withSchema(TableName.AgentVaultSessionAccessBundle)
+          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName")
         )
-        .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")
-        .orderBy(`${TableName.AgentVaultSessionAccessBundle}.position`, "asc")) as {
+        .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")) as {
         id: string;
         userId: string | null;
         identityId: string | null;
@@ -267,35 +265,27 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         accessBundleId: string | null;
         accessBundleName: string | null;
         liveAccessBundleName: string | null;
-        position: number | null;
       }[];
 
-      const bySession = new Map<string, TAgentVaultSessionListRow>();
-      rows.forEach((row) => {
-        let session = bySession.get(row.id);
-        if (!session) {
-          session = {
-            id: row.id,
-            userId: row.userId,
-            identityId: row.identityId,
-            label: row.label,
-            actor: toSessionActor(row),
-            expiresAt: row.expiresAt,
-            revokedAt: row.revokedAt,
-            createdAt: row.createdAt,
-            accessBundles: []
-          };
-          bySession.set(row.id, session);
+      const sessions: TAgentVaultSessionListRow[] = rows.map((row) => {
+        // Mint writes the junction row in the session's own transaction, so a session without one is corrupt.
+        if (row.accessBundleName === null) {
+          throw new Error(`Agent Vault session ${row.id} has no access bundle row`);
         }
-        if (row.accessBundleName === null || row.position === null) return;
-        session.accessBundles.push({
-          id: row.accessBundleId,
-          name: row.liveAccessBundleName ?? row.accessBundleName,
-          position: row.position
-        });
+        return {
+          id: row.id,
+          userId: row.userId,
+          identityId: row.identityId,
+          label: row.label,
+          actor: toSessionActor(row),
+          expiresAt: row.expiresAt,
+          revokedAt: row.revokedAt,
+          createdAt: row.createdAt,
+          accessBundle: { id: row.accessBundleId, name: row.liveAccessBundleName ?? row.accessBundleName }
+        };
       });
 
-      return { sessions: [...bySession.values()], totalCount };
+      return { sessions, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault sessions" });
     }

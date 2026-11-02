@@ -161,7 +161,7 @@ ACCESS_TOKEN=$(curl -fsS "$INFISICAL_DOMAIN/api/v1/auth/universal-auth/login" \
 SESSION=$(curl -fsS "$INFISICAL_DOMAIN/api/v1/agent-vault/sessions" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"accessBundles\": [\"$ACCESS_BUNDLE\"], \"ttl\": \"20m\"}")
+  -d "{\"accessBundle\": \"$ACCESS_BUNDLE\", \"ttl\": \"20m\"}")
 SESSION_ID=$(echo "$SESSION" | jq -r .session.id)
 
 cleanup() {

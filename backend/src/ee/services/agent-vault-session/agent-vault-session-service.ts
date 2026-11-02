@@ -27,8 +27,6 @@ import {
   TUpdateSessionLabelDTO
 } from "./agent-vault-session-types";
 
-// V1 ships one bundle per session; the junction table, `position` and the proxy matcher all handle more.
-export const AGENT_VAULT_MAX_SESSION_BUNDLES = 1;
 export const AGENT_VAULT_SESSION_DEFAULT_TTL = "7d";
 export const AGENT_VAULT_SESSION_TTL_NEVER = "never";
 // Past roughly 1e8 days the expiry overflows Date and Postgres rejects the row as a 500. A century is
@@ -38,7 +36,7 @@ export const AGENT_VAULT_SESSION_MAX_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
 type TAgentVaultSessionServiceFactoryDep = {
   agentVaultSessionDAL: TAgentVaultSessionDALFactory;
   agentVaultSessionAccessBundleDAL: TAgentVaultSessionAccessBundleDALFactory;
-  agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
+  agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "wrapKey">;
@@ -66,7 +64,7 @@ export const agentVaultSessionServiceFactory = ({
     status: deriveSessionStatus({ ...session, userId, identityId })
   });
 
-  const mintSession = async ({ projectId, ctx, accessBundles, actorName, actorEmail, ttl, label }: TMintSessionDTO) => {
+  const mintSession = async ({ projectId, ctx, accessBundle, actorName, actorEmail, ttl, label }: TMintSessionDTO) => {
     const actor = requireSessionActor(ctx);
     const { permission, accessBundleIds: reachable } = await getAgentVaultReachability(
       { permissionService, membershipDAL },
@@ -77,26 +75,10 @@ export const agentVaultSessionServiceFactory = ({
       ProjectPermissionSub.AgentVaultSessions
     );
 
-    if (!accessBundles.length) {
-      throw new BadRequestError({ message: "Name the access bundle this session should carry" });
-    }
-    if (accessBundles.length > AGENT_VAULT_MAX_SESSION_BUNDLES) {
-      throw new BadRequestError({ message: "A session carries one access bundle. Name only one." });
-    }
-    if (new Set(accessBundles).size !== accessBundles.length) {
-      throw new BadRequestError({ message: "You've named the same access bundle more than once. Name it only once." });
-    }
-
-    const bundles = await agentVaultAccessBundleDAL.find({ projectId, $in: { name: accessBundles } });
-    const bundlesByName = new Map(bundles.map((bundle) => [bundle.name, bundle]));
-
-    const unreachable = accessBundles.find((name) => {
-      const bundle = bundlesByName.get(name);
-      return !bundle || (reachable !== null && !reachable.includes(bundle.id));
-    });
-    if (unreachable) {
+    const bundle = await agentVaultAccessBundleDAL.findOne({ projectId, name: accessBundle });
+    if (!bundle || (reachable !== null && !reachable.includes(bundle.id))) {
       throw new BadRequestError({
-        message: `No access bundle named '${unreachable}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
+        message: `No access bundle named '${accessBundle}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
       });
     }
 
@@ -128,13 +110,8 @@ export const agentVaultSessionServiceFactory = ({
         tx
       );
 
-      await agentVaultSessionAccessBundleDAL.insertMany(
-        accessBundles.map((name, position) => ({
-          sessionId: created.id,
-          accessBundleId: bundlesByName.get(name)!.id,
-          accessBundleName: name,
-          position
-        })),
+      await agentVaultSessionAccessBundleDAL.create(
+        { sessionId: created.id, accessBundleId: bundle.id, accessBundleName: bundle.name, position: 0 },
         tx
       );
 
@@ -147,11 +124,7 @@ export const agentVaultSessionServiceFactory = ({
         label: session.label ?? null,
         expiresAt: session.expiresAt ?? null,
         createdAt: session.createdAt,
-        accessBundles: accessBundles.map((name, position) => ({
-          id: bundlesByName.get(name)!.id,
-          name,
-          position
-        }))
+        accessBundle: { id: bundle.id, name: bundle.name }
       },
       token
     };

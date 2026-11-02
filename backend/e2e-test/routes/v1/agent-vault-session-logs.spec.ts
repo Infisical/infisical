@@ -43,7 +43,7 @@ const createAccessBundle = async (name: string) => {
 };
 
 const mintSession = async (bundleName: string, ttl = "1h") => {
-  const res = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundleName], ttl });
+  const res = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundleName, ttl });
   expect(res.statusCode).toBe(200);
   return (JSON.parse(res.payload) as { session: { id: string; token: string } }).session;
 };
@@ -769,7 +769,7 @@ describe("Agent Vault session logs", async () => {
       });
       expect(granted.statusCode).toBe(200);
       const minted = await member.as("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h"
       });
       expect(minted.statusCode, minted.payload).toBe(200);
@@ -1190,7 +1190,7 @@ describe("Agent Vault session logs", async () => {
         });
         expect(granted.statusCode).toBe(200);
         const minted = await member.as("POST", "/api/v1/agent-vault/sessions", {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           ttl: "1h"
         });
         expect(minted.statusCode, minted.payload).toBe(200);

@@ -75,11 +75,11 @@ export const deriveSessionStatus = (
 // Most sessions have no label, so a session's audit event also names whose session it is and what it carried.
 export const describeSessionForAudit = (session: {
   actor: TAgentVaultSessionActor;
-  accessBundles: { name: string }[];
+  accessBundle: { name: string };
 }) => ({
   sessionOwner:
     session.actor.type === AgentVaultMemberType.MachineIdentity
       ? session.actor.name
       : (session.actor.email ?? session.actor.username),
-  accessBundleName: session.accessBundles[0]?.name ?? null
+  accessBundleName: session.accessBundle.name
 });

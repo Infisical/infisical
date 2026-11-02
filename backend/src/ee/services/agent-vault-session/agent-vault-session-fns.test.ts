@@ -15,7 +15,7 @@ describe("describeSessionForAudit", () => {
           firstName: "Alice",
           lastName: null
         },
-        accessBundles: [{ name: "release" }]
+        accessBundle: { name: "release" }
       })
     ).toEqual({ sessionOwner: "alice@example.com", accessBundleName: "release" });
   });
@@ -31,17 +31,17 @@ describe("describeSessionForAudit", () => {
           firstName: null,
           lastName: null
         },
-        accessBundles: [{ name: "release" }]
+        accessBundle: { name: "release" }
       }).sessionOwner
     ).toBe("alice");
   });
 
-  test("names a machine identity's session by the identity, and allows a session with no bundle left", () => {
+  test("names a machine identity's session by the identity", () => {
     expect(
       describeSessionForAudit({
         actor: { type: AgentVaultMemberType.MachineIdentity, id: "i1", name: "github-actions" },
-        accessBundles: []
+        accessBundle: { name: "deploy" }
       })
-    ).toEqual({ sessionOwner: "github-actions", accessBundleName: null });
+    ).toEqual({ sessionOwner: "github-actions", accessBundleName: "deploy" });
   });
 });

@@ -9,7 +9,7 @@ import {
 export type TMintSessionDTO = {
   projectId: string;
   ctx: TGenericPermission;
-  accessBundles: string[];
+  accessBundle: string;
   actorName: string;
   actorEmail: string | null;
   ttl: string;

@@ -248,7 +248,6 @@ export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
 export type TAgentVaultSessionAccessBundle = {
   id: string | null;
   name: string;
-  position: number;
 };
 
 export type TAgentVaultSessionActor =
@@ -267,7 +266,7 @@ export type TAgentVaultSession = {
   expiresAt: string | null;
   revokedAt: string | null;
   createdAt: string;
-  accessBundles: TAgentVaultSessionAccessBundle[];
+  accessBundle: TAgentVaultSessionAccessBundle;
 };
 
 export type TAgentVaultMintedSession = {
@@ -276,7 +275,7 @@ export type TAgentVaultMintedSession = {
   token: string;
   expiresAt: string | null;
   createdAt: string;
-  accessBundles: TAgentVaultSessionAccessBundle[];
+  accessBundle: TAgentVaultSessionAccessBundle;
 };
 
 export type TAgentVaultProxy = {
@@ -400,7 +399,7 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
 };
 
 export type TCreateAgentVaultSessionDTO = {
-  accessBundles: string[];
+  accessBundle: string;
   ttl: string;
   label?: string;
 };
