@@ -1,6 +1,6 @@
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
+import { THoneyTokenCleanupQueueFactory } from "@app/ee/services/honey-token/honey-token-cleanup-queue";
 import { TScepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
@@ -41,7 +41,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "markExpiredGrants">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "markExpiredApprovalRequests">;
   scepTransactionDAL: Pick<TScepTransactionDALFactory, "pruneExpiredTransactions">;
-  honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "cleanupFolderlessHoneyTokens">;
+  honeyTokenCleanupQueue: Pick<THoneyTokenCleanupQueueFactory, "queueFolderlessHoneyTokenCleanup">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -66,7 +66,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   approvalRequestGrantsDAL,
   certificateRequestDAL,
   scepTransactionDAL,
-  honeyTokenCleanupService
+  honeyTokenCleanupQueue
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -162,7 +162,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
           await certificateRequestDAL.markExpiredApprovalRequests();
         }
         await approvalRequestGrantsDAL.markExpiredGrants();
-        await honeyTokenCleanupService.cleanupFolderlessHoneyTokens();
+        await honeyTokenCleanupQueue.queueFolderlessHoneyTokenCleanup();
       }
     });
   };

@@ -164,15 +164,13 @@ export const honeyTokenServiceFactory = ({
 }: THoneyTokenServiceFactoryDep) => {
   const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({ kmsService, appConnectionDAL });
 
-  // A null folderId or projectId means the folder or project was deleted and the cleanup cron has not
-  // reaped the row yet.
   const $findHoneyTokenById = async (honeyTokenId: string) => {
-    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
-    if (!honeyToken?.folderId || !honeyToken.projectId) {
+    const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
+    if (!honeyToken) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
-    return { ...honeyToken, folderId: honeyToken.folderId, projectId: honeyToken.projectId };
+    return honeyToken;
   };
 
   const create = async (

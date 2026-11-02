@@ -102,6 +102,7 @@ import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identi
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { honeyTokenConfigDALFactory } from "@app/ee/services/honey-token-config/honey-token-config-dal";
 import { honeyTokenConfigServiceFactory } from "@app/ee/services/honey-token-config/honey-token-config-service";
+import { honeyTokenCleanupQueueFactory } from "@app/ee/services/honey-token/honey-token-cleanup-queue";
 import { honeyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { honeyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { honeyTokenEventDALFactory } from "@app/ee/services/honey-token/honey-token-event-dal";
@@ -1106,7 +1107,12 @@ export const registerRoutes = async (
     honeyTokenDAL,
     honeyTokenConfigDAL,
     appConnectionDAL,
-    kmsService,
+    kmsService
+  });
+
+  const honeyTokenCleanupQueue = honeyTokenCleanupQueueFactory({
+    honeyTokenDAL,
+    honeyTokenCleanupService,
     queueService
   });
 
@@ -3225,7 +3231,7 @@ export const registerRoutes = async (
     approvalRequestGrantsDAL,
     certificateRequestDAL,
     scepTransactionDAL,
-    honeyTokenCleanupService
+    honeyTokenCleanupQueue
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -4878,7 +4884,7 @@ export const registerRoutes = async (
   dailyResourceCleanUp.init();
   projectEnvQueue.init();
   projectCleanupQueue.init();
-  honeyTokenCleanupService.init();
+  honeyTokenCleanupQueue.init();
   usageEventQueue.init();
   healthAlert.init();
   secretReadActivityQueue.init();

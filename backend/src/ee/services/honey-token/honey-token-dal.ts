@@ -72,6 +72,18 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return Number(result?.count ?? 0);
   };
 
+  // A null folderId or projectId means the folder or project was deleted and the cleanup queue has not
+  // reaped the row yet, so it is treated as gone.
+  const findLiveById = async (id: string, tx?: Knex) => {
+    const row = await (tx || db.replicaNode())(TableName.HoneyToken)
+      .where(`${TableName.HoneyToken}.id`, id)
+      .whereNotNull(`${TableName.HoneyToken}.folderId`)
+      .whereNotNull(`${TableName.HoneyToken}.projectId`)
+      .first();
+
+    return row?.folderId && row.projectId ? { ...row, folderId: row.folderId, projectId: row.projectId } : null;
+  };
+
   const findOneByTokenIdentifierAndOrgId = async (tokenIdentifier: string, orgId: string, tx?: Knex) => {
     const row = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
@@ -204,7 +216,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .whereNot(`${TableName.HoneyToken}.status`, HoneyTokenStatus.Revoked);
 
   const findByIdForCleanup = async (id: string, tx?: Knex) =>
-    $selectForCleanup(tx || db.replicaNode())
+    $selectForCleanup(tx || db)
       .where(`${TableName.HoneyToken}.id`, id)
       .first();
 
@@ -218,6 +230,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     ...orm,
     findByFolderIds,
     countByFolderIds,
+    findLiveById,
     findOneByTokenIdentifierAndOrgId,
     findOneByTokenIdentifier,
     countByOrgId,

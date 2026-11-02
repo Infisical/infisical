@@ -1,35 +1,27 @@
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
-import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenType } from "./honey-token-enums";
 import { getHoneyTokenServiceHooksByType, HONEY_TOKEN_PROVIDER_MAP } from "./honey-token-provider-fns";
 import { THoneyTokenProviderHooksDep } from "./honey-token-service-types";
-
-const FOLDERLESS_CLEANUP_BATCH = 100;
-const MAX_CLEANUP_ATTEMPTS = 3;
-const CLEANUP_WORKER_CONCURRENCY = 3;
 
 type THoneyTokenCleanupServiceFactoryDep = {
   honeyTokenDAL: Pick<
     THoneyTokenDALFactory,
-    | "findUnrevokedByProjectIdForCleanup"
-    | "findUnrevokedByOrgTreeForCleanup"
-    | "findFolderlessForCleanup"
-    | "findByIdForCleanup"
-    | "deleteById"
-    | "delete"
+    "findUnrevokedByProjectIdForCleanup" | "findUnrevokedByOrgTreeForCleanup" | "delete"
   >;
   honeyTokenConfigDAL: Pick<THoneyTokenConfigDALFactory, "findOne">;
-  queueService: Pick<TQueueServiceFactory, "queue" | "start">;
 } & THoneyTokenProviderHooksDep;
 
-type THoneyTokenCleanupRow = Awaited<ReturnType<THoneyTokenDALFactory["findFolderlessForCleanup"]>>[number];
+export type THoneyTokenCleanupRow = Awaited<ReturnType<THoneyTokenDALFactory["findFolderlessForCleanup"]>>[number];
+
+export const honeyTokenCleanupLogContext = (honeyToken: THoneyTokenCleanupRow) =>
+  `[honeyTokenId=${honeyToken.id}] [projectId=${honeyToken.projectId}] [orgId=${honeyToken.orgId}]`;
 
 export type THoneyTokenCleanupServiceFactory = ReturnType<typeof honeyTokenCleanupServiceFactory>;
 
@@ -37,13 +29,9 @@ export const honeyTokenCleanupServiceFactory = ({
   honeyTokenDAL,
   honeyTokenConfigDAL,
   kmsService,
-  appConnectionDAL,
-  queueService
+  appConnectionDAL
 }: THoneyTokenCleanupServiceFactoryDep) => {
   const providerHooksByType = getHoneyTokenServiceHooksByType({ kmsService, appConnectionDAL });
-
-  const $logContext = (honeyToken: THoneyTokenCleanupRow) =>
-    `[honeyTokenId=${honeyToken.id}] [projectId=${honeyToken.projectId}] [orgId=${honeyToken.orgId}]`;
 
   const $fetchConnection = async (orgId: string, type: HoneyTokenType) => {
     const config = await honeyTokenConfigDAL.findOne({ orgId, type });
@@ -98,15 +86,16 @@ export const honeyTokenCleanupServiceFactory = ({
     if (!honeyTokens.length) return;
 
     const revoke = $createRevoker();
-    const results = await Promise.allSettled(honeyTokens.map((honeyToken) => revoke(honeyToken)));
-    results.forEach((result, i) => {
-      if (result.status === "rejected") {
-        logger.error(
-          { err: result.reason as unknown },
-          `honey-token-cleanup: could not clean up honey token on ${reason} ${$logContext(honeyTokens[i])}`
-        );
-      }
-    });
+    await Promise.all(
+      honeyTokens.map((honeyToken) =>
+        revoke(honeyToken).catch((err) =>
+          logger.error(
+            { err: err as unknown },
+            `honey-token-cleanup: could not clean up honey token on ${reason} ${honeyTokenCleanupLogContext(honeyToken)}`
+          )
+        )
+      )
+    );
 
     await honeyTokenDAL.delete({ $in: { id: honeyTokens.map((honeyToken) => honeyToken.id) } });
   };
@@ -121,79 +110,11 @@ export const honeyTokenCleanupServiceFactory = ({
   const revokeOrgHoneyTokens = async (orgId: string) =>
     $revokeAndDelete(await honeyTokenDAL.findUnrevokedByOrgTreeForCleanup(orgId), "org deletion");
 
-  // Deleting a folder or environment leaves its honey tokens behind with a null folderId (the foreign key is
-  // SET NULL), so every folder deletion path is covered without each one calling in here. The jobId keeps a
-  // row that is already queued from being queued again.
-  const cleanupFolderlessHoneyTokens = async () => {
-    try {
-      const honeyTokens = await honeyTokenDAL.findFolderlessForCleanup(FOLDERLESS_CLEANUP_BATCH);
-
-      await Promise.all(
-        honeyTokens.map((honeyToken) =>
-          queueService.queue(
-            QueueName.HoneyTokenCleanup,
-            QueueJobs.HoneyTokenCleanup,
-            { honeyTokenId: honeyToken.id },
-            {
-              jobId: `honey-token-cleanup-${honeyToken.id}`,
-              attempts: MAX_CLEANUP_ATTEMPTS,
-              backoff: { type: "exponential", delay: 30_000 },
-              removeOnComplete: true,
-              removeOnFail: true
-            }
-          )
-        )
-      );
-    } catch (err) {
-      logger.error({ err }, "honey-token-cleanup: failed to queue clean up of honey tokens of deleted folders");
-    }
-  };
-
-  const $processCleanupJob = async (honeyTokenId: string, isLastAttempt: boolean) => {
-    const honeyToken = await honeyTokenDAL.findByIdForCleanup(honeyTokenId);
-    if (!honeyToken) return;
-
-    // Its project, and the KMS key its credentials are encrypted with, are gone: it was created while the
-    // project or org was being deleted, so retrying cannot revoke it.
-    if (!honeyToken.projectId && honeyToken.status !== HoneyTokenStatus.Revoked) {
-      logger.error(
-        `honey-token-cleanup: could not clean up honey token, its project was deleted before it was revoked ${$logContext(honeyToken)}`
-      );
-      await honeyTokenDAL.deleteById(honeyToken.id);
-      return;
-    }
-
-    try {
-      if (honeyToken.status !== HoneyTokenStatus.Revoked) {
-        await $createRevoker()(honeyToken);
-      }
-    } catch (err) {
-      if (!isLastAttempt) throw err;
-
-      // Deleting here, rather than letting the job fail, keeps the next cron run from queueing it again.
-      logger.error(
-        { err },
-        `honey-token-cleanup: could not clean up honey token after ${MAX_CLEANUP_ATTEMPTS} attempts, deleting it anyway ${$logContext(honeyToken)}`
-      );
-    }
-
-    await honeyTokenDAL.deleteById(honeyToken.id);
-  };
-
-  const init = () => {
-    queueService.start(
-      QueueName.HoneyTokenCleanup,
-      async (job) => {
-        await $processCleanupJob(job.data.honeyTokenId, job.attemptsMade + 1 >= MAX_CLEANUP_ATTEMPTS);
-      },
-      { concurrency: CLEANUP_WORKER_CONCURRENCY }
-    );
-  };
+  const revokeHoneyToken = async (honeyToken: THoneyTokenCleanupRow) => $createRevoker()(honeyToken);
 
   return {
     revokeProjectHoneyTokens,
     revokeOrgHoneyTokens,
-    cleanupFolderlessHoneyTokens,
-    init
+    revokeHoneyToken
   };
 };
