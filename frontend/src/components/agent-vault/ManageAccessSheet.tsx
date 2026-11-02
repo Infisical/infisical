@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FilterIcon, PackageIcon, SearchIcon, UsersIcon, XIcon } from "lucide-react";
+import { FilterIcon, SearchIcon, UsersIcon, XIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -36,6 +36,7 @@ import {
   Separator,
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -135,7 +136,9 @@ const ManageAccessContent = ({
   const {
     data,
     isPending: isMembersPending,
-    isPlaceholderData: isMembersPlaceholder
+    isPlaceholderData: isMembersPlaceholder,
+    isError: isMembersError,
+    isFetching: isMembersFetching
   } = useListAgentVaultAccessBundleMembers(accessBundle.id, {
     actorType,
     search: searchParam,
@@ -157,41 +160,58 @@ const ManageAccessContent = ({
   const revokeMembers = useRevokeAgentVaultAccessBundleMembers();
 
   // Both lists keep the previous result while a new filter loads, so rows of the previous type are hidden
-  // here, and a list that hides everything reads as loading rather than empty.
+  // here. Only a list whose rows that hid entirely reads as loading: an empty previous result keeps
+  // showing, as it would for any other refetch.
   const matchesType = (type: AgentVaultMemberType) => !typeFilter || type === typeFilter;
-  const members = (data?.members ?? []).filter((member) => matchesType(member.type));
+  const shownMembers = data?.members ?? [];
+  const members = shownMembers.filter((member) => matchesType(member.type));
   const totalCount = data?.totalCount ?? 0;
-  const candidates = (available?.members ?? []).filter((member) => matchesType(member.type));
+  const shownCandidates = available?.members ?? [];
+  const candidates = shownCandidates.filter((member) => matchesType(member.type));
   const candidateCount = available?.totalCount ?? 0;
-  const isPending = isMembersPending || (isMembersPlaceholder && !members.length);
-  const isAvailableLoading = isAvailablePending || (isAvailablePlaceholder && !candidates.length);
+  const isMembersLoading =
+    isMembersPending || (isMembersPlaceholder && shownMembers.length > 0 && !members.length);
+  const isAvailableLoading =
+    isAvailablePending ||
+    (isAvailablePlaceholder && shownCandidates.length > 0 && !candidates.length);
   useResetPageHelper({ totalCount, offset: (page - 1) * PER_PAGE, setPage });
 
   // A bundle no one holds yet has nothing above the fold, so the grant list starts open. This content
   // remounts per bundle, so the first settled result is always this bundle's own.
   useEffect(() => {
-    if (isPending || hasPickedInitialSection.current) return;
+    if (isMembersPending || isMembersError || hasPickedInitialSection.current) return;
     hasPickedInitialSection.current = true;
     if (!totalCount) setNoAccessSection(NO_ACCESS_SECTION);
-  }, [isPending, totalCount]);
+  }, [isMembersPending, isMembersError, totalCount]);
 
-  const isFiltered = Boolean(searchParam || typeFilter);
+  const typeLabel = TYPE_OPTIONS.find((option) => option.value === typeFilter)?.label.toLowerCase();
   const isAvailableSettled = !isAvailableLoading && !isAvailableError;
+  // Until the candidates load, assume there are some, so the copy does not change under the reader.
+  const canGrantSomeone = !isAvailableSettled || candidateCount > 0;
   const isSearchMiss = Boolean(searchParam) && !totalCount && isAvailableSettled && !candidateCount;
   // a granted candidate stays in this list until the refetch lands
   const isGrantLocked = addMembers.isPending || isAvailableFetching;
   const memberToRemoveName = memberToRemove ? memberDisplayName(memberToRemove) : "";
 
-  const emptyState = typeFilter
+  const emptyState = typeLabel
     ? {
         title: "No matching access",
-        description: `No ${TYPE_OPTIONS.find((option) => option.value === typeFilter)?.label.toLowerCase()} have access to this bundle. Clear the filter, or grant access from the No Access section.`
+        description: canGrantSomeone
+          ? `No ${typeLabel} have access to this bundle. Clear the filter, or grant access from the No Access section.`
+          : `No ${typeLabel} have access to this bundle. Clear the filter to see everyone with access.`
       }
     : {
         title: "No one has access yet",
-        description:
-          "Grant access from the No Access section to let members create sessions with this bundle."
+        description: canGrantSomeone
+          ? "Grant access from the No Access section to let members create sessions with this bundle."
+          : "Add members to Agent Vault first, then grant them this bundle."
       };
+
+  const noCandidatesText = (() => {
+    if (searchParam) return `No ${typeLabel ?? "members"} without access match your search.`;
+    if (typeLabel) return `No ${typeLabel} without access.`;
+    return "Everyone in Agent Vault already has this bundle.";
+  })();
 
   const changeFilter = (next: AgentVaultMemberType | null) => {
     setTypeFilter(next);
@@ -252,13 +272,7 @@ const ManageAccessContent = ({
     }
     if (!candidates.length) {
       if (isSearchMiss) return null;
-      return (
-        <p className="py-2.5 text-xs text-muted">
-          {isFiltered
-            ? "No members without access match your search and filters."
-            : "Everyone in Agent Vault already has this bundle."}
-        </p>
-      );
+      return <p className="py-2.5 text-xs text-muted">{noCandidatesText}</p>;
     }
     return (
       <>
@@ -272,7 +286,7 @@ const ManageAccessContent = ({
             />
           ))}
         </section>
-        {candidateCount > candidates.length && (
+        {candidateCount > candidates.length && !isAvailablePlaceholder && (
           <p className="py-2.5 text-xs text-muted">
             Showing the first {AVAILABLE_PREVIEW_LIMIT} of {candidateCount}. Search to find someone
             else.
@@ -289,10 +303,9 @@ const ManageAccessContent = ({
           Manage Access
           <DocumentationLinkBadge href={AgentVaultDocsUrls.accessBundles} />
         </SheetTitle>
-        <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-neutral/5 px-3 py-2 text-xs">
-          <PackageIcon className="size-3.5 shrink-0 text-muted" />
-          <span className="truncate text-foreground">{accessBundle.name}</span>
-        </div>
+        <SheetDescription className="sr-only">
+          Manage who can create sessions with {accessBundle.name}.
+        </SheetDescription>
       </SheetHeader>
 
       <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
@@ -327,7 +340,13 @@ const ManageAccessContent = ({
           <MemberTypeFilter value={typeFilter} onChange={changeFilter} />
         </div>
 
-        {isPending && (
+        {isMembersError && (
+          <p className="text-sm text-danger">
+            Could not load the members with access. Close this panel and open it again to retry.
+          </p>
+        )}
+
+        {isMembersLoading && !isMembersError && (
           <div className="space-y-2">
             <Skeleton className="h-14 w-full" />
             <Skeleton className="h-14 w-full" />
@@ -335,7 +354,7 @@ const ManageAccessContent = ({
           </div>
         )}
 
-        {!isPending && !members.length && !searchParam && (
+        {!isMembersLoading && !isMembersError && !members.length && !searchParam && (
           <Empty className="border">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -347,23 +366,36 @@ const ManageAccessContent = ({
           </Empty>
         )}
 
-        {!isPending && isSearchMiss && (
-          <p className="text-sm text-muted">No members match your search and filters.</p>
+        {!isMembersLoading && isSearchMiss && (
+          <p className="text-sm text-muted">No {typeLabel ?? "members"} match your search.</p>
         )}
 
-        {!isPending && Boolean(members.length) && (
+        {!isMembersLoading && Boolean(members.length) && (
           <section className="flex flex-col">
             {members.map((member) => (
               <AccessBundleMemberRow
                 key={`${member.type}:${member.id}`}
                 member={member}
+                isDisabled={revokeMembers.isPending || isMembersFetching}
                 onRevoke={() => setMemberToRemove(member)}
               />
             ))}
           </section>
         )}
 
-        {!isPending && (
+        {!isMembersPending && totalCount > PER_PAGE && (
+          <Pagination
+            count={totalCount}
+            page={page}
+            perPage={PER_PAGE}
+            onChangePage={setPage}
+            onChangePerPage={() => {}}
+            perPageList={[PER_PAGE]}
+            startAdornment={<span className="text-xs text-muted">Members with access</span>}
+          />
+        )}
+
+        {!isMembersPending && (
           <Accordion
             type="single"
             collapsible
@@ -381,18 +413,6 @@ const ManageAccessContent = ({
               <AccordionContent>{renderCandidates()}</AccordionContent>
             </AccordionItem>
           </Accordion>
-        )}
-
-        {!isPending && totalCount > PER_PAGE && (
-          <Pagination
-            count={totalCount}
-            page={page}
-            perPage={PER_PAGE}
-            onChangePage={setPage}
-            onChangePerPage={() => {}}
-            perPageList={[PER_PAGE]}
-            startAdornment={<span className="text-xs text-muted">Members with access</span>}
-          />
         )}
       </div>
 

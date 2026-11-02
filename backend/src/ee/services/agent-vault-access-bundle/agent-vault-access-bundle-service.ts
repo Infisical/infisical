@@ -1723,6 +1723,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     );
     return agentVaultAccessBundleDAL.findMembers({
       projectId: rest.projectId,
+      orgId: rest.ctx.actorOrgId,
       accessBundleId: bundle.id,
       actorType,
       search,

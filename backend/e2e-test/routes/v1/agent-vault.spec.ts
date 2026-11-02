@@ -7632,7 +7632,7 @@ describe("Agent Vault V1 Router", async () => {
 
         expect(byType.group).toMatchObject({ type: "group", id: group.id, name: "av-arms-group" });
         expect(byType.machineIdentity).toMatchObject({ type: "machineIdentity", id: identity.id });
-        expect(byType.user).toMatchObject({ type: "user", id: seedData1.id });
+        expect(byType.user).toMatchObject({ type: "user", id: seedData1.id, isOrgMembershipPending: false });
         expect(byType.user.username).toBeTruthy();
 
         members.forEach((member) => {
@@ -7647,6 +7647,62 @@ describe("Agent Vault V1 Router", async () => {
           expect(member).not.toHaveProperty("identity");
           expect(member).not.toHaveProperty("group");
         });
+      } finally {
+        await deleteOrgIdentity(identity.id);
+        await group.cleanup();
+      }
+    });
+
+    test("the bundle member and candidate lists filter by actor type on the server", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle("member-type-filter");
+      const group = await createProjectGroup(projectId, "av-type-filter-group", ProjectMembershipRole.Member);
+      const identity = await createOrgIdentity(`av-type-filter-identity-${Date.now()}`);
+      const membersUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members`;
+      const list = async (url: string, query: string) => {
+        const res = await inject("GET", `${url}?limit=100&${query}`);
+        expect(res.statusCode).toBe(200);
+        return JSON.parse(res.payload) as { members: { type: string; id: string }[]; totalCount: number };
+      };
+      const idsOf = (listed: { members: { id: string }[] }) => listed.members.map((member) => member.id);
+
+      try {
+        expect(
+          (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [identity.id], role: "member" }))
+            .statusCode
+        ).toBe(200);
+
+        const groupCandidates = await list(`${membersUrl}/available`, "actorType=group");
+        expect(groupCandidates.members.every((member) => member.type === "group")).toBe(true);
+        expect(idsOf(groupCandidates)).toContain(group.id);
+        expect(groupCandidates.totalCount).toBe(groupCandidates.members.length);
+
+        const userCandidates = await list(`${membersUrl}/available`, "actorType=user");
+        expect(userCandidates.members.every((member) => member.type === "user")).toBe(true);
+        expect(idsOf(userCandidates)).not.toContain(group.id);
+
+        expect(
+          (await inject("POST", membersUrl, { groupIds: [group.id], machineIdentityIds: [identity.id] })).statusCode
+        ).toBe(200);
+
+        const groups = await list(membersUrl, "actorType=group");
+        expect(idsOf(groups)).toEqual([group.id]);
+        expect(groups.totalCount).toBe(1);
+
+        const identities = await list(membersUrl, "actorType=machineIdentity");
+        expect(idsOf(identities)).toEqual([identity.id]);
+        expect(identities.totalCount).toBe(1);
+
+        // The creator's own grant is the only user on the bundle.
+        const users = await list(membersUrl, "actorType=user");
+        expect(idsOf(users)).toEqual([seedData1.id]);
+        expect(users.totalCount).toBe(1);
+
+        expect(idsOf(await list(`${membersUrl}/available`, "actorType=group"))).not.toContain(group.id);
+        expect(idsOf(await list(`${membersUrl}/available`, "actorType=machineIdentity"))).not.toContain(identity.id);
+
+        expect((await inject("GET", `${membersUrl}?actorType=nonsense`)).statusCode).toBe(422);
+        expect((await inject("GET", `${membersUrl}/available?actorType=nonsense`)).statusCode).toBe(422);
       } finally {
         await deleteOrgIdentity(identity.id);
         await group.cleanup();

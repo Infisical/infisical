@@ -10,42 +10,35 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@app/components/v3";
+import { getInitials } from "@app/helpers/string";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
-import { TAgentVaultActor, TAgentVaultProductActor } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultMember, TAgentVaultProductActor } from "@app/hooks/api/agentVault/types";
 
 import { MEMBER_KIND, memberDisplayName, memberSubtitle } from "./MemberName";
 import { PendingInvitationBadge } from "./PendingInvitationBadge";
 
 const ROW_CLASS_NAME = "flex items-center gap-3 py-3";
 
-const initialsOf = (value: string) =>
-  value
-    .split(/[\s@._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("") || "?";
-
-const MemberIdentity = ({
-  member,
-  badge
-}: {
-  member: TAgentVaultActor;
-  badge?: React.ReactNode;
-}) => {
+const MemberIdentity = ({ member }: { member: TAgentVaultMember | TAgentVaultProductActor }) => {
   const name = memberDisplayName(member);
   const { label, icon: Icon } = MEMBER_KIND[member.type];
 
   return (
     <>
       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral/10 text-xs font-semibold text-accent">
-        {member.type === AgentVaultMemberType.User ? initialsOf(name) : <Icon className="size-4" />}
+        {member.type === AgentVaultMemberType.User ? (
+          getInitials(name)
+        ) : (
+          <Icon className="size-4" />
+        )}
         <span className="sr-only">{label}</span>
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
           <p className="truncate text-sm font-medium text-foreground">{name}</p>
-          {badge}
+          <PendingInvitationBadge
+            isPending={member.type === AgentVaultMemberType.User && member.isOrgMembershipPending}
+          />
         </div>
         <p className="truncate text-xs text-muted">{memberSubtitle(member)}</p>
       </div>
@@ -54,7 +47,7 @@ const MemberIdentity = ({
 };
 
 type MemberRowProps = {
-  member: TAgentVaultActor & { grantedAt: string };
+  member: TAgentVaultMember;
   isDisabled?: boolean;
   onRevoke: () => void;
 };
@@ -97,14 +90,7 @@ type GrantRowProps = {
 
 export const AccessBundleGrantRow = ({ member, isDisabled, onGrant }: GrantRowProps) => (
   <div className={ROW_CLASS_NAME}>
-    <MemberIdentity
-      member={member}
-      badge={
-        <PendingInvitationBadge
-          isPending={member.type === AgentVaultMemberType.User && member.isOrgMembershipPending}
-        />
-      }
-    />
+    <MemberIdentity member={member} />
     <Button
       variant="av"
       size="sm"
