@@ -176,12 +176,10 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
       };
 
       if (proxy) {
-        const description = data.description || null;
         await updateProxy.mutateAsync({
           proxyId: proxy.id,
           ...payload,
-          // Sent only when changed, so the update's audit event doesn't read as clearing it.
-          description: description !== (proxy.description ?? null) ? description : undefined
+          description: data.description || null
         });
         createNotification({ text: `Proxy "${data.name}" updated`, type: "success" });
       } else {

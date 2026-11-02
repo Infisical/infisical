@@ -68,13 +68,10 @@ export const AccessBundleFormDialog = ({
     try {
       let createdAccessBundle: TAgentVaultAccessBundle | undefined;
       if (accessBundle) {
-        const nextDescription = description || null;
         await updateAccessBundle.mutateAsync({
           accessBundleId: accessBundle.id,
           name,
-          // Sent only when changed, so the update's audit event doesn't read as clearing it.
-          description:
-            nextDescription !== (accessBundle.description ?? null) ? nextDescription : undefined
+          description: description || null
         });
       } else {
         createdAccessBundle = await createAccessBundle.mutateAsync({
