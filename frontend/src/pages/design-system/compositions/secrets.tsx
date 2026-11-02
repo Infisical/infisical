@@ -46,6 +46,7 @@ import { Sidebar } from "@app/components/v4/ui/sidebar";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
 import {
   Table,
+  TableActionsHead,
   TableBody,
   TableCell,
   TableHead,
@@ -92,7 +93,7 @@ import {
   ImportSecretsSheet
 } from "./secrets/import-secrets/import-secrets-sheet";
 import { SecretDropzone } from "./secrets/import-secrets/secret-dropzone";
-import { NEXT_PHASE, type RowContext } from "./secrets/overview-cells";
+import { NEXT_PHASE, ROW_ACTION_SLOTS, type RowContext } from "./secrets/overview-cells";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
 import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
 import { EditFolderDialog } from "./secrets/row-actions/edit-folder-dialog";
@@ -632,7 +633,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
   const sortLabel = sortOptions.find(
     (option) => option.field === sort.field && option.direction === sort.direction
   )?.label;
-  const colSpan = visibleEnvironments.length + 2;
+  const colSpan = visibleEnvironments.length + 3;
   const commitCount = commits.filter(
     (commit) =>
       commit.project === project && commit.environment === activeEnvironment && commit.path === path
@@ -1259,6 +1260,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
                               </TableHead>
                             ))
                           )}
+                          <TableActionsHead slots={ROW_ACTION_SLOTS} />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1342,7 +1344,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
                         {canQuickAdd && (
                           <QuickAddRow
                             multiple={!single}
-                            colSpan={single ? 1 : visibleEnvironments.length}
+                            colSpan={(single ? 1 : visibleEnvironments.length) + 1}
                             existing={ordered
                               .filter(([, entries]) => entries[0].kind === "secret")
                               .map(([, entries]) => entries[0].name)}

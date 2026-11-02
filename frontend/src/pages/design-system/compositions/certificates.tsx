@@ -364,7 +364,7 @@ const revocationReasons = [
   "A/A compromise"
 ].map((label) => ({ value: label, label }));
 
-const CertificateActions = ({
+const CertificateMenu = ({
   cert,
   onOpen,
   onRevoke,
@@ -375,50 +375,43 @@ const CertificateActions = ({
   onRevoke: () => void;
   onDelete: () => void;
 }) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-        {`Actions for ${cert.cn}`}
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <DropdownMenuItem onSelect={onOpen}>
-        <Icon name="eye" />
-        View details
-      </DropdownMenuItem>
-      <DropdownMenuItem>
-        <Icon name="download" />
-        Export certificate
-      </DropdownMenuItem>
-      <DropdownMenuItem disabled={Boolean(renewBlock(cert))} description={renewBlock(cert)}>
-        <Icon name="sync" />
-        Renew now
-      </DropdownMenuItem>
-      <DropdownMenuItem>
-        <Icon name="link" />
-        Manage certificate syncs
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem
-        variant="destructive"
-        disabled={Boolean(revokeBlock(cert))}
-        description={revokeBlock(cert)}
-        onSelect={onRevoke}
-      >
-        <Icon name="x" />
-        Revoke certificate
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        variant="destructive"
-        disabled={Boolean(deleteBlock(cert))}
-        description={deleteBlock(cert)}
-        onSelect={onDelete}
-      >
-        <Icon name="trash" />
-        Delete certificate
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
+  <>
+    <DropdownMenuItem onSelect={onOpen}>
+      <Icon name="eye" />
+      View details
+    </DropdownMenuItem>
+    <DropdownMenuItem>
+      <Icon name="download" />
+      Export certificate
+    </DropdownMenuItem>
+    <DropdownMenuItem disabled={Boolean(renewBlock(cert))} description={renewBlock(cert)}>
+      <Icon name="sync" />
+      Renew now
+    </DropdownMenuItem>
+    <DropdownMenuItem>
+      <Icon name="link" />
+      Manage certificate syncs
+    </DropdownMenuItem>
+    <DropdownMenuSeparator />
+    <DropdownMenuItem
+      variant="destructive"
+      disabled={Boolean(revokeBlock(cert))}
+      description={revokeBlock(cert)}
+      onSelect={onRevoke}
+    >
+      <Icon name="x" />
+      Revoke certificate
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      variant="destructive"
+      disabled={Boolean(deleteBlock(cert))}
+      description={deleteBlock(cert)}
+      onSelect={onDelete}
+    >
+      <Icon name="trash" />
+      Delete certificate
+    </DropdownMenuItem>
+  </>
 );
 
 const Inventory = ({
@@ -503,20 +496,7 @@ const Inventory = ({
     },
     { id: "ca", header: "CA", width: 176, text: (r) => r.ca, render: (r) => r.ca },
     { id: "profile", header: "Profile", width: 128, render: (r) => <code>{r.profile}</code> },
-    { id: "algorithm", header: "Algorithm", width: 104, render: (r) => r.algorithm },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (r) => (
-        <CertificateActions
-          cert={r}
-          onOpen={() => onOpen(r.id)}
-          onRevoke={() => onRevoke(r.id)}
-          onDelete={() => onDelete(r.id)}
-        />
-      )
-    }
+    { id: "algorithm", header: "Algorithm", width: 104, render: (r) => r.algorithm }
   ];
   const clear = () => {
     setQuery("");
@@ -597,6 +577,16 @@ const Inventory = ({
         columns={columns.filter((column) => !hidden.includes(column.id))}
         getRowId={(r) => r.id}
         rowLabel={(r) => r.cn}
+        rowActions={{
+          renderMenu: (r) => (
+            <CertificateMenu
+              cert={r}
+              onOpen={() => onOpen(r.id)}
+              onRevoke={() => onRevoke(r.id)}
+              onDelete={() => onDelete(r.id)}
+            />
+          )
+        }}
         sort={sort}
         onSortChange={setSort}
         empty={

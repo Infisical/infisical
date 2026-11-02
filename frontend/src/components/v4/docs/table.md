@@ -66,18 +66,19 @@ Source evidence:
 
 Owner: table.
 
-When a table row shows icon actions, standalone indicator marks or both.
+When a table row has actions, standalone indicator marks or both.
 
-Do: Put the actions in TableRowActions as Button size icon-row and the marks in TableRowIndicators. Choose which actions and marks a row shows and their order; leave target, glyph, gap, inset and reveal to the primitives and tokens.
+Do: Declare the actions with DataTable rowActions (or TableActionsCell and RowActions in a native Table): up to three inline icon actions, the same on every row, then renderMenu for the rest. Keep marks in TableRowIndicators. Choose which actions and marks a row shows and their order; leave target, glyph, gap, inset and column width to the primitives and tokens.
 
-Avoid: Use icon-xs or icon-sm for row actions, size marks with Icon size, add a local gap or negative margin, or hide resting actions with display none.
+Avoid: Show actions only on hover, put them inside a value cell, swap marks for actions, add a fourth inline action, hide a blocked action, or set a local width, gap or margin on the tail.
 
-Why: One owner keeps glyphs 16px at rest and on hover, lands them on the 12px content edge, keeps 28px targets from overlapping and keeps hidden actions in the tab order.
+Why: Persistent actions in one sticky column never shift the row, line up across rows and stay reachable without a pointer; one owner keeps the tail centered and sized by its contents.
 
-Checked by: review only. Look for: Measure a row at rest, on hover and with keyboard focus: row 40, targets 28 that touch without overlapping, glyphs 16 with the last glyph 12px from the cell edge, and a 36px focus box fully inside the row. Tab reaches every action, and an open menu keeps its actions shown.
+Checked by: review only. Look for: Measure a row at rest and on hover: the value cell keeps its width, the tail is 40 for one action and 28 wider per further action, and its first and last targets sit the same distance from the divider and the frame edge. Tab reaches every action and a disabled one reads its reason. ui:lint flags a reveal or swap prop and hover-only layout changes in table CSS.
 
 Source evidence:
 - src/components/v4/ui/table.tsx
+- src/components/v4/ui/data-table.tsx
 - src/components/v4/ui/data.module.css
 - src/pages/design-system/examples/table/row-actions.tsx
 
@@ -120,7 +121,7 @@ Source evidence:
 
 ## State guidance
 
-- hover and focus: Reveal actions appear on hover and on keyboard focus with no change in glyph size or row height. Tab reaches every action while it rests hidden, and an open menu keeps its actions shown and anchored to its trigger.
+- hover and focus: Hover adds only the translucent row overlay, which the sticky tail cell repeats over its opaque surface. Row actions are already visible, so nothing appears, moves or resizes, and keyboard focus rings sit inside the row.
 - empty: Show an explanation spanning the table's columns while retaining relevant filters.
 - virtual: Keep every row one height and set explicit column widths when the table is virtualized. Larger content raises all rows above the requested rowHeight.
 
@@ -141,7 +142,7 @@ Why: Stable lanes support comparison. Counts must describe actual loaded rows an
 - src/components/v4/ui/frame.module.css
 - src/components/v4/tokens.json
 
-Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, TableRowActions, TableRowActionsSeparator, TableRowIndicators, DataTableColumn, DataTableToggle, EnvMark. Source TypeScript defines the API.
+Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, TableRowActions, TableRowIndicators, TableActionsHead, TableActionsCell, RowActions, RowAction, RowActionList, DataTableColumn, DataTableToggle, DataTableRowAction, DataTableRowActions, EnvMark. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -152,9 +153,11 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.
 - Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.
 - Rows are size-row (40px) through one variable, --v4-table-row-height, which falls back to the token; DataTable reads size-row at runtime as its default virtual metric, so the CSS row and the scroll model never disagree. Cells pad by space-row-inline (12px), the content edge text and glyphs share.
-- TableRowActions owns row action layout: targets touch (space-row-actions-gap, 0), and a trailing icon-row target pulls into the cell padding by (size-target-row - size-glyph) / 2, so its 16px glyph lands on the 12px content edge. With reveal, the actions rest visually hidden but stay in the tab order, show while their leaf row is hovered or holds focus, and stay shown while a menu or popover they opened is open (aria-expanded true, or open on the slot). A row that hosts a nested table never reveals the nested rows' actions. TableRowActionsSeparator divides groups of actions with a glyph-tall line.
-- TableRowIndicators lays standalone row marks in size-target-row slots with size-glyph glyphs and the same pull, so a mark and an action share one glyph size and one end edge. With swap, the indicators hide while the row's reveal actions show, for marks the actions repeat; without it they stay beside the actions.
-- Responsibilities: tokens own the numbers (size-row, size-target-row, size-glyph, space-row-inline, space-row-actions-gap); Button icon-row, TableRowActions and TableRowIndicators own geometry and reveal behavior; a composite chooses which actions and indicators a row shows and their order, and sets no sizes, gaps or offsets.
+- Row actions are persistent. rowActions adds a sticky tail column, pinned to the inline end, that shows every row's actions at rest: up to three inline icon actions (Button icon-row, the same set on every row, each with a tooltip of its label or its disabled reason) followed by the More menu when renderMenu is set. A blocked action stays in place, disabled, with its reason. Nothing appears on hover, so a hovered row never changes a cell's width or the row's layout.
+- The tail cell centers its actions between equal insets: space-row-actions-inset on each side, inside its line-soft divider and the frame edge, so one action sits 5px clear of each line. Its width follows its contents: size-row (40px, a square) for one action and size-row-action-step (28px) more for each further one, so More alone is 40, one inline action and More is 68, two is 96 and three is 124. The cell keeps the pinned divider, the frame-pad fill, the row hover overlay and the selected surface.
+- TableRowActions is the centered group inside a tail cell, with targets touching (space-row-actions-gap, 0). For a native Table, TableActionsHead and TableActionsCell take slots, the widest row's action count, and draw the same sticky tail; RowActions renders the inline actions and More inside it. TableRowIndicators lays persistent row marks in size-target-row slots with size-glyph glyphs, pulled so the last glyph lands on the 12px content edge; marks never swap out for actions.
+- The selection column is size-row wide with its Checkbox centered between the frame edge and a persistent line-soft divider on its right, the same line as the pinned actions divider, on the header and every row, at rest, hovered and selected.
+- Responsibilities: tokens own the numbers (size-row, size-target-row, size-row-action-step, size-glyph, space-row-inline, space-row-actions-gap, space-row-actions-inset); DataTable rowActions, the tail cells, RowActions and TableRowIndicators own geometry; a composite chooses which actions a row shows and their order, and sets no sizes, gaps or offsets.
 - With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.
 - onRowActivate makes every row a pointer target with the ordinary hover overlay. A click anywhere in the row activates it unless it lands on a link, button, input, checkbox, menu item, tooltip trigger, the selection cell, the actions cell or anything marked data-row-interactive, or it ends a text selection inside the row. Menu items rendered in a portal never reach the row.
 - pagination renders its node in a foot inside the tint frame, below the rows. It stays in view while a wide table scrolls sideways and, with a fixed height, while the rows scroll.
@@ -171,6 +174,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - selectionDisabledReason(row) disables that row's selection Checkbox, shows the reason in a tooltip and sets it as the Checkbox's accessible description. Header select-all skips and does not count those rows; isSelectable remains for rows that need no explanation.
 - With virtual rows, screen readers still hear the total row count and each row's real position.
 - Focus remains on native controls; loading and selected totals announced politely.
+- Each row action is a named button: "<label> for <rowLabel>", and the More trigger is "More actions for <rowLabel>" unless menuLabel renames it. A disabled action carries its reason as its accessible description and in its tooltip. The header cell names the column Actions for screen readers.
 - After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived.
 - With onRowActivate, rows join the tab order without an interactive role, so the table keeps native row semantics and never nests a button or link role around the row's own controls. Enter activates the focused row and Space toggles its selection when the table is selectable. Keep a real link or button for the same destination in the primary cell, so screen reader users meet a named control.
 - Loading rows are hidden from assistive technology; the table is aria-busy and the polite status says Loading rows.
@@ -185,7 +189,8 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.
 - There is no muted row state. Lowered opacity drops text below contrast and carries the state by color alone; mark an inactive row with a Badge in its name cell (for example Deactivated) and, when it cannot be acted on, a selectionDisabledReason.
 - Virtual tables use one uniform effective row height. rowHeight defaults to the size-row token (40px) as a requested minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.
-- Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.
+- Only a final column may be pinned. rowActions.inline takes at most three actions, enforced by its tuple type; everything else goes in renderMenu. Use grow for a flexible resource column; an explicit numeric width takes precedence.
+- A column with actions true remains for tail content that is not icon actions, such as an Open text button; it takes the same sticky, centered cell but sizes to its content. Prefer rowActions for icon actions.
 - Use text(row) for full hover text when render returns truncated complex content.
 - The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows.
 - onRowActivate is a pointer and keyboard shortcut. It cannot open a new tab or be copied as a link; navigation that needs those belongs on the link in the primary cell.
@@ -229,10 +234,12 @@ Source declarations and review criteria only. Generation checks references and c
 
 ### row actions
 
-- reveal: example `row-actions`, visible label "DATABASE_URL".
-- persistent: example `row-actions`, visible label "JWT_SIGNING_KEY override".
+- more-only: example `row-actions`, visible label "More only, one square cell".
+- one-inline: example `row-actions`, visible label "One inline action and More".
+- two-inline: example `row-actions`, visible label "Two inline actions and More".
+- three-inline: example `row-actions`, visible label "Three inline actions, the cap, and More".
+- disabled: example `row-actions`, visible label "JWT_SIGNING_KEY".
 - indicators: example `row-actions`, visible label "DATABASE_URL".
-- separator: example `row-actions`, visible label "DATABASE_URL".
 
 ## Executable examples
 
@@ -601,146 +608,104 @@ export default function Example() {
 }
 ```
 
-### Row actions and indicators
+### Row actions
 
-Save this example at `src/pages/design-system/examples/table/row-actions.tsx`; its relative imports are generated for that exact path. States: default, keyboard.
+Save this example at `src/pages/design-system/examples/table/row-actions.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
 
-Registry items used: @infisical/button, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/table. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
+Registry items used: @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/table. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
-import { BellIcon, CodeXmlIcon } from "lucide-react";
-
-import { Button } from "../../../../components/v4/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "../../../../components/v4/ui/dropdown-menu";
+import { CodeXmlIcon, EditIcon, TagsIcon } from "lucide-react";
+import { DataTable, type DataTableColumn, type DataTableRowActions } from "../../../../components/v4/ui/data-table";
+import { DropdownMenuItem } from "../../../../components/v4/ui/dropdown-menu";
 import { Icon } from "../../../../components/v4/ui/icon";
 import { Inline } from "../../../../components/v4/ui/layout";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableRowActions,
-  TableRowActionsSeparator,
-  TableRowIndicators
-} from "../../../../components/v4/ui/table";
-
-const rows = [
-  { id: "database-url", name: "DATABASE_URL", annotated: true },
-  { id: "log-level", name: "LOG_LEVEL", annotated: false }
+import { TableRowIndicators } from "../../../../components/v4/ui/table";
+type Row = {
+    id: string;
+    name: string;
+    annotated: boolean;
+    rotated: boolean;
+};
+const rows: Row[] = [
+    { id: "database-url", name: "DATABASE_URL", annotated: true, rotated: false },
+    { id: "log-level", name: "LOG_LEVEL", annotated: false, rotated: false },
+    { id: "jwt-signing-key", name: "JWT_SIGNING_KEY", annotated: false, rotated: true }
 ];
-
 export default function RowActions() {
-  const [status, setStatus] = React.useState("");
-  return (
-    <>
-      <Table aria-label="Example secrets with row actions">
-        <TableHeader>
-          <TableRow>
-            <TableHead scope="col">Name</TableHead>
-            <TableHead scope="col">Value</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>{row.name}</TableCell>
-              <TableCell>
-                <Inline gap={8} wrap={false}>
-                  <code>••••••••••••</code>
-                  {row.annotated && (
-                    <TableRowIndicators swap>
-                      <span>
-                        <Icon icon={BellIcon} label="Has reminder" />
-                      </span>
-                      <span>
-                        <Icon icon={CodeXmlIcon} label="Has metadata" />
-                      </span>
-                    </TableRowIndicators>
-                  )}
-                  <TableRowActions reveal>
-                    {row.annotated && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon-row"
-                          icon="bell"
-                          iconOnly
-                          onClick={() => setStatus(`Opened the reminder for ${row.name}.`)}
-                        >
-                          {`View reminder for ${row.name}`}
-                        </Button>
-                        <TableRowActionsSeparator />
-                      </>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon-row"
-                      icon="copy"
-                      iconOnly
-                      onClick={() => setStatus(`Copied the fabricated value of ${row.name}.`)}
-                    >
-                      {`Copy ${row.name}`}
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-                          {`More actions for ${row.name}`}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
-                          Open secret
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableRowActions>
-                </Inline>
-              </TableCell>
-            </TableRow>
-          ))}
-          <TableRow>
-            <TableCell>JWT_SIGNING_KEY override</TableCell>
-            <TableCell>
-              <Inline gap={8} wrap={false}>
-                <code>••••••••••••</code>
-                <TableRowActions>
-                  <Button
-                    variant="ghost"
-                    size="icon-row"
-                    icon="copy"
-                    iconOnly
-                    onClick={() => setStatus("Copied the fabricated override.")}
-                  >
-                    Copy override
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-row"
-                    icon="trash"
-                    iconOnly
-                    onClick={() => setStatus("Removed the fabricated override.")}
-                  >
-                    Remove override
-                  </Button>
-                </TableRowActions>
-              </Inline>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+    const [status, setStatus] = React.useState("");
+    const columns: DataTableColumn<Row>[] = [
+        { id: "name", header: "Name", primary: true, grow: true, render: (row) => row.name },
+        {
+            id: "value",
+            header: "Value",
+            grow: true,
+            render: (row) => (<Inline gap={8} wrap={false}>
+          <code>••••••••••••</code>
+          {row.annotated && (<TableRowIndicators>
+              <span>
+                <Icon icon={TagsIcon} label="Has tags"/>
+              </span>
+              <span>
+                <Icon icon={CodeXmlIcon} label="Has metadata"/>
+              </span>
+            </TableRowIndicators>)}
+        </Inline>)
+        }
+    ];
+    const menu = (row: Row) => (<>
+      <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
+        <Icon name="eye"/>
+        Open secret
+      </DropdownMenuItem>
+      <DropdownMenuItem variant="destructive" onSelect={() => setStatus(`Deleted ${row.name}.`)}>
+        <Icon name="trash"/>
+        Delete secret
+      </DropdownMenuItem>
+    </>);
+    const copy = {
+        label: "Copy secret",
+        icon: "copy",
+        disabledReason: (row: Row) => (row.rotated ? "Cannot copy rotated secret" : undefined),
+        onSelect: (row: Row) => setStatus(`Copied the fabricated value of ${row.name}.`)
+    } as const;
+    const reminder = {
+        label: (row: Row) => (row.annotated ? "View reminder" : "Add reminder"),
+        icon: "bell",
+        onSelect: (row: Row) => setStatus(`Opened the reminder for ${row.name}.`)
+    } as const;
+    const edit = {
+        label: "Edit value",
+        icon: EditIcon,
+        disabledReason: (row: Row) => (row.rotated ? "Rotated secrets can't be edited" : undefined),
+        onSelect: (row: Row) => setStatus(`Editing ${row.name}.`)
+    } as const;
+    const sets: {
+        label: string;
+        actions: DataTableRowActions<Row>;
+    }[] = [
+        { label: "More only, one square cell", actions: { renderMenu: menu } },
+        { label: "One inline action and More", actions: { inline: [copy], renderMenu: menu } },
+        {
+            label: "Two inline actions and More",
+            actions: { inline: [reminder, copy], renderMenu: menu }
+        },
+        {
+            label: "Three inline actions, the cap, and More",
+            actions: { inline: [reminder, edit, copy], renderMenu: menu }
+        }
+    ];
+    return (<>
+      <div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
+        {sets.map((set) => (<figure key={set.label} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+            <DataTable label={`Example secrets, ${set.label.toLowerCase()}`} rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} rowActions={set.actions}/>
+          </div><figcaption className="text-muted-foreground text-xs">{set.label}</figcaption></figure>))}
+      </div>
       <p role="status" className="sr-only">
         {status}
       </p>
-    </>
-  );
+    </>);
 }
 ```
 

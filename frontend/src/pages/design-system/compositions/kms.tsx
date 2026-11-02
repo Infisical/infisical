@@ -3,13 +3,7 @@ import { useState } from "react";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -127,7 +121,7 @@ const usageOptions = [
   ...(Object.keys(usageLabel) as Usage[]).map((value) => ({ value, label: usageLabel[value] }))
 ];
 
-const KeyActions = ({
+const KeyMenu = ({
   item,
   onRotate,
   onToggle
@@ -142,53 +136,46 @@ const KeyActions = ({
   const exportBlock = item.exportable ? off : "Created as non-exportable";
   const deleteBlock = item.deleteProtection ? "Turn off delete protection first" : undefined;
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-          {`Actions for ${item.name}`}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled={Boolean(off)} description={off}>
-          <Icon name="lock" />
-          {operations[item.usage][0]}
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={Boolean(off)} description={off}>
-          <Icon name="check-c" />
-          {operations[item.usage][1]}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={Boolean(rotateBlock)}
-          description={rotateBlock}
-          onSelect={onRotate}
-        >
-          <Icon name="sync" />
-          Rotate key
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={Boolean(exportBlock)} description={exportBlock}>
-          <Icon name="download" />
-          Export key
-        </DropdownMenuItem>
-        <DropdownMenuItem>
-          <Icon name="settings" />
-          Edit key
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onToggle}>
-          <Icon name={item.disabled ? "check-c" : "x"} />
-          {item.disabled ? "Enable key" : "Disable key"}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          disabled={Boolean(deleteBlock)}
-          description={deleteBlock}
-        >
-          <Icon name="trash" />
-          Delete key
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenuItem disabled={Boolean(off)} description={off}>
+        <Icon name="lock" />
+        {operations[item.usage][0]}
+      </DropdownMenuItem>
+      <DropdownMenuItem disabled={Boolean(off)} description={off}>
+        <Icon name="check-c" />
+        {operations[item.usage][1]}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        disabled={Boolean(rotateBlock)}
+        description={rotateBlock}
+        onSelect={onRotate}
+      >
+        <Icon name="sync" />
+        Rotate key
+      </DropdownMenuItem>
+      <DropdownMenuItem disabled={Boolean(exportBlock)} description={exportBlock}>
+        <Icon name="download" />
+        Export key
+      </DropdownMenuItem>
+      <DropdownMenuItem>
+        <Icon name="settings" />
+        Edit key
+      </DropdownMenuItem>
+      <DropdownMenuItem onSelect={onToggle}>
+        <Icon name={item.disabled ? "check-c" : "x"} />
+        {item.disabled ? "Enable key" : "Disable key"}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        variant="destructive"
+        disabled={Boolean(deleteBlock)}
+        description={deleteBlock}
+      >
+        <Icon name="trash" />
+        Delete key
+      </DropdownMenuItem>
+    </>
   );
 };
 
@@ -287,22 +274,7 @@ export default function Kms() {
         )
     },
     { id: "version", header: "Version", width: 72, render: (r) => `v${r.version}` },
-    { id: "created", header: "Created", width: 104, render: (r) => r.created },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (r) => (
-        <KeyActions
-          item={r}
-          onRotate={() => update(r.id, (item) => ({ version: item.version + 1 }))}
-          onToggle={() => {
-            update(r.id, (item) => ({ disabled: !item.disabled }));
-            setSelected((current) => current.filter((id) => id !== r.id));
-          }}
-        />
-      )
-    }
+    { id: "created", header: "Created", width: 104, render: (r) => r.created }
   ];
   return (
     <Shell
@@ -358,6 +330,18 @@ export default function Kms() {
             columns={columns}
             getRowId={(r) => r.id}
             rowLabel={(r) => r.name}
+            rowActions={{
+              renderMenu: (r) => (
+                <KeyMenu
+                  item={r}
+                  onRotate={() => update(r.id, (item) => ({ version: item.version + 1 }))}
+                  onToggle={() => {
+                    update(r.id, (item) => ({ disabled: !item.disabled }));
+                    setSelected((current) => current.filter((id) => id !== r.id));
+                  }}
+                />
+              )
+            }}
             selectable
             isSelectable={eligible}
             selectedIds={selected}

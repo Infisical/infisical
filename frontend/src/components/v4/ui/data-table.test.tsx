@@ -478,3 +478,48 @@ it("explains a row that cannot be selected and leaves it out of select-all", asy
   expect(onSelectionChange).toHaveBeenLastCalledWith(["a"]);
   expect(box("Select all available rows in Members").getAttribute("aria-checked")).toBe("true");
 });
+
+it("renders persistent row actions in the sticky tail, sized by their count", async () => {
+  const onCopy = vi.fn();
+  const onRowActivate = vi.fn();
+  await render(
+    <TooltipProvider>
+      <DataTable
+        label="Hosts"
+        rows={rows}
+        columns={columns.slice(0, 2)}
+        getRowId={(row) => row.id}
+        rowLabel={(row) => row.name}
+        onRowActivate={onRowActivate}
+        rowActions={{
+          inline: [
+            { label: "Copy host", icon: "copy", onSelect: onCopy },
+            {
+              label: "Delete host",
+              icon: "trash",
+              onSelect: vi.fn(),
+              disabledReason: (row) => (row.id === "b" ? "Protected host" : undefined)
+            }
+          ],
+          renderMenu: () => <span>Menu</span>
+        }}
+      />
+    </TooltipProvider>
+  );
+  const [first, second] = bodyRows();
+  const tail = first.querySelector<HTMLTableCellElement>("td[data-slot=table-actions-cell]")!;
+  expect(tail.style.getPropertyValue("--v4-row-action-slots")).toBe("3");
+  expect(document.querySelector("th[data-slot=table-actions-head]")?.textContent).toBe("Actions");
+  const names = [...tail.querySelectorAll("button")].map((button) => button.textContent);
+  expect(names).toEqual(["Copy host for alpha", "Delete host for alpha", "More actions for alpha"]);
+
+  await click(tail.querySelector("button")!);
+  expect(onCopy).toHaveBeenCalledTimes(1);
+  expect(onRowActivate).not.toHaveBeenCalled();
+
+  const blocked = [...second.querySelectorAll("button")].find((button) =>
+    button.textContent?.startsWith("Delete host")
+  )!;
+  expect(blocked.disabled).toBe(true);
+  expect(blocked.getAttribute("aria-description")).toBe("Protected host");
+});

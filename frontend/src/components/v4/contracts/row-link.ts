@@ -108,7 +108,7 @@ export const rowLinkDefinition = {
     ],
     antiSlop: [
       {
-        do: "Keep row actions as ordinary buttons beside the link.",
+        do: "Keep row actions as ordinary buttons in the table's sticky actions column, outside the link.",
         avoid: "Wrap the whole row in an anchor.",
         reason: "An anchor around buttons is invalid nesting and swallows their clicks."
       }

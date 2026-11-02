@@ -24,10 +24,16 @@ export const tableDefinition = {
     "TableFooter",
     "TableCaption",
     "TableRowActions",
-    "TableRowActionsSeparator",
     "TableRowIndicators",
+    "TableActionsHead",
+    "TableActionsCell",
+    "RowActions",
+    "RowAction",
+    "RowActionList",
     "DataTableColumn",
     "DataTableToggle",
+    "DataTableRowAction",
+    "DataTableRowActions",
     "EnvMark"
   ],
   referenceNames: ["Table"],
@@ -39,9 +45,11 @@ export const tableDefinition = {
     "Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.",
     "Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.",
     "Rows are size-row (40px) through one variable, --v4-table-row-height, which falls back to the token; DataTable reads size-row at runtime as its default virtual metric, so the CSS row and the scroll model never disagree. Cells pad by space-row-inline (12px), the content edge text and glyphs share.",
-    "TableRowActions owns row action layout: targets touch (space-row-actions-gap, 0), and a trailing icon-row target pulls into the cell padding by (size-target-row - size-glyph) / 2, so its 16px glyph lands on the 12px content edge. With reveal, the actions rest visually hidden but stay in the tab order, show while their leaf row is hovered or holds focus, and stay shown while a menu or popover they opened is open (aria-expanded true, or open on the slot). A row that hosts a nested table never reveals the nested rows' actions. TableRowActionsSeparator divides groups of actions with a glyph-tall line.",
-    "TableRowIndicators lays standalone row marks in size-target-row slots with size-glyph glyphs and the same pull, so a mark and an action share one glyph size and one end edge. With swap, the indicators hide while the row's reveal actions show, for marks the actions repeat; without it they stay beside the actions.",
-    "Responsibilities: tokens own the numbers (size-row, size-target-row, size-glyph, space-row-inline, space-row-actions-gap); Button icon-row, TableRowActions and TableRowIndicators own geometry and reveal behavior; a composite chooses which actions and indicators a row shows and their order, and sets no sizes, gaps or offsets.",
+    "Row actions are persistent. rowActions adds a sticky tail column, pinned to the inline end, that shows every row's actions at rest: up to three inline icon actions (Button icon-row, the same set on every row, each with a tooltip of its label or its disabled reason) followed by the More menu when renderMenu is set. A blocked action stays in place, disabled, with its reason. Nothing appears on hover, so a hovered row never changes a cell's width or the row's layout.",
+    "The tail cell centers its actions between equal insets: space-row-actions-inset on each side, inside its line-soft divider and the frame edge, so one action sits 5px clear of each line. Its width follows its contents: size-row (40px, a square) for one action and size-row-action-step (28px) more for each further one, so More alone is 40, one inline action and More is 68, two is 96 and three is 124. The cell keeps the pinned divider, the frame-pad fill, the row hover overlay and the selected surface.",
+    "TableRowActions is the centered group inside a tail cell, with targets touching (space-row-actions-gap, 0). For a native Table, TableActionsHead and TableActionsCell take slots, the widest row's action count, and draw the same sticky tail; RowActions renders the inline actions and More inside it. TableRowIndicators lays persistent row marks in size-target-row slots with size-glyph glyphs, pulled so the last glyph lands on the 12px content edge; marks never swap out for actions.",
+    "The selection column is size-row wide with its Checkbox centered between the frame edge and a persistent line-soft divider on its right, the same line as the pinned actions divider, on the header and every row, at rest, hovered and selected.",
+    "Responsibilities: tokens own the numbers (size-row, size-target-row, size-row-action-step, size-glyph, space-row-inline, space-row-actions-gap, space-row-actions-inset); DataTable rowActions, the tail cells, RowActions and TableRowIndicators own geometry; a composite chooses which actions a row shows and their order, and sets no sizes, gaps or offsets.",
     "With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.",
     "onRowActivate makes every row a pointer target with the ordinary hover overlay. A click anywhere in the row activates it unless it lands on a link, button, input, checkbox, menu item, tooltip trigger, the selection cell, the actions cell or anything marked data-row-interactive, or it ends a text selection inside the row. Menu items rendered in a portal never reach the row.",
     "pagination renders its node in a foot inside the tint frame, below the rows. It stays in view while a wide table scrolls sideways and, with a fixed height, while the rows scroll.",
@@ -57,6 +65,7 @@ export const tableDefinition = {
     "selectionDisabledReason(row) disables that row's selection Checkbox, shows the reason in a tooltip and sets it as the Checkbox's accessible description. Header select-all skips and does not count those rows; isSelectable remains for rows that need no explanation.",
     "With virtual rows, screen readers still hear the total row count and each row's real position.",
     "Focus remains on native controls; loading and selected totals announced politely.",
+    'Each row action is a named button: "<label> for <rowLabel>", and the More trigger is "More actions for <rowLabel>" unless menuLabel renames it. A disabled action carries its reason as its accessible description and in its tooltip. The header cell names the column Actions for screen readers.',
     "After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived.",
     "With onRowActivate, rows join the tab order without an interactive role, so the table keeps native row semantics and never nests a button or link role around the row's own controls. Enter activates the focused row and Space toggles its selection when the table is selectable. Keep a real link or button for the same destination in the primary cell, so screen reader users meet a named control.",
     "Loading rows are hidden from assistive technology; the table is aria-busy and the polite status says Loading rows.",
@@ -66,7 +75,8 @@ export const tableDefinition = {
     "The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.",
     "There is no muted row state. Lowered opacity drops text below contrast and carries the state by color alone; mark an inactive row with a Badge in its name cell (for example Deactivated) and, when it cannot be acted on, a selectionDisabledReason.",
     "Virtual tables use one uniform effective row height. rowHeight defaults to the size-row token (40px) as a requested minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.",
-    "Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.",
+    "Only a final column may be pinned. rowActions.inline takes at most three actions, enforced by its tuple type; everything else goes in renderMenu. Use grow for a flexible resource column; an explicit numeric width takes precedence.",
+    "A column with actions true remains for tail content that is not icon actions, such as an Open text button; it takes the same sticky, centered cell but sizes to its content. Prefer rowActions for icon actions.",
     "Use text(row) for full hover text when render returns truncated complex content.",
     "The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows.",
     "onRowActivate is a pointer and keyboard shortcut. It cannot open a new tab or be copied as a link; navigation that needs those belongs on the link in the primary cell.",
@@ -121,9 +131,9 @@ export const tableDefinition = {
     },
     {
       id: "row-actions",
-      title: "Row actions and indicators",
+      title: "Row actions",
       module: "./examples/table/row-actions.tsx",
-      states: ["default", "keyboard"]
+      states: ["default", "disabled", "keyboard"]
     },
     {
       id: "row-activation",
@@ -259,12 +269,18 @@ export const tableDefinition = {
     },
     {
       axis: "row actions",
-      expected: ["reveal", "persistent", "indicators", "separator"],
+      expected: ["more-only", "one-inline", "two-inline", "three-inline", "disabled", "indicators"],
       shown: [
-        { value: "reveal", exampleId: "row-actions", label: "DATABASE_URL" },
-        { value: "persistent", exampleId: "row-actions", label: "JWT_SIGNING_KEY override" },
-        { value: "indicators", exampleId: "row-actions", label: "DATABASE_URL" },
-        { value: "separator", exampleId: "row-actions", label: "DATABASE_URL" }
+        { value: "more-only", exampleId: "row-actions", label: "More only, one square cell" },
+        { value: "one-inline", exampleId: "row-actions", label: "One inline action and More" },
+        { value: "two-inline", exampleId: "row-actions", label: "Two inline actions and More" },
+        {
+          value: "three-inline",
+          exampleId: "row-actions",
+          label: "Three inline actions, the cap, and More"
+        },
+        { value: "disabled", exampleId: "row-actions", label: "JWT_SIGNING_KEY" },
+        { value: "indicators", exampleId: "row-actions", label: "DATABASE_URL" }
       ]
     }
   ],
@@ -326,20 +342,21 @@ export const tableDefinition = {
       },
       {
         id: "table-row-action-geometry",
-        when: "A table row shows icon actions, standalone indicator marks or both.",
-        do: "Put the actions in TableRowActions as Button size icon-row and the marks in TableRowIndicators. Choose which actions and marks a row shows and their order; leave target, glyph, gap, inset and reveal to the primitives and tokens.",
+        when: "A table row has actions, standalone indicator marks or both.",
+        do: "Declare the actions with DataTable rowActions (or TableActionsCell and RowActions in a native Table): up to three inline icon actions, the same on every row, then renderMenu for the rest. Keep marks in TableRowIndicators. Choose which actions and marks a row shows and their order; leave target, glyph, gap, inset and column width to the primitives and tokens.",
         avoid:
-          "Use icon-xs or icon-sm for row actions, size marks with Icon size, add a local gap or negative margin, or hide resting actions with display none.",
+          "Show actions only on hover, put them inside a value cell, swap marks for actions, add a fourth inline action, hide a blocked action, or set a local width, gap or margin on the tail.",
         reason:
-          "One owner keeps glyphs 16px at rest and on hover, lands them on the 12px content edge, keeps 28px targets from overlapping and keeps hidden actions in the tab order.",
+          "Persistent actions in one sticky column never shift the row, line up across rows and stay reachable without a pointer; one owner keeps the tail centered and sized by its contents.",
         evidence: [
           "src/components/v4/ui/table.tsx",
+          "src/components/v4/ui/data-table.tsx",
           "src/components/v4/ui/data.module.css",
           "src/pages/design-system/examples/table/row-actions.tsx"
         ],
         detect: {
           by: "review",
-          how: "Measure a row at rest, on hover and with keyboard focus: row 40, targets 28 that touch without overlapping, glyphs 16 with the last glyph 12px from the cell edge, and a 36px focus box fully inside the row. Tab reaches every action, and an open menu keeps its actions shown."
+          how: "Measure a row at rest and on hover: the value cell keeps its width, the tail is 40 for one action and 28 wider per further action, and its first and last targets sit the same distance from the divider and the frame edge. Tab reaches every action and a disabled one reads its reason. ui:lint flags a reveal or swap prop and hover-only layout changes in table CSS."
         }
       },
       {
@@ -384,7 +401,7 @@ export const tableDefinition = {
       {
         state: "hover and focus",
         guidance:
-          "Reveal actions appear on hover and on keyboard focus with no change in glyph size or row height. Tab reaches every action while it rests hidden, and an open menu keeps its actions shown and anchored to its trigger."
+          "Hover adds only the translucent row overlay, which the sticky tail cell repeats over its opaque surface. Row actions are already visible, so nothing appears, moves or resizes, and keyboard focus rings sit inside the row."
       },
       {
         state: "empty",

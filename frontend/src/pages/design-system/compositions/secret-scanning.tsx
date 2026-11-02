@@ -4,12 +4,9 @@ import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuSeparator
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
@@ -345,47 +342,6 @@ export default function SecretScanning() {
       header: "Status",
       width: 136,
       render: (row) => <Badge tone={statusOf(row.status).tone}>{statusOf(row.status).label}</Badge>
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      hideHeader: true,
-      render: (row) => (
-        <>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-                {`Status actions for ${row.rule} in ${row.repo}`}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Set status</DropdownMenuLabel>
-              {statuses
-                .filter((item) => item.value !== row.status)
-                .map((item) => (
-                  <DropdownMenuItem
-                    key={item.value}
-                    onSelect={() => setStatusFor([row.id], item.value)}
-                  >
-                    {item.action}
-                  </DropdownMenuItem>
-                ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setOpened(row.id)}>View details</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="ghost"
-            size="icon-row"
-            icon="chev-right"
-            iconOnly
-            onClick={() => setOpened(row.id)}
-          >
-            {`Open ${row.rule} in ${row.repo}`}
-          </Button>
-        </>
-      )
     }
   ];
 
@@ -469,6 +425,31 @@ export default function SecretScanning() {
             columns={columns}
             getRowId={(row) => row.id}
             rowLabel={(row) => `${row.rule} in ${row.repo}`}
+            rowActions={{
+              inline: [
+                { label: "Open finding", icon: "chev-right", onSelect: (row) => setOpened(row.id) }
+              ],
+              menuLabel: "Status actions",
+              renderMenu: (row) => (
+                <>
+                  <DropdownMenuLabel>Set status</DropdownMenuLabel>
+                  {statuses
+                    .filter((item) => item.value !== row.status)
+                    .map((item) => (
+                      <DropdownMenuItem
+                        key={item.value}
+                        onSelect={() => setStatusFor([row.id], item.value)}
+                      >
+                        {item.action}
+                      </DropdownMenuItem>
+                    ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setOpened(row.id)}>
+                    View details
+                  </DropdownMenuItem>
+                </>
+              )
+            }}
             selectable
             selectedIds={selected}
             onSelectionChange={setSelected}

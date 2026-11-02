@@ -345,18 +345,7 @@ const Detail = ({ identity, onBack }: { identity: Identity; onBack: () => void }
       render: (r) => <ProjectLink project={r.project} />
     },
     { id: "role", header: "Role", width: 200, render: (r) => <Badge tone="soft">{r.role}</Badge> },
-    { id: "added", header: "Added on", width: 140, render: (r) => r.added },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      hideHeader: true,
-      render: (r) => (
-        <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-          {`Actions for ${r.project}`}
-        </Button>
-      )
-    }
+    { id: "added", header: "Added on", width: 140, render: (r) => r.added }
   ];
   return (
     <Stack gap={24}>
@@ -504,6 +493,15 @@ const Detail = ({ identity, onBack }: { identity: Identity; onBack: () => void }
             columns={projectColumns}
             getRowId={(r) => r.project}
             rowLabel={(r) => r.project}
+            rowActions={{
+              renderMenu: () => (
+                <>
+                  <DropdownMenuItem>Open project</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive">Remove from project</DropdownMenuItem>
+                </>
+              )
+            }}
             empty={
               <EmptyState size="sm" media="bare" icon="folder" title="Not in any project yet" />
             }
@@ -602,35 +600,7 @@ export default function Identities() {
         );
       }
     },
-    { id: "used", header: "Last used", width: 140, render: (r) => r.lastUsed },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      hideHeader: true,
-      render: (r) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {`Actions for ${r.name}`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setOpenId(r.id)}>
-              {r.project ? "Open in project" : "View machine identity"}
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={Boolean(r.project)}>Add auth method</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={Boolean(r.project || r.deleteProtection)}
-            >
-              Delete machine identity
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
+    { id: "used", header: "Last used", width: 140, render: (r) => r.lastUsed }
   ];
   return (
     <Shell
@@ -701,6 +671,23 @@ export default function Identities() {
             label="Machine identities"
             rows={pageRows}
             onRowActivate={(row) => setOpenId(row.id)}
+            rowActions={{
+              renderMenu: (r) => (
+                <>
+                  <DropdownMenuItem onSelect={() => setOpenId(r.id)}>
+                    {r.project ? "Open in project" : "View machine identity"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled={Boolean(r.project)}>Add auth method</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={Boolean(r.project || r.deleteProtection)}
+                  >
+                    Delete machine identity
+                  </DropdownMenuItem>
+                </>
+              )
+            }}
             pagination={rows.length > 0 ? pagination : undefined}
             columns={columns}
             getRowId={(r) => r.id}

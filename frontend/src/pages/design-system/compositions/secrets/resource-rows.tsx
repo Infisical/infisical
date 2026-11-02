@@ -15,22 +15,19 @@ import {
 } from "lucide-react";
 
 import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v4/ui/dropdown-menu";
+import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { Icon } from "@app/components/v4/ui/icon";
 import {
+  type RowActionList,
+  RowActions,
   Table,
+  TableActionsCell,
+  TableActionsHead,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-  TableRowActions,
   TableRowIndicators
 } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
@@ -43,11 +40,11 @@ import {
   type Secret
 } from "../secrets-model";
 import {
-  ActionButton,
   ExpandToggle,
-  PendingActions,
   PendingBadge,
+  PendingMenuItems,
   presenceOf,
+  ROW_ACTION_SLOTS,
   type RowContext,
   SelectCell,
   StatusCell
@@ -104,11 +101,12 @@ function RotationStatus({ rotation }: { rotation: Of<"rotation"> }) {
   );
 }
 
+type SpecActions = { inline: RowActionList; menu?: ReactNode; menuDisabledReason?: string };
 type Spec = {
   label: (entry: Resource) => ReactNode;
   details: (entry: Resource) => ReactNode;
   flag?: (entries: Resource[]) => ReactNode;
-  actions: (entry: Resource, ctx: RowContext) => ReactNode;
+  actions: (entry: Resource, ctx: RowContext) => SpecActions;
 };
 const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec> = {
   dynamic: {
@@ -145,37 +143,44 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const block =
         ctx.writeBlock ??
         (item.status === "deleting" ? "Dynamic secret is being revoked" : undefined);
-      return (
-        <>
-          <ActionButton
-            label="View leases"
-            icon={ListIcon}
-            disabledReason={block}
-            onClick={run("leases")}
-          />
-          <ActionButton
-            label="Generate lease"
-            icon={FileKeyIcon}
-            disabledReason={block}
-            onClick={run("lease")}
-          />
-          <ActionButton label="Edit" icon={EditIcon} disabledReason={block} onClick={run("edit")} />
-          {item.status === "failed-deletion" && (
-            <ActionButton
-              label="Force delete"
-              icon={XIcon}
-              disabledReason={ctx.writeBlock}
-              onClick={run("force-delete")}
-            />
-          )}
-          <ActionButton
-            label="Delete"
-            name="trash"
-            disabledReason={block}
-            onClick={run("delete")}
-          />
-        </>
-      );
+      const forceBlock =
+        ctx.writeBlock ??
+        (item.status === "failed-deletion"
+          ? undefined
+          : "Only a dynamic secret whose deletion failed can be force deleted");
+      return {
+        inline: [
+          { label: "View leases", icon: ListIcon, disabledReason: block, onSelect: run("leases") },
+          {
+            label: "Generate lease",
+            icon: FileKeyIcon,
+            disabledReason: block,
+            onSelect: run("lease")
+          },
+          { label: "Edit", icon: EditIcon, disabledReason: block, onSelect: run("edit") }
+        ],
+        menu: (
+          <>
+            <DropdownMenuItem
+              disabled={Boolean(forceBlock)}
+              description={forceBlock}
+              onSelect={run("force-delete")}
+            >
+              <Icon icon={XIcon} />
+              Force delete
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={Boolean(block)}
+              description={block}
+              onSelect={run("delete")}
+            >
+              <Icon name="trash" />
+              Delete
+            </DropdownMenuItem>
+          </>
+        )
+      };
     }
   },
   rotation: {
@@ -206,48 +211,54 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const run =
         (action: "validate" | "credentials" | "rotate" | "reconcile" | "edit" | "delete") => () =>
           ctx.onAction({ kind: "rotation", action, entry: item });
-      return (
-        <>
-          <ActionButton
-            label="Validate credentials"
-            icon={ActivityIcon}
-            disabledReason={ctx.writeBlock}
-            onClick={run("validate")}
-          />
-          <ActionButton
-            label="View generated credentials"
-            name="eye"
-            disabledReason={ctx.writeBlock}
-            onClick={run("credentials")}
-          />
-          <ActionButton
-            label="Rotate secret"
-            name="sync"
-            disabledReason={ctx.writeBlock}
-            onClick={run("rotate")}
-          />
-          {canReconcile(item) && (
-            <ActionButton
-              label="Reconcile secret"
-              icon={HandshakeIcon}
-              disabledReason={ctx.writeBlock}
-              onClick={run("reconcile")}
-            />
-          )}
-          <ActionButton
-            label="Edit"
-            icon={EditIcon}
-            disabledReason={ctx.writeBlock}
-            onClick={run("edit")}
-          />
-          <ActionButton
-            label="Delete"
-            name="trash"
-            disabledReason={ctx.writeBlock}
-            onClick={run("delete")}
-          />
-        </>
-      );
+      const block = ctx.writeBlock;
+      const reconcileBlock =
+        block ??
+        (canReconcile(item)
+          ? undefined
+          : "Only local account rotations that log in as the target can be reconciled");
+      return {
+        inline: [
+          {
+            label: "Validate credentials",
+            icon: ActivityIcon,
+            disabledReason: block,
+            onSelect: run("validate")
+          },
+          {
+            label: "View generated credentials",
+            icon: "eye",
+            disabledReason: block,
+            onSelect: run("credentials")
+          },
+          { label: "Rotate secret", icon: "sync", disabledReason: block, onSelect: run("rotate") }
+        ],
+        menu: (
+          <>
+            <DropdownMenuItem
+              disabled={Boolean(reconcileBlock)}
+              description={reconcileBlock}
+              onSelect={run("reconcile")}
+            >
+              <Icon icon={HandshakeIcon} />
+              Reconcile secret
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={Boolean(block)} description={block} onSelect={run("edit")}>
+              <Icon icon={EditIcon} />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={Boolean(block)}
+              description={block}
+              onSelect={run("delete")}
+            >
+              <Icon name="trash" />
+              Delete
+            </DropdownMenuItem>
+          </>
+        )
+      };
     }
   },
   honey: {
@@ -272,53 +283,32 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"honey">;
       const run = (action: "details" | "edit" | "revoke") => () =>
         ctx.onAction({ kind: "honey", action, entry: item });
-      return (
-        <>
-          <ActionButton label="View details" icon={ListIcon} onClick={run("details")} />
-          {item.status === "revoked" ? (
-            <ActionButton
-              label={`More actions unavailable for ${item.name}`}
-              name="more"
-              disabledReason="Revoked honey tokens cannot be edited."
-            />
-          ) : (
-            <DropdownMenu>
-              <Tooltip content={`More actions for ${item.name}`}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-row"
-                    iconOnly
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <Icon name="more" />
-                    <span className="sr-only">{`More actions for ${item.name}`}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-              </Tooltip>
-              <DropdownMenuContent align="end" onCloseAutoFocus={(event) => event.preventDefault()}>
-                <DropdownMenuItem
-                  disabled={Boolean(ctx.writeBlock)}
-                  description={ctx.writeBlock}
-                  onSelect={run("edit")}
-                >
-                  <Icon icon={EditIcon} />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={Boolean(ctx.writeBlock)}
-                  description={ctx.writeBlock}
-                  variant="destructive"
-                  onSelect={run("revoke")}
-                >
-                  <Icon name="alert" />
-                  Revoke
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </>
-      );
+      return {
+        inline: [{ label: "View details", icon: ListIcon, onSelect: run("details") }],
+        menuDisabledReason:
+          item.status === "revoked" ? "Revoked honey tokens cannot be edited." : undefined,
+        menu: (
+          <>
+            <DropdownMenuItem
+              disabled={Boolean(ctx.writeBlock)}
+              description={ctx.writeBlock}
+              onSelect={run("edit")}
+            >
+              <Icon icon={EditIcon} />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={Boolean(ctx.writeBlock)}
+              description={ctx.writeBlock}
+              variant="destructive"
+              onSelect={run("revoke")}
+            >
+              <Icon name="alert" />
+              Revoke
+            </DropdownMenuItem>
+          </>
+        )
+      };
     }
   },
   proxy: {
@@ -350,22 +340,22 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
     },
     actions: (entry, ctx) => {
       const item = entry as Of<"proxy">;
-      return (
-        <>
-          <ActionButton
-            label="Edit"
-            icon={EditIcon}
-            disabledReason={ctx.writeBlock}
-            onClick={() => ctx.onAction({ kind: "proxy", action: "edit", entry: item })}
-          />
-          <ActionButton
-            label="Delete"
-            name="trash"
-            disabledReason={ctx.writeBlock}
-            onClick={() => ctx.onAction({ kind: "proxy", action: "delete", entry: item })}
-          />
-        </>
-      );
+      return {
+        inline: [
+          {
+            label: "Edit",
+            icon: EditIcon,
+            disabledReason: ctx.writeBlock,
+            onSelect: () => ctx.onAction({ kind: "proxy", action: "edit", entry: item })
+          },
+          {
+            label: "Delete",
+            icon: "trash",
+            disabledReason: ctx.writeBlock,
+            onSelect: () => ctx.onAction({ kind: "proxy", action: "delete", entry: item })
+          }
+        ]
+      };
     }
   }
 };
@@ -374,22 +364,25 @@ function EnvironmentTable({
   ctx,
   entries,
   render,
+  actions,
   valueHeader
 }: {
   ctx: RowContext;
   entries: Resource[];
   render: (entry: Resource) => ReactNode;
+  actions: (entry: Resource) => ReactNode;
   valueHeader?: ReactNode;
 }) {
   return (
     <TableRow className={styles.nestedRow}>
-      <TableCell colSpan={ctx.environments.length + 2} className={styles.nestedCell}>
+      <TableCell colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
         <Table className={styles.nestedTable}>
           <TableHeader>
             <TableRow>
               <TableHead className={styles.iconCell} />
               <TableHead className={styles.envName}>Environment</TableHead>
               <TableHead>{valueHeader}</TableHead>
+              <TableActionsHead slots={ROW_ACTION_SLOTS} />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -404,6 +397,7 @@ function EnvironmentTable({
                     <TableCell className={styles.iconCell} />
                     <TableCell className={styles.envName}>{environment.label}</TableCell>
                     <TableCell className={styles.nameCell}>{render(entry)}</TableCell>
+                    <TableActionsCell slots={ROW_ACTION_SLOTS}>{actions(entry)}</TableActionsCell>
                   </TableRow>
                 );
               })}
@@ -432,8 +426,17 @@ export function KindRow({
     <div className={styles.nameLine}>
       {withName && <span className={styles.truncate}>{spec.label(entry)}</span>}
       {spec.details(entry)}
-      <TableRowActions reveal>{spec.actions(entry, ctx)}</TableRowActions>
     </div>
+  );
+  const actions = (entry: Resource) => (
+    <RowActions
+      label={
+        ctx.single
+          ? entry.name
+          : `${entry.name} in ${environments.find((environment) => environment.value === entry.environment)?.label ?? entry.environment}`
+      }
+      {...spec.actions(entry, ctx)}
+    />
   );
   if (ctx.single)
     return (
@@ -451,6 +454,7 @@ export function KindRow({
         <TableCell colSpan={2} className={styles.nameCell}>
           {line(first, true)}
         </TableCell>
+        <TableActionsCell slots={ROW_ACTION_SLOTS}>{actions(first)}</TableActionsCell>
       </TableRow>
     );
   return (
@@ -489,9 +493,15 @@ export function KindRow({
             <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
           )
         )}
+        <TableActionsCell slots={ROW_ACTION_SLOTS} />
       </TableRow>
       {expanded && (
-        <EnvironmentTable ctx={ctx} entries={entries} render={(entry) => line(entry, false)} />
+        <EnvironmentTable
+          ctx={ctx}
+          entries={entries}
+          render={(entry) => line(entry, false)}
+          actions={actions}
+        />
       )}
     </>
   );
@@ -528,45 +538,55 @@ export function FolderRow({
           </span>
           {first.description && <InfoHint text={first.description} />}
           <PendingBadge type={ctx.pending?.[first.id]} />
-          <TableRowActions reveal>
-            <PendingActions id={first.id} ctx={ctx} />
-            <ActionButton
-              label="Move folder"
-              icon={FolderInputIcon}
-              disabledReason={ctx.writeBlock}
-              onClick={() =>
-                ctx.onAction({ kind: "folder", action: "move", entry: first, entries })
-              }
-            />
-            <ActionButton
-              label="Edit folder"
-              icon={EditIcon}
-              disabledReason={ctx.writeBlock}
-              onClick={() => onEdit(first)}
-            />
-            <ActionButton
-              label="Manage access"
-              icon={UsersIcon}
-              disabledReason={
-                ctx.single ? ctx.writeBlock : "Select a single environment to manage folder access."
-              }
-              onClick={() =>
-                ctx.onAction({ kind: "folder", action: "access", entry: first, entries })
-              }
-            />
-            <ActionButton
-              label="Delete folder"
-              name="trash"
-              disabledReason={ctx.writeBlock}
-              onClick={() => onDelete(first)}
-            />
-          </TableRowActions>
         </div>
       </TableCell>
       {!ctx.single &&
         ctx.environments.map((environment) => (
           <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
         ))}
+      <TableActionsCell slots={ROW_ACTION_SLOTS}>
+        <RowActions
+          label={first.name}
+          inline={[
+            {
+              label: "Move folder",
+              icon: FolderInputIcon,
+              disabledReason: ctx.writeBlock,
+              onSelect: () =>
+                ctx.onAction({ kind: "folder", action: "move", entry: first, entries })
+            },
+            {
+              label: "Edit folder",
+              icon: EditIcon,
+              disabledReason: ctx.writeBlock,
+              onSelect: () => onEdit(first)
+            },
+            {
+              label: "Manage access",
+              icon: UsersIcon,
+              disabledReason: ctx.single
+                ? ctx.writeBlock
+                : "Select a single environment to manage folder access.",
+              onSelect: () =>
+                ctx.onAction({ kind: "folder", action: "access", entry: first, entries })
+            }
+          ]}
+          menu={
+            <>
+              <PendingMenuItems id={first.id} ctx={ctx} />
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={Boolean(ctx.writeBlock)}
+                description={ctx.writeBlock}
+                onSelect={() => onDelete(first)}
+              >
+                <Icon name="trash" />
+                Delete folder
+              </DropdownMenuItem>
+            </>
+          }
+        />
+      </TableActionsCell>
     </TableRow>
   );
 }
@@ -617,22 +637,24 @@ export function ImportRow({
       </Tooltip>
     );
   const actions = (entry: Of<"import">) => (
-    <TableRowActions reveal>
-      {entry.replicated && (
-        <ActionButton
-          label="Resync"
-          name="sync"
-          disabledReason={ctx.writeBlock}
-          onClick={() => ctx.onAction({ kind: "import", action: "resync", entry })}
-        />
-      )}
-      <ActionButton
-        label="Delete"
-        name="trash"
-        disabledReason={ctx.writeBlock}
-        onClick={() => ctx.onAction({ kind: "import", action: "delete", entry })}
-      />
-    </TableRowActions>
+    <RowActions
+      label={`secret import ${entry.source.path}`}
+      inline={[
+        {
+          label: "Resync",
+          icon: "sync",
+          disabledReason:
+            ctx.writeBlock ?? (entry.replicated ? undefined : "Only replicated imports resync"),
+          onSelect: () => ctx.onAction({ kind: "import", action: "resync", entry })
+        },
+        {
+          label: "Delete",
+          icon: "trash",
+          disabledReason: ctx.writeBlock,
+          onSelect: () => ctx.onAction({ kind: "import", action: "delete", entry })
+        }
+      ]}
+    />
   );
   const toggle = (
     <ExpandToggle
@@ -671,7 +693,6 @@ export function ImportRow({
               </span>
             )}
             {ctx.single && <TableRowIndicators>{replication(first)}</TableRowIndicators>}
-            {ctx.single && actions(first)}
           </div>
         </TableCell>
         {!ctx.single &&
@@ -682,12 +703,15 @@ export function ImportRow({
               <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
             )
           )}
+        <TableActionsCell slots={ROW_ACTION_SLOTS}>{ctx.single && actions(first)}</TableActionsCell>
       </TableRow>
       {ctx.single && expanded && !first.revoked && (
         <TableRow className={styles.nestedHead}>
           <TableCell className={styles.iconCell} />
           <TableCell className={styles.nameCell}>Name</TableCell>
-          <TableCell className={styles.valueCell}>Value</TableCell>
+          <TableCell colSpan={2} className={styles.valueCell}>
+            Value
+          </TableCell>
         </TableRow>
       )}
       {ctx.single &&
@@ -697,7 +721,7 @@ export function ImportRow({
             <TableCell className={styles.nameCell}>
               <span className={styles.truncate}>{secret.name}</span>
             </TableCell>
-            <TableCell className={styles.valueCell}>
+            <TableCell colSpan={2} className={styles.valueCell}>
               <code className={styles.value}>
                 {readableValue(secret) === undefined ? "No access" : mask}
               </code>
@@ -707,14 +731,14 @@ export function ImportRow({
       {ctx.single && expanded && first.revoked && (
         <TableRow className={styles.importedRow}>
           <TableCell className={styles.iconCell} />
-          <TableCell colSpan={2} className={styles.subtle}>
+          <TableCell colSpan={3} className={styles.subtle}>
             Access to this source was revoked, so its secrets are not shown.
           </TableCell>
         </TableRow>
       )}
       {!ctx.single && expanded && (
         <TableRow className={styles.nestedRow}>
-          <TableCell colSpan={ctx.environments.length + 2} className={styles.nestedCell}>
+          <TableCell colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
             <div className={styles.importedIn}>
               <span className={styles.subtle}>Imported in:</span>
               {entries.map((entry) => (

@@ -982,9 +982,15 @@ button.rowTitle::after {
 .tableScroll tbody tr:last-child > td {
   border-bottom: 0;
 }
+/* The frame edge draws over the cell's first pixel, so a start pad of one line centers the checkbox between that edge and the divider. */
 .tableScroll .tableCheck {
-  width: var(--v4-size-control-lg);
-  padding-inline: var(--v4-space-12);
+  width: var(--v4-size-row);
+  padding-inline: var(--v4-size-control-border) 0;
+  border-inline-end: var(--v4-size-control-border) solid var(--v4-line-soft);
+}
+.tableScroll th.tableCheck > *,
+.tableSelection > * {
+  margin-inline: auto;
 }
 .tableScroll [data-variant="striped"] tbody tr:nth-child(even) {
   background: var(--v4-row-done);
@@ -1188,43 +1194,46 @@ button.rowTitle::after {
   display: flex;
   flex: none;
   align-items: center;
+  justify-content: center;
   gap: var(--v4-space-row-actions-gap);
   width: max-content;
-  margin-inline-start: auto;
+  margin-inline: auto;
 }
-/* Pull a trailing icon-row target into the cell padding so its glyph, not its box, sits on the content edge. */
-.tableRowActions:has(> :last-child [data-size="icon-row"], > [data-size="icon-row"]:last-child) {
-  margin-inline-end: var(--v4-row-glyph-pull);
+.tableRowActionSlot {
+  display: inline-flex;
 }
-/* Resting reveal actions stay focusable: visually hidden, never display none or visibility hidden. */
-.tableRowActions[data-reveal] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+th.tableActions,
+td.tableActions {
+  position: sticky;
+  inset-inline-end: 0;
+  width: calc(
+    var(--v4-size-row) + (var(--v4-row-action-slots, 1) - 1) * var(--v4-size-row-action-step)
+  );
+  padding-inline: var(--v4-space-row-actions-inset);
+  background-color: var(--v4-surface);
+  border-inline-start: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
-/* Only a leaf row reveals, so a row hosting a nested table never reveals every nested row at once. */
-[data-slot="table-row"]:not(:has([data-slot="table-row"])):is(
-    :hover,
-    :focus-within,
-    :has([aria-expanded="true"])
-  )
-  .tableRowActions[data-reveal],
-.tableRowActions[data-reveal][data-open] {
-  position: static;
-  width: max-content;
-  height: auto;
-  overflow: visible;
-  clip-path: none;
+/* DataTable draws the frame edge inside the pinned cell, so the end pad clears that line too. */
+.tableScroll td.tableActions {
+  padding-inline-end: calc(var(--v4-space-row-actions-inset) + var(--v4-size-control-border));
 }
-.tableRowActionsSeparator {
-  flex: none;
-  width: var(--v4-size-control-border);
-  height: var(--v4-size-glyph);
-  margin-inline: var(--v4-space-2);
-  background: var(--v4-line);
+.tableScroll th.tableActions {
+  background-color: var(--v4-tint);
+}
+.nativeTableRow:is(:hover, :has([aria-expanded="true"])) > td.tableActions {
+  background-image: linear-gradient(
+    color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent),
+    color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent)
+  );
+}
+.nativeTableRow[data-state="selected"] > td.tableActions {
+  background-color: var(--v4-selected-surface);
+}
+.tableRowActionSkeleton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-target-row);
 }
 .tableRowIndicators {
   display: flex;
@@ -1245,38 +1254,6 @@ button.rowTitle::after {
 .tableRowIndicators svg {
   width: var(--v4-size-glyph);
   height: var(--v4-size-glyph);
-}
-.tableRowIndicators ~ .tableRowActions {
-  margin-inline-start: 0;
-}
-.tableRowIndicators:has(~ .tableRowActions:not([data-reveal])),
-[data-slot="table-row"]:not(:has([data-slot="table-row"])):is(
-    :hover,
-    :focus-within,
-    :has([aria-expanded="true"]),
-    :has(.tableRowActions[data-open])
-  )
-  .tableRowIndicators:has(~ .tableRowActions[data-reveal]) {
-  margin-inline-end: 0;
-}
-[data-slot="table-row"]:not(:has([data-slot="table-row"])):is(
-    :hover,
-    :focus-within,
-    :has([aria-expanded="true"]),
-    :has(.tableRowActions[data-open])
-  )
-  .tableRowIndicators[data-swap]:has(~ .tableRowActions[data-reveal]) {
-  display: none;
-}
-[data-slot="table-row"]:not(:has([data-slot="table-row"])):is(
-    :hover,
-    :focus-within,
-    :has([aria-expanded="true"]),
-    :has(.tableRowActions[data-open])
-  )
-  .tableRowIndicators[data-swap]
-  ~ .tableRowActions[data-reveal] {
-  margin-inline-start: auto;
 }
 
 /* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */

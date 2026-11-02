@@ -198,26 +198,19 @@ const seed: Connection[] = [
   }
 ];
 
-const RowActions = ({ row, onDelete }: { row: Connection; onDelete: () => void }) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-        {`Actions for ${row.name}`}
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <DropdownMenuItem onSelect={() => navigator.clipboard?.writeText(row.id)}>
-        Copy connection ID
-      </DropdownMenuItem>
-      <DropdownMenuItem disabled={Boolean(row.project)}>Edit details</DropdownMenuItem>
-      <DropdownMenuItem disabled={Boolean(row.project)}>Edit credentials</DropdownMenuItem>
-      {row.rotation && <DropdownMenuItem>Rotate credentials</DropdownMenuItem>}
-      <DropdownMenuSeparator />
-      <DropdownMenuItem variant="destructive" disabled={Boolean(row.project)} onSelect={onDelete}>
-        Delete connection
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
+const ConnectionMenu = ({ row, onDelete }: { row: Connection; onDelete: () => void }) => (
+  <>
+    <DropdownMenuItem onSelect={() => navigator.clipboard?.writeText(row.id)}>
+      Copy connection ID
+    </DropdownMenuItem>
+    <DropdownMenuItem disabled={Boolean(row.project)}>Edit details</DropdownMenuItem>
+    <DropdownMenuItem disabled={Boolean(row.project)}>Edit credentials</DropdownMenuItem>
+    {row.rotation && <DropdownMenuItem>Rotate credentials</DropdownMenuItem>}
+    <DropdownMenuSeparator />
+    <DropdownMenuItem variant="destructive" disabled={Boolean(row.project)} onSelect={onDelete}>
+      Delete connection
+    </DropdownMenuItem>
+  </>
 );
 
 const NewConnection = ({ onCreate }: { onCreate: (connection: Connection) => void }) => {
@@ -493,15 +486,6 @@ export default function Connections() {
           {r.status.label}
         </Badge>
       )
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      hideHeader: true,
-      render: (r) => (
-        <RowActions row={r} onDelete={() => setRows((all) => all.filter((x) => x.id !== r.id))} />
-      )
     }
   ];
   const filtered = Boolean(query.trim() || filter.length);
@@ -587,6 +571,14 @@ export default function Connections() {
               columns={columns}
               getRowId={(r) => r.id}
               rowLabel={(r) => r.name}
+              rowActions={{
+                renderMenu: (r) => (
+                  <ConnectionMenu
+                    row={r}
+                    onDelete={() => setRows((all) => all.filter((x) => x.id !== r.id))}
+                  />
+                )
+              }}
               sort={sort}
               onSortChange={setSort}
               empty={
