@@ -1,5 +1,6 @@
 import { type ReactNode, useRef, useState } from "react";
 import {
+  BellDotIcon,
   BellIcon,
   CodeXmlIcon,
   CopyPlusIcon,
@@ -49,9 +50,11 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  RowActions,
+  TableActionsCell,
+  TableActionsHead,
   TableRow,
   TableRowActions,
-  TableRowActionsSeparator,
   TableRowIndicators
 } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
@@ -70,8 +73,9 @@ import {
   ExpandToggle,
   type KindOverlay,
   NEXT_PHASE,
-  PendingActions,
   PendingBadge,
+  PendingMenuItems,
+  ROW_ACTION_SLOTS,
   type RowContext,
   SelectCell,
   StatusCell
@@ -267,13 +271,12 @@ function Indicators({ secret }: { secret: Secret }) {
       icon: TagsIcon,
       label: `${secret.tags.length} tag${secret.tags.length > 1 ? "s" : ""}`
     },
-    secret.reminder && { icon: BellIcon, label: "Has reminder" },
     secret.metadata.length > 0 && { icon: CodeXmlIcon, label: "Has metadata" },
     secret.skipMultilineEncoding && { icon: WrapTextIcon, label: "Multi-line encoding disabled" }
   ].filter(Boolean) as { icon: typeof TagsIcon; label: string }[];
   if (!marks.length) return null;
   return (
-    <TableRowIndicators swap>
+    <TableRowIndicators>
       {marks.map((mark) => (
         <Tooltip key={mark.label} content={mark.label}>
           <span className={styles.hint}>
@@ -325,12 +328,6 @@ function SecretActions({
   let referencesBlock: string | undefined;
   if (value === undefined) referencesBlock = "Access denied";
   else if (value === "") referencesBlock = "Create secret to view references";
-  const annotated = Boolean(
-    (!ctx.single && secret.comment) ||
-    secret.tags.length ||
-    secret.reminder ||
-    secret.metadata.length
-  );
   const popover = open && popovers.includes(open) ? open : undefined;
   const later = (action: () => void) => () => {
     pending.current = action;
@@ -346,33 +343,12 @@ function SecretActions({
         }}
       >
         <PopoverAnchor asChild>
-          <TableRowActions reveal open={Boolean(popover)}>
-            <PendingActions id={secret.id} ctx={ctx} />
-            {!ctx.single && secret.comment && (
-              <ActionButton
-                label="View comment"
-                icon={MessageSquareIcon}
-                onClick={() => setOpen("comment")}
-              />
-            )}
-            {secret.tags.length > 0 && (
-              <ActionButton label="View tags" icon={TagsIcon} onClick={() => setOpen("tags")} />
-            )}
-            {secret.reminder && (
-              <ActionButton
-                label="View reminder"
-                icon={BellIcon}
-                onClick={() => setOpen("reminder")}
-              />
-            )}
-            {secret.metadata.length > 0 && (
-              <ActionButton
-                label="View metadata"
-                icon={CodeXmlIcon}
-                onClick={() => setOpen("metadata")}
-              />
-            )}
-            {annotated && <TableRowActionsSeparator />}
+          <TableRowActions>
+            <ActionButton
+              label={secret.reminder ? "View reminder" : "Add reminder"}
+              icon={secret.reminder ? BellDotIcon : BellIcon}
+              onClick={() => setOpen("reminder")}
+            />
             <ActionButton
               label="Edit value"
               icon={EditIcon}
@@ -422,6 +398,7 @@ function SecretActions({
                   event.preventDefault();
                 }}
               >
+                <PendingMenuItems id={secret.id} ctx={ctx} />
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <Icon icon={PencilLineIcon} />
@@ -653,19 +630,16 @@ function OverrideValue({
   secret,
   creating,
   visible,
-  ctx,
   onStopCreating,
   onUpdate
 }: {
   secret: Secret;
   creating: boolean;
   visible: boolean;
-  ctx: RowContext;
   onStopCreating: () => void;
   onUpdate: SecretUpdate;
 }) {
   const [editing, setEditing] = useState(false);
-  const [removing, setRemoving] = useState(false);
   const saved = (title: string) => ({ title, description: LOCAL_ONLY });
   const value = secret.override ?? "";
   if (creating || editing)
@@ -704,21 +678,51 @@ function OverrideValue({
       >
         {visible ? <ReferenceText value={value || " "} scope={secret} /> : mask}
       </span>
-      <TableRowActions>
-        <ActionButton
-          label="Copy override"
-          name="copy"
-          onClick={() =>
-            copy(
-              value,
-              "Personal override copied to clipboard.",
-              "Could not copy the override. Check clipboard permissions.",
-              ctx.report
-            )
+    </div>
+  );
+}
+
+function OverrideActions({
+  secret,
+  label,
+  creating,
+  ctx,
+  onUpdate
+}: {
+  secret: Secret;
+  label: string;
+  creating: boolean;
+  ctx: RowContext;
+  onUpdate: SecretUpdate;
+}) {
+  const [removing, setRemoving] = useState(false);
+  const saved = (title: string) => ({ title, description: LOCAL_ONLY });
+  const block = creating ? "Create the override first" : undefined;
+  return (
+    <>
+      <RowActions
+        label={label}
+        inline={[
+          {
+            label: "Copy override",
+            icon: "copy",
+            disabledReason: block,
+            onSelect: () =>
+              copy(
+                secret.override ?? "",
+                "Personal override copied to clipboard.",
+                "Could not copy the override. Check clipboard permissions.",
+                ctx.report
+              )
+          },
+          {
+            label: "Remove override",
+            icon: "trash",
+            disabledReason: block,
+            onSelect: () => setRemoving(true)
           }
-        />
-        <ActionButton label="Remove override" name="trash" onClick={() => setRemoving(true)} />
-      </TableRowActions>
+        ]}
+      />
       <AlertDialog open={removing} onOpenChange={setRemoving}>
         <AlertDialogContent tone="danger">
           <AlertDialogHeader>
@@ -745,7 +749,7 @@ function OverrideValue({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
 
@@ -827,15 +831,17 @@ export function SecretRow({
                 pending={Boolean(ctx.pending?.[first.id])}
               />
               <Indicators secret={first} />
-              <SecretActions
-                secret={first}
-                ctx={ctx}
-                handlers={handlers}
-                onInlineEdit={() => setEditing(first.environment)}
-                onAddOverride={() => startCreating(first.environment)}
-              />
             </div>
           </TableCell>
+          <TableActionsCell slots={ROW_ACTION_SLOTS}>
+            <SecretActions
+              secret={first}
+              ctx={ctx}
+              handlers={handlers}
+              onInlineEdit={() => setEditing(first.environment)}
+              onAddOverride={() => startCreating(first.environment)}
+            />
+          </TableActionsCell>
         </TableRow>
         {showOverride && (
           <TableRow className={`${styles.row} ${styles.overrideRow}`}>
@@ -852,11 +858,19 @@ export function SecretRow({
                 secret={first}
                 creating={creatingOverride.includes(first.environment)}
                 visible={revealAll}
-                ctx={ctx}
                 onStopCreating={() => stopCreating(first.environment)}
                 onUpdate={handlers.onUpdate}
               />
             </TableCell>
+            <TableActionsCell slots={ROW_ACTION_SLOTS}>
+              <OverrideActions
+                secret={first}
+                label={`${name} override`}
+                creating={creatingOverride.includes(first.environment)}
+                ctx={ctx}
+                onUpdate={handlers.onUpdate}
+              />
+            </TableActionsCell>
           </TableRow>
         )}
       </>
@@ -895,21 +909,6 @@ export function SecretRow({
             <span className={styles.truncate} title={name}>
               {name}
             </span>
-            <TableRowActions reveal>
-              <ActionButton
-                label="Copy secret name"
-                name="copy"
-                onClick={() =>
-                  copy(
-                    name,
-                    `Copied the name ${name}.`,
-                    "Could not copy the name. Check clipboard permissions.",
-                    ctx.report
-                  )
-                }
-              />
-              <ActionButton label="Edit secret name" icon={EditIcon} disabledReason={NEXT_PHASE} />
-            </TableRowActions>
           </div>
         </TableCell>
         {ctx.environments.map((environment) =>
@@ -925,10 +924,34 @@ export function SecretRow({
             />
           )
         )}
+        <TableActionsCell slots={ROW_ACTION_SLOTS}>
+          <RowActions
+            label={name}
+            inline={[
+              {
+                label: "Copy secret name",
+                icon: "copy",
+                onSelect: () =>
+                  copy(
+                    name,
+                    `Copied the name ${name}.`,
+                    "Could not copy the name. Check clipboard permissions.",
+                    ctx.report
+                  )
+              },
+              {
+                label: "Edit secret name",
+                icon: EditIcon,
+                disabledReason: NEXT_PHASE,
+                onSelect: () => {}
+              }
+            ]}
+          />
+        </TableActionsCell>
       </TableRow>
       {expanded && (
         <TableRow className={styles.nestedRow}>
-          <TableCell colSpan={ctx.environments.length + 2} className={styles.nestedCell}>
+          <TableCell colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
             <Table className={styles.nestedTable}>
               <TableHeader>
                 <TableRow>
@@ -945,6 +968,7 @@ export function SecretRow({
                       {rowVisible ? "Hide values" : "Reveal values"}
                     </Button>
                   </TableHead>
+                  <TableActionsHead slots={ROW_ACTION_SLOTS} />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -994,27 +1018,32 @@ export function SecretRow({
                               pending={Boolean(secret && ctx.pending?.[secret.id])}
                             />
                             {secret && <Indicators secret={secret} />}
-                            {secret ? (
-                              <SecretActions
-                                secret={secret}
-                                ctx={ctx}
-                                handlers={handlers}
-                                onInlineEdit={() => setEditing(environment.value)}
-                                onAddOverride={() => startCreating(environment.value)}
-                              />
-                            ) : (
-                              <TableRowActions reveal>
-                                <ActionButton
-                                  label="Add value"
-                                  icon={EditIcon}
-                                  disabledReason={ctx.writeBlock}
-                                  onClick={() => handlers.onCreateIn(environment.value, name)}
-                                />
-                              </TableRowActions>
-                            )}
                           </div>
                         )}
                       </TableCell>
+                      <TableActionsCell slots={ROW_ACTION_SLOTS}>
+                        {secret ? (
+                          <SecretActions
+                            secret={secret}
+                            ctx={ctx}
+                            handlers={handlers}
+                            onInlineEdit={() => setEditing(environment.value)}
+                            onAddOverride={() => startCreating(environment.value)}
+                          />
+                        ) : (
+                          <RowActions
+                            label={`${name} in ${environment.label}`}
+                            inline={[
+                              {
+                                label: "Add value",
+                                icon: EditIcon,
+                                disabledReason: ctx.writeBlock,
+                                onSelect: () => handlers.onCreateIn(environment.value, name)
+                              }
+                            ]}
+                          />
+                        )}
+                      </TableActionsCell>
                     </TableRow>
                   ];
                   if (
@@ -1035,12 +1064,20 @@ export function SecretRow({
                               secret={secret}
                               creating={creatingOverride.includes(environment.value)}
                               visible={rowVisible}
-                              ctx={ctx}
                               onStopCreating={() => stopCreating(environment.value)}
                               onUpdate={handlers.onUpdate}
                             />
                           </div>
                         </TableCell>
+                        <TableActionsCell slots={ROW_ACTION_SLOTS}>
+                          <OverrideActions
+                            secret={secret}
+                            label={`${name} override in ${environment.label}`}
+                            creating={creatingOverride.includes(environment.value)}
+                            ctx={ctx}
+                            onUpdate={handlers.onUpdate}
+                          />
+                        </TableActionsCell>
                       </TableRow>
                     );
                   return rows;

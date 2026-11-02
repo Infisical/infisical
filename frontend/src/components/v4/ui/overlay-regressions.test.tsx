@@ -81,7 +81,7 @@ it.each([
   expect(document.querySelectorAll('[data-slot="alert-dialog-media"]')).toHaveLength(expected);
 });
 
-it("scrolls the header and body together and keeps the footer and close outside", async () => {
+it("pins the header above the scroll region and keeps the footer and close outside", async () => {
   await React.act(async () =>
     root.render(
       <V4Scope>
@@ -96,11 +96,13 @@ it("scrolls the header and body together and keeps the footer and close outside"
         </Dialog>
         <Sheet open>
           <SheetContent aria-describedby={undefined}>
-            <SheetHeader>
-              <SheetTitle>Import</SheetTitle>
-            </SheetHeader>
-            <SheetSubheader>acme / payments-api / production</SheetSubheader>
-            <SheetBody>Keys</SheetBody>
+            <>
+              <SheetHeader>
+                <SheetTitle>Import</SheetTitle>
+              </SheetHeader>
+              <SheetSubheader>acme / payments-api / production</SheetSubheader>
+              <SheetBody>Keys</SheetBody>
+            </>
           </SheetContent>
         </Sheet>
       </V4Scope>
@@ -108,7 +110,10 @@ it("scrolls the header and body together and keeps the footer and close outside"
   );
   const scroller = document.querySelector('[data-slot="dialog-scroll"]');
   expect(scroller?.getAttribute("data-scroll-fade")).toBe("y");
-  expect(scroller?.querySelector('[data-slot="dialog-header"]')).not.toBeNull();
+  expect(scroller?.querySelector('[data-slot="dialog-header"]')).toBeNull();
+  expect(
+    document.querySelector('[data-slot="dialog-head"] > [data-slot="dialog-header"]')
+  ).not.toBeNull();
   expect(scroller?.querySelector('[data-slot="dialog-footer"]')).toBeNull();
   expect(scroller?.querySelector('[data-slot="dialog-close"]')).toBeNull();
   expect(
@@ -120,6 +125,11 @@ it("scrolls the header and body together and keeps the footer and close outside"
   const sheetScroller = document.querySelector('[data-slot="sheet-scroll"]');
   expect(sheetScroller?.querySelector('[data-slot="sheet-body"]')).not.toBeNull();
   expect(sheetScroller?.querySelector('[data-slot="sheet-subheader"]')).toBeNull();
+  expect(
+    document.querySelector(
+      '[data-slot="sheet-head"] > [data-slot="sheet-header"] + [data-slot="sheet-subheader"]'
+    )
+  ).not.toBeNull();
 });
 
 it("leaves free-form sheet content unwrapped", async () => {

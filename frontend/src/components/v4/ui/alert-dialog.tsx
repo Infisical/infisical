@@ -8,6 +8,7 @@ import { Button } from "@app/components/v4/ui/button";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 
+import { OverlayPendingContext, useDismissGuard, useOverlayPending } from "../lib/overlay-pending";
 import { splitOverlaySections } from "../lib/overlay-sections";
 import { useOwnedEscape } from "../lib/use-owned-escape";
 import { cn } from "../lib/utils";
@@ -64,6 +65,7 @@ function AlertDialogContent({
   tone,
   icon,
   confirmText,
+  pending = false,
   onEscapeKeyDown,
   children,
   ref,
@@ -75,8 +77,11 @@ function AlertDialogContent({
   icon?: IconName;
   /** The exact text the person types before the action enables. */
   confirmText?: string;
+  /** While true, Escape and Cancel are blocked, so an in-flight action cannot be abandoned. */
+  pending?: boolean;
 } & { ref?: React.Ref<React.ComponentRef<typeof AlertDialogPrimitive.Content>> }) {
   const escape = useOwnedEscape(ref, onEscapeKeyDown);
+  const guard = useDismissGuard(pending, { onEscapeKeyDown: escape.onEscapeKeyDown });
   const [typed, setTyped] = React.useState("");
   const [hasMedia, setHasMedia] = React.useState(false);
   const toneValue = React.useMemo(() => ({ tone, claimMedia: setHasMedia }), [tone]);
@@ -123,6 +128,7 @@ function AlertDialogContent({
         data-sections={sections ? "" : undefined}
         data-size={size}
         data-tone={tone}
+        aria-busy={pending || undefined}
         className={cn(
           "group/alert-dialog-content z-50 data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm",
           overlay.pop,
@@ -137,31 +143,33 @@ function AlertDialogContent({
           event.preventDefault();
           document.getElementById(fieldId)?.focus();
         }}
-        onEscapeKeyDown={escape.onEscapeKeyDown}
+        onEscapeKeyDown={guard.onEscapeKeyDown}
       >
-        <ConfirmContext value={{ ready: confirmText === undefined || typed === confirmText }}>
-          <ToneContext value={toneValue}>
-            {sections ? (
-              <>
-                {sections.scroll.length > 0 && (
-                  <div data-slot="alert-dialog-scroll" data-scroll-fade="y">
-                    {sections.scroll}
-                  </div>
-                )}
-                {sections.footer}
-              </>
-            ) : (
-              <>
-                {!hasMedia && (icon || tone === "danger") && (
-                  <AlertDialogMedia data-auto="">
-                    <Icon name={icon ?? "trash"} size={20} />
-                  </AlertDialogMedia>
-                )}
-                {parts}
-              </>
-            )}
-          </ToneContext>
-        </ConfirmContext>
+        <OverlayPendingContext value={pending}>
+          <ConfirmContext value={{ ready: confirmText === undefined || typed === confirmText }}>
+            <ToneContext value={toneValue}>
+              {sections ? (
+                <>
+                  {sections.scroll.length > 0 && (
+                    <div data-slot="alert-dialog-scroll" data-scroll-fade="y">
+                      {sections.scroll}
+                    </div>
+                  )}
+                  {sections.footer}
+                </>
+              ) : (
+                <>
+                  {!hasMedia && (icon || tone === "danger") && (
+                    <AlertDialogMedia data-auto="">
+                      <Icon name={icon ?? "trash"} size={20} />
+                    </AlertDialogMedia>
+                  )}
+                  {parts}
+                </>
+              )}
+            </ToneContext>
+          </ConfirmContext>
+        </OverlayPendingContext>
       </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
@@ -295,12 +303,14 @@ function AlertDialogCancel({
   variant = "outline",
   size = "default",
   asChild,
+  disabled,
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel> &
   Pick<React.ComponentPropsWithoutRef<typeof Button>, "variant" | "size"> & {
     ref?: React.Ref<React.ComponentRef<typeof AlertDialogPrimitive.Cancel>>;
   }) {
+  const pending = useOverlayPending();
   if (asChild)
     return (
       <AlertDialogPrimitive.Cancel
@@ -308,11 +318,12 @@ function AlertDialogCancel({
         asChild
         data-slot="alert-dialog-cancel"
         className={className}
+        disabled={disabled || pending}
         {...props}
       />
     );
   return (
-    <Button variant={variant} size={size} asChild>
+    <Button variant={variant} size={size} disabled={disabled || pending} asChild>
       <AlertDialogPrimitive.Cancel
         ref={ref}
         data-slot="alert-dialog-cancel"
@@ -323,6 +334,38 @@ function AlertDialogCancel({
   );
 }
 AlertDialogCancel.displayName = "AlertDialogCancel";
+
+function DiscardChangesAlertDialog({
+  open,
+  onOpenChange,
+  onDiscard,
+  title = "Discard Changes?",
+  description = "Your changes will be lost."
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDiscard: () => void;
+  title?: string;
+  description?: string;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent tone="danger" icon="alert">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onDiscard}>
+            Discard
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+DiscardChangesAlertDialog.displayName = "DiscardChangesAlertDialog";
 
 export {
   AlertDialog,
@@ -336,5 +379,6 @@ export {
   AlertDialogOverlay,
   AlertDialogPortal,
   AlertDialogTitle,
-  AlertDialogTrigger
+  AlertDialogTrigger,
+  DiscardChangesAlertDialog
 };

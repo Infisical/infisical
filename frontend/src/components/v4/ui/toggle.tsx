@@ -50,6 +50,12 @@ function Toggle({
 }: React.ComponentPropsWithoutRef<typeof TogglePrimitive.Root> &
   VariantProps<typeof toggleVariants> & {
     ref?: React.Ref<React.ComponentRef<typeof TogglePrimitive.Root>>;
+    /** Toggle is a pressed button, not the v3 Toggle (a switch). Use Switch for checked and onCheckedChange, or pressed here. */
+    checked?: never;
+    /** Toggle is a pressed button, not the v3 Toggle (a switch). Use Switch for defaultChecked, or defaultPressed here. */
+    defaultChecked?: never;
+    /** Toggle is a pressed button, not the v3 Toggle (a switch). Use Switch for checked and onCheckedChange, or onPressedChange here. */
+    onCheckedChange?: never;
   }) {
   return (
     <TogglePrimitive.Root

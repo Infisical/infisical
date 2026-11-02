@@ -70,6 +70,7 @@ Exports: Switch. Source TypeScript defines the API.
 ## Limits
 
 - Switch reports boolean changes but does not persist or roll them back; the host must represent pending and failed updates truthfully.
+- Migration: v3 Toggle is this component. Port v3 Toggle with checked and onCheckedChange to Switch, not to the v4 Toggle, which is a pressed button.
 
 ## Declared example coverage
 

@@ -50,7 +50,7 @@ Owner: button.
 
 When an icon-only action sits in a table row, a field or a toolbar.
 
-Do: Use icon-row for actions in a Table or DataTable row, inside TableRowActions. Keep icon-xs and icon-sm for actions nested in a field or block (InputGroup reveal and copy, Code and Snippet copy, a combobox clear) and for overlay chrome, and icon for a standalone toolbar action.
+Do: Use icon-row for actions in a Table or DataTable row, in the sticky actions column (DataTable rowActions or RowActions). Keep icon-xs and icon-sm for actions nested in a field or block (InputGroup reveal and copy, Code and Snippet copy, a combobox clear) and for overlay chrome, and icon for a standalone toolbar action.
 
 Avoid: Put icon-xs or icon-sm in a table row, or icon-row in a field slot, a toolbar or a dialog header.
 
@@ -129,7 +129,7 @@ Source declarations and review criteria only. Generation checks references and c
 - xs: omitted. 24px, below the 32/36/40 control scale. Reserved for actions nested inside another control, such as a chip or a field slot.
 - icon-xs: omitted. 24px nested icon action, the icon partner of xs. Same reason as xs.
 - icon-sm: omitted. 28px icon action for overlay chrome such as a dialog or sheet close. It sits inside a header, never beside text Buttons.
-- icon-row: omitted. 28px target with a 16px glyph for table row actions. It only makes sense inside TableRowActions, so the Table row actions example shows it.
+- icon-row: omitted. 28px target with a 16px glyph for table row actions. It only makes sense in a table's sticky actions column, so the Table row actions example shows it.
 
 ### icon placement
 

@@ -1,19 +1,26 @@
 import * as React from "react";
+import type { LucideIcon } from "lucide-react";
 
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
 import { FloatingActionBarHostContext } from "./floating-action-bar";
-import { Icon } from "./icon";
+import { Icon, type IconName } from "./icon";
 import { Skeleton } from "./skeleton";
 import {
+  rowActionSlots,
+  RowActions,
   Table,
+  TableActionsCell,
+  TableActionsHead,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-  TableRowActions
+  TableRowActions,
+  type RowAction,
+  type UpToThree
 } from "./table";
 import { Tooltip } from "./tooltip";
 
@@ -45,6 +52,21 @@ export interface DataTableToggle<Row> {
   adornment?: (row: Row) => React.ReactNode;
   label?: string;
 }
+export interface DataTableRowAction<Row> {
+  label: string | ((row: Row) => string);
+  icon: IconName | LucideIcon;
+  onSelect: (row: Row) => void;
+  disabledReason?: (row: Row) => string | undefined;
+}
+export interface DataTableRowActions<Row> {
+  /** At most three icon actions, the same set on every row; a blocked one stays visible and disabled with its reason. */
+  inline?: UpToThree<DataTableRowAction<Row>>;
+  /** Items for the More menu after the inline actions, for everything past the first three. */
+  renderMenu?: (row: Row) => React.ReactNode;
+  menuLabel?: string;
+  menuDisabledReason?: (row: Row) => string | undefined;
+  header?: string;
+}
 export interface DataTableProps<Row> {
   label: string;
   rows: readonly Row[];
@@ -72,6 +94,12 @@ export interface DataTableProps<Row> {
   loading?: boolean;
   loadingRows?: number;
   actionBar?: React.ReactNode;
+  /** Persistent row actions in the sticky tail column: inline icon actions, then the More menu. */
+  rowActions?: DataTableRowActions<Row>;
+  /** The scroll container (vertical and horizontal), for ports that read scrollTop or observe it. */
+  containerRef?: React.Ref<HTMLDivElement>;
+  /** Layout classes for the scroll container, such as a flex-fill height. */
+  containerClassName?: string;
 }
 const interactiveTarget =
   "a, button, input, select, textarea, label, summary, [contenteditable], [tabindex]:not(tr), [role=button], [role=checkbox], [role=combobox], [role=link], [role=menuitem], [role=switch], [role=tab], [data-row-interactive]";
@@ -110,12 +138,23 @@ export function DataTable<Row>({
   pagination,
   loading = false,
   loadingRows = 5,
-  actionBar
+  actionBar,
+  rowActions,
+  containerRef,
+  containerClassName
 }: DataTableProps<Row>) {
   const [barPlacement, setBarPlacement] = React.useState<"fixed" | "contained" | null>(null);
   const [ownSelected, setOwnSelected] = React.useState<readonly string[]>(defaultSelectedIds);
   const [top, setTop] = React.useState(0);
   const scroll = React.useRef<HTMLDivElement>(null);
+  const attachScroll = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      scroll.current = node;
+      if (typeof containerRef === "function") containerRef(node);
+      else if (containerRef) containerRef.current = node;
+    },
+    [containerRef]
+  );
   const [landing, setLanding] = React.useState<number | null>(null);
   const [focusRow, setFocusRow] = React.useState<number | null>(null);
   const focusPending = React.useRef(false);
@@ -203,7 +242,10 @@ export function DataTable<Row>({
       off: enabled.filter((row) => toggle.checked(row) === false).length
     };
   };
-  const span = columns.length + (selectable ? 1 : 0);
+  const slots = rowActions
+    ? rowActionSlots(rowActions.inline?.length ?? 0, Boolean(rowActions.renderMenu))
+    : 0;
+  const span = columns.length + (selectable ? 1 : 0) + (rowActions ? 1 : 0);
   const hasGrowingColumn = columns.some((column) => column.grow && column.width === undefined);
   const fixedLayout = columns.every((column) => column.width !== undefined || column.grow);
   const fixedFloor = columns
@@ -238,9 +280,9 @@ export function DataTable<Row>({
   );
   const scrollFrame = (
     <div
-      ref={scroll}
+      ref={attachScroll}
       data-scroll-fade="x"
-      className={cn(frame.frame, styles.tableScroll)}
+      className={cn(frame.frame, styles.tableScroll, containerClassName)}
       data-virtual={windowed || undefined}
       style={tableStyle}
       onScroll={(event) => setTop(event.currentTarget.scrollTop)}
@@ -254,7 +296,14 @@ export function DataTable<Row>({
         style={
           fixedLayout
             ? {
-                minWidth: `calc(${[`${fixedWidth}px`, ...fixedFloor, ...(selectable ? ["var(--v4-size-control-lg)"] : [])].join(" + ")})`
+                minWidth: `calc(${[
+                  `${fixedWidth}px`,
+                  ...fixedFloor,
+                  ...(selectable ? ["var(--v4-size-row)"] : []),
+                  ...(rowActions
+                    ? [`var(--v4-size-row) + ${slots - 1} * var(--v4-size-row-action-step)`]
+                    : [])
+                ].join(" + ")})`
               }
             : undefined
         }
@@ -285,6 +334,7 @@ export function DataTable<Row>({
               <TableHead
                 key={column.id}
                 scope="col"
+                className={column.actions ? styles.tableActions : undefined}
                 style={columnStyle(column)}
                 data-actions={column.actions || undefined}
                 data-pin={column.pin ?? column.actions}
@@ -334,6 +384,11 @@ export function DataTable<Row>({
                 )}
               </TableHead>
             ))}
+            {rowActions && (
+              <TableActionsHead slots={slots} data-pin="true">
+                {rowActions.header ?? "Actions"}
+              </TableActionsHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -350,6 +405,7 @@ export function DataTable<Row>({
                 {columns.map((column) => (
                   <TableCell
                     key={column.id}
+                    className={column.actions ? styles.tableActions : undefined}
                     style={columnStyle(column)}
                     data-actions={column.actions || undefined}
                     data-pin={column.pin ?? column.actions}
@@ -367,6 +423,17 @@ export function DataTable<Row>({
                     )}
                   </TableCell>
                 ))}
+                {rowActions && (
+                  <TableActionsCell slots={slots} data-pin="true">
+                    <TableRowActions>
+                      {Array.from({ length: slots }, (_, slot) => (
+                        <span key={slot} className={styles.tableRowActionSkeleton}>
+                          <Skeleton width="var(--v4-size-glyph)" height="var(--v4-size-glyph)" />
+                        </span>
+                      ))}
+                    </TableRowActions>
+                  </TableActionsCell>
+                )}
               </TableRow>
             ))}
           {!loading && start > 0 && (
@@ -419,6 +486,7 @@ export function DataTable<Row>({
                 {columns.map((column) => (
                   <TableCell
                     key={column.id}
+                    className={column.actions ? styles.tableActions : undefined}
                     style={columnStyle(column)}
                     data-actions={column.actions || undefined}
                     data-pin={column.pin ?? column.actions}
@@ -446,6 +514,25 @@ export function DataTable<Row>({
                     )}
                   </TableCell>
                 ))}
+                {rowActions && (
+                  <TableActionsCell slots={slots} data-pin="true">
+                    <RowActions
+                      label={rowLabel(row)}
+                      inline={
+                        rowActions.inline?.map((action) => ({
+                          label:
+                            typeof action.label === "string" ? action.label : action.label(row),
+                          icon: action.icon,
+                          disabledReason: action.disabledReason?.(row),
+                          onSelect: () => action.onSelect(row)
+                        })) as UpToThree<RowAction> | undefined
+                      }
+                      menu={rowActions.renderMenu?.(row)}
+                      menuLabel={rowActions.menuLabel}
+                      menuDisabledReason={rowActions.menuDisabledReason?.(row)}
+                    />
+                  </TableActionsCell>
+                )}
               </TableRow>
             ))}
           {!loading && stop < rows.length && (

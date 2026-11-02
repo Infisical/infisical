@@ -1681,7 +1681,8 @@ export const baselineForms = [
       "Label the switch and keep its name stable when its checked state changes. Do not stage it behind Save."
     ],
     limitations: [
-      "Switch reports boolean changes but does not persist or roll them back; the host must represent pending and failed updates truthfully."
+      "Switch reports boolean changes but does not persist or roll them back; the host must represent pending and failed updates truthfully.",
+      "Migration: v3 Toggle is this component. Port v3 Toggle with checked and onCheckedChange to Switch, not to the v4 Toggle, which is a pressed button."
     ],
     examples: [
       {

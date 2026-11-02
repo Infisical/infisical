@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 
 import {
+  FilterBar,
+  type FilterBarField,
+  type FilterBarFilter
+} from "@app/components/v4/patterns/filter-bar";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -10,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
-import { Badge, Count } from "@app/components/v4/ui/badge";
+import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
@@ -50,6 +55,7 @@ type Cert = {
   algorithm: string;
   application?: string;
   autoRenew?: number;
+  source?: "discovered" | "imported";
 };
 
 const today = new Date("2026-10-22");
@@ -128,7 +134,8 @@ const seed: Cert[] = [
     ca: issuing,
     profile: "tls-server",
     algorithm: "EC-P256",
-    autoRenew: 30
+    autoRenew: 30,
+    source: "discovered"
   },
   {
     id: "c6",
@@ -168,7 +175,8 @@ const seed: Cert[] = [
     expires: "2027-06-15",
     ca: issuing,
     profile: "mtls-client",
-    algorithm: "RSA-2048"
+    algorithm: "RSA-2048",
+    source: "imported"
   },
   {
     id: "c9",
@@ -220,11 +228,111 @@ const extendedKeyUsage: Record<Cert["profile"], string> = {
   "code-signing": "Code signing"
 };
 
-const views = [
-  { value: "all", label: "All certificates" },
-  { value: "expiring", label: "Expiring in 30 days" },
-  { value: "attention", label: "Expired or revoked" }
+const algorithmKeys: Record<string, { value: string; size: string }> = {
+  "RSA-2048": { value: "RSA_2048", size: "2048" },
+  "RSA-4096": { value: "RSA_4096", size: "4096" },
+  "EC-P256": { value: "EC_prime256v1", size: "256" },
+  "EC-P384": { value: "EC_secp384r1", size: "384" }
+};
+const options = (values: readonly string[]) => values.map((value) => ({ value, label: value }));
+const inventoryFields = (certs: Cert[]): FilterBarField[] => [
+  {
+    key: "status",
+    label: "Status",
+    type: "multi-select",
+    options: (["active", "renewed", "expired", "revoked"] as const).map((status) => ({
+      value: status,
+      label: statusBadge[status].label
+    }))
+  },
+  { key: "notAfter", label: "Expiration date", type: "date", defaultMonth: today },
+  { key: "notBefore", label: "Issued date", type: "date", defaultMonth: today },
+  {
+    key: "enrollmentType",
+    label: "Enrollment method",
+    type: "multi-select",
+    options: options(["ACME", "API", "EST", "SCEP"])
+  },
+  {
+    key: "keyAlgorithm",
+    label: "Algorithm",
+    type: "multi-select",
+    options: [
+      { value: "RSA_2048", label: "RSA-2048" },
+      { value: "RSA_3072", label: "RSA-3072" },
+      { value: "RSA_4096", label: "RSA-4096" },
+      { value: "EC_prime256v1", label: "ECDSA-P256" },
+      { value: "EC_secp384r1", label: "ECDSA-P384" },
+      { value: "EC_secp521r1", label: "ECDSA-P521" },
+      { value: "ML-DSA-44", label: "ML-DSA-44" },
+      { value: "ML-DSA-65", label: "ML-DSA-65" },
+      { value: "ML-DSA-87", label: "ML-DSA-87" }
+    ]
+  },
+  {
+    key: "keySize",
+    label: "Key size",
+    type: "multi-select",
+    options: [
+      { value: "256", label: "256-bit (ECDSA)" },
+      { value: "384", label: "384-bit (ECDSA)" },
+      { value: "521", label: "521-bit (ECDSA)" },
+      { value: "2048", label: "2048-bit (RSA)" },
+      { value: "3072", label: "3072-bit (RSA)" },
+      { value: "4096", label: "4096-bit (RSA)" }
+    ]
+  },
+  {
+    key: "source",
+    label: "Source",
+    type: "multi-select",
+    options: [
+      { value: "issued", label: "Managed" },
+      { value: "discovered", label: "Discovered" },
+      { value: "imported", label: "Imported" }
+    ]
+  },
+  {
+    key: "caId",
+    label: "Certificate authority",
+    type: "multi-select",
+    options: options([...new Set(certs.map((cert) => cert.ca))])
+  },
+  {
+    key: "profileId",
+    label: "Profile",
+    type: "multi-select",
+    options: options([...new Set(certs.map((cert) => cert.profile))])
+  },
+  {
+    key: "applicationId",
+    label: "Application",
+    type: "multi-select",
+    options: options([
+      ...new Set(certs.flatMap((cert) => (cert.application ? [cert.application] : [])))
+    ])
+  }
 ];
+const certValue = (cert: Cert, key: string) => {
+  if (key === "status") return cert.status;
+  if (key === "notAfter") return cert.expires;
+  if (key === "notBefore") return cert.issued;
+  if (key === "enrollmentType") return cert.enrollment;
+  if (key === "keyAlgorithm") return algorithmKeys[cert.algorithm]?.value;
+  if (key === "keySize") return algorithmKeys[cert.algorithm]?.size;
+  if (key === "source") return cert.source ?? "issued";
+  if (key === "caId") return cert.ca;
+  if (key === "profileId") return cert.profile;
+  return cert.application;
+};
+const matchesFilter = (cert: Cert, filter: FilterBarFilter) => {
+  if (!filter.values.length) return true;
+  const value = certValue(cert, filter.field);
+  if (!value) return false;
+  if (filter.operator === "before") return value < filter.values[0];
+  if (filter.operator === "after") return value > filter.values[0];
+  return filter.values.includes(value);
+};
 const optionalColumns = [
   { id: "serial", label: "Serial number" },
   { id: "enrollment", label: "Enrollment" },
@@ -256,7 +364,7 @@ const revocationReasons = [
   "A/A compromise"
 ].map((label) => ({ value: label, label }));
 
-const CertificateActions = ({
+const CertificateMenu = ({
   cert,
   onOpen,
   onRevoke,
@@ -267,50 +375,43 @@ const CertificateActions = ({
   onRevoke: () => void;
   onDelete: () => void;
 }) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-        {`Actions for ${cert.cn}`}
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <DropdownMenuItem onSelect={onOpen}>
-        <Icon name="eye" />
-        View details
-      </DropdownMenuItem>
-      <DropdownMenuItem>
-        <Icon name="download" />
-        Export certificate
-      </DropdownMenuItem>
-      <DropdownMenuItem disabled={Boolean(renewBlock(cert))} description={renewBlock(cert)}>
-        <Icon name="sync" />
-        Renew now
-      </DropdownMenuItem>
-      <DropdownMenuItem>
-        <Icon name="link" />
-        Manage certificate syncs
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem
-        variant="destructive"
-        disabled={Boolean(revokeBlock(cert))}
-        description={revokeBlock(cert)}
-        onSelect={onRevoke}
-      >
-        <Icon name="x" />
-        Revoke certificate
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        variant="destructive"
-        disabled={Boolean(deleteBlock(cert))}
-        description={deleteBlock(cert)}
-        onSelect={onDelete}
-      >
-        <Icon name="trash" />
-        Delete certificate
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
+  <>
+    <DropdownMenuItem onSelect={onOpen}>
+      <Icon name="eye" />
+      View details
+    </DropdownMenuItem>
+    <DropdownMenuItem>
+      <Icon name="download" />
+      Export certificate
+    </DropdownMenuItem>
+    <DropdownMenuItem disabled={Boolean(renewBlock(cert))} description={renewBlock(cert)}>
+      <Icon name="sync" />
+      Renew now
+    </DropdownMenuItem>
+    <DropdownMenuItem>
+      <Icon name="link" />
+      Manage certificate syncs
+    </DropdownMenuItem>
+    <DropdownMenuSeparator />
+    <DropdownMenuItem
+      variant="destructive"
+      disabled={Boolean(revokeBlock(cert))}
+      description={revokeBlock(cert)}
+      onSelect={onRevoke}
+    >
+      <Icon name="x" />
+      Revoke certificate
+    </DropdownMenuItem>
+    <DropdownMenuItem
+      variant="destructive"
+      disabled={Boolean(deleteBlock(cert))}
+      description={deleteBlock(cert)}
+      onSelect={onDelete}
+    >
+      <Icon name="trash" />
+      Delete certificate
+    </DropdownMenuItem>
+  </>
 );
 
 const Inventory = ({
@@ -325,8 +426,7 @@ const Inventory = ({
   onDelete: (id: string) => void;
 }) => {
   const [query, setQuery] = useState("");
-  const [view, setView] = useState("all");
-  const [statuses, setStatuses] = useState<Status[]>([]);
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [hidden, setHidden] = useState<string[]>(["issued", "algorithm"]);
   const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>({
     columnId: "expires",
@@ -341,18 +441,13 @@ const Inventory = ({
           value.toLowerCase().includes(needle)
         )
     )
-    .filter((cert) => !statuses.length || statuses.includes(cert.status))
-    .filter((cert) => {
-      if (view === "expiring") return expiresSoon(cert);
-      if (view === "attention") return cert.status === "expired" || cert.status === "revoked";
-      return true;
-    })
+    .filter((cert) => filters.every((filter) => matchesFilter(cert, filter)))
     .sort((a, b) => {
       const key = sort.columnId === "cn" ? "cn" : "expires";
       return a[key].localeCompare(b[key]) * (sort.direction === "asc" ? 1 : -1);
     });
   const { pageRows, pagination } = usePagedRows(rows, "Certificate pages", 25);
-  const filtered = Boolean(needle) || statuses.length > 0 || view !== "all";
+  const filtered = Boolean(needle) || filters.some((filter) => filter.values.length > 0);
   const expiring = certs.filter(expiresSoon).length;
   const expired = certs.filter((cert) => cert.status === "expired").length;
   const columns: DataTableColumn<Cert>[] = [
@@ -401,25 +496,11 @@ const Inventory = ({
     },
     { id: "ca", header: "CA", width: 176, text: (r) => r.ca, render: (r) => r.ca },
     { id: "profile", header: "Profile", width: 128, render: (r) => <code>{r.profile}</code> },
-    { id: "algorithm", header: "Algorithm", width: 104, render: (r) => r.algorithm },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      render: (r) => (
-        <CertificateActions
-          cert={r}
-          onOpen={() => onOpen(r.id)}
-          onRevoke={() => onRevoke(r.id)}
-          onDelete={() => onDelete(r.id)}
-        />
-      )
-    }
+    { id: "algorithm", header: "Algorithm", width: 104, render: (r) => r.algorithm }
   ];
   const clear = () => {
     setQuery("");
-    setStatuses([]);
-    setView("all");
+    setFilters([]);
   };
   return (
     <Stack gap={24}>
@@ -432,8 +513,12 @@ const Inventory = ({
           </Button>
         }
       />
-      <Inline gap={8}>
-        <div style={{ flex: 1 }}>
+      <FilterBar
+        label="Certificate filters"
+        fields={inventoryFields(certs)}
+        value={filters}
+        onChange={setFilters}
+        search={
           <Input
             icon="search"
             aria-label="Search certificates"
@@ -442,71 +527,48 @@ const Inventory = ({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-        </div>
-        <div style={{ width: 208 }}>
-          <Select aria-label="View" options={views} value={view} onChange={setView} />
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" icon="menu">
-              Status
-              {statuses.length > 0 && (
-                <Count tone="neutral" aria-label={`${statuses.length} statuses selected`}>
-                  {statuses.length}
-                </Count>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Status</DropdownMenuLabel>
-            {(Object.keys(statusBadge) as Status[]).map((status) => (
-              <DropdownMenuCheckboxItem
-                key={status}
-                checked={statuses.includes(status)}
-                onCheckedChange={(checked) =>
-                  setStatuses((current) =>
-                    checked ? [...current, status] : current.filter((s) => s !== status)
-                  )
-                }
+        }
+        actions={
+          <TooltipProvider>
+            <DropdownMenu>
+              <Tooltip content="Columns" side="bottom">
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" icon="sidebar" iconOnly>
+                    Columns
+                  </Button>
+                </DropdownMenuTrigger>
+              </Tooltip>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Columns</DropdownMenuLabel>
+                {optionalColumns.map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    checked={!hidden.includes(column.id)}
+                    onCheckedChange={(checked) =>
+                      setHidden((current) =>
+                        checked ? current.filter((id) => id !== column.id) : [...current, column.id]
+                      )
+                    }
+                  >
+                    {column.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Tooltip content="Export CSV" side="bottom">
+              <Button
+                variant="outline"
+                size="icon"
+                icon="download"
+                iconOnly
+                disabled={!rows.length}
               >
-                {statusBadge[status].label}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <TooltipProvider>
-          <DropdownMenu>
-            <Tooltip content="Columns" side="bottom">
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" icon="sidebar" iconOnly>
-                  Columns
-                </Button>
-              </DropdownMenuTrigger>
+                Export CSV
+              </Button>
             </Tooltip>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Columns</DropdownMenuLabel>
-              {optionalColumns.map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  checked={!hidden.includes(column.id)}
-                  onCheckedChange={(checked) =>
-                    setHidden((current) =>
-                      checked ? current.filter((id) => id !== column.id) : [...current, column.id]
-                    )
-                  }
-                >
-                  {column.label}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Tooltip content="Export CSV" side="bottom">
-            <Button variant="outline" size="icon" icon="download" iconOnly disabled={!rows.length}>
-              Export CSV
-            </Button>
-          </Tooltip>
-        </TooltipProvider>
-      </Inline>
+          </TooltipProvider>
+        }
+      />
       <DataTable
         label="Certificates in internal-pki"
         rows={pageRows}
@@ -515,6 +577,16 @@ const Inventory = ({
         columns={columns.filter((column) => !hidden.includes(column.id))}
         getRowId={(r) => r.id}
         rowLabel={(r) => r.cn}
+        rowActions={{
+          renderMenu: (r) => (
+            <CertificateMenu
+              cert={r}
+              onOpen={() => onOpen(r.id)}
+              onRevoke={() => onRevoke(r.id)}
+              onDelete={() => onDelete(r.id)}
+            />
+          )
+        }}
         sort={sort}
         onSortChange={setSort}
         empty={
@@ -522,7 +594,7 @@ const Inventory = ({
             size="sm"
             icon="search"
             title="No certificates match"
-            description="Try another search, view or status."
+            description="Try another search or remove a filter."
             actions={
               <Button variant="link" onClick={clear}>
                 Clear filters
@@ -673,25 +745,28 @@ const CertificateDetail = ({
             <Card title="Overview">
               <DataList
                 variant="props"
+                density="compact"
                 items={[
                   ["Common name", cert.cn],
                   ["Serial number", <code key="serial">{cert.serial}</code>],
-                  ["Status", <StatusBadge key="status" status={cert.status} />],
-                  ["Not before", cert.issued],
+                  ["Status", <StatusBadge key="status" status={cert.status} />, { span: "half" }],
+                  ["Source", "Managed", { span: "half" }],
+                  ["Not before", cert.issued, { span: "half" }],
                   [
                     "Not after",
-                    <Inline key="after" gap={8} align="center">
+                    <Inline key="after" gap={8} align="center" wrap>
                       {cert.expires}
                       <ExpiryBadge cert={cert} />
-                    </Inline>
-                  ],
-                  ["Source", "Managed"]
+                    </Inline>,
+                    { span: "half" }
+                  ]
                 ]}
               />
             </Card>
             <Card title="Issuance">
               <DataList
                 variant="props"
+                density="compact"
                 items={[
                   [
                     "Certificate authority",
@@ -713,12 +788,13 @@ const CertificateDetail = ({
           <Card title="Subject">
             <DataList
               variant="props"
+              density="compact"
               items={[
                 ["Common name", cert.cn],
-                ["Organization", "Acme Corp"],
-                ["Organizational unit", "Platform"],
-                ["Locality", "Vancouver"],
-                ["State", "British Columbia"],
+                ["Organization", "Acme Corp", { span: "half" }],
+                ["Organizational unit", "Platform", { span: "half" }],
+                ["Locality", "Vancouver", { span: "half" }],
+                ["State", "British Columbia", { span: "half" }],
                 ["Country", "CA"]
               ]}
             />
@@ -726,6 +802,7 @@ const CertificateDetail = ({
           <Card title="Key usage">
             <DataList
               variant="props"
+              density="compact"
               items={[
                 [
                   "Key usage",

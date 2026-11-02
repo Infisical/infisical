@@ -442,6 +442,15 @@
       ]
     },
     {
+      "id": "detail",
+      "name": "Detail",
+      "kind": "component",
+      "exports": ["Detail", "DetailLabel", "DetailValue", "DetailGroup", "DetailGroupHeader"],
+      "variants": ["grouped with header", "header action", "loose"],
+      "behavior": "Label over value as dl/dt/dd per pair; values hold any node and wrap long identifiers; headers interleave with details",
+      "acceptance": ["Valid dl outside a group", "Header action outside the heading", "Long values wrap"]
+    },
+    {
       "id": "dialog",
       "name": "Dialog",
       "kind": "component",
@@ -461,6 +470,15 @@
         "Removed trigger safe restore",
         "Long content body scroll"
       ]
+    },
+    {
+      "id": "documentation-link-badge",
+      "name": "DocumentationLinkBadge",
+      "kind": "component",
+      "exports": ["DocumentationLinkBadge"],
+      "variants": ["default", "minified"],
+      "behavior": "Info Badge link that owns its label, target _blank, rel noopener noreferrer and tooltip",
+      "acceptance": ["Safe rel", "Name says it opens in a new tab"]
     },
     {
       "id": "dropdown-menu",
@@ -541,6 +559,19 @@
       ]
     },
     {
+      "id": "filter-bar",
+      "name": "FilterBar",
+      "kind": "pattern",
+      "exports": ["FilterBar"],
+      "variants": ["select", "multi-select", "date before/after", "text", "empty", "wrapped"],
+      "behavior": "Search plus Add filter menu; each applied filter is a removable chip opening its own picker",
+      "acceptance": [
+        "Chips name field and value",
+        "Focus moves to a neighbor on remove",
+        "Applied fields disabled in the menu"
+      ]
+    },
+    {
       "id": "floating-action-bar",
       "name": "FloatingActionBar",
       "kind": "composite",
@@ -581,7 +612,7 @@
       "id": "input",
       "name": "Input",
       "kind": "component",
-      "exports": ["Input", "SecretInput", "CopyButton"],
+      "exports": ["Input", "SecretInput", "SecretValue", "CopyButton"],
       "variants": [
         "sm/md/lg",
         "plain/mono",
@@ -593,7 +624,7 @@
         "kbd/trailing",
         "multiline companion"
       ],
-      "behavior": "Native text input forwarding; focus border ink+nudge; read-only lock; trailing slots 24/28/32 with 4 gap; plaintext never receives secret; SecretInput masked reveal/copy companion. Default/sm32, md36, lg40; numeric native size remains a width hint.",
+      "behavior": "Native text input forwarding; focus border ink+nudge; read-only lock; trailing slots 24/28/32 with 4 gap; plaintext never receives secret; SecretValue masked reveal/copy companion; SecretInput editable masked field. Default/sm32, md36, lg40; numeric native size remains a width hint.",
       "acceptance": [
         "Native attrs/ref and Field wiring",
         "Read-only selectable",
@@ -873,6 +904,15 @@
       ]
     },
     {
+      "id": "provider-icon",
+      "name": "ProviderIcon",
+      "kind": "component",
+      "exports": ["ProviderIcon"],
+      "variants": ["sm/md/lg/xl", "light/dark counterpart", "fallback"],
+      "behavior": "Main's integration logo filenames, swapped for the scope theme, sized by icon tokens, with a glyph fallback",
+      "acceptance": ["Theme counterpart resolves", "Missing file keeps the size"]
+    },
+    {
       "id": "radio-group",
       "name": "RadioGroup",
       "kind": "component",
@@ -885,6 +925,15 @@
         "Required submit",
         "Disabled skipped"
       ]
+    },
+    {
+      "id": "row-link",
+      "name": "RowLink",
+      "kind": "component",
+      "exports": ["RowLink"],
+      "variants": ["DataTable row", "Card", "disabled"],
+      "behavior": "Typed TanStack route link whose ::after covers its row or Card while inner controls stay clickable",
+      "acceptance": ["Real href", "Row actions keep their click", "Disabled has no href"]
     },
     {
       "id": "scroll-area",
@@ -940,7 +989,7 @@
         "save failed",
         "cancelled/unmounted"
       ],
-      "behavior": "SensitiveEditor defers value retrieval; SecretInput displays plaintext already held by the host. Owner controls permission, fetch and persistence; foundation owns explicit reveal/copy intent, scoped plaintext lifetime, editing/focus and status. No plaintext in DOM, title, aria, diagnostics, fixture files or generic grid clipboard before explicit permitted reveal. Preserve bytes including whitespace/newlines; Escape cancels; async failure retains draft only under current authorized editor lifetime. No authorization claims from masking. CopyButton supports size sm/md/lg host32/36/40 to action24/28/32, defaultsm, and iconOnly defaultfalse with a retained accessible label.",
+      "behavior": "SensitiveEditor defers value retrieval; SecretValue displays plaintext already held by the host. Owner controls permission, fetch and persistence; foundation owns explicit reveal/copy intent, scoped plaintext lifetime, editing/focus and status. No plaintext in DOM, title, aria, diagnostics, fixture files or generic grid clipboard before explicit permitted reveal. Preserve bytes including whitespace/newlines; Escape cancels; async failure retains draft only under current authorized editor lifetime. No authorization claims from masking. CopyButton supports size sm/md/lg host32/36/40 to action24/28/32, defaultsm, and iconOnly defaultfalse with a retained accessible label.",
       "acceptance": [
         "Initial masked DOM/a11y/title contains no plaintext",
         "Reveal only after explicit authorized owner success",

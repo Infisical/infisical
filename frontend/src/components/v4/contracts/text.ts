@@ -6,23 +6,34 @@ export const textDefinition = {
   group: "Utilities",
   summary: "Use shared body and supporting-text measures.",
   sourceFiles: ["src/components/v4/ui/text.tsx", "src/components/v4/ui/text.module.css"],
-  exports: ["Text", "SmallText", "Heading", "Meta"],
+  exports: ["Text", "SmallText", "Heading", "Meta", "StatusText"],
   referenceNames: ["Text"],
   behavior: [
     "Body uses the complete 14/20 role; supporting copy uses 13/18. Each role owns font family, weight and tracking as well as size and line height.",
     "Muted text uses the semantic muted role.",
     "Heading separates semantic level from visual size. page uses 28/32, explicit display uses 44/44, and section/subsection use the shared section role. Meta uses the 12/16 metadata role with optional monospace.",
-    "Native attributes and refs are preserved."
+    "Native attributes and refs are preserved.",
+    "StatusText reports a state as a required line icon plus words. It inherits the surrounding type role; neutral is muted and ok, warn and bad tint both the icon and the words, so the state still reads in grayscale."
   ],
   accessibility: [
-    "Text and SmallText render paragraphs; Heading renders the requested h1-h6 level; Meta renders a span."
+    "Text and SmallText render paragraphs; Heading renders the requested h1-h6 level; Meta renders a span.",
+    "StatusText renders a span whose icon is hidden from assistive technology; its words carry the whole state, so they must make sense on their own."
   ],
-  limitations: ["Do not use a visually styled paragraph in place of a semantic section heading."],
+  limitations: [
+    "Do not use a visually styled paragraph in place of a semantic section heading.",
+    "StatusText has no dot, brand mark or icon-only form. Use Badge for a categorical label that needs a chip."
+  ],
   examples: [
     {
       id: "default",
       title: "Heading roles and body text",
       module: "./examples/text/default.tsx",
+      states: ["default"]
+    },
+    {
+      id: "status",
+      title: "StatusText tones",
+      module: "./examples/text/status.tsx",
       states: ["default"]
     }
   ],
@@ -55,6 +66,16 @@ export const textDefinition = {
         { value: "SmallText", exampleId: "default", label: "SmallText" },
         { value: "Meta mono", exampleId: "default", label: "Meta, mono" },
         { value: "Meta plain", exampleId: "default", label: "Meta, plain" }
+      ]
+    },
+    {
+      axis: "StatusText.tone",
+      expected: ["neutral", "ok", "warn", "bad"],
+      shown: [
+        { value: "neutral", exampleId: "status", label: "neutral" },
+        { value: "ok", exampleId: "status", label: "ok" },
+        { value: "warn", exampleId: "status", label: "warn" },
+        { value: "bad", exampleId: "status", label: "bad" }
       ]
     }
   ],
@@ -98,6 +119,23 @@ export const textDefinition = {
           "src/components/v4/ui/text.tsx",
           "src/pages/design-system/examples/text/default.tsx"
         ]
+      },
+      {
+        id: "text-status-icon-words",
+        when: "A table cell or record fact reports a state such as locked out or never signed in.",
+        do: "Use StatusText with a line icon and words that name the state, and derive the state only from data the product has.",
+        avoid:
+          "Show the state as a colored dot, a colored word or a brand mark alone, or invent a health score the API does not expose.",
+        reason:
+          "Color alone fails for color-blind readers and in grayscale, and a synthetic signal tells people something the product cannot back.",
+        detect: {
+          by: "review",
+          how: "View the cell in grayscale and with a screen reader. Each state reads from its words alone, and every state maps to a field the API returns."
+        },
+        evidence: [
+          "src/components/v4/ui/text.tsx",
+          "src/pages/design-system/examples/text/status.tsx"
+        ]
       }
     ],
     states: [
@@ -120,6 +158,10 @@ export const textDefinition = {
     ]
   },
   checks: [
+    {
+      kind: "runtime",
+      command: "npm test -- src/components/v4/ui/status-text.test.tsx"
+    },
     {
       kind: "static",
       command: "npm run type:check"

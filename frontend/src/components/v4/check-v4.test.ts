@@ -154,6 +154,21 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [css, ".row { background-image: linear-gradient(var(--tint), var(--tint)); }"]
     ]
   },
+  "row-action-reveal": {
+    bad: [
+      [example, "<TableRowActions reveal>"],
+      [example, "<TableRowIndicators swap>"],
+      [css, '[data-slot="table-row"]:hover .tableRowActions { position: static; }'],
+      [css, "tr:hover .actions { display: flex; }"],
+      [css, ".row:is(:hover, :focus-within) .copy { width: auto; }"]
+    ],
+    good: [
+      [example, "<TableActionsCell slots={2}>"],
+      [css, ".row:hover { background: var(--v4-tint); }"],
+      [css, ".row:hover .rowCheck { opacity: 1; }"],
+      [css, ".button:hover { width: auto; }"]
+    ]
+  },
   "dot-separator": {
     bad: [[example, "<span>Primary · alias of default</span>"]],
     good: [[example, "<span>Primary, alias of default</span>"]]

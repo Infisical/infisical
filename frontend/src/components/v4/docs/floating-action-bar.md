@@ -4,7 +4,7 @@ Bulk actions for the current selection, floating over the bottom of the view whi
 
 ## Choose this component
 
-Choose FloatingActionBar for bulk actions on a selection. Page actions belong in PageHeader and row actions in the row.
+Choose FloatingActionBar for bulk actions on a selection. Page actions belong in PageHeader and row actions in the table's sticky actions column.
 
 ## Usage rules
 

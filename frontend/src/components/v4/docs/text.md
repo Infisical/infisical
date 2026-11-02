@@ -44,6 +44,24 @@ Source evidence:
 - src/components/v4/ui/text.tsx
 - src/pages/design-system/examples/text/default.tsx
 
+### text-status-icon-words
+
+Owner: text.
+
+When a table cell or record fact reports a state such as locked out or never signed in.
+
+Do: Use StatusText with a line icon and words that name the state, and derive the state only from data the product has.
+
+Avoid: Show the state as a colored dot, a colored word or a brand mark alone, or invent a health score the API does not expose.
+
+Why: Color alone fails for color-blind readers and in grayscale, and a synthetic signal tells people something the product cannot back.
+
+Checked by: review only. Look for: View the cell in grayscale and with a screen reader. Each state reads from its words alone, and every state maps to a field the API returns.
+
+Source evidence:
+- src/components/v4/ui/text.tsx
+- src/pages/design-system/examples/text/status.tsx
+
 ## State guidance
 
 - supporting: Keep Meta legible and reserve it for secondary facts.
@@ -62,7 +80,7 @@ Why: Technical values benefit from a fixed measure; ordinary prose needs a reada
 - src/components/v4/ui/text.tsx
 - src/components/v4/ui/text.module.css
 
-Exports: Text, SmallText, Heading, Meta. Source TypeScript defines the API.
+Exports: Text, SmallText, Heading, Meta, StatusText. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -70,10 +88,12 @@ Exports: Text, SmallText, Heading, Meta. Source TypeScript defines the API.
 - Muted text uses the semantic muted role.
 - Heading separates semantic level from visual size. page uses 28/32, explicit display uses 44/44, and section/subsection use the shared section role. Meta uses the 12/16 metadata role with optional monospace.
 - Native attributes and refs are preserved.
+- StatusText reports a state as a required line icon plus words. It inherits the surrounding type role; neutral is muted and ok, warn and bad tint both the icon and the words, so the state still reads in grayscale.
 
 ## Accessibility
 
 - Text and SmallText render paragraphs; Heading renders the requested h1-h6 level; Meta renders a span.
+- StatusText renders a span whose icon is hidden from assistive technology; its words carry the whole state, so they must make sense on their own.
 
 ## Use cases
 
@@ -82,6 +102,7 @@ Exports: Text, SmallText, Heading, Meta. Source TypeScript defines the API.
 ## Limits
 
 - Do not use a visually styled paragraph in place of a semantic section heading.
+- StatusText has no dot, brand mark or icon-only form. Use Badge for a categorical label that needs a chip.
 
 ## Declared example coverage
 
@@ -110,6 +131,13 @@ Source declarations and review criteria only. Generation checks references and c
 - SmallText: example `default`, visible label "SmallText".
 - Meta mono: example `default`, visible label "Meta, mono".
 - Meta plain: example `default`, visible label "Meta, plain".
+
+### StatusText.tone
+
+- neutral: example `status`, visible label "neutral".
+- ok: example `status`, visible label "ok".
+- warn: example `status`, visible label "warn".
+- bad: example `status`, visible label "bad".
 
 ## Executable examples
 
@@ -144,9 +172,42 @@ export default function Example() {
 }
 ```
 
+### StatusText tones
+
+Save this example at `src/pages/design-system/examples/text/status.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { StatusText } from "../../../../components/v4/ui/text";
+export default function Status() {
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <StatusText tone="ok" icon="check-c">
+          Signed in
+        </StatusText>
+      </div><figcaption className="text-muted-foreground text-xs">{"ok"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <StatusText icon="info">Never signed in</StatusText>
+      </div><figcaption className="text-muted-foreground text-xs">{"neutral"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <StatusText tone="warn" icon="alert">
+          No auth method
+        </StatusText>
+      </div><figcaption className="text-muted-foreground text-xs">{"warn"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <StatusText tone="bad" icon="lock">
+          Universal Auth locked out
+        </StatusText>
+      </div><figcaption className="text-muted-foreground text-xs">{"bad"}</figcaption></figure>
+    </div>);
+}
+```
+
 ## Verification recipes
 
 These commands are recipes, not evidence that this component passed.
 
+- runtime: npm test -- src/components/v4/ui/status-text.test.tsx
 - static: npm run type:check
 - browser: npm run dev; open /design-system#text and exercise the documented interaction.

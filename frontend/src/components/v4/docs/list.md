@@ -4,7 +4,7 @@ Object rows with independent current state, selection and actions.
 
 ## Choose this component
 
-Choose List for a stable collection of comparable resource rows. Use Item for an isolated rich object and DataTable when columns need comparison.
+Choose List for a stable collection of comparable resource rows. Use Item for an isolated rich object and DataTable when columns need comparison. For a DataList, choose compact when a card holds more than about five facts that a reader scans for one value, and default when it holds a few facts that each deserve a full row.
 
 ## Usage rules
 
@@ -44,8 +44,28 @@ Source evidence:
 - src/components/v4/ui/list.tsx
 - src/pages/design-system/examples/list/default.tsx
 
+### list-data-density
+
+Owner: list.
+
+When a detail card or sidecar lists many facts about one record.
+
+Do: Use DataList density compact and mark short single-line values with span half so they pair, keeping long values such as IDs and metadata on full rows.
+
+Avoid: Pair a value that wraps or holds a list, or use compact for a two-fact summary, so pairs stop lining up and the card gains nothing.
+
+Why: Compact rows fit more of the record above the fold, but only when paired values stay on one line.
+
+Checked by: review only. Look for: Render the detail card at size-sidecar width in both densities. Compact rows measure 32px, every half pair shares one row with both values on one line, and terms wrap only between words.
+
+Source evidence:
+- src/components/v4/ui/list.tsx
+- src/components/v4/ui/data.module.css
+- src/pages/design-system/examples/list/density.tsx
+
 ## State guidance
 
+- compact: Pair only short single-line values with span half: roles, dates, On or Off, a status badge. Keep IDs, links, lists and metadata as full rows.
 - empty: Explain the empty result and retain a named focus fallback.
 - selection: Keep selection eligibility distinct from the row's primary open action.
 
@@ -73,6 +93,8 @@ Exports: List, ListRow, ListSection, DataList. Source TypeScript defines the API
 - Selection skips disabled and locked rows. Current details and bulk selection remain independent.
 - Loading appends placeholders below retained rows; sections, empty and footer compose.
 - DataList terms wrap only between words and never break inside one; a term keeps at least its longest word even past its 45% share, and values wrap instead.
+- DataList density compact draws 32px rows (size-data-list-row) with no gap between them: the term sits in a size-data-list-term column and the value starts beside it instead of aligning right. Its terms keep the same word-only wrapping, and a single word longer than the column widens it.
+- In compact density an item marked { span: "half" } pairs with the next half item, two to a row, each with its term stacked over its value. Pairing runs in order, so a half item with no half neighbor takes the full row. Default density ignores span.
 
 ## Accessibility
 
@@ -84,12 +106,15 @@ Exports: List, ListRow, ListSection, DataList. Source TypeScript defines the API
 ## Use cases
 
 - Use framed, plain or bare List with sm or md rows, and keep current details independent from optional multiple selection.
+- Use DataList density compact for the facts of one record on a detail page (the details card, a DetailLayout sidecar, subject and key usage cards), and keep default density for short summaries, stat lists and sheets.
 
 ## Limits
 
 - Supply unique string row ids and accessible labels.
 - ListRow and ListSection must be direct descendants or wrappers that forward children for selection discovery.
 - Large columnar datasets belong in DataTable; cell editing belongs in DataGrid.
+- Compact density is for props and meta DataLists. A stat value keeps the display role and grows its row past 32px.
+- A compact full-width row gives the value less room than default density, so a UUID in a size-sidecar card wraps onto a second line.
 
 ## Declared example coverage
 
@@ -111,6 +136,11 @@ Source declarations and review criteria only. Generation checks references and c
 - stat: example `default`, visible label "stat".
 - meta: omitted. meta and props render the same muted term and plain value; only stat enlarges the value. the list fixture test renders it.
 - props: omitted. meta and props render the same muted term and plain value; only stat enlarges the value. the list fixture test renders it.
+
+### DataList.density
+
+- default: example `density`, visible label "default".
+- compact: example `density`, visible label "compact, half pairs and a lone half".
 
 ### state and behavior
 
@@ -237,10 +267,48 @@ export default function Variants() {
 }
 ```
 
+### DataList default and compact density
+
+Save this example at `src/pages/design-system/examples/list/density.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/badge, @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Badge } from "../../../../components/v4/ui/badge";
+import { type DataListItem, DataList } from "../../../../components/v4/ui/list";
+const items: DataListItem[] = [
+    ["ID", <code key="id">4b1e8c2a-93f0-4d55-a1c6-0e7d2f9b3a11</code>],
+    ["Managed by", "Organization", { span: "half" }],
+    ["Organization role", "Member", { span: "half" }],
+    [
+        "Status",
+        <Badge key="status" tone="ok" dot>
+      Active
+    </Badge>,
+        { span: "half" }
+    ],
+    ["Delete protection", "On", { span: "half" }],
+    ["Extended key usage", "Server authentication, client authentication"],
+    ["Country", "CA", { span: "half" }],
+    ["Last login", "Never"]
+];
+export default function Density() {
+    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <DataList variant="props" items={items}/>
+      </div><figcaption className="text-muted-foreground text-xs">{"default"}</figcaption></figure>
+      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
+        <DataList variant="props" density="compact" items={items}/>
+      </div><figcaption className="text-muted-foreground text-xs">{"compact, half pairs and a lone half"}</figcaption></figure>
+    </div>);
+}
+```
+
 ## Verification recipes
 
 These commands are recipes, not evidence that this component passed.
 
 - runtime: npm test -- src/components/v4/ui/list-activity-lifecycle.test.tsx
+- runtime: npm test -- src/components/v4/ui/data-list-density.test.tsx
 - static: npm run type:check
 - browser: Open the executable example and verify keyboard, narrow viewport, dark theme and failure recovery.

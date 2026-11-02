@@ -20,7 +20,7 @@ import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { CopyButton, SecretInput } from "@app/components/v4/ui/sensitive-editor";
+import { CopyButton, SecretValue } from "@app/components/v4/ui/sensitive-editor";
 import { Spinner } from "@app/components/v4/ui/spinner";
 import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
@@ -97,7 +97,7 @@ function OutputFields({
         const value = field.format === "json" ? JSON.stringify(rawValue) : String(rawValue ?? "");
         return (
           <Field wide key={field.key} label={field.label}>
-            <SecretInput value={value} label={field.label} />
+            <SecretValue value={value} label={field.label} />
           </Field>
         );
       })}
@@ -146,7 +146,7 @@ function TotpOutput({
   return (
     <div className={styles.output}>
       <Field wide label="Time-based one-time password">
-        <SecretInput value={totp} label="Time-based one-time password" />
+        <SecretValue value={totp} label="Time-based one-time password" />
       </Field>
       <span className={styles.countdown} data-tone={remainingTime < 10 ? "bad" : undefined}>
         <Icon name="clock" size={16} />
@@ -192,7 +192,7 @@ function SshOutput({
         <Field wide key={label} label={label}>
           <Inline gap={8}>
             <div className={styles.grow}>
-              <SecretInput value={value} label={label} />
+              <SecretValue value={value} label={label} />
             </div>
             <Tooltip content={`Download ${filename}`}>
               <Button

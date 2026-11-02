@@ -130,7 +130,7 @@ export const baselineActions = [
           {
             value: "icon-row",
             reason:
-              "28px target with a 16px glyph for table row actions. It only makes sense inside TableRowActions, so the Table row actions example shows it."
+              "28px target with a 16px glyph for table row actions. It only makes sense in a table's sticky actions column, so the Table row actions example shows it."
           }
         ]
       },
@@ -241,7 +241,7 @@ export const baselineActions = [
         {
           id: "button-row-icon-size",
           when: "An icon-only action sits in a table row, a field or a toolbar.",
-          do: "Use icon-row for actions in a Table or DataTable row, inside TableRowActions. Keep icon-xs and icon-sm for actions nested in a field or block (InputGroup reveal and copy, Code and Snippet copy, a combobox clear) and for overlay chrome, and icon for a standalone toolbar action.",
+          do: "Use icon-row for actions in a Table or DataTable row, in the sticky actions column (DataTable rowActions or RowActions). Keep icon-xs and icon-sm for actions nested in a field or block (InputGroup reveal and copy, Code and Snippet copy, a combobox clear) and for overlay chrome, and icon for a standalone toolbar action.",
           avoid:
             "Put icon-xs or icon-sm in a table row, or icon-row in a field slot, a toolbar or a dialog header.",
           reason:
@@ -436,7 +436,8 @@ export const baselineActions = [
       "Use a stable accessible name and let aria-pressed communicate state. Keep a visible focus indicator and disabled semantics."
     ],
     limitations: [
-      "Pressed state does not save a preference by itself; the owner chooses whether the choice is immediate or local to a view."
+      "Pressed state does not save a preference by itself; the owner chooses whether the choice is immediate or local to a view.",
+      "Migration: v3 Toggle is a Radix Switch with checked, defaultChecked and onCheckedChange; v4 Toggle is a pressed button. Port v3 Toggle to v4 Switch. The v4 Toggle types reject checked, defaultChecked and onCheckedChange, so swapping only the import fails to compile."
     ],
     examples: [
       {
@@ -526,6 +527,24 @@ export const baselineActions = [
           detect: {
             by: "review",
             how: "Toggle the preview twice. The control name stays stable, pressed state agrees with the visible preview and no one-time action remains falsely pressed."
+          }
+        },
+        {
+          id: "toggle-not-switch",
+          when: "A v3 Toggle (an on/off setting switch) is ported to v4.",
+          do: "Port it to Switch with the same checked and onCheckedChange props.",
+          avoid:
+            "Swap the import to the v4 Toggle, which is a pressed button with pressed and onPressedChange.",
+          reason:
+            "The names match but the components differ, so a setting would render as a toolbar button and silently drop its checked state.",
+          evidence: [
+            "src/components/v4/ui/toggle.tsx",
+            "src/pages/design-system/examples/toggle/default.tsx"
+          ],
+          detect: {
+            by: "test",
+            test: "src/components/v4/ui/migration-traps.test.tsx",
+            how: "A ts-expect-error on Toggle with checked and onCheckedChange; type:check fails if the type guard is removed."
           }
         }
       ],

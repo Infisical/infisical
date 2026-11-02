@@ -13,6 +13,7 @@ import {
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
+import { type IconName } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Media } from "@app/components/v4/ui/item";
 import { DetailLayout, Inline, Stack } from "@app/components/v4/ui/layout";
@@ -30,6 +31,7 @@ import {
 } from "@app/components/v4/ui/sheet";
 import { Snippet } from "@app/components/v4/ui/snippet";
 import { Tabs } from "@app/components/v4/ui/tabs";
+import { StatusText } from "@app/components/v4/ui/text";
 
 import { Shell, useCrumbs, usePagedRows } from "./shared";
 
@@ -141,6 +143,16 @@ const identities: Identity[] = [
     projects: [{ project: "internal-pki", role: "Certificate requester", added: "Oct 20, 2026" }]
   }
 ];
+
+const signInOf = (
+  identity: Identity
+): { tone: "ok" | "bad" | "warn" | "neutral"; icon: IconName; label: string } => {
+  if (identity.lockedOut)
+    return { tone: "bad", icon: "lock", label: `${authNames[identity.lockedOut]} locked out` };
+  if (!identity.auth.length) return { tone: "warn", icon: "alert", label: "No auth method" };
+  if (!identity.lastMethod) return { tone: "neutral", icon: "info", label: "Never signed in" };
+  return { tone: "ok", icon: "check-c", label: "Signed in" };
+};
 
 const authDetails = (identity: Identity, kind: AuthKind): [string, React.ReactNode][] => {
   const tokens: [string, React.ReactNode][] = [
@@ -333,18 +345,7 @@ const Detail = ({ identity, onBack }: { identity: Identity; onBack: () => void }
       render: (r) => <ProjectLink project={r.project} />
     },
     { id: "role", header: "Role", width: 200, render: (r) => <Badge tone="soft">{r.role}</Badge> },
-    { id: "added", header: "Added on", width: 140, render: (r) => r.added },
-    {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      hideHeader: true,
-      render: (r) => (
-        <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-          {`Actions for ${r.project}`}
-        </Button>
-      )
-    }
+    { id: "added", header: "Added on", width: 140, render: (r) => r.added }
   ];
   return (
     <Stack gap={24}>
@@ -395,6 +396,7 @@ const Detail = ({ identity, onBack }: { identity: Identity; onBack: () => void }
           <Card title="Details">
             <DataList
               variant="props"
+              density="compact"
               items={[
                 ["ID", <code key="id">{identity.id}</code>],
                 [
@@ -403,9 +405,18 @@ const Detail = ({ identity, onBack }: { identity: Identity; onBack: () => void }
                     <ProjectLink key="p" project={identity.project} />
                   ) : (
                     "Organization"
-                  )
+                  ),
+                  { span: "half" }
                 ],
-                ["Organization role", identity.role],
+                ["Organization role", identity.role, { span: "half" }],
+                ["Created", identity.created, { span: "half" }],
+                ["Delete protection", identity.deleteProtection ? "On" : "Off", { span: "half" }],
+                [
+                  "Last login",
+                  identity.lastMethod
+                    ? `${identity.lastUsed} with ${authNames[identity.lastMethod]}`
+                    : "Never"
+                ],
                 [
                   "Metadata",
                   identity.metadata.length ? (
@@ -419,15 +430,7 @@ const Detail = ({ identity, onBack }: { identity: Identity; onBack: () => void }
                   ) : (
                     "None"
                   )
-                ],
-                ["Created", identity.created],
-                [
-                  "Last login",
-                  identity.lastMethod
-                    ? `${identity.lastUsed} with ${authNames[identity.lastMethod]}`
-                    : "Never"
-                ],
-                ["Delete protection", identity.deleteProtection ? "On" : "Off"]
+                ]
               ]}
             />
           </Card>
@@ -490,6 +493,15 @@ const Detail = ({ identity, onBack }: { identity: Identity; onBack: () => void }
             columns={projectColumns}
             getRowId={(r) => r.project}
             rowLabel={(r) => r.project}
+            rowActions={{
+              renderMenu: () => (
+                <>
+                  <DropdownMenuItem>Open project</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive">Remove from project</DropdownMenuItem>
+                </>
+              )
+            }}
             empty={
               <EmptyState size="sm" media="bare" icon="folder" title="Not in any project yet" />
             }
@@ -558,60 +570,37 @@ export default function Identities() {
       id: "role",
       header: "Role",
       sortable: true,
-      width: 220,
+      width: 200,
       render: (r) => <Badge tone={r.role === "No access" ? "outline" : "soft"}>{r.role}</Badge>
     },
     {
       id: "managed",
       header: "Managed by",
-      width: 180,
+      width: 160,
       render: (r) => (r.project ? <ProjectLink project={r.project} /> : "Organization")
     },
     {
       id: "auth",
       header: "Auth methods",
-      width: 280,
+      width: 240,
       text: (r) => r.auth.map((k) => authNames[k]).join(", "),
-      render: (r) => (
-        <Inline gap={8} align="center">
-          {r.auth.map((k) => authNames[k]).join(", ")}
-          {r.lockedOut && (
-            <Badge tone="bad" dot>
-              Locked out
-            </Badge>
-          )}
-        </Inline>
-      )
+      render: (r) => r.auth.map((k) => authNames[k]).join(", ")
     },
-    { id: "used", header: "Last used", width: 160, render: (r) => r.lastUsed },
     {
-      id: "actions",
-      header: "Actions",
-      actions: true,
-      hideHeader: true,
-      render: (r) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
-              {`Actions for ${r.name}`}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setOpenId(r.id)}>
-              {r.project ? "Open in project" : "View machine identity"}
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={Boolean(r.project)}>Add auth method</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={Boolean(r.project || r.deleteProtection)}
-            >
-              Delete machine identity
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
+      id: "sign-in",
+      header: "Sign-in",
+      width: 200,
+      text: (r) => signInOf(r).label,
+      render: (r) => {
+        const { tone, icon, label } = signInOf(r);
+        return (
+          <StatusText tone={tone} icon={icon}>
+            {label}
+          </StatusText>
+        );
+      }
+    },
+    { id: "used", header: "Last used", width: 140, render: (r) => r.lastUsed }
   ];
   return (
     <Shell
@@ -682,6 +671,23 @@ export default function Identities() {
             label="Machine identities"
             rows={pageRows}
             onRowActivate={(row) => setOpenId(row.id)}
+            rowActions={{
+              renderMenu: (r) => (
+                <>
+                  <DropdownMenuItem onSelect={() => setOpenId(r.id)}>
+                    {r.project ? "Open in project" : "View machine identity"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled={Boolean(r.project)}>Add auth method</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={Boolean(r.project || r.deleteProtection)}
+                  >
+                    Delete machine identity
+                  </DropdownMenuItem>
+                </>
+              )
+            }}
             pagination={rows.length > 0 ? pagination : undefined}
             columns={columns}
             getRowId={(r) => r.id}

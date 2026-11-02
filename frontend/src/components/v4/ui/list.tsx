@@ -370,17 +370,40 @@ export function ListSection({
     </li>
   );
 }
+export type DataListItem =
+  | readonly [React.ReactNode, React.ReactNode]
+  | readonly [React.ReactNode, React.ReactNode, { span: "half" }];
+
+const isHalf = (item?: DataListItem) => item?.[2]?.span === "half";
+
 export function DataList({
   items,
-  variant = "stat"
+  variant = "stat",
+  density = "default"
 }: {
-  items: readonly (readonly [React.ReactNode, React.ReactNode])[];
+  items: readonly DataListItem[];
   variant?: "stat" | "meta" | "props";
+  density?: "default" | "compact";
 }) {
+  const halves = new Set<number>();
+  if (density === "compact")
+    items.forEach((item, index) => {
+      if (halves.has(index) || !isHalf(item) || !isHalf(items[index + 1])) return;
+      halves.add(index).add(index + 1);
+    });
   return (
-    <dl className={styles.dataList} data-slot="data-list" data-variant={variant}>
+    <dl
+      className={styles.dataList}
+      data-slot="data-list"
+      data-variant={variant}
+      data-density={density}
+    >
       {items.map(([term, value], index) => (
-        <div key={index} className={styles.dataPair}>
+        <div
+          key={index}
+          className={styles.dataPair}
+          data-span={halves.has(index) ? "half" : undefined}
+        >
           <dt>{term}</dt>
           <dd>{value}</dd>
         </div>

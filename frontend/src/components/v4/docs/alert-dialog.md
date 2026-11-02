@@ -42,8 +42,10 @@ Why: Vague labels hide which irreversible operation is being approved.
 ## Import and exports
 
 - src/components/v4/ui/alert-dialog.tsx
+- src/components/v4/hooks/use-discard-changes-guard.ts
+- src/components/v4/lib/overlay-pending.ts
 
-Exports: AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogMedia, AlertDialogOverlay, AlertDialogPortal, AlertDialogTitle, AlertDialogTrigger. Source TypeScript defines the API.
+Exports: AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogMedia, AlertDialogOverlay, AlertDialogPortal, AlertDialogTitle, AlertDialogTrigger, DiscardChangesAlertDialog, useDiscardChangesGuard. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -52,6 +54,8 @@ Exports: AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 - confirmText adds a mono field, labeled Type <name> to confirm and focused on open, above the footer; the action stays disabled until the field matches exactly.
 - One pad (space-16) on all four sides. Header, body and footer stack with the content gap and no margins. The footer has no band or rule: the actions sit right-aligned on the panel. A failure shows as a bad Alert in the body above the footer.
 - When AlertDialogHeader or AlertDialogFooter is a direct child, the lead tile, header and body share one scroll region with the edge fade, and the footer stays pinned below it; the footer's own pad is the space above the actions.
+- pending on AlertDialogContent blocks Escape and disables AlertDialogCancel while an action runs; the content is aria-busy. Show progress on the Action Button with loading.
+- DiscardChangesAlertDialog is the v3 discard prompt: a danger alert with the alert icon, title (default Discard Changes?), description (default Your changes will be lost.), Keep Editing and a destructive Discard that calls onDiscard. useDiscardChangesGuard({ isDirty, onDiscard }) returns the v3 shape (requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen) plus discardDialogProps to spread on the prompt. requestDiscard calls onDiscard at once when clean and opens the prompt when dirty; route a Dialog or Sheet onOpenChange(false) through it.
 
 ## Accessibility
 
@@ -255,6 +259,31 @@ export default function Example() {
         </UI.AlertDialog>
       </div><figcaption className="text-muted-foreground text-xs">{"neutral"}</figcaption></figure>
     </div>);
+}
+```
+
+### Discard changes
+
+Save this example at `src/pages/design-system/examples/alert-dialog/discard.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+import { DiscardChangesAlertDialog } from "../../../../components/v4/ui/alert-dialog";
+import { Button } from "../../../../components/v4/ui/button";
+export default function Example() {
+    const [open, setOpen] = useState(false);
+    const [discarded, setDiscarded] = useState(0);
+    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        Close Draft
+      </Button>
+      <DiscardChangesAlertDialog open={open} onOpenChange={setOpen} onDiscard={() => {
+            setDiscarded((count) => count + 1);
+            setOpen(false);
+        }} description="Your unsaved changes to this skill will be lost."/>
+    </div><figcaption className="text-muted-foreground text-xs">{`Discarded ${discarded} ${discarded === 1 ? "draft" : "drafts"}`}</figcaption></figure>);
 }
 ```
 

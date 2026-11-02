@@ -1015,6 +1015,19 @@
       "exceptions": "Structure is not an accent: tree hierarchy guides, timeline connectors and column or pane dividers drawn in line or line-soft stay."
     },
     {
+      "id": "persistent-row-actions",
+      "title": "Row actions are persistent, in the sticky actions column",
+      "category": "Interaction",
+      "instruction": "Put row-level actions in the table's sticky actions column, visible on every row at rest: DataTable rowActions, or TableActionsCell with RowActions in a native Table. Show at most three inline icon actions (Button icon-row, each with a tooltip and an accessible name that includes the row), then the More menu for everything else. A blocked action stays visible and disabled with its reason. Nothing a hover or focus shows may change a cell's width or the row's layout.",
+      "good": "A secret row with Reminder, Edit value and Copy secret icons and a More menu in a sticky tail cell that keeps one width on every row, hovered or not.",
+      "avoid": "Copy and More icons that appear inside the value cell on hover and push its content aside, or indicator marks that swap out for actions.",
+      "detect": {
+        "by": "lint",
+        "check": "row-action-reveal"
+      },
+      "exceptions": "A same-size glyph swap inside a fixed box, such as a folder glyph that turns into a chevron, keeps the layout still. Mark it with v4-check-ignore and the reason."
+    },
+    {
       "id": "skeleton-for-known-shape",
       "title": "Skeleton when the shape is known, Loader when it is not",
       "instruction": "When the shape of the content being loaded is known or measurable, show Skeleton shapes that match the loaded state at the same size. Use a Loader only when the shape is unknown.",

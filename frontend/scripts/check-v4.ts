@@ -275,6 +275,27 @@ export const v4Checks: readonly V4Check[] = [
     markup: [/\bborder-[ls](?:-\d+)?-\[color:var\(--v4-(?!line\b)[\w-]+\)\]/g]
   },
   {
+    id: "row-action-reveal",
+    rule: "persistent-row-actions",
+    message:
+      "Row actions are persistent and live in the sticky actions column (DataTable rowActions, or TableActionsCell with RowActions). Nothing a hover or focus shows may change a cell's width or the row's layout.",
+    appliesTo: isAuthored,
+    markup: [
+      /<TableRowActions\b[^>]*\breveal\b/g,
+      /<TableRowIndicators\b[^>]*\bswap\b/g,
+      /\bdata-(?:reveal|swap)\b/g
+    ],
+    cssBlock: (selector, body) => {
+      if (!/:hover|:focus-within/.test(selector)) return [];
+      if (!/(?:^|[\s>+~,(])(?:tr|td|th)\b|row|table|cell/i.test(selector)) return [];
+      return [
+        ...body.matchAll(
+          /(?:^|;|\n)\s*((?:display|position|(?:min-|max-)?(?:width|inline-size)|flex(?:-basis)?|margin(?:-[\w-]+)?|padding(?:-[\w-]+)?|gap)\s*:\s*[^;]+)/g
+        )
+      ].map((match) => match[1].trim());
+    }
+  },
+  {
     id: "dot-separator",
     rule: "no-dot-separators",
     message: "Separate details with words or layout, not a middle dot or bullet.",

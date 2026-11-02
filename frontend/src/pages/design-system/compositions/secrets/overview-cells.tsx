@@ -15,6 +15,7 @@ import {
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
 import { TableCell } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
@@ -26,6 +27,7 @@ import type { RowAction } from "./row-actions/types";
 import styles from "./overview.module.css";
 
 export const NEXT_PHASE = "Ported in the next phase";
+export const ROW_ACTION_SLOTS = 4;
 export type EnvironmentOption = { value: string; label: string };
 export type RowContext = {
   environments: EnvironmentOption[];
@@ -152,21 +154,23 @@ export function PendingBadge({ type }: { type?: PendingType }) {
   );
 }
 
-export function PendingActions({ id, ctx }: { id: string; ctx: RowContext }) {
+export function PendingMenuItems({ id, ctx }: { id: string; ctx: RowContext }) {
   if (!ctx.pending?.[id]) return null;
   return (
     <>
-      <ActionButton
-        label="Save pending changes"
-        icon={SaveIcon}
-        disabledReason={ctx.writeBlock}
-        onClick={() => ctx.onSavePending?.(id)}
-      />
-      <ActionButton
-        label="Discard pending changes"
-        icon={Undo2Icon}
-        onClick={() => ctx.onRevertPending?.(id)}
-      />
+      <DropdownMenuItem
+        disabled={Boolean(ctx.writeBlock)}
+        description={ctx.writeBlock}
+        onSelect={() => ctx.onSavePending?.(id)}
+      >
+        <Icon icon={SaveIcon} />
+        Save pending changes
+      </DropdownMenuItem>
+      <DropdownMenuItem onSelect={() => ctx.onRevertPending?.(id)}>
+        <Icon icon={Undo2Icon} />
+        Discard pending changes
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
     </>
   );
 }
