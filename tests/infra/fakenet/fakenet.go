@@ -186,6 +186,18 @@ func (s *Server) scope(host string, svc Service, key string) *scope {
 	return sc
 }
 
+// Lookup returns a scope's fake if a test has opened it, for a listener that is not
+// HTTP and so resolves its own scope, such as the LDAP directory.
+func (s *Server) Lookup(host, key string) (Fake, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sc, ok := s.scopes[scopeID{host, key}]
+	if !ok {
+		return nil, false
+	}
+	return sc.fake, true
+}
+
 // Emitter publishes under host and key for a fake that is not an HTTP Service and so
 // is never handed one per scope.
 func (s *Server) Emitter(host, key string) Emitter {

@@ -2371,9 +2371,18 @@ export const projectServiceFactory = ({
   const getSecretBlindIndexMigrationStatus = async (dto: TEnableSecretBlindIndexDTO) =>
     secretValueTrackingService.getProjectStatus(dto);
 
+  // Labels for audit metadata only, so no permission check. Scoped to the org, so an id from
+  // another org resolves to nothing.
+  const getProjectNamesByIds = async ({ orgId, projectIds }: { orgId: string; projectIds: string[] }) => {
+    if (!projectIds.length) return [];
+    const projects = await projectDAL.find({ orgId, $in: { id: projectIds } });
+    return projects.map(({ id, name }) => ({ id, name }));
+  };
+
   return {
     createProject,
     deleteProject,
+    getProjectNamesByIds,
     getProjects,
     getAccessibleProjectsWithSubOrgs,
     updateProject,

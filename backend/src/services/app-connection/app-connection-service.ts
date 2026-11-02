@@ -855,6 +855,14 @@ export const appConnectionServiceFactory = ({
       );
 
       if (gatewayId) {
+        const plan = await licenseService.getPlan(actor.orgId);
+        if (!plan.gateway) {
+          throw new BadRequestError({
+            message:
+              "Your current plan does not support gateway usage with app connections. Please upgrade your plan or contact Infisical Sales for assistance."
+          });
+        }
+
         const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
         if (!gatewayV2) {
           throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });

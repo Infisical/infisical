@@ -196,12 +196,12 @@ export const accountRecoveryServiceFactory = ({
     } catch {
       // If we were going to reject anyway, throw the generic message.
       // If the user was valid but the token failed, same generic message.
-      throw new Error("Invalid or expired verification request");
+      throw new BadRequestError({ message: "Invalid or expired verification request" });
     }
 
     // Reject *after* the constant-time token validation work.
     if (shouldReject) {
-      throw new Error("Invalid or expired verification request");
+      throw new BadRequestError({ message: "Invalid or expired verification request" });
     }
 
     await emailDispatchGuard.clearMailboxThrottle({

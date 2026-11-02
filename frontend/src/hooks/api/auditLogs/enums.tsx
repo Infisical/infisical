@@ -327,6 +327,7 @@ export enum EventType {
 
   UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
   DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
+  INVITE_ORG_MEMBERS = "invite-org-members",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
