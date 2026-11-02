@@ -79,7 +79,10 @@ export function EnvironmentSelect({
     label = "All Environments";
   }
 
-  const handleSelectAll = () => setSelectedEnvs([]);
+  const handleSelectAll = () => {
+    setSelectedEnvs([]);
+    setIsOpen(false);
+  };
 
   const handleSwitchEnv = (envId: string) => {
     setSelectedEnvs((prev) => {
@@ -90,6 +93,7 @@ export function EnvironmentSelect({
       // switching to the sole selected environment clears back to all
       return prev.length === 1 && prev[0].id === envId ? [] : [selectedEnv];
     });
+    setIsOpen(false);
   };
 
   const handleToggleEnv = (envId: string) => {
