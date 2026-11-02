@@ -297,35 +297,6 @@ export const honeyTokenServiceFactory = ({
     }
     assertHoneyTokenConnectionType(providerType, appConnection.app);
 
-    const { credentials: honeyTokenCredentials, tokenIdentifier } =
-      await providerHooks.createCredentials(appConnection);
-
-    const { encryptor: credentialEncryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const encryptedCredentials = credentialEncryptor({
-      plainText: Buffer.from(JSON.stringify(honeyTokenCredentials))
-    }).cipherTextBlob;
-
-    const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
-
-    const secretEntries = Object.entries(secretsMapping).map(([credentialField, secretKey]) => {
-      const credentialValue = honeyTokenCredentials[credentialField];
-      if (credentialValue === undefined) {
-        throw new BadRequestError({
-          message: `Secrets mapping key "${credentialField}" does not exist in generated credentials for this honey token type`
-        });
-      }
-
-      return { key: secretKey, value: credentialValue };
-    });
-
     const stackDeployment = providerHooks.verifyDeployment
       ? await providerHooks.verifyDeployment({
           appConnection,
@@ -343,61 +314,101 @@ export const honeyTokenServiceFactory = ({
       });
     }
 
-    const honeyToken = await honeyTokenDAL.transaction(async (tx) => {
-      const createdHoneyToken = await honeyTokenDAL.create(
-        {
-          name,
-          description,
-          type: providerType,
-          status: HoneyTokenStatus.Active,
-          projectId,
-          folderId: folder.id,
-          encryptedCredentials,
-          secretsMapping,
-          tokenIdentifier,
-          createdByUserId: actor.id
-        },
-        tx
-      );
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
 
-      const inputSecretsWithBlindIndex = await Promise.all(
-        secretEntries.map(async ({ key, value }) => ({
-          key,
-          type: SecretType.Shared,
-          encryptedValue: secretEncryptor({
-            plainText: Buffer.from(value)
-          }).cipherTextBlob,
-          blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(value)),
-          references: []
-        }))
-      );
+    const { credentials: honeyTokenCredentials, tokenIdentifier } =
+      await providerHooks.createCredentials(appConnection);
 
-      const createdSecrets = await fnSecretBulkInsert({
-        folderId: folder.id,
-        eventEmitter,
-        eventScope: { projectId, environment, secretPath: folder.path },
-        orgId: actor.orgId,
-        inputSecrets: inputSecretsWithBlindIndex,
-        secretDAL,
-        secretVersionDAL,
-        secretVersionTagDAL,
-        secretTagDAL,
-        folderCommitService,
-        resourceMetadataDAL,
-        actor: {
-          type: actor.type as ActorType,
-          actorId: actor.id
-        },
-        tx
+    const $persistHoneyToken = async () => {
+      const encryptedCredentials = encryptor({
+        plainText: Buffer.from(JSON.stringify(honeyTokenCredentials))
+      }).cipherTextBlob;
+
+      const secretEntries = Object.entries(secretsMapping).map(([credentialField, secretKey]) => {
+        const credentialValue = honeyTokenCredentials[credentialField];
+        if (credentialValue === undefined) {
+          throw new BadRequestError({
+            message: `Secrets mapping key "${credentialField}" does not exist in generated credentials for this honey token type`
+          });
+        }
+
+        return { key: secretKey, value: credentialValue };
       });
 
-      await honeyTokenDAL.createSecretMappings(
-        createdHoneyToken.id,
-        createdSecrets.map((secret) => secret.id),
-        tx
-      );
+      return honeyTokenDAL.transaction(async (tx) => {
+        const createdHoneyToken = await honeyTokenDAL.create(
+          {
+            name,
+            description,
+            type: providerType,
+            status: HoneyTokenStatus.Active,
+            projectId,
+            folderId: folder.id,
+            encryptedCredentials,
+            secretsMapping,
+            tokenIdentifier,
+            createdByUserId: actor.id
+          },
+          tx
+        );
 
-      return createdHoneyToken;
+        const inputSecretsWithBlindIndex = await Promise.all(
+          secretEntries.map(async ({ key, value }) => ({
+            key,
+            type: SecretType.Shared,
+            encryptedValue: encryptor({
+              plainText: Buffer.from(value)
+            }).cipherTextBlob,
+            blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(value)),
+            references: []
+          }))
+        );
+
+        const createdSecrets = await fnSecretBulkInsert({
+          folderId: folder.id,
+          eventEmitter,
+          eventScope: { projectId, environment, secretPath: folder.path },
+          orgId: actor.orgId,
+          inputSecrets: inputSecretsWithBlindIndex,
+          secretDAL,
+          secretVersionDAL,
+          secretVersionTagDAL,
+          secretTagDAL,
+          folderCommitService,
+          resourceMetadataDAL,
+          actor: {
+            type: actor.type as ActorType,
+            actorId: actor.id
+          },
+          tx
+        });
+
+        await honeyTokenDAL.createSecretMappings(
+          createdHoneyToken.id,
+          createdSecrets.map((secret) => secret.id),
+          tx
+        );
+
+        return createdHoneyToken;
+      });
+    };
+
+    // Until the row commits nothing points at the provider user just created, so a failure here has to revoke
+    // it or it is left behind for good.
+    const honeyToken = await $persistHoneyToken().catch(async (err: unknown) => {
+      await providerHooks
+        .revokeCredentials({ appConnection, credentials: honeyTokenCredentials })
+        .catch((revokeErr: unknown) =>
+          logger.error(
+            { err: revokeErr },
+            `Failed to revoke honey token credentials after its creation failed [projectId=${projectId}] [tokenIdentifier=${tokenIdentifier}]`
+          )
+        );
+      throw err;
     });
 
     await secretDAL.invalidateSecretCacheByProjectId(projectId);

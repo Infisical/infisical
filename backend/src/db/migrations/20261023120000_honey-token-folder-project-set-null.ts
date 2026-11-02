@@ -16,11 +16,16 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable(TableName.HoneyToken, (t) => {
     t.uuid("folderId").nullable().alter();
     t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("SET NULL");
-    t.index("folderId");
     t.string("projectId").nullable().alter();
     t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("SET NULL");
-    t.index("projectId");
   });
+
+  await knex.schema.raw(
+    `CREATE INDEX IF NOT EXISTS "${TableName.HoneyToken}_folderid_index" ON "${TableName.HoneyToken}" ("folderId")`
+  );
+  await knex.schema.raw(
+    `CREATE INDEX IF NOT EXISTS "${TableName.HoneyToken}_projectid_index" ON "${TableName.HoneyToken}" ("projectId")`
+  );
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -32,10 +37,11 @@ export async function down(knex: Knex): Promise<void> {
     })
     .delete();
 
+  await knex.schema.raw(`DROP INDEX IF EXISTS "${TableName.HoneyToken}_folderid_index"`);
+  await knex.schema.raw(`DROP INDEX IF EXISTS "${TableName.HoneyToken}_projectid_index"`);
+
   await knex.schema.alterTable(TableName.HoneyToken, (t) => {
-    t.dropIndex("folderId");
     t.dropForeign(["folderId"]);
-    t.dropIndex("projectId");
     t.dropForeign(["projectId"]);
   });
 
