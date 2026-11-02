@@ -14,13 +14,13 @@ You can run the proxy in one of two ways:
 - **[One proxy for several agents](/documentation/platform/agent-vault/how-it-works#common-proxy):** one proxy runs on its own machine or as a [Kubernetes Deployment](/documentation/platform/agent-vault/guides/kubernetes), and every agent sends its requests to it. Agents send their session token to the proxy over plain HTTP, so this is suitable only for agents on a private network that you control
 - **[One proxy per agent](/documentation/platform/agent-vault/how-it-works#one-proxy-per-agent):** the orchestrator starts a proxy in a separate container with each agent, such as a [Modal sidecar](/documentation/platform/agent-vault/guides/modal) or a [linked Daytona sandbox](/documentation/platform/agent-vault/guides/daytona), and stops the proxy when the agent finishes. This is suitable for a managed sandbox platform, where a shared proxy would have to accept connections from the internet
 
+If your agents run in [E2B sandboxes](/documentation/platform/agent-vault/guides/e2b), run one proxy for several agents on a public machine, with the [SOCKS5 port](#accept-connections-over-socks5) turned on. E2B connects to the proxy from its own servers, so the proxy can't be on a private network.
+
 Either way, we recommend running the proxy separately from the agent, either in its own container or on its own machine. If the agent and the proxy run in the same environment, the agent can read the proxy token and the private key of the proxy's certificate authority.
 
 <Tip>
 If you run a shared proxy, we recommend keeping it on the same private network as your agents. Every request the agent makes goes through the proxy, and a round trip between networks adds latency to every request.
 </Tip>
-
-If your agents run in [E2B sandboxes](/documentation/platform/agent-vault/guides/e2b), E2B connects to the proxy from its own servers, so the proxy can't be on a private network. Run the proxy on a public machine instead, with the [SOCKS5 port](#accept-connections-over-socks5) turned on.
 
 ## Supported connections
 
@@ -32,7 +32,7 @@ Over either connection, the proxy attaches credentials to HTTP/1.1 requests, ove
 - Clients that only speak HTTP/2, such as gRPC clients
 - Other TCP traffic through the SOCKS5 port, such as SSH
 
-If an API offers both, configure the agent to use its plain HTTPS requests. Many SDKs fall back to HTTPS when a WebSocket connection fails.
+If an API offers both WebSocket connections and plain HTTPS requests, configure the agent to use the HTTPS requests. Many SDKs fall back to HTTPS when a WebSocket connection fails.
 
 ## Create a proxy and start it
 
@@ -272,7 +272,7 @@ For this reason, we recommend running the proxy where only your agents can reach
 
 ### Download the certificate authority
 
-To get the proxy's CA without connecting to the proxy, such as to give it to a sandbox provider, download it from Infisical:
+To give the proxy's CA to a sandbox provider, or to get the CA without connecting to the proxy, download it from Infisical:
 
 - **In Infisical:** on the **Proxies** page, select the download icon next to the fingerprint in the **Certificate Authority** column
 - **With the API:** call [the endpoint that gets a proxy's certificate authority](/api-reference/endpoints/agent-vault-proxies/get-ca) as an Agent Vault member or admin
@@ -337,13 +337,19 @@ When the port is ready, the proxy logs `agent-vault: SOCKS5 listening`. Log line
 
 With `--socks5-tls-name`, the proxy makes the port's certificate from its CA and renews the certificate before it expires. Clients check the certificate with the proxy's CA, which you can [download from Infisical](#download-the-certificate-authority), or with your own CA's certificate if you [use your own](#use-your-own-certificate-authority).
 
-To serve your own certificate instead, such as one from a publicly trusted CA, pass `--socks5-tls-cert` and `--socks5-tls-key` in place of `--socks5-tls-name`. Each value can be the PEM text, the PEM encoded as base64, or the path to a PEM file, and the key can be RSA, ECDSA, or Ed25519. The proxy doesn't start if the certificate has expired. If you pass file paths, the proxy loads a renewed certificate within a minute of the files changing, and warns in its log when fewer than 14 days are left. If you pass the PEM text itself, restart the proxy each time you renew the certificate.
+To serve your own certificate instead, such as one from a publicly trusted CA, pass `--socks5-tls-cert` and `--socks5-tls-key` in place of `--socks5-tls-name`:
+
+- **Formats:** each value can be the PEM text, the PEM encoded as base64, or the path to a PEM file
+- **Key types:** RSA, ECDSA, or Ed25519
+- **Expired certificates:** the proxy doesn't start if the certificate has expired
+- **Renewal with file paths:** the proxy loads a renewed certificate within a minute of the files changing (and warns in its log when fewer than 14 days are left)
+- **Renewal with PEM text:** restart the proxy each time you renew the certificate
 
 ### Sessions on the SOCKS5 port
 
 Clients sign in with a SOCKS5 username and password. The proxy ignores the username, so you can use any value, such as `x-agent-vault`. Set the password to the session token. After sign-in, the proxy handles requests the same way it handles them on the HTTP port, including the [traffic policy](#traffic-policy) and the limits in [Supported connections](#supported-connections).
 
-- If the session isn't valid, the proxy refuses the sign-in and logs the reason (only with `--log-level debug` if the password isn't a session token), so the client sees the connection close
+- If the session isn't valid, the proxy refuses the sign-in and logs the reason, so the client sees the connection close (if the password isn't a session token, the proxy logs the reason only with `--log-level debug`)
 - If you revoke a session while a connection is open, the next request on that connection gets a 403 with `the session is no longer valid` (within one [poll interval](#poll-interval))
 
 ### Requests to private addresses

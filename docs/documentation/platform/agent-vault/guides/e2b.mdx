@@ -9,9 +9,7 @@ import SandboxAgentVaultSetup from "/snippets/agent-vault/SandboxAgentVaultSetup
 
 [E2B sandboxes](https://e2b.dev/docs/sandbox) are isolated virtual machines you create from code to run an agent. The agent in a sandbox runs commands that a prompt can influence, so any API key you give the sandbox can leak through a [prompt injection](/documentation/platform/agent-vault/why-agent-vault).
 
-With Agent Vault, you don't give the sandbox any API keys. E2B's [bring your own proxy](https://e2b.dev/docs/network/byop) option sends the sandbox's outbound connections to a SOCKS5 proxy you run. You run an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) with its SOCKS5 port turned on, and the proxy attaches the real credential to requests for the APIs you allowed.
-
-E2B connects to the proxy from its own servers, not from inside the sandbox, so nothing in the sandbox is configured to use the proxy, and code in the sandbox can't route around it.
+With Agent Vault, you don't give the sandbox any API keys. E2B's [bring your own proxy](https://e2b.dev/docs/network/byop) option sends the sandbox's outbound connections to a SOCKS5 proxy you run. You run an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) with its SOCKS5 port turned on, and the proxy attaches the real credential to requests for the APIs you allowed. E2B connects to the proxy from its own servers, not from inside the sandbox, so nothing in the sandbox is configured to use the proxy, and code in the sandbox can't send traffic that skips it.
 
 ```mermaid
 flowchart LR
@@ -33,31 +31,32 @@ flowchart LR
 
 For each run, your code does the following:
 
-1. Gets the proxy's certificate authority (CA) from Infisical
-2. Creates an Agent Vault [session](/documentation/platform/agent-vault/sessions) for the run
+1. [Gets the proxy's certificate authority (CA)](/api-reference/endpoints/agent-vault-proxies/get-ca) from Infisical
+2. [Creates an Agent Vault session](/api-reference/endpoints/agent-vault-sessions/create) for the run ([learn more about sessions](/documentation/platform/agent-vault/sessions))
 3. Creates a sandbox that sends its traffic to the proxy, with the session token as the SOCKS5 password
 4. Adds the proxy's CA to the sandbox's trust store, and runs the agent
-5. Revokes the session and kills the sandbox when the agent finishes
+5. [Revokes the session](/api-reference/endpoints/agent-vault-sessions/revoke) and kills the sandbox when the agent finishes
 
 One proxy serves every sandbox, so you set it up once.
 
-<Accordion title="Why the proxy can face the internet here">
-  E2B only connects to proxies that are reachable from the internet, so the proxy can't be on a private network. The setup in this guide keeps that safe:
+<Accordion title="Why the proxy can be reachable from the internet">
+  E2B only connects to proxies that are reachable from the internet, so the proxy can't be on a private network. These parts of the setup protect the session tokens and the proxy:
 
   - **TLS on the SOCKS5 port:** The SOCKS5 port only accepts TLS, so the session token and the traffic are encrypted on the way to the proxy
   - **No token in the sandbox:** E2B holds the session token on its servers, so the agent can't read it
   - **Short sessions:** Your code creates a session for each run and revokes it when the run ends, so a leaked token only works until then
   - **A local HTTP port:** The proxy's HTTP port stays local to the proxy's machine, and only the SOCKS5 port is public
-  - **Private destinations blocked:** Through the SOCKS5 port, the proxy refuses requests to private and internal addresses, such as cloud metadata endpoints, unless a service names the host
+  - **Private destinations blocked:** Through the SOCKS5 port, the proxy refuses requests to private and internal addresses, such as cloud metadata endpoints, unless a service in the session's access bundle names the host
 
-  You can also limit the SOCKS5 port with a firewall to the Google Cloud address ranges of the regions your sandboxes run in, as [E2B describes](https://e2b.dev/docs/faq/egress-ip-ranges). E2B publishes no ranges for its AWS region, and other Google Cloud customers share the Google Cloud ranges, so the firewall adds to these protections rather than replacing them.
+  You can also use a firewall to limit the SOCKS5 port to the Google Cloud address ranges of the regions your sandboxes run in, as [E2B describes](https://e2b.dev/docs/faq/egress-ip-ranges). E2B publishes no ranges for its AWS region, and other Google Cloud customers share the Google Cloud ranges, so the firewall adds to these protections rather than replacing them.
 </Accordion>
 
 ## Prerequisites
 
 - The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
-- An [E2B](https://e2b.dev) account with [bring your own proxy](https://e2b.dev/docs/network/byop) turned on (E2B lists it as a private beta, so you may need to ask E2B to turn it on), and an [E2B API key](https://e2b.dev/docs/api-key) in the `E2B_API_KEY` environment variable on the machine that runs your code
+- An [E2B](https://e2b.dev) account with [bring your own proxy](https://e2b.dev/docs/network/byop) turned on (E2B lists it as a private beta, so you may need to ask E2B to turn it on)
+- An [E2B API key](https://e2b.dev/docs/api-key) in the `E2B_API_KEY` environment variable on the machine that runs your code
 - The E2B SDK version 2.57.0 or later for your language: [Python](https://pypi.org/project/e2b/) (with [`requests`](https://pypi.org/project/requests/)) or [TypeScript](https://www.npmjs.com/package/e2b)
 - A Linux machine or Kubernetes cluster to run the proxy, reachable from the internet, with a DNS name that points to it
 - For the systemd setup, the [Infisical CLI](/cli/install) installed on that machine
@@ -70,11 +69,11 @@ One proxy serves every sandbox, so you set it up once.
 
 Run the proxy where E2B can reach it from the internet, with its SOCKS5 port turned on. E2B runs sandboxes in Google Cloud's `us-west1` region by default, so a machine in or near that region adds the least latency to each request.
 
-These commands turn on the SOCKS5 port, on port `1080`. With `--socks5-tls-name`, the proxy makes the port's TLS certificate from its CA for that DNS name. Replace `<proxy-dns-name>` with the machine's DNS name, and `<your-instance-url>` with the URL of your Infisical instance:
+These commands start the proxy with its SOCKS5 port on port `1080`. With `--socks5-tls-name`, the proxy makes the port's TLS certificate from its CA for the DNS name you pass. Replace `<proxy-dns-name>` with the machine's DNS name, and `<your-instance-url>` with the URL of your Infisical instance:
 
 <Tabs>
   <Tab title="systemd">
-    Save the token in `/etc/infisical/agent-vault-proxy.env`:
+    Save the proxy token in `/etc/infisical/agent-vault-proxy.env`:
 
     ```bash
     INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token>
@@ -177,10 +176,12 @@ These commands turn on the SOCKS5 port, on port `1080`. With `--socks5-tls-name`
 
 To check that the proxy is up, such as in a load balancer's health check, open a TCP connection to port `1080`.
 
-When the proxy starts, it logs `agent-vault: proxy listening`, with the proxy's ID in the `proxyId` field, then `agent-vault: SOCKS5 listening`. Copy the ID for [Step 4](#step-4-run-a-command-in-a-sandbox). To read the log, run `journalctl -u agent-vault-proxy` for systemd, `docker logs agent-vault-proxy` for Docker, or `kubectl logs deploy/agent-vault-proxy` for Kubernetes.
+When the proxy starts, it logs `agent-vault: proxy listening`, with the proxy's ID in the `proxyId` field, then `agent-vault: SOCKS5 listening`. To read the log, run `journalctl -u agent-vault-proxy` for systemd, `docker logs agent-vault-proxy` for Docker, or `kubectl logs deploy/agent-vault-proxy` for Kubernetes.
+
+Copy the proxy's ID for [Step 4](#step-4-run-a-command-in-a-sandbox).
 
 <Info>
-  To serve a certificate you already have on the SOCKS5 port instead, pass `--socks5-tls-cert` and `--socks5-tls-key` in place of `--socks5-tls-name`. Then change the `tls` setting in [Step 4](#step-4-run-a-command-in-a-sandbox) to match the certificate:
+  To serve your own certificate on the SOCKS5 port instead, pass `--socks5-tls-cert` and `--socks5-tls-key` in place of `--socks5-tls-name`. Then change the `tls` setting in [Step 4](#step-4-run-a-command-in-a-sandbox) to match the certificate:
 
   | Certificate on the SOCKS5 port | `tls` in your code |
   | --- | --- |
@@ -199,7 +200,7 @@ The proxy token stays on the proxy's machine, so your code doesn't need it.
 
 ## Step 4: Run a command in a sandbox
 
-This function runs one shell command in a new sandbox, and returns its output. Replace the values at the top:
+This function runs one shell command in a new sandbox and returns the command's output. Replace the values at the top:
 
 - `<access-bundle-name>`: your access bundle's name
 - `<proxy-id>`: the proxy's ID from [Step 2](#step-2-run-the-proxy-on-a-public-machine)
@@ -267,7 +268,7 @@ def run_in_sandbox(command: str) -> str:
             timeout=SANDBOX_TIMEOUT,
             envs={**CA_ENV, **SANDBOX_ENV},
             network={
-                # E2B sends the proxy hostnames instead of IP addresses only for
+                # E2B sends hostnames to the proxy, instead of IP addresses, only for
                 # traffic that a domain entry in allow_out lets through.
                 "allow_out": ["*"],
                 "deny_out": ["0.0.0.0/0"],
@@ -362,7 +363,7 @@ export async function runInSandbox(command: string): Promise<string> {
       timeoutMs: SANDBOX_TIMEOUT_MS,
       envs: { ...CA_ENV, ...SANDBOX_ENV },
       network: {
-        // E2B sends the proxy hostnames instead of IP addresses only for
+        // E2B sends hostnames to the proxy, instead of IP addresses, only for
         // traffic that a domain entry in allowOut lets through.
         allowOut: ["*"],
         denyOut: ["0.0.0.0/0"],
@@ -396,11 +397,13 @@ export async function runInSandbox(command: string): Promise<string> {
 
 The function adds the proxy's CA to the sandbox's system trust store, and sets the variables that [`agent-vault run`](/documentation/platform/agent-vault/proxies#certificate-trust) sets for the tools that don't read that store.
 
-To keep the same CA when you rotate the proxy's token, [use your own CA](/documentation/platform/agent-vault/proxies#use-your-own-certificate-authority). Infisical can't return your own CA, so with your own CA, read the certificate from a file instead of [getting it from Infisical](/api-reference/endpoints/agent-vault-proxies/get-ca). For more about creating sessions from code, see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api).
+To keep the same CA when you rotate the proxy's token, [use your own CA](/documentation/platform/agent-vault/proxies#use-your-own-certificate-authority). Infisical doesn't have your own CA, so read its certificate from a file instead of [getting it from Infisical](/api-reference/endpoints/agent-vault-proxies/get-ca).
+
+For more about creating sessions from code, see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api).
 
 ## Step 5: Verify it works
 
-Call the function with a request to an API in the access bundle. This example calls the Anthropic API, which returns a list of models only if the request has an API key. If your access bundle doesn't have an **Anthropic** service, replace the URL with an API it has a service for:
+Call the function with a request to an API in the access bundle. This example calls the Anthropic API, which returns a list of models only if the request has an API key. If your access bundle doesn't have an **Anthropic** service, replace the URL with the URL of an API that the access bundle has a service for:
 
 <CodeGroup>
 
@@ -434,7 +437,7 @@ To run an agent such as Claude Code, start the sandbox from an E2B template that
 
 <Steps>
   <Step>
-    Set `TEMPLATE` in the function to the template's name. For Claude Code, use `claude`, a [template E2B provides](https://e2b.dev/docs/agents/claude-code) with Claude Code installed. For another agent, [build a template](https://e2b.dev/docs/template/quickstart) with the agent installed.
+    Set `TEMPLATE` at the top of the code from Step 4 to the template's name. For Claude Code, use `claude`, a [template E2B provides](https://e2b.dev/docs/agents/claude-code) with Claude Code installed. For another agent, [build a template](https://e2b.dev/docs/template/quickstart) with the agent installed.
   </Step>
   <Step>
     Add the agent's settings to `SANDBOX_ENV`. For Claude Code, add these:
@@ -445,8 +448,8 @@ To run an agent such as Claude Code, start the sandbox from an E2B template that
     SANDBOX_ENV = {
         # Claude Code won't start without a key; the proxy replaces this one.
         "ANTHROPIC_API_KEY": "agent-vault",
-        # Skips Claude Code's update checks and telemetry, which a proxy limited to
-        # access bundle hosts blocks.
+        # Skips Claude Code's update checks and telemetry. If the proxy only allows
+        # access bundle hosts, it blocks them.
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
         "DISABLE_AUTOUPDATER": "1",
     }
@@ -456,8 +459,8 @@ To run an agent such as Claude Code, start the sandbox from an E2B template that
     const SANDBOX_ENV: Record<string, string> = {
       // Claude Code won't start without a key; the proxy replaces this one.
       ANTHROPIC_API_KEY: "agent-vault",
-      // Skips Claude Code's update checks and telemetry, which a proxy limited to
-      // access bundle hosts blocks.
+      // Skips Claude Code's update checks and telemetry. If the proxy only allows
+      // access bundle hosts, it blocks them.
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
       DISABLE_AUTOUPDATER: "1",
     };
@@ -476,12 +479,14 @@ The agent calls its APIs the same way it does without Agent Vault, and E2B sends
 
 ### Network access from the sandbox
 
-The sandbox can look up hostnames over DNS at `8.8.8.8`, which E2B lets through without the proxy. The traffic policy doesn't apply to these lookups, so an agent can still send data out in the names it looks up, though never a credential. To control this, run a DNS resolver that only answers the names you allow, and pass its address in `dns_servers` (`dnsServers` in TypeScript).
+The sandbox can look up hostnames over DNS at `8.8.8.8`, which E2B lets through without the proxy. The traffic policy doesn't apply to these lookups, so an agent can still send data out in the names it looks up, though never a credential. To limit which names the sandbox can look up, run a DNS resolver that only answers the names you allow, and pass its address in `dns_servers` (`dnsServers` in TypeScript).
 
 Every other connection goes through the proxy:
 
-- **Hosts through the proxy:** under the default [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), **Any host**, the proxy forwards the sandbox's requests to any host on the internet (to allow only the hosts that services in the session's access bundle cover, set the traffic policy to **Access bundle hosts only** and add any other hosts the agent needs, such as `registry.npmjs.org`, to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions))
+- **Hosts through the proxy:** under the default [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), **Any host**, the proxy forwards the sandbox's requests to any host on the internet
 - **Ports:** E2B only sends connections on ports `80` and `443` to the proxy, so the sandbox can't reach a service on any other port
+
+To allow only the hosts that services in the session's access bundle cover, set the traffic policy to **Access bundle hosts only**. Add any other hosts the agent needs, such as `registry.npmjs.org`, to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
 
 ### Compromised sandboxes or leaked tokens
 
@@ -501,9 +506,9 @@ The proxy token is only on the proxy's machine. If you think someone took contro
     ```
   </Accordion>
   <Accordion title="Requests fail with a certificate error, or reach the API without a credential">
-    E2B sent the proxy an IP address instead of a hostname, so HTTPS requests fail with a certificate error and no service matches. E2B only sends hostnames for traffic that a domain entry allows, so create the sandbox with `allow_out` set to `["*"]` and `deny_out` set to `["0.0.0.0/0"]`, as the function in [Step 4](#step-4-run-a-command-in-a-sandbox) does.
+    E2B sent the proxy an IP address instead of a hostname, so HTTPS requests fail with a certificate error, and the proxy can't match the request to a service. The proxy's log shows `closed a SOCKS5 connection the proxy can't handle` with a TLS handshake error for the host's IP address.
 
-    The proxy's log shows `closed a SOCKS5 connection the proxy can't handle` with a TLS handshake error for the host's IP address.
+    E2B only sends hostnames for traffic that a domain entry allows, so create the sandbox with `allow_out` set to `["*"]` and `deny_out` set to `["0.0.0.0/0"]`, as the function in [Step 4](#step-4-run-a-command-in-a-sandbox) does.
   </Accordion>
   <Accordion title="Connections from the sandbox fail right away">
     The proxy refused the connection before any request. Check the proxy's log for one of these lines:
