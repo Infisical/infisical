@@ -974,7 +974,7 @@ proxies = client.agent_vault.proxies.list(
 ```
 
 **Parameters:**
-- `search` (str, optional): text to find in proxy names
+- `search` (str, optional): text to find in proxy names and descriptions
 - `order_by` (str, optional): what to sort the proxies by, `name` or `createdAt` (defaults to `createdAt`)
 - `order_direction` (str, optional): the direction to sort in, `asc` or `desc` (defaults to `desc`)
 - `limit` (int, optional): the maximum number of proxies to return, from 1 to 100 (defaults to `20`)
@@ -994,7 +994,8 @@ response = client.agent_vault.proxies.create(
     name="edge-proxy",
     traffic_policy=AgentVaultTrafficPolicy.BUNDLE_HOSTS, # Optional
     allowed_hosts=["registry.npmjs.org", "pypi.org"], # Optional
-    poll_interval=60 # Optional
+    poll_interval=60, # Optional
+    description="Proxy for CI runners" # Optional
 )
 ```
 
@@ -1003,6 +1004,7 @@ response = client.agent_vault.proxies.create(
 - `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `AgentVaultTrafficPolicy.ANY_HOST` (`"any-host"`) to forward requests to any host or `AgentVaultTrafficPolicy.BUNDLE_HOSTS` (`"bundle-hosts"`) to refuse requests to hosts that no service in the session's access bundle covers (defaults to `AgentVaultTrafficPolicy.ANY_HOST`)
 - `allowed_hosts` (Union[List[str], str], optional): hosts that agents can reach under `AgentVaultTrafficPolicy.BUNDLE_HOSTS` even if no service covers them, as a list or a comma-separated string (see [Exceptions](/documentation/platform/agent-vault/proxies#exceptions))
 - `poll_interval` (int, optional): how often, in seconds, the proxy checks its sessions and settings with Infisical, from 10 to 300 (defaults to `60`)
+- `description` (str, optional): what the proxy is for, up to 256 characters without line breaks or tabs (requires `infisicalsdk` version 1.1.1 or newer)
 
 **Returns:**
 - `AgentVaultProxyWithTokenResponse`: the proxy in `proxy`, and its proxy token in `proxyToken` (Infisical returns the token only once)
@@ -1011,7 +1013,7 @@ To start the proxy with the proxy token, run one of the commands in [Create a pr
 
 #### Update proxy
 
-The proxy's name and settings that you don't pass stay as they are. If the proxy is running, it applies the changes within one poll interval.
+The proxy's name, description, and settings that you don't pass stay as they are. If the proxy is running, it applies the changes within one poll interval.
 
 ```python
 from infisical_sdk import AgentVaultTrafficPolicy
@@ -1021,7 +1023,8 @@ proxy = client.agent_vault.proxies.update(
     name="edge-proxy", # Optional
     traffic_policy=AgentVaultTrafficPolicy.BUNDLE_HOSTS, # Optional
     allowed_hosts=["pypi.org"], # Optional
-    poll_interval=30 # Optional
+    poll_interval=30, # Optional
+    description="Proxy for CI runners" # Optional
 )
 ```
 
@@ -1032,6 +1035,8 @@ proxy = client.agent_vault.proxies.update(
 - `allowed_hosts` (Union[List[str], str], optional): the new exceptions, which replace the current ones
 - `poll_interval` (int, optional): the new poll interval in seconds, from 10 to 300
 - `clear_allowed_hosts` (bool, optional): set to `True` to remove every exception (raises a `ValueError` if you also pass `allowed_hosts`)
+- `description` (str, optional): the new description (requires `infisicalsdk` version 1.1.1 or newer)
+- `clear_description` (bool, optional): set to `True` to remove the description (raises a `ValueError` if you also pass `description`, and requires `infisicalsdk` version 1.1.1 or newer)
 
 **Returns:**
 - `AgentVaultProxy`: the updated proxy
