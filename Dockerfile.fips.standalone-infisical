@@ -2,7 +2,7 @@ ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 
-ARG INFISICAL_CLI_VERSION=0.44.6
+ARG INFISICAL_CLI_VERSION=0.44.12
 
 FROM node:26.12.1-trixie-slim AS base
 
@@ -159,6 +159,8 @@ RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-li
 COPY --from=backend-build /app .
 RUN rm -rf ./node_modules ./bdd ./e2e-test ./src
 RUN npm ci --omit=dev
+# Test folders these packages publish, with sample private keys that image scanners flag
+RUN rm -rf node_modules/@fastify/reply-from/test node_modules/ssh2/test node_modules/universal-github-app-jwt/test
 
 RUN mkdir frontend-build
 
