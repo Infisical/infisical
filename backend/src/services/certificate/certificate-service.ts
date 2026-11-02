@@ -19,7 +19,7 @@ import {
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -794,6 +794,7 @@ export const certificateServiceFactory = ({
 
     // rebuild CRL (TODO: move to interval-based cron job)
     // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
+    let crlUpdateError: string | null = null;
     if (!ca.externalCa?.id) {
       try {
         await rebuildCaCrl({
@@ -808,14 +809,11 @@ export const certificateServiceFactory = ({
         });
       } catch (err) {
         logger.error(err, `certificate revocation: CRL rebuild failed [certificateId=${cert.id}] [caId=${ca.id}]`);
-        throw new InternalServerError({
-          message: `Certificate '${getCertificateDisplayName(cert)}' was revoked, but the CRL of certificate authority '${ca.name}' couldn't be updated, so it doesn't list the revocation yet.`,
-          error: err
-        });
+        crlUpdateError = `Certificate '${getCertificateDisplayName(cert)}' was revoked, but the CRL of certificate authority '${ca.name}' couldn't be updated, so it doesn't list the revocation yet.`;
       }
     }
 
-    return revokedAt;
+    return { revokedAt, crlUpdateError };
   };
 
   const revokeOwnedCertificate = async ({
@@ -833,8 +831,8 @@ export const certificateServiceFactory = ({
     }
 
     const ca = await $getRevocableCertificateCa(cert);
-    const revokedAt = await $revokeAuthorizedCertificate({ cert, ca, revocationReason, orgId });
-    return { revokedAt, cert };
+    const { revokedAt, crlUpdateError } = await $revokeAuthorizedCertificate({ cert, ca, revocationReason, orgId });
+    return { revokedAt, cert, crlUpdateError };
   };
 
   const revokeCert = async ({
@@ -938,7 +936,12 @@ export const certificateServiceFactory = ({
       });
     }
 
-    const revokedAt = await $revokeAuthorizedCertificate({ cert, ca, revocationReason, orgId: actorOrgId });
+    const { revokedAt, crlUpdateError } = await $revokeAuthorizedCertificate({
+      cert,
+      ca,
+      revocationReason,
+      orgId: actorOrgId
+    });
 
     // Return appropriate CA format based on CA type
     const caResult = ca.externalCa?.id
@@ -953,7 +956,13 @@ export const certificateServiceFactory = ({
         }
       : expandInternalCa(ca);
 
-    return { revokedAt, cert, applicationName: await $resolveApplicationName(cert.applicationId), ca: caResult };
+    return {
+      revokedAt,
+      cert,
+      applicationName: await $resolveApplicationName(cert.applicationId),
+      ca: caResult,
+      crlUpdateError
+    };
   };
 
   /**

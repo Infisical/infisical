@@ -2005,6 +2005,7 @@ export const signerServiceFactory = ({
       return {
         signer: { ...signer, certificateId, status: SignerStatus.Revoked },
         certificateId,
+        crlUpdateError: revoked.crlUpdateError,
         serialNumber: revoked.cert.serialNumber,
         commonName: revoked.cert.commonName
       };

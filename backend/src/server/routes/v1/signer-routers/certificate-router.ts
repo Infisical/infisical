@@ -3,6 +3,7 @@ import { z } from "zod";
 import { PkiSignersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
+import { InternalServerError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -152,14 +153,15 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { signer, certificateId, serialNumber, commonName } = await server.services.pkiSigner.revokeCertificate({
-        signerId: req.params.signerId,
-        revocationReason: req.body.revocationReason,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
-      });
+      const { signer, certificateId, crlUpdateError, serialNumber, commonName } =
+        await server.services.pkiSigner.revokeCertificate({
+          signerId: req.params.signerId,
+          revocationReason: req.body.revocationReason,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -176,6 +178,8 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
           }
         }
       });
+
+      if (crlUpdateError) throw new InternalServerError({ message: crlUpdateError });
 
       return signer;
     }
