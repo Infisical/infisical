@@ -908,7 +908,7 @@ session = client.agent_vault.sessions.create(
 ```
 
 - The session can use an access bundle only if both the user and the machine identity [can use the bundle](/documentation/platform/agent-vault/sessions-on-behalf-of-users#what-the-session-can-reach)
-- The session belongs to the machine identity, so the user can't see the session
+- The session belongs to the machine identity, so the user can't see the session unless they're an Agent Vault admin
 - In each session that the `get`, `list`, `update`, and `revoke` methods return, `onBehalfOf` is the user, or `None` if the session is the machine identity's own
 
 To find the access bundles that a session on behalf of the user can use, pass the user's email address or ID to [`access_bundles.list`](#list-access-bundles).
