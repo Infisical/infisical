@@ -142,7 +142,7 @@ Here's how the four primitives connect:
 
     ```mermaid
     flowchart LR
-      agent["AI agent"] -->|"holds"| token["Session token"]
+      token["Session token"] -->|"given to"| agent["AI agent"]
       token -->|"scoped to"| bundle
       subgraph bundle["Access bundle"]
         s1["Service"]
@@ -157,7 +157,8 @@ Here's how the four primitives connect:
     ```mermaid
     flowchart LR
       agent["AI agent"] -->|"outbound request with session token"| proxy["Proxy"]
-      agent -->|"holds"| token["Session token"]
+      token["Session token"] -->|"given to"| agent
+      proxy ~~~ bundle
       token -->|"scoped to"| bundle
       subgraph bundle["Access bundle"]
         s1["Service"]
@@ -172,7 +173,7 @@ Here's how the four primitives connect:
     ```mermaid
     flowchart LR
       agent["AI agent"] -->|"outbound request with session token"| proxy["Proxy"]
-      agent -->|"holds"| token["Session token"]
+      token["Session token"] -->|"given to"| agent
       proxy -->|"request with real credentials"| apis["External API"]
       proxy -->|"reads credentials from"| bundle
       token -->|"scoped to"| bundle
