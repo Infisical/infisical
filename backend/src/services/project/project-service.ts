@@ -69,6 +69,7 @@ import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -215,6 +216,7 @@ type TProjectServiceFactoryDep = {
     TDynamicSecretLeaseQueueServiceFactory,
     "setLeaseRevocation" | "unsetRestoredLeaseRevocation"
   >;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -267,7 +269,8 @@ export const projectServiceFactory = ({
   projectAccessRequestDAL,
   usageMeteringService,
   dynamicSecretLeaseDAL,
-  dynamicSecretQueueService
+  dynamicSecretQueueService,
+  secretV2BridgeDAL
 }: TProjectServiceFactoryDep) => {
   // The (orgId, slug) unique index already refuses a taken slug; this only names the cause when the holder is
   // a project pending deletion.
@@ -931,6 +934,8 @@ export const projectServiceFactory = ({
       // refresh the cached plan so the freed workspace slot is reflected immediately
       // (countOfOrgProjects now excludes soft-deleted projects)
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
+      // Cached reads of this project and of the projects it shares with would keep serving its secrets.
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
       usageMeteringService.emit(project.orgId, SecretIdentities.key);
       usageMeteringService.emit(project.orgId, PamIdentities.key);
@@ -1055,6 +1060,8 @@ export const projectServiceFactory = ({
       }
 
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(project.orgId));
+      // Cached reads from before the deletion can hold imports from projects deleted since.
+      await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       usageMeteringService.emit(project.orgId, SecretIdentities.key);
       usageMeteringService.emit(project.orgId, PamIdentities.key);
       usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
