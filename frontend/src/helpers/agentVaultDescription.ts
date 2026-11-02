@@ -5,8 +5,7 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/helpers/agentVaultControlChars";
 
-// Mirrors AgentVaultDescriptionSchema on the backend's rules and messages. Callers map a blank description to null.
-
+// Mirrors the backend's rules and messages. Callers map a blank description to null.
 export const agentVaultDescriptionSchema = z
   .string()
   .trim()
