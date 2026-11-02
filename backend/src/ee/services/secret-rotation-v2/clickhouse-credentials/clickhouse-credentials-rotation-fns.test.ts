@@ -71,7 +71,7 @@ describe("ClickHouse credentials rotation", () => {
     await makeFactory().issueCredentials(callback);
 
     expect(statements()).toEqual([alterUser("user_1"), alterUser("user_2"), "user_1: SELECT 1", "user_2: SELECT 1"]);
-    expect(callback).toHaveBeenCalledWith({ username: "user_1", password: expect.any(String) });
+    expect(callback).toHaveBeenCalledWith({ username: "user_1", password: expect.any(String) as string });
   });
 
   it.each([
@@ -83,7 +83,7 @@ describe("ClickHouse credentials rotation", () => {
     await makeFactory({ activeIndex }).rotateCredentials(undefined, callback, ACTIVE_CREDENTIALS);
 
     expect(statements()).toEqual([alterUser(username), `${username}: SELECT 1`]);
-    expect(callback).toHaveBeenCalledWith({ username, password: expect.any(String) });
+    expect(callback).toHaveBeenCalledWith({ username, password: expect.any(String) as string });
   });
 
   it("escapes backticks and backslashes in usernames", async () => {
