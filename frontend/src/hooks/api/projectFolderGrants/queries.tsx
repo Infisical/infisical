@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -47,7 +47,7 @@ export const useListProjectFolderGrantsReceived = (targetProjectId: string) =>
     enabled: Boolean(targetProjectId)
   });
 
-export const fetchProjectFolderGrantUsage = async (grantId: string, sourceProjectId: string) => {
+const fetchProjectFolderGrantUsage = async (grantId: string, sourceProjectId: string) => {
   const { data } = await apiRequest.get<TProjectFolderGrantUsage>(
     `/api/v1/project-folder-grants/${grantId}/usage`,
     { params: { sourceProjectId } }
@@ -64,4 +64,25 @@ export const useGetProjectFolderGrantUsage = (
     queryKey: projectFolderGrantKeys.usage(grantId, sourceProjectId),
     queryFn: () => fetchProjectFolderGrantUsage(grantId, sourceProjectId),
     enabled: Boolean(grantId) && Boolean(sourceProjectId) && enabled
+  });
+
+export const useGetProjectFolderGrantsUsageTotal = (
+  grantIds: string[],
+  sourceProjectId: string,
+  enabled = true
+) =>
+  useQueries({
+    queries: grantIds.map((grantId) => ({
+      queryKey: projectFolderGrantKeys.usage(grantId, sourceProjectId),
+      queryFn: () => fetchProjectFolderGrantUsage(grantId, sourceProjectId),
+      enabled: Boolean(sourceProjectId) && enabled
+    })),
+    combine: (results) => ({
+      isPending: results.some((r) => r.isPending),
+      isError: results.some((r) => r.isError),
+      total: results.reduce(
+        (sum, r) => sum + (r.data?.importCount ?? 0) + (r.data?.referenceCount ?? 0),
+        0
+      )
+    })
   });

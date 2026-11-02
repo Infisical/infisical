@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyRound, Unlink } from "lucide-react";
+import { KeyRound, TriangleAlertIcon } from "lucide-react";
 
 import {
   CrossProjectSecretSharingUpgradeIntent,
@@ -9,6 +9,8 @@ import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -16,7 +18,6 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogMedia,
   AlertDialogTitle,
   Card,
   CardContent,
@@ -178,16 +179,18 @@ export const ProductSettingsPage = () => {
       <AlertDialog open={isDisableSharingConfirmOpen} onOpenChange={setIsDisableSharingConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogMedia>
-              <Unlink />
-            </AlertDialogMedia>
             <AlertDialogTitle>Disable cross-project secret sharing?</AlertDialogTitle>
             <AlertDialogDescription>
-              Existing secret imports and secret references that point to other projects will stop
-              resolving, which can break secret syncs and other integrations that depend on them.
-              You can turn sharing back on later.
+              Projects in this organization will no longer be able to share secrets with each other.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              Existing secret imports and secret references that point to other projects will stop
+              resolving, which can break secret syncs and other integrations that depend on them.
+            </AlertDescription>
+          </Alert>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQueries } from "@tanstack/react-query";
-import { ArrowDown, Box, FolderIcon, Layers, Plus, Trash2, Unlink, X } from "lucide-react";
+import { ArrowDown, Box, FolderIcon, Layers, Plus, Trash2, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -11,7 +10,6 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogMedia,
   AlertDialogTitle,
   Button,
   Combobox,
@@ -36,15 +34,14 @@ import { useProject } from "@app/context";
 import {
   TProjectFolderGrant,
   useCreateProjectFolderGrant,
-  useDeleteProjectFolderGrant
+  useDeleteProjectFolderGrant,
+  useGetProjectFolderGrantsUsageTotal
 } from "@app/hooks/api/projectFolderGrants";
-import {
-  fetchProjectFolderGrantUsage,
-  projectFolderGrantKeys
-} from "@app/hooks/api/projectFolderGrants/queries";
 import { useGetUserProjectsByType } from "@app/hooks/api/projects";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
+
+import { GrantRevocationImpact } from "./GrantRevocationImpact";
 
 type EnvironmentGroup = {
   environment: string;
@@ -305,19 +302,11 @@ export const ShareSecretsSheet = ({
       canRevokeGrant(g.environmentSlug, g.secretPath)
   );
 
-  const revokedGrantUsage = useQueries({
-    queries: revokedGrants.map((g) => ({
-      queryKey: projectFolderGrantKeys.usage(g.id, currentProject.id),
-      queryFn: () => fetchProjectFolderGrantUsage(g.id, currentProject.id),
-      enabled: isConfirmUpdateOpen
-    }))
-  });
-  const affectedUsageCount = revokedGrantUsage.every((q) => q.isSuccess)
-    ? revokedGrantUsage.reduce(
-        (sum, q) => sum + (q.data?.importCount ?? 0) + (q.data?.referenceCount ?? 0),
-        0
-      )
-    : null;
+  const revokedGrantUsage = useGetProjectFolderGrantsUsageTotal(
+    revokedGrants.map((g) => g.id),
+    currentProject.id,
+    isConfirmUpdateOpen
+  );
 
   const hasValidEntry =
     groups.length > 0 && groups.every((g) => g.environment && g.secretPaths.length > 0);
@@ -542,31 +531,24 @@ export const ShareSecretsSheet = ({
       <AlertDialog open={isConfirmUpdateOpen} onOpenChange={setIsConfirmUpdateOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogMedia>
-              <Unlink />
-            </AlertDialogMedia>
             <AlertDialogTitle>Remove access to shared folders?</AlertDialogTitle>
             <AlertDialogDescription>
               <strong>{editData?.targetProjectName}</strong> will lose access to{" "}
               {revokedGrants.length} shared {revokedGrants.length === 1 ? "folder" : "folders"}.
-              Secret imports and secret references in that project that point to{" "}
-              {revokedGrants.length === 1 ? "it" : "them"} will stop resolving, which can break
-              secret syncs and other integrations that depend on them.
-              {affectedUsageCount !== null && (
-                <>
-                  {" "}
-                  <strong>
-                    {affectedUsageCount}{" "}
-                    {affectedUsageCount === 1 ? "import or reference" : "imports and references"}
-                  </strong>{" "}
-                  currently {affectedUsageCount === 1 ? "depends" : "depend"} on this access.
-                </>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <GrantRevocationImpact
+            usage={revokedGrantUsage}
+            targetProjectName={editData?.targetProjectName}
+            folderCount={revokedGrants.length}
+          />
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={handleSubmit}>
+            <AlertDialogAction
+              variant="danger"
+              onClick={handleSubmit}
+              isDisabled={revokedGrantUsage.isPending}
+            >
               Save
             </AlertDialogAction>
           </AlertDialogFooter>
