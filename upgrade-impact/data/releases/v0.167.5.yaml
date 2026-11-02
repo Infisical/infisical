@@ -1,0 +1,60 @@
+version: v0.167.5
+releasedAt: 2026-11-02T11:15:32-05:00
+sourceTag: v0.167.5
+previousTag: v0.167.4
+impactLevel: low
+summary: Agent Vault session logs now require a self-hosted license. Database
+  migrations are included and run during startup.
+requiresDbMigration: true
+breakingChanges:
+  - title: Agent Vault session logs license
+    description: Unlicensed self-hosted instances stop recording and showing Agent
+      Vault session logs, even if S3 session log storage is configured. Existing
+      logs remain unavailable until a license enables the feature.
+    action: If you use Agent Vault session logs on self-hosted, install or refresh a
+      license that enables managed storage before upgrading.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#8990"
+        url: https://github.com/Infisical/infisical/pull/8990
+        description: Self-hosted session logs now need a license
+      - type: file
+        ref: docs/self-hosting/guides/session-log-storage.mdx
+        path: docs/self-hosting/guides/session-log-storage.mdx
+        description: Self-hosting guide changed for session log storage
+      - type: file
+        ref: docs/documentation/platform/agent-vault/session-logs.mdx
+        path: docs/documentation/platform/agent-vault/session-logs.mdx
+        description: Session logs docs updated
+dbSchemaChanges:
+  - title: Platform startup migrations
+    description: New schema migrations add tables and columns for insights, Agent
+      Vault, event outbox, delegated approvals, secret scanning, certificates,
+      and TLS certificate auth.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261015120000_secret-read-activity.ts
+        path: backend/src/db/migrations/20261015120000_secret-read-activity.ts
+      - type: file
+        ref: backend/src/db/migrations/20261019120000_event-outbox-event-id.ts
+        path: backend/src/db/migrations/20261019120000_event-outbox-event-id.ts
+      - type: file
+        ref: backend/src/db/migrations/20261027143736_delegated-approvals.ts
+        path: backend/src/db/migrations/20261027143736_delegated-approvals.ts
+      - type: file
+        ref: backend/src/db/migrations/20261029005342_add-bind-access-token-to-certificate-to-identity-tls-cert-auth.ts
+        path: backend/src/db/migrations/20261029005342_add-bind-access-token-to-certificate-to-identity-tls-cert-auth.ts
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-02T17:06:10.929Z
+  sourceRange:
+    from: v0.167.4
+    to: v0.167.5
