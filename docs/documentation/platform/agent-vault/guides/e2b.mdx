@@ -430,11 +430,11 @@ To check which requests the sandbox made, [set up session logs](/documentation/p
 
 ## Step 6: Run an agent
 
-To run an agent such as Claude Code, start the sandbox from an [E2B template](https://e2b.dev/docs/template/quickstart) that has the agent installed:
+To run an agent such as Claude Code, start the sandbox from an E2B template that has the agent installed:
 
 <Steps>
   <Step>
-    Build an E2B template with the agent installed, and set `TEMPLATE` in the function to the template's name.
+    Set `TEMPLATE` in the function to the template's name. For Claude Code, use `claude`, a [template E2B provides](https://e2b.dev/docs/agents/claude-code) with Claude Code installed. For another agent, [build a template](https://e2b.dev/docs/template/quickstart) with the agent installed.
   </Step>
   <Step>
     Add the agent's settings to `SANDBOX_ENV`. For Claude Code, add these:
