@@ -570,7 +570,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        projectId: z.string().trim().max(36).describe(PROJECTS.PERMANENTLY_DELETE.projectId)
+        projectId: z.string().uuid().describe(PROJECTS.PERMANENTLY_DELETE.projectId)
       }),
       response: {
         200: z.object({
@@ -625,7 +625,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        projectId: z.string().trim().max(36).describe(PROJECTS.RESTORE.projectId)
+        projectId: z.string().uuid().describe(PROJECTS.RESTORE.projectId)
       }),
       response: {
         200: z.object({
