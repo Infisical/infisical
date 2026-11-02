@@ -278,7 +278,12 @@ export const secretSyncDALFactory = (
     tx?: Knex
   ): Promise<string[]> => {
     try {
-      const rows = await (tx || db)(TableName.SecretSync).where(buildFindFilter(filter)).update(data).returning("id");
+      // A sync of a project pending deletion keeps its status, so the daily retry still finds it once restored.
+      const rows = await (tx || db)(TableName.SecretSync)
+        .where(buildFindFilter(filter))
+        .whereNotIn("projectId", db(TableName.Project).whereNotNull("deleteAfter").select("id"))
+        .update(data)
+        .returning("id");
       return rows.map((r) => r.id);
     } catch (error) {
       throw new DatabaseError({ error, name: "Update And Return IDs - Secret Sync" });
