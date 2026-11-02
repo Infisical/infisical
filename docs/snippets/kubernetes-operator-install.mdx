@@ -7,8 +7,16 @@
   </Step>
 
   <Step title="Install the chart">
-    The operator can be installed either cluster-wide or restricted to specific namespaces.
-    If you require stronger isolation and stricter access controls, a namespace-scoped installation may make more sense.
+    Install the operator cluster-wide or namespace-scoped.
+
+    <Accordion title="Choosing cluster-wide or namespace-scoped">
+      The installation mode decides whether a resource in one namespace can use credentials from another namespace:
+
+      | Mode | Cross-namespace references | Use when |
+      | --- | --- | --- |
+      | Cluster-wide (default) | Allowed. The cluster is the trust boundary. | You trust everyone who can create operator resources, such as a platform team that manages authentication from one namespace. |
+      | Namespace-scoped | Blocked. Kubernetes rejects the operator's requests to other namespaces. | Teams share a cluster and each team owns a namespace. Install one operator per team namespace. |
+    </Accordion>
 
     <Tabs>
       <Tab title="Cluster-wide (default)">
@@ -22,9 +30,10 @@
       <Tab title="Namespace-scoped">
         Limit the operator's permissions to only specific namespaces instead of cluster-wide access. Useful for multi-tenant clusters or environments requiring strict resource isolation.
 
-        <Note>
-          For multiple namespace-scoped installations, only the first installation should install CRDs. Subsequent installations should set `installCRDs: false` to avoid conflicts as CRDs are cluster-wide resources.
-        </Note>
+        Before you install, check these settings:
+
+        - Set `scopedRBAC=true` (if you set only `scopedNamespaces`, the operator still gets a ClusterRole and watches every namespace)
+        - Set `installCRDs=true` only on the first install (CRDs are cluster-wide resources, so later installs must set `installCRDs=false`)
 
         **Single namespace:**
         ```bash
@@ -61,7 +70,7 @@
         ```yaml values-operator1.yaml
           scopedNamespaces: ns1
           scopedRBAC: true
-          installCRDs: false
+          installCRDs: true
         ```
 
         ```yaml values-operator2.yaml
@@ -72,6 +81,9 @@
         </Accordion>
 
         **Multiple namespaces (single operator):**
+
+        With one operator for several namespaces, a resource in any of those namespaces can reference a service account, `InfisicalAuth`, or secret in the others. Use separate operators if those namespaces belong to different teams.
+
         ```bash
         helm install operator infisical-helm-charts/secrets-operator \
           --namespace operator-namespace \

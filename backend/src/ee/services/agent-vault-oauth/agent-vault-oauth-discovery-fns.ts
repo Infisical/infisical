@@ -8,9 +8,9 @@ import { TOauthHttpClient, TOauthHttpResponse } from "./agent-vault-oauth-http-f
 import { AgentVaultOauthCompatibility } from "./agent-vault-oauth-types";
 
 export const OFFLINE_ACCESS_SCOPE = "offline_access";
-// The spec sets no limit. Slack, the largest real server found, lists 30; this only stops a buggy or hostile
+// The spec sets no limit. PostHog, the largest real server found, lists 153; this only stops a buggy or hostile
 // server from making every authorization store and send an enormous scope list.
-export const MAX_OAUTH_SCOPES = 100;
+export const MAX_OAUTH_SCOPES = 200;
 // Each request has its own 10 second timeout, so without an overall budget a server that hangs could hold the
 // request past a 60 second gateway.
 const DISCOVERY_BUDGET_MS = 25_000;
