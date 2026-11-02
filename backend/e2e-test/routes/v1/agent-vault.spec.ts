@@ -7317,6 +7317,41 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(res.payload).message).toContain("--ca-cert");
     });
 
+    test("a rotation keeps the CA download a 409 for a proxy serving its own CA", async () => {
+      const created = await createProxy("ca-download-own-rotate");
+      const own = await caPem();
+      expect((await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: own })).statusCode).toBe(200);
+
+      const rotated = await rotate(created.proxy.id);
+      expect(rotated.proxy.rootCaFingerprint).toBe(fingerprintOf(own));
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).message).toContain("--ca-cert");
+
+      // Started on the new token without its own CA, it takes the one the rotation stored.
+      const boot = await asProxy(rotated.proxyToken, "bootstrap", {});
+      expect(boot.statusCode).toBe(200);
+      const { rootCa } = JSON.parse(boot.payload) as { rootCa: TRootCa };
+      const after = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(after.statusCode).toBe(200);
+      expect((JSON.parse(after.payload) as { ca: { certificate: string } }).ca.certificate).toBe(rootCa.certificate);
+    });
+
+    test("the CA download tells a proxy enrolled before Infisical stored CAs to use its own CA", async () => {
+      const created = await createProxy("ca-download-own-legacy");
+      expect((await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: await caPem() })).statusCode).toBe(
+        200
+      );
+      await agentVaultProxyDALFactory(testDb).updateById(created.proxy.id, {
+        rootCaCertificate: null,
+        encryptedRootCaPrivateKey: null
+      });
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).message).toContain("--ca-cert");
+    });
+
     test("the CA download is a 404 for a proxy that doesn't exist", async () => {
       const res = await inject("GET", `/api/v1/agent-vault/proxies/${crypto.randomUUID()}/ca`);
       expect(res.statusCode).toBe(404);

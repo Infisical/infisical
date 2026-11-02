@@ -211,13 +211,15 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
   `storeRootCaIfMissing` deciding races. A proxy serving its own CA (`--ca-cert`) reports it at bootstrap and is
   sent none; the stored CA is kept for processes that don't bring one, and the row shows whichever CA the latest
   start reported. Create and rotate record the new CA's fingerprint so it can be pinned before
-  anything starts, and bootstrap's fingerprint write is tied to the token version it checked, so a start on a
-  rotated token can't overwrite it.
+  anything starts, except that rotate keeps the fingerprint of a proxy serving its own CA (it is the only record
+  of that, and the next start reports the same CA). Bootstrap's fingerprint write is tied to the token version
+  it checked, so a start on a rotated token can't overwrite it.
 - Agents still fetch the CA from the proxy's own unauthenticated `/_agent-vault/ca`, so the agent's trust path
   has no dependency on Infisical. `GET /proxies/:proxyId/ca` (proxy Read) also returns it, for code that
   can't reach the proxy's HTTP port, such as an E2B orchestrator. It returns only the CA Infisical holds: a
   proxy serving its own CA reports just the fingerprint, so a fingerprint that doesn't match the stored
-  certificate is a 409, never the wrong certificate.
+  certificate, or a fingerprint with no certificate (a proxy enrolled before Infisical stored CAs), is a 409,
+  never the wrong certificate.
 - Health is judged against `heartbeatTTL`, the interval the proxy was running when it last checked in, not
   the row's current `pollInterval`. A proxy learns a new interval on its next poll, so comparing against the
   saved one would report a live proxy as unreachable until then. Gateway v2 does the same.
@@ -651,7 +653,7 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   re-created container has no CA and a spent token.
 - `--socks5-port` opens a second door: SOCKS5, always over TLS, with the session token as the password, for
   clients such as E2B that tunnel a sandbox's traffic from outside it. After login it takes the same path as
-  `CONNECT`, so it handles HTTP/1.1 only; other TCP gets an HTTP error or times out. On that door alone, under
+  `CONNECT`, so it handles HTTP/1.1 only; other TCP is closed, with a rate-limited warning in the proxy's log. On that door alone, under
   the any-host policy, a host no service names may not resolve to a private address (cloud metadata, the
   proxy's own network); `--socks5-allow-private-destinations` turns that off.
 
