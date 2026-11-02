@@ -531,7 +531,7 @@ export const ShareSecretsSheet = ({
       <AlertDialog open={isConfirmUpdateOpen} onOpenChange={setIsConfirmUpdateOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove access to shared folders?</AlertDialogTitle>
+            <AlertDialogTitle>Remove Access to Shared Folders?</AlertDialogTitle>
             <AlertDialogDescription>
               <strong>{editData?.targetProjectName}</strong> will lose access to{" "}
               {revokedGrants.length} shared {revokedGrants.length === 1 ? "folder" : "folders"}.
@@ -547,7 +547,7 @@ export const ShareSecretsSheet = ({
             <AlertDialogAction
               variant="danger"
               onClick={handleSubmit}
-              isDisabled={revokedGrantUsage.isPending}
+              isDisabled={revokedGrantUsage.isChecking}
             >
               Save
             </AlertDialogAction>

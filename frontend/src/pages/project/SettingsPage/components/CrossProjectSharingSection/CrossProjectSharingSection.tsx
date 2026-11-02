@@ -201,7 +201,7 @@ const DeleteProjectGrantsDialog = ({
             variant="danger"
             onClick={handleConfirmDelete}
             isPending={isDeleting}
-            disabled={!isConfirmed || usage.isPending}
+            disabled={!isConfirmed || usage.isChecking}
           >
             Remove
           </AlertDialogAction>

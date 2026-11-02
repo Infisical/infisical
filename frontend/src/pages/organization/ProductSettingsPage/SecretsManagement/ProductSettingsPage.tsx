@@ -179,7 +179,7 @@ export const ProductSettingsPage = () => {
       <AlertDialog open={isDisableSharingConfirmOpen} onOpenChange={setIsDisableSharingConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Disable cross-project secret sharing?</AlertDialogTitle>
+            <AlertDialogTitle>Disable Cross-Project Secret Sharing?</AlertDialogTitle>
             <AlertDialogDescription>
               Projects in this organization will no longer be able to share secrets with each other.
             </AlertDialogDescription>

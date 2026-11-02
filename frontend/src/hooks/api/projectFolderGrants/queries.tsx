@@ -63,7 +63,9 @@ export const useGetProjectFolderGrantUsage = (
   useQuery({
     queryKey: projectFolderGrantKeys.usage(grantId, sourceProjectId),
     queryFn: () => fetchProjectFolderGrantUsage(grantId, sourceProjectId),
-    enabled: Boolean(grantId) && Boolean(sourceProjectId) && enabled
+    enabled: Boolean(grantId) && Boolean(sourceProjectId) && enabled,
+    staleTime: 0,
+    gcTime: 0
   });
 
 export const useGetProjectFolderGrantsUsageTotal = (
@@ -75,10 +77,12 @@ export const useGetProjectFolderGrantsUsageTotal = (
     queries: grantIds.map((grantId) => ({
       queryKey: projectFolderGrantKeys.usage(grantId, sourceProjectId),
       queryFn: () => fetchProjectFolderGrantUsage(grantId, sourceProjectId),
-      enabled: Boolean(sourceProjectId) && enabled
+      enabled: Boolean(sourceProjectId) && enabled,
+      staleTime: 0,
+      gcTime: 0
     })),
     combine: (results) => ({
-      isPending: results.some((r) => r.isPending),
+      isChecking: results.some((r) => r.isPending || r.isFetching),
       isError: results.some((r) => r.isError),
       total: results.reduce(
         (sum, r) => sum + (r.data?.importCount ?? 0) + (r.data?.referenceCount ?? 0),

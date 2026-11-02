@@ -3,7 +3,7 @@ import { TriangleAlertIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@app/components/v3";
 
 type Props = {
-  usage: { isPending: boolean; isError: boolean; total: number };
+  usage: { isChecking: boolean; isError: boolean; total: number };
   targetProjectName?: string;
   folderCount: number;
 };
@@ -12,7 +12,7 @@ export const GrantRevocationImpact = ({ usage, targetProjectName, folderCount }:
   const folders = folderCount === 1 ? "this folder" : "these folders";
   const projectName = targetProjectName ?? "the other project";
 
-  if (usage.isPending) {
+  if (usage.isChecking) {
     return (
       <p className="text-sm text-label">
         Checking for secret imports and references that use {folders}...
