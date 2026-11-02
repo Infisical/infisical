@@ -30,6 +30,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { CaType, useGetCa, useGetCaCsr, useImportCaCertificate } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -173,10 +174,22 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                 outline={false}
                 containerClassName="rounded-md border border-border bg-container"
               >
-                {isCsrReady ? (
-                  <pre className="p-3 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-foreground">
-                    {csr}
-                  </pre>
+                {csr ? (
+                  <div className="relative">
+                    <pre
+                      className={cn(
+                        "p-3 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-foreground transition-opacity",
+                        !isCsrReady && "opacity-30"
+                      )}
+                    >
+                      {csr}
+                    </pre>
+                    {!isCsrReady && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Spinner size="sm" label="Generating CSR" />
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="flex h-40 items-center justify-center">
                     <Spinner size="sm" label="Generating CSR" />

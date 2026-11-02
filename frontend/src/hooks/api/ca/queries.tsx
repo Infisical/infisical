@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -213,6 +213,7 @@ export const useGetCaCsr = (
       });
       return csr;
     },
+    placeholderData: keepPreviousData,
     enabled: Boolean(caId) && (options?.enabled ?? true)
   });
 };
