@@ -133,9 +133,12 @@ Infisical uses the user you enter in **User** to create a database user for each
 ```sql
 ALTER USER <admin-user> WITH CREATEROLE CREATELOGIN;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO <admin-user> WITH GRANT OPTION;
+ALTER DEFAULT PRIVILEGES FOR ROLE <table-owner> IN SCHEMA public GRANT ALL ON TABLES TO <admin-user> WITH GRANT OPTION;
 ```
 
-If your creation statement grants fewer privileges, such as only `SELECT`, replace `ALL` with those privileges in the `GRANT` statement.
+Replace `<table-owner>` with the user that creates tables in this database, such as the user your migrations run as. The `GRANT` statement only covers tables that already exist, so without the last line, every lease creation fails after a new table is added.
+
+If your creation statement grants fewer privileges, such as only `SELECT`, replace `ALL` with those privileges in the last two statements.
 
 ### SQL statements
 
