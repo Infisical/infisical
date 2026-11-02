@@ -208,7 +208,6 @@ output-options:
     - getAccessApprovalPolicyCount
     - getAccessApprovalRequestCount
     - getAccessibleSecretMetadata
-    - getAccessibleSecrets
     - getAwsAppConnection
     - getAwsAppConnectionByName
     - getAwsHoneyTokenConfig
