@@ -271,9 +271,9 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager,
     hasDeleteProtection
   }: TCreateProjectDTO) => {
-    if (type === ProjectType.AgentVault) {
+    if (type === ProjectType.AgentVault || type === ProjectType.PAM) {
       throw new BadRequestError({
-        message: "Agent Vault projects cannot be created directly. One is created for your organization automatically."
+        message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[type]} projects cannot be created directly. One is created for your organization automatically.`
       });
     }
 
