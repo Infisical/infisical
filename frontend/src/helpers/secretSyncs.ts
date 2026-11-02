@@ -8,6 +8,7 @@ import { CloudflarePagesVariableType } from "@app/hooks/api/secretSyncs/types/cl
 import { CloudflareSecretsStoreScope } from "@app/hooks/api/secretSyncs/types/cloudflare-secrets-store-sync";
 import { CloudflareWorkersVariableType } from "@app/hooks/api/secretSyncs/types/cloudflare-workers-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
+import { GitHubSyncSecretType } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 
@@ -37,7 +38,7 @@ export const SECRET_SYNC_MAP: Record<
     name: "GitHub",
     image: "GitHub.png",
     category: "CI/CD",
-    description: "Repository or organization-level secrets."
+    description: "Actions, Dependabot, or Codespaces secrets for a repository or organization."
   },
   [SecretSync.GCPSecretManager]: {
     name: "GCP Secret Manager",
@@ -457,6 +458,31 @@ export const HUMANITEC_SYNC_SCOPES: Record<
       "Infisical will sync secrets as environment level shared values to the specified Humanitec application environment."
   }
 };
+
+export const GITHUB_SYNC_SECRET_TYPES: Record<
+  GitHubSyncSecretType,
+  { name: string; description: string }
+> = {
+  [GitHubSyncSecretType.Actions]: {
+    name: "Actions",
+    description:
+      "Secrets available to GitHub Actions workflows. Supports organization, repository, and repository environment scopes."
+  },
+  [GitHubSyncSecretType.Dependabot]: {
+    name: "Dependabot",
+    description:
+      "Secrets available to Dependabot, such as private registry credentials. Supports organization and repository scopes."
+  },
+  [GitHubSyncSecretType.Codespaces]: {
+    name: "Codespaces",
+    description:
+      "Secrets available in GitHub Codespaces. Supports organization and repository scopes. Not available on GitHub Enterprise Server."
+  }
+};
+
+// Responses from before secretType existed omit it, and those syncs are Actions syncs
+export const getGitHubSyncSecretTypeName = (secretType?: GitHubSyncSecretType) =>
+  GITHUB_SYNC_SECRET_TYPES[secretType ?? GitHubSyncSecretType.Actions].name;
 
 export const GCP_SYNC_SCOPES: Record<GcpSyncScope, { name: string; description: string }> = {
   [GcpSyncScope.Global]: {

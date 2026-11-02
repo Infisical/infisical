@@ -27,12 +27,12 @@ import {
   TAzureEntraIdConnection
 } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
 
-import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
 const formSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.AzureEntraId),

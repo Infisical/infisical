@@ -173,7 +173,7 @@ Run the agent in the foreground, as [infisical agent](/cli/reference#agent) does
   command="agent-vault"
 >
 
-Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](/cli/reference#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](/cli/reference#agent-vault-run).
+Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](/cli/reference#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](/cli/reference#agent-vault-run). Upload skills for those agents with [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push).
 
 `av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does. Agent Vault is a different product from the agent proxy that [infisical sm agent-proxy](/cli/reference#sm-agent-proxy) runs.
 
@@ -224,8 +224,10 @@ You set the proxy's traffic policy, exceptions, and poll interval in Infisical, 
     { name: "--label", value: "<string>", type: "string", description: "A short description of what a session created with `--access-bundle` is for, shown on the **Sessions** page, such as `nightly deploy`. Up to 128 characters, without line breaks, tabs, or invisible characters. Can't be combined with `--session-token`." },
     { name: "--no-ca-trust", type: "bool", description: "Skip writing the certificate authority, setting the trust variables, and adding it to the macOS keychain, for a machine that already trusts this proxy. `--ca-fingerprint` is still checked." },
     { name: "--no-proxy", value: "<string>", type: "string", description: "More hosts for the agent to reach directly instead of through the proxy, separated by commas. Always merged with `localhost,127.0.0.1` and any `NO_PROXY` in your environment." },
+    { name: "--no-skills", type: "bool", description: "Start the agent without installing the session's [skills](/documentation/platform/agent-vault/skills), so the command doesn't contact Infisical for them. Use it if the agent's host can't reach Infisical. Can't be combined with `--skills-dir`." },
     { name: "--proxy", value: "<string>", type: "string", description: "The Agent Vault proxy's address as `host:port`, such as `10.0.1.5:17323`. A leading `http://` or `https://` is dropped. Required unless `INFISICAL_AGENT_VAULT_PROXY_ADDRESS` is set." },
     { name: "--session-token", value: "<string>", type: "string", description: "A session token created in Infisical. The command never revokes this session. Can't be combined with `--access-bundle`. Can also be set with `INFISICAL_AGENT_VAULT_SESSION_TOKEN`, which keeps it off the command line." },
+    { name: "--skills-dir", value: "<string>", type: "string", description: "The folder to install the session's [skills](/documentation/platform/agent-vault/skills) in, instead of `~/.agents/skills`. The CLI doesn't link skills in this folder for Claude Code or Hermes. Can't be empty, and can't be combined with `--no-skills`." },
     { name: "--ttl", value: "<string>", type: "string", default: "never", description: "How long a session created with `--access-bundle` lasts: one number and one unit, such as `30m`, `8h`, or `7d` (not `2h30m`), or `never`. Defaults to `never` because the session is revoked when the agent exits, so an expiry only governs one that outlives the command. Can't be combined with `--session-token`." },
   ]}
   env={[
@@ -258,6 +260,50 @@ The CLI gives flags precedence over environment variables. If you pass either a 
 The command also needs the proxy's address. You can provide it either by passing `--proxy` or by setting [`INFISICAL_AGENT_VAULT_PROXY_ADDRESS`](#agent-vault-run--env-infisical-agent-vault-proxy-address).
 
 The command starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the [variables that make the agent's HTTP clients trust the proxy's certificate](/documentation/platform/agent-vault/proxies#certificate-trust). The agent inherits the rest of your environment, and the command exits with the agent's exit code.
+
+Before the agent starts, the command installs the [skills](/documentation/platform/agent-vault/skills) in the session's access bundle in `~/.agents/skills`, and links them for Claude Code and Hermes. To install the skills in another folder, pass `--skills-dir`, and to start the agent without them, pass `--no-skills`. The installed skills stay after the agent exits. To pick up skills that changed while the agent runs, restart the agent. For which folders the command links and replaces, see [How agents get skills](/documentation/platform/agent-vault/skills#how-agents-get-skills).
+
+</CLICommand>
+
+<CLICommand
+  id="agent-vault-skills"
+  command="agent-vault skills"
+>
+
+Manage the [skills](/documentation/platform/agent-vault/skills) that Agent Vault installs for agents. [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push) adds a skill from a folder or publishes a new version of it.
+
+</CLICommand>
+
+<CLICommand
+  id="agent-vault-skills-push"
+  command="agent-vault skills push"
+  usage="<folder> [flags]"
+  args={[
+    { name: "folder", usage: "<folder>", required: true, description: "The folder that holds one skill, with `SKILL.md` at its root." },
+  ]}
+  flags={[
+    { name: "--client-id", value: "<string>", type: "string", description: "The client ID of the machine identity to push as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
+    { name: "--client-secret", value: "<string>", type: "string", description: "The client secret of the machine identity to push as. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
+  ]}
+  env={[
+    { name: "INFISICAL_UNIVERSAL_AUTH_CLIENT_ID", description: "The client ID of the machine identity to push as. Used if `--client-id` isn't passed." },
+    { name: "INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET", description: "The client secret of the machine identity to push as. Used if `--client-secret` isn't passed." },
+    { name: "INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN", description: "A machine identity access token to push as. Used if no client ID and client secret are set." },
+    { name: "INFISICAL_TOKEN", description: "A machine identity access token to push as. Used if no client ID and client secret are set and `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` isn't set." },
+  ]}
+  examples={[
+    { title: "Push a skill as the logged-in user", code: "infisical agent-vault skills push ./skills/code-review" },
+    { title: "Push a skill as a machine identity", code: "infisical agent-vault skills push ./skills/code-review \\\n  --client-id=<client-id> \\\n  --client-secret=<client-secret>" },
+  ]}
+>
+
+Upload a skill folder to Agent Vault. Each command pushes one folder, and the `name` in the folder's `SKILL.md` decides which skill the folder updates:
+
+- If no skill has that name, the command creates the skill
+- If a skill has that name, the command publishes the folder as the skill's next version
+- If the files match the skill's latest version, the command prints `unchanged` and doesn't create a version
+
+The command skips hidden files and folders, such as `.DS_Store`, and refuses a folder that holds a symbolic link. To push as a machine identity from a script or CI, pass `--client-id` and `--client-secret`, or set `INFISICAL_TOKEN` to the identity's access token. The user or machine identity needs the Admin role in Agent Vault.
 
 </CLICommand>
 

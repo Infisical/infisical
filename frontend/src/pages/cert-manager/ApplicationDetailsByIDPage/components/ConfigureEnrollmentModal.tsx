@@ -224,6 +224,7 @@ const DisableEnrollmentButton = ({
                   await onConfirmed();
                   setIsOpen(false);
                 } catch {
+                  // oxlint-disable-next-line no-useless-return
                   return;
                 } finally {
                   setIsConfirming(false);

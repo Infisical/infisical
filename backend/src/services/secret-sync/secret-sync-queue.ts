@@ -25,6 +25,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -144,6 +145,7 @@ type TSecretSyncQueueFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 type SecretSyncActionJob = Job<
@@ -198,7 +200,8 @@ export const secretSyncQueueFactory = ({
   microsoftTeamsService,
   telemetryService,
   projectFolderGrantDAL,
-  orgDAL
+  orgDAL,
+  oidcIssuerService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -413,7 +416,8 @@ export const secretSyncQueueFactory = ({
       gitHubAppDAL,
       kmsService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      oidcIssuerService
     });
 
     if (!Object.keys(importedSecrets).length) return {};
@@ -576,7 +580,8 @@ export const secretSyncQueueFactory = ({
         gitHubAppDAL,
         kmsService,
         gatewayV2Service,
-        gatewayPoolService
+        gatewayPoolService,
+        oidcIssuerService
       });
 
       syncResult = result ?? undefined;
@@ -891,7 +896,8 @@ export const secretSyncQueueFactory = ({
           gitHubAppDAL,
           kmsService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          oidcIssuerService
         }
       );
 

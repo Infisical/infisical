@@ -305,7 +305,8 @@ const MemberProvidedToggle = ({
             <li>Off: you set the {label.toLowerCase()} here, and every session uses it.</li>
             <li>
               On: each member sets their own from the access bundle page, and a session uses the{" "}
-              {label.toLowerCase()} of whoever started it.
+              {label.toLowerCase()} of whoever started it, or of the user it was started on behalf
+              of.
             </li>
           </ul>
           <a

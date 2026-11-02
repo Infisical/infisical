@@ -7,9 +7,7 @@ export type TRegisteredDynamicSecretProviderDefinition = TDynamicSecretProviderD
   DynamicSecretProviders,
   // Provider value types remain available from each concrete definition. The
   // composition root intentionally erases them for heterogeneous lookup.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   any
 >;
 
@@ -25,7 +23,7 @@ export const defineDynamicSecretProviderModule = <
   definitions: TDefinitions;
 }) => module;
 
-/** Product picker order. Partially migrated registries expose only registered entries. */
+/** Product picker order. The registry exposes only registered entries. */
 export const DYNAMIC_SECRET_PROVIDER_PICKER_ORDER = [
   DynamicSecretProviders.SqlDatabase,
   DynamicSecretProviders.Cassandra,

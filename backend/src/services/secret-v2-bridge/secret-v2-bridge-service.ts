@@ -86,7 +86,6 @@ import {
   TSecretV2BridgeDALFactory
 } from "./secret-v2-bridge-dal";
 import {
-  buildHierarchy,
   createFetchFolderSecretsWithImports,
   createRelativeImportExpander,
   expandSecretReferencesGroupedByPath,
@@ -95,7 +94,6 @@ import {
   fnSecretBulkUpdate,
   fnSecretMoveInTransaction,
   fnUpdateSecretLinkedReferences,
-  generatePaths,
   recursivelyGetSecretPaths,
   reshapeBridgeSecret
 } from "./secret-v2-bridge-fns";
@@ -108,7 +106,6 @@ import {
   TDeleteSecretDTO,
   TDispatchSecretCreateSideEffectsDTO,
   TDispatchSecretMoveSideEffectsDTO,
-  TGetAccessibleSecretsDTO,
   TGetASecretDTO,
   TGetSecretReferencesTreeDTO,
   TGetSecretsDTO,
@@ -1358,6 +1355,7 @@ export const secretV2BridgeServiceFactory = ({
       throwOnMissingReadValuePermission = true,
       ifNoneMatch,
       abortSignal,
+      onSecretReferenced,
       ...params
     } = dto;
 
@@ -1456,10 +1454,16 @@ export const secretV2BridgeServiceFactory = ({
         // Decrypted bytes are the exact serialized payload the miss path hashed, so hashing them reproduces
         // the same ETag without re-serializing the object.
         const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
-        const { secrets, imports = [] } = JSON.parse(cachedSecrets.toString("utf8")) as {
+        const {
+          secrets,
+          imports = [],
+          referencedSecretIds: cachedReferencedSecretIds = []
+        } = JSON.parse(cachedSecrets.toString("utf8")) as {
           secrets: typeof decryptedSecrets;
           imports: typeof importedSecrets;
+          referencedSecretIds?: string[];
         };
+        cachedReferencedSecretIds.forEach((secretId) => onSecretReferenced?.(secretId));
         // Parsed array is owned here, so rehydrate dates in place instead of cloning every secret.
         for (const secret of secrets) {
           secret.createdAt = new Date(secret.createdAt);
@@ -1548,74 +1552,53 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     // scott: if any of this changes it also needs to be mirrored in secret rotation for getting dashboard secrets
-    const decryptedSecrets = secrets
-      .filter((el) => {
-        const canDescribeSecret = hasSecretReadValueOrDescribePermission(
+    const decryptedSecrets: ReturnType<typeof reshapeBridgeSecret>[] = [];
+    for (const secret of secrets) {
+      const secretPath = groupedPaths[secret.folderId][0].path;
+      const secretSubjectFields = {
+        environment,
+        secretPath,
+        secretName: secret.key,
+        secretTags: secret.tags.map((i) => i.slug)
+      };
+
+      const canDescribeSecret = hasSecretReadValueOrDescribePermission(
+        permission,
+        ProjectPermissionSecretActions.DescribeSecret,
+        secretSubjectFields
+      );
+      if (!canDescribeSecret) continue;
+
+      const canReadValue =
+        viewSecretValue &&
+        hasSecretReadValueOrDescribePermission(
           permission,
-          ProjectPermissionSecretActions.DescribeSecret,
-          {
-            environment,
-            secretPath: groupedPaths[el.folderId][0].path,
-            secretName: el.key,
-            secretTags: el.tags.map((i) => i.slug)
-          }
+          ProjectPermissionSecretActions.ReadValue,
+          secretSubjectFields
         );
 
-        if (!canDescribeSecret) {
-          return false;
+      if (viewSecretValue && !canReadValue) {
+        // Recursive secret, should be filtered out
+        if (secretPath !== path) continue;
+
+        if (throwOnMissingReadValuePermission) {
+          throwIfMissingSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            secretSubjectFields
+          );
         }
+        // Otherwise keep the secret with its value masked below.
+      }
 
-        if (viewSecretValue) {
-          // Recursive secret, should be filtered out
-          if (groupedPaths[el.folderId][0].path !== path) {
-            const canReadRecursiveSecretValue = hasSecretReadValueOrDescribePermission(
-              permission,
-              ProjectPermissionSecretActions.ReadValue,
-              {
-                environment,
-                secretPath: groupedPaths[el.folderId][0].path,
-                secretName: el.key,
-                secretTags: el.tags.map((i) => i.slug)
-              }
-            );
+      const isPersonalSecret = secret.userId === actorId && secret.type === SecretType.Personal;
+      const isValueMasked = !canReadValue && !isPersonalSecret;
 
-            if (!canReadRecursiveSecretValue) {
-              return false;
-            }
-          }
-
-          if (throwOnMissingReadValuePermission) {
-            throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-              environment,
-              secretPath: groupedPaths[el.folderId][0].path,
-              secretName: el.key,
-              secretTags: el.tags.map((i) => i.slug)
-            });
-          }
-          // Else, we do nothing. Because we don't want to filter out the secret, OR throw an error.
-          // If the user doesn't have access to read the value, in the below map function, we mask the secret value and return the secret with a hidden value.
-        }
-
-        return canDescribeSecret;
-      })
-      .map((secret) => {
-        const isPersonalSecret = secret.userId === actorId && secret.type === SecretType.Personal;
-
-        const secretValueHidden =
-          !viewSecretValue ||
-          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment,
-            secretPath: groupedPaths[secret.folderId][0].path,
-            secretName: secret.key,
-            secretTags: secret.tags.map((i) => i.slug)
-          });
-
-        const isValueMasked = secretValueHidden && !isPersonalSecret;
-
-        return reshapeBridgeSecret(
+      decryptedSecrets.push(
+        reshapeBridgeSecret(
           projectId,
           environment,
-          groupedPaths[secret.folderId][0].path,
+          secretPath,
           {
             ...secret,
             secretMetadata: secret.secretMetadata?.map((el) => ({
@@ -1634,11 +1617,23 @@ export const secretV2BridgeServiceFactory = ({
               : ""
           },
           isValueMasked
-        );
-      });
+        )
+      );
+    }
 
     // note(daniel):  when in relative mode, direct secret references also resolve through imported secrets.
     // wrap secretDAL with import-aware fetch so the expander sees the full merged view.
+    // A read that expands references with the reader's personal overrides keeps the ids its references resolved to,
+    // since matching a reference by key would credit the shared secret an override replaced. They are cached with
+    // the result, as a cache hit expands nothing. Every other read caches exactly what it did before.
+    const referencedSecretIds = new Set<string>();
+    const collectReferencedSecrets = expandPersonalOverrides
+      ? (_secret: unknown, secretIds: string[]) => secretIds.forEach((secretId) => referencedSecretIds.add(secretId))
+      : undefined;
+    const withReferencedSecretIds = <T extends object>(payload: T) =>
+      referencedSecretIds.size ? { ...payload, referencedSecretIds: [...referencedSecretIds].sort() } : payload;
+    const reportReferencedSecrets = () => referencedSecretIds.forEach((secretId) => onSecretReferenced?.(secretId));
+
     const mainExpanderSecretDAL =
       secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
         ? { findByFolderId: createFetchFolderSecretsWithImports({ projectId, secretDAL, secretImportDAL, folderDAL }) }
@@ -1670,13 +1665,15 @@ export const secretV2BridgeServiceFactory = ({
       // mainExpanderSecretDAL may be import-aware in relative mode. Keep cross-project
       // reads on the raw DAL so source imports are not resolved through this target project.
       crossProjectSecretDAL: secretDAL,
+      onSecretExpanded: collectReferencedSecrets,
       abortSignal
     });
 
     if (shouldExpandSecretReferences) {
       throwIfClientDisconnected(abortSignal);
       const errors = await expandSecretReferencesGroupedByPath({
-        secrets: decryptedSecrets,
+        // expandSecretReferences returns values without "${" unchanged, so skip them rather than await each one
+        secrets: decryptedSecrets.filter((secret) => secret.secretValue.includes("${")),
         environment,
         expandSecretReferences
       });
@@ -1690,7 +1687,7 @@ export const secretV2BridgeServiceFactory = ({
 
     if (!includeImports) {
       const payload = { secrets: decryptedSecrets, imports: [] };
-      const serializedPayload = Buffer.from(JSON.stringify(payload));
+      const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
       const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
       const encryptedUpdatedCachedSecrets = secretManagerEncryptor({ plainText: serializedPayload }).cipherTextBlob;
       const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
@@ -1702,6 +1699,7 @@ export const secretV2BridgeServiceFactory = ({
       recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
+      reportReferencedSecrets();
       return { ...payload, etag: computedEtag };
     }
 
@@ -1726,6 +1724,7 @@ export const secretV2BridgeServiceFactory = ({
           secretTags: expandSecretTags
         }),
       userId: expandPersonalOverrides ? actorId : undefined,
+      onSecretExpanded: collectReferencedSecrets,
       abortSignal
     });
 
@@ -1785,7 +1784,7 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
-    const serializedPayload = Buffer.from(JSON.stringify(payload));
+    const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
     const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
     const encryptedUpdatedCachedSecrets = secretManagerEncryptor({ plainText: serializedPayload }).cipherTextBlob;
     const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
@@ -1797,6 +1796,7 @@ export const secretV2BridgeServiceFactory = ({
     recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
     await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
+    reportReferencedSecrets();
     return { ...payload, etag: computedEtag };
   };
 
@@ -1891,7 +1891,8 @@ export const secretV2BridgeServiceFactory = ({
     viewSecretValue,
     includeImports,
     expandSecretReferences: shouldExpandSecretReferences,
-    expandPersonalOverrides
+    expandPersonalOverrides,
+    onSecretReferenced
   }: TGetASecretDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1976,6 +1977,7 @@ export const secretV2BridgeServiceFactory = ({
 
     // this will throw if the user doesn't have read value permission no matter what
     // because if its an expansion, it will fully depend on the value.
+    const referencedSecretIdsByLocation = new Map<string, string[]>();
     const { expandSecretReferences } = expandSecretReferencesFactory({
       projectId,
       folderDAL,
@@ -1994,8 +1996,17 @@ export const secretV2BridgeServiceFactory = ({
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
-      kmsService
+      kmsService,
+      onSecretExpanded: onSecretReferenced
+        ? ({ environment: expandedEnvironment, secretPath: expandedPath, secretKey }, secretIds) =>
+            referencedSecretIdsByLocation.set(`${expandedEnvironment}:${expandedPath}:${secretKey}`, secretIds)
+        : undefined
     });
+    // The imports expand every imported secret, so only the references of the secret returned are passed on.
+    const reportReferencesOf = (secretEnvironment: string, secretPath: string, secretKey: string) =>
+      referencedSecretIdsByLocation
+        .get(`${secretEnvironment}:${secretPath}:${secretKey}`)
+        ?.forEach((secretId) => onSecretReferenced?.(secretId));
 
     // now if secret is not found
     // then search for imported secrets
@@ -2061,6 +2072,7 @@ export const secretV2BridgeServiceFactory = ({
               secretValueHidden = false;
             }
 
+            reportReferencesOf(importedSecrets[i].environment, importedSecrets[i].secretPath, secretName);
             return reshapeBridgeSecret(
               projectId,
               importedSecrets[i].environment,
@@ -2115,6 +2127,7 @@ export const secretV2BridgeServiceFactory = ({
       secretValueHidden = false;
     }
 
+    reportReferencesOf(environment, path, secret.key);
     return reshapeBridgeSecret(
       projectId,
       environment,
@@ -3701,131 +3714,6 @@ export const secretV2BridgeServiceFactory = ({
     return { tree };
   };
 
-  const getAccessibleSecrets = async ({
-    projectId,
-    secretPath,
-    environment,
-    filterByAction,
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId,
-    recursive
-  }: TGetAccessibleSecretsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment,
-      secretPath
-    });
-
-    const folders = [];
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) return { secrets: [] };
-    folders.push({ ...folder, parentId: null });
-
-    const env = await projectEnvDAL.findOne({
-      projectId,
-      slug: environment
-    });
-
-    if (!env) {
-      throw new NotFoundError({
-        message: `Environment with slug '${environment}' in project with ID ${projectId} not found`
-      });
-    }
-
-    if (recursive) {
-      const subFolders = await folderDAL.find({
-        envId: env.id,
-        isReserved: false
-      });
-      folders.push(...subFolders);
-    }
-
-    if (folders.length === 0) return { secrets: [] };
-
-    const folderMap = buildHierarchy(folders);
-    const paths = Object.fromEntries(
-      generatePaths(folderMap).map(({ folderId, path }) => [folderId, path === "/" ? path : path.substring(1)])
-    );
-
-    const secrets = await secretDAL.findByFolderIds({ folderIds: folders.map((f) => f.id) });
-
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const decryptedSecrets = secrets
-      .filter((el) => {
-        if (
-          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-            environment,
-            secretPath: paths[el.folderId],
-            secretName: el.key,
-            secretTags: el.tags.map((i) => i.slug)
-          })
-        ) {
-          return false;
-        }
-
-        if (filterByAction === ProjectPermissionSecretActions.ReadValue) {
-          return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment,
-            secretPath: paths[el.folderId],
-            secretName: el.key,
-            secretTags: el.tags.map((i) => i.slug)
-          });
-        }
-
-        return true;
-      })
-      .map((secret) => {
-        const secretValueHidden =
-          filterByAction === ProjectPermissionSecretActions.DescribeSecret &&
-          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment,
-            secretPath: paths[secret.folderId],
-            secretName: secret.key,
-            secretTags: secret.tags.map((i) => i.slug)
-          });
-
-        return reshapeBridgeSecret(
-          projectId,
-          environment,
-          paths[secret.folderId],
-          {
-            ...secret,
-            secretMetadata: secret.secretMetadata?.map((el) => ({
-              isEncrypted: Boolean(el.encryptedValue),
-              key: el.key,
-              value: el.encryptedValue
-                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-                : el.value || ""
-            })),
-            value: secret.encryptedValue
-              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
-              : "",
-            comment: secret.encryptedComment
-              ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
-              : ""
-          },
-          secretValueHidden
-        );
-      });
-
-    return {
-      secrets: decryptedSecrets
-    };
-  };
-
   const getSecretVersionsByIds = async ({
     actorId,
     actor,
@@ -4085,7 +3973,6 @@ export const secretV2BridgeServiceFactory = ({
     getSecretReferenceDependencyTree,
     getSecretsByFolderMappings,
     getSecretById,
-    getAccessibleSecrets,
     getSecretMetadata,
     getSecretVersionsByIds,
     findSecretIdsByFolderIdAndKeys,

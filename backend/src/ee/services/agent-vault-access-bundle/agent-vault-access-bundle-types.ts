@@ -1,5 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
+import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
@@ -70,6 +71,7 @@ export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermiss
 export type TListAccessBundlesDTO = TAgentVaultProjectScoped & {
   requiresSetup?: boolean;
   granted?: boolean;
+  onBehalfOf?: TOnBehalfOfUser;
   search?: string;
   orderBy: TAgentVaultAccessBundleOrderBy;
   orderDirection: "asc" | "desc";
@@ -81,7 +83,7 @@ export type TGetAccessBundleDTO = TAgentVaultProjectScoped & { accessBundleId: s
 
 export type TCreateAccessBundleDTO = TAgentVaultProjectScoped & {
   name: string;
-  description?: string;
+  description?: string | null;
 };
 
 export type TUpdateAccessBundleDTO = TAgentVaultProjectScoped & {

@@ -14,7 +14,6 @@ import {
   UploadIcon
 } from "lucide-react";
 
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DropdownMenu,
@@ -31,8 +30,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionProxiedServiceActions } from "@app/context/ProjectPermissionContext/types";
 import type {
   SecretsAddResourceAction,
   SecretsAddResourceMenuLevel,
@@ -221,29 +218,10 @@ export function AddResourceButtons({
             Add Secret Rotation
           </DropdownMenuItem>
         </MenuItemTooltip>
-        <ProjectPermissionCan
-          I={ProjectPermissionProxiedServiceActions.Create}
-          a={ProjectPermissionSub.ProxiedServices}
-        >
-          {(isAllowed) => (
-            <MenuItemTooltip
-              isDisabled={!isSingleEnvSelected || !isAllowed}
-              content={
-                !isAllowed
-                  ? "Access Restricted"
-                  : "Select a single environment to add a proxied service"
-              }
-            >
-              <DropdownMenuItem
-                onClick={selectAction("proxied-service", onAddProxiedService)}
-                isDisabled={!isSingleEnvSelected || !isAllowed}
-              >
-                <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
-                Add Proxied Service
-              </DropdownMenuItem>
-            </MenuItemTooltip>
-          )}
-        </ProjectPermissionCan>
+        <DropdownMenuItem onClick={selectAction("proxied-service", onAddProxiedService)}>
+          <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
+          Add Proxied Service
+        </DropdownMenuItem>
         <MenuItemTooltip
           isDisabled={!isHoneyTokenAvailable || !canCreateHoneyTokens}
           content="Access Restricted"

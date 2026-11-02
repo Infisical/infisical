@@ -285,6 +285,7 @@ Auth extraction happens in `src/server/plugins/auth/`:
 **Auth modes** (defined in `AuthMode` enum):
 - **JWT** — user browser sessions (decoded from `Authorization: Bearer` header)
 - **IDENTITY_ACCESS_TOKEN** — machine-to-machine identity tokens
+  A TLS Certificate Auth token may carry an RFC 8705 `cnf` (`x5t#S256`) claim. `fnValidateIdentityAccessTokenFast` and renewal then reject it unless the proxy-forwarded client certificate matches (`assertCertificateBinding`).
 - **SCIM_TOKEN** — SCIM provisioning tokens
 - **OAUTH** — delegated user tokens from the `oauth-client` module. Same JWT shape and session binding as
   `JWT`, told apart by an `oauthClientId` claim. See [Delegated OAuth tokens](#delegated-oauth-tokens).
@@ -629,7 +630,7 @@ Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. For PAM and Agent Vault
 - **Membership and role changes need no explicit invalidation call.** The fingerprint self-corrects within the marker TTL (10s eventual consistency for access granting). The old `invalidateProjectPermissionCache` / DAL version counter pattern has been removed. Folder grants are the one exception: they are covered by a version counter that writers must bump (see Folder RBAC below).
 - Cache helpers (`cacheGet`, `cacheSet`, `applyReviver`) in `src/lib/cache/with-cache.ts` are shared between the simple `withCache` and the fingerprint-based `withCacheFingerprint`.
 
-**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole` tiers in `folder-roles.ts`) are fetched by `$fetchProjectPermissionData` and ride in the **same** cached blob as the membership permissions, behind the same fingerprint — there is no separate folder cache. `getProjectPermissionFingerprint` (`permission-fns.ts`) is that fingerprint: `permissionDAL.getPermissionFingerprint` with the project's Postgres folder-permission version counter appended, and it is the only fingerprint source (the secret-read ETag path in `secret-v2-bridge-service.ts` uses it too). The counter is what covers folder grants, because `getPermissionFingerprint` excludes `folderId`-scoped rows and a grant's effective `secretPath` is derived from the folder tree rather than stored on the grant, so a rename changes what a grant allows without touching any row. **Only writes the membership fingerprint cannot see bump it**, via `permissionService.invalidateProjectFolderPermissionCache`: the folder-access grant create/update/delete endpoints and every folder rename/move/delete path. Membership teardowns (user, identity or group leaving a project or org, actor leaving a group) must **not** bump, even though they reap `additional_privileges` rows: they delete a `Membership` or group-membership row that the actor's `getPermissionFingerprint` already hashes, so the blob is invalidated on the same marker expiry and a bump would only be a second invalidation of the same entry. That argument holds only while a teardown reaps grants in exactly the projects the actor is losing (`filterProjectsByUserMembership` / `filterProjectsByIdentityMembership`); a reap that reached a project whose membership is untouched would need the counter again. The grants are stored raw in the blob and filtered through `isActiveRole` per request, so a temporary grant lapsing takes effect immediately; admins skip the fetch entirely, and the fingerprint's `rExp` column makes a temporary admin role lapsing re-evaluate that gate. When an actor holds folder grants, `buildProjectPermissionRules` appends per-grant CASL rules built by `buildFolderScopedPrivilegeRules` (`permission-fns.ts`): a deny of every secretPath-capable subject conditioned on `{ environment, secretPath }` (exact path, folder-only, subfolders fall back to base roles), followed by the folder role's allows with the same conditions. CASL gives the last matching rule precedence, so the folder role fully replaces base permissions at the granted path and nowhere else. The deny list `FOLDER_SCOPED_DENY_RULES` (`folder-roles.ts`) is deliberately literal: `folder-scoped-privilege-rules.test.ts` enumerates `ProjectPermissionV2Schema` and fails when a new secretPath-scoped subject or action is added, forcing a human to extend the deny list and reconsider the role tiers. Only `getProjectPermission` evaluates folder grants; audits and `getProjectPermissions` do not yet. The folder access sheet endpoints (`folderPermissionService.listFolderAccessUsers` / `listFolderAccessIdentities`) answer "who has access on this folder" without building an ability per actor: `folder-access-roles-fns.ts` builds one ability per distinct project role, probes it with every `(action, subject)` pair from `FOLDER_SCOPED_DENY_RULES` plus `SecretFolders.Read`, and caches the evaluated roster per `(projectId, folderId, actorType)` with `withCacheFingerprint` (10m data / 20s marker, fingerprint = membership counts and max timestamps plus the folder's env and path). Folder grants are merged live so a grant or revoke shows on the next request.
+**Folder RBAC (folder-scoped privileges)**: `additional_privileges` rows with a `folderId` + `role` (`SecretFolderRole` tiers in `folder-roles.ts`) are fetched by `$fetchProjectPermissionData` and ride in the **same** cached blob as the membership permissions, behind the same fingerprint — there is no separate folder cache. `getProjectPermissionFingerprint` (`permission-fns.ts`) is that fingerprint: `permissionDAL.getPermissionFingerprint` with the project's Postgres folder-permission version counter appended, and it is the only fingerprint source (the secret-read ETag path in `secret-v2-bridge-service.ts` uses it too). The counter is what covers folder grants, because `getPermissionFingerprint` excludes `folderId`-scoped rows and a grant's effective `secretPath` is derived from the folder tree rather than stored on the grant, so a rename changes what a grant allows without touching any row. **Only writes the membership fingerprint cannot see bump it**, via `permissionService.invalidateProjectFolderPermissionCache`: the folder-access grant create/update/delete endpoints and every folder rename/move/delete path. Membership teardowns (user, identity or group leaving a project or org, actor leaving a group) must **not** bump, even though they reap `additional_privileges` rows: they delete a `Membership` or group-membership row that the actor's `getPermissionFingerprint` already hashes, so the blob is invalidated on the same marker expiry and a bump would only be a second invalidation of the same entry. That argument holds only while a teardown reaps grants in exactly the projects the actor is losing (`filterProjectsByUserMembership` / `filterProjectsByIdentityMembership`); a reap that reached a project whose membership is untouched would need the counter again. The grants are stored raw in the blob and filtered through `isActiveRole` per request, so a temporary grant lapsing takes effect immediately; admins skip the fetch entirely, and the fingerprint's `rExp` column makes a temporary admin role lapsing re-evaluate that gate. When an actor holds folder grants, `buildProjectPermissionRules` appends per-grant CASL rules built by `buildFolderScopedPrivilegeRules` (`permission-fns.ts`): a deny of every secretPath-capable subject conditioned on `{ environment, secretPath }` (exact path, folder-only, subfolders fall back to base roles), followed by the folder role's allows with the same conditions. CASL gives the last matching rule precedence, so the folder role fully replaces base permissions at the granted path and nowhere else. The deny list `FOLDER_SCOPED_DENY_RULES` (`folder-roles.ts`) is deliberately literal: `folder-scoped-privilege-rules.test.ts` enumerates `ProjectPermissionV2Schema` and fails when a new secretPath-scoped subject or action is added, forcing a human to extend the deny list and reconsider the role tiers. `getProjectPermission` and the project-wide `getProjectPermissions` evaluate folder grants (the latter loads every grant in the project in one query and skips admins the same way); audits do not yet. The folder access sheet endpoints (`folderPermissionService.listFolderAccessUsers` / `listFolderAccessIdentities`) answer "who has access on this folder" without building an ability per actor: `folder-access-roles-fns.ts` builds one ability per distinct project role, probes it with every `(action, subject)` pair from `FOLDER_SCOPED_DENY_RULES` plus `SecretFolders.Read`, and caches the evaluated roster per `(projectId, folderId, actorType)` with `withCacheFingerprint` (10m data / 20s marker, fingerprint = membership counts and max timestamps plus the folder's env and path). Folder grants are merged live so a grant or revoke shows on the next request.
 
 ### Request-Scoped Memoization
 
@@ -1094,6 +1095,55 @@ logger.error({ sessionId, err }, "Failed to get connection details");
 
 Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
 
+### Certificate soft delete
+
+Deleting a certificate goes through `softDeleteCertificates` (`certificate-fns.ts`), which both the delete
+endpoint and the expiry cleanup job (`certificate-cleanup-queue.ts`) call: it stamps `deletedAt`,
+`deletedByActorType` and `deletedByActorId` on the row and, in the same transaction, removes its
+`certificate_bodies`, `certificate_secrets` and PKI collection items and clears the private key copy on
+`certificate_requests.encryptedPrivateKey`. The row itself stays, so the inventory, audit trail and renewal
+chain keep pointing at something. Nothing hard deletes certificates any more, so deleted rows accumulate;
+instance-level hard delete is a possible future option. Things that rely on that:
+
+- **`certificate_syncs` rows are kept.** Linux, Windows and Azure (free-text naming) find what they delivered
+  only through those rows (`syncMetadata.files`, `externalIdentifier`), so the delete queues the auto-sync
+  syncs holding the certificate, the run sees a tracked certificate that is no longer active and removes it
+  from the destination, and the provider untracks the row. A sync with Auto-Sync or "Remove certificates from
+  destination" off keeps the row and the copy until a later run that removes it. The sync's certificate list
+  (`findWithDetails`) hides deleted certificates.
+
+- **Every background or enumeration query filters `whereNull("deletedAt")`**: expiry alerts, auto-renewal,
+  syncs, discovery, HSM connector usage and stats. A new query over `certificates` needs the same filter unless
+  it is deliberately showing deleted rows. Reads the API serves skip deleted certificates by default too:
+  `GET /certificates/:id` returns 404 unless the caller passes `includeDeleted`, and list or search returns
+  them only for a `deleted` status filter or `includeDeleted` (the **All Certificates** view; **Default**
+  hides them), so clients written before soft delete keep seeing what they saw
+  when the row was hard deleted. The one background job that still reads deleted rows is the DigiCert
+  revocation sync: it records an upstream revocation on a deleted certificate (without alerts) so the quota
+  stops counting it.
+- **The licence quota still counts a deleted certificate Infisical issued until it expires or is revoked**,
+  because deleting neither revokes it nor requires it to be expired, so excluding it would let an org free
+  its cap while the certificate stays trusted. Deleted imported and discovered certificates stop counting, as
+  the hard delete used to make them.
+- **CRL and OCSP keep deleted certificates.** Deletion is not revocation, so a revoked certificate stays on
+  the CRL after it is deleted, and revoking a deleted certificate is still allowed.
+- **A deleted certificate is never renewed or changed.** `assertCertificateNotDeleted` guards the renewal
+  entry points and the first attempt of the issuance job, and EST re-enroll and SCEP renewal refuse a deleted
+  client certificate. A renewal the CA already accepted before the delete (an ACM renewal still polling, a
+  DigiCert or GoDaddy order) still completes and links to the deleted original, because the CA has issued
+  that certificate and discarding it would lose it.
+- **A sync can still write a link for a certificate deleted mid-run.** `certificate_syncs` inserts are not
+  filtered on `deletedAt`, so a provider that uploads and then records the link leaves a tracking row, and the
+  sync the delete queued removes that copy from the destination through it.
+- **Cleanup skips certificates a code signing signer uses**, the same rule the delete endpoint enforces.
+- **Deleted certificates are not restored.** Serial numbers stay globally unique
+  (`certificates_serialnumber_unique`), so re-importing a deleted certificate into the same project fails with
+  the deleted message (any other project gets the generic serial conflict, so nothing about it leaks), and
+  rediscovery links the installation to the deleted row instead of creating a new one.
+- **A deleted certificate keeps its HSM key reference** (`keySource`, connector, key label and id), so the
+  record stays true for audits. Deleting the connector detaches deleted rows (`hsmConnectorId` set to null),
+  which is why the key source CHECK requires a connector only while `deletedAt` is null.
+
 ### Certificate revocation: CRL and OCSP
 
 Internal CAs publish revocation two ways, both unauthenticated public endpoints under
@@ -1216,6 +1266,19 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP.
 - **Fresh keys are read on the primary.** Signing and the JWKS a rotation caches pass a `tx` to
   `getPublicKey` and `signWithKmsKey`, because a read replica may not have a key created moments earlier.
+- **Every signed token is audit logged** (`issue-oidc-token`, with the connection's ID and name) inside
+  `signToken`, so a new consumer gets it for free and never logs on its own.
+- **Connections sign for their own ID only.** `signToken` takes the connection, not a subject, and builds
+  `app-connection:<id>` itself, and the token is only ever sent to the provider's token endpoint, never
+  returned to a caller. Never let a caller choose the ID: a deleted connection's ID would
+  regain whatever the provider still trusts. So the connection is created first, without a token exchange,
+  and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
+  `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which
+  caches the provider's access token in the credentials like the secret-based methods do.
+- **The API returns the values the customer copies.** Connection responses carry
+  `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
+  `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.
+  The issuer is null when `SITE_URL` is unset, so reading a connection never fails on it.
 
 ### Enterprise (EE) Features
 
@@ -1232,6 +1295,13 @@ EE routes register before community routes so they can override/extend endpoints
 **Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/AGENTS.md`](src/ee/services/agent-vault/AGENTS.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
 
 **Secret Scanning** is single-project (see the root `AGENTS.md`): `secret-scanning-v2-project-bootstrap.ts` creates the project with the org when it has a creator to make admin (like PAM and Agent Vault), `secret-scanning-v2-project-resolver.ts` picks the active project and lazily creates it, with every org admin as project admin, for older orgs and for orgs created from the admin console, whose admins are only invited after the org exists, and routes that take `projectId` read `req.internalSecretScanningProjectId`. A data source covers the resources it has rows for (added by a user or discovered from a push); its `config` only says where to look (Bitbucket workspace, GitLab group), never which resources, so scans, "included" state and GitLab account-scope webhooks all key off rows. Stored configs may still carry the old `includeRepos` / `includeProjects` keys, which nothing reads.
+
+**Secret scanning scans and GitHub pull request checks**:
+- A scan's `trigger` (`SecretScanningScanTrigger`) records what started it, separate from `type` (`historical` / `realtime`). `metadata` (jsonb) holds trigger-specific data, is parsed by trigger, and is never returned raw by the API.
+- `secret-scanning-v2-queue.ts` stays provider-agnostic. Provider behavior goes behind optional hooks on the data source factory (`getRealtimeScanReport` / `getScanReport` for reporting a scan back, `processEvent` for webhook events beyond pushes), never behind a provider check in the queue.
+- PR checks are realtime scans with `trigger: pull-request`, gated on `isScanNewCommitsEnabled`. Webhook handlers only enqueue; `processGitHubPullRequestEvent` does the work. The check run is created before the scan, with the scan's ID as its `external_id`, which is how re-runs and skip actions find the scan.
+- Every exit of a PR scan closes its check (including the stuck-scan reaper, which also fails realtime scans left `queued`), since a check left open blocks merging when it is required.
+- Fork PRs aren't scanned: they get a `skipped` check under the same name, unless the commit already has one of our checks (checks belong to the commit, so it would replace a real result).
 
 **Dynamic secret lease secrets needed at revoke time go in `dynamic_secret_leases.encryptedLeaseData`**, never in `externalEntityId` or `config` (both plaintext, and `externalEntityId` is returned by every lease route and logged in audit events). A provider opts in by listing the `create()` `data` keys in `persistedLeaseFields`; the lease service encrypts them with the project's SecretManager key and every revoke path passes them back as `metadata.leaseData`. Lease routes return `SanitizedDynamicSecretLeaseSchema` so the column never reaches a response. Secret *config* fields are listed separately in `DYNAMIC_SECRET_SECRET_FIELDS` (`providers/redact.ts`), as dotted paths so nested secrets work (`clientAuth.clientSecret`): reads strip them via `redactStoredInputs`, and an update that omits one keeps the stored value via `restoreOmittedSecretFields`, because the update merge is shallow.
 
@@ -1273,6 +1343,109 @@ Two things to get right in a ClickHouse aggregate. `createdAt` is a `DateTime64(
 timezone, so pin day grouping and bound parameters to `'UTC'` or they follow the server's timezone. And
 the table is a `ReplacingMergeTree`: a retried batch inserts the same `id` twice and the copy goes away
 only at some later merge, so read with `FINAL` when an exact count matters.
+
+### Secret Read Activity
+
+`ee/services/secret-read-activity/` answers "who has read this secret" for the per-secret access sheet and
+the Insights Unused Secret Access card. It does not use audit logs: ClickHouse is optional on self-hosted
+and the events cannot say which folders a recursive read returned. Instead it keeps its own table,
+`secret_read_activity`, one row per (object, reader) holding the last read time. The write path (producer,
+stream drain and both crons) lives in `secret-read-activity-queue.ts`, like `audit-log-queue.ts`; the service
+owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to the queue.
+
+- **Write path.** Read routes call `recordBulkRead` / `recordRead` with `void`, so they never fail or slow a
+  read. A bulk read that returned whole folders (no tag or metadata filter, imports and references included)
+  records its folder, plus every non-reserved subfolder when recursive, and does so even on a 304. A
+  narrower bulk read records the ids of the secrets it returned, so the secrets it left out are not credited.
+  A narrow 304 carries no secrets and records nothing, which is safe only because ETags are stored per UTC day,
+  so each client's first read of the day is a full response. Single reads record the secret. A read with
+  references unexpanded is stored as `secret-unexpanded` and credits only that secret, not the values it
+  references, which is why `objectType` is part of the primary key. A read that expands references with the reader's
+  personal overrides (v4 bulk with `includePersonalOverrides`, v4 single read of a personal secret) records the
+  returned secrets plus the ones its references resolved to, all as `secret-unexpanded`: matching references by key
+  would credit a shared secret an override replaced. The expander reports a secret's referenced ids through
+  `onSecretExpanded` only once that secret's expansion succeeds, tagged with the secret, so a failed expansion
+  credits nothing and the single read passes on only the returned secret's (imports expand every imported secret).
+  The bulk read caches them with its result (only for these reads, so every other cached payload and ETag is
+  unchanged) so a cache hit replays them. A Redis `SET NX` gate (25h TTL) keyed on
+  the reader, the day and the request (or the hash of the returned ids) lets only the first identical read
+  per day through. It is keyed on the request, not the client's ETag, since older clients never send one; a folder
+  read is also keyed on the response's ETag, so a read that returns more after an access change is recorded again
+  the same day. Gated reads go to a
+  Redis stream drained the way the audit log ingest stream is (collect, write, then trim, under a
+  non-blocking lock), by the `SecretReadActivityFlush` cron every minute into an upsert.
+- **Partitioned by month, no foreign keys, no index on `lastReadAt`.** The table is range-partitioned on
+  `readMonth` (the UTC month of `lastReadAt`, part of the primary key), so a reader has one row per month and
+  `findLastReads` folds them into the latest. The daily `SecretReadActivityPrune` cron creates the current and
+  next three months' partitions and drops a month once all of it is older than the 30-day window, since nothing
+  reads before it. Never prune with `DELETE`: at this table's size that is a full scan plus vacuum. Partition DDL
+  takes an exclusive lock on the whole table, so it runs under a short `lock_timeout` and retries on the next run.
+  Partitions use `fillfactor = 90` and `lastReadAt` is in no index, which together keep the upsert a HOT update.
+  Rows of deleted objects age out with their month. A move creates new ids, so the window
+  starts no earlier than the secret's and its folder's creation (`trackedSince`), nor before the table existed.
+- **Read path.** A read counts when it reaches the secret through its folder, an import of it, a secret
+  referencing it, or the source of a replication import (imports and references check the reader's own access
+  to the source, so revoking it would break them). A personal secret referencing it counts only when the personal secret
+  itself is read, not its folder (a read without overrides leaves personal values out), and nothing referencing the
+  personal secret is followed: a reference resolves to the shared secret without overrides. The card computes the whole project once and caches it
+  (`KeyStoreTtls.InsightsUnusedAccessCacheInSeconds`), grouping actors by identical rules so each rule set is checked once
+  per secret. The per-secret endpoint checks the caller's access to the secret before building its reach, which
+  decrypts every secret that could reference it.
+- **Only a full window is judged.** Tracking starts at the later of the migration that created the table and the
+  project's creation, and reads from before it are unknown, so nothing counts as unused access until tracking has run
+  30 days (`getUnusedAccessFrom`). `judgedFrom` is always the start of the last 30 days, and a secret's `trackedSince`
+  starts no earlier than tracking did, so before then no secret covers the window; the card skips the scan and
+  caches nothing, and the access sheet gives the `tracking-too-new` reason. Every response carries `unusedAccessFrom`
+  so the UI can say when results start. The card leaves out project admins (users
+  and identities with the Admin role, directly or through a group, from `findAdminActorIds`): they can read
+  everything by design. Their reads are still recorded, so the access sheet's Last Read stays true for them. A
+  pair is listed once the secret (`trackedSince`) and the actor's access to that secret both predate `judgedFrom`.
+  Access is dated per secret (`createAccessDating`): each actor's sources (every role assignment and project-wide
+  privilege, from `getProjectPermissions`' `accessSources`; each group they are in, from `permissionForActor` with
+  `groupsOnly` so placeholders hold the member's details; each folder grant) carry the date
+  `findAccessSourceDates` gives them, and a secret's access dates from the oldest source that grants it on its own,
+  so a change only restarts the window for the secrets it opened. An edit to a custom role's rules dates that role
+  for every secret it gives, since which secrets an edit opened is not recorded. Expired access is not a source, but
+  an ended restriction may have given access back, so access dates no earlier than an expired folder grant in its
+  folder, a folder grant edited since its creation in its folder, or an expired temporary role or privilege across
+  all of its holder's access (what it held back is not worked out). Only the current secret's source checks are
+  kept, so the scan's memory does not grow with the project. Only an actor with a
+  source newer than `judgedFrom` is checked per secret, and each source once per secret across actors. A read from
+  before the reader had access to a secret is dropped for that secret (`readsByActorId`): reads are credited by
+  folder, and a folder read then could not have returned it. A read recorded against the secret itself
+  (`lastSecretReadAt`) always counts, so a role change does not erase it. The per-secret sheet shows the plain fact
+  instead: a read, "No reads", or "No reads yet" with the reason.
+- **The access sheet.** The graph lives only in the secret's access sheet, served by
+  `GET /insights/:projectId/secrets/read-activity/:secretName` (the fixed segment comes first so a secret named
+  `reports` or `summary` cannot hit those routes). It returns `actors`: everyone who can read the value, admins
+  included, each with `lastReadAt`, `isProjectAdmin`, `accessSince`, and a `readStatus` (`read`, `unused`,
+  `not-judged`) with a `notJudgedReason` (`project-admin`, `access-too-new`, `secret-too-new`) from
+  `getReadStatus`. The API returns codes and dates only; the UI writes the wording. Readers who lost access
+  ("ghost readers") are not computed or returned.
+- **The Insights card is per actor** (a user or machine identity; a group is never a row, only an access path).
+  `summarizeSecretAccess` (in `secret-read-activity-fns.ts`) is the one place a secret's readers and unread readers
+  are derived, from the project's access loaded once by `$loadProjectAccess`; both the per-secret
+  endpoint and the project scan use it. `$tallyUnusedAccess` scans every secret once and tallies, per actor, how many
+  secrets it can read, how many it has not read and the environments involved; `$computeUnusedAccess`
+  ranks the tallies into rows (`accessibleSecretCount`, `unusedSecretCount`). Each row carries `accessPaths` as data: `roles` it holds directly (`id`/`slug`/`name`,
+  where a custom role has the slug `custom` and its own id), `groups` it belongs to with the roles each one gives,
+  `additionalPrivileges` as `id`/`name` (project-wide only), and `folderAccess`: the actor's own active folder grants
+  (`id`/`folderId`/`environment`/`secretPath`/`role`). A folder grant is stored as an additional privilege with a
+  `folderId`, which the member listings filter out, so `getProjectPermissions` returns them as
+  `folderAccessByActorId` from the grants it already loads. The UI decides how to label all of them. Custom role ids and names come from
+  `getProjectPermissions`, so the scan makes no role lookup of its own. Each person is checked with one permission merged across their direct membership and every group
+  they are in (`getProjectPermissions().permissionForActor`, built from getProjectPermission's own steps by
+  `buildMergedProjectPermissionRules`), so a deny in one role holds against an allow in another, and placeholders
+  such as `{{identity.username}}` are filled from that person's details (looked up for group-only members only
+  when a group role holds one). It
+  is cached per project for a day (`insights-cache:<projectId>:unused-access`, under a per-project lock on a cold
+  cache): every actor's row, plus the unread secret ids for the 200 actors with the most, capped at 200 each; an
+  actor past that is scanned for alone when opened and cached per actor. Served by
+  `GET /insights/:projectId/secrets/unused-access` (ranked by unread count, searchable by name) and
+  `/unused-access/:actorType/:actorId` (`user` or `identity`), whose secrets go through a per-caller DescribeSecret
+  recheck. The audit event keeps `principalType`/`principalId`/`principalName` for the viewed actor, so they do not
+  read as the event's own actor. The scans are synchronous CPU work, so they `await setImmediate()` (from
+  `node:timers/promises`) between secrets to let other requests on the instance run.
 
 ### Free Text in Audit Events
 

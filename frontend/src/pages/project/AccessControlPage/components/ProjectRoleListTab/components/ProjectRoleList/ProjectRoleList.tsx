@@ -103,7 +103,7 @@ export const ProjectRoleList = () => {
   const { mutateAsync: deleteRole, isPending: isDeletingRole } = useDeleteProjectRole();
 
   const handleRoleDelete = async () => {
-    const { id, name } = popUp?.deleteRole?.data as TProjectRole;
+    const { id, name } = popUp.deleteRole.data as TProjectRole;
     await deleteRole({
       projectId,
       projectType: currentProject?.type,

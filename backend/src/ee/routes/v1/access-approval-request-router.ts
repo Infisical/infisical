@@ -118,6 +118,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     url: "/count",
     method: "GET",
     schema: {
+      operationId: "getAccessApprovalRequestCount",
       querystring: z.object({
         projectSlug: z.string().trim(),
         policyId: z.string().trim().optional()
@@ -231,6 +232,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     url: "/:requestId/review",
     method: "POST",
     schema: {
+      operationId: "reviewAccessApprovalRequest",
       params: z.object({
         requestId: z.string().trim()
       }),
@@ -298,6 +300,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "revokeAccessApprovalRequest",
       params: z.object({
         requestId: z.string().trim()
       }),
@@ -442,6 +445,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     url: "/:requestId",
     method: "PATCH",
     schema: {
+      operationId: "updateAccessApprovalRequest",
       params: z.object({
         requestId: z.string().trim()
       }),

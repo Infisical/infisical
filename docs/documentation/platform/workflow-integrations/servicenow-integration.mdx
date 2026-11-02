@@ -18,7 +18,7 @@ Infisical still grants the access. It creates the request, waits for ServiceNow 
 1. A user requests access in Infisical to an environment and secret path.
 2. The request matches an access policy that sends its requests to ServiceNow.
 3. Infisical creates an **Infisical Access Request** record on your ServiceNow instance over the [ServiceNow connection](/integrations/app-connections/servicenow). The record includes a callback token that Infisical issued for this request alone.
-4. A ServiceNow flow you own routes the record to the right approvers.
+4. The **Infisical - Default Approval** flow, or a flow you build, asks your approvers to approve or reject the record.
 5. When the flow reaches a decision, its final step runs the **Infisical - Notify Decision** action. The action records the decision on the record, then sends the callback token to Infisical to say the record has a decision.
 6. Infisical reads the decision from the record over the ServiceNow connection, then grants the access on approval or closes the request on rejection.
 
@@ -27,7 +27,7 @@ If the policy sets a request expiration and ServiceNow doesn't return a decision
 ## Prerequisites
 
 - A Secrets Management project on Infisical with Access Requests available
-- A ServiceNow instance where you can install a scoped application, create users, and build flows in Flow Designer (the `flow_designer` role)
+- A ServiceNow instance where you can install a scoped application, create users, edit groups, and activate flows in Flow Designer (the `flow_designer` role)
 - A ServiceNow instance that Infisical can reach (if your instance restricts inbound traffic, allow [Infisical's IP addresses](/documentation/setup/networking) on its IP access control list)
 - Outbound HTTPS access from your ServiceNow instance to your Infisical URL
 - If you self-host Infisical, a [`SITE_URL`](/self-hosting/configuration/envars) that starts with `https://`, because ServiceNow notifies Infisical at that address
@@ -42,9 +42,9 @@ If the policy sets a request expiration and ServiceNow doesn't return a decision
 
     - **Access Requests**: every request Infisical has sent
     - **Pending Requests**: requests waiting for a decision
-    - **Admin Console** (admins only): every request, with a **Resend to Infisical** button for a decision that didn't reach Infisical
+    - **Admin Console** (admins only): every request, with a [**Resend to Infisical**](#resend-to-infisical) button for a decision that didn't reach Infisical
 
-    You can't approve or reject a request from these modules. Your approvers decide in the approval steps of your flows, which you build in [Step 3](#step-3-build-the-approval-flow).
+    You can't approve or reject a request from these modules. Your approvers decide in the approval flow you set up in [Step 3](#step-3-set-up-the-approval-flow).
 
   </Step>
   <Step>
@@ -53,7 +53,7 @@ If the policy sets a request expiration and ServiceNow doesn't return a decision
     | Role | Assign it to |
     | --- | --- |
     | `x_infis_approvals.admin` | The people who manage the integration. The role grants full access to every request, including delete, and the **Admin Console**. |
-    | `x_infis_approvals.approver` | Every user or group that an **Ask for Approval** step in your flows names as an approver. |
+    | `x_infis_approvals.approver` | Every approver in a flow you build. Members of the **Infisical Approvers** group, which you set up in [Step 3](#step-3-set-up-the-approval-flow), get the role from the group. |
     | `x_infis_approvals.viewer` | People who only need to read requests and their audit trail. |
     | `x_infis_approvals.secret-manager-integration` | Only the integration user that Infisical signs in as, which you create in [Step 2](#step-2-connect-infisical-to-servicenow). |
 
@@ -66,32 +66,95 @@ Create a ServiceNow integration user, then create a ServiceNow connection in Inf
 
 Infisical uses this connection to create each record and to read each decision back. If the connection's credentials stop working, Infisical can't complete the requests waiting in ServiceNow.
 
-## Step 3: Build the approval flow
+## Step 3: Set up the approval flow
 
-You define approval routing in Flow Designer. Infisical doesn't set approvers, steps, or SLAs. The fastest way to start is to copy the flow template that the Infisical application includes:
+The Infisical application includes an approval flow, **Infisical - Default Approval**, and a group of approvers, **Infisical Approvers**. The flow asks the members of the group to approve each new request, so the first member who approves or rejects the request decides it. In the final step, the flow then notifies Infisical of the decision.
+
+When you install the application, the group has no members and the flow is inactive. Add your approvers to the group, then activate the flow.
+
+### Add your approvers to the group
+
+<Steps>
+  <Step>
+    In ServiceNow, go to **All** > **System Security** > **Users and Groups** > **Groups**.
+
+    ![Groups in the ServiceNow Navigator](/images/platform/workflow-integrations/servicenow-integration/groups-menu.png)
+
+  </Step>
+  <Step>
+    Search the list for `Infisical Approvers` and open the group.
+
+    ![Infisical Approvers Group](/images/platform/workflow-integrations/servicenow-integration/infisical-approvers-search.png)
+
+  </Step>
+  <Step>
+    Select **Edit...** on the **Group Members** tab.
+
+    ![Group Members Tab](/images/platform/workflow-integrations/servicenow-integration/infisical-approvers-members-tab.png)
+
+  </Step>
+  <Step>
+    Move each approver from **Collection** to **Group Members List**, then select **Save**.
+
+    ![Edit Group Members](/images/platform/workflow-integrations/servicenow-integration/infisical-approvers-edit-members.png)
+
+  </Step>
+</Steps>
+
+<Note>
+  The **Infisical Approvers** group already has the `x_infis_approvals.approver` role. Add other roles on the **Roles** tab if you need them.
+</Note>
+
+### Activate the flow
 
 <Steps>
   <Step>
     Go to **All** > **Process Automation** > **Flow Designer**.
+
+    ![Flow Designer in the ServiceNow Navigator](/images/platform/workflow-integrations/servicenow-integration/flow-designer-menu.png)
+
   </Step>
   <Step>
-    Open **Infisical - Single Approval Template** and select **Copy Flow**.
+    Open **Infisical - Default Approval**.
+
+    ![Infisical - Default Approval in Flow Designer](/images/platform/workflow-integrations/servicenow-integration/default-approval-flow-list.png)
+
   </Step>
   <Step>
-    Set the trigger condition. The flow runs when a record is created in **Infisical Access Request [x_infis_approvals_access_request]**, and the condition sets which requests the flow handles, such as `Environment is prod` or `Secret Path contains /payments`. The template's condition, `Request Type is Secret Access`, matches every request from Infisical.
-  </Step>
-  <Step>
-    On each **Ask for Approval** step, add the approvers and the number of approvals required. Every approver needs the `x_infis_approvals.approver` role.
-  </Step>
-  <Step>
-    Confirm that every branch, approved and rejected alike, ends with the **Infisical - Notify Decision** action.
-  </Step>
-  <Step>
-    Activate your copy of the flow. The template itself stays inactive.
+    If the flow shows **Inactive** next to its name, select **Activate**.
+
+    ![Activate the Flow](/images/platform/workflow-integrations/servicenow-integration/default-approval-flow-activate.png)
+
   </Step>
 </Steps>
 
-To build a flow from scratch instead, trigger it when a record is created in **Infisical Access Request**, route the record with **Ask for Approval** steps, and end each branch with **Infisical - Notify Decision**. If you have more than one flow, make their trigger conditions mutually exclusive. If two flows match the same record, approvers get duplicate approvals.
+<Note>
+  You can change the flow, for example to add approval steps or a trigger condition, as long as every branch still ends with the **Infisical - Notify Decision** action. See [Notify Infisical of the decision](#notify-infisical-of-the-decision).
+</Note>
+
+### Use your own flow instead
+
+To route requests with a flow of your own, such as one with different approvers for each environment:
+
+<Steps>
+  <Step>
+    In Flow Designer, open **Infisical - Default Approval** and select **Copy Flow** to start from a copy, or create a new flow.
+  </Step>
+  <Step>
+    Trigger the flow when a record is created in **Infisical Access Request [x_infis_approvals_access_request]**. To handle only some requests, add a trigger condition such as `Environment is prod` or `Secret Path contains /payments`.
+  </Step>
+  <Step>
+    Route the record with **Ask for Approval** steps. Every approver needs the `x_infis_approvals.approver` role, which members of the **Infisical Approvers** group already have.
+  </Step>
+  <Step>
+    End every branch, approved and rejected alike, with the **Infisical - Notify Decision** action.
+  </Step>
+  <Step>
+    Activate your flow. If **Infisical - Default Approval** is active, open it and select **Deactivate**, so that it doesn't also handle the requests your flow handles.
+  </Step>
+</Steps>
+
+If you have more than one flow, make their trigger conditions mutually exclusive. If two flows match the same record, approvers get duplicate approvals.
 
 ### Notify Infisical of the decision
 
@@ -157,6 +220,8 @@ Requesting access under a ServiceNow policy works like any other [access request
 <Steps>
   <Step>
     In your Secrets Management project, select **Approvals** from the sidebar, open the **Access Requests** tab, and select **Request Access**.
+    ![Request Access Button](/images/platform/workflow-integrations/servicenow-integration/access-policy-request-access.png)
+
   </Step>
   <Step>
     Choose an **Environment** and **Secret Path** that the policy covers, pick the permissions, fill out **Duration** and **Note**, then select **Request Access**.
@@ -203,13 +268,15 @@ If your flow fills in **Approved By** or **Decision Notes** on the record, Infis
     that the instance is up and reachable from Infisical.
   </Accordion>
   <Accordion title="Record created but nothing happens">
-    No active flow matches the record. Verify your flow is activated and its
-    trigger condition matches the record's field values.
+    No active flow matches the record. Check that
+    **Infisical - Default Approval** or your own flow is active, and that the
+    flow's trigger condition matches the record's field values.
   </Accordion>
   <Accordion title="Approvers see duplicate approvals">
-    Two flows match the same record. Make the trigger conditions mutually
-    exclusive and deactivate the one you no longer want. Only the first flow to
-    finish notifies Infisical. In the other flow, **Infisical - Notify
+    Two flows match the same record, such as your own flow and
+    **Infisical - Default Approval**, which matches every request. Deactivate
+    the flow you no longer want, or make the trigger conditions mutually
+    exclusive. Only the first flow to finish notifies Infisical. In the other flow, **Infisical - Notify
     Decision** returns an error.
   </Accordion>
   <Accordion title="State stuck at Notifying Infisical">
@@ -223,10 +290,10 @@ If your flow fills in **Approved By** or **Decision Notes** on the record, Infis
     the request's status in Infisical, and create the request again if the
     requester still needs access.
   </Accordion>
-  <Accordion title="Callback Failed with a connection error">
+  <Accordion title="Callback Failed with a connection error" id="resend-to-infisical">
     The ServiceNow instance can't reach the **Callback URL** on the record. Fix
     the instance's outbound firewall rules, then select **Resend to Infisical**
-    on the request in the **Admin Console**. If the URL itself is wrong, correct
+    on the request in the **Admin Console**. If the URL itself is wrong, cancel the current request, correct
     `SITE_URL` and create the request again.
   </Accordion>
   <Accordion title="Callback Failed with an invalid decision">

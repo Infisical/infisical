@@ -110,7 +110,6 @@ const ProviderMultiSelect = <T extends string>({
 }: {
   label: string;
   options: TProviderOption<T>[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: any;
   error?: string;
 }) => {

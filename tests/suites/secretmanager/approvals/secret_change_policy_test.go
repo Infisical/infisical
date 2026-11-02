@@ -3,6 +3,7 @@ package approvals_test
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/license"
@@ -11,6 +12,7 @@ import (
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
 )
 
@@ -120,6 +122,37 @@ func TestSecretApprovalPolicy_Enforce(t *testing.T) {
 		// Assert
 		require.Equal(t, []change{{Op: "create", Key: "API_KEY"}}, heldRequest(t, proj, res.Body).Changes)
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
+	})
+
+	t.Run("should hold a replication into the protected path as an open request", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		secretmanager.CreateSecret(t, proj, "prod", "API_KEY", "value")
+		newPolicy(t, proj, []policyMember{userMember(reviewer)})
+
+		// Action
+		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "prod", Path: "/"}, secretmanager.Replicated())
+
+		// Assert
+		// One worker serves every tenant's replication jobs, so a run can queue behind others.
+		wait.Until(t, "the replication to open a change request", func() bool { return openRequestCount(t, proj) == 1 },
+			wait.Timeout(60*time.Second))
+		held := getRequest(t, proj, onlyOpenRequest(t, proj))
+		require.Equal(t, []change{{Op: "create", Key: "API_KEY"}}, held.Changes)
+		listed, err := proj.Tenant().Admin.API.ListSecretsV4WithResponse(t.Context(), &api.ListSecretsV4Params{
+			ProjectId: &proj.ID, Environment: new("dev"),
+		})
+		require.NoError(t, err)
+		require.NotNilf(t, listed.JSON200, "listing dev returned %d: %s", listed.StatusCode(), apierr.Body(listed.Body))
+		require.Empty(t, listed.JSON200.Secrets)
+		if listed.JSON200.Imports != nil {
+			for _, imp := range *listed.JSON200.Imports {
+				require.Emptyf(t, imp.Secrets, "the replica already serves %s:%s", imp.Environment, imp.SecretPath)
+			}
+		}
 	})
 
 	t.Run("should keep enforcing an existing policy after the plan loses approvals", func(t *testing.T) {

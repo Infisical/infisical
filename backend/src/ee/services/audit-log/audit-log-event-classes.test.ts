@@ -43,6 +43,8 @@ describe("audit log event classes", () => {
     [EventType.PKI_SIGNER_SIGN, AuditLogEventClass.DataAccess],
     [EventType.DASHBOARD_LIST_SECRETS, AuditLogEventClass.DataAccess],
     [EventType.VIEW_INSIGHTS_AUTH_METHODS, AuditLogEventClass.DataAccess],
+    [EventType.AGENT_VAULT_SKILLS_DELIVERED, AuditLogEventClass.DataAccess],
+    [EventType.AGENT_VAULT_SKILL_VERSION_VIEW, AuditLogEventClass.DataAccess],
     [EventType.UPDATE_SECRET, AuditLogEventClass.Management],
     [EventType.CREATE_CMEK, AuditLogEventClass.Management],
     [EventType.VIEW_AUDIT_LOGS, AuditLogEventClass.Management],

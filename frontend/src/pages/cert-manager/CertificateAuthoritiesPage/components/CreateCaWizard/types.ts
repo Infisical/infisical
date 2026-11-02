@@ -10,7 +10,10 @@ export const KEY_SOURCE_SUPPORTED_CA_KEY_ALGORITHMS: Partial<
     CertKeyAlgorithm.RSA_2048,
     CertKeyAlgorithm.RSA_4096,
     CertKeyAlgorithm.ECDSA_P256,
-    CertKeyAlgorithm.ECDSA_P384
+    CertKeyAlgorithm.ECDSA_P384,
+    CertKeyAlgorithm.ML_DSA_44,
+    CertKeyAlgorithm.ML_DSA_65,
+    CertKeyAlgorithm.ML_DSA_87
   ],
   [CertKeySource.AwsKms]: [
     CertKeyAlgorithm.RSA_2048,

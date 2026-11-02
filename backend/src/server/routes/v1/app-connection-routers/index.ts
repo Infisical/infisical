@@ -45,6 +45,7 @@ import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHpeIloConnectionRouter } from "./hpe-ilo-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
+import { registerImpervaConnectionRouter } from "./imperva-connection-router";
 import { registerJiraConnectionRouter } from "./jira-connection-router";
 import { registerKeeperConnectionRouter } from "./keeper-connection-router";
 import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
@@ -166,6 +167,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
     [AppConnection.PaloAltoNetworks]: registerPaloAltoNetworksConnectionRouter,
     [AppConnection.KempLoadMaster]: registerKempLoadMasterConnectionRouter,
+    [AppConnection.Imperva]: registerImpervaConnectionRouter,
     [AppConnection.Anthropic]: registerAnthropicConnectionRouter,
     [AppConnection.OVH]: registerOvhConnectionRouter,
     [AppConnection.Devin]: registerDevinConnectionRouter,

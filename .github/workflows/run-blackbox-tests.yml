@@ -18,7 +18,9 @@ jobs:
   lint-and-unit:
     name: Lint and unit tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # staticcheck over the generated client (clients/api) takes about 9 minutes on a
+    # cold cache.
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: tests
@@ -84,6 +86,25 @@ jobs:
 
       - name: Run suites
         run: make test-suites
+        working-directory: tests
+        env:
+          INFISICAL_TEST_IMAGE: infisical-test:ci
+
+      # The shared stack is gone once the step above ends (its make target takes it
+      # down). Prune what it left so the isolated run starts with the disk it needs.
+      - name: Free disk before isolated suites
+        if: ${{ !cancelled() }}
+        run: |
+          docker volume prune -af
+          docker builder prune -af
+          df -h /
+
+      # Each isolated package boots its own Postgres, Redis and Infisical, so they run
+      # one at a time. Runs even when the shared suites failed, so one red run does
+      # not hide the other.
+      - name: Run isolated suites
+        if: ${{ !cancelled() }}
+        run: make test-isolated
         working-directory: tests
         env:
           INFISICAL_TEST_IMAGE: infisical-test:ci
