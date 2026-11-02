@@ -2,23 +2,29 @@ version: v0.167.5
 releasedAt: 2026-11-02T11:15:32-05:00
 sourceTag: v0.167.5
 previousTag: v0.167.4
-impactLevel: low
-summary: Agent Vault session logs now require a self-hosted license. Database
-  migrations are included and run during startup.
+impactLevel: medium
+summary: Agent Vault session logs in default storage now need a self-hosted
+  license, and proxied services can no longer be created. Startup runs database
+  migrations, and the certificates migration can fail on lock timeouts.
 requiresDbMigration: true
 breakingChanges:
   - title: Agent Vault session logs license
-    description: Unlicensed self-hosted instances stop recording and showing Agent
-      Vault session logs, even if S3 session log storage is configured. Existing
-      logs remain unavailable until a license enables the feature.
-    action: If you use Agent Vault session logs on self-hosted, install or refresh a
-      license that enables managed storage before upgrading.
+    description: Session logs in default storage (OBJECT_STORAGE_S3_*) now need a
+      license that includes them. Without one, instances stop recording session
+      logs and can't show existing ones, while external storage is unaffected.
+    action: If you record session logs in default storage, get a license that
+      includes them before upgrading. Offline license keys issued without session
+      logs need replacing.
     confidence: high
     evidence:
       - type: pr
         ref: "#8990"
         url: https://github.com/Infisical/infisical/pull/8990
         description: Self-hosted session logs now need a license
+      - type: file
+        ref: backend/src/ee/services/license/license-fns.ts
+        path: backend/src/ee/services/license/license-fns.ts
+        description: agentVaultManagedStorage now defaults to false
       - type: file
         ref: docs/self-hosting/guides/session-log-storage.mdx
         path: docs/self-hosting/guides/session-log-storage.mdx
@@ -27,28 +33,97 @@ breakingChanges:
         ref: docs/documentation/platform/agent-vault/session-logs.mdx
         path: docs/documentation/platform/agent-vault/session-logs.mdx
         description: Session logs docs updated
+  - title: Proxied service creation disabled
+    description: Creating a proxied service, including through POST
+      /api/v1/proxied-services, now returns a 400 error as Agent Proxy moves to
+      Agent Vault. Existing proxied services keep working and can still be edited
+      or deleted.
+    action: Move any automation that creates proxied services to Agent Vault before
+      upgrading. Existing proxied services need no change.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/ee/services/proxied-service/proxied-service-service.ts
+        path: backend/src/ee/services/proxied-service/proxied-service-service.ts
+        description: create now always throws BadRequestError
+      - type: pr
+        ref: "#9070"
+        url: https://github.com/Infisical/infisical/pull/9070
+        description: Disable creation of proxied services
 dbSchemaChanges:
   - title: Platform startup migrations
-    description: New schema migrations add tables and columns for insights, Agent
-      Vault, event outbox, delegated approvals, secret scanning, certificates,
-      and TLS certificate auth.
+    description: New migrations add tables and columns for insights, Agent Vault,
+      event outbox, delegated approvals, secret scanning, dynamic secrets, and TLS
+      certificate auth, and backfill a result column on secret syncs.
     action: No manual action required; Infisical runs this migration during startup.
     confidence: high
     evidence:
       - type: file
-        ref: backend/src/db/migrations/20261015120000_secret-read-activity.ts
-        path: backend/src/db/migrations/20261015120000_secret-read-activity.ts
-      - type: file
         ref: backend/src/db/migrations/20261019120000_event-outbox-event-id.ts
         path: backend/src/db/migrations/20261019120000_event-outbox-event-id.ts
+      - type: file
+        ref: backend/src/db/migrations/20261026172627_secrets-last-result-columns.ts
+        path: backend/src/db/migrations/20261026172627_secrets-last-result-columns.ts
       - type: file
         ref: backend/src/db/migrations/20261027143736_delegated-approvals.ts
         path: backend/src/db/migrations/20261027143736_delegated-approvals.ts
       - type: file
         ref: backend/src/db/migrations/20261029005342_add-bind-access-token-to-certificate-to-identity-tls-cert-auth.ts
         path: backend/src/db/migrations/20261029005342_add-bind-access-token-to-certificate-to-identity-tls-cert-auth.ts
+  - title: PKI certificate soft-delete migration
+    description: Adds soft-delete columns to certificates under a 10-second lock
+      timeout, then rebuilds indexes concurrently outside a transaction. A busy
+      certificates table or a long-open transaction, such as a backup, can make
+      startup fail on a lock timeout.
+    action: If startup fails during migration, keep the previous version running
+      and inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261020143827_add-soft-delete-to-certificates.ts
+        path: backend/src/db/migrations/20261020143827_add-soft-delete-to-certificates.ts
+      - type: file
+        ref: backend/src/db/migrations/utils/concurrent-index.ts
+        path: backend/src/db/migrations/utils/concurrent-index.ts
+        description: 30-second lock and one-hour statement timeouts
 configChanges: []
-deploymentNotes: []
+deploymentNotes:
+  - title: Agent Vault delegation rollout
+    description: Until every pod runs v0.167.5, older pods drop onBehalfOf when
+      minting and resolve delegated sessions as the machine identity's own, with
+      its access and personal values.
+    action: On multi-replica deployments, finish the rollout before setting up
+      Agent Vault delegations.
+    confidence: medium
+    evidence:
+      - type: pr
+        ref: "#8773"
+        url: https://github.com/Infisical/infisical/pull/8773
+        description: Agent Vault sessions on a user's behalf
+      - type: file
+        ref: backend/src/db/migrations/20261019120000_agent-vault-delegations.ts
+        path: backend/src/db/migrations/20261019120000_agent-vault-delegations.ts
+  - title: TLS cert auth token binding rollout
+    description: Older pods ignore token binding, so tokens they issue work without a
+      certificate on every pod, and a rollback stops enforcing it. Turning binding
+      on revokes the identity's existing TLS cert auth tokens.
+    action: Finish the rollout before turning on Bind Access Tokens to Client
+      Certificate, and set the client certificate header on every proxy location
+      that forwards to the API.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/services/identity-access-token/identity-access-token-fns.ts
+        path: backend/src/services/identity-access-token/identity-access-token-fns.ts
+        description: Tokens without a certificate claim skip the binding check
+      - type: file
+        ref: docs/documentation/platform/identities/tls-cert-auth.mdx
+        path: docs/documentation/platform/identities/tls-cert-auth.mdx
+        description: Proxy requirements and token revocation for bound tokens
+      - type: pr
+        ref: "#9041"
+        url: https://github.com/Infisical/infisical/pull/9041
+        description: Certificate-bound access tokens
 knownIssues: []
 generatedBy:
   generator: "@infisical/upgrade-impact"
