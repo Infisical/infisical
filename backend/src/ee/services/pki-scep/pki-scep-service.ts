@@ -125,6 +125,7 @@ type TPkiScepServiceFactoryDep = {
 export type TPkiScepServiceFactory = ReturnType<typeof pkiScepServiceFactory>;
 
 const SCEP_TRANSACTION_EXPIRY_HOURS = 24;
+const SCEP_APPROVAL_TRANSACTION_EXPIRY_HOURS = 31 * 24;
 
 const SCEP_ISSUANCE_NOTIFICATION_FAILED = "Failed to notify the SCEP validation provider of the issued certificate.";
 
@@ -884,13 +885,16 @@ export const pkiScepServiceFactory = ({
     profileId: string,
     parsed: TParsedScepMessage,
     certificateRequestId: string,
-    applicationId?: string
+    applicationId?: string,
+    { awaitingApproval = false }: { awaitingApproval?: boolean } = {}
   ) => {
     const existingTx = await scepTransactionDAL.findByProfileAndTransactionId(profileId, parsed.transactionId);
     if (existingTx) return;
 
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + SCEP_TRANSACTION_EXPIRY_HOURS);
+    expiresAt.setHours(
+      expiresAt.getHours() + (awaitingApproval ? SCEP_APPROVAL_TRANSACTION_EXPIRY_HOURS : SCEP_TRANSACTION_EXPIRY_HOURS)
+    );
 
     await scepTransactionDAL.create({
       profileId,
@@ -938,7 +942,9 @@ export const pkiScepServiceFactory = ({
       });
 
       if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
-        await $recordScepTransaction(profile.id, parsed, result.certificateRequestId, applicationId);
+        await $recordScepTransaction(profile.id, parsed, result.certificateRequestId, applicationId, {
+          awaitingApproval: true
+        });
         return { status: ScepIssuanceStatus.Pending };
       }
 
@@ -1027,7 +1033,7 @@ export const pkiScepServiceFactory = ({
       });
 
     if (approvalPolicy) {
-      const { certificateRequestId } = await certificateRequestDAL.transaction((tx) =>
+      const { certificateRequestId, notifyApprovers } = await certificateRequestDAL.transaction((tx) =>
         holdCertificateRequestForApproval(
           { certificateRequestDAL, approvalPolicyService },
           {
@@ -1062,7 +1068,8 @@ export const pkiScepServiceFactory = ({
         )
       );
 
-      await $recordScepTransaction(profile.id, parsed, certificateRequestId, applicationId);
+      await notifyApprovers();
+      await $recordScepTransaction(profile.id, parsed, certificateRequestId, applicationId, { awaitingApproval: true });
 
       return { status: ScepIssuanceStatus.Pending };
     }

@@ -71,7 +71,8 @@ export const CertRequestPolicyRequestDataSchema = z.object({
       certificateId: z.string().uuid(),
       renewalKeySource: z.nativeEnum(CertificateRenewalKeySource),
       csr: z.string().optional(),
-      attributes: certificateAttributesSchema.optional()
+      attributes: certificateAttributesSchema.optional(),
+      caId: z.string().uuid().optional()
     })
     .optional()
 });

@@ -120,6 +120,7 @@ import {
   buildRenewalPreview,
   CertificateRenewalMode,
   certificateSpanToTtl,
+  haveDifferentCustomExtensions,
   haveDifferentSubjectAlternativeNames,
   importKeyPairFromPem,
   isCertificateContentEdit,
@@ -156,7 +157,6 @@ type TCertificateRenewalServiceFactoryDep = {
     | "getRequestEnrollmentTypeByCertId"
     | "getOriginatingRequestByCertId"
     | "hasRenewalAwaitingApproval"
-    | "findByIdForUpdate"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
@@ -1225,7 +1225,7 @@ export const certificateRenewalServiceFactory = ({
           profileId: profile.id,
           profileName: profile.slug,
           certificateRequest: approvalSnapshot,
-          renewal: { certificateId: originalCert.id, renewalKeySource: keySource, csr, attributes }
+          renewal: { certificateId: originalCert.id, renewalKeySource: keySource, csr, attributes, caId }
         },
         justification: `Certificate renewal request for ${certificateRequest.commonName || profile.slug}`,
         requester: {
@@ -1234,7 +1234,6 @@ export const certificateRenewalServiceFactory = ({
           name: approval.requester.requesterName,
           email: approval.requester.requesterEmail
         },
-        deferApproverNotification: true,
         tx
       }
     );
@@ -1251,14 +1250,12 @@ export const certificateRenewalServiceFactory = ({
 
   const $matchRenewalApprovalPolicy = async ({
     originalCert,
-    actor,
-    isEditingCertificate
+    actor
   }: {
     originalCert: TCertificates;
     actor: ActorType;
-    isEditingCertificate: boolean;
   }) => {
-    if ((!isSourcedOutsideInfisical(originalCert) && !isEditingCertificate) || !originalCert.profileId) return null;
+    if (!originalCert.profileId) return null;
 
     const profile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId);
     if (!profile) return null;
@@ -1291,6 +1288,7 @@ export const certificateRenewalServiceFactory = ({
     approvedRenewal?: {
       certificateRequestId: string;
       reviewedCertificateRequest: TCertRequestRequestData["certificateRequest"];
+      reviewedCaId?: string;
     };
   }): Promise<TCertificateIssuanceResponse> => {
     const approvedCertificateRequestId = approvedRenewal?.certificateRequestId;
@@ -1317,7 +1315,7 @@ export const certificateRenewalServiceFactory = ({
 
     const approvalPolicy = approvedRenewal
       ? null
-      : await $matchRenewalApprovalPolicy({ originalCert: certForLicenseChecks, actor, isEditingCertificate });
+      : await $matchRenewalApprovalPolicy({ originalCert: certForLicenseChecks, actor });
     const approval = approvalPolicy
       ? { policy: approvalPolicy, requester: await $resolveRequesterInfo(actor, actorId, EnrollmentType.API) }
       : null;
@@ -1429,6 +1427,12 @@ export const certificateRenewalServiceFactory = ({
               message: "The certificate was renewed or revoked while this renewal waited for approval."
             });
           }
+          if (approvedRenewal.reviewedCaId !== ca?.id) {
+            throw new BadRequestError({
+              message:
+                "This renewal no longer matches what was approved, because the certificate's profile now issues from a different certificate authority. Renew the certificate again to request a new approval."
+            });
+          }
           if (!isSameRenewalApprovalSnapshot(approvedRenewal.reviewedCertificateRequest, approvalSnapshot)) {
             throw new BadRequestError({
               message:
@@ -1440,7 +1444,8 @@ export const certificateRenewalServiceFactory = ({
         const changesCertificate =
           keySource === CertificateRenewalKeySource.Csr ||
           changedAttributes.length > 0 ||
-          haveDifferentSubjectAlternativeNames(replayedRequest, certificateRequest);
+          haveDifferentSubjectAlternativeNames(replayedRequest, certificateRequest) ||
+          haveDifferentCustomExtensions(originalCert.customExtensions, resolvedCustomExtensions);
         if (approval && (isSourcedOutsideInfisical(originalCert) || changesCertificate)) {
           const { certificateRequestId: heldRequestId, notifyApprovers } = await $holdRenewalForApproval(
             {
@@ -2014,7 +2019,7 @@ export const certificateRenewalServiceFactory = ({
       renewalKeySource: renewal.renewalKeySource,
       csr: renewal.csr,
       attributes: renewal.attributes,
-      approvedRenewal: { certificateRequestId, reviewedCertificateRequest }
+      approvedRenewal: { certificateRequestId, reviewedCertificateRequest, reviewedCaId: renewal.caId }
     });
 
   return {

@@ -148,7 +148,6 @@ type TCertificateV3ServiceFactoryDep = {
     | "getRequestEnrollmentTypeByCertId"
     | "getOriginatingRequestByCertId"
     | "hasRenewalAwaitingApproval"
-    | "findByIdForUpdate"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
@@ -709,7 +708,11 @@ export const certificateV3ServiceFactory = ({
         flowDefaultTtl: ""
       });
 
-      const { certificateRequestId: certRequestId, approvalRequestId } = await certificateRequestDAL.transaction((tx) =>
+      const {
+        certificateRequestId: certRequestId,
+        approvalRequestId,
+        notifyApprovers
+      } = await certificateRequestDAL.transaction((tx) =>
         holdCertificateRequestForApproval(
           { certificateRequestDAL, approvalPolicyService },
           {
@@ -800,6 +803,8 @@ export const certificateV3ServiceFactory = ({
           }
         )
       );
+
+      await notifyApprovers();
 
       logger.info(
         {
@@ -1493,7 +1498,11 @@ export const certificateV3ServiceFactory = ({
     if (approvalPolicy) {
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, enrollmentType);
 
-      const { certificateRequestId: certRequestId, approvalRequestId } = await certificateRequestDAL.transaction((tx) =>
+      const {
+        certificateRequestId: certRequestId,
+        approvalRequestId,
+        notifyApprovers
+      } = await certificateRequestDAL.transaction((tx) =>
         holdCertificateRequestForApproval(
           { certificateRequestDAL, approvalPolicyService },
           {
@@ -1580,6 +1589,8 @@ export const certificateV3ServiceFactory = ({
           }
         )
       );
+
+      await notifyApprovers();
 
       logger.info(
         {
@@ -1999,7 +2010,11 @@ export const certificateV3ServiceFactory = ({
     if (approvalPolicy) {
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, EnrollmentType.API);
 
-      const { certificateRequestId: certRequestId, approvalRequestId } = await certificateRequestDAL.transaction((tx) =>
+      const {
+        certificateRequestId: certRequestId,
+        approvalRequestId,
+        notifyApprovers
+      } = await certificateRequestDAL.transaction((tx) =>
         holdCertificateRequestForApproval(
           { certificateRequestDAL, approvalPolicyService },
           {
@@ -2092,6 +2107,8 @@ export const certificateV3ServiceFactory = ({
           }
         )
       );
+
+      await notifyApprovers();
 
       logger.info(
         {

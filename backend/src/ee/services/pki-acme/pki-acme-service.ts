@@ -1395,7 +1395,7 @@ export const pkiAcmeServiceFactory = ({
 
         // No signing happens on this path, so it keeps its original single-transaction shape: the
         // claim, the certificate request, its approval request and the status flip stay atomic.
-        await acmeOrderDAL
+        const notifyApprovers = await acmeOrderDAL
           .transaction(async (tx) => {
             const finalizingOrder = await $claimOrderForFinalization(tx);
 
@@ -1419,7 +1419,7 @@ export const pkiAcmeServiceFactory = ({
               value: san.value
             }));
 
-            const { certificateRequestId, approvalRequestId } = await holdCertificateRequestForApproval(
+            const held = await holdCertificateRequestForApproval(
               { certificateRequestDAL, approvalPolicyService },
               {
                 approvalPolicy,
@@ -1498,16 +1498,18 @@ export const pkiAcmeServiceFactory = ({
 
             logger.info(
               {
-                certificateRequestId,
-                approvalRequestId,
+                certificateRequestId: held.certificateRequestId,
+                approvalRequestId: held.approvalRequestId,
                 profileId,
                 profileName: profile.slug,
                 orderId
               },
               "ACME certificate request requires approval"
             );
+            return held.notifyApprovers;
           })
           .catch($recordApprovalFailure);
+        await notifyApprovers();
       } else {
         // Commit the claim on its own so the connection is released before signing starts.
         const finalizingOrder = await acmeOrderDAL.transaction(async (tx) => {

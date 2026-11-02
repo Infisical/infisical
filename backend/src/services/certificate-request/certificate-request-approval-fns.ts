@@ -63,7 +63,6 @@ export const holdCertificateRequestForApproval = async (
     requestData,
     justification,
     requester,
-    deferApproverNotification,
     tx
   }: {
     approvalPolicy: TCertificateRequestApprovalPolicy;
@@ -73,7 +72,6 @@ export const holdCertificateRequestForApproval = async (
     requestData: Omit<TCertRequestRequestData, "certificateRequestId">;
     justification: string;
     requester: { actor: ActorType; actorId: string; name: string; email: string };
-    deferApproverNotification?: boolean;
     tx: Knex;
   }
 ) => {
@@ -93,7 +91,7 @@ export const holdCertificateRequestForApproval = async (
     machineIdentityId: requester.actor === ActorType.IDENTITY ? requester.actorId : null,
     requesterName: requester.name,
     requesterEmail: requester.email,
-    deferApproverNotification,
+    deferApproverNotification: true,
     tx
   });
 

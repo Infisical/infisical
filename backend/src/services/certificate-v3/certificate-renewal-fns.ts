@@ -475,6 +475,18 @@ export const haveDifferentSubjectAlternativeNames = (
   return typedAltNames(replayedRequest) !== typedAltNames(issuedRequest);
 };
 
+const requestedCustomExtensionKeys = (extensions: unknown) =>
+  readStoredCustomExtensions(extensions)
+    .filter((extension) => !extension.issuerAdded && !isIssuerGeneratedExtensionOid(extension.oid))
+    .map((extension) => `${extension.oid}|${extension.critical ? "critical" : ""}|${extension.value}`)
+    .sort()
+    .join(",");
+
+export const haveDifferentCustomExtensions = (
+  certificateExtensions: unknown,
+  renewalExtensions: TResolvedCustomExtension[] | undefined
+) => requestedCustomExtensionKeys(certificateExtensions) !== requestedCustomExtensionKeys(renewalExtensions ?? []);
+
 export type TIssuerModifiedField = {
   field: string;
   requested: string;
