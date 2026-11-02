@@ -60,6 +60,7 @@ import {
   isValidOauthScope,
   OauthScope
 } from "@app/services/oauth-client/oauth-scope";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -377,6 +378,7 @@ type TPermissionServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find" | "findFolderScopedPrivileges">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export const permissionServiceFactory = ({
@@ -389,8 +391,31 @@ export const permissionServiceFactory = ({
   roleDAL,
   additionalPrivilegeDAL,
   groupDAL,
-  secretFolderDAL
+  secretFolderDAL,
+  orgDAL
 }: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
+  const getOrgSsoPolicy = async (rootOrgId: string) => {
+    const rootOrg = await requestMemoize(requestMemoKeys.orgFindById(rootOrgId), () => orgDAL.findById(rootOrgId));
+    return {
+      isOrgSsoEnforced: Boolean(rootOrg?.authEnforced),
+      isOrgGoogleSsoEnforced: Boolean(rootOrg?.googleSsoAuthEnforced),
+      isOrgSsoBypassEnabled: Boolean(rootOrg?.bypassOrgAuthEnabled)
+    };
+  };
+
+  const canBypassRootOrgSso = async (actorId: string, rootOrgId: string) => {
+    const rootPermissionData = await permissionDAL.getPermission({
+      scopeData: { scope: AccessScope.Organization, orgId: rootOrgId },
+      actorId,
+      actorType: ActorType.USER
+    });
+    if (!rootPermissionData?.length) return false;
+    return createMongoAbility<OrgPermissionSet>(
+      buildOrgPermissionRules(flattenActiveRolesFromMemberships(rootPermissionData, OrgMembershipRole.Custom)),
+      { conditionsMatcher }
+    ).can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+  };
+
   const getOrgPermission: TPermissionServiceFactory["getOrgPermission"] = async ({
     actor,
     actorId,
@@ -450,33 +475,20 @@ export const permissionServiceFactory = ({
         conditionsMatcher
       });
 
-      let canBypassSso = fullPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
-
-      // A sub-org inherits its root's enforcement, so only a root org role may bypass it, the same as
-      // selectOrganization and project permissions decide it; a sub-org role must not exempt anyone.
-      const isSsoEnforced = permissionData[0].orgAuthEnforced || permissionData[0].orgGoogleSsoAuthEnforced;
-      if (actor === ActorType.USER && rootOrgId && isSsoEnforced) {
-        const rootPermissionData = await permissionDAL.getPermission({
-          scopeData: { scope: AccessScope.Organization, orgId: rootOrgId },
-          actorId,
-          actorType: ActorType.USER
-        });
-        canBypassSso =
-          rootPermissionData.length > 0 &&
-          createMongoAbility<OrgPermissionSet>(
-            buildOrgPermissionRules(flattenActiveRolesFromMemberships(rootPermissionData, OrgMembershipRole.Custom)),
-            { conditionsMatcher }
-          ).can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
-      }
-
       // SSO enforcement applies only to users. Evaluate it against the full ability — SSO bypass is a
       // property of the user's roles, not of what an OAuth client was delegated.
       if (actor === ActorType.USER) {
+        const ssoPolicy = await getOrgSsoPolicy(rootOrgId ?? orgId);
+        const isSsoEnforced = ssoPolicy.isOrgSsoEnforced || ssoPolicy.isOrgGoogleSsoEnforced;
+        let canBypassSso = false;
+        if (isSsoEnforced) {
+          canBypassSso = rootOrgId
+            ? await canBypassRootOrgSso(actorId, rootOrgId)
+            : fullPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+        }
         validateOrgSSO({
           actorAuthMethod,
-          isOrgSsoEnforced: permissionData?.[0].orgAuthEnforced,
-          isOrgGoogleSsoEnforced: Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
-          isOrgSsoBypassEnabled: Boolean(permissionData?.[0].bypassOrgAuthEnabled),
+          ...ssoPolicy,
           isAdmin: canBypassSso,
           issuingRootOrgId: getSessionIssuingRootOrgId(actorId),
           rootOrgId: rootOrgId ?? orgId
@@ -659,29 +671,10 @@ export const permissionServiceFactory = ({
       username = identityDetails?.name ?? "";
     }
 
-    // SSO bypass check (for USER actors) — pre-compute and cache the boolean
-    let canBypassSso = false;
-    if (actor === ActorType.USER) {
-      const enforceSsoAndBypassEnabled =
-        permissionData?.[0].orgAuthEnforced ||
-        (permissionData?.[0].orgGoogleSsoAuthEnforced && permissionData?.[0].bypassOrgAuthEnabled);
-
-      if (enforceSsoAndBypassEnabled) {
-        const orgIdForBypass = permissionData?.[0].rootOrgId ?? projectDetails.orgId;
-        const orgPermissionData = await permissionDAL.getPermission({
-          scopeData: { scope: AccessScope.Organization, orgId: orgIdForBypass },
-          actorId,
-          actorType: ActorType.USER
-        });
-        if (orgPermissionData?.length) {
-          const orgPermissionFromRoles = flattenActiveRolesFromMemberships(orgPermissionData, OrgMembershipRole.Custom);
-          const orgPermission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(orgPermissionFromRoles), {
-            conditionsMatcher
-          });
-          canBypassSso = orgPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
-        }
-      }
-    }
+    const canBypassSso =
+      actor === ActorType.USER
+        ? await canBypassRootOrgSso(actorId, permissionData?.[0].rootOrgId ?? projectDetails.orgId)
+        : false;
 
     // Folder-scoped grants ride in the same cached blob, behind the same fingerprint. Admins cannot
     // receive folder grants, but a grant can predate a promotion to admin; skip the fetch so such a
@@ -813,14 +806,13 @@ export const permissionServiceFactory = ({
 
       // SSO enforcement runs on every request (uses per-request actorAuthMethod, not cached)
       if (actor === ActorType.USER) {
+        const rootOrgId = permissionData?.[0].rootOrgId ?? projectDetails.orgId;
         validateOrgSSO({
           actorAuthMethod,
-          isOrgSsoEnforced: permissionData?.[0].orgAuthEnforced,
-          isOrgGoogleSsoEnforced: Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
-          isOrgSsoBypassEnabled: Boolean(permissionData?.[0].bypassOrgAuthEnabled),
+          ...(await getOrgSsoPolicy(rootOrgId)),
           isAdmin: canBypassSso,
           issuingRootOrgId: getSessionIssuingRootOrgId(actorId),
-          rootOrgId: permissionData?.[0].rootOrgId ?? projectDetails.orgId
+          rootOrgId
         });
       }
 

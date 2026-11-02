@@ -157,6 +157,55 @@ describe("Auth SSO session binding", () => {
     expect(refused.json().message).toMatch(/another organization's identity provider/);
   });
 
+  test("A project read another org's IdP session already cached is refused once the org starts enforcing SSO", async () => {
+    const created = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/projects",
+      headers: { authorization: `Bearer ${jwtAuthToken}` },
+      body: { projectName: `binding-cache-${crypto.randomUUID().slice(0, 8)}` }
+    });
+    expect(created.statusCode).toBe(200);
+    const projectId = created.json().project.id as string;
+
+    try {
+      const { userId, tokens } = await loginThroughOrgBIdp();
+      await addMemberToOrgA(userId);
+      const user = await getDb()(TableName.Users).where({ id: userId }).first();
+      const added = await testServer.inject({
+        method: "POST",
+        url: `/api/v2/workspace/${projectId}/memberships`,
+        headers: { authorization: `Bearer ${jwtAuthToken}` },
+        body: { usernames: [user?.username], roleSlugs: ["member"] }
+      });
+      expect(added.statusCode).toBe(200);
+
+      const { payload: selected } = await selectOrg(tokens.access, ORG_A_ID);
+      const readProject = () =>
+        testServer.inject({
+          method: "GET",
+          url: `/api/v1/projects/${projectId}`,
+          headers: { authorization: `Bearer ${selected.token}` }
+        });
+      expect((await readProject()).statusCode).toBe(200);
+
+      await setAuthEnforced(ORG_A_ID, true);
+      // The project permission is still cached; enforcement must apply on the very next request.
+      const markerKeys = await testRedis.keys(`*project-permission-marker:${projectId}:*`);
+      expect(markerKeys.length).toBeGreaterThan(0);
+      const refused = await readProject();
+
+      expect(refused.statusCode).toBe(403);
+      expect(refused.json().message).toMatch(/another organization's identity provider/);
+    } finally {
+      await setAuthEnforced(ORG_A_ID, false);
+      await testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/projects/${projectId}`,
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+    }
+  });
+
   describe("Sub-organizations", () => {
     let subOrgId: string;
 

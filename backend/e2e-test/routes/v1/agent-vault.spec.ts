@@ -90,7 +90,8 @@ const buildPermissionService = () =>
     identityDAL: identityDALFactory(testDb),
     additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
     groupDAL: groupDALFactory(testDb),
-    secretFolderDAL: secretFolderDALFactory(testDb)
+    secretFolderDAL: secretFolderDALFactory(testDb),
+    orgDAL: orgDALFactory(testDb)
   });
 
 const grantRows = (
