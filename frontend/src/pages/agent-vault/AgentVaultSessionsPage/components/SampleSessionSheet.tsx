@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   Detail,
+  DetailGroup,
   DetailLabel,
   DetailValue,
   Empty,
@@ -198,129 +199,141 @@ export const SampleSessionSheet = ({ isOpen, onOpenChange, onSetUp }: Props) => 
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent
         size="workspace"
-        className="flex h-full max-h-full flex-col gap-y-0"
+        // At the workspace default of three quarters, the sidebar would leave the table less than its
+        // minimum width on most laptop screens.
+        className="flex h-full max-h-full flex-col gap-y-0 sm:w-[90vw]"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            Sample Session
-            <Badge variant="info">
-              <SparklesIcon />
-              Sample Data
-            </Badge>
-          </SheetTitle>
-          <SheetDescription>
-            An example of the requests a session records. This data is not from your organization.
-          </SheetDescription>
-        </SheetHeader>
+        {/* The headers share the first grid row, so their bottom borders line up however tall either one is. */}
+        <div className="grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">
+          <SheetHeader className="border-r">
+            <h3 className="font-alliance font-normal text-foreground">release-bot</h3>
+          </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-          <div className="flex shrink-0 items-center gap-4 overflow-hidden rounded-md border border-border bg-container py-3 pr-4">
-            <div className="-ml-px flex min-w-0 flex-1 flex-wrap gap-y-3 *:border-l *:border-border *:px-4">
-              <Detail className="min-w-0">
-                <DetailLabel>Machine Identity</DetailLabel>
-                <DetailValue className="flex items-center gap-2">
-                  <BotIcon className="size-4 shrink-0 text-muted" />
-                  <span className="truncate">release-bot</span>
-                </DetailValue>
-              </Detail>
-              <Detail className="min-w-0">
-                <DetailLabel>Access Bundle</DetailLabel>
-                <DetailValue className="flex items-center gap-2">
-                  <PackageIcon className="size-4 shrink-0 text-muted" />
-                  <span className="truncate">release-agents</span>
-                </DetailValue>
-              </Detail>
-              <Detail>
-                <DetailLabel>Expires</DetailLabel>
-                <DetailValue>In 8 hours</DetailValue>
-              </Detail>
-              <Detail className="items-start">
-                <DetailLabel>Status</DetailLabel>
-                <SessionStatusBadge status={AgentVaultSessionStatus.Active} />
-              </Detail>
-            </div>
-          </div>
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              Sample Session
+              <Badge variant="info">
+                <SparklesIcon />
+                Sample Data
+              </Badge>
+            </SheetTitle>
+            <SheetDescription>
+              An example of the requests a session records. This data is not from your organization.
+            </SheetDescription>
+          </SheetHeader>
 
-          <div className="flex shrink-0 flex-col gap-2">
-            <span className="text-sm font-medium">How the first request was brokered</span>
-            <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
-              <HeaderPanel
-                title="Request from the agent"
-                tone="muted"
-                lines={[
-                  { name: "POST", value: "https://api.openai.com/v1/chat/completions" },
-                  { name: "Authorization", value: "(not set)" }
-                ]}
-              />
-              <ArrowRightIcon className="mx-auto size-4 shrink-0 rotate-90 text-muted md:rotate-0" />
-              <HeaderPanel
-                title="Request forwarded by the proxy"
-                tone="success"
-                lines={[
-                  { name: "POST", value: "https://api.openai.com/v1/chat/completions" },
-                  { name: "Authorization", value: "Bearer sk-proj-••••••••••••", isAdded: true }
-                ]}
-              />
-            </div>
-            <span className="text-xs text-muted">
-              The credential is stored in the access bundle and attached by the proxy. The agent has
-              only a session token, so no credential is present in its environment.
-            </span>
-          </div>
+          <DetailGroup className="min-h-0 thin-scrollbar overflow-y-auto border-r border-border p-4">
+            <Detail className="items-start">
+              <DetailLabel>Status</DetailLabel>
+              <SessionStatusBadge status={AgentVaultSessionStatus.Active} />
+            </Detail>
+            <Detail>
+              <DetailLabel>Machine Identity</DetailLabel>
+              <DetailValue>release-bot</DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Access Bundle</DetailLabel>
+              <DetailValue className="flex items-start gap-2">
+                <PackageIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+                release-agents
+              </DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Expires</DetailLabel>
+              <DetailValue>In 8 hours</DetailValue>
+            </Detail>
+          </DetailGroup>
 
-          <div className="flex min-h-64 flex-1 flex-col">
-            {visible.length === 0 ? (
-              <Empty className="flex-1 border">
-                <EmptyHeader>
-                  <LiveStateBadge state="live" />
-                  <EmptyTitle>Waiting for requests</EmptyTitle>
-                  <EmptyDescription>Requests made through a proxy show up here.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : (
-              <Table
-                className="w-full min-w-240 table-fixed"
-                containerClassName="min-h-0 thin-scrollbar overflow-auto"
-              >
-                <TableHeader sticky>
-                  <TableRow>
-                    <TableHead className="w-48">Time</TableHead>
-                    <TableHead className="w-24">Method</TableHead>
-                    <TableHead>Host</TableHead>
-                    <TableHead>Path</TableHead>
-                    <TableHead className="w-24">Upstream</TableHead>
-                    <TableHead className="w-36">Outcome</TableHead>
-                    <TableHead variant="action" className="w-12" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visible.map((record) => (
-                    <SessionLogRow
-                      key={record.seq}
-                      record={record}
-                      arrivedAt={
-                        openedAt + FIRST_REQUEST_DELAY_MS + record.seq * STREAM_INTERVAL_MS
+          <div className="flex min-h-0 min-w-0 flex-col">
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+              <div className="flex shrink-0 flex-col gap-2">
+                <span className="text-sm font-medium">How the first request was brokered</span>
+                <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
+                  <HeaderPanel
+                    title="Request from the agent"
+                    tone="muted"
+                    lines={[
+                      { name: "POST", value: "https://api.openai.com/v1/chat/completions" },
+                      { name: "Authorization", value: "(not set)" }
+                    ]}
+                  />
+                  <ArrowRightIcon className="mx-auto size-4 shrink-0 rotate-90 text-muted md:rotate-0" />
+                  <HeaderPanel
+                    title="Request forwarded by the proxy"
+                    tone="success"
+                    lines={[
+                      { name: "POST", value: "https://api.openai.com/v1/chat/completions" },
+                      {
+                        name: "Authorization",
+                        value: "Bearer sk-proj-••••••••••••",
+                        isAdded: true
                       }
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+                    ]}
+                  />
+                </div>
+                <span className="text-xs text-muted">
+                  The credential is stored in the access bundle and attached by the proxy. The agent
+                  has only a session token, so no credential is present in its environment.
+                </span>
+              </div>
+
+              <div className="flex min-h-64 flex-1 flex-col">
+                {visible.length === 0 ? (
+                  <Empty className="flex-1 border">
+                    <EmptyHeader>
+                      <LiveStateBadge state="live" />
+                      <EmptyTitle>Waiting for requests</EmptyTitle>
+                      <EmptyDescription>
+                        Requests made through a proxy show up here.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <Table
+                    className="w-full min-w-240 table-fixed"
+                    containerClassName="min-h-0 thin-scrollbar overflow-auto"
+                  >
+                    <TableHeader sticky>
+                      <TableRow>
+                        <TableHead className="w-48">Time</TableHead>
+                        <TableHead className="w-24">Method</TableHead>
+                        <TableHead>Host</TableHead>
+                        <TableHead>Path</TableHead>
+                        <TableHead className="w-24">Upstream</TableHead>
+                        <TableHead className="w-36">Outcome</TableHead>
+                        <TableHead variant="action" className="w-12" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {visible.map((record) => (
+                        <SessionLogRow
+                          key={record.seq}
+                          record={record}
+                          arrivedAt={
+                            openedAt + FIRST_REQUEST_DELAY_MS + record.seq * STREAM_INTERVAL_MS
+                          }
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+            </div>
+
+            <SheetFooter className="flex-row items-center justify-between border-t border-border">
+              <span className="text-xs text-muted">
+                The proxy attached a credential to each brokered request. Blocked requests were not
+                forwarded.
+              </span>
+              {onSetUp && (
+                <Button variant="av" onClick={onSetUp}>
+                  Set Up Your Own
+                </Button>
+              )}
+            </SheetFooter>
           </div>
         </div>
-
-        <SheetFooter className="flex-row items-center justify-between border-t border-border">
-          <span className="text-xs text-muted">
-            The proxy attached a credential to each brokered request. Blocked requests were not
-            forwarded.
-          </span>
-          {onSetUp && (
-            <Button variant="av" onClick={onSetUp}>
-              Set Up Your Own
-            </Button>
-          )}
-        </SheetFooter>
       </SheetContent>
     </Sheet>
   );
