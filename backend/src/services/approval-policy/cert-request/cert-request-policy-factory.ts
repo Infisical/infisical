@@ -1,9 +1,11 @@
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
+import { TCertificateRenewalServiceFactory } from "@app/services/certificate-v3/certificate-renewal-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -13,7 +15,8 @@ import {
   ApprovalAuditAction,
   ApprovalNotificationEvent,
   ApprovalPolicyScope,
-  ApprovalPolicyType
+  ApprovalPolicyType,
+  ApprovalRequestStatus
 } from "../approval-policy-enums";
 import { TApprovalResource } from "../approval-policy-types";
 import { TCertRequestPolicy, TCertRequestPolicyInputs, TCertRequestRequestData } from "./cert-request-policy-types";
@@ -23,13 +26,18 @@ type TCertRequestApprovalResourceDep = {
   certificateApprovalService: TCertificateApprovalService;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "recordIssuanceFailure">;
+  certificateRenewalService: Pick<
+    TCertificateRenewalServiceFactory,
+    "renewApprovedCertificate" | "recordRejectedRenewal"
+  >;
 };
 
 export const certRequestApprovalResourceFactory = ({
   approvalPolicyDAL,
   certificateApprovalService,
   certificateRequestDAL,
-  certificateRequestService
+  certificateRequestService,
+  certificateRenewalService
 }: TCertRequestApprovalResourceDep): TApprovalResource<
   TCertRequestPolicyInputs,
   TCertRequestPolicy,
@@ -96,7 +104,11 @@ export const certRequestApprovalResourceFactory = ({
       : null,
 
   postApprovalRoutine: async (request) => {
-    const certReqId = (request.requestData.requestData as TCertRequestRequestData).certificateRequestId;
+    const {
+      certificateRequestId: certReqId,
+      renewal,
+      certificateRequest: reviewedCertificateRequest
+    } = request.requestData.requestData as TCertRequestRequestData;
 
     await certificateRequestDAL.updateById(certReqId, {
       status: CertificateRequestStatus.PENDING,
@@ -104,7 +116,16 @@ export const certRequestApprovalResourceFactory = ({
     });
 
     try {
-      await certificateApprovalService.issueCertificate(certReqId);
+      if (renewal) {
+        await certificateRenewalService.renewApprovedCertificate({
+          certificateRequestId: certReqId,
+          organizationId: request.organizationId,
+          renewal,
+          reviewedCertificateRequest
+        });
+      } else {
+        await certificateApprovalService.issueCertificate(certReqId);
+      }
       logger.info(
         { certificateRequestId: certReqId, approvalRequestId: request.id },
         `Certificate issued after approval [certificateRequestId=${certReqId}]`
@@ -115,7 +136,13 @@ export const certRequestApprovalResourceFactory = ({
         status: CertificateRequestStatus.FAILED,
         errorMessage
       });
-      await certificateRequestService.recordIssuanceFailure(failedRequest, { error });
+      await certificateRequestService.recordIssuanceFailure(failedRequest, {
+        error,
+        ...(renewal && {
+          operation: CertificateIssuanceOperation.RENEW,
+          originalCertificateId: renewal.certificateId
+        })
+      });
       logger.error(
         { error, certificateRequestId: certReqId, approvalRequestId: request.id },
         `Failed to issue certificate after approval [certificateRequestId=${certReqId}]`
@@ -124,10 +151,13 @@ export const certRequestApprovalResourceFactory = ({
   },
 
   postRejectionRoutine: async (request) => {
-    const certReqId = (request.requestData.requestData as TCertRequestRequestData).certificateRequestId;
+    const { certificateRequestId: certReqId, renewal } = request.requestData.requestData as TCertRequestRequestData;
     await certificateRequestDAL.updateById(certReqId, {
       status: CertificateRequestStatus.REJECTED,
       approvalRequestId: request.id
     });
+    if (renewal && request.status === ApprovalRequestStatus.Rejected) {
+      await certificateRenewalService.recordRejectedRenewal(renewal.certificateId);
+    }
   }
 });

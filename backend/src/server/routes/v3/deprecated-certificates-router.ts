@@ -504,6 +504,12 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         removeRootsFromChain: req.body?.removeRootsFromChain
       });
 
+      if (data.status === CertificateRequestStatus.PENDING_APPROVAL) {
+        throw new BadRequestError({
+          message: `Certificate renewal was submitted for approval (certificate request ${data.certificateRequestId}) and will be issued once approved. Use the v1 API endpoints to follow it.`
+        });
+      }
+
       if (data.status !== CertificateRequestStatus.ISSUED) {
         throw new BadRequestError({
           message: "Certificate renewal requires approval. Please use the v1 API endpoints for approval workflows."

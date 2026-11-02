@@ -4303,6 +4303,7 @@ interface RenewCertificate {
     serialNumber?: string;
     renewalKeySource: CertificateRenewalKeySource;
     changedAttributes: TRenewalAuditChange[];
+    status?: CertificateRequestStatus;
   };
 }
 

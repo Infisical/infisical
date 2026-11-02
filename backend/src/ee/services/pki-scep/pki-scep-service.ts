@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { randomBytes } from "crypto";
+import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -19,6 +20,8 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { asNonSharedBuffer } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
@@ -40,6 +43,10 @@ import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/c
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  holdCertificateRequestForApproval,
+  matchCertificateRequestApprovalPolicy
+} from "@app/services/certificate-request/certificate-request-approval-fns";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
@@ -92,7 +99,7 @@ type TPkiScepServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find" | "updateById" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
@@ -111,6 +118,8 @@ type TPkiScepServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy" | "createRequestFromPolicy">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findStepsByPolicyId">;
 };
 
 export type TPkiScepServiceFactory = ReturnType<typeof pkiScepServiceFactory>;
@@ -143,7 +152,9 @@ export const pkiScepServiceFactory = ({
   auditLogService,
   permissionService,
   pkiApplicationProfileDAL,
-  pkiApplicationDAL
+  pkiApplicationDAL,
+  approvalPolicyService,
+  approvalPolicyDAL
 }: TPkiScepServiceFactoryDep) => {
   const loadScepContext = async (profileId: string, applicationId?: string) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
@@ -864,6 +875,30 @@ export const pkiScepServiceFactory = ({
         serialNumber?: string;
       };
 
+  const $recordScepTransaction = async (
+    profileId: string,
+    parsed: TParsedScepMessage,
+    certificateRequestId: string,
+    applicationId?: string
+  ) => {
+    const existingTx = await scepTransactionDAL.findByProfileAndTransactionId(profileId, parsed.transactionId);
+    if (existingTx) return;
+
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + SCEP_TRANSACTION_EXPIRY_HOURS);
+
+    await scepTransactionDAL.create({
+      profileId,
+      transactionId: parsed.transactionId,
+      senderNonce: parsed.senderNonce,
+      signerCertDer: parsed.signerCertDer,
+      certificateRequestId,
+      clientCipherOid: parsed.clientCipherOid || null,
+      expiresAt,
+      applicationId: applicationId ?? null
+    });
+  };
+
   // For internal CAs signs directly via signCertificateFromProfile.
   // For external CAs, creates a cert request and queues async issuance.
   const $issueOrQueueCertificate = async ({
@@ -898,23 +933,7 @@ export const pkiScepServiceFactory = ({
       });
 
       if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
-        const existingTx = await scepTransactionDAL.findByProfileAndTransactionId(profile.id, parsed.transactionId);
-        if (!existingTx) {
-          const expiresAt = new Date();
-          expiresAt.setHours(expiresAt.getHours() + SCEP_TRANSACTION_EXPIRY_HOURS);
-
-          await scepTransactionDAL.create({
-            profileId: profile.id,
-            transactionId: parsed.transactionId,
-            senderNonce: parsed.senderNonce,
-            signerCertDer: parsed.signerCertDer,
-            certificateRequestId: result.certificateRequestId,
-            clientCipherOid: parsed.clientCipherOid || null,
-            expiresAt,
-            applicationId: applicationId ?? null
-          });
-        }
-
+        await $recordScepTransaction(profile.id, parsed, result.certificateRequestId, applicationId);
         return { status: ScepIssuanceStatus.Pending };
       }
 
@@ -967,33 +986,83 @@ export const pkiScepServiceFactory = ({
       quotaDeps: { projectDAL, licenseService, usageCounterDAL, keyStore }
     });
 
-    const newCertRequest = await certificateRequestService.createCertificateRequest({
-      actor: ActorType.SCEP_ACCOUNT,
-      actorId: profile.id,
-      actorAuthMethod: null,
-      actorOrgId: project.orgId,
-      projectId: profile.projectId,
-      caId: profile.caId!,
-      profileId: profile.id,
-      applicationId,
-      commonName: certRequest.commonName ?? "",
-      keyUsages: certRequest.keyUsages?.map((u) => u.toString()) ?? [],
-      extendedKeyUsages: certRequest.extendedKeyUsages?.map((u) => u.toString()) ?? [],
-      keyAlgorithm: keyAlgorithm || "",
-      signatureAlgorithm: signatureAlgorithm || "",
-      altNames: certRequest.subjectAlternativeNames,
-      csr: csrPem,
-      ttl,
-      status: CertificateRequestStatus.PENDING,
-      customExtensions: validationResult.resolvedCustomExtensions,
-      enrollmentType: EnrollmentType.SCEP,
-      organization: certRequest.organization,
-      organizationalUnit: certRequest.organizationalUnit,
-      country: certRequest.country,
-      state: certRequest.state,
-      locality: certRequest.locality,
-      domainComponents: certRequest.domainComponents
-    });
+    const approvalPolicy = await matchCertificateRequestApprovalPolicy(
+      { approvalPolicyService, approvalPolicyDAL },
+      { projectId: profile.projectId, profileName: profile.slug, applicationId, actor: ActorType.SCEP_ACCOUNT }
+    );
+
+    const createScepCertificateRequest = (status: CertificateRequestStatus, tx?: Knex) =>
+      certificateRequestService.createCertificateRequest({
+        actor: ActorType.SCEP_ACCOUNT,
+        actorId: profile.id,
+        actorAuthMethod: null,
+        actorOrgId: project.orgId,
+        projectId: profile.projectId,
+        caId: profile.caId!,
+        profileId: profile.id,
+        applicationId,
+        commonName: certRequest.commonName ?? "",
+        keyUsages: certRequest.keyUsages?.map((u) => u.toString()) ?? [],
+        extendedKeyUsages: certRequest.extendedKeyUsages?.map((u) => u.toString()) ?? [],
+        keyAlgorithm: keyAlgorithm || "",
+        signatureAlgorithm: signatureAlgorithm || "",
+        altNames: certRequest.subjectAlternativeNames,
+        csr: csrPem,
+        ttl,
+        status,
+        customExtensions: validationResult.resolvedCustomExtensions,
+        enrollmentType: EnrollmentType.SCEP,
+        organization: certRequest.organization,
+        organizationalUnit: certRequest.organizationalUnit,
+        country: certRequest.country,
+        state: certRequest.state,
+        locality: certRequest.locality,
+        domainComponents: certRequest.domainComponents,
+        tx
+      });
+
+    if (approvalPolicy) {
+      const { certificateRequestId } = await certificateRequestDAL.transaction((tx) =>
+        holdCertificateRequestForApproval(
+          { certificateRequestDAL, approvalPolicyService },
+          {
+            approvalPolicy,
+            projectId: profile.projectId,
+            organizationId: project.orgId,
+            createCertificateRequest: () => createScepCertificateRequest(CertificateRequestStatus.PENDING_APPROVAL, tx),
+            requestData: {
+              profileId: profile.id,
+              profileName: profile.slug,
+              certificateRequest: {
+                commonName: certRequest.commonName,
+                organization: certRequest.organization,
+                organizationalUnit: certRequest.organizationalUnit,
+                country: certRequest.country,
+                state: certRequest.state,
+                locality: certRequest.locality,
+                domainComponents: certRequest.domainComponents,
+                keyUsages: certRequest.keyUsages,
+                extendedKeyUsages: certRequest.extendedKeyUsages,
+                altNames: certRequest.subjectAlternativeNames,
+                validity: { ttl },
+                signatureAlgorithm,
+                keyAlgorithm,
+                customExtensions: validationResult.resolvedCustomExtensions
+              }
+            },
+            justification: `SCEP certificate request for ${certRequest.commonName || profile.slug}`,
+            requester: { actor: ActorType.SCEP_ACCOUNT, actorId: profile.id, name: "SCEP Client", email: "" },
+            tx
+          }
+        )
+      );
+
+      await $recordScepTransaction(profile.id, parsed, certificateRequestId, applicationId);
+
+      return { status: ScepIssuanceStatus.Pending };
+    }
+
+    const newCertRequest = await createScepCertificateRequest(CertificateRequestStatus.PENDING);
 
     await certificateIssuanceQueue.queueCertificateIssuance({
       certificateId: newCertRequest.id,
@@ -1017,23 +1086,7 @@ export const pkiScepServiceFactory = ({
       ...(applicationId && { applicationId })
     });
 
-    // Create SCEP transaction so the client can poll via GetCertInitial
-    const existingTx = await scepTransactionDAL.findByProfileAndTransactionId(profile.id, parsed.transactionId);
-    if (!existingTx) {
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + SCEP_TRANSACTION_EXPIRY_HOURS);
-
-      await scepTransactionDAL.create({
-        profileId: profile.id,
-        transactionId: parsed.transactionId,
-        senderNonce: parsed.senderNonce,
-        signerCertDer: parsed.signerCertDer,
-        certificateRequestId: newCertRequest.id,
-        clientCipherOid: parsed.clientCipherOid || null,
-        expiresAt,
-        applicationId: applicationId ?? null
-      });
-    }
+    await $recordScepTransaction(profile.id, parsed, newCertRequest.id, applicationId);
 
     return { status: ScepIssuanceStatus.Pending };
   };

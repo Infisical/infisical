@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TCertificates, TCertificatesInsert } from "@app/db/schemas";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
@@ -10,6 +11,7 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 import { isUuidV4 } from "@app/lib/validator";
+import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import {
   CertSubjectAlternativeNameType,
   mapExtendedKeyUsageToLegacy,
@@ -68,6 +70,8 @@ export type TOriginatingCertificateRequest = {
   keyAlgorithm: string | null;
   signatureAlgorithm: string | null;
 };
+
+const PENDING_RENEWAL_CERTIFICATE_ID = `"${TableName.ApprovalRequests}"."requestData"->'requestData'->'renewal'->>'certificateId'`;
 
 export const certificateDALFactory = (db: TDbClient) => {
   const certificateOrm = ormify(db, TableName.Certificate);
@@ -735,6 +739,17 @@ export const certificateDALFactory = (db: TDbClient) => {
         .whereNull(`${TableName.Certificate}.renewalError`)
         .whereNull(`${TableName.Certificate}.revokedAt`)
         .whereNotNull(`${TableName.Certificate}.profileId`)
+        .whereNotExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(TableName.ApprovalRequests)
+            .whereNotNull(`${TableName.Certificate}.source`)
+            .whereNot(`${TableName.Certificate}.source`, CertificateSource.Issued)
+            .where(`${TableName.ApprovalRequests}.type`, ApprovalPolicyType.CertRequest)
+            .where(`${TableName.ApprovalRequests}.status`, ApprovalRequestStatus.Pending)
+            .whereRaw(`"${TableName.ApprovalRequests}"."projectId" = "${TableName.Certificate}"."projectId"`)
+            .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = "${TableName.Certificate}"."id"::text`);
+        })
         .whereNotNull(`${TableName.Certificate}.notAfter`)
         .where(`${TableName.Certificate}.notAfter`, ">", now)
         .whereNotNull(`${TableName.Certificate}.renewBeforeDays`)
@@ -750,6 +765,21 @@ export const certificateDALFactory = (db: TDbClient) => {
       return certs;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificates eligible for renewal" });
+    }
+  };
+
+  const hasRenewalAwaitingApproval = async (
+    { certificateId, projectId }: { certificateId: string; projectId: string },
+    tx?: Knex
+  ) => {
+    try {
+      const row = await (tx || db)(TableName.ApprovalRequests)
+        .where({ projectId, type: ApprovalPolicyType.CertRequest, status: ApprovalRequestStatus.Pending })
+        .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = ?`, [certificateId])
+        .first("id");
+      return Boolean(row);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Check renewal awaiting approval" });
     }
   };
 
@@ -1472,6 +1502,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findReadableCertificateIds,
     findLatestCertificatesByOrderIds,
     findCertificatesEligibleForRenewal,
+    hasRenewalAwaitingApproval,
     getRequestEnrollmentTypeByCertId,
     getOriginatingRequestByCertId,
     findWithPrivateKeyInfo,

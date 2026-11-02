@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import {
+  certificateAttributesSchema,
   domainComponentSchema,
   resolvedCustomExtensionSchema
 } from "@app/services/certificate-common/certificate-constants";
+import { CertificateRenewalKeySource } from "@app/services/certificate-v3/certificate-v3-types";
 
 import {
   BaseApprovalPolicySchema,
@@ -63,7 +65,15 @@ export const CertRequestPolicyRequestDataSchema = z.object({
       .optional(),
     customExtensions: z.array(resolvedCustomExtensionSchema).optional()
   }),
-  certificateRequestId: z.string().uuid()
+  certificateRequestId: z.string().uuid(),
+  renewal: z
+    .object({
+      certificateId: z.string().uuid(),
+      renewalKeySource: z.nativeEnum(CertificateRenewalKeySource),
+      csr: z.string().optional(),
+      attributes: certificateAttributesSchema.optional()
+    })
+    .optional()
 });
 
 export const CertRequestPolicySchema = BaseApprovalPolicySchema.extend({

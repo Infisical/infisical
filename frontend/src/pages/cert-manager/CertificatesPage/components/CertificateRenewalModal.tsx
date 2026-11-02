@@ -36,7 +36,8 @@ import {
 } from "@app/hooks/api/certificates/constants";
 import {
   CertificateIssuerKind,
-  CertificateRenewalKeySource
+  CertificateRenewalKeySource,
+  CertificateRequestStatus
 } from "@app/hooks/api/certificates/enums";
 import {
   useGetCertificateById,
@@ -592,10 +593,13 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       })
     });
 
+    const renewalSubmittedText =
+      result.status === CertificateRequestStatus.PENDING_APPROVAL
+        ? "Certificate renewal submitted successfully. Approval is required before the certificate can be issued."
+        : `Certificate renewal submitted. This may take a few minutes to process. Certificate Request ID: ${result.certificateRequestId}`;
+
     createNotification({
-      text: result.certificate
-        ? "Certificate renewed successfully"
-        : `Certificate renewal submitted. This may take a few minutes to process. Certificate Request ID: ${result.certificateRequestId}`,
+      text: result.certificate ? "Certificate renewed successfully" : renewalSubmittedText,
       type: "success"
     });
 
