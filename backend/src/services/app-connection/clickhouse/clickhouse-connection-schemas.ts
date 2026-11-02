@@ -1,3 +1,5 @@
+import { isIPv6 } from "node:net";
+
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
@@ -17,6 +19,11 @@ export const ClickHouseConnectionUsernameAndPasswordCredentialsSchema = z.object
     .trim()
     .min(1, "Host required")
     .max(255, "Host cannot exceed 255 characters")
+    // the client reads URL query parameters as its config, so the host must not carry a scheme, path, or query
+    .refine(
+      (host) => /^[a-zA-Z0-9._-]+$/.test(host) || isIPv6(host),
+      "Host must be a hostname or IP address without a scheme, port, or path, such as clickhouse.example.com"
+    )
     .describe(AppConnections.CREDENTIALS.SQL_CONNECTION.host),
   port: z.coerce.number().int().min(1).max(65535).describe(AppConnections.CREDENTIALS.SQL_CONNECTION.port),
   database: z

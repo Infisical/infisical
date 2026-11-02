@@ -29,7 +29,7 @@ export const createClickHouseClient = async (
   credentials: TClickHouseConnection["credentials"],
   options?: TCreateClickHouseClientOptions
 ) => {
-  const host = credentials.host.replace(/^https?:\/\//, "");
+  const { host } = credentials;
   const url = `${credentials.sslEnabled ? "https" : "http"}://${isIPv6(host) ? `[${host}]` : host}:${credentials.port}`;
 
   const { username, password } = options?.authCredentials ?? credentials;
