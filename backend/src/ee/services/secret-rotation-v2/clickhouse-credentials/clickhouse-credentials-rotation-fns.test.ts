@@ -1,0 +1,122 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { TSecretRotationV2Raw } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+
+import { clickhouseCredentialsRotationFactory } from "./clickhouse-credentials-rotation-fns";
+import { TClickHouseCredentialsRotationWithConnection } from "./clickhouse-credentials-rotation-types";
+
+const clickhouse = vi.hoisted(() => ({
+  commands: [] as string[],
+  failing: false
+}));
+
+vi.mock("@app/ee/services/dynamic-secret/dynamic-secret-fns", () => ({ verifyHostInputValidity: vi.fn() }));
+vi.mock("@clickhouse/client", () => ({
+  createClient: ({ username }: { username: string }) => ({
+    command: async ({ query }: { query: string }) => {
+      clickhouse.commands.push(`${username}: ${query}`);
+      if (clickhouse.failing) throw new Error(`Cannot execute ${query}`);
+    },
+    close: async () => {}
+  })
+}));
+
+const COMMITTED = "committed" as unknown as TSecretRotationV2Raw;
+const ACTIVE_CREDENTIALS = { username: "user_1", password: "active-password" };
+
+const alterUser = (username: string) =>
+  `manager: ALTER USER \`${username}\` IDENTIFIED WITH sha256_password BY '<password>'`;
+
+const statements = () => clickhouse.commands.map((command) => command.replace(/BY '.+'$/, "BY '<password>'"));
+
+const makeFactory = (
+  overrides: Partial<Pick<TClickHouseCredentialsRotationWithConnection, "activeIndex" | "parameters">> = {}
+) =>
+  clickhouseCredentialsRotationFactory(
+    {
+      connection: {
+        credentials: {
+          host: "clickhouse.example.com",
+          port: 8443,
+          database: "default",
+          username: "manager",
+          password: "manager-password",
+          sslEnabled: true,
+          sslRejectUnauthorized: true
+        }
+      },
+      parameters: { username1: "user_1", username2: "user_2" },
+      activeIndex: 0,
+      secretsMapping: { username: "CLICKHOUSE_DB_USERNAME", password: "CLICKHOUSE_DB_PASSWORD" },
+      ...overrides
+    } as unknown as TClickHouseCredentialsRotationWithConnection,
+    ...([{}, {}, {}, {}, {}] as unknown as [
+      Parameters<typeof clickhouseCredentialsRotationFactory>[1],
+      Parameters<typeof clickhouseCredentialsRotationFactory>[2],
+      Parameters<typeof clickhouseCredentialsRotationFactory>[3],
+      Parameters<typeof clickhouseCredentialsRotationFactory>[4],
+      Parameters<typeof clickhouseCredentialsRotationFactory>[5]
+    ])
+  );
+
+describe("ClickHouse credentials rotation", () => {
+  beforeEach(() => {
+    clickhouse.commands = [];
+    clickhouse.failing = false;
+  });
+
+  it("sets new passwords on both users when issued and stores the first", async () => {
+    const callback = vi.fn().mockResolvedValue(COMMITTED);
+
+    await makeFactory().issueCredentials(callback);
+
+    expect(statements()).toEqual([alterUser("user_1"), alterUser("user_2"), "user_1: SELECT 1", "user_2: SELECT 1"]);
+    expect(callback).toHaveBeenCalledWith({ username: "user_1", password: expect.any(String) });
+  });
+
+  it.each([
+    [0, "user_2"],
+    [1, "user_1"]
+  ])("rotates the standby user when the active index is %i", async (activeIndex, username) => {
+    const callback = vi.fn().mockResolvedValue(COMMITTED);
+
+    await makeFactory({ activeIndex }).rotateCredentials(undefined, callback, ACTIVE_CREDENTIALS);
+
+    expect(statements()).toEqual([alterUser(username), `${username}: SELECT 1`]);
+    expect(callback).toHaveBeenCalledWith({ username, password: expect.any(String) });
+  });
+
+  it("escapes backticks and backslashes in usernames", async () => {
+    const factory = makeFactory({ parameters: { username1: "user_1", username2: "we`ird\\user" } });
+
+    await factory.rotateCredentials(undefined, vi.fn().mockResolvedValue(COMMITTED), ACTIVE_CREDENTIALS);
+
+    expect(statements()[0]).toBe(alterUser("we\\`ird\\\\user"));
+  });
+
+  it("revokes by setting new passwords on both users", async () => {
+    const callback = vi.fn().mockResolvedValue(COMMITTED);
+
+    await makeFactory().revokeCredentials(
+      [ACTIVE_CREDENTIALS, { username: "user_2", password: "standby-password" }],
+      callback
+    );
+
+    expect(statements()).toEqual([alterUser("user_1"), alterUser("user_2")]);
+    expect(callback).toHaveBeenCalled();
+  });
+
+  it("redacts generated passwords from errors", async () => {
+    clickhouse.failing = true;
+
+    await expect(makeFactory().rotateCredentials(undefined, vi.fn(), ACTIVE_CREDENTIALS)).rejects.toThrow(
+      "BY '*******************'"
+    );
+  });
+
+  it("refuses to rotate the connection user", () => {
+    expect(() => makeFactory({ parameters: { username1: "manager", username2: "user_2" } })).toThrow(
+      "Rotation username cannot be the same as the connection username"
+    );
+  });
+});
