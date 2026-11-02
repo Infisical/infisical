@@ -14,7 +14,7 @@ import {
   usePreviewBillingV2Change
 } from "@app/hooks/api";
 
-import { billingV2ErrorCode, fmtMoney } from "../billing-v2-format";
+import { bandRateLabel, billingV2ErrorCode, fmtMoney, fmtMoneyCents } from "../billing-v2-format";
 import { ChargeBreakdown } from "./ChargeBreakdown";
 import { CommitmentTerms } from "./CommitmentTerms";
 import { MeteredBandTable } from "./MeteredBandTable";
@@ -66,6 +66,20 @@ const annualHeadline = (plan: BillingV2Plan): number => {
   return dim ? dim.annual : 0;
 };
 
+const meteredDimNote = (dim: BillingV2Dim): string => {
+  const tiers = dim.bands?.tiers ?? [];
+  if (tiers.length > 1) {
+    return dim.bands?.mode === "volume"
+      ? "Billed by usage each month. All usage is priced at the band the month's total reaches."
+      : "Billed by usage each month. Each band's usage is priced at that band's rate.";
+  }
+  const rate =
+    tiers.length === 1
+      ? bandRateLabel(tiers[0], dim.noun)
+      : `${fmtMoneyCents(dim.monthly)} per ${dim.noun}`;
+  return `Billed by usage each month at ${rate}.`;
+};
+
 type CadenceOptionProps = {
   active: boolean;
   title: string;
@@ -107,10 +121,7 @@ export const ActivateView = ({
   const committable = useMemo(() => plan.dims.filter(isCommittable), [plan.dims]);
   // Usage-billed dimensions are charged monthly in arrears on either cadence, so neither the amount
   // due today nor the recurring total includes them.
-  const meteredDims = useMemo(
-    () => plan.dims.filter((d) => d.meteredMonthly && d.bands && d.bands.tiers.length > 0),
-    [plan.dims]
-  );
+  const meteredDims = useMemo(() => plan.dims.filter((d) => d.meteredMonthly), [plan.dims]);
   const hasUsage = meteredDims.length > 0;
   const supportsAnnual =
     plan.dims.some((d) => d.annual > 0) || Boolean(plan.base && plan.base.annual > 0);
@@ -385,12 +396,8 @@ export const ActivateView = ({
             className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4"
           >
             <div className="text-sm font-medium text-foreground">{dim.label}</div>
-            <div className="text-xs text-muted">
-              {dim.bands?.mode === "volume"
-                ? "Billed by usage each month. All usage is priced at the band the month's total reaches."
-                : "Billed by usage each month. Each band's usage is priced at that band's rate."}
-            </div>
-            {dim.bands && (
+            <div className="text-xs text-muted">{meteredDimNote(dim)}</div>
+            {dim.bands && dim.bands.tiers.length > 1 && (
               <div className="mt-1">
                 <MeteredBandTable bands={dim.bands} noun={dim.noun} />
               </div>

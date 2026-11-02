@@ -911,11 +911,17 @@ export const licenseV2ServiceFactory = ({
     // Header billing summary. Monthly-recurring and annual-committed are two independent clocks and are
     // never summed. The next charge is the soonest line to close: derive its amount/product(s)/cadence
     // from the lines whose currentPeriodEnd matches nextChargeAt (usage-based lines make the total an
-    // estimate, so flag hasUsage). activeProductCount is the number of entitled products.
+    // estimate, so flag hasUsage; the usage estimate is also only theirs). activeProductCount is the number of
+    // entitled products.
     const subBilling = subscription?.billing;
     const closingLines = subBilling?.nextChargeAt
       ? (subBilling.lines ?? []).filter((line) => line.currentPeriodEnd === subBilling.nextChargeAt)
       : [];
+    const closingEstimates = closingLines.flatMap((line) =>
+      line.estimatedAmountCents === null || line.estimatedAmountCents === undefined ? [] : [line.estimatedAmountCents]
+    );
+    const closingUsageCents =
+      closingEstimates.length > 0 ? closingEstimates.reduce((sum, cents) => sum + cents, 0) : null;
     const closingCadences = new Set(closingLines.map((line) => normalizeCadence(line.cadence ?? undefined)));
     const nextCharge =
       subBilling?.nextChargeAt && closingLines.length > 0
@@ -925,10 +931,7 @@ export const licenseV2ServiceFactory = ({
             productKeys: [...new Set(closingLines.map((line) => line.productKey))],
             cadence: closingCadences.size === 1 ? [...closingCadences][0] : null,
             hasUsage: closingLines.some((line) => line.usageBased),
-            estimatedUsage:
-              subBilling.estimatedUsageCents === null || subBilling.estimatedUsageCents === undefined
-                ? null
-                : centsToDollars(subBilling.estimatedUsageCents)
+            estimatedUsage: closingUsageCents === null ? null : centsToDollars(closingUsageCents)
           }
         : null;
     const activeProductCount = Object.values(entitlements).filter(

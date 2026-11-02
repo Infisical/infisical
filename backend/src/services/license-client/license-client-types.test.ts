@@ -74,6 +74,46 @@ describe("subscriptionResponseSchema metered fields", () => {
     expect(parsed.items[0].dimensions[0].pricing).toBeUndefined();
     expect(parsed.billing?.estimatedUsageCents).toBeUndefined();
   });
+
+  test("tolerates nulls in the metered fields instead of failing the whole subscription", () => {
+    const parsed = subscriptionResponseSchema.parse({
+      status: "active",
+      items: [
+        {
+          productId: "pam",
+          plan: "pro",
+          dimensions: [
+            {
+              key: "pam_session_minutes",
+              metered: true,
+              usage: { periodStart: null, periodEnd: 1796083200 },
+              pricing: { tiersMode: "graduated", tiers: [] }
+            },
+            {
+              key: "pam_recordings",
+              metered: true,
+              usage: { periodStart: 1793491200, periodEnd: 1796083200, currentTier: null },
+              pricing: {
+                tiersMode: "graduated",
+                tiers: [
+                  { upTo: 100, unitAmountDecimal: "1", flatAmountCents: null },
+                  { unitAmountDecimal: null, flatAmountCents: 500 }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    });
+
+    const [broken, nulls] = parsed.items[0].dimensions;
+    expect(broken.usage, "a malformed usage block is dropped").toBeUndefined();
+    expect(nulls.usage?.currentTier).toBe(0);
+    expect(nulls.pricing?.tiers).toEqual([
+      expect.objectContaining({ upTo: 100, unitAmountDecimal: "1", flatAmountCents: 0 }),
+      expect.objectContaining({ upTo: null, unitAmountDecimal: "0", flatAmountCents: 500 })
+    ]);
+  });
 });
 
 describe("catalogResponseSchema metered fields", () => {
@@ -91,7 +131,8 @@ describe("catalogResponseSchema metered fields", () => {
               noun: "minute",
               billingType: "metered",
               aggregation: "sum"
-            }
+            },
+            { key: "identities", label: "Identities", noun: "identity", billingType: null }
           ],
           plans: [
             {

@@ -355,6 +355,18 @@ export const meteredUsageCaption = (dim: BillingV2EntitlementDim): string | null
     if (band) {
       parts.push(`band ${dim.usage.currentTier + 1}: ${bandRateLabel(band, dim.noun)}`);
     }
+  } else if (dim.bands && dim.bands.tiers.length === 1) {
+    parts.push(bandRateLabel(dim.bands.tiers[0], dim.noun));
   }
   return parts.length > 0 ? parts.join(" · ") : null;
 };
+
+// The band a period total lands in: the first whose inclusive upper limit covers it.
+export const bandIndexFor = (bands: BillingV2Bands, quantity: number): number => {
+  const index = bands.tiers.findIndex((band) => band.upTo === null || quantity <= band.upTo);
+  return index >= 0 ? index : bands.tiers.length - 1;
+};
+
+// Whether meteredUsageCaption names the dimension's rate, so a meter beside it should not repeat it.
+export const meteredRateInCaption = (dim: BillingV2EntitlementDim): boolean =>
+  dim.metered && Boolean(dim.usage) && (dim.bands?.tiers.length ?? 0) > 0;

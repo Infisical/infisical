@@ -48,18 +48,27 @@ const catalogDimensionSchema = z
     label: z.string(),
     noun: z.string(),
     // "per_resource" | "metered"; aggregation ("sum" | "count" | "last") is how a metered period total is rated.
-    billingType: z.string().optional(),
+    billingType: z.string().nullish(),
     aggregation: z.string().nullish()
   })
   .passthrough();
 
 // One band of a metered price. upTo is inclusive and null on the last band; unitAmountDecimal is cents per
-// unit as a decimal string (sub-cent rates are exact).
+// unit as a decimal string (sub-cent rates are exact). Stripe-style bands leave the unused amount null.
 const priceTierSchema = z
   .object({
-    upTo: z.number().nullable(),
-    unitAmountDecimal: z.string(),
-    flatAmountCents: z.number().default(0)
+    upTo: z
+      .number()
+      .nullish()
+      .transform((value) => value ?? null),
+    unitAmountDecimal: z
+      .string()
+      .nullish()
+      .transform((value) => value ?? "0"),
+    flatAmountCents: z
+      .number()
+      .nullish()
+      .transform((value) => value ?? 0)
   })
   .passthrough();
 
@@ -185,7 +194,10 @@ const subscriptionItemDimensionSchema = z
         periodEnd: z.number(),
         asOf: z.number().nullish(),
         estimatedAmountCents: z.number().nullish(),
-        currentTier: z.number().default(0),
+        currentTier: z
+          .number()
+          .nullish()
+          .transform((value) => value ?? 0),
         nextTierAt: z.number().nullish(),
         byTier: z.array(z.object({ quantity: z.number(), amountCents: z.number() }).passthrough()).default([]),
         earlierInPeriod: z
@@ -204,7 +216,9 @@ const subscriptionItemDimensionSchema = z
         trial: z.boolean().default(false)
       })
       .passthrough()
-      .nullish(),
+      .nullish()
+      // A malformed usage or pricing block must not fail the whole subscription parse (the org would read as Free).
+      .catch(undefined),
     pricing: z
       .object({
         tiersMode: z.string(),
@@ -212,6 +226,7 @@ const subscriptionItemDimensionSchema = z
       })
       .passthrough()
       .nullish()
+      .catch(undefined)
   })
   .passthrough();
 
