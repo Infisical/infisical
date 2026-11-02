@@ -180,11 +180,6 @@ actions:
   - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeProxiedServices')].schema
     update:
       type: boolean
-  - target: $.paths['/api/v1/dashboard/accessible-secrets'].get.parameters[?(@.name == 'recursive')].schema.anyOf
-    remove: true
-  - target: $.paths['/api/v1/dashboard/accessible-secrets'].get.parameters[?(@.name == 'recursive')].schema
-    update:
-      type: boolean
   - target: $.paths['/api/v1/dashboard/secrets-by-keys'].get.parameters[?(@.name == 'viewSecretValue')].schema.anyOf
     remove: true
   - target: $.paths['/api/v1/dashboard/secrets-by-keys'].get.parameters[?(@.name == 'viewSecretValue')].schema

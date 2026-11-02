@@ -634,6 +634,7 @@ export const useListWorkspaceCertificates = ({
   forPkiSync,
   search,
   status,
+  includeDeleted,
   profileIds,
   fromDate,
   toDate,
@@ -662,6 +663,7 @@ export const useListWorkspaceCertificates = ({
   forPkiSync?: boolean;
   search?: string;
   status?: string | string[];
+  includeDeleted?: boolean;
   profileIds?: string[];
   fromDate?: Date;
   toDate?: Date;
@@ -692,6 +694,7 @@ export const useListWorkspaceCertificates = ({
       forPkiSync,
       search,
       status,
+      includeDeleted,
       profileIds,
       fromDate,
       toDate,
@@ -725,6 +728,7 @@ export const useListWorkspaceCertificates = ({
           ...(forPkiSync && { forPkiSync }),
           ...(search && { search }),
           ...(status && { status: Array.isArray(status) ? status.join(",") : status }),
+          ...(includeDeleted && { includeDeleted }),
           ...(profileIds && profileIds.length > 0 && { profileIds }),
           ...(fromDate && { fromDate: fromDate.toISOString() }),
           ...(toDate && { toDate: toDate.toISOString() }),
