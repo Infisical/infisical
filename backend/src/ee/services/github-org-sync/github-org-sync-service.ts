@@ -1107,7 +1107,7 @@ export const githubOrgSyncServiceFactory = ({
 
     const allTeams = [...Object.values(existingTeamsMap).flat()];
 
-    const usersRemovedFromTeams = new Set<string>();
+    const expectedUserIdsByTeamId = new Map<string, Set<string>>();
     for (const team of allTeams) {
       const teamName = team.name.toLowerCase();
       const expectedUserIds = new Set<string>();
@@ -1124,6 +1124,12 @@ export const githubOrgSyncServiceFactory = ({
           unmatchedGithubUsers.add(githubMember.login);
         }
       });
+      expectedUserIdsByTeamId.set(team.id, expectedUserIds);
+    }
+
+    const syncTeamMembers = async (team: (typeof allTeams)[number], phase: "add" | "remove") => {
+      const teamName = team.name.toLowerCase();
+      const expectedUserIds = expectedUserIdsByTeamId.get(team.id) ?? new Set<string>();
 
       const resolveMembershipChanges = (currentMemberships: GroupMembership[]) => {
         const currentUserIds = new Set<string>();
@@ -1153,14 +1159,18 @@ export const githubOrgSyncServiceFactory = ({
         orgPermission.orgId
       )) as GroupMembership[];
       const pendingChanges = resolveMembershipChanges(currentMemberships);
-      if (pendingChanges.usersToAdd.length || pendingChanges.membershipsToRemove.length) {
+      const hasPendingChanges =
+        phase === "add" ? pendingChanges.usersToAdd.length > 0 : pendingChanges.membershipsToRemove.length > 0;
+      if (hasPendingChanges) {
         const membershipChanges = await groupDAL.transaction(async (tx) => {
           const latestMemberships = (await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(
             team.id,
             orgPermission.orgId,
             tx
           )) as GroupMembership[];
-          const { usersToAdd, membershipsToRemove } = resolveMembershipChanges(latestMemberships);
+          const latestChanges = resolveMembershipChanges(latestMemberships);
+          const usersToAdd = phase === "add" ? latestChanges.usersToAdd : [];
+          const membershipsToRemove = phase === "remove" ? latestChanges.membershipsToRemove : [];
 
           if (usersToAdd.length > 0) {
             await orgDAL.lockActorsForOrgAccess({ orgId: orgPermission.orgId, actorIds: usersToAdd }, tx);
@@ -1201,15 +1211,23 @@ export const githubOrgSyncServiceFactory = ({
             updatedTeams.add(teamName);
           }
 
+          const removedUserIds = membershipsToRemove
+            .map((membership) => activeMembersById.get(membership.orgMembershipId)?.user?.id)
+            .filter(Boolean) as string[];
+
           return {
             usersToAdd,
-            removedUserIds: membershipsToRemove
-              .map((membership) => activeMembersById.get(membership.orgMembershipId)?.user?.id)
-              .filter(Boolean) as string[],
-            removedMembershipCount: membershipsToRemove.length
+            removedUserIds,
+            removedMembershipCount: membershipsToRemove.length,
+            sendPamCancellations: await terminatePamSessionsLosingGroupAccess({
+              userIds: removedUserIds,
+              actorId: orgPermission.id,
+              ...pamSessionDeps,
+              tx
+            })
           };
         });
-        membershipChanges.removedUserIds.forEach((userId) => usersRemovedFromTeams.add(userId));
+        membershipChanges.sendPamCancellations();
         totalRemovedMemberships += membershipChanges.removedMembershipCount;
 
         await createGithubOrgSyncAuditLogs({
@@ -1250,18 +1268,13 @@ export const githubOrgSyncServiceFactory = ({
           ]
         });
       }
-    }
+    };
 
-    if (usersRemovedFromTeams.size) {
-      const sendPamCancellations = await groupDAL.transaction((tx) =>
-        terminatePamSessionsLosingGroupAccess({
-          userIds: [...usersRemovedFromTeams],
-          actorId: orgPermission.id,
-          ...pamSessionDeps,
-          tx
-        })
-      );
-      sendPamCancellations();
+    for (const team of allTeams) {
+      await syncTeamMembers(team, "add");
+    }
+    for (const team of allTeams) {
+      await syncTeamMembers(team, "remove");
     }
 
     if (createdTeams.size || updatedTeams.size) {
