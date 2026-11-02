@@ -22,8 +22,9 @@ vi.mock("knex", async (importOriginal) => {
   return {
     default: (config: Knex.Config) => {
       const db = realKnex(config);
+      const client = db.client as { _acquireOnlyConnection: () => Promise<ReturnType<typeof fakePgConnection>> };
       // eslint-disable-next-line no-underscore-dangle
-      db.client._acquireOnlyConnection = async () => fakePgConnection();
+      client._acquireOnlyConnection = async () => fakePgConnection();
       return db;
     }
   };
