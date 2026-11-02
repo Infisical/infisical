@@ -908,7 +908,7 @@ export const projectServiceFactory = ({
           .join(", ");
         const remaining = sharedWith.length - 5;
         throw new BadRequestError({
-          message: `Project '${project.name}' can't be deleted while it shares secrets with other projects: ${remaining > 0 ? `${preview}, and ${remaining} more` : preview}. Revoke their access in Project Settings → Cross-Project Secret Sharing first, then retry.`
+          message: `Project '${project.name}' can't be deleted while it shares secrets with other projects: ${remaining > 0 ? `${preview}, and ${remaining} more` : preview}. Revoke their access in Project Settings → Policies → Cross-Project Secret Sharing first, then retry.`
         });
       }
 
