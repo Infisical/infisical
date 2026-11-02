@@ -1107,6 +1107,7 @@ export const githubOrgSyncServiceFactory = ({
 
     const allTeams = [...Object.values(existingTeamsMap).flat()];
 
+    const usersRemovedFromTeams = new Set<string>();
     for (const team of allTeams) {
       const teamName = team.name.toLowerCase();
       const expectedUserIds = new Set<string>();
@@ -1200,17 +1201,7 @@ export const githubOrgSyncServiceFactory = ({
             updatedTeams.add(teamName);
           }
 
-          const sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
-            userIds: membershipsToRemove
-              .map((membership) => activeMembersById.get(membership.orgMembershipId)?.user?.id)
-              .filter(Boolean) as string[],
-            actorId: orgPermission.id,
-            ...pamSessionDeps,
-            tx
-          });
-
           return {
-            sendPamCancellations,
             usersToAdd,
             removedUserIds: membershipsToRemove
               .map((membership) => activeMembersById.get(membership.orgMembershipId)?.user?.id)
@@ -1218,7 +1209,7 @@ export const githubOrgSyncServiceFactory = ({
             removedMembershipCount: membershipsToRemove.length
           };
         });
-        membershipChanges.sendPamCancellations();
+        membershipChanges.removedUserIds.forEach((userId) => usersRemovedFromTeams.add(userId));
         totalRemovedMemberships += membershipChanges.removedMembershipCount;
 
         await createGithubOrgSyncAuditLogs({
@@ -1259,6 +1250,18 @@ export const githubOrgSyncServiceFactory = ({
           ]
         });
       }
+    }
+
+    if (usersRemovedFromTeams.size) {
+      const sendPamCancellations = await groupDAL.transaction((tx) =>
+        terminatePamSessionsLosingGroupAccess({
+          userIds: [...usersRemovedFromTeams],
+          actorId: orgPermission.id,
+          ...pamSessionDeps,
+          tx
+        })
+      );
+      sendPamCancellations();
     }
 
     if (createdTeams.size || updatedTeams.size) {

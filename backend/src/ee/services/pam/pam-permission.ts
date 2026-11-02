@@ -134,7 +134,8 @@ const findActivePamMemberships = async (
   membershipRoleDAL: TMembershipRoleDep,
   projectId: string,
   ctx: Pick<TActorContext, "actor" | "actorId">,
-  tx?: Knex
+  tx?: Knex,
+  isRelevant: (membership: { scopeResourceId?: string | null }) => boolean = () => true
 ) => {
   const [folderMemberships, accountMemberships] = await Promise.all([
     membershipDAL.findResourceMembershipsForActor(
@@ -157,8 +158,8 @@ const findActivePamMemberships = async (
     )
   ]);
 
-  const activeFolderMemberships = folderMemberships.filter((m) => m.isActive);
-  const activeAccountMemberships = accountMemberships.filter((m) => m.isActive);
+  const activeFolderMemberships = folderMemberships.filter((m) => m.isActive && isRelevant(m));
+  const activeAccountMemberships = accountMemberships.filter((m) => m.isActive && isRelevant(m));
 
   const allMemberships = [...activeFolderMemberships, ...activeAccountMemberships];
   const roles = allMemberships.length
@@ -177,11 +178,14 @@ export const getLaunchAccessRemainingMs = async (
   account: { id: string; folderId?: string | null },
   ctx: Pick<TActorContext, "actor" | "actorId">
 ): Promise<number | null> => {
-  const {
-    folderMemberships,
-    accountMemberships,
-    roles: allRoles
-  } = await findActivePamMemberships(membershipDAL, membershipRoleDAL, projectId, ctx);
+  const { folderMemberships, accountMemberships, roles } = await findActivePamMemberships(
+    membershipDAL,
+    membershipRoleDAL,
+    projectId,
+    ctx,
+    undefined,
+    (m) => m.scopeResourceId === account.id || (Boolean(account.folderId) && m.scopeResourceId === account.folderId)
+  );
   const membershipIds = new Set(
     [
       ...folderMemberships.filter((m) => m.scopeResourceId === account.folderId),
@@ -190,7 +194,6 @@ export const getLaunchAccessRemainingMs = async (
   );
   if (membershipIds.size === 0) return 0;
 
-  const roles = allRoles.filter((r) => membershipIds.has(r.membershipId));
   const grantingRoles = roles.filter(
     (r) => isActiveRole(r) && pamRoleHasAction(r.role, ResourcePermissionPamResourceActions.LaunchSessions)
   );
