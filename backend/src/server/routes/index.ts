@@ -790,6 +790,7 @@ export const registerRoutes = async (
   const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
   const userNotificationDAL = userNotificationDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
+  const pamAccountDAL = pamAccountDALFactory(db);
 
   const deferredGatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails"> = {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -1051,7 +1052,12 @@ export const registerRoutes = async (
     identityGroupMembershipDAL,
     userGroupMembershipDAL,
     identityAccessTokenService,
-    eventEmitter: eventOutboxService
+    eventEmitter: eventOutboxService,
+    membershipDAL,
+    pamAccountDAL,
+    pamSessionDAL,
+    userDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
 
   const roleService = roleServiceFactory({
@@ -1333,7 +1339,6 @@ export const registerRoutes = async (
     ? clickhouseAuditLogDALFactory(clickhouse, db, envConfig.CLICKHOUSE_AUDIT_LOG_TABLE_NAME)
     : undefined;
 
-  const pamAccountDAL = pamAccountDALFactory(db);
   const auditLogService = auditLogServiceFactory({
     auditLogDAL,
     clickhouseAuditLogDAL,
@@ -1558,7 +1563,12 @@ export const registerRoutes = async (
     alertChannelRecipientDAL,
     auditLogService,
     orgDAL,
-    eventEmitter: eventOutboxService
+    eventEmitter: eventOutboxService,
+    membershipDAL,
+    pamAccountDAL,
+    pamSessionDAL,
+    userDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services

@@ -174,8 +174,9 @@ export type TRemoveUsersFromGroupByUserIds = {
 export type TRemoveIdentitiesFromGroup = {
   group: { id: string; name: string; slug: string; orgId: string };
   identityIds: string[];
+  actorId?: string;
   identityDAL: Pick<TIdentityDALFactory, "find" | "transaction">;
-  membershipDAL: Pick<TMembershipDALFactory, "find">;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "findResourceMembershipsForActors">;
   groupDAL: TGroupOrgIdsDAL;
   identityGroupMembershipDAL: Pick<
     TIdentityGroupMembershipDALFactory,
@@ -184,6 +185,11 @@ export type TRemoveIdentitiesFromGroup = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
   eventEmitter: TEventEmitter;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  userDAL: Pick<TUserDALFactory, "findById">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export type TConvertPendingGroupAdditionsToGroupMemberships = {

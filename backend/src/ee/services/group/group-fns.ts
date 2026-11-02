@@ -660,13 +660,19 @@ export const removeUsersFromGroupByUserIds = async ({
 export const removeIdentitiesFromGroup = async ({
   group,
   identityIds,
+  actorId,
   identityDAL,
   membershipDAL,
   groupDAL,
   identityGroupMembershipDAL,
   additionalPrivilegeDAL,
   usageMeteringService,
-  eventEmitter
+  eventEmitter,
+  membershipRoleDAL,
+  pamAccountDAL,
+  pamSessionDAL,
+  userDAL,
+  gatewayV2Service
 }: TRemoveIdentitiesFromGroup) => {
   const identityIdsSet = new Set(identityIds);
   const identityIdsArray = Array.from(identityIdsSet);
@@ -771,11 +777,24 @@ export const removeIdentitiesFromGroup = async ({
       tx
     );
 
+    const sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
+      userIds: [],
+      identityIds: identityIdsArray,
+      actorId,
+      membershipDAL,
+      membershipRoleDAL,
+      pamAccountDAL,
+      pamSessionDAL,
+      userDAL,
+      gatewayV2Service,
+      tx
+    });
+
     // These identities may have left a secret-manager or PAM project they only reached through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     usageMeteringService?.emit(group.orgId, PamIdentities.key);
     usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
-    return identityIdsArray.map((identityId) => ({ id: identityId }));
+    return { identities: identityIdsArray.map((identityId) => ({ id: identityId })), sendPamCancellations };
   });
 };
 

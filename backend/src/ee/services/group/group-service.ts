@@ -505,22 +505,12 @@ export const groupServiceFactory = ({
 
     if (isLinkedGroup) {
       const unlinkedGroup = await groupDAL.findById(id);
-      let sendPamCancellations = () => {};
-      const { identityIdsLosingOrgAccess } = await groupDAL.transaction(async (tx) => {
-        const detached = await membershipGroupService.detachGroupFromOrg(
-          { groupId: id, orgId: actorOrgId, orgMembershipId: groupMembership.id },
+      const { identityIdsLosingOrgAccess, sendPamCancellations } = await groupDAL.transaction((tx) =>
+        membershipGroupService.detachGroupFromOrg(
+          { groupId: id, orgId: actorOrgId, orgMembershipId: groupMembership.id, actorId },
           tx
-        );
-        const { userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(id, tx);
-        sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
-          userIds,
-          identityIds,
-          actorId,
-          ...pamSessionDeps,
-          tx
-        });
-        return detached;
-      });
+        )
+      );
       sendPamCancellations();
       await membershipGroupService.bumpIdentityRevocationVersions(identityIdsLosingOrgAccess);
       // Removing the group drops its members from any project it was on.
@@ -1154,20 +1144,17 @@ export const groupServiceFactory = ({
       throw new NotFoundError({ message: `Identity with id ${identityId} is not part of the organization` });
     }
 
-    const identities = await removeIdentitiesFromGroup({
+    const { identities, sendPamCancellations } = await removeIdentitiesFromGroup({
       group: groupMembership.group,
       identityIds: [identityId],
+      actorId,
       identityDAL,
-      membershipDAL,
       groupDAL,
       identityGroupMembershipDAL,
       additionalPrivilegeDAL,
-      eventEmitter
+      eventEmitter,
+      ...pamSessionDeps
     });
-
-    const sendPamCancellations = await groupDAL.transaction((tx) =>
-      terminatePamSessionsLosingGroupAccess({ userIds: [], identityIds: [identityId], actorId, ...pamSessionDeps, tx })
-    );
     sendPamCancellations();
 
     // Losing a group can remove the identity's effective org access. Skipped when
