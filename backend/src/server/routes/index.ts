@@ -1271,6 +1271,7 @@ export const registerRoutes = async (
 
   const membershipIdentityService = membershipIdentityServiceFactory({
     identityDAL,
+    identityGroupMembershipDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
     orgDAL,
@@ -2850,6 +2851,7 @@ export const registerRoutes = async (
     identityProjectDAL,
     licenseService,
     identityMetadataDAL,
+    identityGroupMembershipDAL,
     keyStore,
     orgDAL,
     membershipIdentityDAL,

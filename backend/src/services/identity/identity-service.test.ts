@@ -47,6 +47,7 @@ const createService = ({
   const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
   const deleteAlertsForDeletedResource = vi.fn().mockResolvedValue(0);
   const emit = vi.fn().mockResolvedValue(undefined);
+  const deleteFromGroupsOwnedByOrg = vi.fn().mockResolvedValue(0);
 
   const identityDAL = {
     transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
@@ -70,6 +71,7 @@ const createService = ({
   const service = identityServiceFactory({
     identityDAL: identityDAL as never,
     identityMetadataDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
+    identityGroupMembershipDAL: { deleteFromGroupsOwnedByOrg },
     identityOrgMembershipDAL: {} as never,
     membershipIdentityDAL: membershipIdentityDAL as never,
     membershipRoleDAL: {} as never,
@@ -97,8 +99,37 @@ const createService = ({
     eventEmitter: { emit }
   });
 
-  return { service, identityDAL, membershipIdentityDAL, deleteAlertsForResource, deleteAlertsForDeletedResource, emit };
+  return {
+    service,
+    identityDAL,
+    membershipIdentityDAL,
+    deleteAlertsForResource,
+    deleteAlertsForDeletedResource,
+    deleteFromGroupsOwnedByOrg,
+    emit
+  };
 };
+
+describe("deleteIdentity group cleanup", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("removing an identity that belongs to another org deletes it from this org's groups in the same transaction", async () => {
+    const { service, deleteFromGroupsOwnedByOrg } = createService({ identityOrgId: ROOT_ORG_ID });
+
+    await service.deleteIdentity(buildDto());
+
+    expect(deleteFromGroupsOwnedByOrg).toHaveBeenCalledTimes(1);
+    expect(deleteFromGroupsOwnedByOrg).toHaveBeenCalledWith({ identityId: IDENTITY_ID, orgId: ORG_ID }, TX);
+  });
+
+  test("deleting the identity row leaves group cleanup to the foreign key cascade", async () => {
+    const { service, deleteFromGroupsOwnedByOrg } = createService();
+
+    await service.deleteIdentity(buildDto());
+
+    expect(deleteFromGroupsOwnedByOrg).not.toHaveBeenCalled();
+  });
+});
 
 describe("deleteIdentity alert cleanup", () => {
   beforeEach(() => vi.clearAllMocks());

@@ -68,8 +68,26 @@ export const identityGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteFromGroupsOwnedByOrg = async (
+    { identityId, orgId }: { identityId: string; orgId: string },
+    tx?: Knex
+  ) => {
+    try {
+      return await (tx || db)(TableName.IdentityGroupMembership)
+        .where(`${TableName.IdentityGroupMembership}.identityId`, identityId)
+        .whereIn(
+          `${TableName.IdentityGroupMembership}.groupId`,
+          (tx || db)(TableName.Groups).where(`${TableName.Groups}.orgId`, orgId).select("id")
+        )
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete identity from groups owned by org" });
+    }
+  };
+
   return {
     ...identityGroupMembershipOrm,
-    filterProjectsByIdentityMembership
+    filterProjectsByIdentityMembership,
+    deleteFromGroupsOwnedByOrg
   };
 };

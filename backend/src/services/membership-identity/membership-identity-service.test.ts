@@ -49,6 +49,7 @@ const createService = ({
   const removeOrgMembershipRevocationMarkers = vi.fn().mockResolvedValue(undefined);
   const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
   const emit = vi.fn().mockResolvedValue(undefined);
+  const deleteFromGroupsOwnedByOrg = vi.fn().mockResolvedValue(0);
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
@@ -97,6 +98,7 @@ const createService = ({
     identityDAL: {
       findById: vi.fn().mockResolvedValue({ orgId: ROOT_ORG_ID, projectId: null })
     } as never,
+    identityGroupMembershipDAL: { deleteFromGroupsOwnedByOrg },
     licenseService: { getPlan: vi.fn() } as never,
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
     projectDAL: {
@@ -120,6 +122,7 @@ const createService = ({
     insertOrgMembershipRevocationMarker,
     removeOrgMembershipRevocationMarkers,
     deleteAlertsForResource,
+    deleteFromGroupsOwnedByOrg,
     emit
   };
 };
@@ -264,6 +267,31 @@ describe("deleteMembership org access reconcile", () => {
     });
 
     expect(emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteMembership group cleanup", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("removing an org membership deletes the identity from that org's groups in the same transaction", async () => {
+    const tx = { marker: "tx" } as unknown as Knex;
+    const { service, deleteFromGroupsOwnedByOrg } = createService({ tx });
+
+    await service.deleteMembership(buildDto());
+
+    expect(deleteFromGroupsOwnedByOrg).toHaveBeenCalledTimes(1);
+    expect(deleteFromGroupsOwnedByOrg).toHaveBeenCalledWith({ identityId: IDENTITY_ID, orgId: SUB_ORG_ID }, tx);
+  });
+
+  test("removing a project membership leaves the identity's groups alone", async () => {
+    const { service, deleteFromGroupsOwnedByOrg } = createService();
+
+    await service.deleteMembership({
+      ...buildDto(),
+      scopeData: { scope: AccessScope.Project, orgId: SUB_ORG_ID, projectId: PROJECT_ID }
+    });
+
+    expect(deleteFromGroupsOwnedByOrg).not.toHaveBeenCalled();
   });
 });
 

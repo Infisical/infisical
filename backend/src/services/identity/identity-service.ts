@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -48,6 +49,7 @@ import {
 type TIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "deleteFromGroupsOwnedByOrg">;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
@@ -71,6 +73,7 @@ export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
 export const identityServiceFactory = ({
   identityDAL,
   identityMetadataDAL,
+  identityGroupMembershipDAL,
   identityOrgMembershipDAL,
   identityProjectDAL,
   permissionService,
@@ -475,6 +478,9 @@ export const identityServiceFactory = ({
         tx
       );
       const doc = await membershipIdentityDAL.delete({ actorIdentityId: id, scopeOrgId: actorOrgId }, tx);
+      // Group membership counts as org membership, so a row left in one of this org's groups
+      // would keep the identity in the org with no way for an admin to see or remove it.
+      await identityGroupMembershipDAL.deleteFromGroupsOwnedByOrg({ identityId: id, orgId: actorOrgId }, tx);
 
       await identityAccessTokenService.insertOrgMembershipRevocationMarker({ identityId: id, orgId: actorOrgId, tx });
       await emitOrgMembershipRemoved(

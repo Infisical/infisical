@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -51,6 +52,7 @@ type TMembershipIdentityServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "deleteFromGroupsOwnedByOrg">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
@@ -77,6 +79,7 @@ export const membershipIdentityServiceFactory = ({
   orgDAL,
   additionalPrivilegeDAL,
   identityDAL,
+  identityGroupMembershipDAL,
   licenseService,
   applicationMembershipCleanupService,
   projectDAL,
@@ -474,6 +477,12 @@ export const membershipIdentityServiceFactory = ({
 
       // Durable deny atomic with the org-membership removal.
       if (scopeData.scope === AccessScope.Organization) {
+        // Group membership counts as org membership, so a row left in one of this org's groups
+        // would keep the identity in the org with no way for an admin to see or remove it.
+        await identityGroupMembershipDAL.deleteFromGroupsOwnedByOrg(
+          { identityId: dto.selector.identityId, orgId: scopeData.orgId },
+          tx
+        );
         await identityAccessTokenService.insertOrgMembershipRevocationMarker({
           identityId: dto.selector.identityId,
           orgId: scopeData.orgId,
