@@ -143,7 +143,7 @@ reference page's Markdown, and the pointer takes them to the copy. When you add 
 example, make the same change in both files.
 
 On the agent page, give each command a heading whose anchor matches its `id` on the page, such as
-``## `secrets set` `` for `id="secrets-set"`, so links to the page's anchors still work.
+``## `sm secrets set` `` for `id="sm-secrets-set"`, so links to the page's anchors still work.
 
 ## Getting familiar with Mintlify
 
