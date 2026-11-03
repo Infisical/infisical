@@ -58,8 +58,8 @@ const listAwsKmsKeys = async (
 
   if (aliasMarker) {
     logger.warn(
-      { connectionId: appConnection.id, region, aliasCount: aliasEntries.length },
-      "listAwsKmsKeys: KMS alias list truncated at page limit"
+      { aliasCount: aliasEntries.length },
+      `listAwsKmsKeys: KMS alias list truncated at page limit [connectionId=${appConnection.id}] [region=${region}]`
     );
   }
 
