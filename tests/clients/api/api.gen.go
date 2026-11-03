@@ -43317,6 +43317,24 @@ func (e UpdateOrganizationJSONBodySelectedMfaMethod) Valid() bool {
 	}
 }
 
+// Defines values for UpdateOrganizationJSONBodySsoMfaTrust.
+const (
+	None   UpdateOrganizationJSONBodySsoMfaTrust = "none"
+	Signal UpdateOrganizationJSONBodySsoMfaTrust = "signal"
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrganizationJSONBodySsoMfaTrust enum.
+func (e UpdateOrganizationJSONBodySsoMfaTrust) Valid() bool {
+	switch e {
+	case None:
+		return true
+	case Signal:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UpdateOrganization400JSONResponseBodyStatusCode.
 const (
 	UpdateOrganization400JSONResponseBodyStatusCodeN400 UpdateOrganization400JSONResponseBodyStatusCode = 400
@@ -112278,6 +112296,7 @@ type UpdateOrganizationJSONBody struct {
 	SelectedMfaMethod          *UpdateOrganizationJSONBodySelectedMfaMethod `json:"selectedMfaMethod,omitempty"`
 	ShareSecretsProductEnabled *bool                                        `json:"shareSecretsProductEnabled,omitempty"`
 	Slug                       *string                                      `json:"slug,omitempty"`
+	SsoMfaTrust                *UpdateOrganizationJSONBodySsoMfaTrust       `json:"ssoMfaTrust,omitempty"`
 	UserTokenExpiration        *string                                      `json:"userTokenExpiration,omitempty"`
 }
 
@@ -112321,6 +112340,9 @@ type UpdateOrganizationJSONBody_SecretShareBrandConfig_SecondaryColor struct {
 
 // UpdateOrganizationJSONBodySelectedMfaMethod defines parameters for UpdateOrganization.
 type UpdateOrganizationJSONBodySelectedMfaMethod string
+
+// UpdateOrganizationJSONBodySsoMfaTrust defines parameters for UpdateOrganization.
+type UpdateOrganizationJSONBodySsoMfaTrust string
 
 // UpdateOrganization400JSONResponseBodyStatusCode defines parameters for UpdateOrganization.
 type UpdateOrganization400JSONResponseBodyStatusCode float32
@@ -121141,6 +121163,12 @@ type UpdateSamlConfigJSONBody struct {
 	// Issuer The SAML provider issuer URL or entity ID.
 	Issuer *string `json:"issuer,omitempty"`
 
+	// MfaAuthnContexts Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.
+	MfaAuthnContexts *[]string `json:"mfaAuthnContexts,omitempty"`
+
+	// MfaSignalAttribute The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.
+	MfaSignalAttribute *string `json:"mfaSignalAttribute,omitempty"`
+
 	// OrganizationId The ID of the organization to update the SAML config for.
 	OrganizationId string `json:"organizationId"`
 }
@@ -121185,6 +121213,12 @@ type CreateSamlConfigJSONBody struct {
 
 	// Issuer The SAML provider issuer URL or entity ID.
 	Issuer string `json:"issuer"`
+
+	// MfaAuthnContexts Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.
+	MfaAuthnContexts *[]string `json:"mfaAuthnContexts,omitempty"`
+
+	// MfaSignalAttribute The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.
+	MfaSignalAttribute *string `json:"mfaSignalAttribute,omitempty"`
 
 	// OrganizationId The ID of the organization to create the SAML config for.
 	OrganizationId string `json:"organizationId"`
@@ -121297,6 +121331,12 @@ type UpdateOidcConfigJSONBody struct {
 	// ManageGroupMemberships Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.
 	ManageGroupMemberships *bool `json:"manageGroupMemberships,omitempty"`
 
+	// MfaAmrValues Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA.
+	MfaAmrValues *[]string `json:"mfaAmrValues,omitempty"`
+
+	// MfaClaimName The ID token claim that lists the authentication methods the user completed. Defaults to amr.
+	MfaClaimName *string `json:"mfaClaimName,omitempty"`
+
 	// OrganizationId The ID of the organization to update the OIDC config for.
 	OrganizationId string `json:"organizationId"`
 
@@ -121365,6 +121405,12 @@ type CreateOidcConfigJSONBody struct {
 
 	// ManageGroupMemberships Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.
 	ManageGroupMemberships *bool `json:"manageGroupMemberships,omitempty"`
+
+	// MfaAmrValues Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA.
+	MfaAmrValues *[]string `json:"mfaAmrValues,omitempty"`
+
+	// MfaClaimName The ID token claim that lists the authentication methods the user completed. Defaults to amr.
+	MfaClaimName *string `json:"mfaClaimName,omitempty"`
 
 	// OrganizationId The ID of the organization to create the OIDC config for.
 	OrganizationId string `json:"organizationId"`
@@ -219554,6 +219600,7 @@ type ListAdminOrganizationsResponse struct {
 			ShareSecretsProductEnabled  *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                        string              `json:"slug"`
+			SsoMfaTrust                 *string             `json:"ssoMfaTrust,omitempty"`
 			UpdatedAt                   time.Time           `json:"updatedAt"`
 			UserTokenExpiration         *string             `json:"userTokenExpiration,omitempty"`
 		} `json:"organizations"`
@@ -219662,6 +219709,7 @@ func (r ListAdminOrganizationsResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled  *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                        string              `json:"slug"`
+		SsoMfaTrust                 *string             `json:"ssoMfaTrust,omitempty"`
 		UpdatedAt                   time.Time           `json:"updatedAt"`
 		UserTokenExpiration         *string             `json:"userTokenExpiration,omitempty"`
 	} `json:"organizations"`
@@ -219802,6 +219850,7 @@ type CreateAdminOrganizationResponse struct {
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
+			SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 			UpdatedAt                             time.Time           `json:"updatedAt"`
 			UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 		} `json:"organization"`
@@ -219890,6 +219939,7 @@ func (r CreateAdminOrganizationResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
+		SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 		UpdatedAt                             time.Time           `json:"updatedAt"`
 		UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 	} `json:"organization"`
@@ -220029,6 +220079,7 @@ type DeleteAdminOrganizationResponse struct {
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
+			SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 			UpdatedAt                             time.Time           `json:"updatedAt"`
 			UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 		} `json:"organization"`
@@ -220117,6 +220168,7 @@ func (r DeleteAdminOrganizationResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
+		SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 		UpdatedAt                             time.Time           `json:"updatedAt"`
 		UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 	} `json:"organization"`
@@ -220801,6 +220853,7 @@ type AdminSignUpResponse struct {
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
+			SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 			UpdatedAt                             time.Time           `json:"updatedAt"`
 			UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 		} `json:"organization"`
@@ -220902,6 +220955,7 @@ func (r AdminSignUpResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
+		SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 		UpdatedAt                             time.Time           `json:"updatedAt"`
 		UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 	} `json:"organization"`
@@ -264232,6 +264286,7 @@ type ListOrganizationsResponse struct {
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
+			SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 			UpdatedAt                             time.Time           `json:"updatedAt"`
 			UserJoinedAt                          time.Time           `json:"userJoinedAt"`
 			UserRole                              string              `json:"userRole"`
@@ -264318,6 +264373,7 @@ func (r ListOrganizationsResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
+		SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 		UpdatedAt                             time.Time           `json:"updatedAt"`
 		UserJoinedAt                          time.Time           `json:"userJoinedAt"`
 		UserRole                              string              `json:"userRole"`
@@ -264819,6 +264875,7 @@ type ListAccessibleOrganizationsWithSubOrgsResponse struct {
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
+			SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 			SubOrganizations                      []struct {
 				Id           openapi_types.UUID `json:"id"`
 				Name         string             `json:"name"`
@@ -264910,6 +264967,7 @@ func (r ListAccessibleOrganizationsWithSubOrgsResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
+		SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 		SubOrganizations                      []struct {
 			Id           openapi_types.UUID `json:"id"`
 			Name         string             `json:"name"`
@@ -269706,6 +269764,7 @@ type GetOrganizationByIdResponse struct {
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
+			SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 			UpdatedAt                             time.Time           `json:"updatedAt"`
 			UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 		} `json:"organization"`
@@ -269791,6 +269850,7 @@ func (r GetOrganizationByIdResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
+		SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 		UpdatedAt                             time.Time           `json:"updatedAt"`
 		UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 	} `json:"organization"`
@@ -269926,6 +269986,7 @@ type UpdateOrganizationResponse struct {
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
+			SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 			UpdatedAt                             time.Time           `json:"updatedAt"`
 			UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 		} `json:"organization"`
@@ -270010,6 +270071,7 @@ func (r UpdateOrganizationResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
+		SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 		UpdatedAt                             time.Time           `json:"updatedAt"`
 		UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 	} `json:"organization"`
@@ -310893,16 +310955,18 @@ type GetSamlConfigResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		AuthProvider    string     `json:"authProvider"`
-		Cert            string     `json:"cert"`
-		EnableGroupSync *bool      `json:"enableGroupSync,omitempty"`
-		EntryPoint      string     `json:"entryPoint"`
-		Id              string     `json:"id"`
-		IsActive        bool       `json:"isActive"`
-		Issuer          string     `json:"issuer"`
-		LastUsed        *time.Time `json:"lastUsed,omitempty"`
-		OrgId           string     `json:"orgId"`
-		Organization    string     `json:"organization"`
+		AuthProvider       string     `json:"authProvider"`
+		Cert               string     `json:"cert"`
+		EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
+		EntryPoint         string     `json:"entryPoint"`
+		Id                 string     `json:"id"`
+		IsActive           bool       `json:"isActive"`
+		Issuer             string     `json:"issuer"`
+		LastUsed           *time.Time `json:"lastUsed,omitempty"`
+		MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
+		MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
+		OrgId              string     `json:"orgId"`
+		Organization       string     `json:"organization"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -310952,16 +311016,18 @@ type GetSamlConfigResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetSamlConfigResponse) GetJSON200() *struct {
-	AuthProvider    string     `json:"authProvider"`
-	Cert            string     `json:"cert"`
-	EnableGroupSync *bool      `json:"enableGroupSync,omitempty"`
-	EntryPoint      string     `json:"entryPoint"`
-	Id              string     `json:"id"`
-	IsActive        bool       `json:"isActive"`
-	Issuer          string     `json:"issuer"`
-	LastUsed        *time.Time `json:"lastUsed,omitempty"`
-	OrgId           string     `json:"orgId"`
-	Organization    string     `json:"organization"`
+	AuthProvider       string     `json:"authProvider"`
+	Cert               string     `json:"cert"`
+	EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
+	EntryPoint         string     `json:"entryPoint"`
+	Id                 string     `json:"id"`
+	IsActive           bool       `json:"isActive"`
+	Issuer             string     `json:"issuer"`
+	LastUsed           *time.Time `json:"lastUsed,omitempty"`
+	MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
+	MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
+	OrgId              string     `json:"orgId"`
+	Organization       string     `json:"organization"`
 } {
 	return r.JSON200
 }
@@ -311062,13 +311128,15 @@ type UpdateSamlConfigResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		AuthProvider string             `json:"authProvider"`
-		CreatedAt    time.Time          `json:"createdAt"`
-		Id           openapi_types.UUID `json:"id"`
-		IsActive     bool               `json:"isActive"`
-		LastUsed     *time.Time         `json:"lastUsed,omitempty"`
-		OrgId        openapi_types.UUID `json:"orgId"`
-		UpdatedAt    time.Time          `json:"updatedAt"`
+		AuthProvider       string             `json:"authProvider"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Id                 openapi_types.UUID `json:"id"`
+		IsActive           bool               `json:"isActive"`
+		LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+		MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+		MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -311118,13 +311186,15 @@ type UpdateSamlConfigResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateSamlConfigResponse) GetJSON200() *struct {
-	AuthProvider string             `json:"authProvider"`
-	CreatedAt    time.Time          `json:"createdAt"`
-	Id           openapi_types.UUID `json:"id"`
-	IsActive     bool               `json:"isActive"`
-	LastUsed     *time.Time         `json:"lastUsed,omitempty"`
-	OrgId        openapi_types.UUID `json:"orgId"`
-	UpdatedAt    time.Time          `json:"updatedAt"`
+	AuthProvider       string             `json:"authProvider"`
+	CreatedAt          time.Time          `json:"createdAt"`
+	Id                 openapi_types.UUID `json:"id"`
+	IsActive           bool               `json:"isActive"`
+	LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+	MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+	MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+	OrgId              openapi_types.UUID `json:"orgId"`
+	UpdatedAt          time.Time          `json:"updatedAt"`
 } {
 	return r.JSON200
 }
@@ -311225,13 +311295,15 @@ type CreateSamlConfigResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		AuthProvider string             `json:"authProvider"`
-		CreatedAt    time.Time          `json:"createdAt"`
-		Id           openapi_types.UUID `json:"id"`
-		IsActive     bool               `json:"isActive"`
-		LastUsed     *time.Time         `json:"lastUsed,omitempty"`
-		OrgId        openapi_types.UUID `json:"orgId"`
-		UpdatedAt    time.Time          `json:"updatedAt"`
+		AuthProvider       string             `json:"authProvider"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Id                 openapi_types.UUID `json:"id"`
+		IsActive           bool               `json:"isActive"`
+		LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+		MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+		MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -311281,13 +311353,15 @@ type CreateSamlConfigResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateSamlConfigResponse) GetJSON200() *struct {
-	AuthProvider string             `json:"authProvider"`
-	CreatedAt    time.Time          `json:"createdAt"`
-	Id           openapi_types.UUID `json:"id"`
-	IsActive     bool               `json:"isActive"`
-	LastUsed     *time.Time         `json:"lastUsed,omitempty"`
-	OrgId        openapi_types.UUID `json:"orgId"`
-	UpdatedAt    time.Time          `json:"updatedAt"`
+	AuthProvider       string             `json:"authProvider"`
+	CreatedAt          time.Time          `json:"createdAt"`
+	Id                 openapi_types.UUID `json:"id"`
+	IsActive           bool               `json:"isActive"`
+	LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+	MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+	MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+	OrgId              openapi_types.UUID `json:"orgId"`
+	UpdatedAt          time.Time          `json:"updatedAt"`
 } {
 	return r.JSON200
 }
@@ -311536,6 +311610,8 @@ type GetOidcConfigResponse struct {
 		JwksUri                *string            `json:"jwksUri,omitempty"`
 		JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 		ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+		MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+		MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
 		OrgId                  openapi_types.UUID `json:"orgId"`
 		TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
 		UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
@@ -311600,6 +311676,8 @@ func (r GetOidcConfigResponse) GetJSON200() *struct {
 	JwksUri                *string            `json:"jwksUri,omitempty"`
 	JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 	ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+	MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+	MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
 	OrgId                  openapi_types.UUID `json:"orgId"`
 	TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
 	UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
@@ -311712,6 +311790,8 @@ type UpdateOidcConfigResponse struct {
 		Issuer                 *string            `json:"issuer,omitempty"`
 		JwksUri                *string            `json:"jwksUri,omitempty"`
 		ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+		MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+		MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
 		OrgId                  openapi_types.UUID `json:"orgId"`
 		TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
 		UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
@@ -311773,6 +311853,8 @@ func (r UpdateOidcConfigResponse) GetJSON200() *struct {
 	Issuer                 *string            `json:"issuer,omitempty"`
 	JwksUri                *string            `json:"jwksUri,omitempty"`
 	ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+	MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+	MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
 	OrgId                  openapi_types.UUID `json:"orgId"`
 	TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
 	UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
@@ -311886,6 +311968,8 @@ type CreateOidcConfigResponse struct {
 		JwksUri                *string            `json:"jwksUri,omitempty"`
 		JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 		ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+		MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+		MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
 		OrgId                  openapi_types.UUID `json:"orgId"`
 		TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
 		UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
@@ -311948,6 +312032,8 @@ func (r CreateOidcConfigResponse) GetJSON200() *struct {
 	JwksUri                *string            `json:"jwksUri,omitempty"`
 	JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 	ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+	MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+	MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
 	OrgId                  openapi_types.UUID `json:"orgId"`
 	TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
 	UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
@@ -322569,6 +322655,7 @@ type CreateOrganizationResponse struct {
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
+			SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 			UpdatedAt                             time.Time           `json:"updatedAt"`
 			UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 		} `json:"organization"`
@@ -322652,6 +322739,7 @@ func (r CreateOrganizationResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
+		SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 		UpdatedAt                             time.Time           `json:"updatedAt"`
 		UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 	} `json:"organization"`
@@ -322786,6 +322874,7 @@ type UpgradePrivilegeSystemResponse struct {
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
+			SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 			UpdatedAt                             time.Time           `json:"updatedAt"`
 			UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 		} `json:"organization"`
@@ -322869,6 +322958,7 @@ func (r UpgradePrivilegeSystemResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
+		SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 		UpdatedAt                             time.Time           `json:"updatedAt"`
 		UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 	} `json:"organization"`
@@ -323203,6 +323293,7 @@ type DeleteOrganizationResponse struct {
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
+			SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 			UpdatedAt                             time.Time           `json:"updatedAt"`
 			UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 		} `json:"organization"`
@@ -323287,6 +323378,7 @@ func (r DeleteOrganizationResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
+		SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 		UpdatedAt                             time.Time           `json:"updatedAt"`
 		UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 	} `json:"organization"`
@@ -336684,6 +336776,7 @@ type ListUserOrganizationsResponse struct {
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
+			SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 			UpdatedAt                             time.Time           `json:"updatedAt"`
 			UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 		} `json:"organizations"`
@@ -336767,6 +336860,7 @@ func (r ListUserOrganizationsResponse) GetJSON200() *struct {
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
+		SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 		UpdatedAt                             time.Time           `json:"updatedAt"`
 		UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 	} `json:"organizations"`
@@ -358514,6 +358608,7 @@ func ParseListAdminOrganizationsResponse(rsp *http.Response) (*ListAdminOrganiza
 				ShareSecretsProductEnabled  *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                        string              `json:"slug"`
+				SsoMfaTrust                 *string             `json:"ssoMfaTrust,omitempty"`
 				UpdatedAt                   time.Time           `json:"updatedAt"`
 				UserTokenExpiration         *string             `json:"userTokenExpiration,omitempty"`
 			} `json:"organizations"`
@@ -358655,6 +358750,7 @@ func ParseCreateAdminOrganizationResponse(rsp *http.Response) (*CreateAdminOrgan
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
+				SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 				UpdatedAt                             time.Time           `json:"updatedAt"`
 				UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 			} `json:"organization"`
@@ -358795,6 +358891,7 @@ func ParseDeleteAdminOrganizationResponse(rsp *http.Response) (*DeleteAdminOrgan
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
+				SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 				UpdatedAt                             time.Time           `json:"updatedAt"`
 				UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 			} `json:"organization"`
@@ -359288,6 +359385,7 @@ func ParseAdminSignUpResponse(rsp *http.Response) (*AdminSignUpResponse, error) 
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
+				SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 				UpdatedAt                             time.Time           `json:"updatedAt"`
 				UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 			} `json:"organization"`
@@ -387489,6 +387587,7 @@ func ParseListOrganizationsResponse(rsp *http.Response) (*ListOrganizationsRespo
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
+				SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 				UpdatedAt                             time.Time           `json:"updatedAt"`
 				UserJoinedAt                          time.Time           `json:"userJoinedAt"`
 				UserRole                              string              `json:"userRole"`
@@ -387862,6 +387961,7 @@ func ParseListAccessibleOrganizationsWithSubOrgsResponse(rsp *http.Response) (*L
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
+				SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 				SubOrganizations                      []struct {
 					Id           openapi_types.UUID `json:"id"`
 					Name         string             `json:"name"`
@@ -391048,6 +391148,7 @@ func ParseGetOrganizationByIdResponse(rsp *http.Response) (*GetOrganizationByIdR
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
+				SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 				UpdatedAt                             time.Time           `json:"updatedAt"`
 				UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 			} `json:"organization"`
@@ -391184,6 +391285,7 @@ func ParseUpdateOrganizationResponse(rsp *http.Response) (*UpdateOrganizationRes
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
+				SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 				UpdatedAt                             time.Time           `json:"updatedAt"`
 				UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 			} `json:"organization"`
@@ -417044,16 +417146,18 @@ func ParseGetSamlConfigResponse(rsp *http.Response) (*GetSamlConfigResponse, err
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			AuthProvider    string     `json:"authProvider"`
-			Cert            string     `json:"cert"`
-			EnableGroupSync *bool      `json:"enableGroupSync,omitempty"`
-			EntryPoint      string     `json:"entryPoint"`
-			Id              string     `json:"id"`
-			IsActive        bool       `json:"isActive"`
-			Issuer          string     `json:"issuer"`
-			LastUsed        *time.Time `json:"lastUsed,omitempty"`
-			OrgId           string     `json:"orgId"`
-			Organization    string     `json:"organization"`
+			AuthProvider       string     `json:"authProvider"`
+			Cert               string     `json:"cert"`
+			EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
+			EntryPoint         string     `json:"entryPoint"`
+			Id                 string     `json:"id"`
+			IsActive           bool       `json:"isActive"`
+			Issuer             string     `json:"issuer"`
+			LastUsed           *time.Time `json:"lastUsed,omitempty"`
+			MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
+			MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
+			OrgId              string     `json:"orgId"`
+			Organization       string     `json:"organization"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -417155,13 +417259,15 @@ func ParseUpdateSamlConfigResponse(rsp *http.Response) (*UpdateSamlConfigRespons
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			AuthProvider string             `json:"authProvider"`
-			CreatedAt    time.Time          `json:"createdAt"`
-			Id           openapi_types.UUID `json:"id"`
-			IsActive     bool               `json:"isActive"`
-			LastUsed     *time.Time         `json:"lastUsed,omitempty"`
-			OrgId        openapi_types.UUID `json:"orgId"`
-			UpdatedAt    time.Time          `json:"updatedAt"`
+			AuthProvider       string             `json:"authProvider"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Id                 openapi_types.UUID `json:"id"`
+			IsActive           bool               `json:"isActive"`
+			LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+			MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+			MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -417263,13 +417369,15 @@ func ParseCreateSamlConfigResponse(rsp *http.Response) (*CreateSamlConfigRespons
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			AuthProvider string             `json:"authProvider"`
-			CreatedAt    time.Time          `json:"createdAt"`
-			Id           openapi_types.UUID `json:"id"`
-			IsActive     bool               `json:"isActive"`
-			LastUsed     *time.Time         `json:"lastUsed,omitempty"`
-			OrgId        openapi_types.UUID `json:"orgId"`
-			UpdatedAt    time.Time          `json:"updatedAt"`
+			AuthProvider       string             `json:"authProvider"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Id                 openapi_types.UUID `json:"id"`
+			IsActive           bool               `json:"isActive"`
+			LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+			MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+			MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -417447,6 +417555,8 @@ func ParseGetOidcConfigResponse(rsp *http.Response) (*GetOidcConfigResponse, err
 			JwksUri                *string            `json:"jwksUri,omitempty"`
 			JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 			ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+			MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+			MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
 			OrgId                  openapi_types.UUID `json:"orgId"`
 			TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
 			UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
@@ -417560,6 +417670,8 @@ func ParseUpdateOidcConfigResponse(rsp *http.Response) (*UpdateOidcConfigRespons
 			Issuer                 *string            `json:"issuer,omitempty"`
 			JwksUri                *string            `json:"jwksUri,omitempty"`
 			ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+			MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+			MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
 			OrgId                  openapi_types.UUID `json:"orgId"`
 			TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
 			UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
@@ -417674,6 +417786,8 @@ func ParseCreateOidcConfigResponse(rsp *http.Response) (*CreateOidcConfigRespons
 			JwksUri                *string            `json:"jwksUri,omitempty"`
 			JwtSignatureAlgorithm  *string            `json:"jwtSignatureAlgorithm,omitempty"`
 			ManageGroupMemberships *bool              `json:"manageGroupMemberships,omitempty"`
+			MfaAmrValues           *[]string          `json:"mfaAmrValues,omitempty"`
+			MfaClaimName           *string            `json:"mfaClaimName,omitempty"`
 			OrgId                  openapi_types.UUID `json:"orgId"`
 			TokenEndpoint          *string            `json:"tokenEndpoint,omitempty"`
 			UserinfoEndpoint       *string            `json:"userinfoEndpoint,omitempty"`
@@ -424605,6 +424719,7 @@ func ParseCreateOrganizationResponse(rsp *http.Response) (*CreateOrganizationRes
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
+				SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 				UpdatedAt                             time.Time           `json:"updatedAt"`
 				UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 			} `json:"organization"`
@@ -424740,6 +424855,7 @@ func ParseUpgradePrivilegeSystemResponse(rsp *http.Response) (*UpgradePrivilegeS
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
+				SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 				UpdatedAt                             time.Time           `json:"updatedAt"`
 				UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 			} `json:"organization"`
@@ -425002,6 +425118,7 @@ func ParseDeleteOrganizationResponse(rsp *http.Response) (*DeleteOrganizationRes
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
+				SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 				UpdatedAt                             time.Time           `json:"updatedAt"`
 				UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 			} `json:"organization"`
@@ -433489,6 +433606,7 @@ func ParseListUserOrganizationsResponse(rsp *http.Response) (*ListUserOrganizati
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
+				SsoMfaTrust                           *string             `json:"ssoMfaTrust,omitempty"`
 				UpdatedAt                             time.Time           `json:"updatedAt"`
 				UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
 			} `json:"organizations"`
