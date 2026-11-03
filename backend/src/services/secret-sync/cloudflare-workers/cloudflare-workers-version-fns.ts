@@ -1,5 +1,4 @@
 import { isAxiosError } from "axios";
-import pLimit from "p-limit";
 
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { request } from "@app/lib/config/request";
@@ -7,17 +6,23 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { TSyncSecretsResult } from "@app/services/secret-sync/secret-sync-types";
+import { TSecretMap, TSyncSecretsResult } from "@app/services/secret-sync/secret-sync-types";
 
+import { planSyncBindings, TWrittenBinding } from "./cloudflare-workers-binding-fns";
 import { getCloudflareErrors, validateCloudflareResponse } from "./cloudflare-workers-errors";
 import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-types";
 
-// A fallback moves the Worker's whole bundle each way (up to ~85 MB of base64), so only a few run at once.
-const fallbackLimit = pLimit(2);
-const VERSION_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
+// A fallback moves the Worker's whole bundle each way (up to ~85 MB of base64), so only a few run at once. A job
+// that finds them all busy is retried instead of waiting, since waiting counts against its lock.
+const MAX_CONCURRENT_FALLBACKS = 2;
+let activeFallbacks = 0;
+// The three requests together stay well inside the sync job's 5-minute lock, so a second job for the same sync can't
+// start while one is still uploading.
+const VERSION_REQUEST_TIMEOUT_MS = 60 * 1000;
 const MAX_VERSION_PAYLOAD_BYTES = 128 * 1024 * 1024;
-// Outlives the three version requests made under the lock (read, upload, read back) at their longest.
-const WORKER_LOCK_DURATION_MS = 3 * VERSION_REQUEST_TIMEOUT_MS + 60 * 1000;
+// Outlives the version requests made under the lock at their longest: read, upload and read back, then the same three
+// again to restore the base and a delete if Cloudflare stored something other than what was uploaded.
+const WORKER_LOCK_DURATION_MS = 7 * VERSION_REQUEST_TIMEOUT_MS + 60 * 1000;
 
 // Read as the reason in $fail's message, for the errors a copied version can run into.
 const CLOUDFLARE_ERROR_REASONS: Record<number, string> = {
@@ -40,15 +45,8 @@ type TWorkerVersion = {
   bindings?: TVersionBinding[];
 } & Record<string, unknown>;
 
-export type TWrittenBinding = {
-  type: string;
-  name: string;
-  text?: string;
-  json?: unknown;
-};
-
-// Every base binding that is neither written nor dropped is inherited from the base version unchanged.
-export type TBindingPlan = { written: TWrittenBinding[]; dropped: string[] };
+// The sync whose secrets a new version applies. Without one, the new version is an unchanged copy of its base.
+type TSecretChanges = { secretSync: TCloudflareWorkersSyncWithCredentials; secretMap: TSecretMap };
 
 type TFallbackContext = {
   syncId: string;
@@ -106,7 +104,7 @@ const $throwRequestError = (scriptId: string, err: unknown, { canRetry }: { canR
   throw $fail(
     scriptId,
     isTimeout
-      ? `the request to Cloudflare took longer than ${VERSION_REQUEST_TIMEOUT_MS / 60000} minutes`
+      ? `the request to Cloudflare took longer than ${VERSION_REQUEST_TIMEOUT_MS / 1000} seconds`
       : "Infisical couldn't reach Cloudflare",
     "Sync again.",
     // A retried upload can't be told apart from a new one, so only reads are retried.
@@ -127,7 +125,13 @@ const $hashModule = ({ content_type: contentType, content_base64: contentBase64 
 const $hashModules = (modules: TVersionModule[]) =>
   new Map(modules.map((module) => [module.name, $hashModule(module)]));
 
-const $getVersion = async ({ scriptId, accountUrl, headers }: TFallbackContext, versionRef: string) => {
+// A read that follows an upload isn't retried: the job's retry would upload another version on top of the one
+// that was never checked.
+const $getVersion = async (
+  { scriptId, accountUrl, headers }: TFallbackContext,
+  versionRef: string,
+  { canRetry = true }: { canRetry?: boolean } = {}
+) => {
   try {
     const { data } = await request.get<{ result: TWorkerVersion }>(
       `${accountUrl}/workers/workers/${scriptId}/versions/${versionRef}`,
@@ -140,7 +144,7 @@ const $getVersion = async ({ scriptId, accountUrl, headers }: TFallbackContext, 
     );
     return data.result;
   } catch (err) {
-    return $throwRequestError(scriptId, err, { canRetry: true });
+    return $throwRequestError(scriptId, err, { canRetry });
   }
 };
 
@@ -168,7 +172,8 @@ const $validateBaseVersion = (scriptId: string, base: TWorkerVersion) => {
 const $createVersion = async (
   ctx: TFallbackContext,
   baseVersionRef: string,
-  planBindings: (baseBindings: TVersionBinding[]) => TBindingPlan
+  changes: TSecretChanges | undefined,
+  { message }: { message: (baseVersionId: string) => string }
 ) => {
   const base = await $getVersion(ctx, baseVersionRef);
   $validateBaseVersion(ctx.scriptId, base);
@@ -177,9 +182,11 @@ const $createVersion = async (
   // returns the bindings as both `env` and `bindings`, and Cloudflare rejects an upload with both (10021).
   const { id: baseVersionId, env: omittedEnv, ...config } = base;
   const baseBindings = base.bindings as TVersionBinding[];
-  const plan = planBindings(baseBindings);
+  const plan = changes
+    ? planSyncBindings(changes.secretSync, changes.secretMap, baseBindings)
+    : { written: [], dropped: [] };
 
-  if (!plan.written.length && !plan.dropped.length) return null;
+  if (changes && !plan.written.length && !plan.dropped.length) return null;
 
   const writtenByName = new Map(plan.written.map((binding) => [binding.name, binding]));
   const dropped = new Set(plan.dropped);
@@ -231,7 +238,7 @@ const $createVersion = async (
         bindings,
         annotations: {
           "workers/tag": "infisical-sync",
-          "workers/message": `Infisical secret sync (fallback, base ${baseVersionId})`
+          "workers/message": message(baseVersionId)
         }
       },
       {
@@ -268,8 +275,9 @@ const $createVersion = async (
   };
 };
 
-const $verifyVersion = async (ctx: TFallbackContext, newVersionId: string, expected: TExpectedVersion) => {
-  const created = await $getVersion(ctx, newVersionId);
+// Compares the version Cloudflare stored with what was uploaded: binding names and types, and every module's code.
+const $findDifferences = async (ctx: TFallbackContext, newVersionId: string, expected: TExpectedVersion) => {
+  const created = await $getVersion(ctx, newVersionId, { canRetry: false });
   const differences: string[] = [];
 
   const actualBindings = (created.bindings ?? []).map($bindingLabel);
@@ -285,82 +293,175 @@ const $verifyVersion = async (ctx: TFallbackContext, newVersionId: string, expec
   );
   if (changedModules.length) differences.push(`different modules ${changedModules.join(", ")}`);
 
+  return differences;
+};
+
+const $uploadCheckedVersion = async (
+  ctx: TFallbackContext,
+  baseVersionRef: string,
+  changes: TSecretChanges | undefined,
+  options: Parameters<typeof $createVersion>[3]
+) => {
+  const created = await $createVersion(ctx, baseVersionRef, changes, options);
+  if (!created) return null;
+
+  const differences = await $findDifferences(ctx, created.newVersionId, created.expected);
   if (differences.length) {
     logger.error(
-      `SecretSync Cloudflare Workers fallback version mismatch [syncId=${ctx.syncId}] [scriptId=${ctx.scriptId}] [baseVersionId=${expected.baseVersionId}] [newVersionId=${newVersionId}] [differences=${differences.join("; ")}]`
+      `SecretSync Cloudflare Workers fallback version mismatch [syncId=${ctx.syncId}] [scriptId=${ctx.scriptId}] [baseVersionId=${created.expected.baseVersionId}] [newVersionId=${created.newVersionId}] [differences=${differences.join("; ")}]`
     );
+  }
+
+  return { ...created, differences };
+};
+
+const $deleteVersion = async ({ scriptId, accountUrl, headers }: TFallbackContext, versionId: string) => {
+  try {
+    const { data } = await request.delete<{ success?: boolean }>(
+      `${accountUrl}/workers/workers/${scriptId}/versions/${versionId}`,
+      { headers }
+    );
+    validateCloudflareResponse(data);
+  } catch (err) {
+    if (err instanceof SecretSyncError) throw err;
+    $throwRequestError(scriptId, err, { canRetry: false });
+  }
+};
+
+// A rejected version is the latest, so the next sync would build on it, and Cloudflare refuses to delete the latest
+// version. An unchanged copy of the base takes its place first, after which the rejected version can be deleted.
+// Returns whether the rejected version was deleted.
+const $replaceRejectedVersion = async (ctx: TFallbackContext, rejectedVersionId: string, baseVersionId: string) => {
+  const restored = await $uploadCheckedVersion(ctx, baseVersionId, undefined, {
+    message: () => `Infisical secret sync (restores ${baseVersionId} in place of rejected ${rejectedVersionId})`
+  });
+
+  if (restored?.differences.length) {
     throw $fail(
       ctx.scriptId,
-      `the version it created (${newVersionId}, tagged infisical-sync) doesn't match version ${expected.baseVersionId}: ${differences.join("; ")}`,
-      "Don't deploy it. Sync again, and contact support if this keeps happening."
+      `Cloudflare stored versions ${rejectedVersionId} and ${restored.newVersionId} differently from what Infisical uploaded (${restored.differences.join("; ")})`,
+      "Don't deploy either version, and contact support."
     );
+  }
+
+  try {
+    await $deleteVersion(ctx, rejectedVersionId);
+    return true;
+  } catch (err) {
+    logger.warn(
+      err,
+      `SecretSync Cloudflare Workers failed to delete rejected version [syncId=${ctx.syncId}] [scriptId=${ctx.scriptId}] [versionId=${rejectedVersionId}]`
+    );
+    return false;
   }
 };
 
 // The secrets and settings endpoints refuse to write while the latest version is not the deployed one. This builds
 // a new version from the latest one's code and bindings with the secrets changed, uploads it without deploying it,
 // and checks it. Deploying it is left to the user, because it also ships the pending changes it was built on.
-export const applyBindingsWithVersionFallback = (
+const $applySecretsWithVersionFallback = async (
   secretSync: TCloudflareWorkersSyncWithCredentials,
-  keyStore: Pick<TKeyStoreFactory, "acquireLock">,
-  planBindings: (baseBindings: TVersionBinding[]) => TBindingPlan
-) =>
-  fallbackLimit(async (): Promise<TSyncSecretsResult | undefined> => {
-    const {
-      id: syncId,
-      connection: {
-        credentials: { apiToken, accountId }
-      },
-      destinationConfig: { scriptId }
-    } = secretSync;
+  secretMap: TSecretMap,
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">
+): Promise<TSyncSecretsResult | undefined> => {
+  const {
+    id: syncId,
+    connection: {
+      credentials: { apiToken, accountId }
+    },
+    destinationConfig: { scriptId }
+  } = secretSync;
 
-    const ctx: TFallbackContext = {
-      syncId,
-      scriptId,
-      accountUrl: `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}`,
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        Accept: "application/json"
-      }
-    };
+  const ctx: TFallbackContext = {
+    syncId,
+    scriptId,
+    accountUrl: `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}`,
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      Accept: "application/json"
+    }
+  };
 
-    logger.info(
-      `SecretSync Cloudflare Workers latest version not deployed, using fallback [syncId=${syncId}] [scriptId=${scriptId}]`
+  logger.info(
+    `SecretSync Cloudflare Workers latest version not deployed, using fallback [syncId=${syncId}] [scriptId=${scriptId}]`
+  );
+
+  // Each sync builds on the latest version, so two syncs to one Worker reading it at once would each upload a
+  // copy missing the other's changes. The lock is per Worker because syncs only lock themselves.
+  let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
+  try {
+    lock = await keyStore.acquireLock(
+      [KeyStorePrefixes.CloudflareWorkerVersionLock(accountId, scriptId)],
+      WORKER_LOCK_DURATION_MS
     );
+  } catch {
+    throw $fail(
+      scriptId,
+      "another sync was adding secrets to a new version of the same Worker",
+      "Infisical retries the sync automatically. If it keeps failing, sync again later.",
+      { shouldRetry: true }
+    );
+  }
 
-    // Each sync builds on the latest version, so two syncs to one Worker reading it at once would each upload a
-    // copy missing the other's changes. The lock is per Worker because syncs only lock themselves.
-    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
-    try {
-      lock = await keyStore.acquireLock(
-        [KeyStorePrefixes.CloudflareWorkerVersionLock(accountId, scriptId)],
-        WORKER_LOCK_DURATION_MS
-      );
-    } catch {
+  try {
+    const created = await $uploadCheckedVersion(
+      ctx,
+      "latest",
+      { secretSync, secretMap },
+      {
+        message: (baseVersionId) => `Infisical secret sync (fallback, base ${baseVersionId})`
+      }
+    );
+    if (!created) return undefined;
+
+    if (created.differences.length) {
+      const {
+        newVersionId,
+        expected: { baseVersionId }
+      } = created;
+      const deleted = await $replaceRejectedVersion(ctx, newVersionId, baseVersionId);
       throw $fail(
         scriptId,
-        "another sync was adding secrets to a new version of the same Worker",
-        "Infisical retries the sync automatically. If it keeps failing, sync again later.",
-        { shouldRetry: true }
+        `Cloudflare stored the new version differently from what Infisical uploaded (${created.differences.join("; ")})`,
+        deleted
+          ? `Infisical deleted that version and made an unchanged copy of version ${baseVersionId} the latest. Sync again, and contact support if this keeps happening.`
+          : `Infisical made an unchanged copy of version ${baseVersionId} the latest, but couldn't delete the rejected version ${newVersionId}. Don't deploy it. Sync again, and contact support if this keeps happening.`
       );
     }
 
-    try {
-      const created = await $createVersion(ctx, "latest", planBindings);
-      if (!created) return undefined;
+    return {
+      ...created.result,
+      message: `Worker has undeployed changes; created version ${created.newVersionId} with updated secrets. Deploy it for the secrets to take effect.`
+    };
+  } finally {
+    // A release that fails (the lock already expired) mustn't turn a finished sync into a failed one.
+    await lock.release().catch((err: unknown) => {
+      logger.warn(
+        err,
+        `SecretSync Cloudflare Workers failed to release Worker lock [syncId=${syncId}] [scriptId=${scriptId}]`
+      );
+    });
+  }
+};
 
-      await $verifyVersion(ctx, created.newVersionId, created.expected);
-      return {
-        ...created.result,
-        message: `Worker has undeployed changes; created version ${created.newVersionId} with updated secrets. Deploy it for the secrets to take effect.`
-      };
-    } finally {
-      // A release that fails (the lock already expired) mustn't turn a finished sync into a failed one.
-      await lock.release().catch((err: unknown) => {
-        logger.warn(
-          err,
-          `SecretSync Cloudflare Workers failed to release Worker lock [syncId=${syncId}] [scriptId=${scriptId}]`
-        );
-      });
-    }
-  });
+export const applySecretsWithVersionFallback = async (
+  secretSync: TCloudflareWorkersSyncWithCredentials,
+  secretMap: TSecretMap,
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">
+) => {
+  if (activeFallbacks >= MAX_CONCURRENT_FALLBACKS) {
+    throw $fail(
+      secretSync.destinationConfig.scriptId,
+      "Infisical was already building as many Worker versions as it builds at once",
+      "Infisical retries the sync automatically. If it keeps failing, sync again later.",
+      { shouldRetry: true }
+    );
+  }
+
+  activeFallbacks += 1;
+  try {
+    return await $applySecretsWithVersionFallback(secretSync, secretMap, keyStore);
+  } finally {
+    activeFallbacks -= 1;
+  }
+};

@@ -12,10 +12,10 @@ import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-type
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 
-const { get, patch, post } = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn(), post: vi.fn() }));
+const { get, patch, post, del } = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn(), post: vi.fn(), del: vi.fn() }));
 vi.mock("@app/lib/config/request", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  request: { get, patch, post }
+  request: { get, patch, post, delete: del }
 }));
 
 type TBinding = { type: string; name: string; text?: string; version_id?: string } & Record<string, unknown>;
@@ -49,8 +49,10 @@ const pendingVersion = (extra: Record<string, unknown> = {}): TVersion => ({
   ...extra
 });
 
+// The latest version. Tests set it before installing the fake, which then keeps it pointing at the newest upload.
 let base: TVersion;
-let created: Map<string, TVersion>;
+let versions: Map<string, TVersion>;
+let uploads: number;
 let uploadGate: Promise<void> | undefined;
 // Lets a test make Cloudflare store something other than what was uploaded.
 let alterStoredVersion: ((version: TVersion) => TVersion) | undefined;
@@ -58,12 +60,17 @@ let alterStoredVersion: ((version: TVersion) => TVersion) | undefined;
 // The secrets endpoint refuses because v21 isn't deployed. Version reads and creates behave like Cloudflare's,
 // including the two rejections seen against the live API.
 const installFakeCloudflare = (secretsEndpointRefuses = true) => {
+  versions = new Map([[base.id, base]]);
+  uploads = 0;
+
   get.mockImplementation(async (url: string) => {
     if (url.endsWith("/secrets")) {
       return { data: { result: base.bindings.filter(({ type }) => type === "secret_text") } };
     }
     if (url.endsWith("/settings")) return { data: { result: { bindings: base.bindings } } };
-    const version = created.get(url.split("/versions/")[1]) ?? base;
+    const ref = url.split("/versions/")[1];
+    const version = ref === "latest" ? base : versions.get(ref);
+    if (!version) throw cloudflareError(10007);
     return { data: { success: true, result: structuredClone(version) } };
   });
 
@@ -77,17 +84,28 @@ const installFakeCloudflare = (secretsEndpointRefuses = true) => {
     if (body.bindings.some(({ type }) => type === "assets") && !body.assets) throw cloudflareError(10305);
 
     const bindings = body.bindings.map((binding) =>
-      binding.type === "inherit" ? base.bindings.find(({ name }) => name === binding.name)! : binding
+      binding.type === "inherit"
+        ? versions.get(binding.version_id!)!.bindings.find(({ name }) => name === binding.name)!
+        : binding
     );
     // Holds only the upload that is in flight when the gate is set.
     const gate = uploadGate;
     uploadGate = undefined;
     await gate;
-    const uploaded = { ...body, id: `new-${created.size + 1}`, bindings };
+    uploads += 1;
+    const uploaded = { ...body, id: `new-${uploads}`, bindings };
     const version = alterStoredVersion ? alterStoredVersion(uploaded) : uploaded;
-    created.set(version.id, version);
+    versions.set(version.id, version);
     base = version;
     return { data: { success: true, result: { id: version.id } } };
+  });
+
+  // Checked against the live API: neither the latest nor a deployed version can be deleted.
+  del.mockImplementation(async (url: string) => {
+    const id = url.split("/versions/")[1];
+    if (id === base.id) throw cloudflareError(10339);
+    versions.delete(id);
+    return { data: { success: true } };
   });
 };
 
@@ -133,7 +151,6 @@ describe("Cloudflare Workers version fallback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     base = pendingVersion();
-    created = new Map();
     uploadGate = undefined;
     alterStoredVersion = undefined;
     heldLocks.clear();
@@ -203,7 +220,7 @@ describe("Cloudflare Workers version fallback", () => {
     const error = (await sync({ API_KEY: "new" }).catch((err: unknown) => err)) as SecretSyncError;
 
     expect(error).toBeInstanceOf(SecretSyncError);
-    expect(error.message).toContain("took longer than 5 minutes");
+    expect(error.message).toContain("took longer than 60 seconds");
     expect(error.shouldRetry).toBe(false);
   });
 
@@ -245,19 +262,69 @@ describe("Cloudflare Workers version fallback", () => {
     expect(heldLocks.size).toBe(0);
   });
 
-  it("fails, without exposing secret values, when the stored version doesn't match the upload", async () => {
-    installFakeCloudflare();
-    alterStoredVersion = (version) => ({
+  describe("when Cloudflare stores a version different from the upload", () => {
+    const tamper = (version: TVersion): TVersion => ({
       ...version,
       bindings: version.bindings.filter(({ name }) => name !== "CACHE"),
       modules: [{ name: "index.js", content_type: "application/javascript+module", content_base64: "Y2hhbmdlZA==" }]
     });
+    const tamperFirstUpload = () => {
+      alterStoredVersion = (version) => {
+        alterStoredVersion = undefined;
+        return tamper(version);
+      };
+    };
 
-    const error = (await sync({ API_KEY: "s3cr3t-value" }).catch((err: unknown) => err)) as Error;
+    it("replaces it with an unchanged copy of the base and deletes it", async () => {
+      installFakeCloudflare();
+      tamperFirstUpload();
+
+      const error = (await sync({ API_KEY: "s3cr3t-value" }).catch((err: unknown) => err)) as Error;
+
+      expect(error).toBeInstanceOf(SecretSyncError);
+      expect(error.message).toContain("CACHE");
+      expect(error.message).toContain("index.js");
+      expect(error.message).toContain("deleted that version");
+      expect(error.message).not.toContain("s3cr3t-value");
+
+      const [, [, restore]] = versionCreates();
+      expect(restore.modules).toEqual(pendingVersion().modules);
+      expect(
+        restore.bindings.every(({ type, version_id: versionId }) => type === "inherit" && versionId === "v21")
+      ).toBe(true);
+      expect(versions.has("new-1")).toBe(false);
+      expect(base.id).toBe("new-2");
+    });
+
+    it("tells the user not to deploy either version when the restored copy is also different", async () => {
+      installFakeCloudflare();
+      alterStoredVersion = tamper;
+
+      await expect(sync({ API_KEY: "new" })).rejects.toThrow("Don't deploy either version");
+      expect(del).not.toHaveBeenCalled();
+    });
+
+    it("tells the user not to deploy the rejected version when it can't be deleted", async () => {
+      installFakeCloudflare();
+      tamperFirstUpload();
+      del.mockRejectedValueOnce(new AxiosError("socket hang up", "ECONNRESET"));
+
+      await expect(sync({ API_KEY: "new" })).rejects.toThrow("couldn't delete the rejected version new-1");
+      expect(base.id).toBe("new-2");
+    });
+  });
+
+  it("doesn't retry the sync when reading back the uploaded version fails", async () => {
+    installFakeCloudflare();
+    const readVersion = get.getMockImplementation() as (url: string) => Promise<unknown>;
+    get.mockImplementation(async (url: string) => {
+      if (url.endsWith("/versions/new-1")) throw new AxiosError("timeout of 60000ms exceeded", "ECONNABORTED");
+      return readVersion(url);
+    });
+
+    const error = (await sync({ API_KEY: "new" }).catch((err: unknown) => err)) as SecretSyncError;
 
     expect(error).toBeInstanceOf(SecretSyncError);
-    expect(error.message).toContain("CACHE");
-    expect(error.message).toContain("index.js");
-    expect(error.message).not.toContain("s3cr3t-value");
+    expect(error.shouldRetry).toBe(false);
   });
 });

@@ -9,6 +9,7 @@ import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payloa
 import { TSecretMap, TSyncSecretsResult } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+import { throwOnNonVariableConflicts, throwOnTypeConflicts } from "./cloudflare-workers-binding-fns";
 import { CloudflareWorkersVariableType } from "./cloudflare-workers-constants";
 import {
   CloudflareWorkersPendingVersionError,
@@ -17,10 +18,9 @@ import {
   validateCloudflareResponse
 } from "./cloudflare-workers-errors";
 import { TCloudflareWorkersSyncWithCredentials } from "./cloudflare-workers-types";
-import { applyBindingsWithVersionFallback, TBindingPlan, TWrittenBinding } from "./cloudflare-workers-version-fns";
+import { applySecretsWithVersionFallback } from "./cloudflare-workers-version-fns";
 
 const CLOUDFLARE_SECRET_TYPE = "secret_text";
-const VARIABLE_BINDING_TYPES = new Set<string>(Object.values(CloudflareWorkersVariableType));
 // Cloudflare rejects secrets-bulk requests carrying more than 100 secrets (error code 100160).
 const CLOUDFLARE_BULK_SECRETS_LIMIT = 100;
 
@@ -99,38 +99,6 @@ const getCloudflareBindings = async (
   return { secrets, nonSecretBindings };
 };
 
-const VARIABLE_TYPE_LABELS: Record<string, string> = {
-  [CloudflareWorkersVariableType.Secret]: "secret",
-  [CloudflareWorkersVariableType.Text]: "text",
-  [CloudflareWorkersVariableType.Json]: "JSON"
-};
-
-// Changing a variable's type can break the Worker, since a JSON variable reaches it as a parsed object, or
-// expose a secret's value in the dashboard. A sync never changes one; it fails before writing anything.
-const $throwOnTypeConflicts = (conflicts: Array<{ name: string; type: string }>, fix: string) => {
-  if (conflicts.length === 0) return;
-
-  throw new SecretSyncError({
-    message: `The following secrets already exist on the Cloudflare Worker as a different type: ${conflicts
-      .map(({ name, type }) => `${name} (${VARIABLE_TYPE_LABELS[type]})`)
-      .join(", ")}. Infisical doesn't change a variable's type, so nothing was synced. ${fix}`,
-    shouldRetry: false
-  });
-};
-
-const $throwOnNonVariableConflicts = (bindings: Array<{ type: string; name: string }>, secretMapKeys: Set<string>) => {
-  const conflictingKeys = bindings
-    .filter((binding) => secretMapKeys.has(binding.name) && !VARIABLE_BINDING_TYPES.has(binding.type))
-    .map((binding) => binding.name);
-
-  if (conflictingKeys.length > 0) {
-    throw new SecretSyncError({
-      message: `The following secrets have the same name as another binding on the Cloudflare Worker, such as a KV namespace or a service: ${conflictingKeys.join(", ")}. Rename the secrets in Infisical, or use a key schema to change their names in Cloudflare.`,
-      shouldRetry: false
-    });
-  }
-};
-
 // A text or JSON sync only owns variables of its type, so syncs of different types can share a Worker.
 const $getManagedBindings = (
   secretSync: TCloudflareWorkersSyncWithCredentials,
@@ -202,9 +170,9 @@ const $syncVariableBindings = async (
 
     const existingBindings = settingsData.result.bindings ?? [];
 
-    $throwOnNonVariableConflicts(existingBindings, secretMapKeys);
+    throwOnNonVariableConflicts(existingBindings, secretMapKeys);
 
-    $throwOnTypeConflicts(
+    throwOnTypeConflicts(
       existingBindings.filter((binding) => secretMapKeys.has(binding.name) && binding.type !== variableType),
       "Delete them in Cloudflare or change the sync's variable type, then sync again."
     );
@@ -226,92 +194,6 @@ const $syncVariableBindings = async (
   } catch (err) {
     throwOnCloudflareRequestError(err);
   }
-};
-
-// The binding types a sync writes and deletes; the same split as $getManagedBindings.
-const $getManagedTypes = (secretSync: TCloudflareWorkersSyncWithCredentials) => {
-  const { variableType = CloudflareWorkersVariableType.Secret } = secretSync.destinationConfig;
-
-  if (variableType !== CloudflareWorkersVariableType.Secret) return new Set<string>([variableType]);
-
-  return secretSync.syncOptions.syncNonSecretBindings
-    ? new Set<string>(VARIABLE_BINDING_TYPES)
-    : new Set<string>([CloudflareWorkersVariableType.Secret]);
-};
-
-const $isManagedBySchema = (secretSync: TCloudflareWorkersSyncWithCredentials, name: string) =>
-  matchesSchema(name, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
-
-// The full set of changes a sync makes, applied to a version's bindings by the version fallback. It follows the
-// in-place sync's rules for each variable type, the toggle, and deletion.
-const $planSyncBindings = (
-  secretSync: TCloudflareWorkersSyncWithCredentials,
-  secretMap: TSecretMap,
-  baseBindings: Array<{ type: string; name: string }>
-): TBindingPlan => {
-  const {
-    destinationConfig: { variableType },
-    syncOptions: { disableSecretDeletion }
-  } = secretSync;
-  const syncType = variableType ?? CloudflareWorkersVariableType.Secret;
-  const managedTypes = $getManagedTypes(secretSync);
-  const secretMapKeys = new Set(Object.keys(secretMap));
-  const baseTypes = new Map(baseBindings.map(({ name, type }) => [name, type]));
-
-  $throwOnNonVariableConflicts(baseBindings, secretMapKeys);
-
-  const typeConflicts = baseBindings.filter(
-    (binding) => secretMapKeys.has(binding.name) && !managedTypes.has(binding.type)
-  );
-
-  // A sync created before the type could be chosen skips same-name variables of another type.
-  if (variableType) {
-    $throwOnTypeConflicts(
-      typeConflicts,
-      syncType === CloudflareWorkersVariableType.Secret
-        ? 'Delete them in Cloudflare, change the sync\'s variable type, or turn on "Sync plaintext and JSON variables" to update them as they are.'
-        : "Delete them in Cloudflare or change the sync's variable type, then sync again."
-    );
-  }
-
-  const written: TWrittenBinding[] = [];
-  const invalidJsonKeys: string[] = [];
-
-  for (const [name, { value }] of Object.entries(secretMap)) {
-    const baseType = baseTypes.get(name);
-    if (baseType === undefined || managedTypes.has(baseType)) {
-      const type = baseType ?? syncType;
-      if (type === CloudflareWorkersVariableType.Json) {
-        try {
-          written.push({ type, name, json: JSON.parse(value) as unknown });
-        } catch {
-          invalidJsonKeys.push(name);
-        }
-      } else {
-        written.push({ type, name, text: value });
-      }
-    }
-  }
-
-  if (invalidJsonKeys.length > 0) {
-    throw new SecretSyncError({
-      message: `The following secrets are not valid JSON, so they cannot be synced as Cloudflare Workers JSON variables: ${invalidJsonKeys.join(", ")}. Fix their values in Infisical or change the sync's variable type.`,
-      shouldRetry: false
-    });
-  }
-
-  const dropped = disableSecretDeletion
-    ? []
-    : baseBindings
-        .filter(
-          (binding) =>
-            managedTypes.has(binding.type) &&
-            !secretMapKeys.has(binding.name) &&
-            $isManagedBySchema(secretSync, binding.name)
-        )
-        .map(({ name }) => name);
-
-  return { written, dropped };
 };
 
 const $inPlace = {
@@ -342,7 +224,7 @@ const $inPlace = {
     // Otherwise the sync fails rather than change their type, except a sync created before the type could be
     // chosen (no variableType), which keeps skipping them as it always has.
     if (!shouldSyncNonSecretBindings && variableType) {
-      $throwOnTypeConflicts(
+      throwOnTypeConflicts(
         cloudflareBindings.nonSecretBindings
           .filter((binding) => secretMapKeys.has(binding.key))
           .map(({ key, type }) => ({ name: key, type })),
@@ -628,10 +510,7 @@ export const CloudflareWorkersSyncFns = {
     } catch (err) {
       if (!(err instanceof CloudflareWorkersPendingVersionError)) throw err;
 
-      const secretMap = payload.flatten();
-      return applyBindingsWithVersionFallback(secretSync, keyStore, (baseBindings) =>
-        $planSyncBindings(secretSync, secretMap, baseBindings)
-      );
+      return applySecretsWithVersionFallback(secretSync, payload.flatten(), keyStore);
     }
   },
 
