@@ -61,7 +61,7 @@ Every sidecar starts its proxy from the same proxy token, so you create the prox
     In Agent Vault, go to **Proxies** and select **Create Proxy**.
   </Step>
   <Step>
-    Enter a **Name**, such as `modal-sandboxes`, and expand **Advanced Options**. Under **Traffic Policy**, choose **Access bundle hosts only**, and add any hosts the agent needs without a credential to **Exceptions**, such as `registry.npmjs.org`.
+    Enter a **Name**, such as `modal-sandboxes`, and expand **Advanced Options**. Under **Traffic Policy**, choose **Service hosts only**, and add any hosts the agent needs without a credential to **Exceptions**, such as `registry.npmjs.org`.
 
     The sidecar can reach the internet, so with **Any host**, the agent could send requests through the proxy to any host. Learn more about the [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
   </Step>
@@ -685,7 +685,7 @@ To check which requests the agent made, [set up session logs](/documentation/pla
 The agent's container can't connect to the internet directly, but it has two kinds of network access:
 
 - **DNS:** Modal answers DNS lookups in a sandbox even with an empty allowlist, so the agent can look up hostnames
-- **Hosts through the proxy:** with **Access bundle hosts only**, the agent can reach the hosts that services in the session's access bundle cover, and the proxy's exceptions
+- **Hosts through the proxy:** with **Service hosts only**, the agent can reach the hosts that services in the session's access bundle cover, and the proxy's exceptions
 
 ### Compromised sandboxes
 

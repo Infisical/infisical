@@ -65,7 +65,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useResetPageHelper } from "@app/hooks";
 import {
-  AgentVaultTrafficPolicy,
+  isServiceHostsPolicy,
   useDeleteAgentVaultProxy,
   useListAgentVaultProxies,
   useRevokeAgentVaultProxyAccess,
@@ -90,12 +90,12 @@ const allowedHostsOf = (proxy: TAgentVaultProxy) =>
     : [];
 
 const TrafficPolicyCell = ({ proxy }: { proxy: TAgentVaultProxy }) => {
-  const isBundleOnly = proxy.trafficPolicy === AgentVaultTrafficPolicy.BundleHosts;
-  const allowedHosts = isBundleOnly ? allowedHostsOf(proxy) : [];
+  const isServiceHostsOnly = isServiceHostsPolicy(proxy.trafficPolicy);
+  const allowedHosts = isServiceHostsOnly ? allowedHostsOf(proxy) : [];
 
   const cell = (
     <span>
-      {isBundleOnly ? "Access bundle hosts only" : "Any host"}
+      {isServiceHostsOnly ? "Service hosts only" : "Any host"}
       {allowedHosts.length > 0 &&
         ` · ${allowedHosts.length} ${allowedHosts.length === 1 ? "exception" : "exceptions"}`}
     </span>
