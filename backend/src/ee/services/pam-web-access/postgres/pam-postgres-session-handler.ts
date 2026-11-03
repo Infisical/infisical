@@ -1,4 +1,7 @@
-import { createDataExplorerSessionHandler, type TDataExplorerDialectConfig } from "../pam-data-explorer-session-handler";
+import {
+  createDataExplorerSessionHandler,
+  type TDataExplorerDialectConfig
+} from "../pam-data-explorer-session-handler";
 import { createPostgresConnectionController } from "./pam-postgres-connection-controller";
 import { fetchSchemasOneShot, fetchTablesOneShot, verifyReachabilityOneShot } from "./pam-postgres-metadata";
 

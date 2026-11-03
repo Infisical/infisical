@@ -88,8 +88,6 @@ describe("splitPostgresStatements", () => {
   test("drops segments that hold only comments", async () => {
     expect(
       await splitPostgresStatements("UPSERT INTO t VALUES (1); -- done\n/* end */", { lexicalFallback: true })
-    ).toEqual([
-      "UPSERT INTO t VALUES (1)"
-    ]);
+    ).toEqual(["UPSERT INTO t VALUES (1)"]);
   });
 });
