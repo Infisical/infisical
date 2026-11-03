@@ -167,6 +167,7 @@ export const KeyStorePrefixes = {
     `project-sse-conn:${projectId}:${connectionId}` as const,
 
   ProjectDeleteLock: (projectId: string) => `project-delete-lock-${projectId}` as const,
+  HoneyTokenCreateLock: (orgId: string) => `honey-token-create-lock-${orgId}` as const,
 
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,

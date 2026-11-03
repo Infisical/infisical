@@ -6,6 +6,7 @@ import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
@@ -63,6 +64,9 @@ const TRIGGER_NOTIFICATION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 const SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
 
+// Covers a whole creation, including the provider calls, so it outlives a slow one.
+const CREATE_LOCK_TTL_MS = 30 * 1000;
+
 const assertSupportedHoneyTokenType = (type: string): HoneyTokenType => {
   if (Object.hasOwn(HONEY_TOKEN_PROVIDER_MAP, type)) {
     return type as HoneyTokenType;
@@ -115,6 +119,7 @@ export type THoneyTokenServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
 type TSendTriggerNotificationInput = {
@@ -160,7 +165,8 @@ export const honeyTokenServiceFactory = ({
   webhookDAL,
   projectEnvDAL,
   telemetryService,
-  auditLogService
+  auditLogService,
+  keyStore
 }: THoneyTokenServiceFactoryDep) => {
   const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({
     kmsService,
@@ -198,7 +204,7 @@ export const honeyTokenServiceFactory = ({
       return appConnection;
     };
 
-  const create = async (
+  const $create = async (
     { projectId, type, config, name, description, secretsMapping, environment, secretPath }: THoneyTokenCreateInput,
     actor: OrgServiceActor
   ) => {
@@ -239,7 +245,8 @@ export const honeyTokenServiceFactory = ({
     }
 
     if (plan.honeyTokenLimit !== null) {
-      const honeyTokensCreated = await honeyTokenDAL.countByOrgId(actor.orgId);
+      // From the primary: a replica behind the previous lock holder's commit would undercount.
+      const honeyTokensCreated = await honeyTokenDAL.transaction((tx) => honeyTokenDAL.countByOrgId(actor.orgId, tx));
       if (honeyTokensCreated >= plan.honeyTokenLimit) {
         throw new BadRequestError({
           message: `Failed to create honey token because your organization has reached its honey token limit (${honeyTokensCreated}/${plan.honeyTokenLimit}).`
@@ -425,6 +432,29 @@ export const honeyTokenServiceFactory = ({
       honeyToken: { ...honeyToken, config: getHoneyTokenConfig(honeyToken) },
       ...(stackDeployment ? { stackDeployment } : {})
     };
+  };
+
+  // One creation per org at a time: concurrent requests would all pass the limit check before any of them
+  // commits, each creating a user in the provider account.
+  const create = async (input: THoneyTokenCreateInput, actor: OrgServiceActor) => {
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
+    try {
+      lock = await keyStore.acquireLock([KeyStorePrefixes.HoneyTokenCreateLock(actor.orgId)], CREATE_LOCK_TTL_MS, {
+        retryCount: 25,
+        retryDelay: 400,
+        retryJitter: 50
+      });
+    } catch {
+      throw new BadRequestError({
+        message: "Another honey token is being created in your organization. Try again in a few seconds."
+      });
+    }
+
+    try {
+      return await $create(input, actor);
+    } finally {
+      await lock.release();
+    }
   };
 
   // Includes environments pending deletion so update and revoke keep working during the grace period,
