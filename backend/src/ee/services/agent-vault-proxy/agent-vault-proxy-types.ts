@@ -24,6 +24,7 @@ export type TListProxiesDTO = TAgentVaultProxyScoped & {
 
 export type TCreateProxyDTO = TAgentVaultProxyScoped & {
   name: string;
+  description?: string | null;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
@@ -32,6 +33,7 @@ export type TCreateProxyDTO = TAgentVaultProxyScoped & {
 export type TUpdateProxyDTO = TAgentVaultProxyScoped & {
   proxyId: string;
   name?: string;
+  description?: string | null;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;

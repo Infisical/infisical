@@ -36,7 +36,10 @@ import (
 const Region = "us-east-1"
 
 var (
-	STS            = service{host: "sts." + Region + ".amazonaws.com", name: "sts", region: Region, newFake: newSTS}
+	STS = service{host: "sts." + Region + ".amazonaws.com", name: "sts", region: Region, newFake: newSTS}
+	// STSGlobal is the legacy global endpoint, signed for us-east-1. AWS IAM auth sends a
+	// us-east-1 caller-identity request here.
+	STSGlobal      = service{host: "sts.amazonaws.com", name: "sts", region: "us-east-1", newFake: newSTS}
 	SSM            = service{host: "ssm." + Region + ".amazonaws.com", name: "ssm", region: Region, newFake: newParameterStore}
 	SecretsManager = service{host: "secretsmanager." + Region + ".amazonaws.com", name: "secretsmanager", region: Region, newFake: newSecretsManager}
 	CloudFormation = service{host: "cloudformation." + Region + ".amazonaws.com", name: "cloudformation", region: Region, newFake: newCloudFormation}
@@ -46,7 +49,7 @@ var (
 )
 
 // Services is every AWS host fakenet answers for.
-var Services = []fakenet.Service{STS, SSM, SecretsManager, IAM, CloudFormation}
+var Services = []fakenet.Service{STS, STSGlobal, SSM, SecretsManager, IAM, CloudFormation}
 
 type service struct {
 	host    string
@@ -300,7 +303,24 @@ func (h handler) serve(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, out)
 		return
 	}
+	// The Query protocol answers JSON when asked: AWS IAM auth replays GetCallerIdentity
+	// with Accept: application/json and reads the JSON envelope.
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		writeQueryJSON(w, c.action, out)
+		return
+	}
 	writeQueryResult(w, h.svc, c.action, out)
+}
+
+func writeQueryJSON(w http.ResponseWriter, action string, result any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		action + "Response": map[string]any{
+			action + "Result":  result,
+			"ResponseMetadata": map[string]string{"RequestId": requestID()},
+		},
+	})
 }
 
 func (h handler) fail(w http.ResponseWriter, e *apiError) {

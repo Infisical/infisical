@@ -339,6 +339,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.UPDATE_USER_ORG_MEMBERSHIP]: "Update User Org Membership",
   [EventType.DELETE_USER_ORG_MEMBERSHIP]: "Delete User Org Membership",
+  [EventType.INVITE_ORG_MEMBERS]: "Invite Org Members",
 
   [EventType.CREATE_IDENTITY_ORG_MEMBERSHIP]: "Create Identity Org Membership",
   [EventType.UPDATE_IDENTITY_ORG_MEMBERSHIP]: "Update Identity Org Membership",

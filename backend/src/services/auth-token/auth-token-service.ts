@@ -4,7 +4,7 @@ import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions, TUsers } from "@a
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn/array";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -211,11 +211,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     const isValidToken = await crypto.hashing().compareHash(code, hashToCompare);
 
     // Now perform the logical checks *after* the constant-time work is done.
-    if (!token) throw new Error("Invalid token");
+    if (!token) throw new BadRequestError({ message: "Invalid token" });
 
     if (!token.expiresAt || new Date(token.expiresAt) < new Date()) {
       await tokenDAL.delete({ type, userId, orgId });
-      throw new Error("Invalid token");
+      throw new BadRequestError({ message: "Invalid token" });
     }
 
     if (!isValidToken) {
@@ -226,7 +226,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
           await tokenDAL.decrementTriesField({ type, userId, orgId: orgId || null });
         }
       }
-      throw new Error("Invalid token");
+      throw new BadRequestError({ message: "Invalid token" });
     }
 
     const deletedToken = await tokenDAL.delete({ type, userId, orgId: orgId || null });

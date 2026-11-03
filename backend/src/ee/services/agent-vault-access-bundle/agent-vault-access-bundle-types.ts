@@ -83,7 +83,7 @@ export type TGetAccessBundleDTO = TAgentVaultProjectScoped & { accessBundleId: s
 
 export type TCreateAccessBundleDTO = TAgentVaultProjectScoped & {
   name: string;
-  description?: string;
+  description?: string | null;
 };
 
 export type TUpdateAccessBundleDTO = TAgentVaultProjectScoped & {
