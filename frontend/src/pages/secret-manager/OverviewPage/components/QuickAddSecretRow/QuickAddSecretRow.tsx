@@ -237,69 +237,71 @@ export const QuickAddSecretRow = ({
       <TableCell
         className={
           isMultiEnvironmentView
-            ? "sticky left-0 z-10 w-10 max-w-10 min-w-10 bg-container p-0 group-hover:bg-container-hover"
-            : "w-10 max-w-10 min-w-10 p-0"
+            ? "sticky left-0 z-10 w-10 max-w-10 min-w-10 bg-container p-0 align-top group-hover:bg-container-hover"
+            : "w-10 max-w-10 min-w-10 p-0 align-top"
         }
       >
-        <div className="flex h-full items-center justify-center">
+        <div className="flex h-10 items-center justify-center">
           {renderResourceTypeTrigger(isDraftActive)}
         </div>
       </TableCell>
       <TableCell
         className={
           isMultiEnvironmentView
-            ? "sticky left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container group-hover:bg-container-hover lg:w-96 lg:max-w-96 lg:min-w-96"
-            : "w-60 max-w-60 min-w-60 border-r lg:w-96 lg:max-w-96 lg:min-w-96"
+            ? "sticky left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container align-top group-hover:bg-container-hover lg:w-96 lg:max-w-96 lg:min-w-96"
+            : "w-60 max-w-60 min-w-60 border-r align-top lg:w-96 lg:max-w-96 lg:min-w-96"
         }
       >
         <form ref={formRef} id="quick-add-secret-form" onSubmit={handleSubmit}>
-          <Input
-            ref={keyInputRef}
-            aria-describedby={error ? "quick-add-secret-error" : undefined}
-            aria-label="New secret name"
-            autoComplete="off"
-            className="h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:border-transparent focus-visible:ring-0"
-            disabled={isSubmitting}
-            isError={Boolean(error)}
-            placeholder="Add a secret name or paste a .env"
-            spellCheck={false}
-            value={key}
-            onPaste={handlePaste}
-            onChange={(event) => {
-              const nextKey = currentProject?.autoCapitalization
-                ? event.currentTarget.value.toUpperCase()
-                : event.currentTarget.value;
-              setKey(nextKey);
-              setError(undefined);
-            }}
-            onKeyDown={(event) => {
-              handleActionShortcut(event);
-              if (!event.defaultPrevented && event.key === "Enter") {
-                event.preventDefault();
-                valueInputRef.current?.focus();
-              }
-            }}
-          />
+          <div className="flex min-h-7 items-center">
+            <Input
+              ref={keyInputRef}
+              aria-describedby={error ? "quick-add-secret-error" : undefined}
+              aria-label="New secret name"
+              autoComplete="off"
+              className="h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:border-transparent focus-visible:ring-0"
+              disabled={isSubmitting}
+              isError={Boolean(error)}
+              placeholder="Add a secret name or paste a .env"
+              spellCheck={false}
+              value={key}
+              onPaste={handlePaste}
+              onChange={(event) => {
+                const nextKey = currentProject?.autoCapitalization
+                  ? event.currentTarget.value.toUpperCase()
+                  : event.currentTarget.value;
+                setKey(nextKey);
+                setError(undefined);
+              }}
+              onKeyDown={(event) => {
+                handleActionShortcut(event);
+                if (!event.defaultPrevented && event.key === "Enter") {
+                  event.preventDefault();
+                  valueInputRef.current?.focus();
+                }
+              }}
+            />
+          </div>
           {error && (
-            <span id="quick-add-secret-error" className="mt-1 block text-2xs text-danger">
+            <span id="quick-add-secret-error" className="block text-2xs text-danger">
               {error}
             </span>
           )}
         </form>
       </TableCell>
       <TableCell
-        className={isMultiEnvironmentView ? "p-0" : undefined}
+        className={isMultiEnvironmentView ? "p-0 align-top" : "align-top"}
         colSpan={environments.length}
       >
         <div
           className={
             isMultiEnvironmentView
-              ? "sticky z-[9] flex min-h-10 items-center bg-container px-3 py-1.5 group-hover:bg-container-hover"
-              : "relative flex w-full items-center"
+              ? "sticky z-[9] flex min-h-10 items-start bg-container px-3 py-1.5 group-hover:bg-container-hover"
+              : "relative flex w-full items-start"
           }
           style={isMultiEnvironmentView ? valueEditorStyle : undefined}
         >
-          <div className={isDraftActive ? "grow pr-16" : "grow"}>
+          <div className={isDraftActive ? "grow py-1 pr-16" : "grow py-1"}>
             <InfisicalSecretInput
               ref={valueInputRef}
               aria-label="New secret value"
@@ -320,7 +322,9 @@ export const QuickAddSecretRow = ({
           </div>
           {isDraftActive && (
             <SecretInputActions
-              className="absolute right-0"
+              className={
+                isMultiEnvironmentView ? "absolute top-1.5 right-0" : "absolute top-0 right-0"
+              }
               isSaveDisabled={isSubmitting}
               isUndoDisabled={isSubmitting}
               saveLabel={saveLabel}

@@ -470,7 +470,7 @@ export const SecretTableRow = ({
         {(isSingleEnvView || !isExpanded) && (
           <TableCell
             className={twMerge(
-              "w-10 max-w-10 min-w-10 p-0",
+              "w-10 max-w-10 min-w-10 p-0 align-top",
               !isSingleEnvView && "sticky left-0 z-10",
               !singleEnvPendingAction &&
                 "bg-container transition-colors duration-75 group-hover:bg-container-hover",
@@ -479,7 +479,7 @@ export const SecretTableRow = ({
               pendingActionBorderClass(singleEnvPendingAction)
             )}
           >
-            <div className="flex h-full items-center justify-center [&>svg]:size-4">
+            <div className="flex h-10 items-center justify-center [&>svg]:size-4">
               <Checkbox
                 variant="project"
                 id={`checkbox-${secretKey}`}
@@ -735,18 +735,20 @@ export const SecretTableRow = ({
             (isSingleEnvOverrideActive || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
           )}
         >
-          <TableCell>
-            <GitBranchIcon className="text-override-foreground" />
+          <TableCell className="align-top">
+            <div className="flex h-7 items-center">
+              <GitBranchIcon className="size-4 text-override-foreground" />
+            </div>
           </TableCell>
           <TableCell
             className={twMerge(
-              "border-r text-override-foreground",
+              "border-r align-top text-override-foreground",
               singleEnvHasOverride && "border-l border-l-override"
             )}
           >
-            <span>{secretKey}</span>
+            <div className="flex min-h-7 items-center">{secretKey}</div>
           </TableCell>
-          <TableCell className="max-w-0">
+          <TableCell className="max-w-0 align-top">
             <SecretOverrideRow
               isSingleEnvView
               secretName={secretKey}
@@ -940,7 +942,7 @@ export const SecretTableRow = ({
                             <TableCell
                               className={hasOverride ? "border-l border-l-override" : undefined}
                             />
-                            <TableCell colSpan={2} className="max-w-0">
+                            <TableCell colSpan={2} className="max-w-0 align-top">
                               <SecretOverrideRow
                                 secretName={secretKey}
                                 environment={slug}
