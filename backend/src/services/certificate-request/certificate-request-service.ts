@@ -753,7 +753,10 @@ export const certificateRequestServiceFactory = ({
     if (previousStatus === CertificateRequestStatus.PENDING_VALIDATION && certificateRequest.caId) {
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateRequest.caId);
       if (ca?.externalCa?.type === CaType.DIGICERT) {
-        await digicertFns.cancelPendingRequest({ caId: certificateRequest.caId, metadata: certificateRequest.metadata });
+        await digicertFns.cancelPendingRequest({
+          caId: certificateRequest.caId,
+          metadata: certificateRequest.metadata
+        });
       }
     }
 
