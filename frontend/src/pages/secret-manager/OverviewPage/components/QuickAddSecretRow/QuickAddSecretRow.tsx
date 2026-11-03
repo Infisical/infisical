@@ -17,6 +17,9 @@ import {
   SecretInputActions,
   TableCell,
   TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   useSecretInputActionShortcuts
 } from "@app/components/v3";
 import { useProject } from "@app/context";
@@ -36,6 +39,28 @@ const getDuplicateKeyError = (environmentsWithKey: string[], isMultiEnvironmentV
   isMultiEnvironmentView
     ? `A secret with this name already exists in ${environmentsWithKey.join(", ")}`
     : "A secret with this name already exists";
+
+const LISTED_ENVIRONMENT_COUNT = 2;
+
+const DuplicateEnvironmentsMessage = ({ environments }: { environments: string[] }) => {
+  const listedEnvironments = environments.slice(0, LISTED_ENVIRONMENT_COUNT).join(", ");
+  const hiddenEnvironments = environments.slice(LISTED_ENVIRONMENT_COUNT);
+  if (!hiddenEnvironments.length) return <>Already exists in {listedEnvironments}</>;
+
+  return (
+    <>
+      Already exists in {listedEnvironments} and{" "}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" className="cursor-default underline decoration-dotted">
+            {hiddenEnvironments.length} more
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{hiddenEnvironments.join(", ")}</TooltipContent>
+      </Tooltip>
+    </>
+  );
+};
 
 type Props = {
   autoQueueOnBlur?: boolean;
@@ -100,6 +125,13 @@ export const QuickAddSecretRow = ({
   else if (isCheckForCurrentKey && environmentsWithKey?.length)
     duplicateError = getDuplicateKeyError(environmentsWithKey, isMultiEnvironmentView);
   const isKeyConfirmedFree = isCheckForCurrentKey && environmentsWithKey?.length === 0;
+  const duplicateEnvironments =
+    isMultiEnvironmentView &&
+    !isLocalDuplicate &&
+    isCheckForCurrentKey &&
+    environmentsWithKey?.length
+      ? environmentsWithKey
+      : undefined;
   const displayedError = error ?? duplicateError;
 
   useEffect(() => {
@@ -176,7 +208,6 @@ export const QuickAddSecretRow = ({
           )
           .catch(() => []);
         if (takenEnvironments.length) {
-          setError(getDuplicateKeyError(takenEnvironments, isMultiEnvironmentView));
           if (refocus) setTimeout(() => keyInputRef.current?.focus(), 0);
           return;
         }
@@ -359,8 +390,15 @@ export const QuickAddSecretRow = ({
             }}
           />
           {displayedError && (
-            <span id="quick-add-secret-error" className="mt-1 block text-2xs text-danger">
-              {displayedError}
+            <span
+              id="quick-add-secret-error"
+              className="mt-1 block text-2xs break-words whitespace-normal text-danger"
+            >
+              {!error && duplicateEnvironments ? (
+                <DuplicateEnvironmentsMessage environments={duplicateEnvironments} />
+              ) : (
+                displayedError
+              )}
             </span>
           )}
         </form>
