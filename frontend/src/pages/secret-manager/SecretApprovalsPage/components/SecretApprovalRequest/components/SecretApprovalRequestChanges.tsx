@@ -317,10 +317,10 @@ export const SecretApprovalRequestChanges = ({
 
   const canReview = Boolean(
     secretApprovalRequestDetails &&
-      !hasMerged &&
-      secretApprovalRequestDetails.status === "open" &&
-      !shouldBlockSelfReview &&
-      canApprove
+    !hasMerged &&
+    secretApprovalRequestDetails.status === "open" &&
+    !shouldBlockSelfReview &&
+    canApprove
   );
 
   const importSource = `${replicatedImport?.importEnv?.slug ?? ""} ${
@@ -477,7 +477,7 @@ export const SecretApprovalRequestChanges = ({
           {myReview ? "Update Review" : "Review Changes"}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align={myReview ? "end" : "start"} className="z-[70] w-96">
+      <PopoverContent align={myReview ? "end" : "start"} className="w-96">
         {reviewForm}
       </PopoverContent>
     </Popover>

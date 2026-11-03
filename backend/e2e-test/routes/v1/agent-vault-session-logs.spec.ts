@@ -4,6 +4,7 @@ import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
 import { FAKE_DEFAULT_STORAGE, fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
 import { fakeS3Bucket } from "e2e-test/fakes/s3";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
+import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 import { v7 as uuidv7 } from "uuid";
 
 import { OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
@@ -782,7 +783,7 @@ describe("Agent Vault session logs", async () => {
       const relabelled = await inject("PATCH", `/api/v1/agent-vault/sessions/${sessionId}`, { label: "afterwards" });
       expect(relabelled.statusCode).toBe(400);
       expect(relabelled.json().message).toBe(
-        "The user or machine identity that owned this session was deleted, so its label can't be changed."
+        "The user or machine identity that owned this session, or the user it was started on behalf of, was deleted, so its label can't be changed."
       );
 
       const revoked = await inject("POST", `/api/v1/agent-vault/sessions/${sessionId}/revoke`);
@@ -1206,6 +1207,59 @@ describe("Agent Vault session logs", async () => {
         expect(typeof own.json().sessionLogs.sessionKey).toBe("string");
       } finally {
         await member.cleanup();
+      }
+    });
+
+    test("a session on a user's behalf is the identity's: its logs go to the identity and admins, never the user", async () => {
+      await configure();
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`session-logs-obo-${Date.now()}`);
+      const bot = await createMemberIdentity(`session-logs-obo-bot-${Date.now()}`);
+      const alice = await createUser("session-logs-obo-alice");
+      try {
+        const orgId = seedData1.organization.id;
+        await addUserMembership({ userId: alice.userId, orgId, role: OrgMembershipRole.Member });
+        await addUserMembership({ userId: alice.userId, orgId, projectId, role: ProjectMembershipRole.Member });
+        const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+          userIds: [alice.userId],
+          machineIdentityIds: [bot.id]
+        });
+        expect(granted.statusCode).toBe(200);
+        const delegated = await testServer.inject({
+          method: "PUT",
+          url: `/api/v1/agent-vault/delegations/${bot.id}`,
+          headers: authHeader,
+          body: { scope: "selected", userIds: [alice.userId] }
+        });
+        expect(delegated.statusCode).toBe(200);
+
+        const minted = await bot.as("POST", "/api/v1/agent-vault/sessions", {
+          accessBundles: [bundle.name],
+          onBehalfOf: { userId: alice.userId }
+        });
+        expect(minted.statusCode, minted.payload).toBe(200);
+        const sessionId = minted.json().session.id as string;
+
+        const proxy = await createProxy(`session-logs-obo-${Date.now()}`);
+        const { uploadUrl } = await requestUploadUrl(proxy, sessionId);
+        fakeS3Bucket.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
+
+        const aliceToken = await createUserAccessToken({ userId: alice.userId, orgId });
+        for await (const suffix of ["logs", "logs/tail"]) {
+          const url = `/api/v1/agent-vault/sessions/${sessionId}/${suffix}`;
+          const [byBot, byAdmin, byAlice] = await Promise.all([
+            bot.as("GET", url),
+            inject("GET", url),
+            testServer.inject({ method: "GET", url, headers: { authorization: `Bearer ${aliceToken}` } })
+          ]);
+          expect([suffix, byBot.statusCode, byAdmin.statusCode, byAlice.statusCode]).toEqual([suffix, 200, 200, 404]);
+          expect(byBot.json().chunks).toHaveLength(1);
+          expect(byAdmin.json().chunks).toHaveLength(1);
+          expect(byAlice.json().message).toBe(`Session with ID '${sessionId}' not found`);
+        }
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId]);
       }
     });
   });

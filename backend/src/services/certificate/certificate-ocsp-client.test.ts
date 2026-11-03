@@ -96,7 +96,7 @@ describe("getCertificateOcspStatus", () => {
     await expect(
       getCertificateOcspStatus({ certificate: leafCertificate, issuer: issuingCa.certificate })
     ).resolves.toEqual({ status: OcspCertStatus.Good });
-    expect(post).toHaveBeenCalledWith(OCSP_URL, expect.any(Buffer), expect.any(Object));
+    expect(post).toHaveBeenCalledWith(OCSP_URL, expect.any(Buffer));
   });
 
   test("reports a revoked certificate with its revocation time", async () => {

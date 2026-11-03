@@ -32,7 +32,13 @@ import {
   PageHeader,
   PageLoader
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProjectPermission
+} from "@app/context";
 import {
   AgentVaultSessionScope,
   useGetAgentVaultAccessBundle,
@@ -45,12 +51,21 @@ import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent"
 import { DeleteAccessBundleDialog } from "@app/pages/agent-vault/AgentVaultAccessBundlesPage/components/DeleteAccessBundleDialog";
 
 import { ServicesCard } from "./components/ServicesCard";
+import { SkillsCard } from "./components/SkillsCard";
 
 export const AgentVaultAccessBundleDetailPage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
+  const { hasProjectRole, permission } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const canReadSkills = permission.can(
+    ProjectPermissionAgentVaultSkillActions.Read,
+    ProjectPermissionSub.AgentVaultSkills
+  );
+  const canEditBundle = permission.can(
+    ProjectPermissionAgentVaultAccessBundleActions.Edit,
+    ProjectPermissionSub.AgentVaultAccessBundles
+  );
 
   const accessBundleId = useParams({
     strict: false,
@@ -199,20 +214,29 @@ export const AgentVaultAccessBundleDetailPage = () => {
         </Alert>
       )}
 
-      <ServicesCard
-        accessBundleId={accessBundle.id}
-        onSetUp={setServiceToSetUp}
-        services={accessBundle.services}
-        canManage={isAdmin}
-        onAdd={() => {
-          setServiceToEdit(null);
-          setIsServiceSheetOpen(true);
-        }}
-        onEdit={(service) => {
-          setServiceToEdit(service);
-          setIsServiceSheetOpen(true);
-        }}
-      />
+      <div className="flex flex-col gap-6">
+        <ServicesCard
+          accessBundleId={accessBundle.id}
+          onSetUp={setServiceToSetUp}
+          services={accessBundle.services}
+          canManage={isAdmin}
+          onAdd={() => {
+            setServiceToEdit(null);
+            setIsServiceSheetOpen(true);
+          }}
+          onEdit={(service) => {
+            setServiceToEdit(service);
+            setIsServiceSheetOpen(true);
+          }}
+        />
+        {canReadSkills && (
+          <SkillsCard
+            accessBundleId={accessBundle.id}
+            accessBundleName={accessBundle.name}
+            canManage={canEditBundle}
+          />
+        )}
+      </div>
 
       <PersonalValuesDialog
         target={

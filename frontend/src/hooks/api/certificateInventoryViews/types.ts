@@ -12,6 +12,7 @@ export type TInventoryViewFilters = {
   applicationIds?: string[];
   source?: string | string[];
   metadata?: Array<{ key: string; value?: string }>;
+  includeDeleted?: boolean;
 };
 
 export type TCertificateInventoryView = {
@@ -28,6 +29,7 @@ export type TCertificateInventoryView = {
 
 export type TSystemViewFilters = {
   status?: string[];
+  includeDeleted?: boolean;
   notAfterTo?: string;
 };
 

@@ -146,6 +146,7 @@ export type TListProjectCertsDTO = {
   forPkiSync?: boolean;
   search?: string;
   status?: string | string[];
+  includeDeleted?: boolean;
   profileIds?: string[];
   fromDate?: Date;
   toDate?: Date;

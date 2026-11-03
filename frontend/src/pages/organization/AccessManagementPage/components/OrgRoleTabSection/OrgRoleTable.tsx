@@ -96,7 +96,7 @@ export const OrgRoleTable = () => {
   const { subscription } = useSubscription();
 
   const handleRoleDelete = async () => {
-    const { id } = popUp?.deleteRole?.data as TOrgRole;
+    const { id } = popUp.deleteRole.data as TOrgRole;
     await deleteRole({
       orgId,
       id

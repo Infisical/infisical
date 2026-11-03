@@ -8,6 +8,5 @@ export const getCertManagerLink = (
 ) => {
   const pinnedLink = getInstancePinningLink(project.orgId, project, path);
   if (!pinnedLink) throw new Error("The link needs a Certificate Manager project");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { ...pinnedLink, search: search as any };
 };

@@ -1352,8 +1352,9 @@ export const orgServiceFactory = ({
     if (!membership) {
       throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
     }
+    // Answered like an unknown id, so another org's membership ids cannot be probed.
     if (membership.orgId !== orgId) {
-      throw new ForbiddenRequestError({ message: "Membership does not belong to organization" });
+      throw new NotFoundError({ message: `Organization membership with ID '${membershipId}' not found` });
     }
 
     return membership;

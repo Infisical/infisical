@@ -112,11 +112,20 @@ type TInterpolateSecretArg = {
   // same-project relative references; cross-project reads must stay raw so source
   // project imports are not resolved through the target project context.
   crossProjectSecretDAL?: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
+  // Called once a secret's references expand without error, with the ids of the secrets in this project they
+  // resolved to (a personal override included), so a caller can tell which secrets a read actually delivered.
+  onSecretExpanded?: (
+    secret: { environment: string; secretPath: string; secretKey: string },
+    referencedSecretIds: string[]
+  ) => void;
   abortSignal?: AbortSignal;
   tx?: Knex;
 };
 
-const MAX_SECRET_REFERENCE_DEPTH = 10;
+// A cross-project secret carries no id: only this project's secrets are reported to onSecretExpanded.
+type TCachedReferencedSecret = { id?: string; value: string; tags: string[]; exists: boolean };
+
+export const MAX_SECRET_REFERENCE_DEPTH = 10;
 export const expandSecretReferencesFactory = ({
   projectId,
   decryptSecretValue: decryptSecret,
@@ -130,10 +139,11 @@ export const expandSecretReferencesFactory = ({
   projectDAL,
   kmsService,
   crossProjectSecretDAL,
+  onSecretExpanded,
   abortSignal,
   tx
 }: TInterpolateSecretArg) => {
-  const secretCache: Record<string, Record<string, { value: string; tags: string[]; exists: boolean }>> = {};
+  const secretCache: Record<string, Record<string, TCachedReferencedSecret>> = {};
   let crossProjectAllowedCache: boolean | undefined;
   const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
   const checkCrossProjectAllowed = async () => {
@@ -179,25 +189,23 @@ export const expandSecretReferencesFactory = ({
       const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId, tx });
       throwIfClientDisconnected(abortSignal);
 
-      const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[]; exists: boolean }>>(
-        (prev, secret) => {
-          // When userId is set, personal overrides (userId !== null) should take precedence
-          // over shared secrets for the same key. We skip overwriting if a personal override
-          // is already stored and the current secret is a shared one.
-          if (userId && prev[secret.key] && !secret.userId) {
-            return prev;
-          }
-
-          // eslint-disable-next-line no-param-reassign
-          prev[secret.key] = {
-            value: decryptSecret(secret.encryptedValue) || "",
-            tags: secret.tags?.map((el) => el.slug),
-            exists: true
-          };
+      const decryptedSecret = secrets.reduce<Record<string, TCachedReferencedSecret>>((prev, secret) => {
+        // When userId is set, personal overrides (userId !== null) should take precedence
+        // over shared secrets for the same key. We skip overwriting if a personal override
+        // is already stored and the current secret is a shared one.
+        if (userId && prev[secret.key] && !secret.userId) {
           return prev;
-        },
-        {}
-      );
+        }
+
+        // eslint-disable-next-line no-param-reassign
+        prev[secret.key] = {
+          id: secret.id,
+          value: decryptSecret(secret.encryptedValue) || "",
+          tags: secret.tags?.map((el) => el.slug),
+          exists: true
+        };
+        return prev;
+      }, {});
 
       secretCache[cacheKey] = decryptedSecret;
     } catch (error) {
@@ -211,7 +219,7 @@ export const expandSecretReferencesFactory = ({
     environment: string,
     secretPath: string,
     secretKey: string
-  ): Promise<{ value: string; tags: string[]; exists: boolean }> => {
+  ): Promise<TCachedReferencedSecret> => {
     const cacheKey = getCacheUniqueKey(environment, secretPath);
 
     if (!secretCache[cacheKey]) {
@@ -236,6 +244,7 @@ export const expandSecretReferencesFactory = ({
     environment: string;
     shouldStackTrace?: boolean;
     secretKey: string;
+    referencedSecretIds?: Set<string>;
   }) => {
     const stackTrace = { ...dto, key: "root", children: [] } as TSecretReferenceTraceNode;
 
@@ -320,6 +329,7 @@ export const expandSecretReferencesFactory = ({
             const cacheKey = getCacheUniqueKey(environment, secretPath);
             if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
             secretCache[cacheKey][secretKey] = referredValue;
+            if (referredValue.id) dto.referencedSecretIds?.add(referredValue.id);
 
             referencedSecretValue = referredValue.value;
             referencedSecretExists = referredValue.exists;
@@ -444,6 +454,7 @@ export const expandSecretReferencesFactory = ({
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
             if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
             secretCache[cacheKey][secretReferenceKey] = referedValue;
+            if (referedValue.id) dto.referencedSecretIds?.add(referedValue.id);
 
             referencedSecretValue = referedValue.value;
             referencedSecretExists = referedValue.exists;
@@ -513,7 +524,12 @@ export const expandSecretReferencesFactory = ({
     const shouldExpand = INTERPOLATION_TEST_REGEX.test(inputSecret.value);
     if (!shouldExpand) return inputSecret.value;
 
-    const { expandedValue } = await recursivelyExpandSecret(inputSecret);
+    const referencedSecretIds = onSecretExpanded ? new Set<string>() : undefined;
+    const { expandedValue } = await recursivelyExpandSecret({ ...inputSecret, referencedSecretIds });
+    if (referencedSecretIds?.size) {
+      const { environment, secretPath, secretKey } = inputSecret;
+      onSecretExpanded?.({ environment, secretPath, secretKey }, [...referencedSecretIds]);
+    }
 
     return inputSecret.skipMultilineEncoding ? formatMultiValueEnv(expandedValue) : expandedValue;
   };

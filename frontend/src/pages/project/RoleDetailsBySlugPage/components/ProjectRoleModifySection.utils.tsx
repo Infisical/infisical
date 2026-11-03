@@ -16,6 +16,7 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificatePolicyActions,
@@ -312,6 +313,13 @@ const AgentVaultProxyPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultProxyActions.Delete]: z.boolean().optional(),
   [ProjectPermissionAgentVaultProxyActions.IssueToken]: z.boolean().optional(),
   [ProjectPermissionAgentVaultProxyActions.Revoke]: z.boolean().optional()
+});
+
+const AgentVaultSkillPolicyActionSchema = z.object({
+  [ProjectPermissionAgentVaultSkillActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSkillActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSkillActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSkillActions.Delete]: z.boolean().optional()
 });
 
 const ProjectFolderGrantPolicyActionSchema = z.object({
@@ -857,6 +865,9 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.AgentVaultSessions]:
         AgentVaultSessionPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AgentVaultProxies]: AgentVaultProxyPolicyActionSchema.array().default(
+        []
+      ),
+      [ProjectPermissionSub.AgentVaultSkills]: AgentVaultSkillPolicyActionSchema.array().default(
         []
       ),
       [ProjectPermissionSub.ProjectFolderGrant]: ProjectFolderGrantPolicyActionSchema.extend({
@@ -2594,6 +2605,32 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.AgentVaultSkills]: {
+    title: "Skills",
+    description: "Manage the skills access bundles deliver to agents",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAgentVaultSkillActions.Read,
+        description: "View skills, their versions and files"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionAgentVaultSkillActions.Create,
+        description: "Add skills"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionAgentVaultSkillActions.Edit,
+        description: "Publish and restore skill versions"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionAgentVaultSkillActions.Delete,
+        description: "Delete skills"
+      }
+    ]
+  },
   [ProjectPermissionSub.ProxiedServices]: {
     title: "Proxied Services",
     description: "Manage proxied services and route agent traffic through them",
@@ -3518,7 +3555,8 @@ const SecretScanningSubject = (enabled = false) => ({
 const AgentVaultPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.AgentVaultAccessBundles]: enabled,
   [ProjectPermissionSub.AgentVaultSessions]: enabled,
-  [ProjectPermissionSub.AgentVaultProxies]: enabled
+  [ProjectPermissionSub.AgentVaultProxies]: enabled,
+  [ProjectPermissionSub.AgentVaultSkills]: enabled
 });
 
 // scott: this structure ensures we don't forget to add project permissions to their relevant project type

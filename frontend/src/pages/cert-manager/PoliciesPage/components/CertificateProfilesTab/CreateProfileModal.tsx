@@ -1098,15 +1098,11 @@ export const CreateProfileForm = ({
               activeStep={selectedStepIndex}
               orientation="vertical"
               onStepChange={(i) => {
-                if (
-                  !isSubmitting &&
-                  !isPolicySubmitting &&
-                  !isPolicyWizardOpen &&
-                  !savedProfile &&
-                  i < selectedStepIndex
-                )
-                  setSelectedStepIndex(i);
+                if (isSubmitting || isPolicySubmitting || isPolicyWizardOpen || savedProfile)
+                  return;
+                if (isEdit || i < selectedStepIndex) setSelectedStepIndex(i);
               }}
+              nonLinear={Boolean(isEdit)}
             >
               <StepperList>
                 {steps.flatMap((s, i) => {

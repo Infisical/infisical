@@ -1,4 +1,3 @@
-/* eslint-disable no-param-reassign */
 import { z } from "zod";
 
 import { OrgPermissionSubjects } from "@app/context";
@@ -311,7 +310,6 @@ export type TFormSchema = z.infer<typeof formSchema>;
 export type TPermissionsKey = keyof NonNullable<TFormSchema["permissions"]>;
 
 export const rolePermission2Form = (permissions: TPermission[] = []) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formVal: Record<string, any> = {};
   permissions.forEach((permission) => {
     const actions = Array.isArray(permission.action) ? permission.action : [permission.action];

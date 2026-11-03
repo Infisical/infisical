@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 
+import { CertificateRenewalKeySource } from "@app/hooks/api/certificates/enums";
 import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
-import { buildRenewalFormDefaults, getRemovedCertificateNames } from "./certificateRenewalUtils";
+import {
+  buildRenewalFormDefaults,
+  buildRenewalRequestAttributes,
+  getRemovedCertificateNames
+} from "./certificateRenewalUtils";
 
 const certificate = {
   id: "cert-1",
@@ -30,6 +35,7 @@ const constraints = {
 
 const renewalPreview = {
   hasOriginatingRequest: true,
+  hasOriginatingCsr: true,
   request: {
     commonName: "asked-for.example.com",
     altNames: [],
@@ -124,5 +130,28 @@ describe("getRemovedCertificateNames", () => {
         constraints: { shouldShowSubjectSection: true, shouldShowSanSection: false }
       })
     ).toEqual([]);
+  });
+});
+
+describe("buildRenewalRequestAttributes", () => {
+  it("submits policy-required usages even when their checkboxes were never toggled", () => {
+    const formData = {
+      ...buildRenewalFormDefaults(certificate, constraints),
+      keySource: CertificateRenewalKeySource.New,
+      keyUsages: { key_agreement: true, key_encipherment: false },
+      extendedKeyUsages: {}
+    };
+
+    const attributes = buildRenewalRequestAttributes({
+      formData,
+      constraints: {
+        ...(constraints as object),
+        requiredKeyUsages: ["digital_signature"],
+        requiredExtendedKeyUsages: ["client_auth"]
+      } as never
+    });
+
+    expect(attributes.keyUsages).toEqual(["key_agreement", "digital_signature"]);
+    expect(attributes.extendedKeyUsages).toEqual(["client_auth"]);
   });
 });

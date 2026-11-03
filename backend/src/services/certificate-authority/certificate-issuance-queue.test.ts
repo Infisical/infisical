@@ -45,6 +45,7 @@ const buildQueue = () => {
     })
   };
   const certificateDAL = {
+    primaryNode: vi.fn(),
     findById: vi.fn().mockResolvedValue({
       id: ORIGINAL_CERTIFICATE_ID,
       externalMetadata: { type: CaType.DIGICERT, orderId: ORDER_ID, certificateId: 50001 }

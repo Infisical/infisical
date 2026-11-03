@@ -3,8 +3,8 @@ import { useFormContext } from "react-hook-form";
 import { POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS } from "@app/helpers/pkiSyncs";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { HostCommandField } from "./HostCommandField";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 const COMMAND_PLACEHOLDERS: Partial<Record<PkiSync, string>> = {
   [PkiSync.LinuxServer]: "cp {{certificatePath}} /etc/nginx/ssl/live.pem && systemctl reload nginx",

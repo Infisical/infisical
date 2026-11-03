@@ -33,9 +33,9 @@ import {
   TPkiSyncFilters
 } from "@app/hooks/api/pkiSyncs/types";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { buildOrderNameMap, getPkiSyncCertificateCap, hasAnyFilter } from "./pki-sync-filter-fns";
 import { PkiSyncMatchedCertificatesTable } from "./PkiSyncMatchedCertificatesTable";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 const MATCHED_PAGE_SIZE = 20;
 

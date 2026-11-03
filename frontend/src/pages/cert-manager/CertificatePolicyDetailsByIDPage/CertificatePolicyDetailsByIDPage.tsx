@@ -64,14 +64,14 @@ const Page = () => {
 
   const hasAnyEnforcement = Boolean(
     policy?.subject ||
-      policy?.sans ||
-      policy?.keyUsages ||
-      policy?.extendedKeyUsages ||
-      policy?.algorithms?.signature?.length ||
-      policy?.algorithms?.keyAlgorithm?.length ||
-      policy?.validity?.max ||
-      policy?.basicConstraints?.isCA ||
-      policy?.customExtensions
+    policy?.sans ||
+    policy?.keyUsages ||
+    policy?.extendedKeyUsages ||
+    policy?.algorithms?.signature?.length ||
+    policy?.algorithms?.keyAlgorithm?.length ||
+    policy?.validity?.max ||
+    policy?.basicConstraints?.isCA ||
+    policy?.customExtensions
   );
 
   const handleDeleteConfirm = async () => {

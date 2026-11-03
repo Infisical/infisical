@@ -9,7 +9,6 @@ import {
   TSecretsInsert,
   TSecretsUpdate
 } from "@app/db/schemas";
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { OrderByDirection, TGenericPermission, TProjectPermission } from "@app/lib/types";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -213,13 +212,6 @@ export enum SecretImportReferencesBehavior {
   SourceEnvironment = "source-environment"
 }
 
-export type TGetAccessibleSecretsDTO = {
-  secretPath: string;
-  environment: string;
-  recursive?: boolean;
-  filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
-} & TProjectPermission;
-
 export type TGetSecretMetadataDTO = {
   secretPath: string;
   environment: string;
@@ -254,6 +246,8 @@ export type TGetSecretsRawDTO = {
   excludeRotatedSecrets?: boolean;
   ifNoneMatch?: string;
   abortSignal?: AbortSignal;
+  // Called with each secret in the project a reference resolved to, a personal override included.
+  onSecretReferenced?: (secretId: string) => void;
 } & TProjectPermission;
 
 export type TGetSecretAccessListDTO = {
@@ -274,6 +268,8 @@ export type TGetASecretRawDTO = {
   includeImports?: boolean;
   version?: number;
   projectId: string;
+  // Called with each secret in the project a reference resolved to, a personal override included.
+  onSecretReferenced?: (secretId: string) => void;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetASecretByIdRawDTO = {

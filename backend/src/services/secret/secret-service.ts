@@ -94,7 +94,6 @@ import {
   TDeleteManySecretRawDTO,
   TDeleteSecretDTO,
   TDeleteSecretRawDTO,
-  TGetAccessibleSecretsDTO,
   TGetASecretByIdRawDTO,
   TGetASecretDTO,
   TGetASecretRawDTO,
@@ -1447,41 +1446,6 @@ export const secretServiceFactory = ({
     return { users, identities, groups };
   };
 
-  const getAccessibleSecrets = async ({
-    projectId,
-    secretPath,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    environment,
-    filterByAction,
-    recursive
-  }: TGetAccessibleSecretsDTO) => {
-    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-
-    if (!shouldUseSecretV2Bridge) {
-      throw new BadRequestError({
-        message: "Project version does not support this endpoint.",
-        name: "ProjectVersionNotSupported"
-      });
-    }
-
-    const secrets = await secretV2BridgeService.getAccessibleSecrets({
-      projectId,
-      secretPath,
-      environment,
-      filterByAction,
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod,
-      recursive
-    });
-
-    return secrets;
-  };
-
   const getSecretMetadata = async (dto: TGetSecretMetadataDTO) => {
     return secretV2BridgeService.getSecretMetadata(dto);
   };
@@ -1505,12 +1469,14 @@ export const secretServiceFactory = ({
     throwOnMissingReadValuePermission = true,
     ifNoneMatch,
     abortSignal,
+    onSecretReferenced,
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
       const result = await secretV2BridgeService.getSecrets({
         abortSignal,
+        onSecretReferenced,
         projectId,
         expandSecretReferences,
         personalOverridesBehavior,
@@ -1710,11 +1676,13 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     secretName,
     includeImports,
-    version
+    version,
+    onSecretReferenced
   }: TGetASecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
       const secret = await secretV2BridgeService.getSecretByName({
+        onSecretReferenced,
         environment,
         projectId,
         includeImports,
@@ -4063,7 +4031,6 @@ export const secretServiceFactory = ({
     getSecretsRawByFolderMappings,
     getSecretAccessList,
     getSecretByIdRaw,
-    getAccessibleSecrets,
     getSecretMetadata,
     getSecretVersionsV2ByIds,
     getChangeVersions,
