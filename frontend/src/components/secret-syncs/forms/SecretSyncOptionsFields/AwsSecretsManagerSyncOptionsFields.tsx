@@ -189,13 +189,16 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                     isDisabled={!connectionId}
                     value={
                       value
-                        ? (kmsKeys.find((kmsKey) => kmsKey.alias === value) ?? {
+                        ? (kmsKeys.find(
+                            (kmsKey) =>
+                              kmsKey.alias === value || kmsKey.arn === value || kmsKey.id === value
+                          ) ?? {
                             alias: value,
                             id: value
                           })
                         : null
                     }
-                    onValueChange={(option) => onChange(option.alias ?? null)}
+                    onValueChange={(option) => onChange(option.arn ?? option.alias)}
                     onClear={() => onChange(undefined)}
                     clearAriaLabel="Clear KMS key"
                     isError={Boolean(error)}
@@ -206,7 +209,10 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                     creation={{
                       onCreate: (inputValue) => onChange(inputValue.trim()),
                       formatLabel: (inputValue) => `Use "${inputValue}"`,
-                      isDuplicate: (inputValue, option) => option.alias === inputValue,
+                      isDuplicate: (inputValue, option) =>
+                        option.alias === inputValue ||
+                        option.arn === inputValue ||
+                        option.id === inputValue,
                       isValid: isAwsKmsKeyIdentifier
                     }}
                     placeholder="Leave blank to use default KMS key"
@@ -218,6 +224,7 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                         : option.alias
                     }
                     getOptionValue={(option) => option.alias}
+                    getOptionKeywords={(option) => [option.alias, option.id, option.arn ?? ""]}
                     modal
                   />
                 </FieldContent>

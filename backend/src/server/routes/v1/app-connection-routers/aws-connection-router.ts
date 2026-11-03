@@ -41,7 +41,7 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          kmsKeys: z.object({ alias: z.string(), id: z.string() }).array()
+          kmsKeys: z.object({ alias: z.string(), id: z.string(), arn: z.string().optional() }).array()
         })
       }
     },

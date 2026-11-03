@@ -81,7 +81,8 @@ const listAwsKmsKeys = async (
   const kmsKeys = validAliasEntries.map((aliasEntry) => {
     return {
       id: aliasEntry.TargetKeyId!,
-      alias: aliasEntry.AliasName!
+      alias: aliasEntry.AliasName!,
+      arn: keyMetadataRecord[aliasEntry.TargetKeyId!]?.Arn
     };
   });
 

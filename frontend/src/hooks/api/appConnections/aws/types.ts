@@ -9,6 +9,7 @@ export type TListAwsConnectionKmsKeys = {
 export type TAwsConnectionKmsKey = {
   alias: string;
   id: string;
+  arn?: string;
 };
 
 export type TAwsConnectionListKmsKeysResponse = {
