@@ -110,7 +110,16 @@ describe("processDigiCertPendingValidationRequest reissue", () => {
     const { deps, cancelReissue } = buildDeps();
     const dayAgo = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
 
-    const result = await processDigiCertPendingValidationRequest(deps, buildRequest(dayAgo), buildClientCache({}));
+    const client = {
+      getOrder: vi.fn().mockResolvedValue({
+        id: ORDER_ID,
+        status: "reissue_pending",
+        certificate: { id: PREVIOUS_CERTIFICATE_ID }
+      }),
+      checkValidation: vi.fn().mockResolvedValue({ order_status: "reissue_pending", dcv_status: "pending" })
+    };
+
+    const result = await processDigiCertPendingValidationRequest(deps, buildRequest(dayAgo), buildClientCache(client));
 
     expect(cancelReissue).toHaveBeenCalledWith({ caId: CA_ID, orderId: ORDER_ID });
     expect(result.status).toBe(CertificateRequestStatus.FAILED);
@@ -119,5 +128,26 @@ describe("processDigiCertPendingValidationRequest reissue", () => {
         errorMessage: expect.stringContaining(`within 24 hours, so it was canceled`) as string
       })
     );
+  });
+
+  test("attaches a reissue DigiCert finished after 24 hours instead of timing it out", async () => {
+    const { deps, fetchAndAttachIssuedCertificate, cancelReissue } = buildDeps();
+    const dayAgo = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    const client = {
+      getOrder: vi.fn().mockResolvedValue({
+        id: ORDER_ID,
+        status: "issued",
+        certificate: { id: REISSUED_CERTIFICATE_ID }
+      }),
+      checkValidation: vi.fn()
+    };
+
+    const result = await processDigiCertPendingValidationRequest(deps, buildRequest(dayAgo), buildClientCache(client));
+
+    expect(fetchAndAttachIssuedCertificate).toHaveBeenCalledWith(
+      expect.objectContaining({ digicertCertificateId: REISSUED_CERTIFICATE_ID })
+    );
+    expect(cancelReissue).not.toHaveBeenCalled();
+    expect(result.status).toBe(CertificateRequestStatus.ISSUED);
   });
 });

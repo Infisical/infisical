@@ -107,22 +107,35 @@ describe("DigiCert cancelPendingRequest", () => {
   test("cancels the reissue on DigiCert for a reissue request", async () => {
     const metadata = JSON.stringify({ digicert: { ...ORDER_METADATA, previousCertificateId: CURRENT_CERTIFICATE_ID } });
 
-    await expect(buildFns(CURRENT_CERTIFICATE_ID).cancelPendingRequest({ caId: CA_ID, metadata })).resolves.toBe(true);
+    await expect(
+      buildFns(CURRENT_CERTIFICATE_ID).cancelPendingRequest({ caId: CA_ID, metadata })
+    ).resolves.toBeUndefined();
     expect(client.cancelOrderReissue).toHaveBeenCalledWith(ORDER_ID, expect.any(String));
   });
 
   test("does nothing for a new order", async () => {
     const metadata = JSON.stringify({ digicert: ORDER_METADATA });
 
-    await expect(buildFns(CURRENT_CERTIFICATE_ID).cancelPendingRequest({ caId: CA_ID, metadata })).resolves.toBe(false);
+    await expect(
+      buildFns(CURRENT_CERTIFICATE_ID).cancelPendingRequest({ caId: CA_ID, metadata })
+    ).resolves.toBeUndefined();
     expect(client.cancelOrderReissue).not.toHaveBeenCalled();
   });
 
   test("does nothing when the metadata is missing or not JSON", async () => {
     const fns = buildFns(CURRENT_CERTIFICATE_ID);
 
-    await expect(fns.cancelPendingRequest({ caId: CA_ID, metadata: null })).resolves.toBe(false);
-    await expect(fns.cancelPendingRequest({ caId: CA_ID, metadata: "not json" })).resolves.toBe(false);
+    await expect(fns.cancelPendingRequest({ caId: CA_ID, metadata: null })).resolves.toBeUndefined();
+    await expect(fns.cancelPendingRequest({ caId: CA_ID, metadata: "not json" })).resolves.toBeUndefined();
     expect(client.cancelOrderReissue).not.toHaveBeenCalled();
+  });
+
+  test("refuses when DigiCert does not confirm the cancellation", async () => {
+    client.cancelOrderReissue.mockRejectedValue(new Error("no response"));
+    const metadata = JSON.stringify({ digicert: { ...ORDER_METADATA, previousCertificateId: CURRENT_CERTIFICATE_ID } });
+
+    await expect(buildFns(CURRENT_CERTIFICATE_ID).cancelPendingRequest({ caId: CA_ID, metadata })).rejects.toThrow(
+      `DigiCert didn't cancel the reissue on order ${ORDER_ID}`
+    );
   });
 });

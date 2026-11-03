@@ -704,6 +704,16 @@ export const certificateRequestServiceFactory = ({
       actorLabel = identity?.name ? `identity ${identity.name}` : "identity";
     }
 
+    if (previousStatus === CertificateRequestStatus.PENDING_VALIDATION && certificateRequest.caId) {
+      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateRequest.caId);
+      if (ca?.externalCa?.type === CaType.DIGICERT) {
+        await digicertFns.cancelPendingRequest({
+          caId: certificateRequest.caId,
+          metadata: certificateRequest.metadata
+        });
+      }
+    }
+
     const updated = await certificateRequestDAL.transitionFromPending(
       certificateRequestId,
       CertificateRequestStatus.FAILED,
@@ -748,16 +758,6 @@ export const certificateRequestServiceFactory = ({
         error,
         `Failed to stop issuance job during cancellation [certificateRequestId=${certificateRequestId}]`
       );
-    }
-
-    if (previousStatus === CertificateRequestStatus.PENDING_VALIDATION && certificateRequest.caId) {
-      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateRequest.caId);
-      if (ca?.externalCa?.type === CaType.DIGICERT) {
-        await digicertFns.cancelPendingRequest({
-          caId: certificateRequest.caId,
-          metadata: certificateRequest.metadata
-        });
-      }
     }
 
     return {

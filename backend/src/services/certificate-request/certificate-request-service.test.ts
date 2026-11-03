@@ -987,6 +987,15 @@ describe("CertificateRequestService", () => {
 
         expect(mockDigicertFns.cancelPendingRequest).not.toHaveBeenCalled();
       });
+
+      it("keeps the request open when DigiCert does not cancel the reissue", async () => {
+        mockDigicertFns.cancelPendingRequest.mockRejectedValueOnce(
+          new Error("DigiCert didn't cancel the reissue on order 7001, so the request is still open.")
+        );
+
+        await expect(cancelValidationRow(CaType.DIGICERT)).rejects.toThrow("so the request is still open");
+        expect(mockCertificateRequestDAL.transitionFromPending).not.toHaveBeenCalled();
+      });
     });
 
     it("returns cancelled:false when the worker races to a terminal status", async () => {

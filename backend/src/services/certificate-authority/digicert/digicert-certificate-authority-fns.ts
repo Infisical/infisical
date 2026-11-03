@@ -647,20 +647,25 @@ export const DigiCertCertificateAuthorityFns = ({
   }: {
     caId: string;
     metadata: string | null | undefined;
-  }): Promise<boolean> => {
-    if (!metadata) return false;
+  }): Promise<void> => {
+    if (!metadata) return;
 
     let parsedMetadata: unknown;
     try {
       parsedMetadata = JSON.parse(metadata);
     } catch {
-      return false;
+      return;
     }
 
     const parsed = DigiCertCertificateRequestMetadataSchema.safeParse(parsedMetadata);
-    if (!parsed.success || parsed.data.digicert.previousCertificateId === undefined) return false;
+    if (!parsed.success || parsed.data.digicert.previousCertificateId === undefined) return;
 
-    return cancelReissue({ caId, orderId: parsed.data.digicert.orderId });
+    const { orderId } = parsed.data.digicert;
+    if (!(await cancelReissue({ caId, orderId }))) {
+      throw new BadRequestError({
+        message: `DigiCert didn't cancel the reissue on order ${orderId}, so the request is still open. Try again in a few minutes, or cancel the reissue in DigiCert CertCentral.`
+      });
+    }
   };
 
   const fetchAndAttachIssuedCertificate = async ({
