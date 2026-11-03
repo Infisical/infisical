@@ -145,6 +145,7 @@ export enum EventType {
   DELETE_PKI_COLLECTION_ITEM = "delete-pki-collection-item",
   ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
   ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
+  SELECT_ORGANIZATION_REFUSED = "select-organization-refused",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
@@ -188,6 +189,7 @@ export enum EventType {
   DELETE_APP_CONNECTION = "delete-app-connection",
   GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
   MIGRATE_APP_CONNECTION = "migrate-app-connection",
+  ISSUE_OIDC_TOKEN = "issue-oidc-token",
   CREATE_GITHUB_APP = "create-github-app",
   DELETE_GITHUB_APP = "delete-github-app",
   GET_SECRET_SYNCS = "get-secret-syncs",
@@ -284,6 +286,7 @@ export enum EventType {
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
   DELETE_PROJECT = "delete-project",
+  RESTORE_PROJECT = "restore-project",
 
   CREATE_SECRET_REMINDER = "create-secret-reminder",
   GET_SECRET_REMINDER = "get-secret-reminder",
@@ -326,6 +329,7 @@ export enum EventType {
 
   UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
   DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
+  INVITE_ORG_MEMBERS = "invite-org-members",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
@@ -504,6 +508,8 @@ export enum EventType {
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
   AGENT_VAULT_SESSION_UPDATE = "agent-vault-session-update",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_DELEGATION_SET = "agent-vault-delegation-set",
+  AGENT_VAULT_DELEGATION_DELETE = "agent-vault-delegation-delete",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
   AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",

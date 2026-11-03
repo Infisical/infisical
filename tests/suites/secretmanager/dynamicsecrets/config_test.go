@@ -7,6 +7,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -118,6 +119,25 @@ func TestDynamicSecret_Create(t *testing.T) {
 
 		// Assert
 		requireStatus(t, http.StatusUnprocessableEntity, res.StatusCode(), res.Body)
+		require.Empty(t, names(t, proj, "/"))
+	})
+
+	t.Run("should refuse naming the setting and create nothing when AWS IAM temporary credentials use IRSA on an instance without it", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `The harness leaves KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN at its default, off,
+			and the refusal comes before any call to AWS, so no fake is needed.`)
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		inputs := map[string]any{"method": "irsa", "credentialType": "temporary-credentials", "region": "us-east-1"}
+
+		// Action
+		res, _ := createDynamicSecret(t, tn.Admin.API, proj, provider{"type": "aws-iam", "inputs": inputs})
+
+		// Assert
+		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.Contains(t, apierr.Message(res.Body), "KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN is not enabled")
 		require.Empty(t, names(t, proj, "/"))
 	})
 }

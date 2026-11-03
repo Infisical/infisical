@@ -24,6 +24,7 @@ export type TListProxiesDTO = TAgentVaultProxyScoped & {
 
 export type TCreateProxyDTO = TAgentVaultProxyScoped & {
   name: string;
+  description?: string | null;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
@@ -32,6 +33,7 @@ export type TCreateProxyDTO = TAgentVaultProxyScoped & {
 export type TUpdateProxyDTO = TAgentVaultProxyScoped & {
   proxyId: string;
   name?: string;
+  description?: string | null;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
@@ -90,6 +92,7 @@ export type TResolvedService = {
   hostPattern: string;
   allowedMethods: string[] | null;
   allowedPathPrefixes: string[] | null;
+  allowedTools: string[] | null;
   credential:
     | {
         type: AgentVaultCredentialType.Bearer;
@@ -104,7 +107,7 @@ export type TResolvedService = {
     | { type: AgentVaultCredentialType.Passthrough };
   customHeaders: { name: string; prefix: string; value: string }[];
   substitutions: { placeholder: string; surfaces: string[]; value: string }[];
-  // The service takes part of its credential from each member and the session's actor has not set their values,
-  // so the proxy refuses its requests rather than sending them without one.
+  // The service takes part of its credential from each member and the member whose values the session uses (its owner,
+  // or the user it acts for) hasn't set them, so the proxy refuses its requests rather than sending them without one.
   personalValuesMissing: boolean;
 };

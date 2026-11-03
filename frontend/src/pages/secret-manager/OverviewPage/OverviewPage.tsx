@@ -59,7 +59,6 @@ import {
   SecretAccessInsightsUpgradeIntent,
   SecretImportReplicationUpgradeIntent,
   SecretRotationsUpgradeIntent,
-  SecretsBrokeringUpgradeIntent,
   UpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
@@ -67,7 +66,7 @@ import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  CreateProxiedServiceModal,
+  AgentProxyMovedModal,
   DeleteProxiedServiceModal,
   EditProxiedServiceModal
 } from "@app/components/proxied-services";
@@ -241,6 +240,7 @@ import {
 } from "@app/hooks/utils";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { OverviewFlowProperties, OverviewScopeProperties } from "@app/lib/analytics/events";
+import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
@@ -300,6 +300,10 @@ import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection"
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
 import {
+  TABLE_BODY_ROW_FILTER_CLASS_NAME,
+  TABLE_BODY_ROW_FILTER_DIMMED_CLASS_NAME
+} from "./components/tableRowActionStyles";
+import {
   getTableRowActivityId,
   type TableRowActivityChangeHandler,
   type TableRowActivityId
@@ -312,6 +316,7 @@ import {
   overviewResponsePhase,
   withOverviewTelemetry
 } from "./OverviewTelemetry";
+import { useNotifySecretsCreated } from "./useNotifySecretsCreated";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -616,7 +621,8 @@ const OverviewPageContent = () => {
   );
   const [storedEnvIds, setStoredEnvIds] = useLocalStorageState<string[]>(
     `overview-selected-envs-${projectId}`,
-    userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
+    userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : [],
+    { tabLocal: true }
   );
 
   // Apply one-shot deep-link inputs to local filters, then strip them from the URL in a SINGLE
@@ -640,7 +646,7 @@ const OverviewPageContent = () => {
         .filter((env) => envSlugs.includes(env.slug))
         .map((env) => env.id);
       if (envIds.length > 0) {
-        setStoredEnvIds(envIds);
+        setStoredEnvIds(envIds.length === userAvailableEnvs.length ? [] : envIds);
       }
     }
 
@@ -1597,7 +1603,8 @@ const OverviewPageContent = () => {
     "importFromDoppler",
     "editHoneyToken",
     "revokeHoneyToken",
-    "createEnvironment"
+    "createEnvironment",
+    "createSharedSecret"
   ] as const);
   const popupFlows = useMemo<
     Partial<Record<keyof typeof popUp, Omit<OverviewFlowProperties, "phase">>>
@@ -1654,6 +1661,21 @@ const OverviewPageContent = () => {
     if (flow) overviewTelemetry.flow({ ...flow, phase: opening ? "opened" : "canceled" });
     togglePopUp(name, isOpen);
   };
+  const isShareSheetOpenRef = useRef(false);
+  useEffect(() => {
+    isShareSheetOpenRef.current = popUp.createSharedSecret.isOpen;
+  }, [popUp.createSharedSecret.isOpen]);
+  const notifySecretsCreated = useNotifySecretsCreated(
+    secretPath,
+    useCallback(
+      (share) => {
+        if (isShareSheetOpenRef.current) return false;
+        handlePopUpOpen("createSharedSecret", share);
+        return true;
+      },
+      [handlePopUpOpen]
+    )
+  );
   const { openUpgradeGate: openSharedUpgradeGate, upgradeGate } = useUpgradeGate();
   const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
     null
@@ -2315,10 +2337,7 @@ const OverviewPageContent = () => {
         text: "Requested change has been sent for review"
       });
     } else {
-      createNotification({
-        type: "success",
-        text: "Successfully created secret"
-      });
+      notifySecretsCreated(1, type === SecretType.Shared ? [{ environment: env, key, value }] : []);
 
       // The user just created a secret: check whether to surface the activation nudge.
       checkSecretsActivation();
@@ -2962,7 +2981,25 @@ const OverviewPageContent = () => {
           return [];
         }
 
-        if (isSingleChange) {
+        const createdSecrets = changes.secrets.flatMap((change) =>
+          change.type === PendingAction.Create
+            ? [
+                {
+                  environment,
+                  key: change.secretKey,
+                  value: change.secretValue,
+                  tags: change.tags?.map((tag) => tag.slug)
+                }
+              ]
+            : []
+        );
+        if (createdSecrets.length) {
+          notifySecretsCreated(
+            createdSecrets.length,
+            createdSecrets,
+            createdSecrets.length === changeCount ? undefined : `${changeCount} changes committed`
+          );
+        } else if (isSingleChange) {
           const change = secretChange ?? folderChange;
           const pastTense = {
             [PendingAction.Create]: "created",
@@ -2999,7 +3036,8 @@ const OverviewPageContent = () => {
       createFolder,
       updateFolder,
       deleteFolder,
-      checkSecretsActivation
+      checkSecretsActivation,
+      notifySecretsCreated
     ]
   );
 
@@ -3860,15 +3898,7 @@ const OverviewPageContent = () => {
       });
     },
     onAddHoneyToken: handleAddHoneyToken,
-    onAddProxiedService: () => {
-      if (subscription?.secretsBrokering) {
-        handlePopUpOpen("addProxiedService");
-        return;
-      }
-      openUpgradeGate({
-        intent: SecretsBrokeringUpgradeIntent
-      });
-    },
+    onAddProxiedService: () => handlePopUpOpen("addProxiedService"),
     onCopySecrets: () =>
       handleOpenCopySecrets({
         origin: "toolbar",
@@ -4263,7 +4293,7 @@ const OverviewPageContent = () => {
                         visibleEnvs?.map(({ name, slug, id }, index) => {
                           return (
                             <TableHead
-                              className="relative min-w-[240px] border-r p-0 text-center whitespace-nowrap last:border-r-0"
+                              className="relative min-w-[240px] border-r p-0 text-left whitespace-nowrap last:border-r-0"
                               key={`secret-overview-${name}-${index + 1}`}
                             >
                               <DropdownMenu>
@@ -4276,7 +4306,7 @@ const OverviewPageContent = () => {
                                         ? `. Currently sorting by ${activeSecretSort?.label ?? "recency"}`
                                         : ""
                                     }`}
-                                    className="flex h-full w-full min-w-[240px] cursor-pointer items-center justify-center gap-x-2 px-3 text-sm font-medium text-muted hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                                    className="flex h-full w-full min-w-[240px] cursor-pointer items-center justify-between gap-x-2 px-3 text-sm font-medium text-muted hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                                   >
                                     <span
                                       className={twMerge(
@@ -4502,9 +4532,10 @@ const OverviewPageContent = () => {
                   </TableHeader>
                   <TableBody
                     className={twMerge(
-                      "transition-all duration-500 [&>tr>td>*:not([data-table-row-filter-contents])]:transition-[filter] [&>tr>td>*:not([data-table-row-filter-contents])]:duration-200 motion-reduce:[&>tr>td>*:not([data-table-row-filter-contents])]:transition-none [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-none [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-none [@media(hover:hover)]:[&>tr:hover>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:!filter-none",
+                      "transition-all duration-500",
+                      TABLE_BODY_ROW_FILTER_CLASS_NAME,
                       (activeTableRows.size > 0 || hasSelectedEntriesOnPage) &&
-                        "[&>tr>td>*:not([data-table-row-filter-contents])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:filter-[opacity(40%)]"
+                        TABLE_BODY_ROW_FILTER_DIMMED_CLASS_NAME
                     )}
                   >
                     {tableView !== "table" && (
@@ -4670,6 +4701,8 @@ const OverviewPageContent = () => {
                           ) => (
                             <FolderTableRow
                               folderName={folderName}
+                              secretPath={secretPath}
+                              isNavigationDisabled={isOverviewPending}
                               description={description}
                               isFolderPresentInEnv={isFolderPresentInEnv}
                               isSelected={
@@ -4932,6 +4965,7 @@ const OverviewPageContent = () => {
             defaultSelectedEnvs={filteredEnvs}
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
             onSecretCreated={checkSecretsActivation}
+            notifySecretsCreated={notifySecretsCreated}
             onUploadSecrets={(env) => {
               setImportParsedSecrets(env ?? null);
               handlePopUpClose("addSecretsInAllEnvs");
@@ -5177,13 +5211,9 @@ const OverviewPageContent = () => {
         isOpen={popUp.addHoneyToken.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addHoneyToken", isOpen)}
       />
-      <CreateProxiedServiceModal
+      <AgentProxyMovedModal
         isOpen={popUp.addProxiedService.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addProxiedService", isOpen)}
-        projectId={projectId}
-        environment={singleEnvSlug}
-        secretPath={secretPath}
-        existingNames={proxiedServiceNames}
       />
       <EditProxiedServiceModal
         isOpen={popUp.editProxiedService.isOpen}
@@ -5296,6 +5326,7 @@ const OverviewPageContent = () => {
         initialFile={importSecretsInitialFile}
         initialStep={importSecretsInitialStep}
         initialSelectedEnvironments={visibleEnvs}
+        notifySecretsCreated={notifySecretsCreated}
         onComplete={(envSlugs) => {
           const visibleSlugs = new Set(visibleEnvs.map((e) => e.slug));
           const allTargetEnvsVisible = envSlugs.every((slug) => visibleSlugs.has(slug));
@@ -5406,6 +5437,7 @@ const OverviewPageContent = () => {
         isPending={isDeleteEnvironmentPending}
         onConfirm={handleDeleteEnvironment}
       />
+      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       {!!pathPolicies && pathPolicies.length > 0 && (
         <RequestAccessModal
           policies={pathPolicies}

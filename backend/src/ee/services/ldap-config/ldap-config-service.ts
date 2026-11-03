@@ -57,7 +57,7 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
-import { verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
+import { isIdpAuthoritativeForDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -503,7 +503,7 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
+    const ownedDomain = await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
@@ -516,7 +516,11 @@ export const ldapConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    const skipEmailVerification = Boolean(organization.authEnforced) || Boolean(serverCfg.trustLdapEmails);
+    // The IdP is authoritative only when the org enforces SSO and owns the asserted domain. The
+    // instance-level trustLdapEmails flag is a server admin's own decision to skip verification and
+    // is kept apart from it.
+    const isIdpAuthoritative = isIdpAuthoritativeForDomain({ isAuthEnforced: organization.authEnforced, ownedDomain });
+    const skipEmailVerification = isIdpAuthoritative || Boolean(serverCfg.trustLdapEmails);
 
     // A stale, still-unverified alias may point at another user's account. Don't mutate that
     // account's org membership / group state until the IdP proves control of it (the
@@ -775,7 +779,7 @@ export const ldapConfigServiceFactory = ({
       assertedFirstName: firstName,
       assertedLastName: lastName,
       orgId,
-      isAuthEnforced: Boolean(organization.authEnforced),
+      isIdpAuthoritative,
       userDAL,
       userAliasDAL,
       emailDomainDAL,

@@ -509,6 +509,7 @@
                       "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
                       "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                       "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                      "documentation/platform/pki/applications/certificate-syncs/imperva",
                       "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks",
                       "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile",
                       "documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster",
@@ -703,32 +704,17 @@
               {
                 "group": "Guides",
                 "pages": [
+                  "documentation/platform/agent-vault/guides/modal",
+                  "documentation/platform/agent-vault/guides/daytona",
                   {
-                    "group": "Sandboxes",
+                    "group": "Kubernetes",
+                    "icon": "/images/stack/kubernetes.png",
+                    "root": "documentation/platform/agent-vault/guides/kubernetes",
                     "pages": [
-                      "documentation/platform/agent-vault/guides/modal",
-                      "documentation/platform/agent-vault/guides/daytona",
-                      "documentation/platform/agent-vault/guides/docker"
+                      "documentation/platform/agent-vault/guides/kubernetes-setup"
                     ]
                   },
-                  {
-                    "group": "Messaging gateways",
-                    "pages": [
-                      "documentation/platform/agent-vault/guides/hermes-gateway",
-                      "documentation/platform/agent-vault/guides/openclaw-gateway"
-                    ]
-                  },
-                  "documentation/platform/agent-vault/guides/custom-agent",
-                  {
-                    "group": "Local development",
-                    "pages": [
-                      "documentation/platform/agent-vault/guides/claude-code",
-                      "documentation/platform/agent-vault/guides/codex",
-                      "documentation/platform/agent-vault/guides/opencode",
-                      "documentation/platform/agent-vault/guides/hermes",
-                      "documentation/platform/agent-vault/guides/openclaw"
-                    ]
-                  }
+                  "documentation/platform/agent-vault/guides/docker"
                 ]
               },
               {
@@ -751,6 +737,7 @@
                     "pages": [
                       "documentation/platform/agent-vault/sessions-cli",
                       "documentation/platform/agent-vault/sessions-api",
+                      "documentation/platform/agent-vault/sessions-on-behalf-of-users",
                       "documentation/platform/agent-vault/session-logs"
                     ]
                   },
@@ -1095,6 +1082,7 @@
                   "integrations/app-connections/heroku",
                   "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
+                  "integrations/app-connections/imperva",
                   "integrations/app-connections/jira",
                   "integrations/app-connections/keeper",
                   "integrations/app-connections/kemp-loadmaster",
@@ -2161,10 +2149,12 @@
                         ]
                       },
                       {
+                        "group": "Imperva",
+                        "pages": ["api-reference/endpoints/app-connections/imperva/create"]
+                      },
+                      {
                         "group": "Kemp LoadMaster",
-                        "pages": [
-                          "api-reference/endpoints/app-connections/kemp-loadmaster/create"
-                        ]
+                        "pages": ["api-reference/endpoints/app-connections/kemp-loadmaster/create"]
                       },
                       {
                         "group": "Laravel Forge",
@@ -2959,17 +2949,6 @@
                       "api-reference/endpoints/dynamic-secrets/delete-lease",
                       "api-reference/endpoints/dynamic-secrets/renew-lease",
                       "api-reference/endpoints/dynamic-secrets/get-lease"
-                    ]
-                  },
-                  {
-                    "group": "Proxied services",
-                    "pages": [
-                      "api-reference/endpoints/proxied-services/create",
-                      "api-reference/endpoints/proxied-services/update",
-                      "api-reference/endpoints/proxied-services/delete",
-                      "api-reference/endpoints/proxied-services/get-by-id",
-                      "api-reference/endpoints/proxied-services/get-by-name",
-                      "api-reference/endpoints/proxied-services/list"
                     ]
                   },
                   {
@@ -4242,6 +4221,13 @@
                             ]
                           },
                           {
+                            "group": "Imperva",
+                            "pages": [
+                              "api-reference/endpoints/pki/syncs/imperva/create",
+                              "api-reference/endpoints/pki/syncs/imperva/sync-certificates"
+                            ]
+                          },
+                          {
                             "group": "Kemp LoadMaster",
                             "pages": [
                               "api-reference/endpoints/pki/syncs/kemp-loadmaster/create",
@@ -4603,6 +4589,18 @@
                       "api-reference/endpoints/agent-vault-members/add",
                       "api-reference/endpoints/agent-vault-members/update-role",
                       "api-reference/endpoints/agent-vault-members/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Delegations",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-delegations/list",
+                      "api-reference/endpoints/agent-vault-delegations/get",
+                      "api-reference/endpoints/agent-vault-delegations/set",
+                      "api-reference/endpoints/agent-vault-delegations/add-subjects",
+                      "api-reference/endpoints/agent-vault-delegations/remove-subjects",
+                      "api-reference/endpoints/agent-vault-delegations/list-available-subjects",
+                      "api-reference/endpoints/agent-vault-delegations/delete"
                     ]
                   },
                   {
