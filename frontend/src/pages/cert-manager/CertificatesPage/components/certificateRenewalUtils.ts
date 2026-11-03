@@ -1,3 +1,5 @@
+import * as x509 from "@peculiar/x509";
+
 import {
   certKeyAlgorithms,
   SIGNATURE_ALGORITHMS_OPTIONS
@@ -305,4 +307,52 @@ export const getRemovedCertificateNames = ({
 export const capTtlToDays = (ttl: string, maxDays: number) => {
   const days = /^(\d+)d$/.exec(ttl)?.[1];
   return days && Number(days) > maxDays ? `${maxDays}d` : ttl;
+};
+
+const CSR_SAN_TYPES: Record<string, CertSubjectAlternativeNameType> = {
+  dns: CertSubjectAlternativeNameType.DNS_NAME,
+  ip: CertSubjectAlternativeNameType.IP_ADDRESS,
+  email: CertSubjectAlternativeNameType.EMAIL,
+  url: CertSubjectAlternativeNameType.URI,
+  upn: CertSubjectAlternativeNameType.UPN
+};
+
+const parseCsrNames = (csrPem: string) => {
+  try {
+    const csr = new x509.Pkcs10CertificateRequest(csrPem.trim());
+    const sanExtension = csr.extensions.find(
+      (extension): extension is x509.SubjectAlternativeNameExtension =>
+        extension instanceof x509.SubjectAlternativeNameExtension
+    );
+    return {
+      commonName: csr.subjectName.getField("CN")[0],
+      altNames: (sanExtension?.names.items ?? []).flatMap((name) =>
+        CSR_SAN_TYPES[name.type] ? [{ type: CSR_SAN_TYPES[name.type], value: name.value }] : []
+      )
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const getRemovedCertificateNamesFromCsr = ({
+  certificate,
+  csr
+}: {
+  certificate: Pick<TCertificate, "commonName" | "altNames">;
+  csr?: string;
+}): string[] => {
+  const csrNames = csr?.trim() ? parseCsrNames(csr) : null;
+  if (!csrNames) return [];
+
+  return getRemovedCertificateNames({
+    certificate,
+    formData: {
+      subjectAttributes: csrNames.commonName
+        ? [{ type: CertSubjectAttributeType.COMMON_NAME, value: csrNames.commonName }]
+        : [],
+      subjectAltNames: csrNames.altNames
+    },
+    constraints: { shouldShowSubjectSection: true, shouldShowSanSection: true }
+  });
 };

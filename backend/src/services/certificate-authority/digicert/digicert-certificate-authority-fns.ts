@@ -39,7 +39,7 @@ import {
   DigiCertOrderStatus,
   DigiCertPollOutcome
 } from "./digicert-certificate-authority-enums";
-import { DigiCertCaPurpose } from "./digicert-certificate-authority-schemas";
+import { DigiCertCaPurpose, DigiCertCertificateRequestMetadataSchema } from "./digicert-certificate-authority-schemas";
 import {
   castDbEntryToDigiCertCertificateAuthority,
   extractLeafAndChain,
@@ -641,6 +641,28 @@ export const DigiCertCertificateAuthorityFns = ({
     }
   };
 
+  const cancelPendingRequest = async ({
+    caId,
+    metadata
+  }: {
+    caId: string;
+    metadata: string | null | undefined;
+  }): Promise<boolean> => {
+    if (!metadata) return false;
+
+    let parsedMetadata: unknown;
+    try {
+      parsedMetadata = JSON.parse(metadata);
+    } catch {
+      return false;
+    }
+
+    const parsed = DigiCertCertificateRequestMetadataSchema.safeParse(parsedMetadata);
+    if (!parsed.success || parsed.data.digicert.previousCertificateId === undefined) return false;
+
+    return cancelReissue({ caId, orderId: parsed.data.digicert.orderId });
+  };
+
   const fetchAndAttachIssuedCertificate = async ({
     caId,
     certificateRequest,
@@ -929,6 +951,7 @@ export const DigiCertCertificateAuthorityFns = ({
     orderCertificate,
     reissueCertificate,
     cancelReissue,
+    cancelPendingRequest,
     fetchAndAttachIssuedCertificate,
     pollOrderForCertificate,
     revokeCertificate,

@@ -69,6 +69,7 @@ import {
   buildRenewalRequestAttributes,
   capTtlToDays,
   getRemovedCertificateNames,
+  getRemovedCertificateNamesFromCsr,
   unionUsageOptions
 } from "./certificateRenewalUtils";
 import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
@@ -382,6 +383,17 @@ const SUBJECT_ISSUER_FIELDS = new Set([
   "altNames"
 ]);
 
+const NameRemovalWarning = ({ names }: { names: string[] }) => (
+  <Alert variant="warning">
+    <TriangleAlertIcon />
+    <AlertTitle>DigiCert will revoke the current certificate</AlertTitle>
+    <AlertDescription>
+      This reissue removes {names.join(", ")}. Once the new certificate is issued, DigiCert revokes
+      the current certificate and any earlier reissues and duplicates on this order within 72 hours.
+    </AlertDescription>
+  </Alert>
+);
+
 export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
@@ -474,17 +486,21 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       CaCapability.REISSUE_CERTIFICATES
     );
   const isReissuing = isReissueAvailable && watch("reissue");
-  const removedNames =
-    isReissuing && certificate && keySource !== CertificateRenewalKeySource.Csr
-      ? getRemovedCertificateNames({
-          certificate,
-          formData: {
-            subjectAttributes: watch("subjectAttributes"),
-            subjectAltNames: watch("subjectAltNames")
-          },
-          constraints
-        })
-      : [];
+  const getReissueRemovedNames = () => {
+    if (!isReissuing || !certificate) return [];
+    if (keySource === CertificateRenewalKeySource.Csr) {
+      return getRemovedCertificateNamesFromCsr({ certificate, csr: watch("csr") });
+    }
+    return getRemovedCertificateNames({
+      certificate,
+      formData: {
+        subjectAttributes: watch("subjectAttributes"),
+        subjectAltNames: watch("subjectAltNames")
+      },
+      constraints
+    });
+  };
+  const removedNames = getReissueRemovedNames();
   const nameRemovalError =
     removedNames.length && !canRevoke
       ? "Removing or changing a name on a reissue revokes the current certificate, and you don't have permission to revoke it."
@@ -642,7 +658,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     validateStep: async (fields) => {
       // Leaving a step reveals the findings on its own fields; entering it must stay quiet.
       policy.reveal(fields);
-      if (nameRemovalError && fields.includes("subjectAltNames")) return false;
+      if (nameRemovalError && (fields.includes("subjectAltNames") || fields.includes("csr"))) return false;
       if (!(await trigger(fields as (keyof RenewalFormData)[]))) return false;
       return policy.findBlockedFields(fields).length === 0;
     }
@@ -807,7 +823,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     }
 
     if (nameRemovalError) {
-      setStep(stepKeys.indexOf("subject"));
+      const namesStep = stepKeys.indexOf(keySource === CertificateRenewalKeySource.Csr ? "csr" : "subject");
+      if (namesStep >= 0) setStep(namesStep);
       createNotification({ text: nameRemovalError, type: "error" });
       return;
     }
@@ -937,7 +954,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                   {...field}
                   value={value ?? ""}
                   spellCheck={false}
-                  isError={Boolean(error)}
+                  isError={Boolean(error || nameRemovalError)}
                   placeholder="-----BEGIN CERTIFICATE REQUEST-----"
                   rows={12}
                   className="w-full font-mono text-xs"
@@ -945,10 +962,11 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                 <FieldDescription>
                   The subject, key, and extensions are taken from this CSR.
                 </FieldDescription>
-                <FieldError errors={[error]} />
+                <FieldError errors={[error ?? (nameRemovalError ? { message: nameRemovalError } : undefined)]} />
               </Field>
             )}
           />
+          {removedNames.length > 0 && !nameRemovalError && <NameRemovalWarning names={removedNames} />}
           <ValidityField
             control={control}
             label="Validity (TTL)"
@@ -997,17 +1015,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
             />
           )}
-          {removedNames.length > 0 && !nameRemovalError && (
-            <Alert variant="warning">
-              <TriangleAlertIcon />
-              <AlertTitle>DigiCert will revoke the current certificate</AlertTitle>
-              <AlertDescription>
-                This reissue removes {removedNames.join(", ")}. Once the new certificate is issued,
-                DigiCert revokes the current certificate and any earlier reissues and duplicates on
-                this order within 72 hours.
-              </AlertDescription>
-            </Alert>
-          )}
+          {removedNames.length > 0 && !nameRemovalError && <NameRemovalWarning names={removedNames} />}
           <IssuerModifiedNotice fields={subjectIssuerChanges} />
         </div>
       )}

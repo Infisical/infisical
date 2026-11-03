@@ -19,6 +19,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
   CertificateIssuanceOperation,
   domainComponentsSchema,
@@ -35,7 +36,6 @@ import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-app
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TDigiCertCertificateAuthorityFns } from "../certificate-authority/digicert/digicert-certificate-authority-fns";
-import { DigiCertCertificateRequestMetadataSchema } from "../certificate-authority/digicert/digicert-certificate-authority-schemas";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -64,19 +64,7 @@ type TCertificateRequestServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
-  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "cancelReissue">;
-};
-
-const getPendingDigiCertReissueOrderId = (metadata: string | null | undefined) => {
-  if (!metadata) return undefined;
-  try {
-    const parsed = DigiCertCertificateRequestMetadataSchema.safeParse(JSON.parse(metadata));
-    return parsed.success && parsed.data.digicert.previousCertificateId !== undefined
-      ? parsed.data.digicert.orderId
-      : undefined;
-  } catch {
-    return undefined;
-  }
+  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "cancelPendingRequest">;
 };
 
 export type TCertificateRequestServiceFactory = ReturnType<typeof certificateRequestServiceFactory>;
@@ -762,9 +750,11 @@ export const certificateRequestServiceFactory = ({
       );
     }
 
-    const reissueOrderId = getPendingDigiCertReissueOrderId(certificateRequest.metadata);
-    if (previousStatus === CertificateRequestStatus.PENDING_VALIDATION && certificateRequest.caId && reissueOrderId) {
-      await digicertFns.cancelReissue({ caId: certificateRequest.caId, orderId: reissueOrderId });
+    if (previousStatus === CertificateRequestStatus.PENDING_VALIDATION && certificateRequest.caId) {
+      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateRequest.caId);
+      if (ca?.externalCa?.type === CaType.DIGICERT) {
+        await digicertFns.cancelPendingRequest({ caId: certificateRequest.caId, metadata: certificateRequest.metadata });
+      }
     }
 
     return {

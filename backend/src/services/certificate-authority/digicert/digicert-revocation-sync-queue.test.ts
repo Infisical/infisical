@@ -35,7 +35,7 @@ const RSA_ALG: RsaHashedKeyGenParams = {
 };
 const REVOKED_AT = new Date("2026-10-28T09:02:41.000Z");
 
-const replacedCertificate = (id: string) => ({
+const activeCertificate = (id: string) => ({
   id,
   commonName: "example.com",
   serialNumber: id,
@@ -76,18 +76,18 @@ beforeAll(async () => {
 });
 
 const runSync = async ({
-  replaced,
+  active,
   revokedOrderCertificates = [],
   storedBody = certificateBody
 }: {
-  replaced: (ReturnType<typeof replacedCertificate> & { externalMetadata?: unknown })[];
-  revokedOrderCertificates?: ReturnType<typeof replacedCertificate>[];
+  active: (ReturnType<typeof activeCertificate> & { externalMetadata?: unknown })[];
+  revokedOrderCertificates?: ReturnType<typeof activeCertificate>[];
   storedBody?: typeof certificateBody | null;
 }) => {
   let handler: (() => Promise<void>) | undefined;
   const certificateDAL = {
     findActiveDigiCertCertsByOrderIds: vi.fn().mockResolvedValue(revokedOrderCertificates),
-    findActiveDigiCertCertsReplacedOnOrder: vi.fn().mockResolvedValue(replaced),
+    findActiveDigiCertCertsByCaId: vi.fn().mockResolvedValue(active),
     updateById: vi.fn()
   };
   listOrderStatusChanges.mockResolvedValue({
@@ -116,15 +116,15 @@ const runSync = async ({
   return certificateDAL;
 };
 
-describe("DigiCert revocation sync, certificates replaced on their order", () => {
+describe("DigiCert revocation sync, OCSP check of active certificates", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  test("marks a replaced certificate revoked when OCSP reports it revoked", async () => {
+  test("marks a certificate revoked when OCSP reports it revoked", async () => {
     getCertificateOcspStatus.mockResolvedValue({ status: OcspCertStatus.Revoked, revokedAt: REVOKED_AT });
 
-    const certificateDAL = await runSync({ replaced: [replacedCertificate("cert-1")] });
+    const certificateDAL = await runSync({ active: [activeCertificate("cert-1")] });
 
     expect(certificateDAL.updateById).toHaveBeenCalledWith(
       "cert-1",
@@ -132,10 +132,10 @@ describe("DigiCert revocation sync, certificates replaced on their order", () =>
     );
   });
 
-  test("leaves a replaced certificate active when OCSP reports it good", async () => {
+  test("leaves a certificate active when OCSP reports it good", async () => {
     getCertificateOcspStatus.mockResolvedValue({ status: OcspCertStatus.Good });
 
-    const certificateDAL = await runSync({ replaced: [replacedCertificate("cert-1")] });
+    const certificateDAL = await runSync({ active: [activeCertificate("cert-1")] });
 
     expect(certificateDAL.updateById).not.toHaveBeenCalled();
   });
@@ -146,7 +146,7 @@ describe("DigiCert revocation sync, certificates replaced on their order", () =>
       .mockResolvedValueOnce({ status: OcspCertStatus.Revoked, revokedAt: REVOKED_AT });
 
     const certificateDAL = await runSync({
-      replaced: [replacedCertificate("cert-1"), replacedCertificate("cert-2")]
+      active: [activeCertificate("cert-1"), activeCertificate("cert-2")]
     });
 
     expect(certificateDAL.updateById).toHaveBeenCalledTimes(1);
@@ -155,8 +155,8 @@ describe("DigiCert revocation sync, certificates replaced on their order", () =>
 
   test("skips certificates already revoked with their order", async () => {
     const certificateDAL = await runSync({
-      replaced: [replacedCertificate("cert-1")],
-      revokedOrderCertificates: [replacedCertificate("cert-1")]
+      active: [activeCertificate("cert-1")],
+      revokedOrderCertificates: [activeCertificate("cert-1")]
     });
 
     expect(getCertificateOcspStatus).not.toHaveBeenCalled();
@@ -168,9 +168,9 @@ describe("DigiCert revocation sync, certificates replaced on their order", () =>
     getCertificateOcspStatus.mockResolvedValue({ status: OcspCertStatus.Revoked, revokedAt: REVOKED_AT });
 
     const certificateDAL = await runSync({
-      replaced: [
+      active: [
         {
-          ...replacedCertificate("cert-1"),
+          ...activeCertificate("cert-1"),
           externalMetadata: { type: "digicert", orderId: 7001, certificateId: 50001 }
         }
       ],

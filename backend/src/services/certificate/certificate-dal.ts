@@ -132,26 +132,18 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findActiveDigiCertCertsReplacedOnOrder = async (caId: string) => {
+  const findActiveDigiCertCertsByCaId = async (caId: string) => {
     try {
       const certs = await db
         .replicaNode()(TableName.Certificate)
         .where({ caId, status: CertStatus.ACTIVE })
         .where("notAfter", ">", new Date())
         .whereRaw(`"externalMetadata"->>'type' = ?`, ["digicert"])
-        .whereExists((qb) => {
-          void qb
-            .select(db.raw("1"))
-            .from({ newer: TableName.Certificate })
-            .whereRaw(`newer."caId" = ${TableName.Certificate}."caId"`)
-            .whereRaw(`newer."externalMetadata"->>'orderId' = ${TableName.Certificate}."externalMetadata"->>'orderId'`)
-            .whereRaw(`newer."createdAt" > ${TableName.Certificate}."createdAt"`);
-        })
         .select("id", "commonName", "serialNumber", "projectId", "applicationId", "deletedAt", "externalMetadata");
 
       return certs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find active DigiCert certs replaced on their order" });
+      throw new DatabaseError({ error, name: "Find active DigiCert certificates by CA" });
     }
   };
 
@@ -1533,7 +1525,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findLatestActiveCertForSubscriber,
     findAllActiveCertsForSubscriber,
     findActiveDigiCertCertsByOrderIds,
-    findActiveDigiCertCertsReplacedOnOrder,
+    findActiveDigiCertCertsByCaId,
     findExpiredSyncedCertificates,
     findByThumbprintInOrg,
     findActiveCertificatesByIds,

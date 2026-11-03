@@ -4,7 +4,8 @@ import { DigiCertCertificateAuthorityFns } from "./digicert-certificate-authorit
 const client = {
   getOrder: vi.fn(),
   reissueOrder: vi.fn(),
-  downloadCertificatePem: vi.fn()
+  downloadCertificatePem: vi.fn(),
+  cancelOrderReissue: vi.fn()
 };
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
@@ -87,5 +88,41 @@ describe("DigiCert reissueCertificate", () => {
       `This certificate is no longer the current one on DigiCert order ${ORDER_ID}`
     );
     expect(client.reissueOrder).not.toHaveBeenCalled();
+  });
+});
+
+const ORDER_METADATA = {
+  orderId: ORDER_ID,
+  productNameId: "ssl_basic",
+  organizationId: 777,
+  orderPlacedAt: "2026-11-01T00:00:00.000Z"
+};
+
+describe("DigiCert cancelPendingRequest", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    client.cancelOrderReissue.mockResolvedValue(undefined);
+  });
+
+  test("cancels the reissue on DigiCert for a reissue request", async () => {
+    const metadata = JSON.stringify({ digicert: { ...ORDER_METADATA, previousCertificateId: CURRENT_CERTIFICATE_ID } });
+
+    await expect(buildFns(CURRENT_CERTIFICATE_ID).cancelPendingRequest({ caId: CA_ID, metadata })).resolves.toBe(true);
+    expect(client.cancelOrderReissue).toHaveBeenCalledWith(ORDER_ID, expect.any(String));
+  });
+
+  test("does nothing for a new order", async () => {
+    const metadata = JSON.stringify({ digicert: ORDER_METADATA });
+
+    await expect(buildFns(CURRENT_CERTIFICATE_ID).cancelPendingRequest({ caId: CA_ID, metadata })).resolves.toBe(false);
+    expect(client.cancelOrderReissue).not.toHaveBeenCalled();
+  });
+
+  test("does nothing when the metadata is missing or not JSON", async () => {
+    const fns = buildFns(CURRENT_CERTIFICATE_ID);
+
+    await expect(fns.cancelPendingRequest({ caId: CA_ID, metadata: null })).resolves.toBe(false);
+    await expect(fns.cancelPendingRequest({ caId: CA_ID, metadata: "not json" })).resolves.toBe(false);
+    expect(client.cancelOrderReissue).not.toHaveBeenCalled();
   });
 });

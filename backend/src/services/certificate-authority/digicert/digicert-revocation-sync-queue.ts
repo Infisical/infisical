@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import * as x509 from "@peculiar/x509";
+import pLimit from "p-limit";
 
 import { TableName } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -39,13 +40,14 @@ const REVOCATION_SYNC_CRON_SCHEDULE = "0 3 * * *";
 const REVOCATION_LOOKBACK_SECONDS = 6 * 24 * 60 * 60;
 const ORDER_ID_LOOKUP_CHUNK_SIZE = 500;
 const HANDLER_TIMEOUT_MS = 30 * 60 * 1000;
+const OCSP_CHECK_CONCURRENCY = 4;
 
 type TDigiCertRevocationSyncQueueFactoryDep = {
   cronJob: TCronJobFactory;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findWithAssociatedCa">;
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "findActiveDigiCertCertsByOrderIds" | "findActiveDigiCertCertsReplacedOnOrder" | "updateById"
+    "findActiveDigiCertCertsByOrderIds" | "findActiveDigiCertCertsByCaId" | "updateById"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
@@ -153,12 +155,12 @@ export const digicertRevocationSyncQueueFactory = ({
     return issuer ? { certificate, issuer } : null;
   };
 
-  const syncReplacedCertificateRevocations = async (
+  const syncCertificateRevocationsFromOcsp = async (
     caId: string,
     digicertClient: TDigiCertApiClient,
     alreadyRevokedIds: Set<string>
   ) => {
-    const replacedCertificates = await certificateDAL.findActiveDigiCertCertsReplacedOnOrder(caId);
+    const activeCertificates = await certificateDAL.findActiveDigiCertCertsByCaId(caId);
 
     const kmsDecryptorsByProjectId = new Map<string, (args: { cipherTextBlob: Buffer }) => Promise<Buffer>>();
     const getKmsDecryptor = async (projectId: string) => {
@@ -170,29 +172,34 @@ export const digicertRevocationSyncQueueFactory = ({
       return kmsDecryptor;
     };
 
-    let revokedCount = 0;
-    for (const cert of replacedCertificates.filter(({ id }) => !alreadyRevokedIds.has(id))) {
-      try {
-        const certificateAndIssuer = await loadCertificateAndIssuer(cert, digicertClient, getKmsDecryptor);
-        if (!certificateAndIssuer) {
-          throw new Error("No issuer certificate stored for the certificate");
-        }
+    const certificatesToCheck = activeCertificates.filter(({ id }) => !alreadyRevokedIds.has(id));
+    const ocspLimit = pLimit(OCSP_CHECK_CONCURRENCY);
+    const outcomes = await Promise.all(
+      certificatesToCheck.map((cert) =>
+        ocspLimit(async () => {
+          try {
+            const certificateAndIssuer = await loadCertificateAndIssuer(cert, digicertClient, getKmsDecryptor);
+            if (!certificateAndIssuer) return "skipped" as const;
 
-        const { status, revokedAt } = await getCertificateOcspStatus(certificateAndIssuer);
-        if (status === OcspCertStatus.Revoked) {
-          await markCertificateRevokedLocally(cert, revokedAt);
-          revokedCount += 1;
-          logger.info(
-            `digicert-revocation-sync: marked revoked from OCSP [caId=${caId}] [certId=${cert.id}] [serial=${cert.serialNumber}]`
-          );
-        }
-      } catch (err) {
-        logger.warn(err, `digicert-revocation-sync: OCSP check failed [caId=${caId}] [certId=${cert.id}]`);
-      }
-    }
+            const { status, revokedAt } = await getCertificateOcspStatus(certificateAndIssuer);
+            if (status !== OcspCertStatus.Revoked) return "checked" as const;
 
+            await markCertificateRevokedLocally(cert, revokedAt);
+            logger.info(
+              `digicert-revocation-sync: marked revoked from OCSP [caId=${caId}] [certId=${cert.id}] [serial=${cert.serialNumber}]`
+            );
+            return "revoked" as const;
+          } catch (err) {
+            logger.warn(err, `digicert-revocation-sync: OCSP check failed [caId=${caId}] [certId=${cert.id}]`);
+            return "failed" as const;
+          }
+        })
+      )
+    );
+
+    const countOf = (outcome: (typeof outcomes)[number]) => outcomes.filter((value) => value === outcome).length;
     logger.info(
-      `digicert-revocation-sync: OCSP check done [caId=${caId}] [checked=${replacedCertificates.length}] [revoked=${revokedCount}]`
+      `digicert-revocation-sync: OCSP check done [caId=${caId}] [checked=${certificatesToCheck.length}] [revoked=${countOf("revoked")}] [failed=${countOf("failed")}] [skippedNoIssuer=${countOf("skipped")}]`
     );
   };
 
@@ -239,7 +246,7 @@ export const digicertRevocationSyncQueueFactory = ({
       `digicert-revocation-sync: CA done [caId=${ca.id}] [upstreamRevoked=${upstreamRevokedOrderIds.length}] [reconciled=${reconciledCertificateIds.size}]`
     );
 
-    await syncReplacedCertificateRevocations(ca.id, digicertClient, reconciledCertificateIds);
+    return { caId: ca.id, digicertClient, reconciledCertificateIds };
   };
 
   const init = () => {
@@ -260,13 +267,22 @@ export const digicertRevocationSyncQueueFactory = ({
 
         let succeededCaCount = 0;
         let failedCaCount = 0;
+        const syncedCertificateAuthorities: Awaited<ReturnType<typeof syncRevocationsForCertificateAuthority>>[] = [];
         for (const caRow of digicertCertificateAuthorities) {
           try {
-            await syncRevocationsForCertificateAuthority(caRow);
+            syncedCertificateAuthorities.push(await syncRevocationsForCertificateAuthority(caRow));
             succeededCaCount += 1;
           } catch (err) {
             failedCaCount += 1;
             logger.error(err, `digicert-revocation-sync: CA failed [caId=${caRow.id}]`);
+          }
+        }
+
+        for (const { caId, digicertClient, reconciledCertificateIds } of syncedCertificateAuthorities) {
+          try {
+            await syncCertificateRevocationsFromOcsp(caId, digicertClient, reconciledCertificateIds);
+          } catch (err) {
+            logger.error(err, `digicert-revocation-sync: OCSP check failed for CA [caId=${caId}]`);
           }
         }
 

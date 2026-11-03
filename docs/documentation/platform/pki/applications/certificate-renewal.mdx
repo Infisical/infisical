@@ -6,7 +6,7 @@ description: "Manually renew a certificate, and change its subject, names, valid
 
 Certificates expire, and the details they carry go out of date. A manual renewal issues a replacement for a certificate you already have, and lets you correct it at the same time: add a name the service now answers to, extend the validity, or decide whether the replacement keeps the current key pair.
 
-This is the counterpart to automatic renewal, which reissues a certificate exactly as it is on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
+This is the counterpart to automatic renewal, which renews a certificate exactly as it is on a schedule. Reach for a manual renewal when something about the certificate needs to change, or when you want the replacement now rather than at the next renewal window.
 
 <Note>
   A certificate can be renewed when it was issued from a [certificate profile](/documentation/platform/pki/applications/enrollment-methods/api), is still active, and hasn't already been renewed. Certificates obtained through [ACME](/documentation/platform/pki/applications/enrollment-methods/acme), [EST](/documentation/platform/pki/applications/enrollment-methods/est), or [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) are renewed by the client that requested them, not from here.
@@ -92,6 +92,8 @@ If a [DigiCert CA](/documentation/platform/pki/ca/digicert-direct) issued the ce
 A reissue requests the same validity as the current certificate, capped at 199 days and at the end of the order, so the **Validity (TTL)** field is read-only and the API rejects `ttl`. The profile's policy still applies to it, so a validity the policy doesn't allow is flagged before you submit. If you need a certificate that lasts longer than the order, select **Place a new order** instead.
 
 If you add a name that DigiCert hasn't validated yet, validate it in DigiCert CertCentral within 24 hours. Otherwise the reissue is canceled and the request fails.
+
+Automatic renewal always places a new order. To reissue on the existing order, renew the certificate manually.
 
 <Warning>
   If the reissue removes or changes a name, DigiCert revokes the previous certificate and any earlier copies on the order within 72 hours, so you also need permission to revoke the certificate.
@@ -194,7 +196,7 @@ Deploy the renewed certificate before the previous one expires. Renewing doesn't
     If a manual renewal fails, Infisical shows the reason when you submit it and records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) that links to the certificate being renewed. If an automatic renewal fails, Infisical records an `automated-renew-certificate-failed` event instead, unless the renewal had already been sent to an external CA, in which case the failure is recorded as `certificate-issuance-failed`.
   </Accordion>
   <Accordion title="Can I renew several certificates at once?">
-    Manual renewal handles one certificate at a time. To keep many certificates current without intervention, enable [automatic renewal](/documentation/platform/pki/applications/certificates) so Infisical reissues them before they expire.
+    Manual renewal handles one certificate at a time. To keep many certificates current without intervention, enable [automatic renewal](/documentation/platform/pki/applications/certificates) so they renew before they expire.
   </Accordion>
 </AccordionGroup>
 
