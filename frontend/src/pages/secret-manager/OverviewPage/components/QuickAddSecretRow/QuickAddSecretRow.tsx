@@ -53,12 +53,7 @@ const DuplicateEnvironmentsMessage = ({ environments }: { environments: string[]
       Already exists in {listedEnvironments} and{" "}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="link"
-            size="xs"
-            className="align-baseline text-2xs text-danger underline decoration-dotted"
-          >
+          <Button type="button" variant="link" size="xs">
             {hiddenEnvironments.length} more
           </Button>
         </TooltipTrigger>
