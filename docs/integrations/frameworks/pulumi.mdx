@@ -4,12 +4,107 @@ sidebarTitle: "Pulumi"
 description: "Fetch secrets from Infisical in Pulumi through the Terraform Bridge."
 ---
 
-Infisical can be integrated with Pulumi by leveraging Pulumi’s [Terraform Bridge](https://www.pulumi.com/blog/any-terraform-provider/), 
-which allows Terraform providers to be used seamlessly within Pulumi projects. This enables infrastructure and platform teams to manage Infisical secrets and resources 
-using Pulumi’s familiar programming languages (including TypeScript, Python, Go, and C#), without any change to existing workflows.
+[Pulumi](https://www.pulumi.com/) can use the [Infisical Terraform provider](https://registry.terraform.io/providers/Infisical/infisical/latest/docs) through Pulumi's [Any Terraform Provider](https://www.pulumi.com/registry/packages/terraform-provider/installation-configuration/) feature. This lets you manage Infisical projects and secrets from Pulumi programs written in TypeScript, Python, Go, C#, or Java.
 
-The Terraform Bridge wraps the [Infisical Terraform provider](https://registry.terraform.io/providers/Infisical/infisical/latest/docs) and exposes its resources (such as `infisical_secret`, `infisical_project`, and `infisical_service_token`) 
-in a Pulumi-compatible interface. This makes it easy to integrate secret management directly into Pulumi-based IaC pipelines, ensuring secrets stay in sync with 
-the rest of your cloud infrastructure. Authentication is handled through the same methods as Terraform: using environment variables such as `INFISICAL_TOKEN` and `INFISICAL_SITE_URL`.
+## Prerequisites
 
-By bridging the Infisical provider, teams using Pulumi can adopt secure, centralized secrets management without compromising on their toolchain or language preferences.
+- [Pulumi CLI](https://www.pulumi.com/docs/install/) installed
+- An [Infisical project](/documentation/platform/project)
+- A [machine identity](https://infisical.com/docs/documentation/platform/identities/machine-identities) with access to the project
+
+## Add the provider
+
+Create a Pulumi project, then add the Infisical Terraform provider. Pulumi generates a typed SDK for your project.
+
+<Tabs>
+  <Tab title="TypeScript">
+
+    ```bash
+    pulumi new typescript
+    pulumi package add terraform-provider infisical/infisical
+    ```
+  </Tab>
+  <Tab title="Python">
+
+    ```bash
+    pulumi new python
+    pulumi package add terraform-provider infisical/infisical
+    ```
+  </Tab>
+</Tabs>
+
+Pin the provider version when you need reproducible builds:
+
+```bash
+pulumi package add terraform-provider infisical/infisical <provider-version>
+```
+
+Run `pulumi install` after cloning a project to install the provider and any generated SDK files recorded in `Pulumi.yaml`.
+
+## Authenticate the provider
+
+Set the provider authentication variables before running Pulumi. The token must belong to a machine identity with permission to the project.
+
+```bash
+export INFISICAL_AUTH_METHOD=token
+export INFISICAL_TOKEN=<machine-identity-token>
+export INFISICAL_HOST=https://app.infisical.com
+```
+
+`INFISICAL_HOST` is optional when you use Infisical Cloud. Set it to your self-hosted Infisical URL when needed.
+
+## Manage a secret
+
+Set the secret value as encrypted Pulumi configuration:
+
+```bash
+pulumi config set apiKey <secret-value> --secret
+```
+
+Create or update the secret through the generated SDK:
+
+<Tabs>
+  <Tab title="TypeScript">
+
+    ```typescript
+    import * as pulumi from "@pulumi/pulumi";
+    import * as infisical from "@pulumi/infisical";
+
+    const config = new pulumi.Config();
+
+    const secret = new infisical.Secret("api-key", {
+      name: "API_KEY",
+      value: pulumi.secret(config.require("apiKey")),
+      envSlug: "dev",
+      workspaceId: "<project-id>",
+      folderPath: "/",
+    });
+
+    export const secretId = secret.id;
+    ```
+  </Tab>
+  <Tab title="Python">
+
+    The generated Python SDK uses snake case for resource properties.
+
+    ```python
+    import pulumi
+    import pulumi_infisical as infisical
+
+    config = pulumi.Config()
+
+    secret = infisical.Secret(
+        "api-key",
+        name="API_KEY",
+        value=pulumi.secret(config.require("apiKey")),
+        env_slug="dev",
+        workspace_id="<project-id>",
+        folder_path="/",
+    )
+
+    pulumi.export("secret_id", secret.id)
+    ```
+  </Tab>
+</Tabs>
+
+For Pulumi HCL projects, declare `Infisical/infisical` in a `required_providers` block and run `pulumi install`. Use the Terraform provider's resource names and fields in your `.tf` files. See the [Infisical Terraform provider documentation](https://registry.terraform.io/providers/Infisical/infisical/latest/docs) for the available resources and data sources.
