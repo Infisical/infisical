@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,6 +19,10 @@ func TestProjectEvents_Access(t *testing.T) {
 
 	subscribeTo := func(action string, conditions map[string]any) fixture.Permission {
 		return fixture.Permission{Subject: "secret-event-subscriptions", Action: []string{action}, Conditions: conditions}
+	}
+	deny := func(p fixture.Permission) fixture.Permission {
+		p.Inverted = true
+		return p
 	}
 
 	t.Run("should refuse when the plan does not include event subscriptions", func(t *testing.T) {
@@ -34,6 +39,8 @@ func TestProjectEvents_Access(t *testing.T) {
 		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "body: %s", apierr.Body(res.Body))
 		require.Equal(t, "Event subscriptions are not available on your current plan. Please upgrade to access this feature.",
 			apierr.Message(res.Body))
+		tn.SetPlan(t, license.Enterprise())
+		subscribe(t, tn.Admin, proj, on("secret:create"))
 	})
 
 	t.Run("should refuse the whole subscription when the role does not allow one of its event types", func(t *testing.T) {
@@ -55,21 +62,25 @@ func TestProjectEvents_Access(t *testing.T) {
 		subscribe(t, subscriber, proj, on("secret:create"))
 	})
 
-	t.Run("should refuse a subscription to every environment when the role allows only one", func(t *testing.T) {
+	t.Run("should refuse a subscription to every environment when the role denies one of them", func(t *testing.T) {
 		t.Parallel()
+		spec.Why(t, `No rule refuses the empty environment a subscription without one is first checked
+			against, so only the check of each project environment can refuse it.`)
 
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		proj.NewRole(t, "dev-only", subscribeTo("subscribe-to-creation-events",
-			map[string]any{"environment": map[string]any{"$eq": "dev"}}))
-		subscriber := proj.NewMachineIdentity(t, fixture.WithRoles("dev-only"))
+		proj.NewRole(t, "no-prod", subscribeTo("subscribe-to-creation-events", nil),
+			deny(subscribeTo("subscribe-to-creation-events", map[string]any{"environment": map[string]any{"$eq": "prod"}})))
+		subscriber := proj.NewMachineIdentity(t, fixture.WithRoles("no-prod"))
 
 		// Action
 		res := trySubscribe(t, subscriber, proj, on("secret:create"))
 
 		// Assert
 		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "body: %s", apierr.Body(res.Body))
+		require.Equal(t, "You are not allowed to subscribe-to-creation-events on secret-event-subscriptions",
+			apierr.Message(res.Body))
 		subscribe(t, subscriber, proj, on("secret:create").in("dev", "/"))
 	})
 
@@ -80,9 +91,8 @@ func TestProjectEvents_Access(t *testing.T) {
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		secretmanager.CreateFolder(t, proj, "dev", "/payroll")
-		denied := subscribeTo("subscribe-to-creation-events", map[string]any{"secretPath": map[string]any{"$eq": "/payroll"}})
-		denied.Inverted = true
-		proj.NewRole(t, "no-payroll", subscribeTo("subscribe-to-creation-events", nil), denied)
+		proj.NewRole(t, "no-payroll", subscribeTo("subscribe-to-creation-events", nil),
+			deny(subscribeTo("subscribe-to-creation-events", map[string]any{"secretPath": map[string]any{"$eq": "/payroll"}})))
 		s := subscribe(t, proj.NewMachineIdentity(t, fixture.WithRoles("no-payroll")), proj, on("secret:create"))
 
 		// Action

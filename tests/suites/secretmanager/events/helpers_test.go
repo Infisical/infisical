@@ -158,6 +158,9 @@ func (s *stream) next(t *testing.T) event {
 		if !ok {
 			t.Fatalf("the stream ended before the next event: %v", s.err)
 		}
+		if f.name == "error" {
+			t.Fatalf("the server sent an error instead of the next event: %s", f.data)
+		}
 		var body struct {
 			ProjectType string `json:"projectType"`
 			Data        struct {
