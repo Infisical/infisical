@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import { OrgMembershipRole, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
 
-import { createIsolatedOrgAndProject, createSubOrgAndProject } from "../../testUtils/fixtures";
+import { createIsolatedOrgAndProject, createProject, createSubOrgAndProject } from "../../testUtils/fixtures";
 import { createIdentityActor } from "../../testUtils/identities";
 import { overrideLicenseFeatures } from "../../testUtils/license";
 
@@ -15,6 +15,7 @@ describe("Removing a parent-org identity from a sub-organization", () => {
   let rootToken: string;
   let subOrgToken: string;
   let subOrgSlug: string;
+  let subOrgId: string;
   const createdIdentityIds: string[] = [];
 
   const createGroup = async (authToken: string, role?: OrgMembershipRole) => {
@@ -67,6 +68,26 @@ describe("Removing a parent-org identity from a sub-organization", () => {
   const groupRows = (identityId: string, groupId: string) =>
     testDb(TableName.IdentityGroupMembership).where({ identityId, groupId });
 
+  const addGroupToProject = (groupId: string, projectId: string) =>
+    testDb(TableName.Membership).insert({
+      scope: AccessScope.Project,
+      scopeOrgId: subOrgId,
+      scopeProjectId: projectId,
+      actorGroupId: groupId
+    });
+
+  const createPrivilege = async (identityId: string, projectId: string) => {
+    const [privilege] = await testDb(TableName.AdditionalPrivilege)
+      .insert({
+        name: `removal-priv-${randomUUID().slice(0, 8)}`,
+        actorIdentityId: identityId,
+        projectId,
+        permissions: JSON.stringify([])
+      })
+      .returning("id");
+    return (privilege as { id: string }).id;
+  };
+
   beforeAll(async () => {
     restoreLicense = overrideLicenseFeatures({ groups: true, subOrganization: true });
 
@@ -77,6 +98,7 @@ describe("Removing a parent-org identity from a sub-organization", () => {
 
     const sub = await createSubOrgAndProject({ rootOrgId, namePrefix: "identity-removal-groups-sub" });
     subOrgToken = sub.authToken;
+    subOrgId = sub.subOrgId;
     const [subOrg] = await testDb(TableName.Organization).where({ id: sub.subOrgId }).select("slug");
     subOrgSlug = subOrg.slug;
   });
@@ -100,7 +122,9 @@ describe("Removing a parent-org identity from a sub-organization", () => {
       url: (id: string) => `/api/v1/organization/identity-memberships/${id}`
     },
     { path: "the identity delete route", url: (id: string) => `/api/v1/identities/${id}` }
-  ])("through $path drops its sub-org groups and its access, and keeps its root groups", async ({ url }) => {
+  ])(
+    "through $path drops its sub-org groups, its access and the privileges those groups were its only route to",
+    async ({ url }) => {
     const { identityId } = await createIdentityActor({
       orgId: rootOrgId,
       authToken: rootToken,
@@ -121,6 +145,14 @@ describe("Removing a parent-org identity from a sub-organization", () => {
     await addToGroup(subOrgToken, subGroupId, identityId);
     await addToGroup(rootToken, rootGroupId, identityId);
 
+    const subGroupOnlyProjectId = await createProject(subOrgToken, `removal-only-${randomUUID().slice(0, 8)}`);
+    const sharedProjectId = await createProject(subOrgToken, `removal-shared-${randomUUID().slice(0, 8)}`);
+    await addGroupToProject(subGroupId, subGroupOnlyProjectId);
+    await addGroupToProject(subGroupId, sharedProjectId);
+    await addGroupToProject(rootGroupId, sharedProjectId);
+    const orphanedPrivilegeId = await createPrivilege(identityId, subGroupOnlyProjectId);
+    const keptPrivilegeId = await createPrivilege(identityId, sharedProjectId);
+
     expect((await loginToSubOrg(identityId)).statusCode).toBe(200);
 
     const removeRes = await testServer.inject({
@@ -133,5 +165,8 @@ describe("Removing a parent-org identity from a sub-organization", () => {
     expect(await groupRows(identityId, subGroupId)).toHaveLength(0);
     expect(await groupRows(identityId, rootGroupId)).toHaveLength(1);
     expect((await loginToSubOrg(identityId)).statusCode).toBe(401);
-  });
+    expect(await testDb(TableName.AdditionalPrivilege).where({ id: orphanedPrivilegeId })).toHaveLength(0);
+    expect(await testDb(TableName.AdditionalPrivilege).where({ id: keptPrivilegeId })).toHaveLength(1);
+  }
+  );
 });

@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import { removeIdentityFromGroupsOwnedByOrg } from "@app/ee/services/group/group-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -52,7 +53,10 @@ type TMembershipIdentityServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "deleteFromGroupsOwnedByOrg">;
+  identityGroupMembershipDAL: Pick<
+    TIdentityGroupMembershipDALFactory,
+    "delete" | "filterProjectsByIdentityMembership" | "findGroupIdsOwnedByOrg"
+  >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
@@ -483,8 +487,14 @@ export const membershipIdentityServiceFactory = ({
       if (scopeData.scope === AccessScope.Organization) {
         // Group membership counts as org membership, so a row left in one of this org's groups
         // would keep the identity in the org with no way for an admin to see or remove it.
-        await identityGroupMembershipDAL.deleteFromGroupsOwnedByOrg(
-          { identityId: dto.selector.identityId, orgId: scopeData.orgId },
+        await removeIdentityFromGroupsOwnedByOrg(
+          {
+            identityId: dto.selector.identityId,
+            orgId: scopeData.orgId,
+            membershipDAL: membershipIdentityDAL,
+            identityGroupMembershipDAL,
+            additionalPrivilegeDAL
+          },
           tx
         );
         await identityAccessTokenService.insertOrgMembershipRevocationMarker({

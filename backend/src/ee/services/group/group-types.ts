@@ -175,6 +175,26 @@ export type TRemoveIdentitiesFromGroup = {
   eventEmitter: TEventEmitter;
 };
 
+export type TReapAndDeleteIdentityGroupMemberships = {
+  groupId: string;
+  identityIds: string[];
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "delete" | "filterProjectsByIdentityMembership">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+};
+
+export type TRemoveIdentityFromGroupsOwnedByOrg = Omit<
+  TReapAndDeleteIdentityGroupMemberships,
+  "groupId" | "identityIds" | "identityGroupMembershipDAL"
+> & {
+  identityId: string;
+  orgId: string;
+  identityGroupMembershipDAL: Pick<
+    TIdentityGroupMembershipDALFactory,
+    "delete" | "filterProjectsByIdentityMembership" | "findGroupIdsOwnedByOrg"
+  >;
+};
+
 export type TConvertPendingGroupAdditionsToGroupMemberships = {
   userIds: string[];
   userDAL: Pick<TUserDALFactory, "findUserEncKeyByUserIdsBatch" | "transaction" | "find" | "findById">;

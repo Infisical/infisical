@@ -47,7 +47,8 @@ const createService = ({
   const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
   const deleteAlertsForDeletedResource = vi.fn().mockResolvedValue(0);
   const emit = vi.fn().mockResolvedValue(undefined);
-  const deleteFromGroupsOwnedByOrg = vi.fn().mockResolvedValue(0);
+  const findGroupIdsOwnedByOrg = vi.fn().mockResolvedValue(["group-1"]);
+  const deleteGroupMemberships = vi.fn().mockResolvedValue([]);
   const lockActorsForOrgAccess = vi.fn().mockResolvedValue(undefined);
 
   const identityDAL = {
@@ -72,7 +73,11 @@ const createService = ({
   const service = identityServiceFactory({
     identityDAL: identityDAL as never,
     identityMetadataDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
-    identityGroupMembershipDAL: { deleteFromGroupsOwnedByOrg },
+    identityGroupMembershipDAL: {
+      findGroupIdsOwnedByOrg,
+      filterProjectsByIdentityMembership: vi.fn().mockResolvedValue(new Map()),
+      delete: deleteGroupMemberships
+    },
     identityOrgMembershipDAL: {} as never,
     membershipIdentityDAL: membershipIdentityDAL as never,
     membershipRoleDAL: {} as never,
@@ -107,7 +112,8 @@ const createService = ({
     membershipIdentityDAL,
     deleteAlertsForResource,
     deleteAlertsForDeletedResource,
-    deleteFromGroupsOwnedByOrg,
+    findGroupIdsOwnedByOrg,
+    deleteGroupMemberships,
     lockActorsForOrgAccess,
     emit
   };
@@ -117,16 +123,16 @@ describe("deleteIdentity group cleanup", () => {
   beforeEach(() => vi.clearAllMocks());
 
   test("removing an identity that belongs to another org deletes it from this org's groups in the same transaction", async () => {
-    const { service, deleteFromGroupsOwnedByOrg } = createService({ identityOrgId: ROOT_ORG_ID });
+    const { service, findGroupIdsOwnedByOrg, deleteGroupMemberships } = createService({ identityOrgId: ROOT_ORG_ID });
 
     await service.deleteIdentity(buildDto());
 
-    expect(deleteFromGroupsOwnedByOrg).toHaveBeenCalledTimes(1);
-    expect(deleteFromGroupsOwnedByOrg).toHaveBeenCalledWith({ identityId: IDENTITY_ID, orgId: ORG_ID }, TX);
+    expect(findGroupIdsOwnedByOrg).toHaveBeenCalledWith({ identityId: IDENTITY_ID, orgId: ORG_ID }, TX);
+    expect(deleteGroupMemberships).toHaveBeenCalledWith({ groupId: "group-1", $in: { identityId: [IDENTITY_ID] } }, TX);
   });
 
   test("takes the org access lock that group additions take, before the cleanup", async () => {
-    const { service, deleteFromGroupsOwnedByOrg, lockActorsForOrgAccess } = createService({
+    const { service, findGroupIdsOwnedByOrg, lockActorsForOrgAccess } = createService({
       identityOrgId: ROOT_ORG_ID
     });
 
@@ -134,16 +140,16 @@ describe("deleteIdentity group cleanup", () => {
 
     expect(lockActorsForOrgAccess).toHaveBeenCalledWith({ orgId: ORG_ID, actorIds: [IDENTITY_ID] }, TX);
     expect(lockActorsForOrgAccess.mock.invocationCallOrder[0]).toBeLessThan(
-      deleteFromGroupsOwnedByOrg.mock.invocationCallOrder[0]
+      findGroupIdsOwnedByOrg.mock.invocationCallOrder[0]
     );
   });
 
   test("deleting the identity row leaves group cleanup to the foreign key cascade", async () => {
-    const { service, deleteFromGroupsOwnedByOrg } = createService();
+    const { service, findGroupIdsOwnedByOrg } = createService();
 
     await service.deleteIdentity(buildDto());
 
-    expect(deleteFromGroupsOwnedByOrg).not.toHaveBeenCalled();
+    expect(findGroupIdsOwnedByOrg).not.toHaveBeenCalled();
   });
 });
 
