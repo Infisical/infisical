@@ -29,6 +29,9 @@ describe("getApplicationCertificateAccess", () => {
     expect(access.renewBlockedReason).toBe(
       "You need the Operator or Admin role on payments to renew this certificate."
     );
+    expect(access.editMetadataBlockedReason).toBe(
+      "You need the Operator or Admin role on payments to edit this certificate's metadata."
+    );
     expect(access.revokeBlockedReason).toBe(
       "You need the Admin role on payments to revoke this certificate."
     );
@@ -46,6 +49,7 @@ describe("getApplicationCertificateAccess", () => {
     expect(access).toMatchObject({ canRenew: true, canEdit: true, canDelete: false });
     expect(access.renewBlockedReason).toBeUndefined();
     expect(access.editBlockedReason).toBeUndefined();
+    expect(access.editMetadataBlockedReason).toBeUndefined();
     expect(access.deleteBlockedReason).toBeDefined();
   });
 

@@ -37,6 +37,7 @@ export type TApplicationCertificateAccess = {
   canDelete: boolean;
   renewBlockedReason?: string;
   editBlockedReason?: string;
+  editMetadataBlockedReason?: string;
   revokeBlockedReason?: string;
   deleteBlockedReason?: string;
 };
@@ -71,6 +72,9 @@ export const getApplicationCertificateAccess = ({
     editBlockedReason: canEdit
       ? undefined
       : `${operatorOrAdmin} to change auto-renewal for this certificate.`,
+    editMetadataBlockedReason: canEdit
+      ? undefined
+      : `${operatorOrAdmin} to edit this certificate's metadata.`,
     revokeBlockedReason: canDelete ? undefined : `${admin} to revoke this certificate.`,
     deleteBlockedReason: canDelete ? undefined : `${admin} to delete this certificate.`
   };

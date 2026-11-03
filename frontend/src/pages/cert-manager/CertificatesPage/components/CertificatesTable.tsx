@@ -1078,6 +1078,7 @@ export const CertificatesTable = ({
                           >
                             {canShowAutoRenewalIcon &&
                               (() => {
+                                const editBlockedReason = rowApplicationAccess?.editBlockedReason;
                                 const tooltipText = (() => {
                                   if (hasFailed && certificate.renewalError) {
                                     return `Auto-renewal failed: ${certificate.renewalError}`;
@@ -1092,9 +1093,12 @@ export const CertificatesTable = ({
                                       0,
                                       daysUntilExpiry - (certificate.renewBeforeDays || 0)
                                     );
-                                    return `Auto-renews in ${daysUntilRenewal}d`;
+                                    const renewsIn = `Auto-renews in ${daysUntilRenewal}d`;
+                                    return editBlockedReason
+                                      ? `${renewsIn}. ${editBlockedReason}`
+                                      : renewsIn;
                                   }
-                                  return "Set auto renewal";
+                                  return editBlockedReason ?? "Set auto renewal";
                                 })();
 
                                 return (
@@ -1102,7 +1106,12 @@ export const CertificatesTable = ({
                                     <TooltipTrigger asChild>
                                       <button
                                         type="button"
-                                        className="cursor-pointer"
+                                        className={
+                                          canEditCertificate
+                                            ? "cursor-pointer"
+                                            : "cursor-not-allowed"
+                                        }
+                                        aria-disabled={!canEditCertificate || undefined}
                                         aria-label="Certificate auto-renewal"
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -1133,7 +1142,9 @@ export const CertificatesTable = ({
                                         </Badge>
                                       </button>
                                     </TooltipTrigger>
-                                    <TooltipContent>{tooltipText}</TooltipContent>
+                                    <TooltipContent className="max-w-72">
+                                      {tooltipText}
+                                    </TooltipContent>
                                   </Tooltip>
                                 );
                               })()}
