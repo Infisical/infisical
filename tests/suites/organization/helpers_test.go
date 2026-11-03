@@ -43,6 +43,7 @@ type organization struct {
 	AuthEnforced          bool
 	GoogleSsoAuthEnforced bool
 	DefaultMembershipRole string
+	SsoMfaTrust           string
 }
 
 func orgOf(t *testing.T, tn *harness.Tenant) organization {
@@ -57,6 +58,7 @@ func orgOf(t *testing.T, tn *harness.Tenant) organization {
 		AuthEnforced:          o.AuthEnforced != nil && *o.AuthEnforced,
 		GoogleSsoAuthEnforced: o.GoogleSsoAuthEnforced != nil && *o.GoogleSsoAuthEnforced,
 		DefaultMembershipRole: deref(o.DefaultMembershipRole),
+		SsoMfaTrust:           deref(o.SsoMfaTrust),
 	}
 }
 

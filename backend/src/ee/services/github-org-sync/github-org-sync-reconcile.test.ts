@@ -118,6 +118,11 @@ const createService = () => {
     usageMeteringService: { emit: vi.fn() } as never,
     alertChannelRecipientDAL: { pruneOutOfScopeRecipients: vi.fn().mockResolvedValue(undefined) } as never,
     auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) } as never,
+    membershipDAL: {} as never,
+    pamAccountDAL: {} as never,
+    pamSessionDAL: { find: vi.fn().mockResolvedValue([]), update: vi.fn() } as never,
+    userDAL: {} as never,
+    gatewayV2Service: {} as never,
     orgDAL: { lockActorsForOrgAccess },
     eventEmitter: { emit }
   });

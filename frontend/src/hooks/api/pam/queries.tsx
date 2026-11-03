@@ -173,15 +173,19 @@ export const usePamAccountActions = (accountId: string, enabled = true) => {
 
 // Builds a `can` checker from packed permission rules already embedded in a list item, so list rows
 // don't each fire a per-account /permissions request (see useListPamAccounts).
+export const buildPamAccountCan = (
+  permissions?: ResourcePermissionResponse<PamFolderPermissionSet>["permissions"]
+) => {
+  const rules = unpackRules<RawRuleOf<MongoAbility<PamFolderPermissionSet>>>(permissions ?? []);
+  const permission = createMongoAbility<PamFolderPermissionSet>(rules, { conditionsMatcher });
+  return (action: PamResourcePermissionActions) =>
+    permission.can(action, PamResourcePermissionSub.PamResource);
+};
+
 export const usePamAccountActionsFromPermissions = (
   permissions?: ResourcePermissionResponse<PamFolderPermissionSet>["permissions"]
 ) => {
-  const can = useMemo(() => {
-    const rules = unpackRules<RawRuleOf<MongoAbility<PamFolderPermissionSet>>>(permissions ?? []);
-    const permission = createMongoAbility<PamFolderPermissionSet>(rules, { conditionsMatcher });
-    return (action: PamResourcePermissionActions) =>
-      permission.can(action, PamResourcePermissionSub.PamResource);
-  }, [permissions]);
+  const can = useMemo(() => buildPamAccountCan(permissions), [permissions]);
   return { can };
 };
 

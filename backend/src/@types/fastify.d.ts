@@ -223,6 +223,7 @@ declare module "@fastify/request-context" {
     userAuthInfo?: {
       userId: string;
       email: string;
+      issuingRootOrgId?: string;
     };
     projectDetails?: {
       id: string;

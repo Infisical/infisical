@@ -164,6 +164,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               hostPattern: z.string(),
               allowedMethods: z.string().array().nullable(),
               allowedPathPrefixes: z.string().array().nullable(),
+              allowedTools: z.string().array().nullable(),
               credential: z.discriminatedUnion("type", [
                 ResolvedBearerCredentialSchema,
                 z

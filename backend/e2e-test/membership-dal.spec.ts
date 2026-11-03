@@ -4,9 +4,12 @@ import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
+import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
@@ -26,7 +29,12 @@ const removalDeps = {
   additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
   alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb),
   groupDAL: groupDALFactory(testDb),
-  eventEmitter: { emit: async () => {} }
+  eventEmitter: { emit: async () => {} },
+  membershipDAL,
+  membershipRoleDAL: membershipRoleDALFactory(testDb),
+  pamAccountDAL: pamAccountDALFactory(testDb),
+  pamSessionDAL: pamSessionDALFactory(testDb),
+  gatewayV2Service: { getPAMConnectionDetails: () => Promise.reject(new Error("unexpected gateway call")) }
 };
 
 const waitUntilBlockedBy = (pid: number) =>

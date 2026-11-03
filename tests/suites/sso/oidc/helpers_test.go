@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
-	"github.com/Infisical/infisical/tests/fakes/oidcidp"
 	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
@@ -19,21 +18,10 @@ func setup(t *testing.T) *sso.OIDC {
 	return sso.NewOIDC(t, harness.From(t).NewTenant(t))
 }
 
-// signedUp logs a new person in through OIDC and completes their signup, leaving an
-// accepted member with a verified OIDC account.
-func signedUp(t *testing.T, o *sso.OIDC) oidcidp.Person {
-	t.Helper()
-	person := o.Person()
-	login := o.Login(t, person)
-	res := o.CompleteSignup(t, login, sso.VerificationCode(t, o.Tenant, person.Email))
-	require.Equalf(t, http.StatusOK, res.StatusCode(), "completing SSO signup: %s", apierr.Body(res.Body))
-	return person
-}
-
 // enforce makes OIDC the org's required login, which needs one OIDC login first.
 func enforce(t *testing.T, o *sso.OIDC) {
 	t.Helper()
-	signedUp(t, o)
+	o.SignedUp(t)
 	sso.Enforce(t, o.Tenant)
 }
 
