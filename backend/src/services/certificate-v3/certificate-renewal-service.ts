@@ -39,6 +39,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory, TOriginatingCertificateRequest } from "@app/services/certificate/certificate-dal";
+import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -136,6 +137,7 @@ type TCertificateRenewalServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
     | "findById"
+    | "findByIdForUpdate"
     | "updateById"
     | "transaction"
     | "create"
@@ -265,6 +267,9 @@ export const certificateRenewalServiceFactory = ({
     },
     tx: Knex
   ) => {
+    const lockedOriginalCert = await certificateDAL.findByIdForUpdate(originalCert.id, tx);
+    if (lockedOriginalCert) assertCertificateNotDeleted(lockedOriginalCert);
+
     const renewalUpdate: {
       profileId?: string | null;
       renewedFromCertificateId?: string;
@@ -587,7 +592,7 @@ export const certificateRenewalServiceFactory = ({
     { certificateId, keySource }: { certificateId: string; keySource: CertificateRenewalKeySource },
     tx: Knex
   ) => {
-    const originalCert = await certificateDAL.findById(certificateId, tx);
+    const originalCert = await certificateDAL.findByIdForUpdate(certificateId, tx);
     if (!originalCert) {
       throw new NotFoundError({ message: "Certificate not found" });
     }
@@ -619,7 +624,12 @@ export const certificateRenewalServiceFactory = ({
     const originalCsr =
       !certificateSecret && keySource === CertificateRenewalKeySource.Reuse ? originatingRequest.csr : null;
 
-    if (keySource === CertificateRenewalKeySource.Reuse && !certificateSecret && !originalCsr) {
+    if (
+      !originalCert.deletedAt &&
+      keySource === CertificateRenewalKeySource.Reuse &&
+      !certificateSecret &&
+      !originalCsr
+    ) {
       throw new BadRequestError({
         message:
           "This certificate's key pair cannot be reused because Infisical holds neither its private key nor the signing request it was issued from. Renew with a new key pair, or for a CA-issued certificate supply a CSR generated from the existing key."
@@ -1120,6 +1130,8 @@ export const certificateRenewalServiceFactory = ({
           ? undefined
           : await $authorizeRenewal({ originalCert, profile, actorCtx, isEditingCertificate }, tx);
 
+        assertCertificateNotDeleted(originalCert);
+
         const { issuerType, ca, caType, policy } = await $resolveRenewalIssuer(
           {
             originalCert,
@@ -1536,6 +1548,8 @@ export const certificateRenewalServiceFactory = ({
       permissionService,
       resourceMetadataDAL
     });
+
+    assertCertificateNotDeleted(certificate);
 
     if (!certificate.profileId) {
       throw new BadRequestError({

@@ -46,6 +46,7 @@ func (a *Account) routes() *http.ServeMux {
 	// credential works, so the fake answers it by existing rather than because a
 	// test registered anything.
 	mux.HandleFunc("GET /user", a.user)
+	mux.HandleFunc("GET /user/emails", a.emails)
 
 	// One group per GitHubSyncScope, plus one per secret type GitHub keeps apart from
 	// Actions secrets. They differ only in the path they address, which is why
@@ -71,7 +72,25 @@ func (a *Account) secretRoutes(mux *http.ServeMux, path string) {
 func (a *Account) user(w http.ResponseWriter, _ *http.Request) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	writeJSON(w, http.StatusOK, map[string]any{"login": a.Login, "id": 1, "type": "User"})
+	id := a.ID
+	if id == 0 {
+		id = 1
+	}
+	body := map[string]any{"login": a.Login, "id": id, "type": "User"}
+	if a.Name != "" {
+		body["name"] = a.Name
+	}
+	writeJSON(w, http.StatusOK, body)
+}
+
+func (a *Account) emails(w http.ResponseWriter, _ *http.Request) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	emails := a.Emails
+	if emails == nil {
+		emails = []Email{}
+	}
+	writeJSON(w, http.StatusOK, emails)
 }
 
 func (a *Account) publicKey(w http.ResponseWriter, r *http.Request) {
@@ -218,6 +237,15 @@ func (a *Account) Seed(raw []byte) error {
 	defer a.mu.Unlock()
 	if in.Login != "" {
 		a.Login = in.Login
+	}
+	if in.ID != 0 {
+		a.ID = in.ID
+	}
+	if in.Name != "" {
+		a.Name = in.Name
+	}
+	if in.Emails != nil {
+		a.Emails = in.Emails
 	}
 	for key, st := range in.Stores {
 		dst := a.store(key)

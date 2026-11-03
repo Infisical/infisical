@@ -25,6 +25,7 @@ import { CaType } from "@app/hooks/api/ca/enums";
 import { TCertificateExternalMetadata } from "@app/hooks/api/certificates/types";
 
 import {
+  getCertificateDeletedBySummary,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails
@@ -132,13 +133,30 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
             <Detail>
               <DetailLabel>Status</DetailLabel>
               <DetailValue>
-                {displayStatus.status === CertStatus.ACTIVE ? (
-                  <Badge variant={expiryVariant}>{expiryLabel}</Badge>
-                ) : (
-                  <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
-                )}
+                <div className="flex items-center gap-1">
+                  {displayStatus.status === CertStatus.ACTIVE ? (
+                    <Badge variant={expiryVariant}>{expiryLabel}</Badge>
+                  ) : (
+                    <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
+                  )}
+                  {certificate.deletedAt && certificate.status === CertStatus.REVOKED && (
+                    <Badge variant="danger">Revoked</Badge>
+                  )}
+                </div>
               </DetailValue>
             </Detail>
+            {certificate.deletedAt && (
+              <>
+                <Detail>
+                  <DetailLabel>Deleted By</DetailLabel>
+                  <DetailValue>{getCertificateDeletedBySummary(certificate)}</DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Deleted At</DetailLabel>
+                  <DetailValue>{formatDateUTC(certificate.deletedAt)}</DetailValue>
+                </Detail>
+              </>
+            )}
             <Detail>
               <DetailLabel>Serial Number</DetailLabel>
               <DetailValue className="flex items-center gap-2 font-mono text-xs">

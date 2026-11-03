@@ -7,6 +7,12 @@ mode: "frame"
 
 import { CLIPage, CLICommand } from "/snippets/CLIPage.jsx";
 
+<Visibility for="agents">
+The CLI reference for agents is on a separate page. Read the [CLI reference for agents](/cli/reference-agents), which has every command's arguments, flags, and examples. Each command has the same anchor there, so `/cli/reference#sm-run` is `/cli/reference-agents#sm-run`.
+</Visibility>
+
+<Visibility for="humans">
+
 <CLIPage
   title="CLI reference"
   description="Every Infisical CLI command, with its arguments, flags, and examples. Select a command or flag in a heading to jump to its details."
@@ -2219,3 +2225,5 @@ Credentials in the previous vault can't be read from the new one, so switching r
 </CLICommand>
 
 </CLIPage>
+
+</Visibility>

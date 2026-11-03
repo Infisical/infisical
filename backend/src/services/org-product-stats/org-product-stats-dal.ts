@@ -33,6 +33,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
         .where(`${TableName.Project}.orgId`, orgId)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.Project}.type`, ProjectType.CertificateManager)
+        .whereNull(`${TableName.Certificate}.deletedAt`)
         .count(`${TableName.Certificate}.id as count`)
         .first()) as { count: string } | undefined;
 

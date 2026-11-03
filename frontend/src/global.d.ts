@@ -1,6 +1,8 @@
 export {};
 
 declare global {
+  const INFISICAL_LOCALES_HASH: string;
+
   interface Window {
     __INFISICAL_RUNTIME_ENV__?: {
       CAPTCHA_SITE_KEY?: string;

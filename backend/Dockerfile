@@ -1,4 +1,4 @@
-ARG INFISICAL_CLI_VERSION=0.44.6
+ARG INFISICAL_CLI_VERSION=0.44.12
 
 # Required for pkcs11js and TDS driver (SAP ASE dynamic secrets). Shared by build and prod-deps.
 FROM node:26.12.1-trixie-slim AS native-build
@@ -24,10 +24,12 @@ COPY . .
 RUN npm run build
 
 # Production dependencies (runs in parallel with build). Type declarations, source maps and
-# node-gyp object files are not read at runtime and are about 400 MB of node_modules.
+# node-gyp object files are not read at runtime and are about 400 MB of node_modules. The test
+# folders are ones these packages publish with sample private keys that image scanners flag.
 FROM native-build AS prod-deps
 
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev \
+    && rm -rf node_modules/@fastify/reply-from/test node_modules/ssh2/test node_modules/universal-github-app-jwt/test \
     && find node_modules -type d \( -name obj.target -o -name .deps \) -path '*/build/*' -prune -exec rm -rf {} + \
     && find node_modules -type f \( -name '*.d.ts' -o -name '*.d.mts' -o -name '*.d.cts' -o -name '*.map' \) -delete
 

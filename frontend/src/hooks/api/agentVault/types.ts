@@ -123,6 +123,8 @@ export type TAgentVaultService = TAgentVaultServiceConfig & {
   // null means unrestricted.
   allowedMethods: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes: string[] | null;
+  // Only an MCP service ever has a list.
+  allowedTools: string[] | null;
   credential: TAgentVaultCredentialSummary;
   customHeaders: TAgentVaultCustomHeaderSummary[];
   substitutions: TAgentVaultSubstitutionSummary[];
@@ -330,6 +332,7 @@ export type TAgentVaultMintedSession = {
 export type TAgentVaultProxy = {
   id: string;
   name: string;
+  description: string | null;
   heartbeat: string | null;
   isHealthy: boolean;
   rootCaFingerprint: string | null;
@@ -385,6 +388,7 @@ export type TCreateAgentVaultServiceDTO =
       name: string;
       serverUrl: string;
       transport: AgentVaultMcpTransport;
+      allowedTools?: string[] | null;
       credential:
         | Extract<TAgentVaultCredentialInput, { type: AgentVaultCredentialType.Bearer }>
         | TAgentVaultOauthCredentialInput;
@@ -402,9 +406,25 @@ export type TUpdateAgentVaultServiceDTO = {
   allowedPathPrefixes?: string[] | null;
   serverUrl?: string;
   transport?: AgentVaultMcpTransport;
+  allowedTools?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
+};
+
+/** Credential and header values left out fall back to what the saved service stores, as on update. */
+export type TListAgentVaultMcpToolsDTO = {
+  accessBundleId: string;
+  serviceId?: string;
+  serverUrl: string;
+  transport: AgentVaultMcpTransport;
+  credential?: TAgentVaultCredentialUpdate;
+  customHeaders?: TAgentVaultCustomHeaderInput[];
+};
+
+export type TAgentVaultMcpTool = {
+  name: string;
+  description: string | null;
 };
 
 export type TAgentVaultOauthAuthorization = {
@@ -463,6 +483,15 @@ export type TAgentVaultProxySettingsDTO = {
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
+};
+
+export type TCreateAgentVaultProxyDTO = TAgentVaultProxySettingsDTO & {
+  description?: string;
+};
+
+export type TUpdateAgentVaultProxyDTO = Partial<TAgentVaultProxySettingsDTO> & {
+  proxyId: string;
+  description?: string | null;
 };
 
 export type TAgentVaultSessionLogExternalStorage = {
