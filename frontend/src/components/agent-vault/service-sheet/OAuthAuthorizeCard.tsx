@@ -1,4 +1,4 @@
-import { Fragment, ReactNode, useEffect, useId, useState } from "react";
+import { ReactNode, useEffect, useId, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { CheckIcon, CircleAlertIcon, CircleXIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -27,6 +27,7 @@ import {
 import { AgentVaultOauthStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
+import { ExpandableValueList } from "./ExpandableValueList";
 import {
   newOAuthAuthorizationId,
   OAUTH_STATUS_LABELS,
@@ -87,43 +88,18 @@ const Status = ({
   </div>
 );
 
-const SCOPE_PREVIEW = 10;
-
-const ScopeValues = ({ scopes, className }: { scopes: string[]; className?: string }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const shown = isExpanded ? scopes : scopes.slice(0, SCOPE_PREVIEW);
-  const hidden = scopes.length - shown.length;
-  return (
-    <span className={twMerge("min-w-0", className)}>
-      {shown.map((scope, index) => (
-        <Fragment key={scope}>
-          <span className="whitespace-nowrap">{scope}</span>
-          {index < shown.length - 1 ? ", " : ""}
-        </Fragment>
-      ))}
-      {hidden > 0 && (
-        <Button
-          type="button"
-          variant="link"
-          size="sm"
-          className="ml-1.5 align-baseline text-xs"
-          onClick={() => setIsExpanded(true)}
-        >
-          +{hidden} more
-        </Button>
-      )}
-    </span>
-  );
-};
-
 const Scopes = ({ granted, requested }: { granted: string[]; requested: string[] }) => (
   <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
     <span className="text-muted">Scopes</span>
-    {granted.length ? <ScopeValues scopes={granted} /> : <span className="text-muted">None</span>}
+    {granted.length ? (
+      <ExpandableValueList values={granted} />
+    ) : (
+      <span className="text-muted">None</span>
+    )}
     {requested.length > 0 && (
       <>
         <span className="text-muted">Requested</span>
-        <ScopeValues scopes={requested} className="text-warning" />
+        <ExpandableValueList values={requested} className="text-warning" />
       </>
     )}
   </div>

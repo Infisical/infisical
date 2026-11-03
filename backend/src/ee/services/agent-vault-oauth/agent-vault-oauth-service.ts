@@ -581,20 +581,12 @@ export const agentVaultOauthServiceFactory = ({
     authorization: toView(await loadOwnAuthorization(authorizationId, ctx, projectId))
   });
 
-  // Single use: the save that deletes the record wins, so two saves racing for one authorization end with one
-  // winner. A save that then fails (a name conflict, say) restores it, so it can be retried without authorizing
-  // again. Only an authorized record is consumed, and completion never rewrites one, so the record validated
-  // here is the one deleted.
-  const claimAuthorization = async ({
-    authorizationId,
-    projectId,
-    accessBundleId,
-    serviceId,
-    ctx,
-    serverUrl
-  }: TClaimAuthorizationDTO) => {
-    const recordKey = KeyStorePrefixes.AgentVaultOauthAuthorization(authorizationId);
-    const { record, raw } = await loadOwnStoredAuthorization(authorizationId, ctx, projectId);
+  const loadUsableAuthorization = async (
+    { authorizationId, projectId, accessBundleId, serviceId, ctx, serverUrl }: TClaimAuthorizationDTO,
+    action: string
+  ) => {
+    const stored = await loadOwnStoredAuthorization(authorizationId, ctx, projectId);
+    const { record } = stored;
     if (record.accessBundleId.toLowerCase() !== accessBundleId.toLowerCase()) {
       throw new BadRequestError({
         message: "This authorization was started for a different access bundle. Authorize again here."
@@ -610,12 +602,24 @@ export const agentVaultOauthServiceFactory = ({
     }
     if (record.status === AgentVaultOauthAuthorizationStatus.Failed) {
       throw new BadRequestError({
-        message: `This authorization failed, so it can't be saved. Start a new one. ${record.error ?? ""}`.trim()
+        message: `This authorization failed, so it can't be used. Start a new one. ${record.error ?? ""}`.trim()
       });
     }
     if (record.status !== AgentVaultOauthAuthorizationStatus.Authorized || !record.sealedCredential) {
-      throw new BadRequestError({ message: "This authorization hasn't finished yet. Finish signing in, then save." });
+      throw new BadRequestError({
+        message: `This authorization hasn't finished yet. Finish signing in, then ${action}.`
+      });
     }
+    return stored;
+  };
+
+  // Single use: the save that deletes the record wins, so two saves racing for one authorization end with one
+  // winner. A save that then fails (a name conflict, say) restores it, so it can be retried without authorizing
+  // again. Only an authorized record is consumed, and completion never rewrites one, so the record validated
+  // here is the one deleted.
+  const claimAuthorization = async (dto: TClaimAuthorizationDTO) => {
+    const recordKey = KeyStorePrefixes.AgentVaultOauthAuthorization(dto.authorizationId);
+    const { record, raw } = await loadUsableAuthorization(dto, "save");
 
     const remainingTtlSeconds = await keyStore.ttl(recordKey);
     if ((await keyStore.deleteItem(recordKey)) !== 1) {
@@ -632,12 +636,20 @@ export const agentVaultOauthServiceFactory = ({
       } catch (error) {
         logger.warn(
           error,
-          `agentVaultOauth: could not restore the authorization after a failed save [authorizationId=${authorizationId}]`
+          `agentVaultOauth: could not restore the authorization after a failed save [authorizationId=${dto.authorizationId}]`
         );
       }
     };
 
     return { record, restore };
+  };
+
+  // Loading a server's tools before the service is saved. Reads the authorization without claiming it, so the save
+  // that follows still can, and applies the same checks the save will.
+  const readAuthorizationAccessToken = async (dto: TClaimAuthorizationDTO) => {
+    const { record } = await loadUsableAuthorization(dto, "load the tools");
+    const secret = await open<TAgentVaultOauthSecret>(dto.projectId, Buffer.from(record.sealedCredential!, "base64"));
+    return secret.accessToken;
   };
 
   // The non-secret half goes to credentialConfig and the record's sealed blob becomes encryptedCredential as is:
@@ -936,6 +948,7 @@ export const agentVaultOauthServiceFactory = ({
     completeAuthorization,
     getAuthorization,
     claimAuthorization,
+    readAuthorizationAccessToken,
     buildCredentialFromAuthorization,
     refreshServiceToken,
     reportMissingScopes

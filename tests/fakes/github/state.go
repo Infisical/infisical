@@ -18,6 +18,11 @@ type Account struct {
 	Login  string            `json:"login"`
 	Stores map[string]*Store `json:"stores"`
 
+	// The user's profile and emails, read by GitHub login.
+	ID     int64   `json:"id,omitempty"`
+	Name   string  `json:"name,omitempty"`
+	Emails []Email `json:"emails,omitempty"`
+
 	mu     sync.Mutex
 	mux    *http.ServeMux
 	events fakenet.Emitter
@@ -59,4 +64,12 @@ type Secret struct {
 	Visibility            string    `json:"visibility,omitempty"`
 	SelectedRepositoryIDs []int     `json:"selectedRepositoryIds,omitempty"`
 	UpdatedAt             time.Time `json:"updatedAt"`
+}
+
+// Email is one address on the account, as GET /user/emails lists it.
+type Email struct {
+	Email      string  `json:"email"`
+	Primary    bool    `json:"primary"`
+	Verified   bool    `json:"verified"`
+	Visibility *string `json:"visibility"`
 }

@@ -4673,6 +4673,10 @@ export const AGENT_VAULT = {
       "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
     allowedPathPrefixes:
       "The path prefixes this service allows, matched on whole segments, so `/repos` covers `/repos/octo` but not `/repositories`. `null` allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
+    allowedTools:
+      "The MCP tools agents can call through this service, by exact, case-sensitive name. Each name is 1 to 128 letters, numbers, underscores (_), hyphens (-), or dots (.). `null` allows every tool. The proxy refuses a call to any other tool and leaves it out of the server's tool list. MCP services only.",
+    mcpToolName: "The tool's name, as the MCP server reports it.",
+    mcpToolDescription: "The server's description of the tool, or null if it gave none.",
     customHeaders:
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
     customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
@@ -4888,9 +4892,10 @@ export const AGENT_VAULT = {
   PROXY: {
     proxyId: "The ID of the proxy.",
     name: "The name of the proxy.",
+    description: "A description of what this proxy is for.",
     orderBy: "What to sort proxies by: name or createdAt.",
     orderDirection: "Which way to sort: asc or desc.",
-    search: "Match proxies by name.",
+    search: "Match proxies by name or description.",
     limit: "The maximum number of proxies to return.",
     offset: "How many proxies to skip.",
     heartbeat: "When the proxy last checked in, or `null` if it never has.",
