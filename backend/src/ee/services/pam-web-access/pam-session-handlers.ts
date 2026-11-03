@@ -28,6 +28,10 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
     gatewayAccountType: PamAccountType.MySQL,
     handler: handleMysqlSession
   },
+  [PamAccountType.MariaDB]: {
+    gatewayAccountType: PamAccountType.MySQL,
+    handler: handleMysqlSession
+  },
   [PamAccountType.Redis]: {
     gatewayAccountType: PamAccountType.Redis,
     handler: handleRedisSession

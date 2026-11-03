@@ -33,7 +33,7 @@ export const getTableDetailQuery = (schema: string, table: string) => ({
           JSON_OBJECT(
             'name', sub.COLUMN_NAME,
             'type', sub.COLUMN_TYPE,
-            'nullable', CAST(IF(sub.IS_NULLABLE = 'YES', TRUE, FALSE) AS JSON),
+            'nullable', JSON_EXTRACT(IF(sub.IS_NULLABLE = 'YES', 'true', 'false'), '$'),
             'identityGeneration', CASE
               WHEN sub.EXTRA LIKE '%auto_increment%' THEN 'AUTO_INCREMENT'
               ELSE NULL

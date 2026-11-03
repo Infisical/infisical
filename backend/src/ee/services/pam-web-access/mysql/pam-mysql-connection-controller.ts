@@ -9,7 +9,7 @@ import {
   type TConnectionController,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
-import { extractCommand, splitMysqlStatements } from "./pam-mysql-data-explorer-fns";
+import { extractCommand, setSessionVariables, splitMysqlStatements } from "./pam-mysql-data-explorer-fns";
 import { getTableDetailQuery } from "./pam-mysql-data-explorer-metadata";
 
 const MAX_ROWS = 1000;
@@ -47,7 +47,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
   const [pidRows] = await conn.execute<mysql.RowDataPacket[]>("SELECT CONNECTION_ID() AS pid");
   const nativeConnectionId = (pidRows[0]?.pid as number) ?? null;
 
-  await conn.query(`SET SESSION max_execution_time = 30000, sql_select_limit = ${MAX_ROWS + 1}`);
+  await setSessionVariables(conn, [`sql_select_limit = ${MAX_ROWS + 1}`]);
 
   let isInTransaction = false;
   let disposing = false;
@@ -104,7 +104,7 @@ export const createMysqlConnectionController = async (params: ControllerParams):
     }
   };
 
-  // max_execution_time only covers SELECTs; this guards DML/DDL with KILL QUERY on a timer
+  // MySQL's max_execution_time only covers SELECTs, so DML/DDL gets a KILL QUERY timer
   const queryWithTimeout = async <T>(fn: () => Promise<T>, timeoutMs = 30_000): Promise<T> => {
     const timer = setTimeout(() => {
       void cancelRunningQuery();

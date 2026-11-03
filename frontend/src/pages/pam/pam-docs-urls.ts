@@ -41,6 +41,7 @@ export const PamDocsUrls = {
     overview: `${PAM_DOCS_BASE_URL}/accounts/overview`,
     postgresql: `${PAM_DOCS_BASE_URL}/accounts/postgresql`,
     mysql: `${PAM_DOCS_BASE_URL}/accounts/mysql`,
+    mariadb: `${PAM_DOCS_BASE_URL}/accounts/mariadb`,
     mssql: `${PAM_DOCS_BASE_URL}/accounts/mssql`,
     mongodb: `${PAM_DOCS_BASE_URL}/accounts/mongodb`,
     ssh: `${PAM_DOCS_BASE_URL}/accounts/ssh`,

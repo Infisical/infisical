@@ -1,6 +1,12 @@
-import { describe, expect, test } from "vitest";
+import type mysql from "mysql2/promise";
+import { describe, expect, test, vi } from "vitest";
 
-import { extractCommand, splitMysqlStatements } from "./pam-mysql-data-explorer-fns";
+import {
+  extractCommand,
+  getStatementTimeoutSetting,
+  setSessionVariables,
+  splitMysqlStatements
+} from "./pam-mysql-data-explorer-fns";
 
 describe("splitMysqlStatements", () => {
   test("single statement without semicolon", () => {
@@ -187,5 +193,40 @@ describe("extractCommand", () => {
 
   test("only comments", () => {
     expect(extractCommand("-- just a comment\n")).toBe("");
+  });
+});
+
+describe("getStatementTimeoutSetting", () => {
+  test("uses max_execution_time in milliseconds for MySQL", () => {
+    expect(getStatementTimeoutSetting("8.0.36")).toBe("max_execution_time = 30000");
+  });
+
+  test("uses max_statement_time in seconds for MariaDB", () => {
+    expect(getStatementTimeoutSetting("10.11.6-MariaDB-1:10.11.6+maria~ubu2204")).toBe("max_statement_time = 30");
+  });
+});
+
+describe("setSessionVariables", () => {
+  const fakeConnection = (version: string) => {
+    const query = vi.fn(async (sql: string) => (sql.startsWith("SELECT VERSION()") ? [[{ version }]] : [[]]));
+    return { conn: { query } as unknown as mysql.Connection, query };
+  };
+
+  test("sets max_statement_time on MariaDB", async () => {
+    const { conn, query } = fakeConnection("10.11.6-MariaDB-1:10.11.6+maria~ubu2204");
+    await setSessionVariables(conn, ["sql_select_limit = 1001"]);
+    expect(query).toHaveBeenLastCalledWith("SET SESSION max_statement_time = 30, sql_select_limit = 1001");
+  });
+
+  test("sets max_execution_time on MySQL", async () => {
+    const { conn, query } = fakeConnection("8.0.36");
+    await setSessionVariables(conn, ["sql_select_limit = 1001"]);
+    expect(query).toHaveBeenLastCalledWith("SET SESSION max_execution_time = 30000, sql_select_limit = 1001");
+  });
+
+  test("sets only the timeout when there are no extra assignments", async () => {
+    const { conn, query } = fakeConnection("11.4.2-MariaDB");
+    await setSessionVariables(conn);
+    expect(query).toHaveBeenLastCalledWith("SET SESSION max_statement_time = 30");
   });
 });
