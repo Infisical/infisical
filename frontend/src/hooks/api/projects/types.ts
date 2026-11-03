@@ -118,7 +118,20 @@ export type UpdateAuditLogsRetentionDTO = { projectId: string; auditLogsRetentio
 export type ToggleAutoCapitalizationDTO = { projectID: string; state: boolean };
 export type ToggleDeleteProjectProtectionDTO = { projectID: string; state: boolean };
 
-export type DeleteWorkspaceDTO = { projectID: string };
+export type DeleteWorkspaceDTO = { projectID: string; hardDelete?: boolean };
+
+export type RestoreProjectDTO = { projectId: string };
+
+export type PermanentlyDeleteProjectDTO = { projectId: string };
+
+export type DeletedProject = {
+  id: string;
+  name: string;
+  type: ProjectType;
+  deleteAfter: string;
+  softDeletedAt: string;
+  deletedBy: ProjectDeletedEnvActor | null;
+};
 
 export type CreateEnvironmentDTO = {
   projectId: string;

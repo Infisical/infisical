@@ -1668,7 +1668,8 @@ export const registerRoutes = async (
     telemetryService,
     usageMeteringService,
     alertChannelRecipientDAL,
-    eventEmitter: eventOutboxService
+    eventEmitter: eventOutboxService,
+    keyStore
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -2505,6 +2506,26 @@ export const registerRoutes = async (
     secretValueTrackingQueue
   });
 
+  const dynamicSecretProviders = buildDynamicSecretProviders({
+    gatewayV2Service,
+    gatewayPoolService,
+    projectDAL
+  });
+
+  const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
+    queueService,
+    dynamicSecretLeaseDAL,
+    dynamicSecretProviders,
+    dynamicSecretDAL,
+    folderDAL,
+    kmsService,
+    smtpService,
+    userDAL,
+    identityDAL,
+    projectMembershipDAL,
+    projectDAL
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
@@ -2539,7 +2560,12 @@ export const registerRoutes = async (
     roleDAL,
     groupDAL,
     projectAccessRequestDAL,
-    usageMeteringService
+    usageMeteringService,
+    dynamicSecretLeaseDAL,
+    dynamicSecretQueueService,
+    secretV2BridgeDAL,
+    honeyTokenDAL,
+    secretSyncDAL
   });
 
   const projectEnvQueue = projectEnvQueueFactory({
@@ -3138,25 +3164,6 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const dynamicSecretProviders = buildDynamicSecretProviders({
-    gatewayV2Service,
-    gatewayPoolService,
-    projectDAL
-  });
-
-  const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
-    queueService,
-    dynamicSecretLeaseDAL,
-    dynamicSecretProviders,
-    dynamicSecretDAL,
-    folderDAL,
-    kmsService,
-    smtpService,
-    userDAL,
-    identityDAL,
-    projectMembershipDAL,
-    projectDAL
-  });
   const dynamicSecretService = dynamicSecretServiceFactory({
     orgDAL,
     projectDAL,

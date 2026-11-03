@@ -39,6 +39,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -729,6 +730,7 @@ export enum EventType {
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
   DELETE_PROJECT = "delete-project",
+  RESTORE_PROJECT = "restore-project",
 
   CREATE_PROJECT_ROLE = "create-project-role",
   UPDATE_PROJECT_ROLE = "update-project-role",
@@ -3748,11 +3750,14 @@ interface OrgAdminBypassSSOEvent {
   metadata: Record<string, string>; // no metadata yet
 }
 
+export type TMfaSatisfiedBy = "not-required" | "infisical" | "idp";
+
 interface UserLoginEvent {
   type: EventType.USER_LOGIN;
   metadata: {
     organizationId?: string;
     authProvider?: string;
+    idpMfa?: TIdpMfaSignal;
   };
 }
 
@@ -3761,6 +3766,7 @@ interface SelectOrganizationEvent {
   metadata: {
     organizationId: string;
     organizationName: string;
+    mfaSatisfiedBy?: TMfaSatisfiedBy;
   };
 }
 
@@ -3779,6 +3785,7 @@ interface SelectSubOrganizationEvent {
     organizationId: string;
     organizationName: string;
     rootOrganizationId: string;
+    mfaSatisfiedBy?: TMfaSatisfiedBy;
   };
 }
 
@@ -5985,6 +5992,18 @@ interface ProjectDeleteEvent {
     // true: actor soft-deleted the project (marked for deletion).
     // false: the async cleanup worker hard-deleted an expired soft-deleted project.
     softDelete?: boolean;
+    // true: deleted without a restore window (Delete Now, or a project type that has none).
+    hardDelete?: boolean;
+    deleteAfter?: Date | null;
+  };
+}
+
+interface ProjectRestoreEvent {
+  type: EventType.RESTORE_PROJECT;
+  metadata: {
+    id: string;
+    name: string;
+    slug: string;
   };
 }
 
@@ -8935,6 +8954,7 @@ export type Event =
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent
+  | ProjectRestoreEvent
   | SecretReminderCreateEvent
   | SecretReminderGetEvent
   | SecretReminderDeleteEvent

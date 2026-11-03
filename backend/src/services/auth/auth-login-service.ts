@@ -8,7 +8,7 @@ import {
   TUsers,
   UserDeviceSchema
 } from "@app/db/schemas";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType, TAuditLogServiceFactory, TMfaSatisfiedBy } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { FOREIGN_SSO_SESSION_ERROR_NAME } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -57,6 +57,7 @@ import {
   assertOAuthLoginMethodEnabled,
   enforceUserLockStatus,
   getRequiredMfaMethod,
+  isIdpMfaTrusted,
   isOAuthLoginMethodDisabled,
   isSsoAuthMethod,
   isSsoSessionIssuedByOrg,
@@ -191,7 +192,8 @@ export const authLoginServiceFactory = ({
     authMethod,
     organizationId,
     issuingRootOrgId,
-    requiredMfaMethod
+    requiredMfaMethod,
+    idpMfaOrgId
   }: {
     userId: string;
     email?: string | null;
@@ -199,6 +201,7 @@ export const authLoginServiceFactory = ({
     organizationId?: string;
     issuingRootOrgId?: string;
     requiredMfaMethod: MfaMethod;
+    idpMfaOrgId?: string;
   }) => {
     const appCfg = getConfig();
 
@@ -210,7 +213,8 @@ export const authLoginServiceFactory = ({
         organizationId,
         issuingRootOrgId,
         email,
-        requiredMfaMethod
+        requiredMfaMethod,
+        idpMfaOrgId
       },
       appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_MFA_LIFETIME }
@@ -239,7 +243,8 @@ export const authLoginServiceFactory = ({
       authMethod,
       issuingRootOrgId,
       isMfaVerified,
-      mfaMethod
+      mfaMethod,
+      idpMfaOrgId
     }: {
       userId: string;
       ip: string;
@@ -250,6 +255,7 @@ export const authLoginServiceFactory = ({
       issuingRootOrgId?: string;
       isMfaVerified?: boolean;
       mfaMethod?: MfaMethod;
+      idpMfaOrgId?: string;
     },
     tx?: Knex
   ) => {
@@ -298,7 +304,8 @@ export const authLoginServiceFactory = ({
         subOrganizationId,
         issuingRootOrgId,
         isMfaVerified,
-        mfaMethod
+        mfaMethod,
+        idpMfaOrgId
       },
       cfg.AUTH_SECRET,
       { expiresIn: tokenSessionExpiresIn }
@@ -315,7 +322,8 @@ export const authLoginServiceFactory = ({
         subOrganizationId,
         issuingRootOrgId,
         isMfaVerified,
-        mfaMethod
+        mfaMethod,
+        idpMfaOrgId
       },
       cfg.AUTH_SECRET,
       { expiresIn: refreshTokenExpiresIn }
@@ -332,7 +340,8 @@ export const authLoginServiceFactory = ({
     ip,
     userAgent,
     organizationId,
-    callbackPort
+    callbackPort,
+    idpMfa
   }: TProcessProviderCallbackDTO): Promise<TProviderAuthCallback> => {
     const appCfg = getConfig();
 
@@ -340,6 +349,10 @@ export const authLoginServiceFactory = ({
     // OAuth login may name an org too (the default auth org) and must not be bound to it.
     const issuingRootOrgId = isSsoAuthMethod(authMethod) ? organizationId : undefined;
 
+    const idpMfaOrgId = idpMfa?.verified ? organizationId : undefined;
+
+    // A first login that still has to verify its mailbox finishes in completeAccount, which mints the session
+    // from this token, so the proof rides along or that one login would be prompted despite the trust.
     if (!user.isAccepted || !isEmailVerified) {
       const signupToken = crypto.jwt().sign(
         {
@@ -350,6 +363,7 @@ export const authLoginServiceFactory = ({
           aliasId,
           organizationId,
           issuingRootOrgId,
+          idpMfaOrgId,
           callbackPort,
           email: user.email,
           firstName: user.firstName,
@@ -368,7 +382,8 @@ export const authLoginServiceFactory = ({
       ip,
       userAgent,
       authMethod,
-      issuingRootOrgId
+      issuingRootOrgId,
+      idpMfaOrgId
     });
 
     if (organizationId) {
@@ -381,6 +396,31 @@ export const authLoginServiceFactory = ({
         },
         { status: OrgMembershipStatus.Accepted }
       );
+
+      // The session token only carries the verdict, so the raw IdP values are recorded here for admins.
+      await auditLogService.createAuditLog({
+        orgId: organizationId,
+        ipAddress: ip,
+        userAgent,
+        userAgentType: getUserAgentType(userAgent),
+        actor: {
+          type: ActorType.USER,
+          metadata: {
+            email: user.email,
+            userId: user.id,
+            username: user.username ?? user.email ?? "",
+            authMethod
+          }
+        },
+        event: {
+          type: EventType.USER_LOGIN,
+          metadata: {
+            organizationId,
+            authProvider: authMethod,
+            ...(idpMfa && { idpMfa })
+          }
+        }
+      });
     }
 
     return { result: ProviderAuthResult.SESSION, tokens, callbackPort } as const;
@@ -755,7 +795,8 @@ export const authLoginServiceFactory = ({
       authMethod: decodedToken.authMethod,
       issuingRootOrgId: decodedToken.issuingRootOrgId,
       isMfaVerified: true,
-      mfaMethod
+      mfaMethod,
+      idpMfaOrgId: decodedToken.idpMfaOrgId
     });
 
     // Open the grace window for THIS session only (the one that just proved MFA), so
@@ -1172,7 +1213,8 @@ export const authLoginServiceFactory = ({
     actorRootOrgId,
     issuingRootOrgId,
     isMfaVerified,
-    mfaMethod
+    mfaMethod,
+    idpMfaOrgId
   }: {
     userAgent: string | undefined;
     ipAddress: string;
@@ -1183,6 +1225,7 @@ export const authLoginServiceFactory = ({
     issuingRootOrgId?: string;
     isMfaVerified?: boolean;
     mfaMethod?: MfaMethod;
+    idpMfaOrgId?: string;
   }) => {
     const cfg = getConfig();
     if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
@@ -1325,10 +1368,14 @@ export const authLoginServiceFactory = ({
     const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
     // The MFA policy belongs to the root org, so moving between a root org and its sub-orgs is not a change.
     const hasOrganizationChanged = actorRootOrgId ? actorRootOrgId !== rootOrg.id : false;
-    // Check if MFA method has changed
     const hasMfaMethodChanged = mfaMethod !== requiredMfaMethod;
-    // Trigger MFA if required and either not verified or something changed
-    const shouldTriggerMfa = isMfaRequired && (!isMfaVerified || hasMfaMethodChanged || hasOrganizationChanged);
+    // Checked on every selection so turning the trust off applies at the next switch. While the org enforces
+    // MFA it waives the whole challenge, personal flag included: passing an enforced challenge turns personal
+    // MFA on (the login MFA page activates it), so the two cannot be told apart. Personal MFA in an org that
+    // does not enforce it still prompts.
+    const isMfaSatisfiedByIdp = isIdpMfaTrusted({ org: rootOrg, authMethod: userAuthMethod, idpMfaOrgId });
+    const shouldTriggerMfa =
+      isMfaRequired && !isMfaSatisfiedByIdp && (!isMfaVerified || hasMfaMethodChanged || hasOrganizationChanged);
 
     if (shouldTriggerMfa) {
       enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
@@ -1339,7 +1386,8 @@ export const authLoginServiceFactory = ({
         authMethod: userAuthMethod,
         requiredMfaMethod,
         organizationId: rootOrg.id,
-        issuingRootOrgId
+        issuingRootOrgId,
+        idpMfaOrgId
       });
 
       return { isMfaEnabled: true, mfa: mfaToken, mfaMethod: requiredMfaMethod } as const;
@@ -1356,8 +1404,13 @@ export const authLoginServiceFactory = ({
       subOrganizationId: isSubOrganization ? organizationId : undefined,
       issuingRootOrgId,
       isMfaVerified,
-      mfaMethod
+      mfaMethod,
+      idpMfaOrgId
     });
+
+    let mfaSatisfiedBy: TMfaSatisfiedBy = "infisical";
+    if (!isMfaRequired) mfaSatisfiedBy = "not-required";
+    else if (isMfaSatisfiedByIdp) mfaSatisfiedBy = "idp";
 
     // In the event of this being a break-glass request (not this org's own SAML / OIDC / LDAP session, nor Google, when any is enforced)
     const isAuthEnforcedBypass =
@@ -1447,14 +1500,16 @@ export const authLoginServiceFactory = ({
             metadata: {
               organizationId,
               organizationName: selectedOrg.name,
-              rootOrganizationId: selectedOrg.rootOrgId || ""
+              rootOrganizationId: selectedOrg.rootOrgId || "",
+              mfaSatisfiedBy
             }
           }
         : {
             type: EventType.SELECT_ORGANIZATION,
             metadata: {
               organizationId,
-              organizationName: selectedOrg.name
+              organizationName: selectedOrg.name,
+              mfaSatisfiedBy
             }
           }
     });
