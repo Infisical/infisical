@@ -30,9 +30,7 @@ import {
   type DocumentationPage,
   documentationPages,
   foundationPages,
-  guidancePages,
   resolveDocumentationPage,
-  type WorkbenchSection,
   workbenchSections
 } from "./navigation";
 import { OverviewPage } from "./OverviewPage";
@@ -89,8 +87,7 @@ const groupIcons: Record<string, IconName> = {
   Patterns: "sync",
   Code: "terminal",
   Utilities: "settings",
-  Comparisons: "eye",
-  Contributing: "user"
+  Comparisons: "eye"
 };
 const navigationGroups = [
   { title: "Foundations", pages: foundationPages },
@@ -98,8 +95,7 @@ const navigationGroups = [
     title,
     pages: componentPages.filter((page) => page.group === title)
   })),
-  { title: "Comparisons", pages: comparisonPages },
-  { title: "Contributing", pages: guidancePages }
+  { title: "Comparisons", pages: comparisonPages }
 ].map((group) => ({ ...group, icon: groupIcons[group.title] ?? "file" }));
 const sidebarSections = navigationGroups.map((group) => ({
   label: group.title,
@@ -112,15 +108,9 @@ const goTo = (page: string) => {
 };
 
 const workbenchCrumbs = (currentPage: DocumentationPage): BreadcrumbCrumb[] => {
-  const section = workbenchSections.find((entry) =>
-    entry.pages.some((page) => page.id === currentPage)
-  );
-  const category: WorkbenchSection = section ?? {
-    id: "",
-    title: "Contributing",
-    icon: "user",
-    pages: [...guidancePages]
-  };
+  const category =
+    workbenchSections.find((entry) => entry.pages.some((page) => page.id === currentPage)) ??
+    workbenchSections[0];
   const group = category.pages.find((page) => page.id === currentPage)?.group;
   const groupPages = category.pages.filter((page) => group && page.group === group);
   const pageOf = (id: string) => (id === currentPage ? {} : { href: `#${id}` });

@@ -93,17 +93,11 @@
   justify-content: center;
 }
 .actions {
+  --band-divider-gap: calc(var(--v4-space-crumb-divider) - var(--v4-space-4));
   display: flex;
   flex: none;
   align-items: center;
   gap: var(--v4-space-4);
-}
-.divider {
-  flex: none;
-  inline-size: var(--v4-size-crumb-divider-width);
-  block-size: var(--v4-size-crumb-divider);
-  margin-inline: var(--v4-space-4);
-  background: var(--v4-crumb-divider);
 }
 .marked {
   position: relative;

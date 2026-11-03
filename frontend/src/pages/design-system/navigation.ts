@@ -8,7 +8,8 @@ export const foundationPages = [
   { id: "colors", title: "Color" },
   { id: "typography", title: "Typography" },
   { id: "spacing-shape", title: "Spacing and shape" },
-  { id: "motion", title: "Motion" }
+  { id: "motion", title: "Motion" },
+  { id: "rules", title: "Rules" }
 ] as const;
 
 export const componentPages = componentCatalog.map(({ id, title, group }) => ({
@@ -16,7 +17,6 @@ export const componentPages = componentCatalog.map(({ id, title, group }) => ({
   title,
   group
 }));
-export const guidancePages = [{ id: "rules", title: "Rules" }] as const;
 export const comparisonPages = [
   {
     id: "compare-shell",
@@ -99,12 +99,7 @@ export const comparisonPages = [
   }
 ] as const;
 export type ComparisonPage = (typeof comparisonPages)[number]["id"];
-export const documentationPages = [
-  ...foundationPages,
-  ...componentPages,
-  ...comparisonPages,
-  ...guidancePages
-];
+export const documentationPages = [...foundationPages, ...componentPages, ...comparisonPages];
 export type DocumentationPage = (typeof documentationPages)[number]["id"];
 export type ComponentPage = (typeof componentPages)[number]["id"];
 
@@ -124,7 +119,7 @@ export const componentGroupOrder: readonly ComponentGroup[] = [
 export type WorkbenchSection = {
   id: string;
   title: string;
-  icon: "apps" | "folder" | "sync" | "eye" | "user";
+  icon: "apps" | "folder" | "sync" | "eye";
   pages: { id: string; title: string; group?: string }[];
 };
 export const workbenchSections: WorkbenchSection[] = [

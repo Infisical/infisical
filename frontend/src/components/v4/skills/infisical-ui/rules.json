@@ -941,7 +941,7 @@
       "id": "breadcrumb-divider",
       "title": "Separate crumbs with the vertical divider",
       "category": "Visual",
-      "instruction": "Let Breadcrumb (or BreadcrumbSeparator) draw the separator between crumbs: a 1px vertical divider in crumb-divider, size-crumb-divider tall, with space-crumb-divider on each side. Never type a slash or another character between crumbs.",
+      "instruction": "Let Breadcrumb (or BreadcrumbSeparator) draw the separator between crumbs: a 1px vertical divider in crumb-divider, size-crumb-divider tall, with space-crumb-divider on each side between the line and the neighboring crumb's ground. Never type a slash or another character between crumbs.",
       "good": "Acme Corp | payments-api | Production, with every divider drawn by the component from tokens.",
       "avoid": "A literal / between crumbs, a chevron glyph used as a separator, or a divider drawn with raw sizes and colors.",
       "detect": {
