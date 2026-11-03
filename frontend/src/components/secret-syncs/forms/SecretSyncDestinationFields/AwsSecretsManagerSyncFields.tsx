@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { Info } from "lucide-react";
 
@@ -30,12 +31,19 @@ export const AwsSecretsManagerSyncFields = () => {
   >();
 
   const mappingBehavior = watch("destinationConfig.mappingBehavior");
+  const connectionId = watch("connection.id");
 
-  const clearKmsKey = () => setValue("syncOptions.keyId", undefined);
+  // A saved KMS key ARN belongs to one region and account, so it stops applying when either changes.
+  const previousConnectionId = useRef(connectionId);
+  useEffect(() => {
+    if (connectionId === previousConnectionId.current) return;
+    previousConnectionId.current = connectionId;
+    setValue("syncOptions.keyId", undefined);
+  }, [connectionId, setValue]);
 
   return (
     <FieldGroup>
-      <SecretSyncConnectionField onChange={clearKmsKey} />
+      <SecretSyncConnectionField />
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
@@ -60,7 +68,7 @@ export const AwsSecretsManagerSyncFields = () => {
                 value={value}
                 onChange={(region) => {
                   onChange(region);
-                  clearKmsKey();
+                  setValue("syncOptions.keyId", undefined);
                 }}
                 isError={Boolean(error)}
                 aria-labelledby="secret-sync-aws-secrets-manager-region-label"
