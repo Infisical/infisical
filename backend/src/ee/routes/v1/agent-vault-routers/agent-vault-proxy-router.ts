@@ -175,10 +175,12 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_PROXY_UPDATE,
-          // The policy as the proxy now reports it, so an audit log never shows the old name.
+          // The proxy's name as it stands after the change, so a settings-only update still names it, and the policy as
+          // the proxy now reports it, so an audit log never shows the old name.
           metadata: {
             proxyId: proxy.id,
             ...req.body,
+            name: proxy.name,
             ...(req.body.trafficPolicy && { trafficPolicy: proxy.trafficPolicy })
           }
         }
