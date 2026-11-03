@@ -443,6 +443,10 @@ export const membershipIdentityServiceFactory = ({
       });
 
     const performDelete = async (tx: Knex) => {
+      if (scopeData.scope === AccessScope.Organization) {
+        await orgDAL.lockActorsForOrgAccess({ orgId: scopeData.orgId, actorIds: [dto.selector.identityId] }, tx);
+      }
+
       if (scopeData.scope === AccessScope.Project) {
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(scopeData.projectId, tx),

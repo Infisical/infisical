@@ -48,6 +48,7 @@ const createService = ({
   const deleteAlertsForDeletedResource = vi.fn().mockResolvedValue(0);
   const emit = vi.fn().mockResolvedValue(undefined);
   const deleteFromGroupsOwnedByOrg = vi.fn().mockResolvedValue(0);
+  const lockActorsForOrgAccess = vi.fn().mockResolvedValue(undefined);
 
   const identityDAL = {
     transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
@@ -86,7 +87,8 @@ const createService = ({
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
-      findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: "membership-1", scopeOrgId: ORG_ID })
+      findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: "membership-1", scopeOrgId: ORG_ID }),
+      lockActorsForOrgAccess
     } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
     usageMeteringService: { emit: vi.fn() } as never,
@@ -106,6 +108,7 @@ const createService = ({
     deleteAlertsForResource,
     deleteAlertsForDeletedResource,
     deleteFromGroupsOwnedByOrg,
+    lockActorsForOrgAccess,
     emit
   };
 };
@@ -120,6 +123,19 @@ describe("deleteIdentity group cleanup", () => {
 
     expect(deleteFromGroupsOwnedByOrg).toHaveBeenCalledTimes(1);
     expect(deleteFromGroupsOwnedByOrg).toHaveBeenCalledWith({ identityId: IDENTITY_ID, orgId: ORG_ID }, TX);
+  });
+
+  test("takes the org access lock that group additions take, before the cleanup", async () => {
+    const { service, deleteFromGroupsOwnedByOrg, lockActorsForOrgAccess } = createService({
+      identityOrgId: ROOT_ORG_ID
+    });
+
+    await service.deleteIdentity(buildDto());
+
+    expect(lockActorsForOrgAccess).toHaveBeenCalledWith({ orgId: ORG_ID, actorIds: [IDENTITY_ID] }, TX);
+    expect(lockActorsForOrgAccess.mock.invocationCallOrder[0]).toBeLessThan(
+      deleteFromGroupsOwnedByOrg.mock.invocationCallOrder[0]
+    );
   });
 
   test("deleting the identity row leaves group cleanup to the foreign key cascade", async () => {

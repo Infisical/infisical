@@ -50,6 +50,7 @@ const createService = ({
   const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
   const emit = vi.fn().mockResolvedValue(undefined);
   const deleteFromGroupsOwnedByOrg = vi.fn().mockResolvedValue(0);
+  const lockActorsForOrgAccess = vi.fn().mockResolvedValue(undefined);
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
@@ -89,6 +90,7 @@ const createService = ({
     } as never,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({}),
+      lockActorsForOrgAccess,
       findActorsWithActiveOrgAccess: vi.fn(async ({ identityIds }: { identityIds: string[] }) => ({
         userIds: new Set<string>(),
         identityIds: new Set(identityIds)
@@ -123,6 +125,7 @@ const createService = ({
     removeOrgMembershipRevocationMarkers,
     deleteAlertsForResource,
     deleteFromGroupsOwnedByOrg,
+    lockActorsForOrgAccess,
     emit
   };
 };
@@ -281,6 +284,18 @@ describe("deleteMembership group cleanup", () => {
 
     expect(deleteFromGroupsOwnedByOrg).toHaveBeenCalledTimes(1);
     expect(deleteFromGroupsOwnedByOrg).toHaveBeenCalledWith({ identityId: IDENTITY_ID, orgId: SUB_ORG_ID }, tx);
+  });
+
+  test("takes the org access lock that group additions take, before the cleanup", async () => {
+    const tx = { marker: "tx" } as unknown as Knex;
+    const { service, deleteFromGroupsOwnedByOrg, lockActorsForOrgAccess } = createService({ tx });
+
+    await service.deleteMembership(buildDto());
+
+    expect(lockActorsForOrgAccess).toHaveBeenCalledWith({ orgId: SUB_ORG_ID, actorIds: [IDENTITY_ID] }, tx);
+    expect(lockActorsForOrgAccess.mock.invocationCallOrder[0]).toBeLessThan(
+      deleteFromGroupsOwnedByOrg.mock.invocationCallOrder[0]
+    );
   });
 
   test("removing a project membership leaves the identity's groups alone", async () => {

@@ -57,7 +57,7 @@ type TIdentityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership" | "lockActorsForOrgAccess">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource" | "deleteAlertsForDeletedResource">;
@@ -453,6 +453,7 @@ export const identityServiceFactory = ({
     }
 
     await membershipIdentityDAL.transaction(async (tx) => {
+      await orgDAL.lockActorsForOrgAccess({ orgId: actorOrgId, actorIds: [id] }, tx);
       await identityMetadataDAL.delete(
         {
           identityId: id,
