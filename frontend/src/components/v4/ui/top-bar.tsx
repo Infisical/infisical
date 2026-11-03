@@ -381,7 +381,7 @@ const AccountMenu = ({ account }: { account: TopBarAccount }) => {
         <Button
           type="button"
           variant="ghost"
-          size="md"
+          size="sm"
           icon="user"
           iconRight="chev-down"
           aria-label={`${account.label ?? "Account"}, ${account.name}`}
@@ -509,7 +509,7 @@ export function TopBar({
   const org = root?.switcher ? root : undefined;
   const switchers = (org ? rest : breadcrumb).filter((crumb) => crumb.switcher);
   const slots = shell?.slots ?? {};
-  const notificationsButton = (size: "md" | "icon-lg") => (
+  const notificationsButton = (size: "sm" | "icon-lg") => (
     <Tooltip content={notificationsLabel} side="bottom">
       <span className={styles.marked}>
         <Button
@@ -523,7 +523,7 @@ export function TopBar({
           {unread > 0 ? `${notificationsLabel}, ${unread} unread` : notificationsLabel}
         </Button>
         {unread > 0 &&
-          (size === "md" ? (
+          (size === "sm" ? (
             <span className={styles.marker} aria-hidden="true" />
           ) : (
             <Count className={styles.count} aria-hidden="true">
@@ -569,13 +569,13 @@ export function TopBar({
         />
         <div className={styles.actions}>
           {!narrow && actions}
-          {!narrow && notifications && notificationsButton("md")}
+          {!narrow && notifications && notificationsButton("sm")}
           {search && (
             <Tooltip content={searchLabel} shortcut={search.shortcut ?? "mod+K"} side="bottom">
               <Button
                 type="button"
                 variant="ghost"
-                size={narrow ? "icon-lg" : "md"}
+                size={narrow ? "icon-lg" : "sm"}
                 icon="search"
                 iconOnly
                 aria-keyshortcuts="Meta+K Control+K"

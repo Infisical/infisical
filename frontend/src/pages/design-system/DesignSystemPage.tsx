@@ -32,6 +32,7 @@ import {
   foundationPages,
   guidancePages,
   resolveDocumentationPage,
+  type WorkbenchSection,
   workbenchSections
 } from "./navigation";
 import { OverviewPage } from "./OverviewPage";
@@ -114,37 +115,41 @@ const workbenchCrumbs = (currentPage: DocumentationPage): BreadcrumbCrumb[] => {
   const section = workbenchSections.find((entry) =>
     entry.pages.some((page) => page.id === currentPage)
   );
+  const category: WorkbenchSection = section ?? {
+    id: "",
+    title: "Contributing",
+    icon: "user",
+    pages: [...guidancePages]
+  };
+  const group = category.pages.find((page) => page.id === currentPage)?.group;
+  const groupPages = category.pages.filter((page) => group && page.group === group);
   const pageOf = (id: string) => (id === currentPage ? {} : { href: `#${id}` });
   return [
     {
-      label: "Design system",
-      ...pageOf("overview"),
+      label: category.title,
+      media: <Icon name={category.icon} />,
+      ...pageOf(category.pages[0].id),
       switcher: {
-        label: "Switch section",
+        label: "Switch category",
         options: workbenchSections.map((entry) => ({
           value: entry.id,
           label: entry.title,
           media: <Icon name={entry.icon} />
         })),
-        value: section?.id ?? "",
+        value: category.id,
         onChange: (value) =>
           goTo(workbenchSections.find((entry) => entry.id === value)?.pages[0]?.id ?? "overview")
       }
     },
-    ...(section
+    ...(group
       ? [
           {
-            label: section.title,
-            media: <Icon name={section.icon} />,
-            ...pageOf(section.pages[0].id),
+            label: group,
+            ...pageOf(groupPages[0].id),
             switcher: {
               label: "Switch page",
-              placeholder: `Search ${section.title.toLowerCase()}`,
-              options: section.pages.map((page) => ({
-                value: page.id,
-                label: page.title,
-                group: page.group
-              })),
+              placeholder: `Search ${group.toLowerCase()}`,
+              options: groupPages.map((page) => ({ value: page.id, label: page.title })),
               value: currentPage,
               onChange: goTo
             }

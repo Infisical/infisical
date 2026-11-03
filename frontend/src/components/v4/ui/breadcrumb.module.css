@@ -4,6 +4,8 @@
   min-width: 0;
 }
 .trail {
+  --crumb-target: var(--v4-size-nested-sm);
+  --crumb-inset: var(--v4-space-6);
   font-family: var(--v4-type-small-font-family);
   font-size: var(--v4-type-small-font-size);
   line-height: var(--v4-type-small-line-height);
@@ -110,14 +112,14 @@
 }
 .segment[data-name-target="page"] > .name {
   gap: var(--v4-space-4);
-  min-block-size: var(--v4-size-nested-sm);
-  padding-inline: var(--v4-space-6);
+  min-block-size: var(--crumb-target);
+  padding-inline: var(--crumb-inset);
   transition-property: background-color, color;
   transition-duration: var(--v4-duration-fast);
   transition-timing-function: var(--v4-ease-standard);
 }
 .segment[data-name-target="page"] > .name:first-child {
-  margin-inline-start: calc(-1 * var(--v4-space-6));
+  margin-inline-start: calc(-1 * var(--crumb-inset));
 }
 .segment[data-name-target="page"] > .name:hover {
   background: var(--v4-segment-hover);
@@ -126,9 +128,9 @@
   background: var(--crumb-press);
 }
 .segment[data-name-target="switcher"] {
-  min-height: var(--v4-size-nested-sm);
-  margin-inline-start: calc(-1 * var(--v4-space-6));
-  padding-inline-start: var(--v4-space-6);
+  min-height: var(--crumb-target);
+  margin-inline-start: calc(-1 * var(--crumb-inset));
+  padding-inline-start: var(--crumb-inset);
   transition-property: background-color, color;
   transition-duration: var(--v4-duration-fast);
   transition-timing-function: var(--v4-ease-standard);
@@ -158,7 +160,7 @@
   align-items: center;
   justify-content: center;
   width: var(--v4-size-nested-sm);
-  height: var(--v4-size-nested-sm);
+  height: var(--crumb-target);
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -184,36 +186,43 @@
 }
 
 .product {
+  --crumb-target: var(--v4-size-shell-target);
+  --crumb-inset: var(--v4-space-control-inline-sm);
+  font-family: var(--v4-type-label-font-family);
+  font-size: var(--v4-type-label-font-size);
+  line-height: var(--v4-type-label-line-height);
+  font-weight: var(--v4-type-label-font-weight);
+  letter-spacing: var(--v4-type-label-letter-spacing);
   flex-wrap: nowrap;
 }
 .product .entry {
   flex: 0 1 auto;
 }
 .product .link {
-  min-height: var(--v4-size-control-sm);
+  min-height: var(--crumb-target);
   border-radius: 0;
-  padding-inline: var(--v4-space-6);
+  padding-inline: var(--crumb-inset);
 }
 .product .separator {
   margin-inline: 0;
 }
 .product .entry:not([data-switcher]) > .separator {
-  margin-inline-end: calc(-1 * var(--v4-space-6));
+  margin-inline-end: calc(-1 * var(--crumb-inset));
 }
 .product .entry:not([data-switcher]) + .entry > .separator {
-  margin-inline-start: calc(-1 * var(--v4-space-6));
+  margin-inline-start: calc(-1 * var(--crumb-inset));
 }
 .product .entry[data-switcher] + .entry > .separator {
   margin-inline-start: calc((var(--v4-size-icon-sm) - var(--v4-size-nested-sm)) / 2);
 }
-.product .link:hover {
-  background: var(--v4-tint);
+.product .link:not(.static):hover {
+  background: var(--v4-segment-hover);
 }
 .product .label {
   max-width: 240px;
 }
 .product > .entry:first-child > .link {
-  margin-inline-start: calc(-1 * var(--v4-space-6));
+  margin-inline-start: calc(-1 * var(--crumb-inset));
 }
 .product > .entry:first-child > .segment {
   min-inline-size: var(--v4-crumb-root-size, 0px);

@@ -124,7 +124,7 @@ export const componentGroupOrder: readonly ComponentGroup[] = [
 export type WorkbenchSection = {
   id: string;
   title: string;
-  icon: "apps" | "folder" | "sync" | "eye";
+  icon: "apps" | "folder" | "sync" | "eye" | "user";
   pages: { id: string; title: string; group?: string }[];
 };
 export const workbenchSections: WorkbenchSection[] = [
