@@ -348,12 +348,13 @@ To serve your own certificate instead, such as one from a publicly trusted CA, p
 
 Clients sign in with a SOCKS5 username and password. The proxy ignores the username, so you can use any value, such as `x-agent-vault`. Set the password to the session token. After sign-in, the proxy handles requests the same way it handles them on the HTTP port, including the [traffic policy](#traffic-policy) and the limits in [Supported connections](#supported-connections).
 
-- If the session isn't valid, the proxy refuses the sign-in and logs the reason, so the client sees the connection close (if the password isn't a session token, the proxy logs the reason only with `--log-level debug`)
+- If the session isn't valid, the proxy refuses the sign-in and logs the reason, so the client reports a failed sign-in (if the password isn't a session token, the proxy logs the reason only with `--log-level debug`)
+- If the proxy can't check the session, such as when Infisical is unreachable, it accepts the sign-in and refuses the connection with a general failure, so the client can try again later
 - If you revoke a session while a connection is open, the next request on that connection gets a 403 with `the session is no longer valid` (within one [poll interval](#poll-interval))
 
 ### Requests to private addresses
 
-If the traffic policy is **Any host**, the SOCKS5 port refuses requests to private, loopback, link-local, and other internal addresses, such as a cloud metadata endpoint or the proxy's own network. The client gets a 403:
+The SOCKS5 port refuses requests to private, loopback, link-local, and other internal addresses, such as a cloud metadata endpoint or the proxy's own network interfaces, under either traffic policy. The client gets a 403:
 
 ```text
 HTTP/1.1 403 Forbidden
@@ -361,7 +362,7 @@ HTTP/1.1 403 Forbidden
 the destination is a private or internal address
 ```
 
-The proxy still lets the request through if a service in the session's access bundle names the host. The HTTP port doesn't refuse these addresses. To turn the check off for the SOCKS5 port, pass `--socks5-allow-private-destinations`.
+The proxy still lets the request through if a service in the session's access bundle names the host. [Exceptions](#exceptions) don't count, so an exception for an internal host is refused on the SOCKS5 port. If the proxy runs in a container, it can't see the host's own addresses, so block those with a firewall rule on the host. The HTTP port doesn't refuse these addresses. To turn the check off for the SOCKS5 port, pass `--socks5-allow-private-destinations`.
 
 ## Rotate a proxy's token
 

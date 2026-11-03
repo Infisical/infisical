@@ -106,11 +106,14 @@ These commands start the proxy with its SOCKS5 port on port `1080`. With `--sock
       -e INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> \
       infisical/cli agent-vault proxy \
       --domain <your-instance-url> \
+      --listen-host 127.0.0.1 \
       --socks5-port 1080 \
       --socks5-tls-name <proxy-dns-name>
     ```
 
-    The command publishes only the SOCKS5 port. The HTTP port, `17323`, stays inside the container, so you don't need `--listen-host`.
+    The command publishes only the SOCKS5 port, and `--listen-host 127.0.0.1` keeps the HTTP port, `17323`, from other containers on the same network.
+
+    From inside a container, the proxy can't see the host's own addresses, so it can't refuse requests to them. If the host has its public IP address on its network interface, such as on DigitalOcean or Hetzner, and runs other services that only a cloud firewall hides, add a firewall rule on the host that blocks the proxy's container from the host's public IP address.
   </Tab>
   <Tab title="Kubernetes">
     ```yaml expandable
@@ -144,6 +147,8 @@ These commands start the proxy with its SOCKS5 port on port `1080`. With `--sock
                 - proxy
                 - --domain
                 - <your-instance-url>
+                - --listen-host
+                - 127.0.0.1
                 - --socks5-port
                 - "1080"
                 - --socks5-tls-name
@@ -479,7 +484,7 @@ The agent calls its APIs the same way it does without Agent Vault, and E2B sends
 
 ### Network access from the sandbox
 
-The sandbox can look up hostnames over DNS at `8.8.8.8`, which E2B lets through without the proxy. The traffic policy doesn't apply to these lookups, so an agent can still send data out in the names it looks up, though never a credential. To limit which names the sandbox can look up, run a DNS resolver that only answers the names you allow, and pass its address in `dns_servers` (`dnsServers` in TypeScript).
+The sandbox can look up hostnames over DNS at `8.8.8.8`, which E2B lets through without the proxy, so an agent can still send data out in the names it looks up, though never a credential. To limit DNS, see [E2B's DNS settings](https://e2b.dev/docs/network/internet-access#dns-when-you-filter-by-domain).
 
 Every other connection goes through the proxy:
 
@@ -525,6 +530,8 @@ The proxy token is only on the proxy's machine. If you think someone took contro
   </Accordion>
   <Accordion title="Requests to a host fail with a 403 from the start">
     If the proxy's traffic policy is **Access bundle hosts only**, the proxy blocks hosts that no service in the access bundle covers. Add a service for the host, or add the host to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
+
+    If the 403 says `the destination is a private or internal address`, the host resolves to an internal address, such as a private network or the proxy's own machine. The SOCKS5 port refuses those for every host that no service covers, including exceptions. Add a service for the host, or start the proxy with `--socks5-allow-private-destinations`.
   </Accordion>
   <Accordion title="A service on a port other than 80 or 443 doesn't work">
     E2B only sends connections on ports `80` and `443` to the proxy. Use the service's HTTPS endpoint on port `443` instead.
