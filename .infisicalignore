@@ -85,3 +85,10 @@ tests/clients/api/api.gen.go:generic-api-key:15743
 tests/clients/api/api.gen.go:generic-api-key:15744
 tests/clients/api/api.gen.go:generic-api-key:15770
 tests/clients/api/api.gen.go:generic-api-key:15771
+tests/clients/api/api.gen.go:generic-api-key:15644
+tests/clients/api/api.gen.go:generic-api-key:15645
+tests/clients/api/api.gen.go:generic-api-key:15671
+tests/clients/api/api.gen.go:generic-api-key:15672
+backend/src/ee/services/dynamic-secret/providers/sap-ase.test.ts:generic-password:18
+backend/src/services/app-connection/servicenow/servicenow-connection-fns.test.ts:generic-password:29
+tests/fakes/oauth/google_signon.go:private-key:18

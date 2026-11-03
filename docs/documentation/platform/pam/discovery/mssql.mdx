@@ -71,10 +71,22 @@ The scan stages only enabled SQL logins. It skips Windows logins and SQL Server'
     On the **Staged Accounts** tab, select the accounts you want, then select **Import Accounts**.
   </Step>
   <Step>
-    Select a **Destination Folder** and a **Microsoft SQL Server Template**, then select **Import**.
+    Select a **Destination Folder** and a **Microsoft SQL Server Template**.
   </Step>
   <Step>
-    Go to **Privileged Access Management** > **Accounts**. For each imported account, open the options menu on its row, select **Configure**, and enter the password for its login on the **Configuration** tab. The scan doesn't read passwords, so you can't connect to an imported account until you enter its password.
+    To have Infisical set a new password on each login during the import, turn on **Rotate account passwords on import**. Then pick the **Microsoft SQL Server Rotation Account**, which is the [rotation account](/documentation/platform/pam/credential-rotation/overview#rotation-accounts) that Infisical signs in as to change the passwords. By default, the field is set to one of the source's credential accounts.
+
+    A rotation account can only change passwords on its own instance (the same host and port), so Infisical imports logins from other instances without a password.
+
+    <Warning>
+      Rotation changes each login's password on its instance, so anything that signs in with the old password stops working.
+    </Warning>
+  </Step>
+  <Step>
+    Select **Import**.
+  </Step>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts**. The scan doesn't read passwords, so each imported account that Infisical didn't rotate shows **Unavailable** until you set its password. For each of those accounts, open the options menu on its row, select **Configure**, and enter the password for its login on the **Configuration** tab.
   </Step>
 </Steps>
 

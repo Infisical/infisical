@@ -40,6 +40,7 @@ import {
   TAgentVaultProductMember,
   TAgentVaultProductMemberOf,
   TAgentVaultProxy,
+  TAgentVaultProxyCa,
   TAgentVaultSession,
   TAgentVaultSessionLogCorsProbe,
   TAgentVaultSessionLogHealth,
@@ -113,13 +114,13 @@ export const agentVaultKeys = {
   accessBundleMemberList: (
     orgId: string,
     accessBundleId: string,
-    params?: Omit<TListAgentVaultMembersDTO, "actorType">
+    params?: TListAgentVaultMembersDTO
   ) => [...agentVaultKeys.accessBundleMembers(orgId, accessBundleId), params] as const,
   // Nested under accessBundleMembers() so a grant invalidates the candidate list too.
   availableAccessBundleMemberList: (
     orgId: string,
     accessBundleId: string,
-    params?: Omit<TListAgentVaultMembersDTO, "actorType">
+    params?: TListAgentVaultMembersDTO
   ) => [...agentVaultKeys.accessBundleMembers(orgId, accessBundleId), "available", params] as const,
   variables: (orgId: string) => [...agentVaultKeys.all(orgId), "variables"] as const,
   variableList: (orgId: string, params: TListAgentVaultVariablesDTO) =>
@@ -248,7 +249,7 @@ const AVAILABLE_MEMBER_LIMIT = 50;
 
 export const useListAvailableAgentVaultAccessBundleMembers = (
   accessBundleId: string,
-  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: Omit<TListAgentVaultMembersDTO, "actorType"> = {},
+  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: TListAgentVaultMembersDTO = {},
   enabled = true
 ) => {
   const { currentOrg } = useOrganization();
@@ -320,7 +321,7 @@ export const useListAvailableAgentVaultMembers = <
 
 export const useListAgentVaultAccessBundleMembers = (
   accessBundleId: string,
-  params: Omit<TListAgentVaultMembersDTO, "actorType"> = {}
+  params: TListAgentVaultMembersDTO = {}
 ) => {
   const { currentOrg } = useOrganization();
 
@@ -430,6 +431,13 @@ export const useListAgentVaultProxies = (
       return data;
     }
   });
+};
+
+export const fetchAgentVaultProxyCa = async (proxyId: string) => {
+  const { data } = await apiRequest.get<{ ca: TAgentVaultProxyCa }>(
+    `/api/v1/agent-vault/proxies/${proxyId}/ca`
+  );
+  return data.ca;
 };
 
 export const useGetAgentVaultSessionLogSettings = (enabled = true) => {

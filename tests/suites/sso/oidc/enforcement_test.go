@@ -36,7 +36,7 @@ func TestOIDCEnforcement(t *testing.T) {
 
 		// Setup
 		o := setup(t)
-		signedUp(t, o)
+		o.SignedUp(t)
 
 		// Action
 		res, err := o.Tenant.Admin.API.UpdateOrganizationWithResponse(t.Context(), o.Tenant.OrgID.String(),
@@ -94,7 +94,7 @@ func TestOIDCEnforcement(t *testing.T) {
 
 		// Setup
 		o := setup(t)
-		alice := signedUp(t, o)
+		alice := o.SignedUp(t)
 		sso.Enforce(t, o.Tenant)
 		session := o.Session(t, o.Login(t, alice))
 

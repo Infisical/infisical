@@ -180,7 +180,7 @@ Configure the following options to get custom guidance and best practices tailor
 
   <AgentVaultSetupBranch building="platform" runs="container,kubernetes,sandbox">
     <Note>
-      The proxy runs outside the agent's environment, and the agent's network only reaches the proxy. The agent can't read the proxy token or connect to an API without going through the proxy.
+      The proxy runs outside the agent's environment, and the agent's network only reaches the proxy. The agent can't read the proxy token or connect to an API without going through the proxy. If your agents run in [E2B sandboxes](/documentation/platform/agent-vault/guides/e2b), run the proxy on a public machine with its SOCKS5 port turned on, because E2B connects to the proxy from its own servers.
     </Note>
   </AgentVaultSetupBranch>
 </AgentVaultSetupStep>

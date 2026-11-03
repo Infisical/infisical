@@ -8,11 +8,13 @@ import {
   TAgentVaultCredentialInput,
   TAgentVaultCredentialUpdate,
   TCreateAgentVaultServiceDTO,
+  TListAgentVaultMcpToolsDTO,
   TUpdateAgentVaultServiceDTO
 } from "@app/hooks/api/agentVault/types";
 
 import {
   isAllMethods,
+  McpToolScope,
   newOAuthAuthorizationId,
   TServiceForm,
   UNCHANGED_SECRET
@@ -144,11 +146,16 @@ const buildHttpFields = (data: TServiceForm) => ({
   substitutions: buildSubstitutions(data)
 });
 
-const buildMcpFields = (data: TServiceForm) => ({
-  name: data.name,
+const buildMcpConnection = (data: TServiceForm) => ({
   serverUrl: data.serverUrl.trim(),
   transport: data.transport,
   customHeaders: buildCustomHeaders(data)
+});
+
+const buildMcpFields = (data: TServiceForm) => ({
+  name: data.name,
+  ...buildMcpConnection(data),
+  allowedTools: data.toolScope === McpToolScope.Selected ? data.allowedTools : null
 });
 
 export const buildCreateServiceRequest = (
@@ -189,3 +196,16 @@ export const buildUpdateServiceRequest = (
         ...buildHttpFields(data),
         credential: buildHttpCredentialPatch(data)
       };
+
+// The credential and headers go as an update sends them, so on edit a value left untouched falls back to
+// the saved service's.
+export const buildListMcpToolsRequest = (
+  accessBundleId: string,
+  serviceId: string | undefined,
+  data: TServiceForm
+): TListAgentVaultMcpToolsDTO => ({
+  accessBundleId,
+  ...(serviceId ? { serviceId } : {}),
+  ...buildMcpConnection(data),
+  ...withCredential(buildMcpCredentialPatch(data))
+});

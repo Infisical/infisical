@@ -28,3 +28,13 @@ export const nameList = (names: string[]) => {
   if (shown.length <= 2) return shown.join(" and ");
   return `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
 };
+
+// Only the part of an email before the @ counts, so "jane.doe@example.com" gives "JD", not "JE".
+export const getInitials = (value: string) =>
+  value
+    .split("@")[0]
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("") || "?";
