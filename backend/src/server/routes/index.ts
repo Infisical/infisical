@@ -1269,25 +1269,6 @@ export const registerRoutes = async (
     keyStore
   });
 
-  const membershipIdentityService = membershipIdentityServiceFactory({
-    identityDAL,
-    identityGroupMembershipDAL,
-    membershipIdentityDAL,
-    membershipRoleDAL,
-    orgDAL,
-    permissionService,
-    roleDAL,
-    additionalPrivilegeDAL,
-    licenseService,
-    applicationMembershipCleanupService,
-    projectDAL,
-    keyStore,
-    usageMeteringService,
-    alertService,
-    identityAccessTokenService,
-    eventEmitter: eventOutboxService
-  });
-
   const auditLogStreamService = auditLogStreamServiceFactory({
     licenseService,
     permissionService,
@@ -1357,6 +1338,27 @@ export const registerRoutes = async (
       membershipRoleDAL,
       pamAccountDAL
     })
+  });
+
+  const membershipIdentityService = membershipIdentityServiceFactory({
+    identityDAL,
+    identityGroupMembershipDAL,
+    membershipIdentityDAL,
+    membershipRoleDAL,
+    orgDAL,
+    permissionService,
+    roleDAL,
+    additionalPrivilegeDAL,
+    licenseService,
+    applicationMembershipCleanupService,
+    projectDAL,
+    keyStore,
+    usageMeteringService,
+    alertService,
+    identityAccessTokenService,
+    eventEmitter: eventOutboxService,
+    projectAccessRevokeService,
+    auditLogService
   });
 
   const oidcIssuerService = oidcIssuerServiceFactory({ kmsDAL, kmsService, keyStore, auditLogService });
@@ -2859,7 +2861,9 @@ export const registerRoutes = async (
     usageMeteringService,
     alertService,
     identityAccessTokenService,
-    eventEmitter: eventOutboxService
+    eventEmitter: eventOutboxService,
+    projectAccessRevokeService,
+    auditLogService
   });
 
   const identityV2Service = identityV2ServiceFactory({

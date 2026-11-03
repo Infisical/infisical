@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { removeIdentityFromGroupsOwnedByOrg } from "@app/ee/services/group/group-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
@@ -30,8 +31,10 @@ import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/ide
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TProjectAccessRevokeServiceFactory, TRevokedProjectAccess } from "../membership/project-access-revoke-service";
+import { auditRevokedProjectAccess } from "../org/org-access-fns";
 import { TOrgDALFactory } from "../org/org-dal";
-import { emitOrgMembershipRemoved, toOrgMembershipActors } from "../org/org-membership-events";
+import { emitOrgMembershipRemoved, OrgAccessRemovalCause, toOrgMembershipActors } from "../org/org-membership-events";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityDALFactory } from "./identity-dal";
 import { getIdentityActiveLockoutAuthMethods } from "./identity-fns";
@@ -70,6 +73,8 @@ type TIdentityServiceFactoryDep = {
     "insertIdentityWideRevocationMarker" | "insertOrgMembershipRevocationMarker" | "bumpIdentityRevocationVersion"
   >;
   eventEmitter: TEventEmitter;
+  projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -90,7 +95,9 @@ export const identityServiceFactory = ({
   usageMeteringService,
   alertService,
   identityAccessTokenService,
-  eventEmitter
+  eventEmitter,
+  projectAccessRevokeService,
+  auditLogService
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -456,6 +463,7 @@ export const identityServiceFactory = ({
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
+    let revoked: TRevokedProjectAccess[] = [];
     await membershipIdentityDAL.transaction(async (tx) => {
       await orgDAL.lockActorsForOrgAccess({ orgId: actorOrgId, actorIds: [id] }, tx);
       await identityMetadataDAL.delete(
@@ -465,23 +473,11 @@ export const identityServiceFactory = ({
         },
         tx
       );
-      const identityProjectMembership = await membershipIdentityDAL.find(
-        {
-          actorIdentityId: id,
-          scope: AccessScope.Project,
-          scopeOrgId: actorOrgId
-        },
-        { tx }
-      );
-      await additionalPrivilegeDAL.delete(
-        {
-          actorIdentityId: id,
-          $in: {
-            projectId: identityProjectMembership.map((el) => el.scopeProjectId)
-          }
-        },
+      // Runs before the membership delete below so the project rows it removes are the ones audited.
+      ({ revoked } = await projectAccessRevokeService.revokeActorsInOrgs(
+        { orgIds: [actorOrgId], identityIds: [id] },
         tx
-      );
+      ));
       const doc = await membershipIdentityDAL.delete({ actorIdentityId: id, scopeOrgId: actorOrgId }, tx);
       // Group membership counts as org membership, so a row left in one of this org's groups
       // would keep the identity in the org with no way for an admin to see or remove it.
@@ -516,6 +512,7 @@ export const identityServiceFactory = ({
     });
 
     await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
+    await auditRevokedProjectAccess({ auditLogService, revoked, reason: OrgAccessRemovalCause.RemovedFromOrg });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
     usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);

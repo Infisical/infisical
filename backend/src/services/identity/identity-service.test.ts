@@ -50,6 +50,9 @@ const createService = ({
   const findGroupIdsOwnedByOrg = vi.fn().mockResolvedValue(["group-1"]);
   const deleteGroupMemberships = vi.fn().mockResolvedValue([]);
   const lockActorsForOrgAccess = vi.fn().mockResolvedValue(undefined);
+  const revoked = [{ orgId: "org", identityId: IDENTITY_ID, projectIds: ["project-1"], resources: [] }];
+  const revokeActorsInOrgs = vi.fn().mockResolvedValue({ revoked, sendPamCancellations: () => {} });
+  const createAuditLog = vi.fn().mockResolvedValue(undefined);
 
   const identityDAL = {
     transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
@@ -103,7 +106,9 @@ const createService = ({
       insertOrgMembershipRevocationMarker: vi.fn().mockResolvedValue(undefined),
       bumpIdentityRevocationVersion: vi.fn().mockResolvedValue(undefined)
     } as never,
-    eventEmitter: { emit }
+    eventEmitter: { emit },
+    projectAccessRevokeService: { revokeActorsInOrgs },
+    auditLogService: { createAuditLog }
   });
 
   return {
@@ -115,6 +120,8 @@ const createService = ({
     findGroupIdsOwnedByOrg,
     deleteGroupMemberships,
     lockActorsForOrgAccess,
+    revokeActorsInOrgs,
+    createAuditLog,
     emit
   };
 };
@@ -150,6 +157,32 @@ describe("deleteIdentity group cleanup", () => {
     await service.deleteIdentity(buildDto());
 
     expect(findGroupIdsOwnedByOrg).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteIdentity project access", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("removing an identity that belongs to another org revokes this org's project access and audits it after commit", async () => {
+    const { service, membershipIdentityDAL, revokeActorsInOrgs, createAuditLog } = createService({
+      identityOrgId: ROOT_ORG_ID
+    });
+    membershipIdentityDAL.transaction.mockImplementationOnce(async (cb: (tx: Knex) => Promise<unknown>) => {
+      const result = await cb(TX);
+      expect(createAuditLog).not.toHaveBeenCalled();
+      return result;
+    });
+
+    await service.deleteIdentity(buildDto());
+
+    expect(revokeActorsInOrgs).toHaveBeenCalledWith({ orgIds: [ORG_ID], identityIds: [IDENTITY_ID] }, TX);
+    expect(revokeActorsInOrgs.mock.invocationCallOrder[0]).toBeLessThan(
+      membershipIdentityDAL.delete.mock.invocationCallOrder[0]
+    );
+    expect(createAuditLog).toHaveBeenCalledTimes(1);
+    expect(createAuditLog.mock.calls[0][0]).toMatchObject({
+      event: { metadata: { identityId: IDENTITY_ID, projectIds: ["project-1"] } }
+    });
   });
 });
 

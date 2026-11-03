@@ -52,6 +52,9 @@ const createService = ({
   const findGroupIdsOwnedByOrg = vi.fn().mockResolvedValue(["group-1"]);
   const deleteGroupMemberships = vi.fn().mockResolvedValue([]);
   const lockActorsForOrgAccess = vi.fn().mockResolvedValue(undefined);
+  const revoked = [{ orgId: "org", identityId: IDENTITY_ID, projectIds: ["project-1"], resources: [] }];
+  const revokeActorsInOrgs = vi.fn().mockResolvedValue({ revoked, sendPamCancellations: () => {} });
+  const createAuditLog = vi.fn().mockResolvedValue(undefined);
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
@@ -119,7 +122,9 @@ const createService = ({
       removeOrgMembershipRevocationMarkers,
       bumpIdentityRevocationVersion
     } as never,
-    eventEmitter: { emit }
+    eventEmitter: { emit },
+    projectAccessRevokeService: { revokeActorsInOrgs },
+    auditLogService: { createAuditLog }
   });
 
   return {
@@ -132,6 +137,8 @@ const createService = ({
     findGroupIdsOwnedByOrg,
     deleteGroupMemberships,
     lockActorsForOrgAccess,
+    revokeActorsInOrgs,
+    createAuditLog,
     emit
   };
 };
@@ -164,6 +171,40 @@ describe("deleteMembership org revocation bump ordering", () => {
     expect(insertOrgMembershipRevocationMarker).toHaveBeenCalledTimes(1);
     expect(bumpIdentityRevocationVersion).not.toHaveBeenCalled();
     expect(result).toMatchObject({ revocationBumpPending: { identityId: IDENTITY_ID } });
+  });
+});
+
+describe("deleteMembership org project access", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("revokes everything the org granted the identity in its transaction and audits it after commit", async () => {
+    const tx = { marker: "tx" } as unknown as Knex;
+    const { service, revokeActorsInOrgs, createAuditLog } = createService({ tx });
+
+    await service.deleteMembership(buildDto());
+
+    expect(revokeActorsInOrgs).toHaveBeenCalledWith({ orgIds: [SUB_ORG_ID], identityIds: [IDENTITY_ID] }, tx);
+    expect(createAuditLog).toHaveBeenCalledTimes(1);
+  });
+
+  test("hands the revoked access to the caller instead of auditing when it owns the transaction", async () => {
+    const { service, createAuditLog } = createService();
+
+    const result = await service.deleteMembership(buildDto(), {} as Knex);
+
+    expect(createAuditLog).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ revokedProjectAccess: [{ identityId: IDENTITY_ID, projectIds: ["project-1"] }] });
+  });
+
+  test("removing a project membership leaves the rest of the org alone", async () => {
+    const { service, revokeActorsInOrgs } = createService();
+
+    await service.deleteMembership({
+      ...buildDto(),
+      scopeData: { scope: AccessScope.Project, orgId: SUB_ORG_ID, projectId: "project-1" }
+    });
+
+    expect(revokeActorsInOrgs).not.toHaveBeenCalled();
   });
 });
 

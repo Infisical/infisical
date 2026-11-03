@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { removeIdentityFromGroupsOwnedByOrg } from "@app/ee/services/group/group-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -25,9 +26,10 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
-import { lockAndAssertActiveOrgAccess } from "../org/org-access-fns";
+import { TProjectAccessRevokeServiceFactory, TRevokedProjectAccess } from "../membership/project-access-revoke-service";
+import { auditRevokedProjectAccess, lockAndAssertActiveOrgAccess } from "../org/org-access-fns";
 import { TOrgDALFactory } from "../org/org-dal";
-import { emitOrgMembershipRemoved, toOrgMembershipActors } from "../org/org-membership-events";
+import { emitOrgMembershipRemoved, OrgAccessRemovalCause, toOrgMembershipActors } from "../org/org-membership-events";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -71,6 +73,8 @@ type TMembershipIdentityServiceFactoryDep = {
     "insertOrgMembershipRevocationMarker" | "removeOrgMembershipRevocationMarkers" | "bumpIdentityRevocationVersion"
   >;
   eventEmitter: TEventEmitter;
+  projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -91,7 +95,9 @@ export const membershipIdentityServiceFactory = ({
   usageMeteringService,
   alertService,
   identityAccessTokenService,
-  eventEmitter
+  eventEmitter,
+  projectAccessRevokeService,
+  auditLogService
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -446,6 +452,8 @@ export const membershipIdentityServiceFactory = ({
         message: "You can't delete your own membership"
       });
 
+    let revoked: TRevokedProjectAccess[] = [];
+
     const performDelete = async (tx: Knex) => {
       if (scopeData.scope === AccessScope.Organization) {
         await orgDAL.lockActorsForOrgAccess({ orgId: scopeData.orgId, actorIds: [dto.selector.identityId] }, tx);
@@ -497,6 +505,12 @@ export const membershipIdentityServiceFactory = ({
           },
           tx
         );
+        // Everything this org granted the identity goes, even on projects a group linked in from a
+        // parent org still reaches: that group's access belongs to the parent org.
+        ({ revoked } = await projectAccessRevokeService.revokeActorsInOrgs(
+          { orgIds: [scopeData.orgId], identityIds: [dto.selector.identityId] },
+          tx
+        ));
         await identityAccessTokenService.insertOrgMembershipRevocationMarker({
           identityId: dto.selector.identityId,
           orgId: scopeData.orgId,
@@ -532,6 +546,7 @@ export const membershipIdentityServiceFactory = ({
     const needsRevocationBump = scopeData.scope === AccessScope.Organization;
     if (needsRevocationBump && !externalTx) {
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
+      await auditRevokedProjectAccess({ auditLogService, revoked, reason: OrgAccessRemovalCause.RemovedFromOrg });
     }
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
@@ -549,7 +564,8 @@ export const membershipIdentityServiceFactory = ({
     if (needsRevocationBump && externalTx) {
       return {
         membership: membershipDoc,
-        revocationBumpPending: { identityId: dto.selector.identityId }
+        revocationBumpPending: { identityId: dto.selector.identityId },
+        revokedProjectAccess: revoked
       };
     }
     return { membership: membershipDoc };
