@@ -294,7 +294,7 @@ export const QuickAddSecretRow = ({
         <div
           className={
             isMultiEnvironmentView
-              ? "sticky z-[9] flex h-10 items-center bg-container px-3 group-hover:bg-container-hover"
+              ? "sticky z-[9] flex min-h-10 items-center bg-container px-3 py-1.5 group-hover:bg-container-hover"
               : "relative flex w-full items-center"
           }
           style={isMultiEnvironmentView ? valueEditorStyle : undefined}
