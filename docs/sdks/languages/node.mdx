@@ -1212,7 +1212,9 @@ const { members, totalCount } = await client.agentVault().accessBundles.listAvai
 
 #### Grant access
 
-Grant an access bundle to users, machine identities, or groups. Each user, machine identity, and group must be a member of Agent Vault. Pass at least one ID, and at most 100 in total.
+Grant an access bundle to users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
+
+Each user, machine identity, and group must be a member of Agent Vault. If a user or machine identity is in Agent Vault only through a group, `grant` fails and grants nothing. Grant the access bundle to the group instead, or first [add the user or machine identity to Agent Vault](/documentation/platform/agent-vault/access-control#adding-members).
 
 ```typescript
 const { members, skipped } = await client.agentVault().accessBundles.grant("<access-bundle-id>", {
@@ -1323,6 +1325,8 @@ const delegation = await client.agentVault().delegations.set("<machine-identity-
 **Returns:**
 - `AgentVaultDelegationDetail`: the delegation, with `missingAccessBundles`
 
+With `AgentVaultDelegationScope.Selected`, pass at least one user or group. With `AgentVaultDelegationScope.AllMembers`, pass no users or groups. To stop the machine identity from acting on behalf of anyone, [delete the delegation](#delete-delegation).
+
 Each user and group must be a member of Agent Vault. If a user is in Agent Vault only through a group, pass the group instead.
 
 #### List available users and groups
@@ -1353,7 +1357,7 @@ const { members, totalCount } = await client.agentVault().delegations.listAvaila
 
 #### Add users and groups
 
-Add users and groups to a machine identity's delegation. The users and groups that are already in the delegation stay in it.
+Add users and groups to a machine identity's delegation. The users and groups that are already in the delegation stay in it. Pass at least one ID.
 
 - If the machine identity has no delegation, `addSubjects` creates one with the `AgentVaultDelegationScope.Selected` scope
 - If the delegation covers all members, you can't add users or groups to it
@@ -1376,7 +1380,7 @@ const delegation = await client.agentVault().delegations.addSubjects("<machine-i
 
 #### Remove users and groups
 
-Remove users and groups from a machine identity's delegation. If the delegation no longer covers a user, the sessions that the machine identity created on behalf of the user stop working. If you remove the last user or group, Infisical deletes the delegation.
+Remove users and groups from a machine identity's delegation. Pass at least one ID. If the delegation no longer covers a user, the sessions that the machine identity created on behalf of the user stop working. If you remove the last user or group, Infisical deletes the delegation.
 
 ```typescript
 const delegation = await client.agentVault().delegations.removeSubjects("<machine-identity-id>", {
