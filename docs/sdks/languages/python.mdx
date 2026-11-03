@@ -1245,7 +1245,9 @@ members = client.agent_vault.access_bundles.list_available_grantees(
 
 #### Grant access
 
-Grant an access bundle to users, machine identities, or groups. Each user, machine identity, and group must be a member of Agent Vault. Pass at least one ID, and at most 100 in total.
+Grant an access bundle to users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
+
+Each user, machine identity, and group must be a member of Agent Vault. If a user or machine identity is in Agent Vault only through a group, `grant` fails and grants nothing. Grant the access bundle to the group instead, or first [add the user or machine identity to Agent Vault](/documentation/platform/agent-vault/access-control#adding-members).
 
 ```python
 response = client.agent_vault.access_bundles.grant(
@@ -1357,6 +1359,8 @@ delegation = client.agent_vault.delegations.set(
 **Returns:**
 - `AgentVaultDelegation`: the delegation, with `missingAccessBundles`
 
+With `AgentVaultDelegationScope.SELECTED`, pass at least one user or group. With `AgentVaultDelegationScope.ALL_MEMBERS`, pass no users or groups. To stop the machine identity from acting on behalf of anyone, [delete the delegation](#delete-delegation).
+
 Each user and group must be a member of Agent Vault. If a user is in Agent Vault only through a group, pass the group instead.
 
 #### List available users and groups
@@ -1387,7 +1391,7 @@ members = client.agent_vault.delegations.list_available_subjects(
 
 #### Add users and groups
 
-Add users and groups to a machine identity's delegation. The users and groups already in the delegation stay. If the machine identity has no delegation, `add_subjects` creates one with the `AgentVaultDelegationScope.SELECTED` scope. You can't add users or groups to a delegation for all members.
+Add users and groups to a machine identity's delegation. The users and groups already in the delegation stay. Pass at least one ID. If the machine identity has no delegation, `add_subjects` creates one with the `AgentVaultDelegationScope.SELECTED` scope. You can't add users or groups to a delegation for all members.
 
 ```python
 delegation = client.agent_vault.delegations.add_subjects(
@@ -1407,7 +1411,7 @@ delegation = client.agent_vault.delegations.add_subjects(
 
 #### Remove users and groups
 
-Remove users and groups from a machine identity's delegation. The sessions that the machine identity created on behalf of users it no longer covers stop working. If you remove the last user or group, Infisical deletes the delegation.
+Remove users and groups from a machine identity's delegation. Pass at least one ID. The sessions that the machine identity created on behalf of users it no longer covers stop working. If you remove the last user or group, Infisical deletes the delegation.
 
 ```python
 delegation = client.agent_vault.delegations.remove_subjects(
