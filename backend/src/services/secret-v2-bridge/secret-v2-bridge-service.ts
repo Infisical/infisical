@@ -1974,6 +1974,9 @@ export const secretV2BridgeServiceFactory = ({
       secretPath: path,
       name: secretName
     });
+    logger.info(
+      `getSecretByName: reading secret [projectId=${projectId}] [environment=${environment}] [secretPath=${path}] [secretName=${secretName}]`
+    );
 
     // this will throw if the user doesn't have read value permission no matter what
     // because if its an expansion, it will fully depend on the value.
@@ -2106,26 +2109,7 @@ export const secretV2BridgeServiceFactory = ({
       secretValue = expandedSecretValue || "";
     }
 
-    let secretValueHidden = true;
-
-    if (viewSecretValue) {
-      if (
-        !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-          environment,
-          secretPath: path,
-          secretName,
-          secretTags: (secret?.tags || []).map((el) => el.slug)
-        }) &&
-        secretType !== SecretType.Personal
-      ) {
-        throw new ForbiddenRequestError({
-          message: `You do not have permission to view secret value on secret with name '${secretName}'`,
-          name: "ForbiddenReadSecretError"
-        });
-      }
-
-      secretValueHidden = false;
-    }
+    const secretValueHidden = !viewSecretValue;
 
     reportReferencesOf(environment, path, secret.key);
     return reshapeBridgeSecret(

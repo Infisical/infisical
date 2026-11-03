@@ -1,0 +1,236 @@
+name: "Security Review"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: security-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  security-review:
+    name: Security Review
+    # Fork PRs get no secrets
+    if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      # Skipped steps leave the job green, which a required check accepts; a workflow-level paths filter would leave it pending
+      - name: 🔎 Check for code changes
+        id: changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --jq '.[].filename' > "$RUNNER_TEMP/changed-files.txt"
+          echo "count=$(wc -l < "$RUNNER_TEMP/changed-files.txt")" >> "$GITHUB_OUTPUT"
+          if grep -q -v -E '^docs/|\.mdx?$' "$RUNNER_TEMP/changed-files.txt"; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+            echo "Skipped: this PR only changes documentation." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: ☁️ Checkout source
+        if: steps.changes.outputs.docs_only != 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+
+      - name: ☁️ Checkout review instructions from base
+        if: steps.changes.outputs.docs_only != 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          sparse-checkout: .github/security-review
+          persist-credentials: false
+
+      # Runs the scanner's audit script directly; its action.yml sets up Node 18, which resolves to a
+      # Claude Code release too old for current models, and reports a passing check when the scan errors
+      - name: ☁️ Checkout scanner
+        if: steps.changes.outputs.docs_only != 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          repository: anthropics/claude-code-security-review
+          ref: 0c6a49f1fa56a1d472575da86a94dbc1edb78eda
+          path: scanner
+          persist-credentials: false
+
+      - name: 🔧 Setup Node 26
+        if: steps.changes.outputs.docs_only != 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "26"
+
+      - name: 🔧 Setup Python
+        if: steps.changes.outputs.docs_only != 'true'
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: 📦 Install scanner dependencies
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          # npm 11 skips install scripts unless allowed, and Claude Code's postinstall is what links its native binary
+          npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@2.1.296
+          claude --version
+          pip install anthropic==1.13.0 requests==2.34.2
+
+      - name: 🩹 Patch scanner
+        if: steps.changes.outputs.docs_only != 'true'
+        working-directory: scanner/claudecode
+        run: |
+          # The API probe names a retired model, and a failed probe silently turns off false-positive filtering
+          sed -i 's/model="claude-3-5-haiku-20241022"/model=self.model/' claude_api_client.py
+          # Current Claude Code only enables print mode with -p
+          sed -i "s/^\( *\)'claude',$/\1'claude', '-p',/" github_action_audit.py
+          # This hard-coded rule drops any finding that mentions a redirect, including SSRF through one
+          sed -i 's/for pattern in cls\._OPEN_REDIRECT_PATTERNS:/for pattern in []:/' findings_filter.py
+          # GitHub refuses diffs above its size limit; fall back to the scanner's no-diff prompt. That prompt
+          # lists only the first 100 changed files, so larger PRs still fail.
+          sed -i '/def get_pr_diff/,/return self\._filter_generated_files/ s/^\( *\)response\.raise_for_status()$/\1if response.status_code == 406 and int(os.environ.get("CHANGED_FILE_COUNT", "0")) <= 100:\n\1    return ""\n\1response.raise_for_status()/' github_action_audit.py
+          sed -i 's/elif pr_diff and not include_diff:/elif not (pr_diff and include_diff):/' prompts.py
+
+          grep -q 'model=self.model,' claude_api_client.py \
+            && grep -q "'claude', '-p'," github_action_audit.py \
+            && grep -q 'for pattern in \[\]:' findings_filter.py \
+            && grep -q 'status_code == 406 and int(os.environ.get("CHANGED_FILE_COUNT"' github_action_audit.py \
+            && grep -q 'elif not (pr_diff and include_diff):' prompts.py \
+            || { echo "::error::A scanner patch did not apply"; exit 1; }
+
+      - name: 🔍 Run security review
+        id: scan
+        if: steps.changes.outputs.docs_only != 'true'
+        timeout-minutes: 80
+        working-directory: scanner
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CHANGED_FILE_COUNT: ${{ steps.changes.outputs.count }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_MODEL: claude-opus-5-5
+          ENABLE_CLAUDE_FILTERING: "true"
+          EXCLUDE_DIRECTORIES: docs
+          REPO_PATH: ${{ github.workspace }}/pr
+          PYTHONPATH: ${{ github.workspace }}/scanner
+          # Keeps the pinned CLI from self-updating and turns off its telemetry and error reporting
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+        run: |
+          # Rules come from the base branch so edits take effect once merged, and branches cut before the files
+          # existed still get them; the PR that adds them has no base copy, so it falls back to its own
+          instructions="$GITHUB_WORKSPACE/base/.github/security-review"
+          [ -f "$instructions/false-positive-filtering.txt" ] || instructions="$GITHUB_WORKSPACE/pr/.github/security-review"
+          for f in scan-instructions.txt false-positive-filtering.txt; do
+            if [ ! -f "$instructions/$f" ]; then
+              echo "::error::Missing .github/security-review/$f"
+              exit 1
+            fi
+          done
+          export CUSTOM_SECURITY_SCAN_INSTRUCTIONS="$instructions/scan-instructions.txt"
+          export FALSE_POSITIVE_FILTERING_INSTRUCTIONS="$instructions/false-positive-filtering.txt"
+          python -u claudecode/github_action_audit.py > "$RUNNER_TEMP/results.json" 2> "$RUNNER_TEMP/scan.log" || true
+
+      # Full write-ups go to a private channel because everything the job prints is public
+      - name: 📣 Send finding details to Slack
+        id: slack
+        if: steps.changes.outputs.docs_only != 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SECURITY_REVIEW_SLACK_WEBHOOK_URL }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          results="$RUNNER_TEMP/results.json"
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            exit 0
+          fi
+          if ! jq -e '(.findings | type == "array") and ((.findings | length) + (.filtering_summary.excluded_findings // 0) > 0)' "$results" > /dev/null 2>&1; then
+            exit 0
+          fi
+          # One message per finding keeps each under Slack's 40,000-character limit
+          jq -c --arg pr "$PR_URL" '
+            def esc: tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;");
+            def where: "`\(.file // "?" | esc):\(.line // "?" | esc)`";
+            ([.findings[] | "*\(.severity // "unknown" | esc)* \(.category // "unknown" | esc) at \(where)\n\(.description // "" | esc)\n_Exploit scenario:_ \(.exploit_scenario // "n/a" | esc)\n_Recommendation:_ \(.recommendation // "n/a" | esc)"]
+              + (if (.filtering_summary.excluded_findings_details // []) | length > 0
+                 then ["_Filtered out:_\n" + ([.filtering_summary.excluded_findings_details[] | (.finding // .) as $f | "• \($f.category // "unknown" | esc) at \($f | where): \(.exclusion_reason // "excluded directory" | esc)"] | join("\n"))]
+                 else [] end))
+            | .[] | {text: ("*Security review* for \($pr)\n" + .) | .[0:39000]}
+          ' "$results" > "$RUNNER_TEMP/slack.jsonl"
+          posted=true
+          while IFS= read -r payload; do
+            curl -fsS -o /dev/null -X POST -H "Content-Type: application/json" --data "$payload" "$SLACK_WEBHOOK_URL" || posted=false
+            sleep 1
+          done < "$RUNNER_TEMP/slack.jsonl"
+          if [ "$posted" = true ]; then
+            echo "posted=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Could not send all finding details to Slack"
+          fi
+
+      # Demo only: posts each finding as a public inline comment, like the scanner action's comment-pr option
+      - name: 💬 Comment findings on PR
+        if: steps.changes.outputs.docs_only != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$RUNNER_TEMP"
+          jq '.findings // []' results.json > findings.json 2>/dev/null || echo '[]' > findings.json
+          node "$GITHUB_WORKSPACE/scanner/scripts/comment-pr-findings.js" || echo "::warning::Could not comment findings on the PR"
+
+      - name: 🚦 Check findings
+        if: ${{ !cancelled() && steps.changes.outputs.docs_only != 'true' }}
+        env:
+          DETAILS_SENT: ${{ steps.slack.outputs.posted }}
+        run: |
+          results="$RUNNER_TEMP/results.json"
+          # The scanner's stderr can hold raw model output, so only the first line of its error is printed
+          if ! jq -e '.findings | type == "array"' "$results" > /dev/null 2>&1; then
+            reason=$(jq -r '(.error // "no results") | split("\n")[0]' "$results" 2>/dev/null || echo "no results")
+            echo "::error::Security review did not complete: $reason"
+            exit 1
+          fi
+          # The scanner reports an unreadable model response as an empty, incomplete review
+          if jq -e '.analysis_summary.review_completed == false' "$results" > /dev/null; then
+            echo "::error::Security review did not complete: the model response could not be read"
+            exit 1
+          fi
+
+          if grep -q -e "Claude API validation failed" -e "Failed to initialize Claude client" "$RUNNER_TEMP/scan.log"; then
+            echo "::warning::False-positive filtering was unavailable, so findings were not filtered a second time"
+          fi
+
+          # Every field here is model-written and this repo is public, so each is cut down to a short token
+          defs='
+            def sev: .severity // "unknown" | tostring | ascii_upcase | gsub("[^A-Z]"; "");
+            def category: .category // "unknown" | tostring | gsub("[^A-Za-z0-9_-]"; "_") | .[0:40];
+            def location: "\(.file // "?" | tostring | gsub("[^A-Za-z0-9_./-]"; "_") | .[0:200]):\(.line // "" | tostring | gsub("[^0-9]"; ""))";
+          '
+          {
+            echo "## Security review"
+            echo
+            jq -r "$defs"'
+              if (.findings | length) == 0 then "No findings."
+              else
+                "| Severity | Category | Location |",
+                "|---|---|---|",
+                (.findings[] | "| \(sev) | \(category) | `\(location)` |")
+              end' "$results"
+            if [ "$DETAILS_SENT" = "true" ]; then
+              echo
+              echo "Full details were sent to the internal security review channel."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          blocking=$(jq "$defs"'[.findings[] | select(sev != "LOW")] | length' "$results")
+          if [ "$blocking" -gt 0 ]; then
+            echo "::error::Security review found $blocking blocking finding(s). Locations are in the job summary."
+            exit 1
+          fi
