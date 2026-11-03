@@ -1,0 +1,81 @@
+name: Skyramp Testbot
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.actor != 'skyramp-testbot[bot]' }}
+
+jobs:
+  testbot:
+    # Only run for pull_request events or issue_comment on PRs mentioning @skyramp-testbot
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@skyramp-testbot'))
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+
+    steps:
+      # Generate a GitHub App installation token to retrigger CI workflows on push
+      # https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
+        with:
+          app-id: ${{ secrets.SKYRAMP_TESTBOT_APP_ID }}
+          private-key: ${{ secrets.SKYRAMP_TESTBOT_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: skyramp/testbot@bfaa88528a744ef6653a70eb51980b69d333b93b # v0.8.1
+        with:
+          skyrampLicenseFile: ${{ secrets.SKYRAMP_LICENSE_FILE }}
+          anthropicApiKey: ${{ secrets.SKYRAMP_TESTBOT_API_KEY }}
+          githubToken: ${{ steps.app-token.outputs.token }}
+          # Bootstrap a fresh super-admin in the freshly-spawned Infisical instance and
+          # echo the returned access token. The token is signed by this CI run's
+          # AUTH_SECRET, so it only works against this run's API (which is what TestBot
+          # hits at localhost:4000). Static cloud/local tokens cannot work here because
+          # every CI run spawns a fresh DB + AUTH_SECRET.
+          authTokenCommand: |
+            curl -sS -X POST http://localhost:4000/api/v1/admin/signup \
+              -H "Content-Type: application/json" \
+              -d '{"email":"testbot@skyramp.test","password":"Testbot1234!","firstName":"TestBot","lastName":"Skyramp"}' \
+              | jq -r .token
+          targetSetupCommand: |
+            set -ex
+            cat > .env << 'ENVEOF'
+            DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
+            REDIS_URL=redis://redis:6379
+            AUTH_SECRET=at-least-32-characters-long-secret-for-testing-purposes
+            ENCRYPTION_KEY=p5e5k2j3+HIErjm02dzSrlhXc1xhdgoWvC6pox410rE=
+            NODE_ENV=development
+            TELEMETRY_ENABLED=false
+            SITE_URL=http://localhost:4000
+            ENVEOF
+            docker compose -f docker-compose.dev.yml up -d --build backend
+            docker compose -f docker-compose.dev.yml ps
+          targetReadyCheckCommand: 'curl -sf http://localhost:4000/api/status'
+          targetReadyCheckTimeout: '600'
+          targetReadyCheckDiagnosticsCommand: |
+            echo "=== Backend container logs ==="
+            docker compose -f docker-compose.dev.yml logs backend --tail 200
+            echo ""
+            echo "=== All services status ==="
+            docker compose -f docker-compose.dev.yml ps
+            echo ""
+            echo "=== Port 4000 status ==="
+            ss -tlnp 2>/dev/null | grep 4000 || lsof -i :4000 2>/dev/null || echo "Port 4000 not bound"
+          targetTeardownCommand: |
+            docker compose -f docker-compose.dev.yml down -v
+          testDirectory: 'backend/tests'
