@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createNotification } from "@app/components/notifications";
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 import {
+  Button,
   InfisicalSecretInput,
   Input,
   SecretInputActions,
@@ -52,9 +53,14 @@ const DuplicateEnvironmentsMessage = ({ environments }: { environments: string[]
       Already exists in {listedEnvironments} and{" "}
       <Tooltip>
         <TooltipTrigger asChild>
-          <button type="button" className="cursor-default underline decoration-dotted">
+          <Button
+            type="button"
+            variant="link"
+            size="xs"
+            className="align-baseline text-2xs text-danger underline decoration-dotted"
+          >
             {hiddenEnvironments.length} more
-          </button>
+          </Button>
         </TooltipTrigger>
         <TooltipContent>{hiddenEnvironments.join(", ")}</TooltipContent>
       </Tooltip>
