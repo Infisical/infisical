@@ -1,4 +1,4 @@
-import { AxiosError } from "axios";
+import { AxiosError, AxiosRequestConfig } from "axios";
 
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -10,7 +10,7 @@ import {
 import { TDatabricksConnection, TDatabricksConnectionConfig } from "./databricks-connection-types";
 
 const { sendRequest, blockLocalAndPrivateIpAddresses } = vi.hoisted(() => ({
-  sendRequest: vi.fn(),
+  sendRequest: vi.fn<(config: AxiosRequestConfig) => Promise<{ data: unknown }>>(),
   blockLocalAndPrivateIpAddresses: vi.fn()
 }));
 
