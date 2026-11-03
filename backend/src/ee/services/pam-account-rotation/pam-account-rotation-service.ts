@@ -92,7 +92,7 @@ type TPamAccountRotationServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   pamAccountDependencyDAL: Pick<TPamAccountDependencyDALFactory, "findByAccountId" | "updateById">;
   rotationHandlers?: typeof PAM_ROTATION_FACTORY_MAP;
 };
@@ -598,6 +598,15 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     } = await resolveRotator(account, targetCredentials, connectionDetails, { gatewayId, gatewayPoolId });
     handler.validateRotatorCredential?.({ accountType, password: auth.password });
     if (isDelegated) assertRotatorSameResource(accountType, rotatorConnectionDetails, connectionDetails);
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: "Project not found" });
+    await gatewayPoolService.assertGatewayBindingInOrg({
+      gatewayId: rotatorGatewayId,
+      gatewayPoolId: rotatorGatewayPoolId,
+      orgId: project.orgId
+    });
+
     // A delegated local account can't be logged in as to verify, so validate via the admin rotator instead.
     const verifyVia = isDelegated && accountType === PamAccountType.Windows ? auth : undefined;
 

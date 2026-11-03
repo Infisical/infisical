@@ -81,7 +81,10 @@ const buildService = (
       updateById
     },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
-    gatewayPoolService: { resolveEffectiveGatewayId: vi.fn(async () => "gw-1") },
+    gatewayPoolService: {
+      resolveEffectiveGatewayId: vi.fn(async () => "gw-1"),
+      assertGatewayBindingInOrg: vi.fn(async () => undefined)
+    },
     kmsService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
     permissionService: { getProjectPermission: vi.fn(), getResourcePermission: vi.fn() },
     projectDAL: { findById: vi.fn(async () => ({ id: "proj-1", orgId: "org-1" })) },

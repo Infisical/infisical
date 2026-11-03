@@ -85,7 +85,8 @@ const buildService = (
     kmsService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
     keyStore: { acquireLock: vi.fn(async () => ({ release: vi.fn(async () => undefined) })) },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
-    gatewayPoolService: { resolveEffectiveGatewayId: vi.fn() },
+    gatewayPoolService: { resolveEffectiveGatewayId: vi.fn(), assertGatewayBindingInOrg: vi.fn(async () => undefined) },
+    projectDAL: { findById: vi.fn(async () => ({ id: "proj-1", orgId: "org-1" })) },
     pamAccountDependencyDAL: { findByAccountId: vi.fn(async () => []), updateById: vi.fn(async () => undefined) },
     rotationHandlers
   };
