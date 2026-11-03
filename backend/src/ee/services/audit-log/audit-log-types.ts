@@ -6915,7 +6915,8 @@ interface AgentVaultSessionMintEvent {
     // Set when an admin sent services with the session. Never their values.
     services?: {
       serviceId: string;
-      name: string | null;
+      // The name it was sent with, or its first host when it was sent without one.
+      name: string;
       serviceType: string;
       serverUrl?: string;
       hostPattern: string;

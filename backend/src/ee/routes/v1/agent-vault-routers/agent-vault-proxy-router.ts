@@ -26,7 +26,9 @@ const ProxyMemberViewSchema = z.object({
 });
 
 const ProxyAdminViewSchema = ProxyMemberViewSchema.extend({
-  trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
+  trafficPolicy: z
+    .enum([AgentVaultTrafficPolicy.AnyHost, AgentVaultTrafficPolicy.ServiceHosts])
+    .describe(AGENT_VAULT.PROXY.trafficPolicyRead),
   allowedHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval),
   createdAt: z.date().describe(AGENT_VAULT.PROXY.createdAt)
@@ -173,7 +175,12 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_PROXY_UPDATE,
-          metadata: { proxyId: proxy.id, ...req.body }
+          // The policy as the proxy now reports it, so an audit log never shows the old name.
+          metadata: {
+            proxyId: proxy.id,
+            ...req.body,
+            ...(req.body.trafficPolicy && { trafficPolicy: proxy.trafficPolicy })
+          }
         }
       });
 

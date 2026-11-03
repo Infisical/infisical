@@ -45,9 +45,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   by link, and that route is where the `agent_vault_identities` meter moves for them. Only org creation seeds
   the creator.
 - The traffic policy defaults to any-host (formerly Allow), in the DB default, the service and the dialog.
-  Deliberate: the product brokers credentials, it is not an egress firewall, and under bundle-hosts the
+  Deliberate: the product brokers credentials, it is not an egress firewall, and under service-hosts the
   quickstart's agent could reach neither Anthropic nor npm until a bypass list exists. Settled with the
-  product owner; bundle-hosts is documented as the hardening step.
+  product owner; service-hosts is documented as the hardening step.
 - Wherever code branches on `ProjectType.PAM`, add the Agent Vault arm: `AgentVaultIdentities` metering emits,
   the admin-or-member predefined roles filter, `AuditLogStreamProduct`, `grantAgentVaultAccess` on the org
   invite. See the root `AGENTS.md`.
@@ -207,7 +207,7 @@ tells them apart from a bundle's. They are rows of `agent_vault_session_inline_s
 alone: nothing edits them, no bundle or other session reads them, and only resolve opens their secrets.
 
 - **Admin only, at mint and on every resolve.** Whoever starts the session decides which hosts it reaches and with
-  which credentials, an admin's call for a bundle's services too. It also keeps `bundle-hosts` meaningful: a proxy lets
+  which credentials, an admin's call for a bundle's services too. It also keeps `service-hosts` meaningful: a proxy lets
   through any host a session's services cover, so a member's inline service would open any host they chose. Resolve
   sends inline services only while the session's owner (the identity, on an on-behalf-of session) is a live admin, so a
   demotion keeps the bundle and drops the inline services until they are an admin again, the way a lost grant drops a
@@ -220,9 +220,11 @@ alone: nothing edits them, no bundle or other session reads them, and only resol
 - **No member-provided fields and no OAuth.** Every value arrives with the mint, and an OAuth service needs a sign-in in
   the UI and a refresh that writes the service row. The schema accepts both, hidden, so `prepareInlineServices` refuses
   them by name, as a bundle service's create refuses fields its type doesn't take.
-- **The name is optional.** Wherever a name is shown (resolve, so the proxy's messages and session logs, the audit log,
-  the Sessions page), an unnamed service goes by its first host (`inlineServiceDisplayName`, mirrored in the frontend).
-  Resolve sends `accessBundleName: null` for an inline service.
+- **The name is optional.** An unnamed service goes by its first host (`inlineServiceDisplayName`), worked out on the
+  server only: resolve (so the proxy's messages and session logs), the audit log and the session responses all send
+  that name, so `name` is never null on the wire and the frontend shows it as is. Mint refuses a name, given or
+  fallen back to, that another inline service or a service in the session's bundle already goes by, so a name in a
+  session log always points at one service. Resolve sends `accessBundleName: null` for an inline service.
 - **The host rule of one bundle's services applies across the session**: two inline services covering the same pattern
   are refused, and so is one covering a pattern the session's bundle covers. Mint checks it without the bundle lock, so
   a later bundle edit can still create the overlap; resolve puts the bundle's services first, and the Go matcher breaks
@@ -258,6 +260,12 @@ alone: nothing edits them, no bundle or other session reads them, and only resol
   saved one would report a live proxy as unreachable until then. Gateway v2 does the same.
 - The proxy token is non-expiring and revoked by bumping `tokenVersion`, which the auth plugin checks on every
   proxy request. Revoke Access goes through the shared resource-auth revoke; rotating brings a revoked proxy back.
+- The traffic policy that only lets through hosts a session's services cover is `service-hosts` in the admin API
+  and the UI, and its old name `bundle-hosts` is still accepted as input. The row still stores `bundle-hosts`, and
+  bootstrap and heartbeat still send it: a released CLI blocks only under that exact value and lets every host
+  through under one it doesn't know, and an older pod reading a stored `service-hosts` would pass it straight on.
+  `toStoredTrafficPolicy` and `toTrafficPolicyView` do the mapping. Retiring the old name takes a CLI release that
+  accepts both, time for older CLIs to age out, then a migration of the rows and a switch of what proxies are sent.
 - Resolve is not audited: once per poll per session would swamp the audit table. Bootstrap is not audited
   either, since a proxy run as a sidecar starts once per agent run.
 

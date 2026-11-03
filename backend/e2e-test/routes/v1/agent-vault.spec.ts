@@ -21,7 +21,10 @@ import {
 } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
-import { agentVaultSessionInlineServiceDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
+import {
+  agentVaultSessionInlineServiceDALFactory,
+  DELETE_SECRETS_BATCH_SIZE
+} from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { AGENT_VAULT_MAX_SKILLS } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
@@ -5722,7 +5725,8 @@ describe("Agent Vault V1 Router", async () => {
           credential: { type: "bearer", headerName: "Authorization", headerPrefix: "Bearer" }
         },
         {
-          name: null,
+          // Sent without a name, so it goes by its first host.
+          name: "api.stripe.com",
           hostPattern: "api.stripe.com,files.stripe.com",
           credential: { type: "basic" },
           customHeaders: [{ name: "Stripe-Account", prefix: "" }],
@@ -5854,7 +5858,7 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(clash.statusCode).toBe(400);
       expect(clash.json().message).toBe(
-        `Service 'openai' covers api.github.com:443, which 'github' in the access bundle '${bundle.name}' already covers. Remove it from 'openai'.`
+        `The service 'openai' covers api.github.com:443, which 'github' in the access bundle '${bundle.name}' already covers. Remove it from the service 'openai'.`
       );
 
       // A wildcard beside the bundle's exact host is how an override is written, as within one bundle.
@@ -6002,19 +6006,70 @@ describe("Agent Vault V1 Router", async () => {
         expect(res.statusCode).toBe(200);
         return res.json().session as { id: string };
       };
-      const expired = await mintInline();
-      const live = await mintInline();
+      const [expired, revoked, ownerless, onBehalfOfDeletedUser, live] = await Promise.all(
+        Array.from({ length: 5 }, mintInline)
+      );
+      const bot = await createMemberIdentity(`inline-cleanup-${Date.now()}`);
+      try {
+        await testDb("agent_vault_sessions")
+          .where({ id: expired.id })
+          .update({ expiresAt: new Date(Date.now() - 1000) });
+        // Set directly, as a revoke from an older pod would, so only the cleanup can delete the secrets.
+        await testDb("agent_vault_sessions").where({ id: revoked.id }).update({ revokedAt: new Date() });
+        // What deleting the owner leaves behind.
+        await testDb("agent_vault_sessions").where({ id: ownerless.id }).update({ userId: null });
+        // What deleting the user a machine identity's session was on behalf of leaves behind.
+        await testDb("agent_vault_sessions").where({ id: onBehalfOfDeletedUser.id }).update({
+          userId: null,
+          identityId: bot.id,
+          actorType: "machineIdentity",
+          onBehalfOfUserName: "Deleted User",
+          onBehalfOfUserId: null
+        });
+
+        await agentVaultSessionInlineServiceDALFactory(testDb).deleteSecretsOfEndedSessions();
+
+        const secretsOf = async (sessionId: string) =>
+          ((await testDb(inlineServicesTable).where({ sessionId }).first()) as { encryptedSecrets: Buffer | null })
+            .encryptedSecrets;
+        expect(await secretsOf(expired.id)).toBeNull();
+        expect(await secretsOf(revoked.id)).toBeNull();
+        expect(await secretsOf(ownerless.id)).toBeNull();
+        expect(await secretsOf(onBehalfOfDeletedUser.id)).toBeNull();
+        expect(await secretsOf(live.id)).not.toBeNull();
+      } finally {
+        await bot.cleanup();
+      }
+    });
+
+    test("the hourly cleanup works through more ended services than one batch holds", async () => {
+      const res = await inject("POST", sessionsUrl, { ttl: "1h", services: [openai] });
+      expect(res.statusCode).toBe(200);
+      const { id: sessionId } = res.json().session as { id: string };
+      const [template] = await testDb(inlineServicesTable).where({ sessionId });
+      const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...copy } = template as Record<string, unknown>;
+      await testDb.batchInsert(
+        inlineServicesTable,
+        Array.from({ length: DELETE_SECRETS_BATCH_SIZE }, (_, index) => ({
+          ...copy,
+          position: index + 1,
+          customHeaders: JSON.stringify(copy.customHeaders),
+          substitutions: JSON.stringify(copy.substitutions)
+        })),
+        500
+      );
       await testDb("agent_vault_sessions")
-        .where({ id: expired.id })
+        .where({ id: sessionId })
         .update({ expiresAt: new Date(Date.now() - 1000) });
 
       await agentVaultSessionInlineServiceDALFactory(testDb).deleteSecretsOfEndedSessions();
 
-      const secretsOf = async (sessionId: string) =>
-        ((await testDb(inlineServicesTable).where({ sessionId }).first()) as { encryptedSecrets: Buffer | null })
-          .encryptedSecrets;
-      expect(await secretsOf(expired.id)).toBeNull();
-      expect(await secretsOf(live.id)).not.toBeNull();
+      const [{ count }] = await testDb(inlineServicesTable)
+        .where({ sessionId })
+        .whereNotNull("encryptedSecrets")
+        .count("id as count");
+      expect(Number(count)).toBe(0);
+      await testDb("agent_vault_sessions").where({ id: sessionId }).delete();
     });
   });
 
@@ -7471,6 +7526,32 @@ describe("Agent Vault V1 Router", async () => {
       expect(again.rootCa.certificate).toBe(body.rootCa.certificate);
 
       expect((await asProxy(created.proxyToken, "heartbeat")).statusCode).toBe(200);
+    });
+
+    // A released CLI blocks only under bundle-hosts, so proxies keep getting that name until every CLI knows the new one.
+    test("service-hosts and its old name bundle-hosts are one policy, which proxies still get as bundle-hosts", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", {
+        name: "policy-service-hosts",
+        trafficPolicy: "service-hosts"
+      });
+      expect(created.statusCode).toBe(200);
+      const { proxy, proxyToken } = created.json() as { proxy: { id: string; trafficPolicy: string }; proxyToken: string };
+      expect(proxy.trafficPolicy).toBe("service-hosts");
+      expect((await testDb("agent_vault_proxies").where({ id: proxy.id }).first()).trafficPolicy).toBe("bundle-hosts");
+      expect((await asProxy(proxyToken, "bootstrap", {})).json().config.trafficPolicy).toBe("bundle-hosts");
+
+      const update = (trafficPolicy: string) =>
+        inject("PATCH", `/api/v1/agent-vault/proxies/${proxy.id}`, { trafficPolicy });
+      expect((await update("any-host")).json().proxy.trafficPolicy).toBe("any-host");
+      const oldName = await update("bundle-hosts");
+      expect(oldName.statusCode).toBe(200);
+      expect(oldName.json().proxy.trafficPolicy).toBe("service-hosts");
+
+      const listed = (await inject("GET", "/api/v1/agent-vault/proxies")).json() as {
+        proxies: { id: string; trafficPolicy: string }[];
+      };
+      expect(listed.proxies.find((listedProxy) => listedProxy.id === proxy.id)?.trafficPolicy).toBe("service-hosts");
+      expect((await asProxy(proxyToken, "heartbeat")).json().config.trafficPolicy).toBe("bundle-hosts");
     });
 
     test("the generated CA is a P-256 CA valid for about ten years", async () => {

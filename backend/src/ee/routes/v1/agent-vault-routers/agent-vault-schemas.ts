@@ -513,7 +513,7 @@ export const AgentVaultInlineServicesInputSchema = AgentVaultInlineServiceInputS
 // The sealed values are never in here, and the serializer emits only what this schema lists.
 export const AgentVaultInlineServiceSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.inlineServiceId),
-  name: z.string().nullable().describe(AGENT_VAULT.SESSION.inlineServiceNameRead),
+  name: z.string().describe(AGENT_VAULT.SESSION.inlineServiceNameRead),
   type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
   serverUrl: z.string().nullable().describe(AGENT_VAULT.SERVICE.serverUrlRead),
   transport: z.nativeEnum(AgentVaultMcpTransport).nullable().describe(AGENT_VAULT.SERVICE.transportRead),

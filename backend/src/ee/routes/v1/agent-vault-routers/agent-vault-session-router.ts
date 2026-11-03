@@ -66,7 +66,7 @@ const SessionWithAccessBundlesSchema = SessionSchema.extend({
 });
 
 // Whole-body examples, so the docs show the usual session, one access bundle and no services of its own, rather
-// than one generated from every optional field.
+// than one generated from every optional field. Responses always carry services, so the examples show it empty.
 const EXAMPLE_ACCESS_BUNDLE = { id: "3c90c3cc-0d44-4b50-8888-8dd25736052a", name: "prod-deploy", position: 0 };
 
 const EXAMPLE_SESSION = {
@@ -78,7 +78,8 @@ const EXAMPLE_SESSION = {
   expiresAt: "2026-11-01T02:00:00.000Z",
   revokedAt: null,
   createdAt: "2026-10-31T18:00:00.000Z",
-  accessBundles: [EXAMPLE_ACCESS_BUNDLE]
+  accessBundles: [EXAMPLE_ACCESS_BUNDLE],
+  services: []
 };
 
 const docsExample = (example: unknown) => JSON.stringify({ example });
@@ -256,7 +257,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 token: "agv_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
                 expiresAt: EXAMPLE_SESSION.expiresAt,
                 createdAt: EXAMPLE_SESSION.createdAt,
-                accessBundles: [EXAMPLE_ACCESS_BUNDLE]
+                accessBundles: [EXAMPLE_ACCESS_BUNDLE],
+                services: []
               }
             })
           )

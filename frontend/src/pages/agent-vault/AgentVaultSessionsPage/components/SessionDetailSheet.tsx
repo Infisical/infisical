@@ -32,7 +32,7 @@ import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import { InlineServicesHoverCard } from "./InlineServicesHoverCard";
 import { SessionExpiry } from "./SessionExpiry";
-import { inlineServiceDisplayName } from "./sessionInlineServices";
+import { inlineServiceTarget } from "./sessionInlineServices";
 import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionStatusBadge } from "./SessionStatusBadge";
 
@@ -191,14 +191,12 @@ export const SessionDetailSheet = ({
                                     hostPattern={service.hostPattern}
                                     className="size-5"
                                   />
-                                  <span className="truncate">
-                                    {inlineServiceDisplayName(service)}
-                                  </span>
+                                  <span className="truncate">{service.name}</span>
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent>
                                 Sent with this session when it was created, for{" "}
-                                {service.hostPattern.split(",").join(", ")}
+                                {inlineServiceTarget(service)}
                               </TooltipContent>
                             </Tooltip>
                           ))}

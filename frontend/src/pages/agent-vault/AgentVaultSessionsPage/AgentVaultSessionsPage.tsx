@@ -337,7 +337,7 @@ export const AgentVaultSessionsPage = () => {
               <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
             </CardTitle>
             <CardDescription>
-              A session names the actor who holds it, the access bundle it carries, and when it
+              A session names the actor who holds it, the services it can reach, and when it
               expires.
             </CardDescription>
             <CardAction>
@@ -430,7 +430,7 @@ export const AgentVaultSessionsPage = () => {
                   {/* w-px holds the column to its capped content, so a long label truncates at the column's edge */}
                   <TableHead className="w-px">Label</TableHead>
                   <TableHead>Identity</TableHead>
-                  <TableHead>Access Bundle</TableHead>
+                  <TableHead>Access</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Status</TableHead>
@@ -473,8 +473,8 @@ export const AgentVaultSessionsPage = () => {
                             items={toAccessItems(session)}
                             getKey={(item) =>
                               item.kind === "bundle"
-                                ? (item.bundle.id ?? item.bundle.name)
-                                : "inline-services"
+                                ? `bundle:${item.bundle.id ?? item.bundle.name}`
+                                : "inline"
                             }
                             getLabel={(item) =>
                               item.kind === "bundle"

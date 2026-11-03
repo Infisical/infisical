@@ -143,8 +143,27 @@ describe("prepareInlineServices", () => {
   test("refuses two inline services covering the same pattern but allows an exact host beside a wildcard", () => {
     expect(() =>
       prepareInlineServices([httpBearer({ name: "first" }), httpBearer({ hostPattern: "API.example.com" })])
-    ).toThrow("Services 'first' and 'API.example.com' both cover api.example.com:443. Remove it from one of them.");
+    ).toThrow(
+      "The service 'first' and the service at index 1 both cover api.example.com:443. Remove it from one of them."
+    );
     expect(() => prepareInlineServices([httpBearer({ hostPattern: "*.example.com" }), httpBearer()])).not.toThrow();
+  });
+
+  test("refuses a service sent without a name whose first host is another service's name", () => {
+    expect(() =>
+      prepareInlineServices([
+        httpBearer({ name: "localhost", hostPattern: "api.example.com" }),
+        httpBearer({ hostPattern: "localhost" })
+      ])
+    ).toThrow(
+      "The service 'localhost' and the service at index 1 would both be called 'localhost', since a service sent without a name goes by its first host. Give one of them a different name."
+    );
+  });
+
+  test("refuses a basic credential with neither half", () => {
+    expect(() => prepareInlineServices([httpBearer({ credential: { type: AgentVaultCredentialType.Basic } })])).toThrow(
+      "Service at index 0: A basic credential needs a username, a password, or both"
+    );
   });
 });
 
@@ -154,7 +173,18 @@ describe("assertNoAccessBundleConflicts", () => {
   test("refuses an inline service covering a pattern the bundle already covers", () => {
     const prepared = prepareInlineServices([httpBearer({ hostPattern: "uploads.github.com,api.github.com" })]);
     expect(() => assertNoAccessBundleConflicts(prepared, bundle)).toThrow(
-      "Service 'uploads.github.com' covers api.github.com:443, which 'github' in the access bundle 'prod' already covers. Remove it from 'uploads.github.com'."
+      "The service at index 0 covers api.github.com:443, which 'github' in the access bundle 'prod' already covers. Remove it from the service at index 0."
+    );
+  });
+
+  test("refuses an inline service called the same as one of the bundle's", () => {
+    const prepared = prepareInlineServices([httpBearer({ name: "github", hostPattern: "github.example.com" })]);
+    expect(() => assertNoAccessBundleConflicts(prepared, bundle)).toThrow(
+      "The service 'github' has the same name as a service in the access bundle 'prod'. Give it a different name."
+    );
+    const unnamed = prepareInlineServices([httpBearer({ hostPattern: "github" })]);
+    expect(() => assertNoAccessBundleConflicts(unnamed, bundle)).toThrow(
+      "The service at index 0 goes by its first host, 'github', which is the name of a service in the access bundle 'prod'. Give it a name."
     );
   });
 
@@ -170,10 +200,29 @@ describe("inline service reads", () => {
       "api.example.com"
     );
     expect(inlineServiceDisplayName({ name: "openai", hostPattern: "api.openai.com" })).toBe("openai");
+    expect(inlineServiceDisplayName({ name: null, hostPattern: "api.example.com:443, b.example.com" })).toBe(
+      "api.example.com"
+    );
+    expect(inlineServiceDisplayName({ name: null, hostPattern: "api.example.com:8443" })).toBe("api.example.com:8443");
   });
 
-  test("the summary carries no secret", () => {
-    const summary = toInlineServiceSummary(storedRow({ encryptedSecrets: Buffer.from("sealed") }));
+  test("the summary names a service sent without a name by its first host", () => {
+    expect(toInlineServiceSummary(storedRow()).name).toBe("api.example.com");
+    expect(toInlineServiceSummary(storedRow({ name: "example" })).name).toBe("example");
+  });
+
+  test("the summary carries no secret, nor anything else stored beside the credential", () => {
+    const summary = toInlineServiceSummary(
+      storedRow({
+        encryptedSecrets: Buffer.from("sealed"),
+        credentialConfig: {
+          type: AgentVaultCredentialType.Bearer,
+          headerName: "Authorization",
+          headerPrefix: "Bearer",
+          source: AgentVaultCredentialType.OAuth
+        }
+      })
+    );
     expect(summary).not.toHaveProperty("encryptedSecrets");
     expect(summary.credential).toEqual({
       type: AgentVaultCredentialType.Bearer,
@@ -232,5 +281,64 @@ describe("toResolvedInlineService", () => {
         substitutions: []
       })
     ).toBeNull();
+    expect(
+      toResolvedInlineService(
+        storedRow({ substitutions: [{ placeholder: "ACME_KEY", surfaces: [AgentVaultSubstitutionSurface.Header] }] }),
+        { credential: { value: "token" }, customHeaders: [], substitutions: [] }
+      )
+    ).toBeNull();
+  });
+
+  test("leaves out a service whose sealed credential is the wrong kind", () => {
+    expect(
+      toResolvedInlineService(storedRow(), {
+        credential: { username: "user", password: "pass" },
+        customHeaders: [],
+        substitutions: []
+      })
+    ).toBeNull();
+    expect(
+      toResolvedInlineService(
+        storedRow({
+          credentialType: AgentVaultCredentialType.Basic,
+          credentialConfig: { type: AgentVaultCredentialType.Basic }
+        }),
+        { credential: { value: "token" }, customHeaders: [], substitutions: [] }
+      )
+    ).toBeNull();
+  });
+
+  test("sends a basic credential's username and password", () => {
+    expect(
+      toResolvedInlineService(
+        storedRow({
+          credentialType: AgentVaultCredentialType.Basic,
+          credentialConfig: { type: AgentVaultCredentialType.Basic }
+        }),
+        { credential: { username: "user", password: "pass" }, customHeaders: [], substitutions: [] }
+      )?.credential
+    ).toEqual({ type: AgentVaultCredentialType.Basic, username: "user", password: "pass" });
+  });
+
+  // An OAuth source would make the proxy try to refresh a token it was sent as is.
+  test("sends only the bearer fields, whatever else is stored beside them", () => {
+    expect(
+      toResolvedInlineService(
+        storedRow({
+          credentialConfig: {
+            type: AgentVaultCredentialType.Bearer,
+            headerName: "Authorization",
+            headerPrefix: "Bearer",
+            source: AgentVaultCredentialType.OAuth
+          }
+        }),
+        { credential: { value: "token" }, customHeaders: [], substitutions: [] }
+      )?.credential
+    ).toEqual({
+      type: AgentVaultCredentialType.Bearer,
+      headerName: "Authorization",
+      headerPrefix: "Bearer",
+      value: "token"
+    });
   });
 });

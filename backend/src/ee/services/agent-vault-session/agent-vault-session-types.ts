@@ -47,7 +47,8 @@ export type TAgentVaultInlineServiceInput = {
 /** An inline service as every read returns it: everything but its secrets. */
 export type TAgentVaultInlineServiceSummary = {
   id: string;
-  name: string | null;
+  // The name it was sent with, or its first host when it was sent without one.
+  name: string;
   type: AgentVaultServiceType;
   serverUrl: string | null;
   transport: AgentVaultMcpTransport | null;

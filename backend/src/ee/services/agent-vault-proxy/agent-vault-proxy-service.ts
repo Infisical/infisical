@@ -64,7 +64,9 @@ import {
   AgentVaultServiceType,
   AgentVaultTrafficPolicy,
   AgentVaultVariableReferenceField,
-  TAgentVaultMemberProvidedField
+  TAgentVaultMemberProvidedField,
+  toStoredTrafficPolicy,
+  toTrafficPolicyView
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import {
@@ -197,7 +199,7 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   const toConfig = (proxy: TAgentVaultProxies): TAgentVaultProxyConfig => ({
-    trafficPolicy: proxy.trafficPolicy as AgentVaultTrafficPolicy,
+    trafficPolicy: toStoredTrafficPolicy(proxy.trafficPolicy as AgentVaultTrafficPolicy),
     allowedHosts: proxy.allowedHosts ?? null,
     pollInterval: proxy.pollInterval
   });
@@ -211,11 +213,15 @@ export const agentVaultProxyServiceFactory = ({
     rootCaExpiresAt: proxy.rootCaExpiresAt ?? null
   });
 
-  const toAdminView = (proxy: TAgentVaultProxies) => ({
-    ...toMemberView(proxy),
-    ...toConfig(proxy),
-    createdAt: proxy.createdAt
-  });
+  const toAdminView = (proxy: TAgentVaultProxies) => {
+    const config = toConfig(proxy);
+    return {
+      ...toMemberView(proxy),
+      ...config,
+      trafficPolicy: toTrafficPolicyView(config.trafficPolicy),
+      createdAt: proxy.createdAt
+    };
+  };
 
   const $authorize = async (
     { projectId, ctx }: TAgentVaultProxyScoped,
@@ -356,7 +362,7 @@ export const agentVaultProxyServiceFactory = ({
           {
             projectId,
             name,
-            trafficPolicy: settings.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost,
+            trafficPolicy: toStoredTrafficPolicy(settings.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost),
             allowedHosts: settings.allowedHosts ?? null,
             pollInterval: settings.pollInterval ?? 60,
             tokenVersion: 1,
@@ -428,7 +434,11 @@ export const agentVaultProxyServiceFactory = ({
     }
 
     try {
-      const updated = await agentVaultProxyDAL.updateById(proxy.id, { name, ...settings });
+      const updated = await agentVaultProxyDAL.updateById(proxy.id, {
+        name,
+        ...settings,
+        ...(settings.trafficPolicy && { trafficPolicy: toStoredTrafficPolicy(settings.trafficPolicy) })
+      });
       return toAdminView(updated);
     } catch (err) {
       if (isUniqueViolation(err)) throw new BadRequestError({ message: `A proxy named '${name}' already exists` });

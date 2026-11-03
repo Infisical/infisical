@@ -255,7 +255,8 @@ export type TAgentVaultSessionAccessBundle = {
 /** A service an admin sent with the session itself. Its secrets are never returned. */
 export type TAgentVaultSessionInlineService = {
   id: string;
-  name: string | null;
+  // The name it was sent with, or its first host when it was sent without one.
+  name: string;
   type: AgentVaultServiceType;
   serverUrl: string | null;
   transport: AgentVaultMcpTransport | null;

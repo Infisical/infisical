@@ -9,7 +9,8 @@ import {
 export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TAgentVaultProxyConfig = {
-  trafficPolicy: AgentVaultTrafficPolicy;
+  // The name proxies understand; the admin API calls bundle-hosts service-hosts.
+  trafficPolicy: AgentVaultTrafficPolicy.AnyHost | AgentVaultTrafficPolicy.BundleHosts;
   allowedHosts: string | null;
   pollInterval: number;
 };

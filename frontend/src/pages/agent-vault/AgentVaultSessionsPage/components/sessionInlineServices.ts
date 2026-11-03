@@ -1,15 +1,20 @@
+import { displayHostPattern } from "@app/components/agent-vault/service-sheet/serviceSchema";
+import { AgentVaultServiceType } from "@app/hooks/api/agentVault/enums";
 import {
   TAgentVaultSession,
   TAgentVaultSessionAccessBundle,
   TAgentVaultSessionInlineService
 } from "@app/hooks/api/agentVault/types";
 
-// The same fallback the API uses wherever it names an inline service sent without a name: its first host.
-export const inlineServiceDisplayName = ({
-  name,
+// Where the service reaches, shown the way an access bundle's services are: an MCP server by its URL.
+export const inlineServiceTarget = ({
+  type,
+  serverUrl,
   hostPattern
-}: Pick<TAgentVaultSessionInlineService, "name" | "hostPattern">) =>
-  name || hostPattern.split(",")[0].trim();
+}: Pick<TAgentVaultSessionInlineService, "type" | "serverUrl" | "hostPattern">) =>
+  type === AgentVaultServiceType.Mcp && serverUrl
+    ? serverUrl.replace(/^https:\/\//i, "")
+    : displayHostPattern(hostPattern);
 
 export const inlineServicesLabel = (count: number) =>
   count === 1 ? "1 inline service" : `${count} inline services`;

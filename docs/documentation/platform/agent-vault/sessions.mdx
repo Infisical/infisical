@@ -110,7 +110,7 @@ The access bundle and any inline services are chosen when you create the session
 - If someone still has another grant on the bundle, such as through a group, revoking one grant doesn't affect their sessions
 - If you delete an access bundle, every session scoped to it stops getting credentials (the session still lists the bundle's name, so you can see what it was)
 - If you remove someone from Agent Vault, the proxy refuses every request on their sessions
-- If someone loses the **Admin** role in Agent Vault, their sessions stop getting credentials for [inline services](/documentation/platform/agent-vault/inline-services)
+- If the user or machine identity that created a session loses the **Admin** role in Agent Vault, the session stops getting credentials for its [inline services](/documentation/platform/agent-vault/inline-services)
 
 None of these changes removes the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, [delete the installed copies](/documentation/platform/agent-vault/skills#remove-installed-skills).
 

@@ -9,7 +9,7 @@ import {
 } from "@app/components/v3";
 import { TAgentVaultSessionInlineService } from "@app/hooks/api/agentVault/types";
 
-import { inlineServiceDisplayName } from "./sessionInlineServices";
+import { inlineServiceTarget } from "./sessionInlineServices";
 
 type ListProps = {
   services: TAgentVaultSessionInlineService[];
@@ -28,15 +28,19 @@ export const InlineServicesList = ({ services }: ListProps) => (
       contentClassName="flex flex-col gap-2"
       onWheel={(event) => event.stopPropagation()}
     >
-      {services.map((service) => (
-        <div key={service.id} className="flex min-w-0 items-center gap-2">
-          <ServiceIcon hostPattern={service.hostPattern} className="size-5" />
-          <span className="truncate">{inlineServiceDisplayName(service)}</span>
-          {service.name && (
-            <span className="truncate text-xs text-muted">{service.hostPattern.split(",")[0]}</span>
-          )}
-        </div>
-      ))}
+      {services.map((service) => {
+        const target = inlineServiceTarget(service);
+        return (
+          <div key={service.id} className="flex min-w-0 items-center gap-2">
+            <ServiceIcon hostPattern={service.hostPattern} className="size-5" />
+            <span className="truncate">{service.name}</span>
+            {/* A service sent without a name goes by its host, which would only repeat here. */}
+            {target !== service.name && (
+              <span className="truncate text-xs text-muted">{target}</span>
+            )}
+          </div>
+        );
+      })}
     </ScrollableContent>
   </div>
 );

@@ -10,9 +10,9 @@ import { TAgentVaultSessionInlineServiceSummaryRow } from "./agent-vault-session
 
 export type TAgentVaultSessionInlineServiceDALFactory = ReturnType<typeof agentVaultSessionInlineServiceDALFactory>;
 
-const DELETE_SECRETS_BATCH_SIZE = 1000;
+export const DELETE_SECRETS_BATCH_SIZE = 1000;
 
-const SUMMARY_COLUMNS: string[] = [
+const SUMMARY_COLUMNS = [
   "id",
   "sessionId",
   "position",
@@ -28,7 +28,7 @@ const SUMMARY_COLUMNS: string[] = [
   "substitutions",
   "createdAt",
   "updatedAt"
-];
+] as const satisfies readonly (keyof TAgentVaultSessionInlineServiceSummaryRow)[];
 
 export const agentVaultSessionInlineServiceDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultSessionInlineService);

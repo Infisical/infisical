@@ -107,7 +107,9 @@ export const agentVaultSessionServiceFactory = ({
     );
     const bySession = new Map<string, TAgentVaultInlineServiceSummary[]>();
     rows.forEach((row) => {
-      bySession.set(row.sessionId, [...(bySession.get(row.sessionId) ?? []), toInlineServiceSummary(row)]);
+      const summaries = bySession.get(row.sessionId);
+      if (summaries) summaries.push(toInlineServiceSummary(row));
+      else bySession.set(row.sessionId, [toInlineServiceSummary(row)]);
     });
     return sessions.map((session) => ({ ...session, services: bySession.get(session.id) ?? [] }));
   };

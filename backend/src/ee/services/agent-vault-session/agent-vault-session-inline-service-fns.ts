@@ -54,9 +54,10 @@ export type TPreparedInlineService = {
   secrets: TInlineServiceSecrets | null;
 };
 
-// What an inline service is called wherever a name is shown: its own, or its first host when it was sent without one.
+// What an inline service is called wherever a name is shown: its own, or its first host when it was sent without one,
+// without the default port, the way every screen shows a host.
 export const inlineServiceDisplayName = ({ name, hostPattern }: { name?: string | null; hostPattern: string }) =>
-  name || hostPattern.split(",")[0].trim();
+  name || hostPattern.split(",")[0].trim().replace(/:443$/, "");
 
 const toInlineCredential = (
   credential: Exclude<TAgentVaultInlineServiceInput["credential"], { type: AgentVaultCredentialType.OAuth }>
@@ -149,9 +150,13 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
   };
 };
 
+// How mint errors point at a service: by the name it was sent with, or by its place in the list.
+const inlineServiceLabel = (service: Pick<TPreparedInlineService, "name" | "position">) =>
+  service.name ? `'${service.name}'` : `at index ${service.position}`;
+
 const toConflictCandidate = (service: TPreparedInlineService): TConflictCandidate => ({
   id: String(service.position),
-  name: inlineServiceDisplayName(service),
+  name: inlineServiceLabel(service),
   hostPattern: service.hostPattern
 });
 
@@ -166,7 +171,7 @@ export const prepareInlineServices = (inputs: TAgentVaultInlineServiceInput[]): 
       return prepareInlineService(input, position);
     } catch (error) {
       if (error instanceof BadRequestError) {
-        const label = input.name ? `Service '${input.name}'` : `Service at index ${position}`;
+        const label = `Service ${inlineServiceLabel({ name: input.name ?? null, position })}`;
         throw new BadRequestError({ message: `${label}: ${error.message}` });
       }
       throw error;
@@ -177,34 +182,61 @@ export const prepareInlineServices = (inputs: TAgentVaultInlineServiceInput[]): 
     const [conflict] = findHostPatternConflicts(service.hostPattern, prepared.slice(0, index).map(toConflictCandidate));
     if (conflict) {
       throw new BadRequestError({
-        message: `Services '${conflict.serviceName}' and '${inlineServiceDisplayName(service)}' both cover ${conflict.patterns.join(", ")}. Remove it from one of them.`
+        message: `The service ${conflict.serviceName} and the service ${inlineServiceLabel(service)} both cover ${conflict.patterns.join(", ")}. Remove it from one of them.`
       });
     }
+  });
+
+  // An unnamed service goes by its first host in session logs and proxy errors, so it can't share that name.
+  const byDisplayName = new Map<string, TPreparedInlineService>();
+  prepared.forEach((service) => {
+    const displayName = inlineServiceDisplayName(service);
+    const earlier = byDisplayName.get(displayName);
+    if (earlier) {
+      throw new BadRequestError({
+        message: `The service ${inlineServiceLabel(earlier)} and the service ${inlineServiceLabel(service)} would both be called '${displayName}', since a service sent without a name goes by its first host. Give one of them a different name.`
+      });
+    }
+    byDisplayName.set(displayName, service);
   });
 
   return prepared;
 };
 
 /**
- * A mint that also names an access bundle can't send a service covering a pattern one of the bundle's services covers.
- * Only checked at mint: the bundle can change afterwards, and resolve puts the bundle's services first, so a pattern a
- * later bundle edit shares with an inline service goes to the bundle's.
+ * A mint that also names an access bundle can't send a service covering a pattern one of the bundle's services covers,
+ * or one called the same as a bundle's service. Only checked at mint: the bundle can change afterwards, and resolve puts
+ * the bundle's services first, so a pattern a later bundle edit shares with an inline service goes to the bundle's.
  */
 export const assertNoAccessBundleConflicts = (
   prepared: TPreparedInlineService[],
   accessBundle: { name: string; services: TConflictCandidate[] }
 ) => {
   prepared.forEach((service) => {
+    const label = inlineServiceLabel(service);
     const [conflict] = findHostPatternConflicts(service.hostPattern, accessBundle.services);
     if (conflict) {
       throw new BadRequestError({
-        message: `Service '${inlineServiceDisplayName(service)}' covers ${conflict.patterns.join(", ")}, which '${conflict.serviceName}' in the access bundle '${accessBundle.name}' already covers. Remove it from '${inlineServiceDisplayName(service)}'.`
+        message: `The service ${label} covers ${conflict.patterns.join(", ")}, which '${conflict.serviceName}' in the access bundle '${accessBundle.name}' already covers. Remove it from the service ${label}.`
+      });
+    }
+    const displayName = inlineServiceDisplayName(service);
+    if (accessBundle.services.some((bundleService) => bundleService.name === displayName)) {
+      throw new BadRequestError({
+        message: service.name
+          ? `The service ${label} has the same name as a service in the access bundle '${accessBundle.name}'. Give it a different name.`
+          : `The service ${label} goes by its first host, '${displayName}', which is the name of a service in the access bundle '${accessBundle.name}'. Give it a name.`
       });
     }
   });
 };
 
 export type TAgentVaultSessionInlineServiceSummaryRow = Omit<TAgentVaultSessionInlineServices, "encryptedSecrets">;
+
+const toInlineCredentialSummary = (config: TInlineCredentialConfig): TInlineCredentialConfig =>
+  config.type === AgentVaultCredentialType.Bearer
+    ? { type: config.type, headerName: config.headerName, headerPrefix: config.headerPrefix }
+    : { type: config.type };
 
 // Built by hand rather than spread, so the sealed column stays off the wire even if a response schema is loosened.
 export const toInlineServiceSummary = (
@@ -213,14 +245,14 @@ export const toInlineServiceSummary = (
   const config = (row.config ?? {}) as TAgentVaultServiceConfig;
   return {
     id: row.id,
-    name: row.name ?? null,
+    name: inlineServiceDisplayName(row),
     type: row.type as AgentVaultServiceType,
     serverUrl: config.serverUrl ?? null,
     transport: config.transport ?? null,
     hostPattern: row.hostPattern,
     allowedMethods: (row.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
     allowedPathPrefixes: row.allowedPathPrefixes ?? null,
-    credential: row.credentialConfig as TInlineCredentialConfig,
+    credential: toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig),
     customHeaders: row.customHeaders as TInlineCustomHeader[],
     substitutions: row.substitutions as TInlineSubstitution[]
   };
@@ -249,13 +281,22 @@ export const toResolvedInlineService = (
     secrets?.credential &&
     "value" in secrets.credential
   ) {
-    credential = { ...credentialConfig, value: secrets.credential.value };
+    credential = {
+      type: AgentVaultCredentialType.Bearer,
+      headerName: credentialConfig.headerName,
+      headerPrefix: credentialConfig.headerPrefix,
+      value: secrets.credential.value
+    };
   } else if (
     credentialConfig.type === AgentVaultCredentialType.Basic &&
     secrets?.credential &&
     "username" in secrets.credential
   ) {
-    credential = { type: AgentVaultCredentialType.Basic, ...secrets.credential };
+    credential = {
+      type: AgentVaultCredentialType.Basic,
+      username: secrets.credential.username,
+      password: secrets.credential.password
+    };
   } else {
     return null;
   }
