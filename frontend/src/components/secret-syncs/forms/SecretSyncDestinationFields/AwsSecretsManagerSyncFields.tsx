@@ -31,9 +31,11 @@ export const AwsSecretsManagerSyncFields = () => {
 
   const mappingBehavior = watch("destinationConfig.mappingBehavior");
 
+  const clearKmsKey = () => setValue("syncOptions.keyId", undefined);
+
   return (
     <FieldGroup>
-      <SecretSyncConnectionField />
+      <SecretSyncConnectionField onChange={clearKmsKey} />
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
@@ -56,7 +58,10 @@ export const AwsSecretsManagerSyncFields = () => {
               <AwsRegionSelect
                 id="secret-sync-aws-secrets-manager-region"
                 value={value}
-                onChange={onChange}
+                onChange={(region) => {
+                  onChange(region);
+                  clearKmsKey();
+                }}
                 isError={Boolean(error)}
                 aria-labelledby="secret-sync-aws-secrets-manager-region-label"
                 aria-describedby={
