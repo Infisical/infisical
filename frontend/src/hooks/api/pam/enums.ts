@@ -87,17 +87,33 @@ export const PAM_ROTATION_INTERVAL_OPTIONS: { seconds: number; label: string }[]
   { seconds: 2592000, label: "30 days" }
 ];
 
+const INTERVAL_UNITS = [
+  { size: 86400, unit: "day" },
+  { size: 3600, unit: "hour" },
+  { size: 60, unit: "minute" }
+];
+
 export const formatRotationInterval = (seconds: number | null | undefined): string => {
   if (seconds == null) return "Manual only";
   const preset = PAM_ROTATION_INTERVAL_OPTIONS.find((option) => option.seconds === seconds);
   if (preset) return preset.label;
-  const hours = Math.round(seconds / 3600);
-  if (hours % 24 === 0) {
-    const days = hours / 24;
-    return days === 1 ? "1 day" : `${days} days`;
-  }
-  return hours === 1 ? "1 hour" : `${hours} hours`;
+  const { size, unit } = INTERVAL_UNITS.find((u) => seconds % u.size === 0) ?? {
+    size: 1,
+    unit: "second"
+  };
+  const amount = seconds / size;
+  return `${amount} ${unit}${amount === 1 ? "" : "s"}`;
 };
+
+// The API accepts any interval, so a saved one may not be a preset.
+export const getRotationIntervalOptions = (savedSeconds: number | null | undefined) =>
+  savedSeconds == null ||
+  PAM_ROTATION_INTERVAL_OPTIONS.some((option) => option.seconds === savedSeconds)
+    ? PAM_ROTATION_INTERVAL_OPTIONS
+    : [
+        ...PAM_ROTATION_INTERVAL_OPTIONS,
+        { seconds: savedSeconds, label: formatRotationInterval(savedSeconds) }
+      ].sort((a, b) => a.seconds - b.seconds);
 
 export enum PamPolicyType {
   RequiresApproval = "requires-approval",

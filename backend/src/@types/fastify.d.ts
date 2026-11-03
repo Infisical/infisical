@@ -7,6 +7,7 @@ import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-app
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { TAgentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import { TAgentVaultDelegationServiceFactory } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-service";
 import { TAgentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { TAgentVaultOauthServiceFactory } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import { TAgentVaultPersonalValueServiceFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-service";
@@ -410,6 +411,7 @@ declare module "fastify" {
     agentVaultSkill: TAgentVaultSkillServiceFactory;
     agentVaultSessionLog: TAgentVaultSessionLogServiceFactory;
     agentVaultMembership: TAgentVaultMembershipServiceFactory;
+    agentVaultDelegation: TAgentVaultDelegationServiceFactory;
     certManagerInstance: TCertManagerInstanceServiceFactory;
     certManagerExport: TCertManagerExportServiceFactory;
     certificateAuthority: TCertificateAuthorityServiceFactory;

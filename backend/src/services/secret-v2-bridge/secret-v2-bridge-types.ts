@@ -544,14 +544,6 @@ export type TGetSecretsRawByFolderMappingsDTO = {
   filterByAction?: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
 };
 
-export type TGetAccessibleSecretsDTO = {
-  environment: string;
-  projectId: string;
-  secretPath: string;
-  recursive?: boolean;
-  filterByAction: ProjectPermissionSecretActions.DescribeSecret | ProjectPermissionSecretActions.ReadValue;
-} & TProjectPermission;
-
 export type TUpdateLinkedSecretReferencesDTO = {
   projectId: string;
   environment: string;

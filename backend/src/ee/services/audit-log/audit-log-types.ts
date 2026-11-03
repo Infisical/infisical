@@ -47,9 +47,9 @@ import { CertificateRequestStatus } from "@app/services/certificate-request/cert
 import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import {
   CertExtendedKeyUsage,
-  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
+  CertStatus,
   CrlReason
 } from "@app/services/certificate/certificate-types";
 import type { ExternalMigrationImportStatus } from "@app/services/external-migration/external-migration-types";
@@ -270,6 +270,7 @@ export enum EventType {
 
   UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
   DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
+  INVITE_ORG_MEMBERS = "invite-org-members",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
@@ -846,6 +847,8 @@ export enum EventType {
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
   AGENT_VAULT_SESSION_UPDATE = "agent-vault-session-update",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
+  AGENT_VAULT_DELEGATION_SET = "agent-vault-delegation-set",
+  AGENT_VAULT_DELEGATION_DELETE = "agent-vault-delegation-delete",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
   AGENT_VAULT_PROXY_TOKEN_ROTATE = "agent-vault-proxy-token-rotate",
@@ -967,6 +970,9 @@ export enum EventType {
   ROTATE_OAUTH_CLIENT_SECRET = "rotate-oauth-client-secret",
   OAUTH_CLIENT_AUTHORIZE = "oauth-client-authorize",
   OAUTH_CLIENT_TOKEN_EXCHANGE = "oauth-client-token-exchange",
+
+  // OIDC Issuer
+  ISSUE_OIDC_TOKEN = "issue-oidc-token",
 
   // Email Domains
   CREATE_EMAIL_DOMAIN = "create-email-domain",
@@ -2048,6 +2054,7 @@ interface AddIdentityTlsCertAuthEvent {
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
     verifyClientCertificateChain: boolean;
+    bindAccessTokenToCertificate: boolean;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -2069,6 +2076,7 @@ interface UpdateIdentityTlsCertAuthEvent {
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
     verifyClientCertificateChain?: boolean;
+    bindAccessTokenToCertificate?: boolean;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -2292,6 +2300,15 @@ interface DeleteUserOrgMembershipEvent {
   metadata: {
     membershipId: string;
     userId: string;
+  };
+}
+
+interface InviteOrgMembersEvent {
+  type: EventType.INVITE_ORG_MEMBERS;
+  metadata: {
+    inviteeEmails: string[];
+    organizationRoleSlug: string;
+    projects?: { id: string; name: string }[];
   };
 }
 
@@ -3314,7 +3331,7 @@ interface DeleteCert {
     serialNumber: string;
     notAfter: string;
     source: CertificateSource;
-    deletionAllowedReason: CertificateDeletionEligibility;
+    statusAtDeletion: CertStatus;
     applicationId?: string | null;
     applicationName?: string | null;
   };
@@ -6490,6 +6507,7 @@ interface AgentVaultProxyRegisterEvent {
   metadata: {
     proxyId: string;
     name: string;
+    description: string | null;
   };
 }
 
@@ -6523,7 +6541,8 @@ interface AgentVaultProxyUpdateEvent {
   type: EventType.AGENT_VAULT_PROXY_UPDATE;
   metadata: {
     proxyId: string;
-    name?: string;
+    name: string;
+    description?: string | null;
     trafficPolicy?: string;
     allowedHosts?: string | null;
     pollInterval?: number;
@@ -6580,7 +6599,7 @@ interface AgentVaultAccessBundleUpdateEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE;
   metadata: {
     accessBundleId: string;
-    name?: string;
+    name: string;
     description?: string | null;
   };
 }
@@ -6613,6 +6632,7 @@ interface AgentVaultServiceCreateEvent {
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    allowedTools?: string[] | null;
     // The fields each member sets for themselves, such as credential-value or credential-username.
     memberProvidedFields?: string[];
     // Names and placeholders only. A sealed value must never reach an audit row.
@@ -6642,6 +6662,7 @@ interface AgentVaultServiceUpdateEvent {
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    allowedTools?: string[] | null;
     // The fields each member sets for themselves after the update, present when it touched the credential.
     memberProvidedFields?: string[];
     customHeaderNames?: string[];
@@ -6831,6 +6852,10 @@ interface AgentVaultSkillsDeliveredEvent {
     accessBundleId: string;
     accessBundleName: string;
     skills: { skillId: string; skillName: string; version: number; sha256: string }[];
+    // Set when the machine identity in the actor started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 
@@ -6913,6 +6938,10 @@ interface AgentVaultSessionMintEvent {
     accessBundleId: string;
     accessBundleName: string;
     expiresAt: string | null;
+    // Set when a machine identity started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 
@@ -6924,6 +6953,10 @@ interface AgentVaultSessionUpdateEvent {
     previousLabel: string | null;
     sessionOwner: string;
     accessBundleName: string | null;
+    // Set when the machine identity in sessionOwner started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
   };
 }
 
@@ -6934,6 +6967,32 @@ interface AgentVaultSessionRevokeEvent {
     label: string | null;
     sessionOwner: string;
     accessBundleName: string | null;
+    // Set when the machine identity in sessionOwner started the session on this user's behalf.
+    onBehalfOfUserId?: string;
+    onBehalfOfUserName?: string;
+    onBehalfOfUserEmail?: string;
+  };
+}
+
+interface AgentVaultDelegationSetEvent {
+  type: EventType.AGENT_VAULT_DELEGATION_SET;
+  metadata: {
+    machineIdentityId: string;
+    machineIdentityName: string;
+    scope: string;
+    users: { userId: string; userName: string }[];
+    groups: { groupId: string; groupName: string }[];
+  };
+}
+
+interface AgentVaultDelegationDeleteEvent {
+  type: EventType.AGENT_VAULT_DELEGATION_DELETE;
+  metadata: {
+    machineIdentityId: string;
+    machineIdentityName: string;
+    scope: string;
+    users: { userId: string; userName: string }[];
+    groups: { groupId: string; groupName: string }[];
   };
 }
 
@@ -7050,10 +7109,12 @@ interface PamAccountRotateCredentialsEvent {
   type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS;
   metadata: {
     accountId: string;
+    accountName: string;
     accountType: string;
     rotationStatus: string;
     manual: boolean;
     rotationAccountId?: string | null;
+    rotationAccountName?: string | null;
     message?: string;
   };
 }
@@ -7062,7 +7123,9 @@ interface PamAccountSetRotationAccountEvent {
   type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT;
   metadata: {
     accountId: string;
+    accountName: string;
     rotationAccountId: string | null;
+    rotationAccountName: string | null;
   };
 }
 
@@ -7981,6 +8044,15 @@ interface OauthClientTokenExchangeEvent {
   };
 }
 
+interface IssueOidcTokenEvent {
+  type: EventType.ISSUE_OIDC_TOKEN;
+  metadata: {
+    connectionId: string;
+    connectionName: string;
+    audience: string;
+  };
+}
+
 interface CreateEmailDomainEvent {
   type: EventType.CREATE_EMAIL_DOMAIN;
   metadata: {
@@ -8523,6 +8595,7 @@ export type Event =
   | ClearIdentityLdapAuthLockoutsEvent
   | UpdateUserOrgMembershipEvent
   | DeleteUserOrgMembershipEvent
+  | InviteOrgMembersEvent
   | CreateIdentityOrgMembershipEvent
   | UpdateIdentityOrgMembershipEvent
   | DeleteIdentityOrgMembershipEvent
@@ -8945,6 +9018,8 @@ export type Event =
   | AgentVaultAccessBundleMemberAddEvent
   | AgentVaultAccessBundleMemberRemoveEvent
   | AgentVaultSessionMintEvent
+  | AgentVaultDelegationSetEvent
+  | AgentVaultDelegationDeleteEvent
   | AgentVaultSessionUpdateEvent
   | AgentVaultSessionRevokeEvent
   | AgentVaultProxyRegisterEvent
@@ -9052,6 +9127,7 @@ export type Event =
   | RotateOauthClientSecretEvent
   | OauthClientAuthorizeEvent
   | OauthClientTokenExchangeEvent
+  | IssueOidcTokenEvent
   | CreateEmailDomainEvent
   | VerifyEmailDomainEvent
   | DeleteEmailDomainEvent

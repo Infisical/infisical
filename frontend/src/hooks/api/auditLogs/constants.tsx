@@ -177,6 +177,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_APP_CONNECTION]: "Delete App Connection",
   [EventType.GET_APP_CONNECTION_USAGE]: "Get App Connection Usage",
   [EventType.MIGRATE_APP_CONNECTION]: "Migrate App Connection",
+  [EventType.ISSUE_OIDC_TOKEN]: "Issue OIDC Token",
   [EventType.CREATE_GITHUB_APP]: "Create GitHub App",
   [EventType.DELETE_GITHUB_APP]: "Delete GitHub App",
   [EventType.GET_SECRET_SYNCS]: "List secret syncs",
@@ -338,6 +339,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.UPDATE_USER_ORG_MEMBERSHIP]: "Update User Org Membership",
   [EventType.DELETE_USER_ORG_MEMBERSHIP]: "Delete User Org Membership",
+  [EventType.INVITE_ORG_MEMBERS]: "Invite Org Members",
 
   [EventType.CREATE_IDENTITY_ORG_MEMBERSHIP]: "Create Identity Org Membership",
   [EventType.UPDATE_IDENTITY_ORG_MEMBERSHIP]: "Update Identity Org Membership",
@@ -507,6 +509,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_SESSION_MINT]: "Create session",
   [EventType.AGENT_VAULT_SESSION_UPDATE]: "Update session label",
   [EventType.AGENT_VAULT_SESSION_REVOKE]: "Revoke session",
+  [EventType.AGENT_VAULT_DELEGATION_SET]: "Set machine identity delegation",
+  [EventType.AGENT_VAULT_DELEGATION_DELETE]: "Remove machine identity delegation",
   [EventType.AGENT_VAULT_PROXY_REGISTER]: "Create proxy",
   [EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE]: "Generate proxy enrollment token",
   [EventType.AGENT_VAULT_PROXY_ENROLL]: "Enroll proxy",
@@ -602,6 +606,8 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.AGENT_VAULT_SESSION_MINT,
     EventType.AGENT_VAULT_SESSION_UPDATE,
     EventType.AGENT_VAULT_SESSION_REVOKE,
+    EventType.AGENT_VAULT_DELEGATION_SET,
+    EventType.AGENT_VAULT_DELEGATION_DELETE,
     EventType.AGENT_VAULT_PROXY_REGISTER,
     EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE,
     EventType.AGENT_VAULT_PROXY_ENROLL,

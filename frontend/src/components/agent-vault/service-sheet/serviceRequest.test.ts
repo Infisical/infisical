@@ -8,8 +8,12 @@ import {
   AgentVaultSubstitutionSurface
 } from "@app/hooks/api/agentVault";
 
-import { buildCreateServiceRequest, buildUpdateServiceRequest } from "./serviceRequest";
-import { HTTP_METHODS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import {
+  buildCreateServiceRequest,
+  buildListMcpToolsRequest,
+  buildUpdateServiceRequest
+} from "./serviceRequest";
+import { HTTP_METHODS, McpToolScope, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
 
 const SERVER_URL = "https://mcp.linear.app/mcp";
 
@@ -21,6 +25,8 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   hosts: ["api.stripe.com"],
   hostDraft: "",
   pathDraft: "",
+  toolScope: McpToolScope.All,
+  allowedTools: [],
   credentialType: AgentVaultCredentialType.Bearer,
   headerName: "Authorization",
   headerPrefix: "Bearer",
@@ -131,9 +137,34 @@ describe("buildCreateServiceRequest", () => {
       name: "linear-mcp",
       serverUrl: SERVER_URL,
       transport: AgentVaultMcpTransport.StreamableHttp,
+      allowedTools: null,
       customHeaders: [],
       credential: { type: AgentVaultCredentialType.OAuth, authorizationId: "auth-1" }
     });
+  });
+
+  it("sends the selected tools for an MCP service, and null for all tools even with picks kept", () => {
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        mcpForm({ toolScope: McpToolScope.Selected, allowedTools: ["read_file", "list_issues"] })
+      )
+    ).toMatchObject({ allowedTools: ["read_file", "list_issues"] });
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        mcpForm({ toolScope: McpToolScope.All, allowedTools: ["read_file"] })
+      )
+    ).toMatchObject({ allowedTools: null });
+  });
+
+  it("never sends allowed tools for an HTTP service", () => {
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        form({ toolScope: McpToolScope.Selected, allowedTools: ["read_file"] })
+      )
+    ).not.toHaveProperty("allowedTools");
   });
 
   it("sends an empty authorization when it was made for another URL", () => {
@@ -237,6 +268,7 @@ describe("buildUpdateServiceRequest", () => {
       name: "linear-mcp",
       serverUrl: SERVER_URL,
       transport: AgentVaultMcpTransport.StreamableHttp,
+      allowedTools: null,
       customHeaders: []
     });
     expect(
@@ -255,6 +287,26 @@ describe("buildUpdateServiceRequest", () => {
     ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-2" });
   });
 
+  it("clears allowed tools with null, sends a changed list, and never sends them for HTTP", () => {
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        "service-1",
+        mcpForm({ toolScope: McpToolScope.Selected, allowedTools: ["read_file"] })
+      )
+    ).toMatchObject({ allowedTools: ["read_file"] });
+    expect(buildUpdateServiceRequest("bundle-1", "service-1", mcpForm())).toMatchObject({
+      allowedTools: null
+    });
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        "service-1",
+        form({ toolScope: McpToolScope.Selected, allowedTools: ["read_file"] })
+      )
+    ).not.toHaveProperty("allowedTools");
+  });
+
   it("never sends a header name or prefix for OAuth", () => {
     expect(
       buildUpdateServiceRequest(
@@ -268,5 +320,76 @@ describe("buildUpdateServiceRequest", () => {
         })
       ).credential
     ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-2" });
+  });
+});
+
+describe("buildListMcpToolsRequest", () => {
+  it("sends a typed token and header values for a new service", () => {
+    expect(
+      buildListMcpToolsRequest(
+        "bundle-1",
+        undefined,
+        mcpForm({
+          credentialType: AgentVaultCredentialType.Bearer,
+          secret: "{{LINEAR_TOKEN}}",
+          transport: AgentVaultMcpTransport.Sse,
+          customHeaders: [{ name: "X-Org", prefix: "", value: "acme" }],
+          toolScope: McpToolScope.Selected,
+          allowedTools: ["read_file"]
+        })
+      )
+    ).toEqual({
+      accessBundleId: "bundle-1",
+      serverUrl: SERVER_URL,
+      transport: AgentVaultMcpTransport.Sse,
+      customHeaders: [{ name: "X-Org", prefix: "", value: "acme" }],
+      credential: {
+        type: AgentVaultCredentialType.Bearer,
+        headerName: "Authorization",
+        headerPrefix: "Bearer",
+        value: "{{LINEAR_TOKEN}}",
+        memberProvidedFields: []
+      }
+    });
+  });
+
+  it("leaves untouched values out on edit, so the saved service's are used", () => {
+    expect(
+      buildListMcpToolsRequest(
+        "bundle-1",
+        "service-1",
+        mcpForm({
+          credentialType: AgentVaultCredentialType.Bearer,
+          secret: UNCHANGED_SECRET,
+          customHeaders: [{ id: "h-1", name: "X-Org", prefix: "", value: UNCHANGED_SECRET }]
+        })
+      )
+    ).toEqual({
+      accessBundleId: "bundle-1",
+      serviceId: "service-1",
+      serverUrl: SERVER_URL,
+      transport: AgentVaultMcpTransport.StreamableHttp,
+      customHeaders: [{ id: "h-1", name: "X-Org", prefix: "" }],
+      credential: {
+        type: AgentVaultCredentialType.Bearer,
+        headerName: "Authorization",
+        headerPrefix: "Bearer",
+        value: undefined,
+        memberProvidedFields: []
+      }
+    });
+  });
+
+  it("sends a pending OAuth authorization for the current URL, and none otherwise", () => {
+    expect(
+      buildListMcpToolsRequest(
+        "bundle-1",
+        undefined,
+        mcpForm({ oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-1" });
+    expect(buildListMcpToolsRequest("bundle-1", "service-1", mcpForm())).not.toHaveProperty(
+      "credential"
+    );
   });
 });

@@ -18,6 +18,7 @@ import {
   getSkillFolders,
   getSkillHeaderError,
   getSkillHeaderText,
+  resolveSkillLinkPath,
   getSkillParentPath,
   getSkillPathError,
   isReservedSkillName,
@@ -799,5 +800,33 @@ describe("large files in the save review", () => {
     ]);
     expect(change.isTooLarge).toBe(false);
     expect([change.additions, change.deletions]).toEqual([1, 1]);
+  });
+});
+
+describe("resolveSkillLinkPath", () => {
+  test("follows a link from the file's own folder", () => {
+    expect(resolveSkillLinkPath("SKILL.md", "references/patterns.md")).toBe(
+      "references/patterns.md"
+    );
+    expect(resolveSkillLinkPath("references/a.md", "b.md")).toBe("references/b.md");
+    expect(resolveSkillLinkPath("references/a.md", "./b.md")).toBe("references/b.md");
+    expect(resolveSkillLinkPath("references/a.md", "../scripts/run.sh")).toBe("scripts/run.sh");
+  });
+
+  test("reads a leading slash as the skill's root", () => {
+    expect(resolveSkillLinkPath("references/a.md", "/SKILL.md")).toBe("SKILL.md");
+  });
+
+  test("drops the heading and query and decodes the name", () => {
+    expect(resolveSkillLinkPath("SKILL.md", "references/my%20notes.md#setup")).toBe(
+      "references/my notes.md"
+    );
+    expect(resolveSkillLinkPath("SKILL.md", "guide.md?raw=1")).toBe("guide.md");
+    expect(resolveSkillLinkPath("SKILL.md", "100%.md")).toBe("100%.md");
+  });
+
+  test("returns null for a heading-only link or one that leaves the skill", () => {
+    expect(resolveSkillLinkPath("SKILL.md", "#usage")).toBeNull();
+    expect(resolveSkillLinkPath("SKILL.md", "../outside.md")).toBeNull();
   });
 });
