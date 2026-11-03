@@ -10,17 +10,12 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import {
-  createTempFolder,
-  deleteTempFolder,
-  scanContentAndGetFindings,
-  writeTextToFile
-} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { githubSecretScanningService } from "@app/ee/services/secret-scanning-v2/github/github-secret-scanning-service";
 import { GitLabDataSourceScope } from "@app/ee/services/secret-scanning-v2/gitlab/gitlab-secret-scanning-enums";
 import {
   SecretScanningDataSource,
-  SecretScanningFindingStatus
+  SecretScanningFindingStatus,
+  SecretScanningScanTrigger
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-factory";
 import {
@@ -55,6 +50,12 @@ import {
   TUpdateSecretScanningFindingDTO,
   TUpsertSecretScanningConfigDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import {
+  createTempFolder,
+  deleteTempFolder,
+  scanContentAndGetFindings,
+  writeTextToFile
+} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -85,7 +86,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretScanningV2Queue: Pick<
     TSecretScanningV2QueueServiceFactory,
-    "queueDataSourceFullScan" | "queueResourceDiffScan" | "handleResourcePushEvent"
+    "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueDataSourceEvent" | "handleResourcePushEvent"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
@@ -730,6 +731,7 @@ export const secretScanningV2ServiceFactory = ({
         connection
       } as TSecretScanningDataSourceWithConnection,
       {
+        trigger: SecretScanningScanTrigger.Manual,
         resourceExternalId,
         triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined
       }
@@ -884,6 +886,7 @@ export const secretScanningV2ServiceFactory = ({
 
       try {
         await secretScanningV2Queue.queueDataSourceFullScan(dataSourceWithConnection, {
+          trigger: SecretScanningScanTrigger.ResourcesAdded,
           triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined,
           shouldScanResource: (resource) => newExternalIds.has(resource.externalId)
         });

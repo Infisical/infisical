@@ -1,9 +1,11 @@
 import { TGenericPermission } from "@app/lib/types";
 
+import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
+  AgentVaultMemberType,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
@@ -70,6 +72,7 @@ export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermiss
 export type TListAccessBundlesDTO = TAgentVaultProjectScoped & {
   requiresSetup?: boolean;
   granted?: boolean;
+  onBehalfOf?: TOnBehalfOfUser;
   search?: string;
   orderBy: TAgentVaultAccessBundleOrderBy;
   orderDirection: "asc" | "desc";
@@ -81,7 +84,7 @@ export type TGetAccessBundleDTO = TAgentVaultProjectScoped & { accessBundleId: s
 
 export type TCreateAccessBundleDTO = TAgentVaultProjectScoped & {
   name: string;
-  description?: string;
+  description?: string | null;
 };
 
 export type TUpdateAccessBundleDTO = TAgentVaultProjectScoped & {
@@ -122,6 +125,7 @@ export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   transport?: AgentVaultMcpTransport;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
+  allowedTools?: string[] | null;
   credential: TAgentVaultCredentialInput;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
@@ -139,9 +143,21 @@ export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   transport?: AgentVaultMcpTransport | null;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
+  allowedTools?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderUpdate[];
   substitutions?: TAgentVaultSubstitutionUpdate[];
+};
+
+// What the service sheet would save, so the tools are listed with the credential agents will use. On edit, a value
+// left out falls back to what the saved service stores, as on update.
+export type TListMcpToolsDTO = TAgentVaultProjectScoped & {
+  accessBundleId: string;
+  serviceId?: string;
+  serverUrl: string;
+  transport: AgentVaultMcpTransport;
+  credential?: TAgentVaultCredentialUpdate;
+  customHeaders?: TAgentVaultCustomHeaderUpdate[];
 };
 
 export type TDeleteServiceDTO = TAgentVaultProjectScoped & {
@@ -151,6 +167,7 @@ export type TDeleteServiceDTO = TAgentVaultProjectScoped & {
 
 export type TListMembersDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
+  actorType?: AgentVaultMemberType;
   search?: string;
   limit: number;
   offset: number;

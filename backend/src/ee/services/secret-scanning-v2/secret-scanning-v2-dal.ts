@@ -527,7 +527,16 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   const findStuckScans = async (startedBefore: Date, limit: number, tx?: Knex) => {
     try {
       const scans = await (tx || db)(TableName.SecretScanningScan)
-        .where(`${TableName.SecretScanningScan}.status`, SecretScanningScanStatus.Scanning)
+        // A realtime scan still queued this long lost its job: nothing redelivers it, unlike a queued historical scan.
+        .where((qb) => {
+          void qb
+            .where(`${TableName.SecretScanningScan}.status`, SecretScanningScanStatus.Scanning)
+            .orWhere((queued) => {
+              void queued
+                .where(`${TableName.SecretScanningScan}.status`, SecretScanningScanStatus.Queued)
+                .where(`${TableName.SecretScanningScan}.type`, SecretScanningScanType.Realtime);
+            });
+        })
         // A batched full scan outlives any single scan timeout, so what is being measured is time
         // since the scan last made progress, not time since it started. `progressUpdatedAt` is
         // stamped as each commit batch is persisted; rows written before it existed, or by a pod

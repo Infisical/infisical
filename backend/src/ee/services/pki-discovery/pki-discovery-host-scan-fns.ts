@@ -2,6 +2,7 @@ import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 import net from "net";
 import pLimit from "p-limit";
+import { z } from "zod";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -12,9 +13,11 @@ import { delay } from "@app/lib/delay";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { callCertificateScan, TCertificateScanRequest } from "@app/lib/gateway-v2/certificate-scan-rpc";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import {
@@ -22,7 +25,9 @@ import {
   tryAdmitAppConnectionConcurrency
 } from "@app/services/app-connection/app-connection-concurrency-fns";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { toSshExecCredentials } from "@app/services/app-connection/ssh/ssh-connection-fns";
 import { TSshConnectionConfig } from "@app/services/app-connection/ssh/ssh-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -41,9 +46,9 @@ import {
   buildHostInstallationName,
   CertificateScanResponseSchema,
   describeCertificateScanFailure,
+  hostConnectionWithoutGatewayMessage,
   normalizeHostIdentifier,
   planHostFileImport,
-  sshConnectionWithoutGatewayMessage,
   summarizeHostScanIssues,
   TCertificateScanFile,
   TCertificateScanResponse
@@ -58,6 +63,7 @@ import {
   sendScanCompletedTelemetry,
   startScanRun
 } from "./pki-discovery-scan-run-fns";
+import { LinuxServerTargetConfigSchema } from "./pki-discovery-schemas";
 import {
   HostFileImportAction,
   PkiDiscoveryScanStatus,
@@ -109,10 +115,15 @@ type TScannedHost = TResolvedHost & { hostname: string };
 
 type TKeystorePassword = TCertificateScanRequest["keystorePasswords"][number];
 
-const derToPem = (der: Buffer) => new x509.X509Certificate(der).toString("pem");
+const derToPem = (der: Buffer) => new x509.X509Certificate(asNonSharedBuffer(der)).toString("pem");
 
-const canScanCertificates = (capabilities: unknown) =>
-  (capabilities as Record<string, unknown> | null)?.certificateScan === true;
+export enum HostScanCapability {
+  CertificateScan = "certificateScan",
+  WindowsCertificateScan = "windowsCertificateScan"
+}
+
+const hasCapability = (capabilities: unknown, capability: HostScanCapability) =>
+  (capabilities as Record<string, unknown> | null)?.[capability] === true;
 
 export const toHostScanErrorMessage = (error: unknown, logContext: string): string => {
   if (error instanceof GatewayTransportError) {
@@ -127,14 +138,58 @@ export const toHostScanErrorMessage = (error: unknown, logContext: string): stri
   return UNEXPECTED_HOST_SCAN_ERROR;
 };
 
-type TAppConnectionRow = Awaited<ReturnType<THostScanDeps["appConnectionDAL"]["findById"]>>;
+export type TAppConnectionRow = Awaited<ReturnType<THostScanDeps["appConnectionDAL"]["findById"]>>;
 
-export const resolveHost = async (connection: TAppConnectionRow | undefined, orgId: string, deps: THostScanDeps) => {
-  if (!connection || connection.orgId !== orgId) {
-    throw new BadRequestError({ message: "The SSH connection no longer exists" });
+export type TScanGateway = { gatewayId: string; gatewayName: string; fingerprintGatewayKey: string };
+
+export type THostScanType = {
+  discoveryType: PkiDiscoveryType;
+  label: string;
+  app: AppConnection;
+  capability: HostScanCapability;
+};
+
+const connectionKindOf = (app: AppConnection) => APP_CONNECTION_NAME_MAP[app];
+
+const selectScanGateway = async (
+  connection: NonNullable<TAppConnectionRow>,
+  type: THostScanType,
+  deps: THostScanDeps
+): Promise<TScanGateway> => {
+  if (connection.gatewayPoolId) {
+    const selected = await deps.gatewayPoolService.selectGatewayFromPool({
+      poolId: connection.gatewayPoolId,
+      filter: (gateway) => hasCapability(gateway.capabilities, type.capability),
+      unavailableMessage:
+        "No healthy gateway in the connection's pool supports certificate scanning. Update the pool's gateways to the latest version."
+    });
+    return { gatewayId: selected.id, gatewayName: selected.name, fingerprintGatewayKey: connection.gatewayPoolId };
+  }
+  const gateway = await deps.gatewayV2DAL.findById(connection.gatewayId as string);
+  if (!gateway) {
+    throw new BadRequestError({
+      message: `The gateway of ${connectionKindOf(type.app)} connection '${connection.name}' no longer exists`
+    });
+  }
+  if (!hasCapability(gateway.capabilities, type.capability)) {
+    throw new BadRequestError({
+      message: `Gateway '${gateway.name}' is too old for certificate scanning. Update it to the latest version.`
+    });
+  }
+  return { gatewayId: gateway.id, gatewayName: gateway.name, fingerprintGatewayKey: gateway.id };
+};
+
+export const resolveHostConnection = async <TCredentials extends { host: string }>(
+  connection: TAppConnectionRow | undefined,
+  orgId: string,
+  type: THostScanType,
+  deps: THostScanDeps
+) => {
+  if (!connection || connection.orgId !== orgId || connection.app !== type.app) {
+    throw new BadRequestError({ message: `The ${connectionKindOf(type.app)} connection no longer exists` });
   }
   if (!connection.gatewayId && !connection.gatewayPoolId) {
-    throw new BadRequestError({ message: sshConnectionWithoutGatewayMessage(connection.name) });
+    throw new BadRequestError({ message: hostConnectionWithoutGatewayMessage(type, connection.name) });
   }
 
   const credentials = (await decryptAppConnectionCredentials({
@@ -142,41 +197,9 @@ export const resolveHost = async (connection: TAppConnectionRow | undefined, org
     encryptedCredentials: connection.encryptedCredentials,
     kmsService: deps.kmsService,
     projectId: connection.projectId
-  })) as TSshConnectionConfig["credentials"];
+  })) as unknown as TCredentials;
 
-  const config = {
-    method: connection.method,
-    app: connection.app,
-    credentials,
-    gatewayId: connection.gatewayId,
-    gatewayPoolId: connection.gatewayPoolId,
-    orgId: connection.orgId
-  } as TSshConnectionConfig;
-
-  let gatewayId: string;
-  let gatewayName: string;
-  if (connection.gatewayPoolId) {
-    const selected = await deps.gatewayPoolService.selectGatewayFromPool({
-      poolId: connection.gatewayPoolId,
-      filter: (gateway) => canScanCertificates(gateway.capabilities),
-      unavailableMessage:
-        "No healthy gateway in the connection's pool supports certificate scanning. Update the pool's gateways to the latest version."
-    });
-    gatewayId = selected.id;
-    gatewayName = selected.name;
-  } else {
-    const gateway = await deps.gatewayV2DAL.findById(connection.gatewayId as string);
-    if (!gateway) {
-      throw new BadRequestError({ message: `The gateway of SSH connection '${connection.name}' no longer exists` });
-    }
-    if (!canScanCertificates(gateway.capabilities)) {
-      throw new BadRequestError({
-        message: `Gateway '${gateway.name}' is too old for certificate scanning. Update it to the latest version.`
-      });
-    }
-    gatewayId = gateway.id;
-    gatewayName = gateway.name;
-  }
+  const gateway = await selectScanGateway(connection, type, deps);
 
   const [targetHost] = await verifyHostInputValidity({
     host: credentials.host,
@@ -184,15 +207,41 @@ export const resolveHost = async (connection: TAppConnectionRow | undefined, org
     isDynamicSecret: false
   });
 
+  return { connection, credentials, gateway, targetHost };
+};
+
+const LINUX_SERVER_SCAN_TYPE: THostScanType = {
+  discoveryType: PkiDiscoveryType.LinuxServer,
+  label: "Linux Server",
+  app: AppConnection.SSH,
+  capability: HostScanCapability.CertificateScan
+};
+
+export const resolveHost = async (connection: TAppConnectionRow | undefined, orgId: string, deps: THostScanDeps) => {
+  const resolved = await resolveHostConnection<TSshConnectionConfig["credentials"]>(
+    connection,
+    orgId,
+    LINUX_SERVER_SCAN_TYPE,
+    deps
+  );
+  const { credentials } = resolved;
+
+  const config = {
+    method: resolved.connection.method,
+    app: resolved.connection.app,
+    credentials,
+    gatewayId: resolved.connection.gatewayId,
+    gatewayPoolId: resolved.connection.gatewayPoolId,
+    orgId: resolved.connection.orgId
+  } as TSshConnectionConfig;
+
   return {
-    connectionId: connection.id,
+    ...resolved.gateway,
+    connectionId: resolved.connection.id,
     hostIdentifier: normalizeHostIdentifier(credentials.host, credentials.port),
     hostAddress: credentials.host.trim().toLowerCase(),
-    targetHost,
+    targetHost: resolved.targetHost,
     targetPort: credentials.port,
-    gatewayId,
-    gatewayName,
-    fingerprintGatewayKey: connection.gatewayPoolId ?? gatewayId,
     credentials: toSshExecCredentials(config)
   } satisfies TResolvedHost;
 };
@@ -238,11 +287,27 @@ const admitConnectionScanSlot = async (connectionId: string, deps: THostScanDeps
   return false;
 };
 
-const runCertificateScan = async (
-  host: TResolvedHost,
-  request: TCertificateScanRequest,
+type TGatewayScanTarget = TScanGateway & { connectionId: string; targetHost: string; targetPort: number };
+
+type TGatewayScanFailure = { ok: false; status: number; kind?: GatewayFailureKind | null };
+
+export const runGatewayScan = async <TFailure extends TGatewayScanFailure, TResult>(
+  host: TGatewayScanTarget,
+  {
+    protocol,
+    call,
+    describeFailure,
+    schema,
+    logLabel
+  }: {
+    protocol: GatewayProxyProtocol;
+    call: (port: number) => Promise<{ ok: true; result: unknown } | TFailure>;
+    describeFailure: (failure: TFailure) => string;
+    schema: z.ZodType<TResult, z.ZodTypeDef, unknown>;
+    logLabel: string;
+  },
   deps: THostScanDeps
-): Promise<TCertificateScanResponse> => {
+): Promise<TResult> => {
   const connectionDetails = await deps.gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId: host.gatewayId,
     targetHost: host.targetHost,
@@ -252,16 +317,13 @@ const runCertificateScan = async (
     throw new NotFoundError({ message: getMissingGatewayMessage(host.gatewayId) });
   }
 
-  let response: Awaited<ReturnType<typeof callCertificateScan>>;
+  let response: { ok: true; result: unknown } | TFailure;
   try {
-    response = await withGatewayV2Proxy(
-      (proxyPort) => callCertificateScan({ port: proxyPort, credentials: host.credentials, request }),
-      { protocol: GatewayProxyProtocol.Discovery, longLived: true, ...connectionDetails }
-    );
+    response = await withGatewayV2Proxy(call, { protocol, longLived: true, ...connectionDetails });
   } catch (error) {
     if (error instanceof GatewayTransportError) throw error;
     logger.warn(
-      `Certificate scan transport failed [connectionId=${host.connectionId}] [gatewayId=${host.gatewayId}] [error=${error instanceof Error ? error.message : String(error)}]`
+      `${logLabel} transport failed [connectionId=${host.connectionId}] [gatewayId=${host.gatewayId}] [error=${error instanceof Error ? error.message : String(error)}]`
     );
     throw new BadRequestError({
       message:
@@ -271,41 +333,67 @@ const runCertificateScan = async (
 
   if (!response.ok) {
     logger.warn(
-      `Certificate scan RPC failed [connectionId=${host.connectionId}] [gatewayId=${host.gatewayId}] [status=${response.status}] [kind=${response.kind ?? "none"}] [detail=${response.detail}]`
+      { failure: response },
+      `${logLabel} RPC failed [connectionId=${host.connectionId}] [gatewayId=${host.gatewayId}] [status=${response.status}] [kind=${response.kind ?? "none"}]`
     );
-    throw new BadRequestError({
-      message: describeCertificateScanFailure(response, host.gatewayName)
-    });
+    throw new BadRequestError({ message: describeFailure(response) });
   }
-  const parsed = CertificateScanResponseSchema.safeParse(response.result);
+  const parsed = schema.safeParse(response.result);
   if (!parsed.success) {
     logger.warn(
       { issues: parsed.error.issues },
-      `Certificate scan result did not match the expected shape [connectionId=${host.connectionId}] [gatewayId=${host.gatewayId}]`
+      `${logLabel} result did not match the expected shape [connectionId=${host.connectionId}] [gatewayId=${host.gatewayId}]`
     );
     throw new BadRequestError({ message: "The gateway returned a scan result that could not be read" });
   }
   return parsed.data;
 };
 
-export const scanHost = async (
+const runCertificateScan = (
   host: TResolvedHost,
   request: TCertificateScanRequest,
   deps: THostScanDeps
-): Promise<TCertificateScanResponse> => {
-  if (!(await admitConnectionScanSlot(host.connectionId, deps))) {
-    throw new BadRequestError({ message: "The SSH connection is busy with other jobs. Try again later." });
+): Promise<TCertificateScanResponse> =>
+  runGatewayScan(
+    host,
+    {
+      protocol: GatewayProxyProtocol.Discovery,
+      call: (port) => callCertificateScan({ port, credentials: host.credentials, request }),
+      describeFailure: (failure) => describeCertificateScanFailure(failure, host.gatewayName),
+      schema: CertificateScanResponseSchema,
+      logLabel: "Certificate scan"
+    },
+    deps
+  );
+
+export const withConnectionScanSlot = async <T>(
+  connectionId: string,
+  app: AppConnection,
+  deps: THostScanDeps,
+  fn: () => Promise<T>
+): Promise<T> => {
+  if (!(await admitConnectionScanSlot(connectionId, deps))) {
+    throw new BadRequestError({
+      message: `The ${connectionKindOf(app)} connection is busy with other jobs. Try again later.`
+    });
   }
   try {
-    return await runCertificateScan(host, request, deps);
+    return await fn();
   } finally {
-    await releaseAppConnectionConcurrency(deps.keyStore, host.connectionId).catch((error: unknown) =>
-      logger.error(error, `Failed to release the connection scan slot [connectionId=${host.connectionId}]`)
+    await releaseAppConnectionConcurrency(deps.keyStore, connectionId).catch((error: unknown) =>
+      logger.error(error, `Failed to release the connection scan slot [connectionId=${connectionId}]`)
     );
   }
 };
 
-type TWriteContext = {
+export const scanHost = (
+  host: TResolvedHost,
+  request: TCertificateScanRequest,
+  deps: THostScanDeps
+): Promise<TCertificateScanResponse> =>
+  withConnectionScanSlot(host.connectionId, AppConnection.SSH, deps, () => runCertificateScan(host, request, deps));
+
+export type TWriteContext = {
   projectId: string;
   discoveryId?: string;
   scanTime: Date;
@@ -330,10 +418,9 @@ const buildHostLocationDetails = (host: TScannedHost, file: TCertificateScanFile
   gatewayName: host.gatewayName
 });
 
-const importCertificateChains = async (
-  host: TScannedHost,
-  file: TCertificateScanFile,
+export const importCertificateChains = async (
   chains: Buffer[][],
+  discoveryMetadata: Record<string, string | undefined>,
   ctx: TWriteContext,
   deps: THostScanDeps
 ) => {
@@ -358,10 +445,7 @@ const importCertificateChains = async (
       },
       {
         discoveredBy: ctx.discoveryId,
-        hostIdentifier: host.hostIdentifier,
-        hostname: host.hostname,
-        filePath: file.realPath,
-        format: file.format,
+        ...discoveryMetadata,
         discoveredAt: ctx.scanTime.toISOString(),
         issuerCommonName: parsed.issuerCommonName,
         issuerOrganization: parsed.issuerOrganization
@@ -375,28 +459,28 @@ const importCertificateChains = async (
   return certificateIds;
 };
 
-const upsertInstallationWithLinks = async (
-  host: TScannedHost,
-  file: TCertificateScanFile,
+export const upsertInstallationWithLinks = async (
   {
     fingerprint,
     locationType,
+    locationDetails,
+    name,
     keystoreStatus,
     certificateIds,
     refreshOnly
   }: {
     fingerprint: string;
     locationType: PkiInstallationLocationType;
+    locationDetails: TPkiInstallationLocationDetails;
+    name: string | null;
     keystoreStatus?: PkiKeystoreStatus;
     certificateIds: string[];
     refreshOnly: boolean;
   },
   ctx: TWriteContext,
   deps: THostScanDeps
-) => {
-  const locationDetails = buildHostLocationDetails(host, file);
-
-  return deps.pkiDiscoveryConfigDAL.transaction(async (tx) => {
+) =>
+  deps.pkiDiscoveryConfigDAL.transaction(async (tx) => {
     let installation = await findTargetInstallation(ctx, fingerprint, deps, tx);
     if (!installation && refreshOnly) return undefined;
     const previousMetadata = (installation?.metadata as TPkiInstallationMetadata | null) ?? {};
@@ -421,7 +505,7 @@ const upsertInstallationWithLinks = async (
               locationType,
               locationDetails,
               locationFingerprint: fingerprint,
-              name: buildHostInstallationName(host.hostIdentifier, host.hostname, file.realPath),
+              name,
               type: PkiInstallationType.Server,
               metadata,
               lastSeenAt: ctx.scanTime
@@ -468,7 +552,6 @@ const upsertInstallationWithLinks = async (
     }
     return installation.id;
   });
-};
 
 export const writeHostFile = async (
   host: TScannedHost,
@@ -488,13 +571,23 @@ export const writeHostFile = async (
   const certificateIds =
     plan.action === HostFileImportAction.Refresh
       ? []
-      : await importCertificateChains(host, file, plan.chainsToImport, ctx, deps);
+      : await importCertificateChains(
+          plan.chainsToImport,
+          {
+            hostIdentifier: host.hostIdentifier,
+            hostname: host.hostname,
+            filePath: file.realPath,
+            format: file.format
+          },
+          ctx,
+          deps
+        );
   const installationId = await upsertInstallationWithLinks(
-    host,
-    file,
     {
       fingerprint,
       locationType: plan.locationType,
+      locationDetails: buildHostLocationDetails(host, file),
+      name: buildHostInstallationName(host.hostIdentifier, host.hostname, file.realPath),
       keystoreStatus: plan.keystoreStatus,
       certificateIds,
       refreshOnly: plan.action === HostFileImportAction.Refresh
@@ -519,23 +612,36 @@ export const buildScanRequest = (
   keystorePasswords
 });
 
-type TLinuxServerScanRun = {
+export type THostScanRun<TConfig> = {
   discoveryId: string;
   projectId: string;
   orgId: string;
-  targetConfig: TLinuxServerTargetConfig;
+  targetConfig: TConfig;
   ctx: TWriteContext;
   writeLimit: ReturnType<typeof pLimit>;
   certificateIds: Set<string>;
   installationIds: Set<string>;
 };
 
-type THostScanOutcome = { issues: string[]; failure?: { label: string; message: string } };
+export type THostScanOutcome = { issues: string[]; failure?: { label: string; message: string } };
 
-const scanConnection = async (
+type THostScanTargetConfig = { connectionIds: string[]; importStandaloneCaCertificates: boolean };
+
+export type THostScanDefinition<TConfig extends THostScanTargetConfig = THostScanTargetConfig> = THostScanType & {
+  schema: z.ZodTypeAny;
+  hostConcurrency?: number;
+  scanConnection: (
+    connection: TAppConnectionRow | undefined,
+    label: string,
+    run: THostScanRun<TConfig>,
+    deps: THostScanDeps
+  ) => Promise<THostScanOutcome>;
+};
+
+const scanLinuxConnection = async (
   connection: TAppConnectionRow | undefined,
   label: string,
-  run: TLinuxServerScanRun,
+  run: THostScanRun<TLinuxServerTargetConfig>,
   deps: THostScanDeps
 ): Promise<THostScanOutcome> => {
   let hostLabel = label;
@@ -574,7 +680,11 @@ const scanConnection = async (
   }
 };
 
-export const executeLinuxServerScan = async (discoveryId: string, deps: THostScanDeps): Promise<void> => {
+export const executeHostScan = async <TConfig extends THostScanTargetConfig>(
+  discoveryId: string,
+  definition: THostScanDefinition<TConfig>,
+  deps: THostScanDeps
+): Promise<void> => {
   const { pkiDiscoveryConfigDAL } = deps;
   const startedAt = new Date();
   let scanHistoryId: string | undefined;
@@ -585,10 +695,10 @@ export const executeLinuxServerScan = async (discoveryId: string, deps: THostSca
       throw new Error(`Discovery config not found: ${discoveryId}`);
     }
     const project = await deps.projectDAL.findById(discoveryConfig.projectId);
-    const targetConfig = discoveryConfig.targetConfig as TLinuxServerTargetConfig;
+    const targetConfig = discoveryConfig.targetConfig as TConfig;
 
     logger.info(
-      `Linux Server discovery scan starting [discoveryId=${discoveryId}] [projectId=${discoveryConfig.projectId}]`
+      `${definition.label} discovery scan starting [discoveryId=${discoveryId}] [projectId=${discoveryConfig.projectId}]`
     );
 
     const certificateKmsKeyId = await getProjectKmsCertificateKeyId({
@@ -600,8 +710,8 @@ export const executeLinuxServerScan = async (discoveryId: string, deps: THostSca
 
     scanHistoryId = await startScanRun(discoveryId, startedAt, deps);
 
-    const hostLimit = pLimit(HOST_CONCURRENCY);
-    const run: TLinuxServerScanRun = {
+    const hostLimit = pLimit(definition.hostConcurrency ?? HOST_CONCURRENCY);
+    const run: THostScanRun<TConfig> = {
       discoveryId,
       projectId: discoveryConfig.projectId,
       orgId: project.orgId,
@@ -629,7 +739,9 @@ export const executeLinuxServerScan = async (discoveryId: string, deps: THostSca
     const outcomes = await Promise.all(
       targetConfig.connectionIds.map((connectionId) => {
         const connection = connectionsById.get(connectionId);
-        return hostLimit(() => scanConnection(connection, connection?.name ?? "Deleted connection", run, deps));
+        return hostLimit(() =>
+          definition.scanConnection(connection, connection?.name ?? "Deleted connection", run, deps)
+        );
       })
     );
 
@@ -644,7 +756,7 @@ export const executeLinuxServerScan = async (discoveryId: string, deps: THostSca
     const allHostsFailed = failedHosts > 0 && failedHosts === targetConfig.connectionIds.length;
     const finalStatus = allHostsFailed ? PkiDiscoveryScanStatus.Failed : PkiDiscoveryScanStatus.Completed;
     const failureIssues = [...hostFailures.entries()].map(([message, labels]) => `${labels.join(", ")}: ${message}`);
-    const allIssues = [...failureIssues, ...outcomes.flatMap(({ issues }) => issues)];
+    const allIssues = [...new Set([...failureIssues, ...outcomes.flatMap(({ issues }) => issues)])];
     const errorMessage = allIssues.length > 0 ? allIssues.join("; ") : null;
 
     await finishScanRun(
@@ -663,7 +775,7 @@ export const executeLinuxServerScan = async (discoveryId: string, deps: THostSca
 
     await sendScanCompletedTelemetry(deps.telemetryService, {
       discoveryId,
-      discoveryType: PkiDiscoveryType.LinuxServer,
+      discoveryType: definition.discoveryType,
       projectId: run.projectId,
       orgId: run.orgId,
       status: finalStatus,
@@ -673,11 +785,20 @@ export const executeLinuxServerScan = async (discoveryId: string, deps: THostSca
     });
 
     logger.info(
-      `Linux Server discovery scan finished [discoveryId=${discoveryId}] [status=${finalStatus}] [certificates=${run.certificateIds.size}] [installations=${run.installationIds.size}]`
+      `${definition.label} discovery scan finished [discoveryId=${discoveryId}] [status=${finalStatus}] [certificates=${run.certificateIds.size}] [installations=${run.installationIds.size}]`
     );
   } catch (error) {
-    const message = toHostScanErrorMessage(error, `Linux Server discovery scan failed [discoveryId=${discoveryId}]`);
+    const message = toHostScanErrorMessage(
+      error,
+      `${definition.label} discovery scan failed [discoveryId=${discoveryId}]`
+    );
     await failScanRun(discoveryId, scanHistoryId, new Error(message), deps);
     throw error;
   }
+};
+
+export const LINUX_SERVER_SCAN: THostScanDefinition<TLinuxServerTargetConfig> = {
+  ...LINUX_SERVER_SCAN_TYPE,
+  schema: LinuxServerTargetConfigSchema,
+  scanConnection: scanLinuxConnection
 };

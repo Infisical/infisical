@@ -240,6 +240,12 @@ export const ServicesCard = ({
                   : "Try a different search term."}
               </EmptyDescription>
             </EmptyHeader>
+            {canManage && services.length === 0 && (
+              <Button variant="av" onClick={onAdd}>
+                <PlusIcon />
+                Add Service
+              </Button>
+            )}
           </Empty>
         </CardContent>
       ) : (

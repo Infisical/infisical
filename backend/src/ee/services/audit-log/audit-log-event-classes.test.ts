@@ -43,6 +43,8 @@ describe("audit log event classes", () => {
     [EventType.PKI_SIGNER_SIGN, AuditLogEventClass.DataAccess],
     [EventType.DASHBOARD_LIST_SECRETS, AuditLogEventClass.DataAccess],
     [EventType.VIEW_INSIGHTS_AUTH_METHODS, AuditLogEventClass.DataAccess],
+    [EventType.AGENT_VAULT_SKILLS_DELIVERED, AuditLogEventClass.DataAccess],
+    [EventType.AGENT_VAULT_SKILL_VERSION_VIEW, AuditLogEventClass.DataAccess],
     [EventType.UPDATE_SECRET, AuditLogEventClass.Management],
     [EventType.CREATE_CMEK, AuditLogEventClass.Management],
     [EventType.VIEW_AUDIT_LOGS, AuditLogEventClass.Management],
@@ -59,6 +61,7 @@ describe("audit log event classes", () => {
     [EventType.USER_LOGIN, AuditLogEventClass.Authentication],
     [EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH_FAILED, AuditLogEventClass.Authentication],
     [EventType.SELECT_ORGANIZATION, AuditLogEventClass.Authentication],
+    [EventType.SELECT_ORGANIZATION_REFUSED, AuditLogEventClass.Authentication],
     [EventType.GATEWAY_CONNECT, AuditLogEventClass.Authentication],
     [EventType.PERMISSION_DENIED, AuditLogEventClass.Authorization]
   ])("classifies %s as %s", (eventType, expected) => {

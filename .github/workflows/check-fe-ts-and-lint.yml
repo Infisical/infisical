@@ -7,7 +7,8 @@ on:
       - "frontend/**"
       - "!frontend/README.md"
       - "!frontend/.*"
-      - "frontend/.eslintrc.js"
+      - "frontend/.oxlintrc.json"
+      - "frontend/.oxfmtrc.json"
 
 jobs:
   type-check:

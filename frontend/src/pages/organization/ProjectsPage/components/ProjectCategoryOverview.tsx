@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
+import { useEnterAgentVault } from "@app/components/agent-vault/useEnterAgentVault";
 import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { CertManagerSelectInstanceModal } from "@app/components/projects/CertManagerSelectInstanceModal";
@@ -12,6 +13,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  RowLink,
   Skeleton,
   Tooltip,
   TooltipContent,
@@ -28,6 +30,7 @@ import {
   setCertManagerActiveProjectCookie
 } from "@app/helpers/certManagerActiveProject";
 import {
+  getInstancePinningLink,
   getProjectDescription,
   getProjectLucideIcon,
   getProjectTitle,
@@ -35,7 +38,6 @@ import {
 } from "@app/helpers/project";
 import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
-import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
@@ -135,6 +137,7 @@ export const ProjectCategoryOverview = () => {
   const { data: certManagerInstance } = useCertManagerInstanceState();
   const { data: productStats } = useGetOrgProductStats(currentOrg?.id ?? "");
   const orgAdminAccessProject = useOrgAdminAccessProject();
+  const { enterAgentVault, agentVaultAccessRequest } = useEnterAgentVault();
 
   const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
@@ -144,8 +147,6 @@ export const ProjectCategoryOverview = () => {
   );
   const [isPamRequestAccessOpen, setIsPamRequestAccessOpen] = useState(false);
   const [pendingPamProjectId, setPendingPamProjectId] = useState<string | null>(null);
-  const [isAgentVaultRequestAccessOpen, setIsAgentVaultRequestAccessOpen] = useState(false);
-  const [pendingAgentVaultProjectId, setPendingAgentVaultProjectId] = useState<string | null>(null);
   const [isSecretScanningRequestAccessOpen, setIsSecretScanningRequestAccessOpen] = useState(false);
   const [pendingSecretScanningProjectId, setPendingSecretScanningProjectId] = useState<
     string | null
@@ -172,7 +173,7 @@ export const ProjectCategoryOverview = () => {
     () =>
       Boolean(
         currentOrg?.pamProjectId &&
-          projects.some((project) => project.id === currentOrg.pamProjectId)
+        projects.some((project) => project.id === currentOrg.pamProjectId)
       ),
     [currentOrg?.pamProjectId, projects]
   );
@@ -183,7 +184,7 @@ export const ProjectCategoryOverview = () => {
     () =>
       Boolean(
         currentOrg?.agentVaultProjectId &&
-          projects.some((project) => project.id === currentOrg.agentVaultProjectId)
+        projects.some((project) => project.id === currentOrg.agentVaultProjectId)
       ),
     [currentOrg?.agentVaultProjectId, projects]
   );
@@ -199,7 +200,7 @@ export const ProjectCategoryOverview = () => {
     () =>
       Boolean(
         activeSecretScanningProjectId &&
-          projects.some((project) => project.id === activeSecretScanningProjectId)
+        projects.some((project) => project.id === activeSecretScanningProjectId)
       ),
     [activeSecretScanningProjectId, projects]
   );
@@ -364,57 +365,6 @@ export const ProjectCategoryOverview = () => {
     }
   };
 
-  const navigateToAgentVault = () => {
-    navigate({
-      to: "/organizations/$orgId/agent-vault/sessions",
-      params: { orgId: currentOrg?.id ?? "" }
-    });
-  };
-
-  const enterAgentVaultProject = async () => {
-    let agentVaultProjectId: string;
-    try {
-      agentVaultProjectId = currentOrg?.agentVaultProjectId ?? (await fetchAgentVaultProjectId());
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to resolve the Agent Vault project."
-      });
-      return;
-    }
-
-    const isMember = projects.some((p) => p.id === agentVaultProjectId);
-    if (isMember) {
-      navigateToAgentVault();
-      return;
-    }
-
-    setPendingAgentVaultProjectId(agentVaultProjectId);
-
-    if (isOrgAdmin) {
-      try {
-        await orgAdminAccessProject.mutateAsync({ projectId: agentVaultProjectId });
-        navigateToAgentVault();
-      } catch (err) {
-        createNotification({
-          type: "error",
-          text: err instanceof Error ? err.message : "Failed to join the Agent Vault project."
-        });
-      }
-      return;
-    }
-
-    if (canRequestAccess) {
-      setIsAgentVaultRequestAccessOpen(true);
-      return;
-    }
-
-    createNotification({
-      type: "error",
-      text: "You don't have access to Agent Vault. Ask an Agent Vault admin to add you."
-    });
-  };
-
   const navigateToSecretScanning = (projectId: string) => {
     if (currentOrg?.id) setSecretScanningActiveProjectCookie(currentOrg.id, projectId);
     navigate({
@@ -466,6 +416,37 @@ export const ProjectCategoryOverview = () => {
     }
   };
 
+  // Only a member with a resolved project gets a link; joining, requesting access, setup, the
+  // instance picker and lazy bootstrap stay actions on the tile.
+  const getMemberTileLink = (type: ProjectType) => {
+    const orgId = currentOrg?.id ?? "";
+    if (
+      type === ProjectType.CertificateManager &&
+      cmInstances.length === 1 &&
+      isCertManagerMember
+    ) {
+      return getInstancePinningLink(orgId, { id: cmInstances[0].id, type }, "overview");
+    }
+    if (
+      type === ProjectType.SecretScanning &&
+      activeSecretScanningProjectId &&
+      isSecretScanningMember
+    ) {
+      return getInstancePinningLink(
+        orgId,
+        { id: activeSecretScanningProjectId, type },
+        "data-sources"
+      );
+    }
+    if (type === ProjectType.PAM && isPamMember) {
+      return { to: "/organizations/$orgId/pam/accounts", params: { orgId } } as const;
+    }
+    if (type === ProjectType.AgentVault && isAgentVaultMember) {
+      return { to: "/organizations/$orgId/agent-vault", params: { orgId } } as const;
+    }
+    return null;
+  };
+
   const handleTileClick = async (type: ProjectType) => {
     const orgId = currentOrg?.id || "";
 
@@ -489,7 +470,7 @@ export const ProjectCategoryOverview = () => {
     }
 
     if (type === ProjectType.AgentVault) {
-      await enterAgentVaultProject();
+      await enterAgentVault();
       return;
     }
 
@@ -552,13 +533,6 @@ export const ProjectCategoryOverview = () => {
       } as Project)
     : undefined;
 
-  const agentVaultRequestAccessProject: Project | undefined = pendingAgentVaultProjectId
-    ? ({
-        id: pendingAgentVaultProjectId,
-        name: "Agent Vault"
-      } as Project)
-    : undefined;
-
   return (
     <>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -567,6 +541,8 @@ export const ProjectCategoryOverview = () => {
           const { iconClassName, containerClassName, cardClassName, titleUnderlineClassName } =
             PRODUCT_STYLES[type];
           const Icon = getProjectLucideIcon(type);
+          const memberTileLink = getMemberTileLink(type);
+          const titleClassName = `underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`;
 
           const tileBody = (
             <>
@@ -579,11 +555,16 @@ export const ProjectCategoryOverview = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <CardTitle className="flex items-center gap-1.5 text-base text-foreground">
-                      <span
-                        className={`underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`}
-                      >
-                        {getProjectTitle(type)}
-                      </span>
+                      {memberTileLink ? (
+                        <RowLink
+                          {...memberTileLink}
+                          className={`${titleClassName} after:rounded-md`}
+                        >
+                          {getProjectTitle(type)}
+                        </RowLink>
+                      ) : (
+                        <span className={titleClassName}>{getProjectTitle(type)}</span>
+                      )}
                       <PreviewBadge type={type} />
                     </CardTitle>
                     <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
@@ -636,8 +617,16 @@ export const ProjectCategoryOverview = () => {
 
           const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
 
-          // These resolve their destination asynchronously (instance picker, lazy project
-          // bootstrap, join-on-behalf), so they stay handler-driven.
+          if (memberTileLink) {
+            return (
+              <Card key={type} linked className={tileClassName}>
+                {tileBody}
+              </Card>
+            );
+          }
+
+          // Until the member's project is resolved, these resolve their destination asynchronously
+          // (instance picker, lazy project bootstrap, join-on-behalf), so they stay handler-driven.
           if (
             type === ProjectType.CertificateManager ||
             type === ProjectType.PAM ||
@@ -700,15 +689,7 @@ export const ProjectCategoryOverview = () => {
         subTitle="Requesting access to Secret Scanning. You may include an optional note for admins to review your request."
       />
 
-      <RequestProjectAccessModal
-        isOpen={isAgentVaultRequestAccessOpen}
-        onOpenChange={(isOpen) => {
-          setIsAgentVaultRequestAccessOpen(isOpen);
-          if (!isOpen) setPendingAgentVaultProjectId(null);
-        }}
-        project={agentVaultRequestAccessProject}
-        subTitle="Requesting access to Agent Vault. You may include an optional note for admins to review your request."
-      />
+      {agentVaultAccessRequest}
 
       <CertManagerNotConfiguredModal
         isOpen={isCertManagerSetupOpen}

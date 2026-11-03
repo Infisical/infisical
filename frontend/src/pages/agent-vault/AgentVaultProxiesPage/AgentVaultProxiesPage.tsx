@@ -1,8 +1,10 @@
 import { ReactNode, useState } from "react";
+import axios from "axios";
 import { format } from "date-fns";
 import {
   BanIcon,
   ChevronDownIcon,
+  DownloadIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -58,6 +60,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
+import { downloadTxtFile } from "@app/helpers/download";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -66,6 +69,7 @@ import {
 import { useResetPageHelper } from "@app/hooks";
 import {
   AgentVaultTrafficPolicy,
+  fetchAgentVaultProxyCa,
   useDeleteAgentVaultProxy,
   useListAgentVaultProxies,
   useRevokeAgentVaultProxyAccess,
@@ -74,6 +78,7 @@ import {
 import { TAgentVaultProxy, TAgentVaultProxyToken } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { ProxyFormDialog } from "./components/ProxyFormDialog";
@@ -138,6 +143,22 @@ const truncateFingerprint = (fingerprint: string) =>
 export const AgentVaultProxiesPage = () => {
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  // Asked of the server on every click, never cached: the CA changes on rotation, and only the server can
+  // refuse a proxy that serves its own CA.
+  const downloadProxyCa = async (proxy: TAgentVaultProxy) => {
+    try {
+      const ca = await fetchAgentVaultProxyCa(proxy.id);
+      downloadTxtFile(`${proxy.name}-ca.pem`, ca.certificate);
+    } catch (error) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined;
+      createNotification({
+        type: "error",
+        text: message ?? "Failed to download the certificate authority"
+      });
+    }
+  };
 
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
@@ -161,6 +182,7 @@ export const AgentVaultProxiesPage = () => {
   const rotateProxyToken = useRotateAgentVaultProxyToken();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  useAgentVaultCreateIntent(() => setIsCreateOpen(true), isAdmin);
   const [proxyToEdit, setProxyToEdit] = useState<TAgentVaultProxy | null>(null);
   const [proxyToDelete, setProxyToDelete] = useState<TAgentVaultProxy | null>(null);
   const [proxyToRevoke, setProxyToRevoke] = useState<TAgentVaultProxy | null>(null);
@@ -263,6 +285,8 @@ export const AgentVaultProxiesPage = () => {
             <TableHeader>
               <TableRow>
                 <TableHead
+                  isTruncatable
+                  className="w-2/5"
                   sortDirection={sortColumn === SortColumn.Name ? sortDirection : "none"}
                   onSortChange={(direction) => handleSort(SortColumn.Name, direction)}
                 >
@@ -310,7 +334,21 @@ export const AgentVaultProxiesPage = () => {
               {!isPending &&
                 displayed.map((proxy) => (
                   <TableRow key={proxy.id}>
-                    <TableCell>{proxy.name}</TableCell>
+                    <TableCell isTruncatable className="min-w-64">
+                      <div className="flex items-center gap-2.5">
+                        <span className="truncate" title={proxy.name}>
+                          {proxy.name}
+                        </span>
+                        {proxy.description && (
+                          <span
+                            className="min-w-0 flex-1 truncate text-sm text-muted"
+                            title={proxy.description}
+                          >
+                            {proxy.description}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <ProxyStatusBadge proxy={proxy} />
                     </TableCell>
@@ -336,6 +374,19 @@ export const AgentVaultProxiesPage = () => {
                             variant="ghost"
                             size="xs"
                           />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <IconButton
+                                aria-label="Download certificate authority"
+                                variant="ghost"
+                                size="xs"
+                                onClick={() => downloadProxyCa(proxy)}
+                              >
+                                <DownloadIcon />
+                              </IconButton>
+                            </TooltipTrigger>
+                            <TooltipContent>Download certificate authority</TooltipContent>
+                          </Tooltip>
                         </div>
                       ) : (
                         <span className="text-muted">&mdash;</span>

@@ -30,13 +30,13 @@ import {
   useRefreshBillingV2Entitlements
 } from "@app/hooks/api";
 
+import { catalogById } from "./billing-v2-format";
+import { BillingV2RenderState } from "./billing-v2-view-types";
 import { Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
 import { RemoveProductModal } from "./components/RemoveProductModal";
 import { ALL_ORGS_VALUE } from "./components/RootOrgFilter";
 import { UsageBreakdownSheet } from "./components/UsageBreakdownSheet";
-import { catalogById } from "./billing-v2-format";
-import { BillingV2RenderState } from "./billing-v2-view-types";
 import { useOfflineBilling } from "./useOfflineBilling";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
@@ -181,7 +181,6 @@ export const BillingV2Page = () => {
       createNotification({ type: "info", text: "Checkout was canceled." });
     }
     window.history.replaceState({}, "", window.location.pathname);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // An instance admin can point the page at an organization they are not a member of, which the

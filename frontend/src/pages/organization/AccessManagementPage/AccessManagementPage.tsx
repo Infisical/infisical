@@ -27,8 +27,8 @@ import {
 } from "@app/context";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
-import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
 import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
+import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
 
 export const AccessManagementPage = () => {
   const { t } = useTranslation();

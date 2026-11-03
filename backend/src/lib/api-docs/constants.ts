@@ -69,6 +69,7 @@ export enum ApiDocsTags {
   Integrations = "Integrations",
   ServiceTokens = "Service Tokens",
   AuditLogs = "Audit Logs",
+  Alerting = "Alerting",
   PkiCertificateAuthorities = "PKI Certificate Authorities",
   PkiCertificates = "PKI Certificates",
   PkiCertificatePolicies = "PKI Certificate Policies",
@@ -105,9 +106,11 @@ export enum ApiDocsTags {
   AgentVault = "Agent Vault",
   AgentVaultAccessBundles = "Agent Vault Access Bundles",
   AgentVaultVariables = "Agent Vault Variables",
+  AgentVaultSkills = "Agent Vault Skills",
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
+  AgentVaultDelegations = "Agent Vault Delegations",
   AgentVaultSessionLogs = "Agent Vault Session Logs",
   AgentVaultSettings = "Agent Vault Settings",
   AgentVaultAppConnections = "Agent Vault App Connections",
@@ -442,6 +445,8 @@ export const TLS_CERT_AUTH = {
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     verifyClientCertificateChain:
       "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
+    bindAccessTokenToCertificate:
+      "When true, access tokens issued by this auth method only work on requests that present the same client certificate used to log in.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
@@ -456,6 +461,8 @@ export const TLS_CERT_AUTH = {
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
     verifyClientCertificateChain:
       "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
+    bindAccessTokenToCertificate:
+      "When true, access tokens issued by this auth method only work on requests that present the same client certificate used to log in. Turning this on revokes the identity's existing TLS Certificate Auth access tokens.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
@@ -957,6 +964,79 @@ export const INSIGHTS = {
     totalProjects: "The total number of secret management projects in the organization.",
     projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
   },
+  GET_UNUSED_ACCESS: {
+    projectId: "The ID of the project to list unused access for.",
+    offset: "The number of actors to skip before returning results.",
+    limit: "The maximum number of actors to return per page.",
+    search: "Only actors whose name contains this text, ignoring case.",
+    actors:
+      "The users and machine identities that can read secrets they have not read in the last 30 days, those with the most such secrets first. Project admins are left out: they can read everything by design. Empty until unusedAccessFrom.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    name: "The username of the user, or the name of the machine identity.",
+    accessibleSecretCount: "How many secrets the actor can read the value of today.",
+    unusedSecretCount:
+      "How many of those it has not read, or an import or reference of, in the last 30 days. A secret only counts once it and the actor's access are both older than that.",
+    environments: "The slugs of the environments holding the unread secrets.",
+    accessPaths: "How the actor has its access to the project's secrets.",
+    roles: "The project roles the actor holds directly, not through a group.",
+    roleId: "The ID of the custom role. Null for a built-in role.",
+    roleSlug: "The slug of the built-in role, or 'custom' for a custom role.",
+    roleName: "The name of the role.",
+    groups: "The groups the actor belongs to that are members of the project.",
+    groupId: "The ID of the group.",
+    groupName: "The name of the group.",
+    groupRoles: "The project roles the group gives its members.",
+    additionalPrivileges:
+      "The project-wide additional privileges the actor holds. Access granted on a folder is listed under folderAccess instead.",
+    additionalPrivilegeId: "The ID of the additional privilege.",
+    additionalPrivilegeName: "The name of the additional privilege.",
+    folderAccess:
+      "The folder access the actor has been granted directly on folders, active grants only. It applies whether the actor is a direct member or reaches the project through a group.",
+    folderAccessId: "The ID of the folder access grant.",
+    folderId: "The ID of the folder.",
+    folderEnvironment: "The slug of the environment the folder is in.",
+    folderSecretPath: "The path of the folder.",
+    folderRole: "The access level granted on the folder: list, read, edit, manage or full-access.",
+    totalCount: "The number of actors the caller can page through.",
+    unusedAccessFrom:
+      "When unused access starts being judged for the project: 30 days after reads started being tracked for it. Nothing is listed before then, since reads from before tracking began are unknown. Results are recomputed once a day."
+  },
+  GET_UNUSED_ACCESS_ACTOR: {
+    projectId: "The ID of the project.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    secrets:
+      "The secrets the actor can read but has not read in the last 30 days, ordered by environment and path. The list can be shorter than the actor's unusedSecretCount: it holds at most 200, only those the caller can see, and none deleted since the results were computed.",
+    secretKey: "The key of the secret.",
+    environment: "The slug of the environment the secret is in.",
+    secretPath: "The path of the folder the secret is in."
+  },
+  GET_SECRET_READ_ACTIVITY: {
+    projectId: "The ID of the project where the secret is located.",
+    secretName: "The name of the secret.",
+    environment: "The slug of the environment where the secret is located.",
+    secretPath: "The folder path where the secret is located.",
+    readsTrackedSince:
+      "Reads are reported from this date: the latest of 30 days ago, when reads started being tracked for the project, and when the secret and its folder were created.",
+    unusedAccessFrom:
+      "When unused access starts being judged for the project: 30 days after reads started being tracked for it. Before then no actor counts as unused access.",
+    actors:
+      "One entry for each user or machine identity that can read the secret's value today, directly or through a group, ordered by name. Project admins are included so their reads show.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    name: "The username of the user, or the name of the machine identity.",
+    isProjectAdmin:
+      "Whether the actor is a project admin, directly or through a group. Admins can read everything by design, so they never count as unused access.",
+    lastReadAt:
+      "When the actor last read the secret, or an import or reference of it, since readsTrackedSince, as the first read of that day. Null when they have not.",
+    accessSince:
+      "When the actor got access to this secret: the oldest of their roles, groups, privileges and folder grants that gives it on its own, from when it was last created or changed. An edit to a custom role's rules counts for every secret the role gives, since which secrets an edit opened is not recorded.",
+    readStatus:
+      "read: the actor read the secret since readsTrackedSince. unused: no read, and the secret and their access are both older than 30 days, so it counts as unused access. not-judged: no read, but it does not count yet; notJudgedReason says why.",
+    notJudgedReason:
+      "Why an actor without a read is not counted as unused access. project-admin: admins are never counted. tracking-too-new: reads have been tracked for less than 30 days, until unusedAccessFrom. access-too-new: they got access to the secret in the last 30 days. secret-too-new: the secret is newer than 30 days. Null unless readStatus is not-judged."
+  },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
     date: "The day the accesses happened on, in UTC, as YYYY-MM-DD.",
@@ -1063,7 +1143,18 @@ export const PROJECTS = {
     template: "The name of the project template, if specified, to apply to this project."
   },
   DELETE: {
-    projectId: "The ID of the project to delete."
+    projectId: "The ID of the project to delete.",
+    hardDelete:
+      "When true, the project is permanently deleted shortly after the request. When false or omitted, a secret manager project is soft-deleted (preserved and scheduled for permanent deletion after a grace period) and hidden from subsequent reads."
+  },
+  LIST_DELETED: {
+    type: "The type of soft-deleted projects to list."
+  },
+  RESTORE: {
+    projectId: "The ID of the soft-deleted project to restore."
+  },
+  PERMANENTLY_DELETE: {
+    projectId: "The ID of the soft-deleted project to permanently delete."
   },
   GET: {
     projectId: "The ID of the project."
@@ -1133,7 +1224,9 @@ export const PROJECTS = {
     forPkiSync: "Retrieve only certificates available for PKI sync.",
     search: "Search by SAN, CN, certificate ID, or serial number.",
     status:
-      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired and revoked. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked.",
+      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired, revoked and deleted. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked. Deleted certificates match only deleted.",
+    includeDeleted:
+      "Include deleted certificates in the results when no status filter is set. Deleted certificates are excluded by default.",
     profileIds: "Filter by certificate profile IDs.",
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",
@@ -2314,11 +2407,17 @@ export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
+    includeDeleted: "Return the certificate even if it was deleted. Without it, a deleted certificate returns 404.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
     externalMetadata:
       "Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.",
     latestRenewalCertificateId:
-      "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked. Use this to follow renewals without walking the chain one certificate at a time."
+      "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked and deleted certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked or deleted. Use this to follow renewals without walking the chain one certificate at a time.",
+    deletedAt:
+      "When this certificate was deleted, or null if it has not been. A deleted certificate keeps its record, metadata and renewal history, but its certificate and private key are no longer available.",
+    deletedByActorType: "The type of actor that deleted this certificate: 'user' or 'identity'.",
+    deletedByActorId: "The ID of the user or machine identity that deleted this certificate.",
+    deletedByActorName: "The name of the user or machine identity that deleted this certificate, if it still exists."
   },
   RENEW: {
     id: "The ID of the certificate to renew.",
@@ -2333,6 +2432,8 @@ export const CERTIFICATES = {
     id: "The ID of the certificate to preview a renewal for.",
     hasOriginatingRequest:
       "Whether the certificate has a recorded originating request. When false the preview falls back to the issued certificate, which is the case for imported and discovered certificates.",
+    hasOriginatingCsr:
+      "Whether the request that produced this certificate carried a CSR. When Infisical holds neither the private key nor this CSR, renewing with the existing key pair is refused.",
     request:
       "The values a renewal will request, taken from the request that produced this certificate including any profile defaults it recorded.",
     issuerModifiedFields:
@@ -2948,6 +3049,12 @@ export const AppConnections = {
     }
   },
   CREDENTIALS: {
+    IMPERVA: {
+      apiId: "The API ID of an Imperva API key, shown beside the key in the Cloud Security Console.",
+      apiKey: "The Imperva API key. It has to be enabled, and its role needs the Manage SSL Certificates permission.",
+      accountId:
+        "The numeric Imperva account ID to act on. Set it to manage websites in a sub-account. Defaults to the account the API key belongs to."
+    },
     PALO_ALTO_NETWORKS: {
       hostname: "The IP address or hostname of the management interface of the firewall or Panorama.",
       port: "The HTTPS port of the management interface. Defaults to 443.",
@@ -3000,6 +3107,10 @@ export const AppConnections = {
     CAMUNDA: {
       clientId: "The client ID used to authenticate with Camunda.",
       clientSecret: "The client secret used to authenticate with Camunda."
+    },
+    DATABRICKS: {
+      scopes:
+        "The OAuth scopes to request for the service principal's token: secrets for secret syncs, and authentication and scim for secret rotations. Each must be assigned to the client secret. Defaults to all-apis when omitted or empty."
     },
     WINDMILL: {
       instanceUrl: "The Windmill instance URL to connect with (defaults to https://app.windmill.dev).",
@@ -3083,6 +3194,11 @@ export const AppConnections = {
     ZABBIX: {
       apiToken: "The API Token used to access Zabbix.",
       instanceUrl: "The Zabbix instance URL to connect with."
+    },
+    SERVICENOW: {
+      instanceUrl: "The base URL of the ServiceNow instance to connect with, without a path or trailing slash.",
+      username: "The User ID of the ServiceNow integration user.",
+      password: "The password of the ServiceNow integration user."
     },
     RAILWAY: {
       apiToken: "The API token used to authenticate with Railway."
@@ -3380,7 +3496,9 @@ export const SecretSyncs = {
       org: "The name of the GitHub organization.",
       owner: "The name of the GitHub account owner of the repository.",
       repo: "The name of the GitHub repository.",
-      env: "The name of the GitHub environment."
+      env: "The name of the GitHub environment.",
+      secretType:
+        "The type of GitHub secret to sync to: actions, dependabot, or codespaces. Defaults to actions. The repository-environment scope only supports actions, and codespaces is not available on GitHub Enterprise Server."
     },
     AZURE_ENTRA_ID_SCIM: {
       servicePrincipalId:
@@ -4127,7 +4245,9 @@ export const OidcSSo = {
     isActive: "Whether to enable or disable this OIDC configuration.",
     manageGroupMemberships:
       "Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.",
-    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification."
+    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification.",
+    mfaClaimName: "The ID token claim that lists the authentication methods the user completed. Defaults to amr.",
+    mfaAmrValues: "Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA."
   },
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the OIDC config for.",
@@ -4147,7 +4267,9 @@ export const OidcSSo = {
     isActive: "Whether to enable or disable this OIDC configuration.",
     manageGroupMemberships:
       "Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.",
-    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification."
+    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification.",
+    mfaClaimName: "The ID token claim that lists the authentication methods the user completed. Defaults to amr.",
+    mfaAmrValues: "Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA."
   }
 };
 
@@ -4164,7 +4286,11 @@ export const SamlSso = {
     issuer: "The SAML provider issuer URL or entity ID.",
     cert: "The certificate to use for SAML authentication.",
     enableGroupSync:
-      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups."
+      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.",
+    mfaSignalAttribute:
+      "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
+    mfaAuthnContexts:
+      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
   },
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the SAML config for.",
@@ -4175,7 +4301,11 @@ export const SamlSso = {
     issuer: "The SAML provider issuer URL or entity ID.",
     cert: "The certificate to use for SAML authentication.",
     enableGroupSync:
-      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups."
+      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.",
+    mfaSignalAttribute:
+      "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
+    mfaAuthnContexts:
+      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
   },
   ACS: {
     samlConfigId: "The ID of the SAML configuration the response is for.",
@@ -4517,6 +4647,10 @@ export const AGENT_VAULT = {
       "true lists only the access bundles granted to you, directly or through a group. false lists the ones you reach only as an admin. Omit to list them all.",
     servicesRequiringSetup: "The services in this access bundle that still require your personal values.",
     servicesRequiringSetupId: "The ID of the service, for setting your personal values on it.",
+    onBehalfOfUserId:
+      "List the access bundles a session on behalf of this user could use: those both the user and your machine identity can use. requiresSetup and servicesRequiringSetup then refer to the user's personal values. Only a machine identity whose delegation covers the user can do this, and granted can't be combined with it. Set this or onBehalfOfUserEmail, not both.",
+    onBehalfOfUserEmail:
+      "Like onBehalfOfUserId, naming the user by email address instead. Set this or onBehalfOfUserId, not both.",
     servicesRequiringSetupName: "The name of the service."
   },
   SERVICE: {
@@ -4562,6 +4696,10 @@ export const AGENT_VAULT = {
       "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
     allowedPathPrefixes:
       "The path prefixes this service allows, matched on whole segments, so `/repos` covers `/repos/octo` but not `/repositories`. `null` allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
+    allowedTools:
+      "The MCP tools agents can call through this service, by exact, case-sensitive name. Each name is 1 to 128 letters, numbers, underscores (_), hyphens (-), or dots (.). `null` allows every tool. The proxy refuses a call to any other tool and leaves it out of the server's tool list. MCP services only.",
+    mcpToolName: "The tool's name, as the MCP server reports it.",
+    mcpToolDescription: "The server's description of the tool, or null if it gave none.",
     customHeaders:
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
     customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
@@ -4588,9 +4726,9 @@ export const AGENT_VAULT = {
     referenceCustomHeaderId: "The custom header whose value uses the variable.",
     referenceSubstitutionId: "The substitution whose value uses the variable.",
     bearerMemberProvidedFields:
-      "Leave the token to each member: send `credential-value` here and no `value`. Every member sets their own, and a session uses the token of whoever it belongs to. Omit on update to keep the current setting; send an empty list to set the token yourself again, which then needs a `value`. Changing this clears every member's saved values for the service.",
+      "Leave the token to each member: send `credential-value` here and no `value`. Every member sets their own, and a session uses the token of the member who started it. A session a machine identity started on behalf of a user uses that user's token instead. Omit on update to keep the current setting; send an empty list to set the token yourself again, which then needs a `value`. Changing this clears every member's saved values for the service.",
     basicMemberProvidedFields:
-      "The halves of the basic credential each member sets for themselves: `credential-username`, `credential-value` (the password) or both. Send no value for a half listed here. A session uses the values of whoever it belongs to. Omit on update to keep the current setting. Adding a half keeps what members saved, and taking one back deletes only that half's values. Changing the credential type deletes every member's values for the service.",
+      "The halves of the basic credential each member sets for themselves: `credential-username`, `credential-value` (the password) or both. Send no value for a half listed here. A session uses the values of the member who started it. A session a machine identity started on behalf of a user uses that user's values instead. Omit on update to keep the current setting. Adding a half keeps what members saved, and taking one back deletes only that half's values. Changing the credential type deletes every member's values for the service.",
     memberProvidedFields:
       "The credential fields each member sets for themselves: credential-value (a bearer token or a basic password) and credential-username. Empty when the admin sets the whole credential."
   },
@@ -4677,6 +4815,45 @@ export const AGENT_VAULT = {
     createdAt: "When the variable was added.",
     updatedAt: "When the variable was last changed."
   },
+  SKILL: {
+    skillId: "The ID of the skill.",
+    name: "The name of the skill, taken from the `name` in the SKILL.md of its latest version. Lowercase letters, numbers and hyphens.",
+    description: "What the skill is for, taken from the `description` in the SKILL.md of its latest version.",
+    latestVersion: "The number of the skill's newest version.",
+    accessBundles:
+      "The access bundles the skill is in, ordered by name. A member sees only the bundles they have been granted.",
+    accessBundleId: "The ID of an access bundle the skill is in.",
+    accessBundleName: "The name of the access bundle.",
+    createdAt: "When the skill was added.",
+    updatedAt: "When the skill was last changed.",
+    files:
+      "Every file in the skill folder. One must be `SKILL.md` at the root, starting with a YAML header that sets `name` and `description`. At most 50 files, 256 KB per file and 1 MB in total.",
+    filePath:
+      "The file's path inside the skill folder, using `/` between folders. No leading `/`, and no `.` or `..` parts. At most 255 characters, and each file or folder name at most 255 bytes.",
+    fileMode: "The file's permissions: `0644` for a regular file, `0755` for one that can be run.",
+    fileContent: "The file's content, encoded as base64.",
+    latestFiles: "The files of the latest version.",
+    versionId: "The ID of the version.",
+    version: "The version number. Versions count up from 1, and the newest 20 are kept.",
+    sha256: "The SHA-256 digest of the version's files, as hex.",
+    sizeBytes: "The total size of the version's files in bytes.",
+    fileCount: "How many files the version has.",
+    versionCreatedAt: "When the version was saved.",
+    unchanged:
+      "True if the files match the latest version, in which case no new version was made and that version is returned.",
+    baseVersion:
+      "The version these files were edited from. If a newer version has been saved since, nothing is saved and the request fails with 409. Omit it to update regardless.",
+    restoreUnchanged:
+      "True if the version being restored has the same files as the latest version, in which case no new version was made and the latest version is returned.",
+    addSkillId: "The ID of the skill to add to the access bundle.",
+    search: "Match skills whose name or description contains this text.",
+    nameFilter: "Return only the skill with exactly this name.",
+    limit: "The maximum number of skills to return. Defaults to 20.",
+    offset: "How many skills to skip.",
+    totalCount: "How many skills match the filters, across every page.",
+    sessionSkills:
+      "The latest version of each skill on the session's access bundles that the session's owner can still reach, ordered by name."
+  },
   MEMBER: {
     grantedAt: "When the access bundle was granted.",
     userId: "The ID of the user whose Agent Vault membership this is.",
@@ -4702,6 +4879,7 @@ export const AGENT_VAULT = {
     revokeGroupIds: "The IDs of the groups to revoke the access bundle from.",
     skipped: "The requested grantees who already had the access bundle and were left as they were.",
     revokeSkipped: "The requested grantees who did not have the access bundle, so nothing was revoked.",
+    actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",
     offset: "How many members to skip."
@@ -4731,6 +4909,7 @@ export const AGENT_VAULT = {
     offset: "How many candidates to skip."
   },
   AVAILABLE_GRANTEE: {
+    actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match candidates by name, username or email address.",
     limit: "The maximum number of candidates to return.",
     offset: "How many candidates to skip."
@@ -4738,9 +4917,10 @@ export const AGENT_VAULT = {
   PROXY: {
     proxyId: "The ID of the proxy.",
     name: "The name of the proxy.",
+    description: "A description of what this proxy is for.",
     orderBy: "What to sort proxies by: name or createdAt.",
     orderDirection: "Which way to sort: asc or desc.",
-    search: "Match proxies by name.",
+    search: "Match proxies by name or description.",
     limit: "The maximum number of proxies to return.",
     offset: "How many proxies to skip.",
     heartbeat: "When the proxy last checked in, or `null` if it never has.",
@@ -4750,6 +4930,7 @@ export const AGENT_VAULT = {
     rootCa:
       "The certificate authority Infisical keeps for this proxy: a PEM certificate and its PKCS#8 PEM private key.",
     rootCaCertificatePem: "The certificate authority's certificate, in PEM form.",
+    ca: "The certificate authority the proxy serves, with its certificate in PEM form. Agents trust it to accept the proxy's certificates.",
     rootCaPrivateKey: "The certificate authority's private key, in PKCS#8 PEM form.",
     servedCaCertificate:
       "The certificate authority the proxy serves, in PEM form, when it uses its own instead of Infisical's. Infisical records its fingerprint and returns no `rootCa`.",
@@ -4815,13 +4996,22 @@ export const AGENT_VAULT = {
   SESSION: {
     sessionId: "The ID of the session.",
     accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
-    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
+    ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d, or to 1h for a session started on behalf of a user.",
+    label:
+      "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",
+    updateLabel:
+      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. You can't change the label once the session's owner, or the user it was started on behalf of, is deleted.",
+    onBehalfOf:
+      "Start the session on behalf of a user instead of yourself. Only a machine identity whose delegation covers the user can do this. The session can use only an access bundle that both the user and the machine identity can use, and it uses the user's personal values. The session still belongs to the machine identity, so only the machine identity and Agent Vault admins can see it and its session logs, not the user. Name the user by userId or by userEmail, not both.",
+    onBehalfOfUserId: "The ID of the user to start the session on behalf of.",
+    onBehalfOfUserEmail: "The email address of the user to start the session on behalf of.",
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
     status:
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
-    search: "Match sessions by actor name, actor email or access bundle name.",
+    search:
+      "Match sessions by label, actor name, actor email, the name or email of the user a session was started on behalf of, or access bundle name.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip.",
     actorType: "Whether the session belongs to a user or a machine identity.",
@@ -4832,8 +5022,68 @@ export const AGENT_VAULT = {
       "The first name of the user. Once the user is deleted, the full name recorded when the session was created.",
     lastName: "The last name of the user, or null once the user is deleted.",
     identityName:
-      "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created."
+      "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created.",
+    onBehalfOfSession:
+      "The user the machine identity in actor started this session on behalf of, or null when the session is the actor's own.",
+    onBehalfOfType: "Always user: a machine identity starts sessions only on behalf of users.",
+    onBehalfOfUserIdRead: "The ID of the user, or null once the user is deleted."
+  },
+  DELEGATION: {
+    machineIdentityId: "The ID of the machine identity the delegation belongs to.",
+    machineIdentityIds:
+      "Return only the delegations of these machine identities. Separate several IDs with commas, up to 100.",
+    machineIdentity: "The machine identity that can start sessions on behalf of users.",
+    machineIdentityName: "The name of the machine identity.",
+    scope:
+      "Which users the machine identity can start sessions on behalf of: every Agent Vault member (all-members), or only the users and the members of the groups in the delegation (selected).",
+    userIds:
+      "The users the machine identity can act on behalf of, up to 100. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+    groupIds:
+      "The groups whose members the machine identity can act on behalf of, up to 100. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+    users: "The users in the delegation.",
+    groups: "The groups in the delegation. Their members are covered while they stay in the group.",
+    userId: "The ID of the user.",
+    username: "The username of the user.",
+    email: "The email address of the user.",
+    firstName: "The first name of the user.",
+    lastName: "The last name of the user.",
+    groupId: "The ID of the group.",
+    groupName: "The name of the group.",
+    addedAt: "When the user or group was added to the delegation.",
+    missingAccessBundles:
+      "The access bundles that users the delegation covers can use and the machine identity can't. A session on behalf of a user can use only an access bundle that both can use, so the machine identity can't start sessions over these. With all-members, this is every access bundle the machine identity can't use, since Agent Vault admins can use every bundle. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
+    userMissingAccessBundles:
+      "The access bundles this user can use and the machine identity can't, so the machine identity can't start sessions over them on the user's behalf. For an Agent Vault admin, this is every access bundle the machine identity can't use. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
+    groupMissingAccessBundles:
+      "The access bundles granted to this group, or every bundle if the group has the Admin role, that the machine identity can't use. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
+    accessBundleId: "The ID of the access bundle.",
+    accessBundleName: "The name of the access bundle.",
+    createdAt: "When the delegation was set up.",
+    updatedAt: "When the delegation was last saved.",
+    limit: "The maximum number of delegations to return.",
+    offset: "How many delegations to skip.",
+    totalCount: "How many delegations match, across every page.",
+    addUserIds:
+      "The users to add, up to 100. Each must be a member of Agent Vault. Users the delegation already names are skipped.",
+    addGroupIds:
+      "The groups to add, up to 100. Each must be a member of Agent Vault. Groups the delegation already names are skipped.",
+    removeUserIds: "The users to take out of the delegation, up to 100. Users it doesn't name are skipped.",
+    removeGroupIds: "The groups to take out of the delegation, up to 100. Groups it doesn't name are skipped.",
+    afterRemove:
+      "The delegation after the change, or null if it no longer names anyone. A delegation that names no one is removed."
+  },
+  AVAILABLE_DELEGATION_SUBJECT: {
+    actorTypeFilter: "List only users, or only groups.",
+    search: "Match users by name, username or email address, and groups by name.",
+    limit: "The maximum number of users and groups to return.",
+    offset: "How many users and groups to skip.",
+    totalCount: "How many users and groups match, across every page."
   }
+};
+
+export const IMPERVA_PKI_SYNC_DESTINATION_CONFIG = {
+  siteId: "The numeric ID of the Imperva website that receives the certificate.",
+  siteName: "The website's name, kept for display. Imperva's website ID is what the sync acts on."
 };
 
 export const PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATION_CONFIG = {

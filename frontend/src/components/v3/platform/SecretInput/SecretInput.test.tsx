@@ -1,5 +1,5 @@
-import { renderToStaticMarkup } from "react-dom/server";
 import assert from "node:assert/strict";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, it, vi } from "vitest";
 
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";

@@ -1,5 +1,4 @@
 import crypto from "crypto";
-
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -138,7 +137,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
         awsRegion: DEFAULT_AWS_REGION
       });
     }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const webhookSigningKey = watch("webhookSigningKey");
   const stackName = watch("stackName");

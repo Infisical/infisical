@@ -12,9 +12,9 @@ import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
+import { LogsSection } from "./components";
 import { AuditLogSettingsTab } from "./components/AuditLogSettingsTab";
 import { AuditLogStreamsTab } from "./components/AuditLogStreamTab";
-import { LogsSection } from "./components";
 
 enum AuditLogsPageTabs {
   AuditLogs = "audit-logs",

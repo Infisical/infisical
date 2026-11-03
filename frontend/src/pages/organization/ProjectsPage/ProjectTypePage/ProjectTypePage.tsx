@@ -112,6 +112,7 @@ import {
 import { useGetSecretScanningProjectId } from "@app/hooks/api/secretScanningV2";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import { DeletedProjectsTable } from "@app/pages/organization/ProjectsPage/components/DeletedProjectsTable";
 import {
   ProjectListToggle,
   ProjectListView
@@ -299,7 +300,7 @@ export const ProjectTypePage = () => {
   useEffect(() => {
     if (projectType === ProjectType.AgentVault) {
       navigate({
-        to: "/organizations/$orgId/agent-vault/sessions",
+        to: "/organizations/$orgId/agent-vault",
         params: { orgId }
       });
     }
@@ -307,18 +308,21 @@ export const ProjectTypePage = () => {
 
   if (projectType === ProjectType.CertificateManager) {
     return (
-      <CertManagerNotConfiguredModal
-        isOpen={isCertManagerSetupOpen}
-        onOpenChange={(open) => {
-          setIsCertManagerSetupOpen(open);
-          if (!open) {
-            navigate({
-              to: "/organizations/$orgId/projects",
-              params: { orgId }
-            });
-          }
-        }}
-      />
+      <>
+        <PageTitle title={getProjectTitle(projectType)} />
+        <CertManagerNotConfiguredModal
+          isOpen={isCertManagerSetupOpen}
+          onOpenChange={(open) => {
+            setIsCertManagerSetupOpen(open);
+            if (!open) {
+              navigate({
+                to: "/organizations/$orgId/projects",
+                params: { orgId }
+              });
+            }
+          }}
+        />
+      </>
     );
   }
 
@@ -410,6 +414,9 @@ const ProjectTypeContent = ({
           isAddingProjectsAllowed={isAddingProjectsAllowed}
           hideProjectListToggle={!canRequestAccess}
         />
+      )}
+      {projectType === ProjectType.SecretManager && (
+        <DeletedProjectsTable projectType={projectType} />
       )}
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}

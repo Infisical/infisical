@@ -75,6 +75,17 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return Number(result?.count ?? 0);
   };
 
+  // A null folderId means the folder was deleted and the cleanup queue has not reaped the row yet, so it is
+  // treated as gone.
+  const findLiveById = async (id: string, tx?: Knex) => {
+    const row = await (tx || db.replicaNode())(TableName.HoneyToken)
+      .where(`${TableName.HoneyToken}.id`, id)
+      .whereNotNull(`${TableName.HoneyToken}.folderId`)
+      .first();
+
+    return row?.folderId ? { ...row, folderId: row.folderId } : null;
+  };
+
   const findOneByTokenIdentifier = async (tokenIdentifier: string, tx?: Knex) => {
     const row = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
@@ -90,6 +101,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     const [result] = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .where(`${TableName.Project}.orgId`, orgId)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .whereNot(`${TableName.HoneyToken}.status`, "revoked")
       .whereNotNull(`${TableName.HoneyToken}.folderId`)
       .count<{ count: string | number }>({
@@ -153,8 +165,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
 
   const $selectForCleanup = (knex: Knex) =>
     knex(TableName.HoneyToken)
-      // left join: a row whose project was deleted before it was revoked still has to be found and reported
-      .leftJoin(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
+      .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .select(
         db.ref("id").withSchema(TableName.HoneyToken),
         db.ref("type").withSchema(TableName.HoneyToken),
@@ -196,7 +207,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .whereNot(`${TableName.HoneyToken}.status`, HoneyTokenStatus.Revoked);
 
   const findByIdForCleanup = async (id: string, tx?: Knex) =>
-    $selectForCleanup(tx || db.replicaNode())
+    $selectForCleanup(tx || db)
       .where(`${TableName.HoneyToken}.id`, id)
       .first();
 
@@ -206,13 +217,25 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .orderBy(`${TableName.HoneyToken}.updatedAt`, "asc")
       .limit(limit);
 
+  // Unlike countByProjectId, includes tokens in deleted environments, matching countByOrgId.
+  const countByProjectIdIncludingDeletedEnvironments = async (projectId: string, tx?: Knex) => {
+    const [result] = await (tx || db.replicaNode())(TableName.HoneyToken)
+      .where({ projectId })
+      .whereNot("status", "revoked")
+      .count<{ count: string | number }>({ count: "id" });
+
+    return Number(result?.count ?? 0);
+  };
+
   return {
     ...orm,
     findByFolderIds,
     countByFolderIds,
+    findLiveById,
     findOneByTokenIdentifier,
     countByOrgId,
     countByProjectId,
+    countByProjectIdIncludingDeletedEnvironments,
     tryMarkTriggered,
     createSecretMappings,
     deleteSecretMappingsByHoneyTokenId,

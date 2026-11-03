@@ -30,9 +30,9 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { CERT_SUBJECT_ALTERNATIVE_NAMES } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { CERT_SUBJECT_ALTERNATIVE_NAMES } from "@app/services/certificate-common/certificate-constants";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { ActiveCerts, WildcardCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -43,6 +43,17 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { TCertificateAuthorityCrlDALFactory } from "../../../ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import {
+  DEFAULT_CRL_VALIDITY_DAYS,
+  GENERAL_NAME_TYPES_WITH_OTHER_NAME,
+  PKI_TEXT_COLUMN_MAX_LENGTH,
+  SUPPORTED_GENERAL_NAME_TYPES
+} from "../../certificate-common/certificate-constants";
+import { appendCustomExtensions } from "../../certificate-common/certificate-extension-fns";
+import { validatePqcLicense } from "../../certificate-common/certificate-utils";
+import { TCertificateProfileDALFactory } from "../../certificate-profile/certificate-profile-dal";
+import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
+import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
 import { extractCertificateFields } from "../../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../../certificate/certificate-secret-dal";
 import {
@@ -55,17 +66,6 @@ import {
   TAltNameMapping,
   TAltNameType
 } from "../../certificate/certificate-types";
-import {
-  DEFAULT_CRL_VALIDITY_DAYS,
-  GENERAL_NAME_TYPES_WITH_OTHER_NAME,
-  PKI_TEXT_COLUMN_MAX_LENGTH,
-  SUPPORTED_GENERAL_NAME_TYPES
-} from "../../certificate-common/certificate-constants";
-import { appendCustomExtensions } from "../../certificate-common/certificate-extension-fns";
-import { validatePqcLicense } from "../../certificate-common/certificate-utils";
-import { TCertificateProfileDALFactory } from "../../certificate-profile/certificate-profile-dal";
-import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
-import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
 import { isExternalCaKeySource } from "../ca-key-source/ca-key-source-fns";
 import type { TCaKeySourceServiceFactory } from "../ca-key-source/ca-key-source-service";
 import { TExternalCaKeyReference } from "../ca-key-source/ca-key-source-types";

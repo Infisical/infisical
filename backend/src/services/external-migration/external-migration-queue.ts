@@ -14,10 +14,10 @@ import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-serv
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
-import { TProjectDALFactory } from "../project/project-dal";
-import { TProjectServiceFactory } from "../project/project-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectEnvServiceFactory } from "../project-env/project-env-service";
+import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectServiceFactory } from "../project/project-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";

@@ -74,7 +74,7 @@ export const ProjectIdentityDetailsSection = ({
     joinedLabel = "Joined Agent Vault";
   }
 
-  // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });

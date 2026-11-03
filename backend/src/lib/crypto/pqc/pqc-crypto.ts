@@ -21,7 +21,7 @@ const encodePkcs8 = (oid: string, rawPrivateKey: Uint8Array): Buffer => {
 const encodeSpki = (oid: string, rawPublicKey: Uint8Array): Buffer => {
   const spki = new SubjectPublicKeyInfo({
     algorithm: new AlgorithmIdentifier({ algorithm: oid }),
-    subjectPublicKey: rawPublicKey
+    subjectPublicKey: new Uint8Array(rawPublicKey).buffer
   });
   return Buffer.from(AsnConvert.serialize(spki));
 };
@@ -334,7 +334,7 @@ export const createPqcCrypto = (): Crypto => {
 const derivePublicKeyFromSecret = async (
   algName: string,
   secretKey: Uint8Array
-): Promise<{ raw: Uint8Array; spkiDer: Buffer }> => {
+): Promise<{ raw: Uint8Array; spkiDer: Buffer<ArrayBuffer> }> => {
   const oid = pqcNameToOid(algName);
   if (!oid) throw new Error(`Unknown PQC algorithm: ${algName}`);
 

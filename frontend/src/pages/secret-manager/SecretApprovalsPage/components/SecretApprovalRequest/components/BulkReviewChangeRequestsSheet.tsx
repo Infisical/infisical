@@ -153,7 +153,6 @@ const BulkReviewChangeRequestsSheetContent = ({
       });
     });
     return result;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requests, isLoadingDetails]);
 
   const decidedCount = requests.filter(({ id }) => decisions[id]).length;

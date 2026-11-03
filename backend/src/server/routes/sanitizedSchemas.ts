@@ -301,7 +301,6 @@ export const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
   updatedAt: true
 }).extend({
   config: AwsHoneyTokenRowConfigSchema,
-  projectId: z.string(),
   folderId: z.string().uuid(),
   environment: z.object({
     id: z.string(),

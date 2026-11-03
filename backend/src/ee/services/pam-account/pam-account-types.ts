@@ -1,5 +1,5 @@
-import { PamAccountType } from "../pam/pam-enums";
 import { TPamAccountSettingsOverrides } from "../pam-account-template/pam-account-template-schemas";
+import { PamAccountType } from "../pam/pam-enums";
 
 export type TCreatePamAccountDTO = {
   projectId: string;

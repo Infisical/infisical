@@ -12,8 +12,8 @@ import {
 } from "@app/components/v3/generic/Dialog";
 import { cn } from "@app/components/v3/utils";
 
-import { useAsRef } from "./hooks/use-as-ref";
 import type { PasteDialogState } from "./data-grid-types";
+import { useAsRef } from "./hooks/use-as-ref";
 
 interface DataGridPasteDialogProps<TData> {
   tableMeta: TableMeta<TData>;
@@ -40,7 +40,8 @@ export function DataGridPasteDialog<TData>({
 }
 
 interface PasteDialogProps
-  extends Pick<TableMeta<unknown>, "onPasteDialogOpenChange" | "onCellsPaste">,
+  extends
+    Pick<TableMeta<unknown>, "onPasteDialogOpenChange" | "onCellsPaste">,
     Required<Pick<TableMeta<unknown>, "pasteDialog">> {}
 
 // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -119,7 +120,6 @@ function PasteDialogImpl({ pasteDialog, onPasteDialogOpenChange, onCellsPaste }:
   );
 }
 
-// eslint-disable-next-line react/prop-types
 function RadioItem({ className, ...props }: React.ComponentProps<"input">) {
   return (
     <input

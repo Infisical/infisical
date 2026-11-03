@@ -14,7 +14,10 @@ import {
   FieldLabel,
   RadioGroup,
   RadioGroupItem,
-  TextArea
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useRenewCertificate } from "@app/hooks/api";
@@ -413,6 +416,13 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   } else if (!isSelfSigned && certificate?.caType === CertificateIssuerKind.External) {
     reuseRefusalReason =
       "The issuing certificate authority does not support reusing an existing key pair.";
+  } else if (
+    !isSelfSigned &&
+    certificate?.hasPrivateKey === false &&
+    renewalPreview?.hasOriginatingCsr === false
+  ) {
+    reuseRefusalReason =
+      "Infisical holds neither this certificate's private key nor the signing request it was issued from. Generate a new key pair, or use a CSR generated from the existing key.";
   }
   const csrRefusalReason = isSelfSigned
     ? "A self-signed certificate is signed by its own private key, which a signing request does not carry."
@@ -506,6 +516,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   );
 
   const [isSeeded, setIsSeeded] = useState(false);
+  const [openReasonFor, setOpenReasonFor] = useState<CertificateRenewalKeySource | null>(null);
   const seededCertificateIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isOpen) {
@@ -658,28 +669,68 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               <FieldLabel>Key pair</FieldLabel>
               <FieldContent>
                 <RadioGroup value={value} onValueChange={onChange} className="gap-2">
-                  {keySourceOptions.map((option) => (
-                    <FieldLabel
-                      key={option.value}
-                      htmlFor={`key-source-${option.value}`}
-                      variant="project"
-                    >
-                      <Field orientation="horizontal" className="items-center gap-3">
-                        <div className="min-w-0 flex-1 text-left">
-                          <p className="text-sm font-medium text-foreground">{option.label}</p>
-                          <p className="text-xs text-muted">
-                            {option.isDisabled ? option.disabledReason : option.description}
-                          </p>
-                        </div>
-                        <RadioGroupItem
-                          id={`key-source-${option.value}`}
-                          value={option.value}
-                          disabled={option.isDisabled}
-                          className="sr-only"
-                        />
-                      </Field>
-                    </FieldLabel>
-                  ))}
+                  {keySourceOptions.map((option) => {
+                    const card = (
+                      <FieldLabel
+                        key={option.value}
+                        htmlFor={`key-source-${option.value}`}
+                        variant="project"
+                      >
+                        <Field orientation="horizontal" className="items-center gap-3">
+                          <div className="min-w-0 flex-1 text-left">
+                            <p className="text-sm font-medium text-foreground">{option.label}</p>
+                            <p className="text-xs text-muted">
+                              {option.isDisabled
+                                ? "Not available for this certificate."
+                                : option.description}
+                            </p>
+                          </div>
+                          {option.isDisabled && (
+                            <span id={`key-source-${option.value}-reason`} className="sr-only">
+                              {option.disabledReason}
+                            </span>
+                          )}
+                          <RadioGroupItem
+                            id={`key-source-${option.value}`}
+                            value={option.value}
+                            disabled={option.isDisabled}
+                            aria-describedby={
+                              option.isDisabled ? `key-source-${option.value}-reason` : undefined
+                            }
+                            className="sr-only"
+                          />
+                        </Field>
+                      </FieldLabel>
+                    );
+                    if (!option.isDisabled) return card;
+                    return (
+                      <Tooltip
+                        key={option.value}
+                        open={openReasonFor === option.value}
+                        onOpenChange={(isReasonOpen) =>
+                          setOpenReasonFor(isReasonOpen ? option.value : null)
+                        }
+                      >
+                        <TooltipTrigger
+                          asChild
+                          onClick={(event) => {
+                            // Radix closes a tooltip on click and never opens one on tap.
+                            event.preventDefault();
+                            setOpenReasonFor(option.value);
+                          }}
+                        >
+                          {/* The disabled radio drops pointer events and focus, so the wrapper carries the hover and focus. */}
+                          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                          <span tabIndex={0} className="block">
+                            {card}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-80">
+                          {option.disabledReason}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
                 </RadioGroup>
               </FieldContent>
             </Field>

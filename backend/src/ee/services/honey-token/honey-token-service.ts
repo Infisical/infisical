@@ -19,11 +19,10 @@ import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
-import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
@@ -31,6 +30,7 @@ import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret
 import { fnSecretBulkDelete, fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -119,7 +119,7 @@ export type THoneyTokenServiceFactoryDep = {
 
 type TSendTriggerNotificationInput = {
   orgId: string;
-  honeyToken: THoneyTokens & { folderId: string; projectId: string };
+  honeyToken: THoneyTokens & { folderId: string };
   eventMetadata: {
     eventName: string;
     eventTime: string;
@@ -169,15 +169,13 @@ export const honeyTokenServiceFactory = ({
     honeyTokenConfigDAL
   });
 
-  // A null folderId or projectId means the folder or project was deleted and the cleanup cron has not
-  // reaped the row yet.
   const $findHoneyTokenById = async (honeyTokenId: string) => {
-    const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
-    if (!honeyToken?.folderId || !honeyToken.projectId) {
+    const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
+    if (!honeyToken) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
-    return { ...honeyToken, folderId: honeyToken.folderId, projectId: honeyToken.projectId };
+    return honeyToken;
   };
 
   const $getOrgAppConnection =
@@ -424,7 +422,7 @@ export const honeyTokenServiceFactory = ({
     });
 
     return {
-      honeyToken: { ...honeyToken, projectId, config: getHoneyTokenConfig(honeyToken) },
+      honeyToken: { ...honeyToken, config: getHoneyTokenConfig(honeyToken) },
       ...(stackDeployment ? { stackDeployment } : {})
     };
   };
@@ -635,7 +633,7 @@ export const honeyTokenServiceFactory = ({
     }
 
     return {
-      honeyToken: { ...updated, projectId, config: getHoneyTokenConfig(updated) },
+      honeyToken: { ...updated, config: getHoneyTokenConfig(updated) },
       folderInfo
     };
   };
@@ -777,9 +775,7 @@ export const honeyTokenServiceFactory = ({
       resetByUserId: actor.id
     });
 
-    return {
-      honeyToken: { ...updated, projectId: honeyToken.projectId, config: getHoneyTokenConfig(updated) }
-    };
+    return { honeyToken: { ...updated, config: getHoneyTokenConfig(updated) } };
   };
 
   const getDashboardHoneyTokenCount = async (
@@ -1103,10 +1099,10 @@ export const honeyTokenServiceFactory = ({
     if (trigger.outcome === "ignored") return { acknowledged: true };
 
     const { honeyToken } = trigger;
-    if (!honeyToken.folderId || !honeyToken.projectId || honeyToken.status === HoneyTokenStatus.Revoked) {
+    if (!honeyToken.folderId || honeyToken.status === HoneyTokenStatus.Revoked) {
       return { acknowledged: true };
     }
-    const honeyTokenWithFolder = { ...honeyToken, folderId: honeyToken.folderId, projectId: honeyToken.projectId };
+    const honeyTokenWithFolder = { ...honeyToken, folderId: honeyToken.folderId };
 
     await honeyTokenEventDAL.create({
       honeyTokenId: honeyToken.id,

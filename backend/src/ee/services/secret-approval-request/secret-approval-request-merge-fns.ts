@@ -15,8 +15,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
-import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
-import { SecretOperations } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
@@ -31,6 +29,8 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
+import { SecretOperations } from "@app/services/secret/secret-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 

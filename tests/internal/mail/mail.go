@@ -63,18 +63,23 @@ func urlsIn(body string) []string {
 //
 // The signup and MFA mails carry a numeric code rather than a link, so Param
 // cannot reach it. Bounded on both sides so a longer number, such as a timestamp in
-// a footer, is not mistaken for a six-digit code.
+// a footer, is not mistaken for a six-digit code, and by non-letters so digits inside
+// a token, such as a tenant's hex mail domain in the recipient address, are not either.
 func Code(m Message, n int) (string, error) {
 	runs := 0
 	for i := 0; i <= len(m.Body); i++ {
-		if i < len(m.Body) && m.Body[i] >= '0' && m.Body[i] <= '9' {
+		if i < len(m.Body) && isDigit(m.Body[i]) {
 			runs++
 			continue
 		}
-		if runs == n {
-			return m.Body[i-n : i], nil
+		start := i - runs
+		if runs == n && !(i < len(m.Body) && isLetter(m.Body[i])) && !(start > 0 && isLetter(m.Body[start-1])) {
+			return m.Body[start:i], nil
 		}
 		runs = 0
 	}
 	return "", fmt.Errorf("mail: no %d-digit code in %q:\n%s", n, m.Subject, m.Body)
 }
+
+func isDigit(b byte) bool  { return b >= '0' && b <= '9' }
+func isLetter(b byte) bool { return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') }

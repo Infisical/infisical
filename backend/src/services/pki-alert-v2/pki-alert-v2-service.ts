@@ -15,8 +15,8 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TPkiAlertChannelDALFactory } from "./pki-alert-channel-dal";

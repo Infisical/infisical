@@ -58,17 +58,17 @@ import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
 import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { RootKeyEncryptionStrategy } from "../kms/kms-types";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
-import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
 import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
 import { TOrgServiceFactory } from "../org/org-service";
-import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
+import { TUserDALFactory } from "../user/user-dal";
 import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
@@ -364,8 +364,10 @@ export const superAdminServiceFactory = ({
   ) => {
     const updatedData = data;
 
-    if (data.enabledLoginMethods) {
-      const superAdminUser = await userDAL.findById(userId);
+    // The lockout guard protects a user admin. A machine identity admin signs in with none of these
+    // login methods, so there is nothing to lock it out of and no user row to read.
+    const superAdminUser = data.enabledLoginMethods ? await userDAL.findById(userId) : undefined;
+    if (data.enabledLoginMethods && superAdminUser) {
       const isSamlConfiguredForUser = Boolean(
         await userAliasDAL.findOne({
           userId,
