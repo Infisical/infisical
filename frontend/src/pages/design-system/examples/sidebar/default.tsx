@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Sidebar, type SidebarProps, type SidebarTheme } from "@app/components/v4/ui/sidebar";
+import { Sidebar, type SidebarProps } from "@app/components/v4/ui/sidebar";
 
 import { ExampleCell, ExampleGrid, ExampleStage } from "../../example-presentation";
 
@@ -65,49 +65,25 @@ const spaces: SidebarProps["spaces"] = [
   }
 ];
 
-const organizations = [
-  { value: "acme", label: "Acme Corp", plan: "Enterprise" },
-  { value: "globex", label: "Globex", plan: "Pro" },
-  { value: "initech", label: "Initech", plan: "Free" }
-];
-
 const Shell = ({ start, defaultCollapsed }: { start: string; defaultCollapsed?: boolean }) => {
   const [current, setCurrent] = useState(start);
-  const [org, setOrg] = useState("acme");
-  const [unseen, setUnseen] = useState(3);
-  const [theme, setTheme] = useState<SidebarTheme>("system");
+  const [unseen, setUnseen] = useState(2);
   return (
     <Sidebar
       spaces={spaces}
       current={current}
       onNavigate={(item) => setCurrent(item.id)}
       defaultCollapsed={defaultCollapsed}
-      search={{ onClick: () => setCurrent("home") }}
-      invite={{ onClick: () => setCurrent("access-members") }}
-      footerItems={[
-        {
-          id: "news",
-          label: "What's new",
-          icon: "megaphone",
-          count: unseen,
-          onClick: () => setUnseen(0)
-        },
-        { id: "docs", label: "Docs", icon: "file", href: "#sidebar", external: true }
-      ]}
-      user={{
-        name: "Sarah Lin",
-        email: "sarah@acme.dev",
-        items: [{ label: "Sign out" }],
-        onClick: () => setCurrent("settings")
+      announcements={{ unread: unseen, onClick: () => setUnseen(0) }}
+      help={{
+        status: { label: "All systems operational", href: "#sidebar" },
+        whatsNew: { unread: unseen, latest: "Oct 30", onSelect: () => setUnseen(0) },
+        items: [
+          { label: "Read Docs", href: "#sidebar", external: true },
+          { label: "Email Support", href: "mailto:support@infisical.com" }
+        ],
+        version: "56a8340"
       }}
-      org={{
-        name: organizations.find((option) => option.value === org)?.label ?? "Acme Corp",
-        options: organizations,
-        value: org,
-        onChange: setOrg,
-        actions: [{ label: "Create organization", icon: "plus" }]
-      }}
-      theme={{ value: theme, onChange: setTheme }}
     />
   );
 };

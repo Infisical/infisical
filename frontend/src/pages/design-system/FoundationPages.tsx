@@ -272,7 +272,7 @@ export const ColorPage = () => (
     <PageHeading title="Color" />
     <div className="mb-4 flex items-center justify-between gap-4">
       <p className="text-muted-foreground text-sm leading-6">
-        Compare accents opens a workbench-only picker (also in the sidebar workbench menu and on the
+        Compare accents opens a workbench-only picker (also in the TopBar workbench menu and on the
         Button page). It overrides the accent family for this page and keeps the choice in the URL,
         so a link reproduces the view. The canonical tokens do not change.
       </p>

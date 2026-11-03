@@ -3,9 +3,6 @@
   container: detail-layout / inline-size;
   min-width: 0;
 }
-:global([data-slot="app-inset"]:has(> [data-slot="top-bar"])) .root {
-  --v4-detail-layout-offset: calc(var(--v4-size-shell-bar) + var(--v4-space-24));
-}
 .columns {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

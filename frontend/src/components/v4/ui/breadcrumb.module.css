@@ -176,6 +176,21 @@
 .product > .entry:first-child > .link {
   margin-inline-start: calc(-1 * var(--v4-space-6));
 }
+.product > .entry:first-child > .segment {
+  min-inline-size: var(--v4-crumb-root-size, 0px);
+}
+.product > .entry:first-child[data-switcher] .label {
+  color: var(--v4-ink);
+  font-weight: 600;
+}
+.product > .entry:first-child > .segment > .name,
+.root[data-fill] .product > .entry,
+.root[data-fill] .product > .entry > .segment {
+  flex: 1 1 auto;
+}
+.root[data-fill] .product .label {
+  max-width: none;
+}
 
 @container (max-width: 420px) {
   .trail {

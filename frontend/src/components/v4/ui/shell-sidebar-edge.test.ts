@@ -36,14 +36,15 @@ describe("shell-hosted Sidebar edge", () => {
   });
 });
 
-describe("TopBar layering", () => {
-  it("isolates page content under the island so no component z-index paints over the TopBar", () => {
-    const content = rules(css("top-bar.module.css")).find(({ selector }) =>
-      selector.startsWith(".inset > :not(.topBar)")
+describe("TopBar band", () => {
+  it("spans the shell above the sidebar and the island instead of sitting inside the island", () => {
+    const shellRules = rules(css("top-bar.module.css"));
+    const bar = shellRules.find(({ selector }) => selector === ".topBar");
+    expect(bar?.body).toMatch(/grid-area:\s*bar/);
+    expect(bar?.body).not.toMatch(/position:\s*sticky/);
+    expect(shellRules.find(({ selector }) => selector === ".shell > .inset")?.body).toMatch(
+      /grid-area:\s*main/
     );
-    expect(content?.body).toMatch(/isolation:\s*isolate/);
-    const bar = rules(css("top-bar.module.css")).find(({ selector }) => selector === ".topBar");
-    expect(bar?.body).toMatch(/position:\s*sticky/);
-    expect(bar?.body).toMatch(/z-index:\s*[1-9]/);
+    expect(shellRules.some(({ selector }) => /\.inset[^,{]*\.topBar/.test(selector))).toBe(false);
   });
 });

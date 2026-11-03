@@ -66,7 +66,7 @@ Exports: Avatar, AvatarBadge, AvatarFallback, AvatarGroup, AvatarGroupCount, Ava
 ## Limits
 
 - Organization avatars are unsupported. Status is visual unless the owner supplies its meaning in the accessible label or nearby text.
-- Composites and compositions (the Sidebar account, access lists, activity logs, approvals, audit logs, identities, switchers and comment threads) don't use avatars until the product supports them. They show names and emails as plain text.
+- Composites and compositions (the TopBar account menu, access lists, activity logs, approvals, audit logs, identities, switchers and comment threads) don't use avatars until the product supports them. They show names and emails as plain text.
 
 ## Declared example coverage
 

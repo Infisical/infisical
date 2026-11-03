@@ -2,17 +2,23 @@ import { useState } from "react";
 
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
+import { Icon } from "@app/components/v4/ui/icon";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Sidebar } from "@app/components/v4/ui/sidebar";
-import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
-import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
+import {
+  AppInset,
+  AppShell,
+  PageGutter,
+  type ShellTheme,
+  TopBar
+} from "@app/components/v4/ui/top-bar";
 
 import { ExampleCell, ExampleGrid, ExampleStage } from "../../example-presentation";
 
 const organizations = [
-  { value: "acme", label: "Acme Corp", meta: "Enterprise" },
-  { value: "acme-eu", label: "Acme EU", meta: "Enterprise" },
-  { value: "globex", label: "Globex", meta: "Pro" }
+  { value: "acme", label: "Acme Corp", group: "Current organization" },
+  { value: "acme-eu", label: "acme-eu", group: "Sub-organizations" },
+  { value: "globex", label: "Globex", group: "Other organizations" }
 ];
 const projects = [
   { value: "payments", label: "payments-api", mono: true },
@@ -31,18 +37,22 @@ const Bar = ({ defaultProject = "payments" }: { defaultProject?: string }) => {
   const [org, setOrg] = useState("acme");
   const [project, setProject] = useState(defaultProject);
   const [environment, setEnvironment] = useState("prod");
+  const [theme, setTheme] = useState<ShellTheme>("system");
   return (
     <TopBar
       breadcrumb={[
         {
           label: labelOf(organizations, org),
           href: "#top-bar",
+          media: <Icon name="building" />,
           switcher: {
             label: "Switch organization",
+            searchable: true,
+            placeholder: "Search organizations",
             options: organizations,
             value: org,
             onChange: setOrg,
-            actions: [{ label: "Create organization", icon: "plus" }]
+            actions: [{ label: "Organization settings", icon: "settings" }]
           }
         },
         {
@@ -66,20 +76,22 @@ const Bar = ({ defaultProject = "payments" }: { defaultProject?: string }) => {
           }
         }
       ]}
-      actions={
-        <TooltipProvider>
-          <Tooltip content="Search" shortcut="mod+K" side="bottom">
-            <Button variant="ghost" size="icon" icon="search" iconOnly>
-              Search
-            </Button>
-          </Tooltip>
-          <Tooltip content="Notifications" side="bottom">
-            <Button variant="ghost" size="icon" icon="bell" iconOnly>
-              Notifications
-            </Button>
-          </Tooltip>
-        </TooltipProvider>
-      }
+      notifications={{ unread: 2 }}
+      search={{ onClick: () => {} }}
+      account={{
+        name: "Sarah Lin",
+        email: "sarah@acme.dev",
+        items: [
+          { label: "Personal settings", icon: "user" },
+          { label: "Invite users", icon: "user-plus" }
+        ],
+        theme: { value: theme, onChange: setTheme },
+        endItems: [
+          { label: "Copy token", icon: "copy" },
+          { type: "separator" },
+          { label: "Log out" }
+        ]
+      }}
     />
   );
 };
@@ -88,9 +100,13 @@ export default function Example() {
   const [current, setCurrent] = useState("secrets");
   return (
     <ExampleGrid width="full">
-      <ExampleCell label="Beside the sidebar, crumb root on the content edge" align="stretch">
+      <ExampleCell
+        label="Beside the sidebar, organization switcher over the sidebar"
+        align="stretch"
+      >
         <ExampleStage height="app">
           <AppShell>
+            <Bar />
             <Sidebar
               sections={[
                 {
@@ -103,10 +119,8 @@ export default function Example() {
               ]}
               current={current}
               onNavigate={(item) => setCurrent(item.id)}
-              user={{ name: "Sarah Lin", email: "sarah@acme.dev" }}
             />
             <AppInset>
-              <Bar />
               <PageGutter>
                 <PageHeader
                   title="Secrets"
@@ -121,9 +135,10 @@ export default function Example() {
       </ExampleCell>
       <ExampleCell label="Without a sidebar, long project name truncates" align="stretch">
         <ExampleStage height="compact">
-          <AppInset>
+          <AppShell>
             <Bar defaultProject="platform" />
-          </AppInset>
+            <AppInset />
+          </AppShell>
         </ExampleStage>
       </ExampleCell>
     </ExampleGrid>

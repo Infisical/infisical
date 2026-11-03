@@ -32,7 +32,7 @@ Owner: detail-layout.
 
 When the sidecar may be taller than the visible scroll area.
 
-Do: Let DetailLayout decide: it sticks only when the whole sidecar fits below the TopBar.
+Do: Let DetailLayout decide: it sticks only when the whole sidecar fits in the scroll area.
 
 Avoid: Force position sticky on the sidecar or cap its height with an inner scroller.
 
@@ -69,13 +69,13 @@ Exports: DetailLayout. Source TypeScript defines the API.
 - DetailLayout renders two columns: children stack as the main column and aside holds the sidecar, usually one details Card with a props DataList. Both columns stack their cards at space-24, and the columns sit space-24 apart.
 - At size-sidecar-collapse (896px) of its own width and wider, the main column fills the space left of a size-sidecar (384px) sidecar on the right. The layout is its own container, so it answers to the width it gets inside the page gutter, not to the viewport.
 - Narrower than size-sidecar-collapse, the columns stack and the sidecar comes first, above the main cards, because it is the summary of the record.
-- In two columns the sidecar sticks below the TopBar (size-shell-bar plus space-24 inside an AppInset with a TopBar, space-24 elsewhere) while the main column scrolls, but only when the whole sidecar fits in the scroll area's visible height with space-24 to spare at the bottom. It measures itself and its scroll container whenever either resizes; a sidecar taller than that scrolls with the page, so no part of it is ever out of reach.
+- In two columns the sidecar sticks space-24 below the top of its scroll area (the AppInset island, which starts below the TopBar band) while the main column scrolls, but only when the whole sidecar fits in the scroll area's visible height with space-24 to spare at the bottom. It measures itself and its scroll container whenever either resizes; a sidecar taller than that scrolls with the page, so no part of it is ever out of reach.
 
 ## Accessibility
 
 - The sidecar renders an aside named by asideLabel (for example Details or Certificate details), so screen reader users can jump to it as a complementary region inside the main landmark.
 - The sidecar comes first in the DOM, in reading and Tab order, at every width. Stacked, the visual order matches the DOM exactly. In two columns, focus moves from the page header actions at the top right into the sidecar on the right, then to the main column, and the two columns start on the same top edge, so the only reordering is the sidecar's placement to the right; no CSS order property moves content (WCAG 1.3.2 and 2.4.3).
-- Sticking never hides focus: the sidecar sticks only when it fits entirely in view, so a focused control inside it is never under the TopBar or below the fold.
+- Sticking never hides focus: the sidecar sticks only when it fits entirely in view, so a focused control inside it is never above the scroll area or below the fold.
 
 ## Use cases
 

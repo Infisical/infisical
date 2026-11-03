@@ -26,6 +26,7 @@ export interface SwitcherOption {
   group?: string;
   disabled?: boolean;
   keywords?: string[];
+  onSelect?: () => void;
 }
 export interface SwitcherAction {
   label: string;
@@ -190,7 +191,8 @@ export const Switcher = ({
                       disabled={option.disabled}
                       data-current={option.value === selected || undefined}
                       onSelect={() => {
-                        if (option.value !== selected) {
+                        if (option.onSelect) option.onSelect();
+                        else if (option.value !== selected) {
                           setSelected(option.value);
                           onChange?.(option.value, option);
                         }

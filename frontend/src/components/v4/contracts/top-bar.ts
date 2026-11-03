@@ -5,31 +5,33 @@ export const topBarDefinition = {
   title: "Top bar",
   group: "Navigation",
   summary:
-    "The strip across the top of the inset with the product-level breadcrumb on the left and page-wide tools on the right.",
+    "The 48px band across the top of the AppShell, outside the content card: the organization switcher, the product and project switchers and the page crumbs on the left, notifications, search and the account menu on the right.",
   sourceFiles: ["src/components/v4/ui/top-bar.tsx", "src/components/v4/ui/top-bar.module.css"],
   exports: ["TopBar", "AppShell", "AppInset", "PageGutter"],
   referenceNames: ["TopBar"],
   behavior: [
-    "AppShell paints the sidebar ground, and AppInset is a framed island on it: space-shell-gap (8px) on its top, right and bottom (and left when there is no sidebar), a 1px line border and square corners. The sidebar has no edge of its own inside the shell, so it meets the island border directly with no gap. One line tint, line, draws the shell chrome: the island border, the TopBar rule and the sidebar separators. Content scrolls inside the island with crisp edges (page and inset scrollers never fade); the island never scrolls away. The shell fills its parent and clips; at page level that parent is 100dvh, so the document never scrolls; hash and palette navigation scroll only the island (scrollInsetTo), and the island's scroll-padding-top clears the sticky TopBar. The TopBar is size-shell-bar (48px) tall, and inside a shell the sidebar tool row is offset so its center matches the TopBar center (gap + border + 24px = 33px) in expanded and rail modes. The breadcrumb root and the page title share the page gutter edge inside the island.",
-    "TopBar is 48px tall on a line rule and the inset ground, and sticks to the top of the inset while the page scrolls.",
-    "Each switcher crumb (organization, project, environment) is two targets: its name goes to that level's page (link, href or onNavigate) and its chevron opens the Switcher. A level without a page of its own, or the current one, makes its name open the same Switcher. Crumbs are separated by the vertical breadcrumb divider.",
-    "Below size-shell-collapse (800px of shell width, measured on the shell so an embedded shell collapses by its own size) the Sidebar leaves the layout and opens as a left Sheet with the same content, scopes, footer and highlight. TopBar shows a menu button before the breadcrumb, the breadcrumb keeps only the current segment, and search becomes an icon button. The AppInset island drops its gaps, border and radius and fills the shell. Esc or navigating closes the Sheet.",
-    "AppInset defines one page gutter from its own width and size-content, the one page content width (1160px): the larger of 16px, 5% of the inset capped at 40px, and half of what the inset has beyond size-content. TopBar (narrow included) and PageGutter both pad by it, so the breadcrumb, the page header and the page body share one width and one left edge at every width; in the narrow bar the menu button takes that edge.",
-    "AppShell owns the Mod+B chord (Cmd+B on Mac, Ctrl+B elsewhere) for the Sidebar it holds: the rail on desktop, the Sheet below size-shell-collapse. The menu button exposes the chord through aria-keyshortcuts.",
+    "AppShell is a grid on the sidebar ground: the TopBar band (size-shell-bar, 48px) spans the full width on top, and below it the Sidebar sits beside the AppInset content card. TopBar, Sidebar and AppInset are direct children of AppShell, in that order. The card holds page content only and starts directly under the band, with space-shell-gap (8px) on its right and bottom (its top when there is no TopBar, its left when there is no Sidebar), a 1px line border and square corners. One line tint, line, draws the shell chrome: the card border, the sidebar separators and the corner rule. Content scrolls inside the card with crisp edges; the band and the sidebar never scroll away. The shell fills its parent and clips; at page level that parent is 100dvh, so the document never scrolls, and hash and palette navigation scroll only the card (scrollInsetTo).",
+    "From the left the band holds the breadcrumb trail: the organization switcher, then the product and project switchers, then the page crumbs, separated by the vertical breadcrumb divider. Each switcher crumb is two targets: its name goes to that level's page (link, href or onNavigate) and its chevron opens the Switcher. A level without a page of its own, or the current one, makes its name open the same Switcher. The root crumb reads in ink at 600 with its media glyph. At size-shell-rail (1280px) and wider, the organization switcher fills size-sidebar less the band's start padding, so the divider after it lines up with the card's left edge; collapsing the sidebar to the rail does not change the band.",
+    "On the right: notifications (a bell with the 6px size-unread square in accent-fg when unread), a search icon button whose tooltip reads Search with its Mod+K Kbd, a divider, and the account trigger (a user glyph, the person's name and a chevron, no avatar). The account menu lists the name and email, items (Personal settings, Invite users), the Theme radio group (System, Dark, Light), then endItems (Copy token, Log out). There is no create button in the band; the page's own accent create is the only one.",
+    "Between size-shell-collapse (800px) and size-shell-rail (1280px) the Sidebar starts as the rail, and expanding it opens the full navigation as a left Sheet with a scrim over the band and the card. Below size-shell-collapse there is no rail: the band shows a menu button on the left (with the unread square when there are unread notifications or announcements), at most the last two crumbs as plain names centered between the buttons, and search on the right, both 40px. The menu button opens the nav Sheet, whose top repeats the organization switcher (beside its close button) and the product and project switchers, and whose foot holds a size-touch-row user row that opens the account bottom sheet, then an icon row with notifications and their count. The card drops its gaps and border and fills the shell. Shell width is measured on the AppShell itself, so an embedded shell picks its mode by its own width.",
+    "AppInset defines one page gutter from its own width and size-content, the one page content width (1160px): the larger of 16px, 5% of the card capped at 40px, and half of what the card has beyond size-content. PageGutter pads by it, so the page header and the page body share one width and one left edge at every width.",
+    "AppShell owns the Mod+B chord (Cmd+B on Mac, Ctrl+B elsewhere) for the Sidebar it holds: the rail on wide shells, the Sheet below size-shell-rail. The menu button exposes the chord through aria-keyshortcuts, and the search button exposes Mod+K.",
     "Long crumb labels truncate and keep their full text in the switcher."
   ],
   accessibility: [
     "The trail is a named breadcrumb landmark. Each switcher crumb takes two tab stops, the name and then the chevron, both with the ink focus outline; the chevron is named for its purpose and the current value.",
+    "Icon buttons are named (Notifications, with the unread count when there is one; Search; Open navigation, with unread updates when marked) and carry tooltips. The account trigger is named Account and the person's name.",
+    "The account and help bottom sheets below size-shell-collapse are dialogs with a title, 48px rows and the same items as the desktop menus.",
     "AppInset renders the main landmark."
   ],
   limitations: [
-    "The reference's staged narrow-width rules (hiding the search label and ancestor labels) are not implemented; labels truncate instead.",
-    "The gutter grows past 40px only when the inset is wider than the page measure plus the gutters."
+    "Between size-shell-collapse and size-shell-rail the band keeps every crumb and truncates labels; it does not swap the organization name for a glyph or drop leading crumbs.",
+    "The gutter grows past 40px only when the card is wider than the page measure plus the gutters."
   ],
   examples: [
     {
       id: "default",
-      title: "App shell with switcher crumbs",
+      title: "App shell with the band",
       module: "./examples/top-bar/default.tsx",
       states: ["default", "controlled", "overflow", "keyboard"]
     }
@@ -42,7 +44,7 @@ export const topBarDefinition = {
         {
           value: "beside sidebar",
           exampleId: "default",
-          label: "Beside the sidebar, crumb root on the content edge"
+          label: "Beside the sidebar, organization switcher over the sidebar"
         },
         {
           value: "standalone",
@@ -58,28 +60,29 @@ export const topBarDefinition = {
       omitted: [
         {
           value: "no authored named size",
-          reason: "The bar has one 48px height; its width follows the inset."
+          reason: "The band has one 48px height; its width follows the shell."
         }
       ]
     }
   ],
   guidance: {
     use: [
-      "Use TopBar inside AppInset with the organization as the root crumb, then the project and environment, each a switcher that also links to its page when the level has one, and three or four tools on the right."
+      "Use TopBar as the first child of AppShell with the organization as the root crumb (building glyph and the organization menu), then the product and project switchers and the page crumbs, plus notifications, search and the account menu."
     ],
     avoid: [
-      "Pad the bar or the page by hand, add an organization avatar to the root crumb, or repeat the page-level trail here."
+      "Put TopBar inside AppInset, add a create button or an avatar to the band, or repeat the page-level trail here."
     ],
     decision:
-      "Choose TopBar for the product-level location. Put the page-level trail (folders, an object's parents) in PageHeader.",
+      "Choose TopBar for the product-level location and the person's account. Put the page-level trail (folders, an object's parents) in PageHeader.",
     rules: [
       {
-        id: "top-bar-shared-gutter",
-        when: "A page sits under the top bar.",
-        do: "Render TopBar and the page content inside one AppInset and wrap the content in PageGutter.",
-        avoid: "Give the page its own max-width and centering while the bar uses a fixed padding.",
+        id: "top-bar-band",
+        when: "A page sits in the app shell.",
+        do: "Render TopBar, Sidebar and AppInset as direct children of AppShell and wrap the content in PageGutter, so the band spans the shell and the card holds page content only.",
+        avoid:
+          "Nest the bar inside the card, or give the page its own max-width and centering while the gutter comes from the card.",
         reason:
-          "Two sources of width drift apart, so the root crumb stops lining up with the content edge at some widths.",
+          "The band is the context line and must not move with the card; two sources of width drift apart, so the page edge stops lining up at some widths.",
         evidence: [
           "src/components/v4/ui/top-bar.tsx",
           "src/components/v4/ui/top-bar.module.css",
@@ -87,17 +90,17 @@ export const topBarDefinition = {
         ],
         detect: {
           by: "review",
-          how: "Resize the example from narrow to very wide and compare the left edge of the root crumb's text with the page title."
+          how: "Collapse and expand the sidebar and resize the example: the band does not move, and the divider after the organization switcher sits on the card's left edge at 1280px and wider."
         }
       },
       {
         id: "top-bar-switcher-segment",
-        when: "A crumb switches the organization, project or environment.",
+        when: "A crumb switches the organization, product, project or environment.",
         do: "Give the crumb a switcher and its level's page (link, href or onNavigate), so the name navigates and the chevron opens the Switcher.",
         avoid:
           "Let the name open the Switcher when the level has a page, or draw a hover ground or padding on the whole segment.",
         reason:
-          "A crumb's name reads as a way back to that level, and an unpadded segment keeps the root text on the content edge.",
+          "A crumb's name reads as a way back to that level, and an unpadded segment keeps the root text on its edge.",
         evidence: [
           "src/components/v4/ui/top-bar.tsx",
           "src/pages/design-system/examples/top-bar/default.tsx"
@@ -111,18 +114,25 @@ export const topBarDefinition = {
     states: [
       {
         state: "open",
-        guidance: "The open switcher's chevron keeps the press ground until the popover closes."
+        guidance:
+          "The open switcher's chevron and the open account trigger keep the press ground until the popover closes."
       },
       {
         state: "overflow",
         guidance: "Labels truncate with an ellipsis and keep the full text in the switcher."
+      },
+      {
+        state: "unread",
+        guidance:
+          "Unread notifications put the 6px accent-fg square on the bell; below size-shell-collapse the menu button carries it, and the nav Sheet shows the count."
       }
     ],
     antiSlop: [
       {
-        do: "Keep the right side to search and two or three icon tools with tooltips.",
-        avoid: "Fill the bar with account menus, theme toggles and promotional buttons.",
-        reason: "The account and theme already live in the Sidebar account popover."
+        do: "Keep the right side to notifications, search and the account trigger.",
+        avoid: "Add a New button, a theme toggle, help or promotional buttons to the band.",
+        reason:
+          "Theme lives in the account menu, help in the Sidebar corner, and the page's accent create is the one create action."
       }
     ]
   },

@@ -95,7 +95,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 
 - md: omitted. The default 20px cap (size-kbd-md). Every example on this page uses it.
-- sm: omitted. The 18px cap (size-kbd-sm) that menus, command rows, buttons and the TopBar search use; it shows in those components' examples.
+- sm: omitted. The 18px cap (size-kbd-sm) that menus, command rows and buttons use; it shows in those components' examples.
 
 ### platform
 

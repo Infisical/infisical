@@ -23,7 +23,7 @@ Icons come from the Infisical 2.0 line set: use `Icon` with one of its 52 names.
 
 Disable blocked actions instead of hiding them, and gate each one by its own permission. Row actions are persistent and live in the table's sticky actions column: at most three inline icon actions, then More. Nothing a hover or focus shows may change a cell's width or the row's layout. Hover and press overlays are translucent ink, never opaque fills. Never mark state with a left accent bar or tinted left edge; tint the whole row or surface and add a Badge. Show Skeleton shapes when the loaded shape is known and a Loader only when it is not. Focus glows share size-focus-glow and focus-ring.
 
-Composites and compositions don't use avatars until the product supports them: show names and emails as plain text, and keep the Avatar primitive for its own docs page. Page content takes its width from the size-content token through PageGutter, the same gutter TopBar pads by; never cap it with an arbitrary max-width.
+Composites and compositions don't use avatars until the product supports them: show names and emails as plain text, and keep the Avatar primitive for its own docs page. Page content takes its width from the size-content token through PageGutter, the gutter AppInset derives; never cap it with an arbitrary max-width.
 
 Use `V4Scope` for the workbench boundary so portals inherit its colors and fonts. The workbench initializes from the host's resolved theme, then keeps preview changes local. Never save those changes to the user's theme preference or send theme analytics. Installed consumers use their own provider. Do not theme `document.body`.
 

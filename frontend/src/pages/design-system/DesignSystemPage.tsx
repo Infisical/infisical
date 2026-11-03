@@ -1,26 +1,23 @@
-import { startTransition, Suspense, useEffect, useState } from "react";
+import { startTransition, Suspense, useEffect, useMemo, useState } from "react";
 
 import { useTheme } from "@app/components/v3/platform/ThemeProvider/ThemeProvider";
 import { type ComponentGroup } from "@app/components/v4/contracts/types";
 import { V4Scope } from "@app/components/v4/scope";
 import tokens from "@app/components/v4/tokens.json";
-import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { Sidebar, type SidebarProps } from "@app/components/v4/ui/sidebar";
+import { type IconName } from "@app/components/v4/ui/icon";
+import { Sidebar } from "@app/components/v4/ui/sidebar";
 import {
   AppInset,
   AppShell,
   PageGutter,
   scrollInsetTo,
-  TopBar
+  TopBar,
+  type TopBarAccount,
+  type TopBarProps
 } from "@app/components/v4/ui/top-bar";
 import "@app/components/v4/v4.css";
 
-import {
-  AccentPanelButton,
-  AccentPanelProvider,
-  accentPresets,
-  useAccentPanel
-} from "./accent-panel";
+import { AccentPanelButton, AccentPanelProvider, useAccentPanel } from "./accent-panel";
 import { ComparisonPageView } from "./ComparisonPages";
 import { ComponentPreviewPage } from "./ComponentPreviewPage";
 import { ColorPage, OverviewPage, SpacingShapePage, TypographyPage } from "./FoundationPages";
@@ -34,6 +31,7 @@ import {
   resolveDocumentationPage
 } from "./navigation";
 import { RulesPage } from "./RulesPage";
+import { WorkbenchContext } from "./workbench-context";
 import { WorkbenchPalette } from "./workbench-palette";
 
 const pullRequest = "https://github.com/Infisical/infisical/pull/8753";
@@ -117,40 +115,15 @@ const sidebarSections = navigationGroups.map((group) => ({
 const groupOf = (page: string) =>
   navigationGroups.find((group) => group.pages.some((entry) => entry.id === page));
 
-const WorkbenchSidebar = ({
-  themeMode,
-  ...props
-}: SidebarProps & { themeMode: "light" | "dark" }) => {
+const WorkbenchBar = (props: Omit<TopBarProps, "account"> & { account: TopBarAccount }) => {
   const accent = useAccentPanel();
-  const preset = accentPresets.find(
-    (entry) => entry.light === accent?.choice.light && entry.dark === accent?.choice.dark
-  );
   return (
-    <Sidebar
+    <TopBar
       {...props}
-      preferences={
-        accent
-          ? [
-              {
-                label: "Accent",
-                value: preset?.id ?? "custom",
-                onChange: (value) => {
-                  const next = accentPresets.find((entry) => entry.id === value);
-                  if (next) accent.select({ light: next.light, dark: next.dark });
-                  else accent.open();
-                },
-                options: [
-                  ...accentPresets.map((entry) => ({
-                    value: entry.id,
-                    label: entry.name,
-                    swatch: entry[themeMode]
-                  })),
-                  { value: "custom", label: "Custom accent", icon: "more" as const }
-                ]
-              }
-            ]
-          : []
-      }
+      account={{
+        ...props.account,
+        endItems: accent ? [{ label: "Accent", icon: "sun", onSelect: accent.open }] : []
+      }}
     />
   );
 };
@@ -194,47 +167,22 @@ export const DesignSystemPage = () => {
     return () => cancelAnimationFrame(frame);
   }, [currentPage, example]);
   const nextTheme = theme === "dark" ? "light" : "dark";
+  const workbench = useMemo(
+    () => ({
+      theme: { value: themeChoice, onChange: setTheme },
+      openSearch: () => setPaletteOpen(true)
+    }),
+    [themeChoice]
+  );
   return (
     <V4Scope className="flex h-dvh flex-col overflow-clip" theme={theme}>
-      <AccentPanelProvider>
-        <a href={`#${currentPage}`} className="sr-only focus:not-sr-only focus:p-3">
-          Skip to content
-        </a>
-        <AppShell>
-          <WorkbenchSidebar
-            label="Design system"
-            user={{
-              name: "Infisical 2.0 workbench",
-              email: "",
-              meta: `Design system v${tokens.version}`,
-              media: <Icon name="apps" />,
-              items: [
-                { label: "Overview", icon: "home", onSelect: () => openLink("#overview") },
-                { label: "Rules", icon: "file", onSelect: () => openLink("#rules") },
-                { type: "separator" },
-                {
-                  label: "Pull request on GitHub",
-                  icon: "external",
-                  onSelect: () => openLink(pullRequest)
-                },
-                {
-                  label: "Documentation",
-                  icon: "external",
-                  onSelect: () => openLink(documentation)
-                }
-              ]
-            }}
-            theme={{
-              value: themeChoice === "system" ? "system" : theme,
-              onChange: setTheme
-            }}
-            themeMode={theme}
-            sections={sidebarSections}
-            current={currentPage}
-            search={{ onClick: () => setPaletteOpen(true), label: "Search the design system" }}
-          />
-          <AppInset>
-            <TopBar
+      <WorkbenchContext value={workbench}>
+        <AccentPanelProvider>
+          <a href={`#${currentPage}`} className="sr-only focus:not-sr-only focus:p-3">
+            Skip to content
+          </a>
+          <AppShell>
+            <WorkbenchBar
               breadcrumb={[
                 { label: "Design system", href: "#overview" },
                 ...(groupOf(currentPage) ? [{ label: groupOf(currentPage)?.title ?? "" }] : []),
@@ -244,40 +192,61 @@ export const DesignSystemPage = () => {
                     currentPage
                 }
               ]}
-              search={{ onClick: () => setPaletteOpen(true), label: "Search" }}
+              search={{ onClick: () => setPaletteOpen(true), label: "Search the design system" }}
+              account={{
+                label: "Workbench",
+                name: "Infisical 2.0 workbench",
+                email: `Design system v${tokens.version}`,
+                items: [
+                  { label: "Overview", icon: "home", onSelect: () => openLink("#overview") },
+                  { label: "Rules", icon: "file", onSelect: () => openLink("#rules") },
+                  { type: "separator" },
+                  {
+                    label: "Pull request on GitHub",
+                    icon: "git",
+                    href: pullRequest,
+                    external: true
+                  },
+                  { label: "Documentation", icon: "file", href: documentation, external: true }
+                ],
+                theme: workbench.theme
+              }}
             />
-            <Suspense
-              fallback={
-                <PageGutter>
-                  <p role="status" className="text-sm">
-                    Loading examples
-                  </p>
-                </PageGutter>
-              }
-            >
-              <div
-                key={currentPage}
-                id={currentPage}
-                data-document-view="human"
-                tabIndex={-1}
-                className="min-w-0 flex-1 outline-none"
+            <Sidebar label="Design system" sections={sidebarSections} current={currentPage} />
+            <AppInset>
+              <Suspense
+                fallback={
+                  <PageGutter>
+                    <p role="status" className="text-sm">
+                      Loading examples
+                    </p>
+                  </PageGutter>
+                }
               >
-                <PageGutter>
-                  <article>
-                    <PageContent page={currentPage} />
-                  </article>
-                </PageGutter>
-              </div>
-            </Suspense>
-          </AppInset>
-          <WorkbenchPalette
-            open={paletteOpen}
-            onOpenChange={setPaletteOpen}
-            groups={navigationGroups}
-            toggleTheme={() => setTheme(nextTheme)}
-          />
-        </AppShell>
-      </AccentPanelProvider>
+                <div
+                  key={currentPage}
+                  id={currentPage}
+                  data-document-view="human"
+                  tabIndex={-1}
+                  className="min-w-0 flex-1 outline-none"
+                >
+                  <PageGutter>
+                    <article>
+                      <PageContent page={currentPage} />
+                    </article>
+                  </PageGutter>
+                </div>
+              </Suspense>
+            </AppInset>
+            <WorkbenchPalette
+              open={paletteOpen}
+              onOpenChange={setPaletteOpen}
+              groups={navigationGroups}
+              toggleTheme={() => setTheme(nextTheme)}
+            />
+          </AppShell>
+        </AccentPanelProvider>
+      </WorkbenchContext>
     </V4Scope>
   );
 };

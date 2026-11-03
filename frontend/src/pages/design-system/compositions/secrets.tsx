@@ -116,7 +116,7 @@ import {
   ResourceCount,
   ResourceFilterMenu
 } from "./secrets/toolbar";
-import { projectSections, user } from "./shared";
+import { projectSections, useCrumbs, user, useShellChrome } from "./shared";
 
 import styles from "./secrets/overview.module.css";
 
@@ -191,6 +191,8 @@ function Overview({ scenario }: { scenario: Scenario }) {
   const revealed = useRef("");
   const search = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
+  const crumbs = useCrumbs();
+  const chrome = useShellChrome();
   const projectEnvironments = environments.filter(
     (environment) => !removedEnvironments.includes(`${project}:${environment.value}`)
   );
@@ -1032,43 +1034,51 @@ function Overview({ scenario }: { scenario: Scenario }) {
   return (
     <ReferenceSourceProvider value={referenceSource}>
       <AppShell ref={root} className={styles.shell}>
+        <TopBar
+          breadcrumb={[
+            crumbs.org,
+            crumbs.product,
+            {
+              label: project,
+              mono: true,
+              switcher: {
+                label: "Switch project",
+                options: projects,
+                value: project,
+                onChange: (value) => {
+                  setProject(value);
+                  setPath("/");
+                  setQuery("");
+                  setTags([]);
+                  resetView();
+                }
+              }
+            }
+          ]}
+          search={chrome.search}
+          notifications={chrome.notifications}
+          account={chrome.account}
+        />
         <Sidebar
           label="Secrets navigation"
           current="secrets"
           onNavigate={() => navigate("/")}
-          sections={(projectSections ?? []).map((section) => ({
-            ...section,
-            items: section.items.map((item) => ({
-              ...item,
-              count: undefined,
-              disabled: item.id !== "secrets"
+          scope={{
+            id: "project",
+            back: { id: "back-project", label: crumbs.product.label, disabled: true },
+            sections: (projectSections ?? []).map((section) => ({
+              ...section,
+              items: section.items.map((item) => ({
+                ...item,
+                count: undefined,
+                disabled: item.id !== "secrets"
+              }))
             }))
-          }))}
-          user={user}
+          }}
+          help={chrome.help}
+          announcements={chrome.announcements}
         />
         <AppInset>
-          <TopBar
-            breadcrumb={[
-              { label: "Acme Corp" },
-              { label: "Secrets Management" },
-              {
-                label: project,
-                mono: true,
-                switcher: {
-                  label: "Switch project",
-                  options: projects,
-                  value: project,
-                  onChange: (value) => {
-                    setProject(value);
-                    setPath("/");
-                    setQuery("");
-                    setTags([]);
-                    resetView();
-                  }
-                }
-              }
-            ]}
-          />
           <PageGutter>
             <div className={styles.page}>
               <PageHeader
@@ -1713,6 +1723,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
           items={toasts}
           onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))}
         />
+        {chrome.dialog}
       </AppShell>
     </ReferenceSourceProvider>
   );

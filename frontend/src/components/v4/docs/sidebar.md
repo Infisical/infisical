@@ -1,6 +1,6 @@
 # Sidebar
 
-The app's navigation beside the inset: tools, a Home and Organization switch, sections of rows, footer rows and one account button for the person and their organization.
+The app's navigation below the TopBar band and beside the content card: sections of rows (a back row first inside a scope), footer rows, and a bottom-left corner with the collapse toggle, help and announcements.
 
 ## Choose this component
 
@@ -26,19 +26,19 @@ Source evidence:
 - src/components/v4/ui/sidebar.tsx
 - src/pages/design-system/examples/sidebar/scopes.tsx
 
-### sidebar-account-identity
+### sidebar-corner
 
 Owner: sidebar.
 
-When the account button shows who is signed in and which organization they are in.
+When the person needs help, the status page or what's new.
 
-Do: Show the person's name over the organization's name as text, and list organizations by name and plan.
+Do: Pass help for the corner menu and announcements only with an unread count, so the toggle stays in the left corner and the corner grows only when something is unread.
 
-Avoid: Render an avatar, initials tile or icon for the person or the organization in the button, the switcher rows or the crumb.
+Avoid: Add Docs or What's new rows to the footer, put help in the TopBar, or show an announcements trigger with nothing unread.
 
-Why: The product has no avatars yet, so a generated tile would be a mark nobody chose.
+Why: The corner is mechanical: one place for help, and the toggle never moves between expanded and rail.
 
-Checked by: review only. Look for: Open the account popover and confirm neither the button nor any row renders an avatar or initials tile.
+Checked by: review only. Look for: Collapse and expand the example: the toggle keeps its position, help stacks above it in the rail, and the announcements trigger disappears once read.
 
 Source evidence:
 - src/components/v4/ui/sidebar.tsx
@@ -84,15 +84,16 @@ Exports: Sidebar. Source TypeScript defines the API.
 
 ## Behavior
 
-- The tools row holds the collapse toggle, then search and invite: 36px icon buttons with 18px icons and tooltips. Inside an AppShell the collapse toggle's tooltip shows its Mod+B chord as a Kbd.
-- Mod+B (Cmd+B on Mac, Ctrl+B elsewhere) toggles the sidebar inside an AppShell: it collapses or expands the rail on desktop and opens or closes the Sheet below size-shell-collapse. The shell that holds focus, or that took the last pointer press, owns the chord, so a nested composition shell toggles only itself. Inputs, textareas, selects, contenteditable regions and code editors keep the chord.
+- The nav starts at the top with no search; inside a scope the back row comes first. The bottom-left corner sits under a line rule: the collapse toggle in its left corner (36px, on the 26px center line in both widths), a gap, then the help button at the right end. An announcements trigger with the 6px size-unread square sits just before help only while announcements has unread items, and is gone otherwise. In the size-sidebar-rail (52px) rail the corner becomes a column: announcements and help stack above the rule and the toggle stays at exactly the same x and y as when expanded. Inside an AppShell the toggle's tooltip shows its Mod+B chord as a Kbd.
+- Help opens a menu from the corner: a status line (a status dot and its label, linking to the status page), What's new (the unread count, or the latest date), the help items (Support Forum, Read Docs, GitHub Issues, Email Support), then the version in mono. Below size-shell-collapse help opens a bottom sheet with the same rows at size-touch-row.
+- Mod+B (Cmd+B on Mac, Ctrl+B elsewhere) toggles the sidebar inside an AppShell: it collapses or expands the rail at size-shell-rail and wider, and opens or closes the Sheet below it. The shell that holds focus, or that took the last pointer press, owns the chord, so a nested composition shell toggles only itself. Inputs, textareas, selects, contenteditable regions and code editors keep the chord.
 - With spaces, a segmented switch under the tools shows one space's sections at a time. The space holding the current page shows by default, a page opened from elsewhere brings its space with it, and a hidden space that holds a count shows a dot.
 - Sections stack 36px rows 1px apart. A labeled section draws its 28px eyebrow with a rule that runs to the sidebar's edge. The leading group of a scope is unlabeled: a single generic group at the top (General, or the scope's own name) adds nothing, so it renders without an eyebrow, and only later groups that name a real split (Administration) carry one.
 - An item that opens a deeper scope instead of navigating in place (Settings into the settings scope, a product or Projects into theirs) sets drillIn and shows a trailing muted chevron-right after any count, which takes ink on hover and when current. The rail drops the chevron and its tooltip reads the name followed by "opens section". The back row covers the way out.
 - A row with children opens one level of 32px pages, without icons, on a guide line under its icon. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.
 - The nav scrolls when it runs out of room and fades the edge where more rows are cut off.
+- Between size-shell-collapse and size-shell-rail the sidebar starts as the rail, and its toggle opens the expanded navigation as a left Sheet with a scrim; below size-shell-collapse there is no rail and the TopBar menu button opens the Sheet. The Sheet's top holds the TopBar's organization switcher beside a close button and its product and project switchers below; below size-shell-collapse its foot adds the TopBar's user row and an icon row with notifications before announcements and help. The TopBar fills those slots through the AppShell, so a Sidebar without a TopBar shows only the close button. Navigating closes the Sheet.
 - Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, the space switch stacks its icons vertically, section labels become rules and a group opens its pages in a menu to the right.
-- The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row, any preference rows and the person's own row for their settings. A preference row (preferences) uses the theme row's recipe: a label and a small ToggleGroup of icons or color swatches. The button shows the person's name over the organization, or meta, as text with no avatar; a host may pass media such as a product mark. The account row is size-row-stacked (48px) so the name and subtitle fit, any media is a size-row-stacked-media (34px) tile as tall as the two text lines, and the rail keeps both heights. The account footer has no rule above it, and inside an AppShell its bottom inset mirrors the tool row's top inset. Without user there is no account button, for hosts such as the design system workbench.
 - Pass scope to show a product, project or settings level instead of the top level: a back row (chevron-left and the parent's name, named Back to the parent) above that scope's sections. The back row calls onNavigate with scope.back, so the host moves up one level and passes the parent scope, or none for the top level. Spaces show only at the top level.
 - A scope change slides the rows in over duration-moderate on ease-standard, from the right going deeper and from the left going back; with reduced motion it only fades. In the rail the back row is the first icon, with a Back to tooltip.
 - A section with an icon and a label collapses in the rail to one row with that icon, which opens the section's items in a flyout, so long navigations stay short in the rail.
@@ -105,20 +106,20 @@ Exports: Sidebar. Source TypeScript defines the API.
 - Backspace or Alt+Left anywhere in the nav (outside a text field) activates the back row and moves focus to the first row of the parent level.
 - The current page carries aria-current. Rail rows keep their label as the accessible name.
 - Focus draws the 2px ink outline inside the row, so the scrolling nav never clips it.
-- The account button is named for the person and the organization, and the popover returns focus to it on close.
+- The corner buttons are named (Collapse sidebar or Expand sidebar, Help, and What's new with its unread count) and carry tooltips; the toggle reports aria-expanded.
 
 ## Use cases
 
-- Use Sidebar for the app's main navigation, with short noun labels, counts for things waiting on the person and the account at the bottom.
+- Use Sidebar for the app's main navigation, with short noun labels, counts for things waiting on the person, help in the corner and announcements beside it when something is unread.
 
 ## Avoid
 
-- Put a separate organization switcher in the nav, show an organization avatar, or use counts for totals.
+- Put an organization switcher, search or the account in the sidebar, or use counts for totals.
 
 ## Limits
 
 - The host owns routing: rows call onNavigate or follow href, and the host passes the current id back.
-- Organizations never show an avatar or icon, and the account button shows no avatar for the person until the product supports avatars.
+- The person's account and the organization menu live in the TopBar, not here.
 
 ## Declared example coverage
 
@@ -137,7 +138,7 @@ Source declarations and review criteria only. Generation checks references and c
 ### size support
 
 
-- no authored named size: omitted. The sidebar has one width and a rail. Nav rows follow the 36px control recipe; the account row is size-row-stacked.
+- no authored named size: omitted. The sidebar has one width (size-sidebar) and a rail (size-sidebar-rail). Nav rows and corner buttons follow the 36px control recipe.
 
 ## Executable examples
 
@@ -149,7 +150,7 @@ Registry items used: @infisical/sidebar. Additional packages: none. Install ever
 
 ```tsx
 import { useState } from "react";
-import { Sidebar, type SidebarProps, type SidebarTheme } from "../../../../components/v4/ui/sidebar";
+import { Sidebar, type SidebarProps } from "../../../../components/v4/ui/sidebar";
 const spaces: SidebarProps["spaces"] = [
     {
         id: "home",
@@ -210,40 +211,21 @@ const spaces: SidebarProps["spaces"] = [
         ]
     }
 ];
-const organizations = [
-    { value: "acme", label: "Acme Corp", plan: "Enterprise" },
-    { value: "globex", label: "Globex", plan: "Pro" },
-    { value: "initech", label: "Initech", plan: "Free" }
-];
 const Shell = ({ start, defaultCollapsed }: {
     start: string;
     defaultCollapsed?: boolean;
 }) => {
     const [current, setCurrent] = useState(start);
-    const [org, setOrg] = useState("acme");
-    const [unseen, setUnseen] = useState(3);
-    const [theme, setTheme] = useState<SidebarTheme>("system");
-    return (<Sidebar spaces={spaces} current={current} onNavigate={(item) => setCurrent(item.id)} defaultCollapsed={defaultCollapsed} search={{ onClick: () => setCurrent("home") }} invite={{ onClick: () => setCurrent("access-members") }} footerItems={[
-            {
-                id: "news",
-                label: "What's new",
-                icon: "megaphone",
-                count: unseen,
-                onClick: () => setUnseen(0)
-            },
-            { id: "docs", label: "Docs", icon: "file", href: "#sidebar", external: true }
-        ]} user={{
-            name: "Sarah Lin",
-            email: "sarah@acme.dev",
-            items: [{ label: "Sign out" }],
-            onClick: () => setCurrent("settings")
-        }} org={{
-            name: organizations.find((option) => option.value === org)?.label ?? "Acme Corp",
-            options: organizations,
-            value: org,
-            onChange: setOrg,
-            actions: [{ label: "Create organization", icon: "plus" }]
-        }} theme={{ value: theme, onChange: setTheme }}/>);
+    const [unseen, setUnseen] = useState(2);
+    return (<Sidebar spaces={spaces} current={current} onNavigate={(item) => setCurrent(item.id)} defaultCollapsed={defaultCollapsed} announcements={{ unread: unseen, onClick: () => setUnseen(0) }} help={{
+            status: { label: "All systems operational", href: "#sidebar" },
+            whatsNew: { unread: unseen, latest: "Oct 30", onSelect: () => setUnseen(0) },
+            items: [
+                { label: "Read Docs", href: "#sidebar", external: true },
+                { label: "Email Support", href: "mailto:support@infisical.com" }
+            ],
+            version: "56a8340"
+        }}/>);
 };
 export default function Example() {
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">

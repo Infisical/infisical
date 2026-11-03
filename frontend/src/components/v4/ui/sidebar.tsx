@@ -1,4 +1,5 @@
 import * as React from "react";
+import { CircleHelp } from "lucide-react";
 
 import { ListHighlight } from "../lib/list-highlight";
 import { useControllableState } from "../lib/use-controllable-state";
@@ -9,17 +10,22 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "./dropdown-menu";
 import { Icon, type IconName } from "./icon";
 import { Sheet, SheetContent, SheetTitle } from "./sheet";
-import { Switcher, type SwitcherAction, type SwitcherActionDivider } from "./switcher";
 import { Tabs, TabsList, TabsTrigger } from "./tabs";
-import { ToggleGroup, ToggleGroupItem } from "./toggle-group";
 import { Tooltip, TooltipProvider } from "./tooltip";
-import { useAppShell } from "./top-bar";
+import {
+  type ShellMenuEntry,
+  ShellBottomSheet,
+  ShellMenuItems,
+  type ShellSheetSlot,
+  ShellSheetRows,
+  useAppShell
+} from "./top-bar";
 
-import menu from "./menu.module.css";
 import styles from "./sidebar.module.css";
 
 export interface SidebarLink {
@@ -53,31 +59,17 @@ export interface SidebarScope {
   back: SidebarLink;
   sections: readonly SidebarSection[];
 }
-export interface SidebarUser {
-  name: string;
-  email: string;
-  media?: React.ReactNode;
-  meta?: string;
-  items?: (SwitcherAction | SwitcherActionDivider)[];
-  href?: string;
-  onClick?: () => void;
-  settingsLabel?: string;
+export interface SidebarHelp {
+  status?: { label: string; href: string; state?: "ok" | "warn" | "bad" };
+  whatsNew?: { onSelect: () => void; unread?: number; latest?: string; label?: string };
+  items?: readonly ShellMenuEntry[];
+  version?: string;
+  label?: string;
 }
-export interface SidebarOrganization {
-  name: string;
-  plan?: string;
-  options: { value: string; label: string; plan?: string }[];
-  value: string;
-  onChange: (value: string) => void;
-  actions?: (SwitcherAction | SwitcherActionDivider)[];
-  optionsLabel?: string;
-}
-export type SidebarTheme = "light" | "dark" | "system";
-export interface SidebarPreference {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string; icon?: IconName; swatch?: string }[];
+export interface SidebarAnnouncements {
+  unread: number;
+  onClick: () => void;
+  label?: string;
 }
 export interface SidebarProps {
   sections?: readonly SidebarSection[];
@@ -89,12 +81,8 @@ export interface SidebarProps {
   spacesLabel?: string;
   current?: string;
   onNavigate?: (item: SidebarLink) => void;
-  search?: { onClick: () => void; label?: string; shortcut?: string } | false;
-  invite?: { onClick: () => void; label?: string } | false;
-  user?: SidebarUser;
-  org?: SidebarOrganization;
-  theme?: { value: SidebarTheme; onChange: (value: SidebarTheme) => void; label?: string };
-  preferences?: readonly SidebarPreference[];
+  help?: SidebarHelp;
+  announcements?: SidebarAnnouncements;
   footerItems?: readonly SidebarItem[];
   collapsed?: boolean;
   defaultCollapsed?: boolean;
@@ -387,11 +375,103 @@ const moveFocus = (event: React.KeyboardEvent<HTMLElement>) => {
   targets[next]?.focus();
 };
 
-const themeOptions: { value: SidebarTheme; label: string; icon: IconName }[] = [
-  { value: "light", label: "Light", icon: "sun" },
-  { value: "dark", label: "Dark", icon: "moon" },
-  { value: "system", label: "System", icon: "monitor" }
-];
+const HelpMenu = ({ help, rail }: { help: SidebarHelp; rail: boolean }) => (
+  <DropdownMenuContent side={rail ? "right" : "top"} align="end" className={styles.helpMenu}>
+    {help.status && (
+      <>
+        <DropdownMenuItem asChild>
+          <a href={help.status.href} target="_blank" rel="noreferrer">
+            {[
+              <span key="dot" className={styles.statusMark} aria-hidden="true">
+                <span className={styles.statusDot} data-state={help.status.state ?? "ok"} />
+              </span>,
+              help.status.label,
+              <Icon key="external" name="external" size={14} className={styles.menuEnd} />
+            ]}
+          </a>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+      </>
+    )}
+    {help.whatsNew && (
+      <>
+        <DropdownMenuItem onSelect={help.whatsNew.onSelect}>
+          {[
+            <Icon key="icon" name="megaphone" />,
+            help.whatsNew.label ?? "What's new",
+            help.whatsNew.unread ? (
+              <Count key="count" className={styles.helpCount}>
+                {help.whatsNew.unread}
+              </Count>
+            ) : (
+              help.whatsNew.latest && (
+                <span key="latest" className={styles.helpMeta}>
+                  {help.whatsNew.latest}
+                </span>
+              )
+            )
+          ]}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+      </>
+    )}
+    <ShellMenuItems entries={help.items ?? []} />
+    {help.version && (
+      <>
+        <DropdownMenuSeparator />
+        <div className={styles.version}>
+          <Icon name="info" />
+          <span>Version</span>
+          <span className={styles.versionValue}>{help.version}</span>
+        </div>
+      </>
+    )}
+  </DropdownMenuContent>
+);
+
+const HelpSheet = ({
+  help,
+  open,
+  onOpenChange
+}: {
+  help: SidebarHelp;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => {
+  const close = () => onOpenChange(false);
+  const lead: ShellMenuEntry[] = [
+    ...(help.status
+      ? [
+          { label: help.status.label, href: help.status.href, external: true },
+          { type: "separator" } as const
+        ]
+      : []),
+    ...(help.whatsNew
+      ? [
+          {
+            label: help.whatsNew.unread
+              ? `${help.whatsNew.label ?? "What's new"}, ${help.whatsNew.unread} unread`
+              : (help.whatsNew.label ?? "What's new"),
+            icon: "megaphone" as const,
+            onSelect: help.whatsNew.onSelect
+          },
+          { type: "separator" } as const
+        ]
+      : [])
+  ];
+  return (
+    <ShellBottomSheet title={help.label ?? "Help"} open={open} onOpenChange={onOpenChange}>
+      <ShellSheetRows entries={[...lead, ...(help.items ?? [])]} onDone={close} />
+      {help.version && (
+        <div className={styles.sheetVersion}>
+          <Icon name="info" size={18} />
+          <span>Version</span>
+          <span className={styles.versionValue}>{help.version}</span>
+        </div>
+      )}
+    </ShellBottomSheet>
+  );
+};
 
 export const Sidebar = ({
   sections,
@@ -403,12 +483,8 @@ export const Sidebar = ({
   spacesLabel = "Navigation",
   current,
   onNavigate,
-  search,
-  invite,
-  user: accountUser,
-  org,
-  theme,
-  preferences = [],
+  help,
+  announcements,
   footerItems,
   collapsed,
   defaultCollapsed = false,
@@ -439,33 +515,54 @@ export const Sidebar = ({
   const activeSpace = spaces?.find((entry) => entry.id === spaceId) ?? spaces?.[0];
   const shownSections = scope?.sections ?? activeSpace?.sections ?? sections ?? [];
   const shell = useAppShell();
+  const mode = shell?.mode ?? "wide";
+  const narrow = mode === "narrow";
+  const sheeted = Boolean(shell) && mode !== "wide";
   const setHasNavigation = shell?.setHasNavigation;
   React.useEffect(() => {
     if (!setHasNavigation) return undefined;
     setHasNavigation(true);
     return () => setHasNavigation(false);
   }, [setHasNavigation]);
-  const sheet = Boolean(shell?.narrow);
+  const unread = (announcements?.unread ?? 0) > 0;
+  const setNavigationUnread = shell?.setNavigationUnread;
+  React.useEffect(() => {
+    if (!setNavigationUnread) return undefined;
+    setNavigationUnread(unread);
+    return () => setNavigationUnread(false);
+  }, [setNavigationUnread, unread]);
   const setNavigationOpen = shell?.setNavigationOpen;
   const openedAt = React.useRef(current);
   React.useEffect(() => {
-    if (!sheet || !setNavigationOpen) return;
+    if (!sheeted || !setNavigationOpen) return;
     if (openedAt.current !== current) setNavigationOpen(false);
     openedAt.current = current;
-  }, [current, sheet, setNavigationOpen]);
+  }, [current, sheeted, setNavigationOpen]);
   const navigationToggle = shell?.navigationToggle;
   React.useEffect(() => {
     if (!navigationToggle) return undefined;
     navigationToggle.current = () => {
-      if (sheet) setNavigationOpen?.(!shell?.navigationOpen);
+      if (sheeted) setNavigationOpen?.(!shell?.navigationOpen);
       else if (collapsible) setCollapsed(!isCollapsed);
     };
     return () => {
       navigationToggle.current = null;
     };
   });
+  const setSlot = shell?.setSlot;
+  const slotRefs = React.useMemo(() => {
+    const bind = (slot: ShellSheetSlot) => (node: HTMLElement | null) => setSlot?.(slot, node);
+    return {
+      org: bind("org"),
+      switchers: bind("switchers"),
+      account: bind("account"),
+      icons: bind("icons")
+    };
+  }, [setSlot]);
+  const [helpSheetOpen, setHelpSheetOpen] = React.useState(false);
+  const toggleRef = React.useRef<HTMLButtonElement>(null);
   const navigate = onNavigate;
-  const rail = !sheet && collapsible && isCollapsed;
+  const railed = mode === "rail" || (!narrow && collapsible && isCollapsed);
   const view = scope?.id ?? activeSpace?.id ?? "root";
   const navRef = React.useRef<HTMLDivElement>(null);
   const backRef = React.useRef<HTMLElement | null>(null);
@@ -491,66 +588,107 @@ export const Sidebar = ({
     backRef.current?.click();
   };
   const spaceRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
-  const tooltipSide = rail ? "right" : "bottom";
   const hasUpdates = (entry: SidebarSpace) =>
     entry.id !== activeSpace?.id && sectionsTotal(entry.sections) > 0;
-  const tool = (toolLabel: string, icon: IconName, onClick: () => void, shortcut?: string) => (
-    <Tooltip content={toolLabel} shortcut={shortcut} side={tooltipSide}>
-      <button type="button" className={styles.tool} aria-label={toolLabel} onClick={onClick}>
-        <Icon name={icon} size={18} />
-      </button>
-    </Tooltip>
-  );
-  const user = accountUser ?? { name: "", email: "" };
-  const userMedia = user.media ? (
-    <span className={styles.accountMedia}>{user.media}</span>
-  ) : (
-    rail && <Icon name="user" size={18} />
-  );
-  const userMeta = user.meta ?? user.email;
-  const account = (
-    <button
-      type="button"
-      className={styles.account}
-      aria-label={org ? `${user.name}, ${org.name}` : user.name}
-    >
-      {userMedia}
-      <span className={styles.accountText}>
-        <span className={styles.accountName}>{user.name}</span>
-        <span className={styles.accountMeta}>{org ? org.name : userMeta}</span>
+  const panel = (inSheet: boolean) => {
+    const rail = !inSheet && railed;
+    const tooltipSide = rail ? "right" : "top";
+    const helpLabel = help?.label ?? "Help";
+    const announcementsLabel = announcements?.label ?? "What's new";
+    const toggle =
+      !inSheet && (mode === "rail" || collapsible) ? (
+        <Tooltip
+          content={rail ? "Expand sidebar" : "Collapse sidebar"}
+          shortcut={shell ? "mod+B" : undefined}
+          side={tooltipSide}
+        >
+          <button
+            ref={toggleRef}
+            type="button"
+            className={styles.tool}
+            aria-label={rail ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={mode === "rail" ? Boolean(shell?.navigationOpen) : !rail}
+            onClick={() => {
+              if (mode === "rail") setNavigationOpen?.(true);
+              else setCollapsed(!isCollapsed);
+            }}
+          >
+            <Icon name="sidebar" size={18} />
+          </button>
+        </Tooltip>
+      ) : null;
+    const cornerEnd = (unread || help) && (
+      <span className={styles.cornerEnd}>
+        {announcements && unread && (
+          <Tooltip content={announcementsLabel} side={tooltipSide}>
+            <span className={styles.marked}>
+              <button
+                type="button"
+                className={styles.tool}
+                aria-label={`${announcementsLabel}, ${announcements.unread} unread`}
+                onClick={announcements.onClick}
+              >
+                <Icon name="megaphone" size={18} />
+              </button>
+              <span className={styles.unread} aria-hidden="true" />
+            </span>
+          </Tooltip>
+        )}
+        {help &&
+          (inSheet && narrow ? (
+            <Tooltip content={helpLabel} side={tooltipSide}>
+              <button
+                type="button"
+                className={styles.tool}
+                aria-label={helpLabel}
+                aria-haspopup="dialog"
+                aria-expanded={helpSheetOpen}
+                onClick={() => setHelpSheetOpen(true)}
+              >
+                <Icon icon={CircleHelp} size={18} />
+              </button>
+            </Tooltip>
+          ) : (
+            <DropdownMenu modal={false}>
+              <Tooltip content={helpLabel} side={tooltipSide}>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className={styles.tool} aria-label={helpLabel}>
+                    <Icon icon={CircleHelp} size={18} />
+                  </button>
+                </DropdownMenuTrigger>
+              </Tooltip>
+              <HelpMenu help={help} rail={rail} />
+            </DropdownMenu>
+          ))}
       </span>
-      <Icon name="chev-ud" size={16} className={styles.trailing} />
-    </button>
-  );
-  const hasMenu = Boolean(
-    org || user.items?.length || theme || preferences.length || user.href || user.onClick
-  );
-  const content = (
-    <TooltipProvider>
+    );
+    return (
       <aside
         data-slot="sidebar"
         data-collapsed={rail || undefined}
-        data-sheet={sheet || undefined}
+        data-sheet={inSheet || undefined}
         data-edge={edge || undefined}
         className={cn(styles.sidebar, className)}
       >
         {header}
-        <div className={styles.tools}>
-          {sheet
-            ? tool("Close navigation", "sidebar", () => shell?.setNavigationOpen(false), "mod+B")
-            : collapsible &&
-              tool(
-                rail ? "Expand sidebar" : "Collapse sidebar",
-                "sidebar",
-                () => setCollapsed(!isCollapsed),
-                shell ? "mod+B" : undefined
-              )}
-          <span className={styles.toolsEnd}>
-            {search &&
-              tool(search.label ?? "Search", "search", search.onClick, search.shortcut ?? "mod+K")}
-            {invite && tool(invite.label ?? "Invite members", "user-plus", invite.onClick)}
-          </span>
-        </div>
+        {inSheet && (
+          <>
+            <div className={styles.sheetHead}>
+              <div ref={slotRefs.org} className={styles.sheetOrg} />
+              <Tooltip content="Close navigation" shortcut="mod+B" side="bottom">
+                <button
+                  type="button"
+                  className={styles.tool}
+                  aria-label="Close navigation"
+                  onClick={() => setNavigationOpen?.(false)}
+                >
+                  <Icon name="x" size={18} />
+                </button>
+              </Tooltip>
+            </div>
+            <div ref={slotRefs.switchers} className={styles.sheetSwitchers} />
+          </>
+        )}
         {!scope && spaces && activeSpace && !rail && (
           <Tabs className={styles.spaces} value={activeSpace.id} onValueChange={setSpaceId}>
             <TabsList variant="segmented" aria-label={spacesLabel}>
@@ -682,155 +820,50 @@ export const Sidebar = ({
             </div>
           )}
         </nav>
-        {accountUser && (
-          <div className={styles.accountShelf}>
-            {hasMenu ? (
-              <Switcher
-                label={org ? "Switch organization" : "Account"}
-                width={264}
-                side={rail ? "right" : "top"}
-                align="start"
-                options={(org?.options ?? []).map((option) => ({
-                  value: option.value,
-                  label: option.label,
-                  meta: option.plan,
-                  group: org?.optionsLabel ?? "Organizations"
-                }))}
-                value={org?.value}
-                onChange={(value) => org?.onChange(value)}
-                actions={[
-                  ...(org?.actions ?? []),
-                  ...(org?.actions?.length && user.items?.length
-                    ? [{ type: "separator" } as const]
-                    : []),
-                  ...(user.items ?? [])
-                ]}
-                footer={({ close }) => (
-                  <>
-                    {theme && (
-                      <div className={styles.themeRow}>
-                        <span>{theme.label ?? "Theme"}</span>
-                        <ToggleGroup
-                          type="single"
-                          size="sm"
-                          aria-label={theme.label ?? "Theme"}
-                          value={theme.value}
-                          onValueChange={(value) => {
-                            if (value) theme.onChange(value as SidebarTheme);
-                          }}
-                        >
-                          {themeOptions.map((option) => (
-                            <ToggleGroupItem
-                              key={option.value}
-                              value={option.value}
-                              aria-label={option.label}
-                              title={option.label}
-                            >
-                              <Icon name={option.icon} size={14} />
-                            </ToggleGroupItem>
-                          ))}
-                        </ToggleGroup>
-                      </div>
-                    )}
-                    {preferences.map((preference) => (
-                      <div key={preference.label} className={styles.themeRow}>
-                        <span>{preference.label}</span>
-                        <ToggleGroup
-                          type="single"
-                          size="sm"
-                          aria-label={preference.label}
-                          value={preference.value}
-                          onValueChange={(value) => {
-                            if (value) preference.onChange(value);
-                          }}
-                        >
-                          {preference.options.map((option) => (
-                            <ToggleGroupItem
-                              key={option.value}
-                              value={option.value}
-                              aria-label={option.label}
-                              title={option.label}
-                            >
-                              {option.swatch ? (
-                                <span
-                                  aria-hidden="true"
-                                  className={styles.swatch}
-                                  style={{ background: option.swatch }}
-                                />
-                              ) : (
-                                option.icon && <Icon name={option.icon} size={14} />
-                              )}
-                            </ToggleGroupItem>
-                          ))}
-                        </ToggleGroup>
-                      </div>
-                    ))}
-                    {(theme || preferences.length > 0) && (user.href || user.onClick) && (
-                      <div role="separator" className={menu.separator} />
-                    )}
-                    {(user.href || user.onClick) &&
-                      React.createElement(
-                        user.href ? "a" : "button",
-                        {
-                          className: styles.userRow,
-                          href: user.href,
-                          type: user.href ? undefined : "button",
-                          "aria-label": user.settingsLabel ?? "Personal settings",
-                          onClick: () => {
-                            user.onClick?.();
-                            close();
-                          }
-                        },
-                        <span className={styles.accountText}>
-                          <span className={styles.accountName}>{user.name}</span>
-                          <span className={styles.accountMeta}>{user.email}</span>
-                        </span>,
-                        <Icon name="chev-right" size={14} className={styles.trailing} />
-                      )}
-                  </>
-                )}
-                trigger={account}
-              />
-            ) : (
-              <div className={styles.account}>
-                {userMedia}
-                <span className={styles.accountText}>
-                  <span className={styles.accountName}>{user.name}</span>
-                  <span className={styles.accountMeta}>{userMeta}</span>
-                </span>
-              </div>
-            )}
+        {inSheet && narrow && <div ref={slotRefs.account} className={styles.sheetAccount} />}
+        {(toggle || cornerEnd || (inSheet && narrow)) && (
+          <div className={styles.corner}>
+            {toggle}
+            {inSheet && narrow && <span ref={slotRefs.icons} className={styles.cornerSlot} />}
+            {cornerEnd}
           </div>
         )}
       </aside>
-    </TooltipProvider>
-  );
-  if (!sheet || !shell) return content;
+    );
+  };
+  const sheetLabel = label ?? (activeSpace ? `${activeSpace.label} navigation` : "Main");
   return (
-    <Sheet open={shell.navigationOpen} onOpenChange={shell.setNavigationOpen}>
-      <SheetContent
-        side="left"
-        showCloseButton={false}
-        aria-describedby={undefined}
-        className={styles.sheet}
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          shell.navigationTrigger.current?.focus();
-        }}
-        onOpenAutoFocus={(event) => {
-          const target = (event.currentTarget as HTMLElement).querySelector<HTMLElement>(
-            '[aria-current="page"]'
-          );
-          if (!target) return;
-          event.preventDefault();
-          target.focus();
-        }}
-      >
-        <SheetTitle className={styles.srOnly}>
-          {label ?? (activeSpace ? `${activeSpace.label} navigation` : "Main")}
-        </SheetTitle>
-        {content}
-      </SheetContent>
-    </Sheet>
+    <TooltipProvider>
+      {!narrow && panel(false)}
+      {sheeted && shell && (
+        <Sheet open={shell.navigationOpen} onOpenChange={shell.setNavigationOpen}>
+          <SheetContent
+            side="left"
+            showCloseButton={false}
+            aria-describedby={undefined}
+            className={styles.sheet}
+            style={{ width: "fit-content" }}
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              (narrow ? shell.navigationTrigger.current : toggleRef.current)?.focus();
+            }}
+            onOpenAutoFocus={(event) => {
+              const target = (event.currentTarget as HTMLElement).querySelector<HTMLElement>(
+                '[aria-current="page"]'
+              );
+              if (!target) return;
+              event.preventDefault();
+              target.focus();
+            }}
+          >
+            <SheetTitle className={styles.srOnly}>{sheetLabel}</SheetTitle>
+            {panel(true)}
+          </SheetContent>
+        </Sheet>
+      )}
+      {help && narrow && (
+        <HelpSheet help={help} open={helpSheetOpen} onOpenChange={setHelpSheetOpen} />
+      )}
+    </TooltipProvider>
   );
 };

@@ -52,7 +52,7 @@ export const kbdDefinition = {
         {
           value: "sm",
           reason:
-            "The 18px cap (size-kbd-sm) that menus, command rows, buttons and the TopBar search use; it shows in those components' examples."
+            "The 18px cap (size-kbd-sm) that menus, command rows and buttons use; it shows in those components' examples."
         }
       ]
     },

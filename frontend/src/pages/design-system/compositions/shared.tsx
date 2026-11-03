@@ -1,11 +1,21 @@
 import { type ReactNode, useState } from "react";
+import { BookOpen, Github, LogOut, Mail, MessagesSquare } from "lucide-react";
 
+import { type Announcement, Announcements } from "@app/components/v4/ui/announcements";
 import { type BreadcrumbCrumb } from "@app/components/v4/ui/breadcrumb";
-import { Button } from "@app/components/v4/ui/button";
+import { Icon } from "@app/components/v4/ui/icon";
 import { Pagination } from "@app/components/v4/ui/pagination";
-import { Sidebar, type SidebarProps } from "@app/components/v4/ui/sidebar";
-import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
-import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
+import { Sidebar, type SidebarHelp, type SidebarProps } from "@app/components/v4/ui/sidebar";
+import {
+  AppInset,
+  AppShell,
+  PageGutter,
+  type ShellTheme,
+  TopBar,
+  type TopBarAccount
+} from "@app/components/v4/ui/top-bar";
+
+import { useWorkbench } from "../workbench-context";
 
 export const user = { name: "Sarah Lin", email: "sarah@acme.dev" };
 export const orgSections: SidebarProps["sections"] = [
@@ -128,16 +138,22 @@ export const settingsSections: SidebarProps["sections"] = [
   }
 ];
 
+const rootOrg = "acme";
 const organizations = [
-  { value: "acme", label: "Acme Corp", meta: "Enterprise" },
-  { value: "acme-eu", label: "Acme EU", meta: "Pro" }
+  { value: "acme", label: "Acme Corp", group: "Current organization" },
+  { value: "acme-eu", label: "acme-eu", group: "Sub-organizations" },
+  { value: "acme-labs", label: "acme-labs", group: "Sub-organizations" },
+  { value: "globex", label: "Globex", group: "Other organizations" },
+  { value: "initech", label: "Initech", group: "Other organizations" }
 ];
 const products = [
-  { value: "secrets", label: "Secrets Management" },
-  { value: "certs", label: "Certificate Manager" },
-  { value: "kms", label: "KMS" },
-  { value: "scanning", label: "Secret Scanning" }
-];
+  { value: "secrets", label: "Secrets Management", icon: "key" },
+  { value: "certs", label: "Certificate Manager", icon: "cert" },
+  { value: "kms", label: "KMS", icon: "lock" },
+  { value: "scanning", label: "Secret Scanning", icon: "search" },
+  { value: "pam", label: "Privileged Access Manager", icon: "terminal" },
+  { value: "agent-vault", label: "Agent Vault", icon: "agent" }
+] as const;
 const projects = [
   { value: "payments-api", label: "payments-api", mono: true },
   { value: "web-dashboard", label: "web-dashboard", mono: true },
@@ -169,22 +185,54 @@ export const usePagedRows = <Row,>(rows: readonly Row[], label: string, initialP
   };
 };
 export const useCrumbs = (initial: { product?: string; project?: string } = {}) => {
-  const [org, setOrg] = useState("acme");
+  const [org, setOrg] = useState(rootOrg);
   const [product, setProduct] = useState(initial.product ?? "secrets");
   const [project, setProject] = useState(initial.project ?? "payments-api");
+  const inSubOrg = org !== rootOrg;
+  const productIcon = products.find((option) => option.value === product)?.icon ?? "apps";
   return {
     org: {
       label: labelOf(organizations, org),
+      media: <Icon name="building" />,
       switcher: {
         label: "Switch organization",
-        options: organizations,
+        searchable: true,
+        placeholder: "Search organizations",
+        maxHeight: 400,
+        options: [
+          ...organizations.map((option) => ({
+            ...option,
+            media: option.group === "Sub-organizations" ? undefined : <Icon name="building" />
+          })),
+          {
+            value: "new-sub-organization",
+            label: "New sub-organization",
+            group: "Sub-organizations",
+            media: <Icon name="plus" />,
+            disabled: inSubOrg,
+            description: inSubOrg ? "Switch to Acme Corp to create one" : undefined,
+            onSelect: () => {}
+          }
+        ],
         value: org,
-        onChange: setOrg
+        onChange: setOrg,
+        actions: [{ label: "Organization settings", icon: "settings" }]
       }
     } satisfies BreadcrumbCrumb,
     product: {
-      label: labelOf(products, product),
-      switcher: { label: "Switch product", options: products, value: product, onChange: setProduct }
+      label: labelOf([...products], product),
+      media: <Icon name={productIcon} />,
+      switcher: {
+        label: "Switch product",
+        options: products.map((option) => ({
+          value: option.value,
+          label: option.label,
+          group: "Products",
+          media: <Icon name={option.icon} />
+        })),
+        value: product,
+        onChange: setProduct
+      }
     } satisfies BreadcrumbCrumb,
     project: {
       label: labelOf(projects, project),
@@ -194,20 +242,84 @@ export const useCrumbs = (initial: { product?: string; project?: string } = {}) 
   };
 };
 
-const barActions = (
-  <TooltipProvider>
-    <Tooltip content="Search" shortcut="mod+K" side="bottom">
-      <Button variant="ghost" size="icon" icon="search" iconOnly>
-        Search
-      </Button>
-    </Tooltip>
-    <Tooltip content="Notifications" side="bottom">
-      <Button variant="ghost" size="icon" icon="bell" iconOnly>
-        Notifications
-      </Button>
-    </Tooltip>
-  </TooltipProvider>
-);
+const announcementItems: Announcement[] = [
+  {
+    id: "agent-vault",
+    eyebrow: "October 30, 2026",
+    title: "Agent Vault is in preview",
+    description:
+      "Give AI agents scoped access to the secrets and services they need, with every session recorded."
+  },
+  {
+    id: "pam-recordings",
+    eyebrow: "October 21, 2026",
+    title: "Session recordings in PAM",
+    description: "Replay brokered database and SSH sessions from the session detail page."
+  }
+];
+
+export const useShellChrome = () => {
+  const workbench = useWorkbench();
+  const [localTheme, setLocalTheme] = useState<ShellTheme>("system");
+  const [unseen, setUnseen] = useState(() => announcementItems.map((item) => item.id));
+  const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const openAnnouncements = () => setAnnouncementsOpen(true);
+  const account: TopBarAccount = {
+    name: user.name,
+    email: user.email,
+    items: [
+      { label: "Personal settings", icon: "user" },
+      { label: "Invite users", icon: "user-plus" }
+    ],
+    theme: workbench?.theme ?? { value: localTheme, onChange: setLocalTheme },
+    endItems: [
+      { label: "Copy token", icon: "copy" },
+      { type: "separator" },
+      { label: "Log out", icon: LogOut }
+    ]
+  };
+  const help: SidebarHelp = {
+    status: { label: "All systems operational", href: "https://status.infisical.com" },
+    whatsNew: { unread: unseen.length, latest: "Oct 30", onSelect: openAnnouncements },
+    items: [
+      {
+        label: "Support Forum",
+        icon: MessagesSquare,
+        href: "https://community.infisical.com",
+        external: true
+      },
+      {
+        label: "Read Docs",
+        icon: BookOpen,
+        href: "https://infisical.com/docs/documentation/getting-started/introduction",
+        external: true
+      },
+      {
+        label: "GitHub Issues",
+        icon: Github,
+        href: "https://github.com/Infisical/infisical/issues",
+        external: true
+      },
+      { label: "Email Support", icon: Mail, href: "mailto:support@infisical.com" }
+    ],
+    version: "56a8340"
+  };
+  return {
+    search: { onClick: () => workbench?.openSearch() },
+    notifications: { unread: 3 },
+    account,
+    help,
+    announcements: { unread: unseen.length, onClick: openAnnouncements },
+    dialog: (
+      <Announcements
+        items={announcementItems}
+        open={announcementsOpen}
+        onOpenChange={setAnnouncementsOpen}
+        onSeen={(id) => setUnseen((ids) => ids.filter((entry) => entry !== id))}
+      />
+    )
+  };
+};
 
 export type ShellLevel = "org" | "settings" | "product" | "project" | "pki" | "kms" | "scanning";
 const levelSections: Record<ShellLevel, SidebarProps["sections"]> = {
@@ -252,6 +364,7 @@ export const Shell = ({
   children?: ReactNode;
 }) => {
   const { org, product, project } = useCrumbs({ product: initialProduct, project: initialProject });
+  const chrome = useShellChrome();
   const opens: Record<string, { level: ShellLevel; page: string }> = {
     settings: { level: "settings", page: "general" },
     projects: projectHome[initialProduct ?? "secrets"]
@@ -298,6 +411,12 @@ export const Shell = ({
         };
   return (
     <AppShell style={{ height: "100%" }}>
+      <TopBar
+        breadcrumb={crumbs}
+        search={chrome.search}
+        notifications={chrome.notifications}
+        account={chrome.account}
+      />
       <Sidebar
         label="Main"
         sections={sections}
@@ -308,16 +427,11 @@ export const Shell = ({
           else setAt((item.drillIn && opens[item.id]) || { level: at.level, page: item.id });
           onNavigate?.(item.id);
         }}
-        search={{ onClick: () => {} }}
-        user={user}
-        footerItems={[
-          { id: "docs", label: "Docs", icon: "file", href: "#comparisons", external: true }
-        ]}
+        help={chrome.help}
+        announcements={chrome.announcements}
       />
-      <AppInset>
-        <TopBar breadcrumb={crumbs} actions={barActions} />
-        {children && <PageGutter>{children}</PageGutter>}
-      </AppInset>
+      <AppInset>{children && <PageGutter>{children}</PageGutter>}</AppInset>
+      {chrome.dialog}
     </AppShell>
   );
 };
