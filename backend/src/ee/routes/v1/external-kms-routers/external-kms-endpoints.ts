@@ -41,6 +41,8 @@ export const registerExternalKmsEndpoints = <
   createSchema: z.ZodType<T["inputs"]>;
   updateSchema: z.ZodType<Partial<T["inputs"]>>;
 }) => {
+  const providerNameForOpId = provider.charAt(0).toUpperCase() + provider.slice(1);
+
   server.route({
     method: "GET",
     url: "/:id",
@@ -48,6 +50,7 @@ export const registerExternalKmsEndpoints = <
       rateLimit: readLimit
     },
     schema: {
+      operationId: `get${providerNameForOpId}ExternalKms`,
       params: z.object({
         id: z.string().trim().min(1)
       }),
@@ -106,6 +109,7 @@ export const registerExternalKmsEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `create${providerNameForOpId}ExternalKms`,
       body: z.object({
         name: z.string().min(1).trim().toLowerCase(),
         description: z.string().trim().optional(),
@@ -174,6 +178,7 @@ export const registerExternalKmsEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `update${providerNameForOpId}ExternalKms`,
       params: z.object({
         id: z.string().trim().min(1)
       }),
@@ -246,6 +251,7 @@ export const registerExternalKmsEndpoints = <
       rateLimit: writeLimit
     },
     schema: {
+      operationId: `delete${providerNameForOpId}ExternalKms`,
       params: z.object({
         id: z.string().trim().min(1)
       }),

@@ -74,6 +74,9 @@ export const relayServiceFactory = ({
       if (existingInstanceRelayConfig) return existingInstanceRelayConfig;
 
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.InstanceRelayConfigInit()]);
+      // Re-read under the lock: a request that waited on it must not create a second one.
+      const lockedInstanceRelayConfig = await instanceRelayConfigDAL.findById(INSTANCE_RELAY_CONFIG_UUID, tx);
+      if (lockedInstanceRelayConfig) return lockedInstanceRelayConfig;
 
       const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
       const rootCaKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
@@ -428,6 +431,9 @@ export const relayServiceFactory = ({
       }
 
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgRelayConfigInit(orgId)]);
+      // Re-read under the lock: a request that waited on it must not create a second one.
+      const lockedOrgRelayConfig = await orgRelayConfigDAL.findOne({ orgId }, tx);
+      if (lockedOrgRelayConfig) return lockedOrgRelayConfig;
 
       const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
       const orgRelayCaCert = new x509.X509Certificate(instanceCAs.orgRelayPkiCaCertificate);

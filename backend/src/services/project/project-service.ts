@@ -310,9 +310,9 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager,
     hasDeleteProtection
   }: TCreateProjectDTO) => {
-    if (type === ProjectType.AgentVault) {
+    if (type === ProjectType.AgentVault || type === ProjectType.PAM) {
       throw new BadRequestError({
-        message: "Agent Vault projects cannot be created directly. One is created for your organization automatically."
+        message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[type]} projects cannot be created directly. One is created for your organization automatically.`
       });
     }
 
@@ -2624,12 +2624,21 @@ export const projectServiceFactory = ({
   const getSecretBlindIndexMigrationStatus = async (dto: TEnableSecretBlindIndexDTO) =>
     secretValueTrackingService.getProjectStatus(dto);
 
+  // Labels for audit metadata only, so no permission check. Scoped to the org, so an id from
+  // another org resolves to nothing.
+  const getProjectNamesByIds = async ({ orgId, projectIds }: { orgId: string; projectIds: string[] }) => {
+    if (!projectIds.length) return [];
+    const projects = await projectDAL.find({ orgId, $in: { id: projectIds } });
+    return projects.map(({ id, name }) => ({ id, name }));
+  };
+
   return {
     createProject,
     deleteProject,
     listDeletedProjects,
     restoreProject,
     permanentlyDeleteProject,
+    getProjectNamesByIds,
     getProjects,
     getAccessibleProjectsWithSubOrgs,
     updateProject,

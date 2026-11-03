@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import {
+  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
+  AGENT_VAULT_NO_CONTROL_CHARS_RE
+} from "@app/helpers/agentVaultControlChars";
 import { addHostIssues, hostError } from "@app/helpers/agentVaultHostPattern";
 import { addPathPrefixIssues, pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 import { variableReferenceError } from "@app/helpers/agentVaultVariables";
@@ -137,14 +141,6 @@ export const SURFACE_LABELS: Record<AgentVaultSubstitutionSurface, string> = {
   [AgentVaultSubstitutionSurface.Header]: "Headers",
   [AgentVaultSubstitutionSurface.Body]: "Body"
 };
-
-// Mirrors AGENT_VAULT_NO_CONTROL_CHARS_RE on the backend. A pasted key with a trailing newline is the
-// common case, and it saves fine but then makes Go refuse to send the header.
-// eslint-disable-next-line no-control-regex
-const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
-
-const CONTROL_CHARS_MESSAGE =
-  "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";
 
 // Double braces wrap a variable reference, and neither a prefix nor a placeholder takes one.
 // The client ID and secret go to the provider as typed, unlike the credential fields that take `{{KEY}}`.
@@ -520,10 +516,12 @@ export const buildServiceSchema = (
         seenHeaders.add(header.name.toLowerCase());
 
         if (!header.value) at("value", "Required");
-        else if (!NO_CONTROL_CHARS_RE.test(header.value)) at("value", CONTROL_CHARS_MESSAGE);
+        // A pasted key with a trailing newline saves fine but then makes Go refuse to send the header.
+        else if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(header.value))
+          at("value", AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
 
-        if (header.prefix && !NO_CONTROL_CHARS_RE.test(header.prefix)) {
-          at("prefix", CONTROL_CHARS_MESSAGE);
+        if (header.prefix && !AGENT_VAULT_NO_CONTROL_CHARS_RE.test(header.prefix)) {
+          at("prefix", AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
         } else if (header.prefix && hasDoubleBraces(header.prefix)) {
           at("prefix", PREFIX_BRACES_MESSAGE);
         }
@@ -540,8 +538,8 @@ export const buildServiceSchema = (
 
         if (!substitution.placeholder) {
           at("placeholder", "Required");
-        } else if (!NO_CONTROL_CHARS_RE.test(substitution.placeholder)) {
-          at("placeholder", CONTROL_CHARS_MESSAGE);
+        } else if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(substitution.placeholder)) {
+          at("placeholder", AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
         } else if (hasDoubleBraces(substitution.placeholder)) {
           at(
             "placeholder",
@@ -553,7 +551,8 @@ export const buildServiceSchema = (
         seenPlaceholders.add(substitution.placeholder);
 
         if (!substitution.value) at("value", "Required");
-        else if (!NO_CONTROL_CHARS_RE.test(substitution.value)) at("value", CONTROL_CHARS_MESSAGE);
+        else if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(substitution.value))
+          at("value", AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
         if (substitution.surfaces.length === 0) {
           at("surfaces", "Pick at least one place to look for the placeholder.");
         }

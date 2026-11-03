@@ -180,11 +180,6 @@ actions:
   - target: $.paths['/api/v1/dashboard/secrets-details'].get.parameters[?(@.name == 'includeProxiedServices')].schema
     update:
       type: boolean
-  - target: $.paths['/api/v1/dashboard/accessible-secrets'].get.parameters[?(@.name == 'recursive')].schema.anyOf
-    remove: true
-  - target: $.paths['/api/v1/dashboard/accessible-secrets'].get.parameters[?(@.name == 'recursive')].schema
-    update:
-      type: boolean
   - target: $.paths['/api/v1/dashboard/secrets-by-keys'].get.parameters[?(@.name == 'viewSecretValue')].schema.anyOf
     remove: true
   - target: $.paths['/api/v1/dashboard/secrets-by-keys'].get.parameters[?(@.name == 'viewSecretValue')].schema
@@ -207,3 +202,20 @@ actions:
   - target: $.paths['/api/v1/access-approvals/requests'].post.requestBody.content['application/json'].schema.properties.permissions.items
     update:
       items: {}
+  # The same permission-action naming bug in organization role bodies.
+  # createOrganizationRole
+  - target: $.paths['/api/v1/organization/roles'].post.requestBody.content['application/json'].schema.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v1/organization/roles'].post.requestBody.content['application/json'].schema.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true
+  # updateOrganizationRole
+  - target: $.paths['/api/v1/organization/roles/{roleId}'].patch.requestBody.content['application/json'].schema.properties.permissions.items
+    remove: true
+  - target: $.paths['/api/v1/organization/roles/{roleId}'].patch.requestBody.content['application/json'].schema.properties.permissions
+    update:
+      items:
+        type: object
+        additionalProperties: true

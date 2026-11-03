@@ -94,7 +94,6 @@ import {
   TDeleteManySecretRawDTO,
   TDeleteSecretDTO,
   TDeleteSecretRawDTO,
-  TGetAccessibleSecretsDTO,
   TGetASecretByIdRawDTO,
   TGetASecretDTO,
   TGetASecretRawDTO,
@@ -1445,41 +1444,6 @@ export const secretServiceFactory = ({
     }));
 
     return { users, identities, groups };
-  };
-
-  const getAccessibleSecrets = async ({
-    projectId,
-    secretPath,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    environment,
-    filterByAction,
-    recursive
-  }: TGetAccessibleSecretsDTO) => {
-    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-
-    if (!shouldUseSecretV2Bridge) {
-      throw new BadRequestError({
-        message: "Project version does not support this endpoint.",
-        name: "ProjectVersionNotSupported"
-      });
-    }
-
-    const secrets = await secretV2BridgeService.getAccessibleSecrets({
-      projectId,
-      secretPath,
-      environment,
-      filterByAction,
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod,
-      recursive
-    });
-
-    return secrets;
   };
 
   const getSecretMetadata = async (dto: TGetSecretMetadataDTO) => {
@@ -4067,7 +4031,6 @@ export const secretServiceFactory = ({
     getSecretsRawByFolderMappings,
     getSecretAccessList,
     getSecretByIdRaw,
-    getAccessibleSecrets,
     getSecretMetadata,
     getSecretVersionsV2ByIds,
     getChangeVersions,
