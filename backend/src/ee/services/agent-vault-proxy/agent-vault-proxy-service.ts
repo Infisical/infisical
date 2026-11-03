@@ -74,7 +74,7 @@ import {
   RESOURCE_TYPE_AGENT_VAULT_PROXY
 } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { generateProxyRootCa, parseRootCaCertificate } from "./agent-vault-ca-fns";
+import { generateProxyRootCa, getRootCaFingerprint, parseRootCaCertificate } from "./agent-vault-ca-fns";
 import { TAgentVaultProxyDALFactory } from "./agent-vault-proxy-dal";
 import {
   TAgentVaultProxyConfig,
@@ -313,6 +313,27 @@ export const agentVaultProxyServiceFactory = ({
     return { proxies: proxies.map((proxy) => (isAdmin ? toAdminView(proxy) : toMemberView(proxy))), totalCount };
   };
 
+  // A proxy started with its own CA reports only that CA's fingerprint, so the certificate Infisical holds is not
+  // the one it serves and can't be handed out as if it were.
+  const getProxyCa = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
+    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Read);
+    const proxy = await $findProxyOr404({ projectId, proxyId });
+    const servesOwnCa = new ConflictError({
+      message: `Proxy '${proxy.name}' serves its own certificate authority. Use the certificate you passed to it with --ca-cert.`
+    });
+    // Rows without a certificate predate stored CAs and proxy tokens. A rotation stores a CA and issues a token.
+    if (!proxy.rootCaCertificate) {
+      throw new ConflictError({
+        message: proxy.rootCaFingerprint
+          ? `Proxy '${proxy.name}' was set up before Infisical stored its certificate authority, so it serves the ca.crt in its data directory. To manage the CA from Infisical, rotate the proxy token and restart the proxy with it.`
+          : `Proxy '${proxy.name}' has no certificate authority yet. Rotate its proxy token, then start the proxy with the new token.`
+      });
+    }
+    const held = parseRootCaCertificate(proxy.rootCaCertificate);
+    if (proxy.rootCaFingerprint && proxy.rootCaFingerprint !== held.fingerprint) throw servesOwnCa;
+    return { ca: { certificate: proxy.rootCaCertificate, fingerprint: held.fingerprint, expiresAt: held.expiresAt } };
+  };
+
   const $resourceActor = (ctx: TCreateProxyDTO["ctx"]) => ({
     type: ctx.actor,
     id: ctx.actorId,
@@ -388,6 +409,12 @@ export const agentVaultProxyServiceFactory = ({
     const proxy = await $findProxyOr404({ projectId, proxyId });
 
     const { stored, reported } = await $newRootCa(proxy.projectId);
+    // The fingerprint is the only record that a proxy serves its own CA, and its next start reports that CA again.
+    // Overwriting it here would make the CA download hand out the new CA, which the proxy never serves. A row with no
+    // certificate predates stored CAs, and its next start serves the CA stored here.
+    const servesOwnCa =
+      Boolean(proxy.rootCaCertificate && proxy.rootCaFingerprint) &&
+      proxy.rootCaFingerprint !== getRootCaFingerprint(proxy.rootCaCertificate as string);
 
     const rotated = await agentVaultProxyDAL.transaction(async (tx) => {
       const updated = await agentVaultProxyDAL.updateById(
@@ -397,7 +424,7 @@ export const agentVaultProxyServiceFactory = ({
           heartbeat: null,
           heartbeatTTL: null,
           ...stored,
-          ...reported
+          ...(servesOwnCa ? {} : reported)
         },
         tx
       );
@@ -1149,6 +1176,7 @@ export const agentVaultProxyServiceFactory = ({
   return {
     getProxyForAuth,
     listProxies,
+    getProxyCa,
     createProxy,
     rotateProxyToken,
     updateProxy,
