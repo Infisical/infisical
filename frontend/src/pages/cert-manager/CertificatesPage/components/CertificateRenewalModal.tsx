@@ -658,7 +658,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     validateStep: async (fields) => {
       // Leaving a step reveals the findings on its own fields; entering it must stay quiet.
       policy.reveal(fields);
-      if (nameRemovalError && (fields.includes("subjectAltNames") || fields.includes("csr"))) return false;
+      if (nameRemovalError && (fields.includes("subjectAltNames") || fields.includes("csr")))
+        return false;
       if (!(await trigger(fields as (keyof RenewalFormData)[]))) return false;
       return policy.findBlockedFields(fields).length === 0;
     }
@@ -823,7 +824,9 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     }
 
     if (nameRemovalError) {
-      const namesStep = stepKeys.indexOf(keySource === CertificateRenewalKeySource.Csr ? "csr" : "subject");
+      const namesStep = stepKeys.indexOf(
+        keySource === CertificateRenewalKeySource.Csr ? "csr" : "subject"
+      );
       if (namesStep >= 0) setStep(namesStep);
       createNotification({ text: nameRemovalError, type: "error" });
       return;
@@ -962,11 +965,15 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                 <FieldDescription>
                   The subject, key, and extensions are taken from this CSR.
                 </FieldDescription>
-                <FieldError errors={[error ?? (nameRemovalError ? { message: nameRemovalError } : undefined)]} />
+                <FieldError
+                  errors={[error ?? (nameRemovalError ? { message: nameRemovalError } : undefined)]}
+                />
               </Field>
             )}
           />
-          {removedNames.length > 0 && !nameRemovalError && <NameRemovalWarning names={removedNames} />}
+          {removedNames.length > 0 && !nameRemovalError && (
+            <NameRemovalWarning names={removedNames} />
+          )}
           <ValidityField
             control={control}
             label="Validity (TTL)"
@@ -1015,7 +1022,9 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
             />
           )}
-          {removedNames.length > 0 && !nameRemovalError && <NameRemovalWarning names={removedNames} />}
+          {removedNames.length > 0 && !nameRemovalError && (
+            <NameRemovalWarning names={removedNames} />
+          )}
           <IssuerModifiedNotice fields={subjectIssuerChanges} />
         </div>
       )}
