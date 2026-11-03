@@ -26,8 +26,10 @@ detail a finding needs.
 
 1. Read the PR description and linked issue. Write down, in one sentence, what behavior the change
    is supposed to add or fix. Every finding is measured against that sentence.
-2. Get the full diff (`git diff origin/main...HEAD -- backend/ backend-go/`), then read every
-   changed file in full, not only the hunks. Most real bugs sit in the unchanged lines around a
+2. List every changed file first (`git diff --stat origin/main...HEAD`), so changes to `tests/`,
+   `backend/e2e-test/`, docs, and the frontend that ships with the backend change are not missed.
+   Then focus on `backend/`, `backend-go/`, and the tests that cover them, and read every changed
+   file in full, not only the hunks. Most real bugs sit in the unchanged lines around a
    hunk: the transaction the new call runs inside, the caller that now gets a different error.
 3. For each new or changed function, find its callers (`rg -n "functionName\("`). A change that is
    correct for the new route can break an old route that shares the service method.
@@ -123,8 +125,10 @@ waiting, heavy CPU, or unbounded row counts between `BEGIN` and `COMMIT`. Then a
   system), write it to the event outbox in the same transaction. If a best-effort enqueue can throw
   after commit, make sure it cannot skip the audit event or turn a committed write into a 500.
 - **Check-then-act races.** "Does the name exist? Then insert" is not safe under concurrency. Rely
-  on a unique constraint and map the violation to a `ConflictError` (409), or lock the row
-  (`FOR UPDATE`) as the first statement of the transaction.
+  on a unique constraint and map the violation to a `ConflictError` (409). Where a constraint is
+  not possible, every writer must take the same lock before it checks: `FOR UPDATE` on an existing
+  shared parent row (the project or folder), or a transaction-scoped advisory lock on the name.
+  `FOR UPDATE` on the lookup of a name that does not exist yet locks nothing.
 
 ### 3.5 Request weight and query shape
 
@@ -196,8 +200,10 @@ waiting, heavy CPU, or unbounded row counts between `BEGIN` and `COMMIT`. Then a
 ### 3.10 Tests
 
 Ask whether the change breaks an existing test (error classes, response shapes) and whether the
-risky part of the change has any test. Don't ask for tests on low-risk paths. API end-to-end tests
-belong in the Go suite under `tests/`, not `backend/e2e-test`.
+risky part of the change has any test. Don't ask for tests on low-risk paths. New API end-to-end
+tests belong in the Go suite under `tests/`, except tests that need direct Postgres or Redis
+access, an internal service handle, or a mocked module, which stay in `backend/e2e-test/`. Read
+`tests/AGENTS.md` before asking for a test to move.
 
 ## 4. Verify before you report
 
@@ -207,8 +213,10 @@ belong in the Go suite under `tests/`, not `backend/e2e-test`.
 - Treat bot findings on the PR (Greptile, Codex, Claude) as leads. Confirm each one, and check it
   against the house exceptions in the lessons file before repeating it. Bots repeatedly ask for
   `.uuid()` on `projectId`, which is wrong here.
-- When reviewing your own change, run `make reviewable-api`. When a finding depends on behavior,
-  run the narrowest suite with `make test-api-unit SPEC=<pattern>`.
+- When reviewing your own change, run the checks for the server you changed. For `backend/`, run
+  `make reviewable-api`, and when a finding depends on behavior, the narrowest suite with
+  `make test-api-unit SPEC=<pattern>`. For `backend-go/`, run `make lint` and the relevant
+  `make test-unit` or `make test-integration` from `backend-go/`.
 
 ## 5. Report
 
