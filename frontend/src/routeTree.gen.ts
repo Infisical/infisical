@@ -49,6 +49,7 @@ import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
 import { Route as redirectsPamAccessRedirectImport } from './pages/redirects/pam-access-redirect'
 import { Route as adminLayoutImport } from './pages/admin/layout'
 import { Route as v4OrganizationProjectsPageRouteImport } from './pages/v4/organization/ProjectsPage/route'
+import { Route as v4OrganizationNotPortedPageRouteImport } from './pages/v4/organization/NotPortedPage/route'
 import { Route as authProviderErrorPageRouteImport } from './pages/auth/ProviderErrorPage/route'
 import { Route as agentVaultAgentVaultOAuthCallbackPageRouteImport } from './pages/agent-vault/AgentVaultOAuthCallbackPage/route'
 import { Route as adminWelcomePageRouteImport } from './pages/admin/WelcomePage/route'
@@ -690,6 +691,13 @@ const v4OrganizationProjectsPageRouteRoute =
   v4OrganizationProjectsPageRouteImport.update({
     id: '/projects',
     path: '/projects',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
+const v4OrganizationNotPortedPageRouteRoute =
+  v4OrganizationNotPortedPageRouteImport.update({
+    id: '/$',
+    path: '/$',
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
@@ -3081,6 +3089,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authProviderErrorPageRouteImport
       parentRoute: typeof RestrictLoginSignupLoginImport
     }
+    '/v4/organizations/$orgId/$': {
+      id: '/v4/organizations/$orgId/$'
+      path: '/$'
+      fullPath: '/v4/organizations/$orgId/$'
+      preLoaderRoute: typeof v4OrganizationNotPortedPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/v4/organizations/$orgId/projects': {
       id: '/v4/organizations/$orgId/projects'
       path: '/projects'
@@ -4970,10 +4985,12 @@ declare module '@tanstack/react-router' {
 // Create and export the route tree
 
 interface v4OrganizationRouteRouteChildren {
+  v4OrganizationNotPortedPageRouteRoute: typeof v4OrganizationNotPortedPageRouteRoute
   v4OrganizationProjectsPageRouteRoute: typeof v4OrganizationProjectsPageRouteRoute
 }
 
 const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
+  v4OrganizationNotPortedPageRouteRoute: v4OrganizationNotPortedPageRouteRoute,
   v4OrganizationProjectsPageRouteRoute: v4OrganizationProjectsPageRouteRoute,
 }
 
@@ -6406,6 +6423,7 @@ export interface FileRoutesByFullPath {
   '/admin/welcome': typeof adminWelcomePageRouteRoute
   '/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
+  '/v4/organizations/$orgId/$': typeof v4OrganizationNotPortedPageRouteRoute
   '/v4/organizations/$orgId/projects': typeof v4OrganizationProjectsPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
@@ -6706,6 +6724,7 @@ export interface FileRoutesByTo {
   '/admin/welcome': typeof adminWelcomePageRouteRoute
   '/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
+  '/v4/organizations/$orgId/$': typeof v4OrganizationNotPortedPageRouteRoute
   '/v4/organizations/$orgId/projects': typeof v4OrganizationProjectsPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
@@ -6988,6 +7007,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin/welcome': typeof adminWelcomePageRouteRoute
   '/_authenticate/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/_restrict-login-signup/login/provider/error': typeof authProviderErrorPageRouteRoute
+  '/v4/organizations/$orgId/$': typeof v4OrganizationNotPortedPageRouteRoute
   '/v4/organizations/$orgId/projects': typeof v4OrganizationProjectsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/_authenticate/_inject-org-details/admin/_admin-layout': typeof adminLayoutRouteWithChildren
@@ -7300,6 +7320,7 @@ export interface FileRouteTypes {
     | '/admin/welcome'
     | '/agent-vault/oauth/callback'
     | '/login/provider/error'
+    | '/v4/organizations/$orgId/$'
     | '/v4/organizations/$orgId/projects'
     | '/integrations'
     | '/pam/access'
@@ -7599,6 +7620,7 @@ export interface FileRouteTypes {
     | '/admin/welcome'
     | '/agent-vault/oauth/callback'
     | '/login/provider/error'
+    | '/v4/organizations/$orgId/$'
     | '/v4/organizations/$orgId/projects'
     | '/integrations'
     | '/pam/access'
@@ -7879,6 +7901,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin/welcome'
     | '/_authenticate/agent-vault/oauth/callback'
     | '/_restrict-login-signup/login/provider/error'
+    | '/v4/organizations/$orgId/$'
     | '/v4/organizations/$orgId/projects'
     | '/_authenticate/_inject-org-details/_org-layout/integrations'
     | '/_authenticate/_inject-org-details/admin/_admin-layout'
@@ -8376,6 +8399,7 @@ export const routeTree = rootRoute
       "filePath": "v4/organization/route.tsx",
       "parent": "/v4",
       "children": [
+        "/v4/organizations/$orgId/$",
         "/v4/organizations/$orgId/projects"
       ]
     },
@@ -8422,6 +8446,10 @@ export const routeTree = rootRoute
     "/_restrict-login-signup/login/provider/error": {
       "filePath": "auth/ProviderErrorPage/route.tsx",
       "parent": "/_restrict-login-signup/login"
+    },
+    "/v4/organizations/$orgId/$": {
+      "filePath": "v4/organization/NotPortedPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/projects": {
       "filePath": "v4/organization/ProjectsPage/route.tsx",
