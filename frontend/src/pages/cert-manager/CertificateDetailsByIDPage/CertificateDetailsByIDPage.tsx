@@ -257,14 +257,9 @@ const Page = () => {
     : Boolean(
         certSubject && permission.can(ProjectPermissionCertificateActions.Delete, certSubject)
       );
-  const canEditPkiSyncs =
-    permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs) ||
-    Boolean(
-      appPermissionData?.permission?.can(
-        PkiApplicationResourceActions.Edit,
-        PkiApplicationResourceSub.PkiSyncs
-      )
-    );
+  const canEditPkiSyncs = applicationAccess
+    ? applicationAccess.canManagePkiSyncs
+    : permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
 
   let certificateBackLink = (
     <Link
@@ -468,17 +463,22 @@ const Page = () => {
                   certificate.status === CertStatus.ACTIVE &&
                   !certificate.renewedByCertificateId &&
                   certificate.source === CertSource.Issued && (
-                    <DropdownMenuItem
-                      isDisabled={!canEditPkiSyncs}
-                      onClick={() =>
-                        handlePopUpOpen("managePkiSyncs", {
-                          certificateId: certificate.id,
-                          commonName: displayName
-                        })
-                      }
-                    >
-                      Manage PKI Syncs
-                    </DropdownMenuItem>
+                    <BlockedActionTooltip reason={applicationAccess?.managePkiSyncsBlockedReason}>
+                      <DropdownMenuItem
+                        isDisabled={!canEditPkiSyncs}
+                        isDisabledFocusable={Boolean(
+                          applicationAccess?.managePkiSyncsBlockedReason
+                        )}
+                        onClick={() =>
+                          handlePopUpOpen("managePkiSyncs", {
+                            certificateId: certificate.id,
+                            commonName: displayName
+                          })
+                        }
+                      >
+                        Manage PKI Syncs
+                      </DropdownMenuItem>
+                    </BlockedActionTooltip>
                   )}
                 {canOfferRevoke && (
                   <BlockedActionTooltip reason={applicationAccess?.revokeBlockedReason}>

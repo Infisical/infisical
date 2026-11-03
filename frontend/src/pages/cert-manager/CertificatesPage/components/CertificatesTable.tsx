@@ -211,12 +211,6 @@ export const CertificatesTable = ({
         permission: appPermissionData?.permission
       })
     : undefined;
-  const canEditPkiSyncsAtApplication = Boolean(
-    appPermissionData?.permission?.can(
-      PkiApplicationResourceActions.Edit,
-      PkiApplicationResourceSub.PkiSyncs
-    )
-  );
 
   const getFiltersForSystemViewId = (viewId: string | undefined): FilterRule[] => {
     if (viewId === "system-pqc") {
@@ -953,11 +947,12 @@ export const CertificatesTable = ({
                     certificate.source !== CertSource.Discovered &&
                     (!isDeleted || isRevocableAfterDeletion) &&
                     !(isInventoryView && certificate.applicationId);
-                  const canEditPkiSyncs =
-                    permission.can(
-                      ProjectPermissionPkiSyncActions.Edit,
-                      ProjectPermissionSub.PkiSyncs
-                    ) || canEditPkiSyncsAtApplication;
+                  const canEditPkiSyncs = rowApplicationAccess
+                    ? rowApplicationAccess.canManagePkiSyncs
+                    : permission.can(
+                        ProjectPermissionPkiSyncActions.Edit,
+                        ProjectPermissionSub.PkiSyncs
+                      );
                   const canShowAutoRenewalIcon = Boolean(
                     !isInventoryView &&
                     !isDeleted &&
@@ -1334,19 +1329,26 @@ export const CertificatesTable = ({
                                 certificate.status === CertStatus.ACTIVE &&
                                 !certificate.renewedByCertificateId &&
                                 certificate.source !== CertSource.Discovered && (
-                                  <DropdownMenuItem
-                                    isDisabled={!canEditPkiSyncs}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("managePkiSyncs", {
-                                        certificateId: certificate.id,
-                                        commonName: certificate.commonName
-                                      });
-                                    }}
+                                  <BlockedActionTooltip
+                                    reason={rowApplicationAccess?.managePkiSyncsBlockedReason}
                                   >
-                                    <LinkIcon />
-                                    Manage PKI Syncs
-                                  </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      isDisabled={!canEditPkiSyncs}
+                                      isDisabledFocusable={Boolean(
+                                        rowApplicationAccess?.managePkiSyncsBlockedReason
+                                      )}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("managePkiSyncs", {
+                                          certificateId: certificate.id,
+                                          commonName: certificate.commonName
+                                        });
+                                      }}
+                                    >
+                                      <LinkIcon />
+                                      Manage PKI Syncs
+                                    </DropdownMenuItem>
+                                  </BlockedActionTooltip>
                                 )}
                               {hasProjectRole("admin") &&
                                 !isDeleted &&

@@ -35,11 +35,13 @@ export type TApplicationCertificateAccess = {
   canRenew: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  canManagePkiSyncs: boolean;
   renewBlockedReason?: string;
   editBlockedReason?: string;
   editMetadataBlockedReason?: string;
   revokeBlockedReason?: string;
   deleteBlockedReason?: string;
+  managePkiSyncsBlockedReason?: string;
 };
 
 // The backend checks only the application role for a certificate that belongs to an application,
@@ -52,14 +54,20 @@ export const getApplicationCertificateAccess = ({
   applicationName: string;
   permission?: TApplicationAbility;
 }): TApplicationCertificateAccess => {
-  const can = (action: PkiApplicationResourceActions) =>
-    Boolean(permission?.can(action, PkiApplicationResourceSub.Certificates));
+  const can = (
+    action: PkiApplicationResourceActions,
+    subjectType: PkiApplicationResourceSub = PkiApplicationResourceSub.Certificates
+  ) => Boolean(permission?.can(action, subjectType));
   const canEdit = can(PkiApplicationResourceActions.Edit);
   const canDelete = can(PkiApplicationResourceActions.Delete);
   const canRenew = can(PkiApplicationResourceActions.Create) && canEdit;
+  const canManagePkiSyncs = can(
+    PkiApplicationResourceActions.Edit,
+    PkiApplicationResourceSub.PkiSyncs
+  );
 
   // Until the ability loads the actions stay disabled without blaming a role.
-  if (!permission) return { canRenew, canEdit, canDelete };
+  if (!permission) return { canRenew, canEdit, canDelete, canManagePkiSyncs };
 
   const operatorOrAdmin = `You need the Operator or Admin role on ${applicationName}`;
   const admin = `You need the Admin role on ${applicationName}`;
@@ -68,6 +76,7 @@ export const getApplicationCertificateAccess = ({
     canRenew,
     canEdit,
     canDelete,
+    canManagePkiSyncs,
     renewBlockedReason: canRenew ? undefined : `${operatorOrAdmin} to renew this certificate.`,
     editBlockedReason: canEdit
       ? undefined
@@ -76,7 +85,10 @@ export const getApplicationCertificateAccess = ({
       ? undefined
       : `${operatorOrAdmin} to edit this certificate's metadata.`,
     revokeBlockedReason: canDelete ? undefined : `${admin} to revoke this certificate.`,
-    deleteBlockedReason: canDelete ? undefined : `${admin} to delete this certificate.`
+    deleteBlockedReason: canDelete ? undefined : `${admin} to delete this certificate.`,
+    managePkiSyncsBlockedReason: canManagePkiSyncs
+      ? undefined
+      : `${admin} to manage PKI syncs for this certificate.`
   };
 };
 

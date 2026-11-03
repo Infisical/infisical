@@ -11,9 +11,10 @@ import {
   isRemovedFromSyncDestination
 } from "./CertificatesTable.utils";
 
-const abilityAllowing = (...actions: string[]) => ({
+// Each rule is "<action>" on certificates, or "<action>:<subject>".
+const abilityAllowing = (...rules: string[]) => ({
   can: (action: string, subjectType: string) =>
-    subjectType === "certificates" && actions.includes(action)
+    rules.includes(subjectType === "certificates" ? action : `${action}:${subjectType}`)
 });
 
 describe("getApplicationCertificateAccess", () => {
@@ -25,7 +26,15 @@ describe("getApplicationCertificateAccess", () => {
       permission: abilityAllowing("read", "list")
     });
 
-    expect(access).toMatchObject({ canRenew: false, canEdit: false, canDelete: false });
+    expect(access).toMatchObject({
+      canRenew: false,
+      canEdit: false,
+      canDelete: false,
+      canManagePkiSyncs: false
+    });
+    expect(access.managePkiSyncsBlockedReason).toBe(
+      "You need the Admin role on payments to manage PKI syncs for this certificate."
+    );
     expect(access.renewBlockedReason).toBe(
       "You need the Operator or Admin role on payments to renew this certificate."
     );
@@ -43,10 +52,25 @@ describe("getApplicationCertificateAccess", () => {
   it("lets an operator renew but not revoke or delete", () => {
     const access = getApplicationCertificateAccess({
       applicationName,
-      permission: abilityAllowing("read", "list", "create", "edit", "import")
+      permission: abilityAllowing(
+        "read",
+        "list",
+        "create",
+        "edit",
+        "import",
+        "read:pki-syncs",
+        "list:pki-syncs",
+        "sync-certificates:pki-syncs"
+      )
     });
 
-    expect(access).toMatchObject({ canRenew: true, canEdit: true, canDelete: false });
+    expect(access).toMatchObject({
+      canRenew: true,
+      canEdit: true,
+      canDelete: false,
+      canManagePkiSyncs: false
+    });
+    expect(access.managePkiSyncsBlockedReason).toBeDefined();
     expect(access.renewBlockedReason).toBeUndefined();
     expect(access.editBlockedReason).toBeUndefined();
     expect(access.editMetadataBlockedReason).toBeUndefined();
@@ -56,16 +80,26 @@ describe("getApplicationCertificateAccess", () => {
   it("allows everything for an application admin", () => {
     const access = getApplicationCertificateAccess({
       applicationName,
-      permission: abilityAllowing("read", "list", "create", "edit", "delete")
+      permission: abilityAllowing("read", "list", "create", "edit", "delete", "edit:pki-syncs")
     });
 
-    expect(access).toEqual({ canRenew: true, canEdit: true, canDelete: true });
+    expect(access).toEqual({
+      canRenew: true,
+      canEdit: true,
+      canDelete: true,
+      canManagePkiSyncs: true
+    });
   });
 
   it("keeps actions disabled without blaming a role while the ability loads", () => {
     const access = getApplicationCertificateAccess({ applicationName });
 
-    expect(access).toEqual({ canRenew: false, canEdit: false, canDelete: false });
+    expect(access).toEqual({
+      canRenew: false,
+      canEdit: false,
+      canDelete: false,
+      canManagePkiSyncs: false
+    });
   });
 });
 

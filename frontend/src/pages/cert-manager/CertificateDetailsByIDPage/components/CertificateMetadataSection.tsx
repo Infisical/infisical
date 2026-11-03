@@ -158,25 +158,36 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
           <CardDescription>Custom key-value pairs attached to this certificate</CardDescription>
           {!certificate?.deletedAt && (
             <CardAction>
-              <Tooltip open={editMetadataBlockedReason ? undefined : false}>
-                <TooltipTrigger asChild>
-                  <span>
+              {editMetadataBlockedReason ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {/* Not natively disabled, so keyboard users can focus it and read why. */}
                     <IconButton
                       aria-label="Edit certificate metadata"
+                      aria-disabled
                       variant="outline"
                       size="xs"
-                      onClick={() => {
-                        reset({ metadata: metadata.length > 0 ? metadata : [] });
-                        setIsModalOpen(true);
-                      }}
-                      isDisabled={!canEditMetadata}
+                      className="cursor-not-allowed opacity-50"
                     >
                       <PencilIcon />
                     </IconButton>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-72">{editMetadataBlockedReason}</TooltipContent>
-              </Tooltip>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-72">{editMetadataBlockedReason}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <IconButton
+                  aria-label="Edit certificate metadata"
+                  variant="outline"
+                  size="xs"
+                  onClick={() => {
+                    reset({ metadata: metadata.length > 0 ? metadata : [] });
+                    setIsModalOpen(true);
+                  }}
+                  isDisabled={!canEditMetadata}
+                >
+                  <PencilIcon />
+                </IconButton>
+              )}
             </CardAction>
           )}
         </CardHeader>
