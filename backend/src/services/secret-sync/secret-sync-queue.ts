@@ -581,7 +581,8 @@ export const secretSyncQueueFactory = ({
         kmsService,
         gatewayV2Service,
         gatewayPoolService,
-        oidcIssuerService
+        oidcIssuerService,
+        keyStore
       });
 
       syncResult = result ?? undefined;

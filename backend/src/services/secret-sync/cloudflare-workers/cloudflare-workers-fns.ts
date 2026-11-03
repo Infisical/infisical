@@ -1,3 +1,4 @@
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
@@ -313,26 +314,6 @@ const $planSyncBindings = (
   return { written, dropped };
 };
 
-const $planRemoveBindings = (
-  secretSync: TCloudflareWorkersSyncWithCredentials,
-  secretMap: TSecretMap,
-  baseBindings: Array<{ type: string; name: string }>
-): TBindingPlan => {
-  const managedTypes = $getManagedTypes(secretSync);
-
-  return {
-    written: [],
-    dropped: baseBindings
-      .filter(
-        (binding) =>
-          managedTypes.has(binding.type) &&
-          secretMap[binding.name] !== undefined &&
-          $isManagedBySchema(secretSync, binding.name)
-      )
-      .map(({ name }) => name)
-  };
-};
-
 const $inPlace = {
   syncSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
@@ -638,7 +619,8 @@ const $inPlace = {
 export const CloudflareWorkersSyncFns = {
   syncSecrets: async (
     secretSync: TCloudflareWorkersSyncWithCredentials,
-    payload: TSecretSyncPayload
+    payload: TSecretSyncPayload,
+    { keyStore }: { keyStore: Pick<TKeyStoreFactory, "acquireLock"> }
   ): Promise<TSyncSecretsResult | undefined> => {
     try {
       await $inPlace.syncSecrets(secretSync, payload);
@@ -647,7 +629,7 @@ export const CloudflareWorkersSyncFns = {
       if (!(err instanceof CloudflareWorkersPendingVersionError)) throw err;
 
       const secretMap = payload.flatten();
-      return applyBindingsWithVersionFallback(secretSync, (baseBindings) =>
+      return applyBindingsWithVersionFallback(secretSync, keyStore, (baseBindings) =>
         $planSyncBindings(secretSync, secretMap, baseBindings)
       );
     }
@@ -657,16 +639,7 @@ export const CloudflareWorkersSyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  removeSecrets: async (secretSync: TCloudflareWorkersSyncWithCredentials, payload: TSecretSyncPayload) => {
-    try {
-      await $inPlace.removeSecrets(secretSync, payload);
-    } catch (err) {
-      if (!(err instanceof CloudflareWorkersPendingVersionError)) throw err;
-
-      const secretMap = payload.flatten();
-      await applyBindingsWithVersionFallback(secretSync, (baseBindings) =>
-        $planRemoveBindings(secretSync, secretMap, baseBindings)
-      );
-    }
-  }
+  // No version fallback: it never deploys, so the secrets would stay on the live Worker while the removal, and with
+  // it a sync deletion, reported success.
+  removeSecrets: $inPlace.removeSecrets
 };

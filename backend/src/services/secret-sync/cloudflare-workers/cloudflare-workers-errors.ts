@@ -6,14 +6,6 @@ import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 // it isn't the deployed one.
 const CLOUDFLARE_PENDING_VERSION_ERROR_CODES = new Set([10214, 10215]);
 
-const CLOUDFLARE_ERROR_MESSAGES: Record<number, string> = {
-  10021: "Cloudflare rejected the Worker code in the new version",
-  10068: "Cloudflare rejected the Worker code in the new version",
-  10057: "a binding the new version keeps from its base version no longer exists there",
-  10027: "the Worker is over Cloudflare's 64 MiB size limit",
-  10339: "Cloudflare doesn't allow deleting the latest Worker version"
-};
-
 export type TCloudflareApiResponse = {
   result?: unknown;
   success?: boolean;
@@ -23,7 +15,7 @@ export type TCloudflareApiResponse = {
 
 export class CloudflareWorkersPendingVersionError extends SecretSyncError {}
 
-const $getCloudflareErrors = (data: unknown): Array<{ code: number; message: string }> => {
+export const getCloudflareErrors = (data: unknown): Array<{ code: number; message: string }> => {
   if (typeof data !== "object" || data === null) return [];
   const { errors } = data as TCloudflareApiResponse;
   if (!Array.isArray(errors)) return [];
@@ -46,7 +38,7 @@ const $throwCloudflareError = (
   }
 
   throw new SecretSyncError({
-    message: errors.map((e) => CLOUDFLARE_ERROR_MESSAGES[e.code] ?? e.message).join(". "),
+    message: errors.map((e) => e.message).join(". "),
     error: cause,
     secretKey,
     shouldRetry: false
@@ -55,7 +47,7 @@ const $throwCloudflareError = (
 
 export const throwOnCloudflareRequestError = (err: unknown, secretKey?: string): never => {
   if (err instanceof AxiosError) {
-    const errors = $getCloudflareErrors(err.response?.data);
+    const errors = getCloudflareErrors(err.response?.data);
     if (errors.length > 0) {
       $throwCloudflareError(errors, err, secretKey);
     }
@@ -67,7 +59,7 @@ export const throwOnCloudflareRequestError = (err: unknown, secretKey?: string):
 export const validateCloudflareResponse = (data: unknown) => {
   if (typeof data !== "object" || data === null) return;
   if ((data as TCloudflareApiResponse).success === false) {
-    const errors = $getCloudflareErrors(data);
+    const errors = getCloudflareErrors(data);
     if (errors.length > 0) {
       $throwCloudflareError(errors, undefined);
     }

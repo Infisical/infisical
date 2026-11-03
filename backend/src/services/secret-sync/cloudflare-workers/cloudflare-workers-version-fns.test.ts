@@ -1,6 +1,9 @@
 import { AxiosError, AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TKeyStoreFactory } from "@app/keystore/keystore";
+
+import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretSyncPayload } from "../secret-sync-payload";
 import { CloudflareWorkersVariableType } from "./cloudflare-workers-constants";
 import { CloudflareWorkersSyncFns } from "./cloudflare-workers-fns";
@@ -47,7 +50,10 @@ const pendingVersion = (extra: Record<string, unknown> = {}): TVersion => ({
 });
 
 let base: TVersion;
-let created: TVersion | undefined;
+let created: Map<string, TVersion>;
+let uploadGate: Promise<void> | undefined;
+// Lets a test make Cloudflare store something other than what was uploaded.
+let alterStoredVersion: ((version: TVersion) => TVersion) | undefined;
 
 // The secrets endpoint refuses because v21 isn't deployed. Version reads and creates behave like Cloudflare's,
 // including the two rejections seen against the live API.
@@ -57,7 +63,7 @@ const installFakeCloudflare = (secretsEndpointRefuses = true) => {
       return { data: { result: base.bindings.filter(({ type }) => type === "secret_text") } };
     }
     if (url.endsWith("/settings")) return { data: { result: { bindings: base.bindings } } };
-    const version = url.endsWith(`/versions/${created?.id}`) ? created : base;
+    const version = created.get(url.split("/versions/")[1]) ?? base;
     return { data: { success: true, result: structuredClone(version) } };
   });
 
@@ -73,25 +79,50 @@ const installFakeCloudflare = (secretsEndpointRefuses = true) => {
     const bindings = body.bindings.map((binding) =>
       binding.type === "inherit" ? base.bindings.find(({ name }) => name === binding.name)! : binding
     );
-    created = { ...body, id: "new-1", bindings };
-    return { data: { success: true, result: { id: created.id } } };
+    // Holds only the upload that is in flight when the gate is set.
+    const gate = uploadGate;
+    uploadGate = undefined;
+    await gate;
+    const uploaded = { ...body, id: `new-${created.size + 1}`, bindings };
+    const version = alterStoredVersion ? alterStoredVersion(uploaded) : uploaded;
+    created.set(version.id, version);
+    base = version;
+    return { data: { success: true, result: { id: version.id } } };
   });
 };
 
-const sync = (secrets: Record<string, string>) =>
-  CloudflareWorkersSyncFns.syncSecrets(
-    {
-      id: "sync-id",
-      destination: "cloudflare-workers",
-      destinationConfig: { scriptId: "my-worker", variableType: CloudflareWorkersVariableType.Secret },
-      environment: { slug: "prod" },
-      syncOptions: { disableSecretDeletion: false },
-      connection: { credentials: { apiToken: "token", accountId: "account-id" } }
-    } as unknown as TCloudflareWorkersSyncWithCredentials,
-    {
-      flatten: () => Object.fromEntries(Object.entries(secrets).map(([key, value]) => [key, { value }]))
-    } as unknown as TSecretSyncPayload
-  );
+const syncOf = (syncOptions: Record<string, unknown> = {}, id = "sync-id") =>
+  ({
+    id,
+    destination: "cloudflare-workers",
+    destinationConfig: { scriptId: "my-worker", variableType: CloudflareWorkersVariableType.Secret },
+    environment: { slug: "prod" },
+    syncOptions: { disableSecretDeletion: false, ...syncOptions },
+    connection: { credentials: { apiToken: "token", accountId: "account-id" } }
+  }) as unknown as TCloudflareWorkersSyncWithCredentials;
+const secretSync = syncOf();
+
+// Like Redlock: acquiring a held lock fails rather than waits.
+const heldLocks = new Set<string>();
+const keyStore = {
+  acquireLock: async ([key]: string[]) => {
+    if (heldLocks.has(key)) throw new Error("lock is held");
+    heldLocks.add(key);
+    return {
+      release: async () => {
+        heldLocks.delete(key);
+      }
+    };
+  }
+} as unknown as Pick<TKeyStoreFactory, "acquireLock">;
+
+const payloadOf = (secrets: Record<string, string>) =>
+  ({
+    flatten: () => Object.fromEntries(Object.entries(secrets).map(([key, value]) => [key, { value }]))
+  }) as unknown as TSecretSyncPayload;
+
+const sync = (secrets: Record<string, string>, target = secretSync) =>
+  CloudflareWorkersSyncFns.syncSecrets(target, payloadOf(secrets), { keyStore });
 
 const versionCreates = () =>
   post.mock.calls.filter(([url]) => (url as string).endsWith("/versions")) as Array<
@@ -102,7 +133,10 @@ describe("Cloudflare Workers version fallback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     base = pendingVersion();
-    created = undefined;
+    created = new Map();
+    uploadGate = undefined;
+    alterStoredVersion = undefined;
+    heldLocks.clear();
   });
 
   it("doesn't create a version when the secrets endpoint succeeds", async () => {
@@ -151,5 +185,79 @@ describe("Cloudflare Workers version fallback", () => {
 
     await expect(sync({ API_KEY: "new" })).rejects.toThrow("static assets");
     expect(versionCreates()).toEqual([]);
+  });
+
+  it("fails a secret removal instead of leaving the secrets on the deployed Worker", async () => {
+    installFakeCloudflare();
+
+    await expect(CloudflareWorkersSyncFns.removeSecrets(secretSync, payloadOf({ API_KEY: "x" }))).rejects.toThrow(
+      "deploy the latest Worker version"
+    );
+    expect(versionCreates()).toEqual([]);
+  });
+
+  it("explains a timed-out upload, and doesn't retry it", async () => {
+    installFakeCloudflare();
+    post.mockRejectedValueOnce(new AxiosError("timeout of 300000ms exceeded", "ECONNABORTED"));
+
+    const error = (await sync({ API_KEY: "new" }).catch((err: unknown) => err)) as SecretSyncError;
+
+    expect(error).toBeInstanceOf(SecretSyncError);
+    expect(error.message).toContain("took longer than 5 minutes");
+    expect(error.shouldRetry).toBe(false);
+  });
+
+  it("makes a second sync to the same Worker wait, so neither loses the other's changes", async () => {
+    installFakeCloudflare();
+    // Two different syncs, so only a lock on the Worker itself serializes them.
+    const firstSync = syncOf({ disableSecretDeletion: true }, "first-sync");
+    const secondSync = syncOf({ disableSecretDeletion: true }, "second-sync");
+    let openUploadGate = () => {};
+    uploadGate = new Promise((resolve) => {
+      openUploadGate = resolve;
+    });
+
+    const first = sync({ API_KEY: "a" }, firstSync);
+    try {
+      await vi.waitFor(() => expect(versionCreates()).toHaveLength(1));
+
+      // The first sync is mid-upload and holds the Worker's lock.
+      const second = (await sync({ STALE: "b" }, secondSync).catch((err: unknown) => err)) as SecretSyncError;
+      expect(second).toBeInstanceOf(SecretSyncError);
+      expect(second.shouldRetry).toBe(true);
+    } finally {
+      openUploadGate();
+    }
+    await first;
+
+    // The queue's retry builds on the first sync's version.
+    await sync({ STALE: "b" }, secondSync);
+    const latest = Object.fromEntries(base.bindings.map((binding) => [binding.name, binding]));
+    expect(latest.API_KEY).toMatchObject({ text: "a" });
+    expect(latest.STALE).toMatchObject({ text: "b" });
+  });
+
+  it("releases the Worker's lock when the fallback fails", async () => {
+    base = pendingVersion({ assets: { config: {} } });
+    installFakeCloudflare();
+
+    await expect(sync({ API_KEY: "new" })).rejects.toThrow("static assets");
+    expect(heldLocks.size).toBe(0);
+  });
+
+  it("fails, without exposing secret values, when the stored version doesn't match the upload", async () => {
+    installFakeCloudflare();
+    alterStoredVersion = (version) => ({
+      ...version,
+      bindings: version.bindings.filter(({ name }) => name !== "CACHE"),
+      modules: [{ name: "index.js", content_type: "application/javascript+module", content_base64: "Y2hhbmdlZA==" }]
+    });
+
+    const error = (await sync({ API_KEY: "s3cr3t-value" }).catch((err: unknown) => err)) as Error;
+
+    expect(error).toBeInstanceOf(SecretSyncError);
+    expect(error.message).toContain("CACHE");
+    expect(error.message).toContain("index.js");
+    expect(error.message).not.toContain("s3cr3t-value");
   });
 });
