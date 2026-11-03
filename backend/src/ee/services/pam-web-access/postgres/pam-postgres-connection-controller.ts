@@ -1,4 +1,5 @@
 import { parse as parseSql } from "libpg-query";
+import net from "node:net";
 import pg from "pg";
 import Cursor from "pg-cursor";
 
@@ -24,6 +25,22 @@ const pgTypes = {
   }
 };
 
+const CANCEL_REQUEST_CODE = 80877102;
+
+// The protocol-level cancel psql sends, since CockroachDB has no pg_cancel_backend()
+const sendCancelRequest = (port: number, processId: number, secretKey: number) =>
+  new Promise<void>((resolve, reject) => {
+    const packet = Buffer.alloc(16);
+    packet.writeInt32BE(16, 0);
+    packet.writeInt32BE(CANCEL_REQUEST_CODE, 4);
+    packet.writeInt32BE(processId, 8);
+    packet.writeInt32BE(secretKey, 12);
+    const socket = net.connect({ host: "localhost", port }, () => socket.end(packet));
+    socket.setTimeout(5_000, () => socket.destroy(new Error("Timed out sending the cancel request")));
+    socket.once("error", reject);
+    socket.once("close", () => resolve());
+  });
+
 export const createPostgresConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
   const { relayPort, username, database, sessionId, connectionId, sendResponse, onUnexpectedTermination } = params;
 
@@ -41,8 +58,8 @@ export const createPostgresConnectionController = async (params: ControllerParam
 
   await pgClient.connect();
 
-  const { rows: pidRows } = await pgClient.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
-  const nativeConnectionId = pidRows[0]?.pid ?? null;
+  // From the server's BackendKeyData, which @types/pg doesn't declare
+  const { processID, secretKey } = pgClient as unknown as { processID: number | null; secretKey: number | null };
 
   let isInTransaction = false;
   let disposing = false;
@@ -70,26 +87,11 @@ export const createPostgresConnectionController = async (params: ControllerParam
   };
 
   const cancelRunningQuery = async () => {
-    if (!nativeConnectionId) return;
-    const cancelClient = new pg.Client({
-      host: "localhost",
-      port: relayPort,
-      user: username,
-      database,
-      password: "",
-      ssl: false,
-      connectionTimeoutMillis: 5_000
-    });
-    cancelClient.on("error", (err) => {
-      logger.debug(err, `Cancel client error [sessionId=${sessionId}] [connectionId=${connectionId}]`);
-    });
+    if (processID === null || secretKey === null) return;
     try {
-      await cancelClient.connect();
-      await cancelClient.query("SELECT pg_cancel_backend($1)", [nativeConnectionId]);
+      await sendCancelRequest(relayPort, processID, secretKey);
     } catch (err) {
       logger.debug(err, `Failed to cancel backend query [sessionId=${sessionId}] [connectionId=${connectionId}]`);
-    } finally {
-      await cancelClient.end().catch(() => {});
     }
   };
 
@@ -248,7 +250,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
 
   return {
     connectionId,
-    nativeConnectionId,
+    nativeConnectionId: processID,
     handleMessage,
     dispose,
     isDisposing: () => disposing

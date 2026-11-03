@@ -58,6 +58,7 @@ const buildService = (
   const handler: TPamRotationHandler = { validateTarget: vi.fn(), applyPasswordChange, testCredential };
   const rotationHandlers: typeof PAM_ROTATION_FACTORY_MAP = {
     [PamAccountType.Postgres]: handler,
+    [PamAccountType.CockroachDB]: handler,
     [PamAccountType.MySQL]: handler,
     [PamAccountType.MsSQL]: handler,
     [PamAccountType.OracleDB]: handler,

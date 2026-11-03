@@ -96,7 +96,9 @@ Each type's full config (connection/credential schemas, icon, label, sanitized-c
 in one `ACCOUNT_TYPE_CONFIGS` entry in `pam-account/pam-account-schemas.ts`. Forms are **schema-driven**:
 the frontend renders create/edit forms from `GET /pam/accounts/types` metadata, so there are **no per-type
 frontend components**. Adding a type is mostly a config entry + an icon; the gateway extension points are
-`extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file.
+`extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file. CockroachDB reuses the
+Postgres implementation throughout and reaches the gateway as `postgres` (`resolveGatewayAccountType`, mirrored
+by the CLI's capability check), so it needs no gateway upgrade.
 
 **Auth methods** are a discriminated union on `credentials`. `forceWhen` (a UI hint, applied server-side
 by `applyForcedFields` on create/update and mirrored by the form) pins fields an auth method leaves no

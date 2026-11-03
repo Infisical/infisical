@@ -24,6 +24,10 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
     gatewayAccountType: PamAccountType.Postgres,
     handler: handlePostgresSession
   },
+  [PamAccountType.CockroachDB]: {
+    gatewayAccountType: PamAccountType.Postgres,
+    handler: handlePostgresSession
+  },
   [PamAccountType.MySQL]: {
     gatewayAccountType: PamAccountType.MySQL,
     handler: handleMysqlSession
