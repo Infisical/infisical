@@ -103,5 +103,5 @@ jobs:
         run: npm ci
         working-directory: frontend
       - name: 🧱 Build and check that main's bundle does not load v4
-        run: npx vite build
+        run: npm run ui:generate && npx vite build
         working-directory: frontend
