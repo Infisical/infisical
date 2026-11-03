@@ -82,6 +82,7 @@ import { IdentityPermissionAuditSheet } from "./components/IdentityPermissionAud
 import { IdentityProjectAdditionalPrivilegeSection } from "./components/IdentityProjectAdditionalPrivilegeSection";
 import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
 import { ProjectIdentityAlertAction } from "./components/ProjectIdentityAlertAction";
+import { shouldShowLegacyAdditionalPrivileges } from "./additionalPrivilegesVisibility";
 
 const Page = () => {
   const navigate = useNavigate();
@@ -417,7 +418,10 @@ const Page = () => {
                   isMembershipDetailsLoading={isMembershipDetailsLoading}
                 />
               )}
-              {!isStandaloneProduct && currentProject.isLegacyAdditionalPrivilegesEnabled && (
+              {shouldShowLegacyAdditionalPrivileges(
+                currentProject.type,
+                currentProject.isLegacyAdditionalPrivilegesEnabled
+              ) && (
                 <IdentityProjectAdditionalPrivilegeSection
                   identityMembershipDetails={identityMembershipDetails}
                 />
