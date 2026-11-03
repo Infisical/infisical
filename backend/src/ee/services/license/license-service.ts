@@ -204,7 +204,10 @@ export const licenseServiceFactory = ({
     if (!licenseClient) {
       throw new BadRequestError({ message: "License Server client is not configured" });
     }
-    const entitlements = await licenseClient.getEntitlements({ id: rootOrgId, name: org.name, slug: org.slug });
+    const [entitlements, workspacesUsed] = await Promise.all([
+      licenseClient.getEntitlements({ id: rootOrgId, name: org.name, slug: org.slug }),
+      projectDAL.countOfBillableOrgProjects(rootOrgId)
+    ]);
     if (!entitlements) {
       throw new BadRequestError({ message: "License Server entitlements are unavailable" });
     }
@@ -213,19 +216,21 @@ export const licenseServiceFactory = ({
       entitlements
     );
 
-    currentPlan.workspacesUsed = await projectDAL.countOfBillableOrgProjects(rootOrgId);
+    currentPlan.workspacesUsed = workspacesUsed;
 
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.LicenseCloudPlan(org.id),
-      jitteredLicenseCloudPlanTtl(),
-      JSON.stringify(currentPlan)
-    );
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.LicenseCloudPlanLastKnown(orgId),
-      KeyStoreTtls.LicenseCloudPlanLastKnownInSeconds,
-      JSON.stringify({ plan: currentPlan, fetchedAt: Date.now() })
-    );
-    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlanFallback(orgId));
+    await Promise.all([
+      keyStore.setItemWithExpiry(
+        KeyStorePrefixes.LicenseCloudPlan(org.id),
+        jitteredLicenseCloudPlanTtl(),
+        JSON.stringify(currentPlan)
+      ),
+      keyStore.setItemWithExpiry(
+        KeyStorePrefixes.LicenseCloudPlanLastKnown(orgId),
+        KeyStoreTtls.LicenseCloudPlanLastKnownInSeconds,
+        JSON.stringify({ plan: currentPlan, fetchedAt: Date.now() })
+      ),
+      keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlanFallback(orgId))
+    ]);
 
     return currentPlan;
   };

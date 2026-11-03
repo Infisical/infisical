@@ -377,15 +377,20 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     accessVersion: number;
     readFromPrimary?: boolean;
   }) => {
-    const session = await tokenDAL.findOneTokenSession({ id: tokenVersionId, userId }, undefined, {
-      readFromPrimary
-    });
+    const [sessionResult, userResult] = await Promise.allSettled([
+      tokenDAL.findOneTokenSession({ id: tokenVersionId, userId }, undefined, {
+        readFromPrimary
+      }),
+      requestMemoize(requestMemoKeys.userFindById(userId), () => userDAL.findById(userId))
+    ]);
+    if (sessionResult.status === "rejected") throw sessionResult.reason;
+    const session = sessionResult.value;
     if (!session) throw sessionNoLongerValid();
     if (accessVersion !== session.accessVersion) throw sessionNoLongerValid();
 
-    const user = await requestMemoize(requestMemoKeys.userFindById(session.userId), () =>
-      userDAL.findById(session.userId)
-    );
+    if (userResult.status === "rejected") throw userResult.reason;
+    const user = userResult.value;
+
     if (!user || !user.isAccepted) throw sessionNoLongerValid();
 
     if (isUserLocked(user)) {
@@ -427,16 +432,19 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     }
 
     if (!subOrganizationId) {
-      const organization = await requestMemoize(requestMemoKeys.orgFindById(organizationId), () =>
-        orgDAL.findById(organizationId)
-      );
+      const [organizationResult, membershipResult] = await Promise.allSettled([
+        requestMemoize(requestMemoKeys.orgFindById(organizationId), () => orgDAL.findById(organizationId)),
+        assertActiveOrgMembership(userId, organizationId)
+      ]);
+      if (organizationResult.status === "rejected") throw organizationResult.reason;
 
+      const organization = organizationResult.value;
       if (!organization) {
         throw new UnauthorizedError({
           message: `The organization with ID '${organizationId}' no longer exists. Log in again.`
         });
       }
-      await assertActiveOrgMembership(userId, organizationId);
+      if (membershipResult.status === "rejected") throw membershipResult.reason;
 
       return {
         orgId: organizationId,
@@ -472,17 +480,23 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
   };
 
   const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
-    const { user } = await validateUserSessionFreshness({
-      userId: token.userId,
-      tokenVersionId: token.tokenVersionId,
-      accessVersion: token.accessVersion
-    });
+    const [sessionResult, orgScopeResult] = await Promise.allSettled([
+      validateUserSessionFreshness({
+        userId: token.userId,
+        tokenVersionId: token.tokenVersionId,
+        accessVersion: token.accessVersion
+      }),
+      validateTokenOrgScope({
+        userId: token.userId,
+        organizationId: token.organizationId,
+        subOrganizationId: token.subOrganizationId
+      })
+    ]);
+    if (sessionResult.status === "rejected") throw sessionResult.reason;
+    if (orgScopeResult.status === "rejected") throw orgScopeResult.reason;
 
-    const { orgId, orgName, rootOrgId, parentOrgId } = await validateTokenOrgScope({
-      userId: user.id,
-      organizationId: token.organizationId,
-      subOrganizationId: token.subOrganizationId
-    });
+    const { user } = sessionResult.value;
+    const { orgId, orgName, rootOrgId, parentOrgId } = orgScopeResult.value;
 
     return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId };
   };

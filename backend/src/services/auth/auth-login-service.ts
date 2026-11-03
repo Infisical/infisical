@@ -1230,17 +1230,19 @@ export const authLoginServiceFactory = ({
     const cfg = getConfig();
     if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
 
-    const user = await userDAL.findById(userId);
+    const [user, orgMembership, selectedOrg] = await Promise.all([
+      userDAL.findById(userId),
+      // Check user membership in the organization (accept any status — promotion happens after auth)
+      orgDAL.findEffectiveOrgMembership({
+        actorType: ActorType.USER,
+        actorId: userId,
+        orgId: organizationId,
+        acceptAnyStatus: true
+      }),
+      requestMemoize(requestMemoKeys.orgFindById(organizationId), () => orgDAL.findById(organizationId))
+    ]);
     if (!user || !user.isAccepted)
       throw new BadRequestError({ message: "User not found", name: "Find user from token" });
-
-    // Check user membership in the organization (accept any status — promotion happens after auth)
-    const orgMembership = await orgDAL.findEffectiveOrgMembership({
-      actorType: ActorType.USER,
-      actorId: user.id,
-      orgId: organizationId,
-      acceptAnyStatus: true
-    });
 
     if (!orgMembership) {
       throw new ForbiddenRequestError({
@@ -1248,9 +1250,6 @@ export const authLoginServiceFactory = ({
       });
     }
 
-    const selectedOrg = await requestMemoize(requestMemoKeys.orgFindById(organizationId), () =>
-      orgDAL.findById(organizationId)
-    );
     if (!selectedOrg) {
       throw new NotFoundError({ message: `Organization with ID '${organizationId}' not found` });
     }
@@ -1270,21 +1269,23 @@ export const authLoginServiceFactory = ({
         });
       }
 
-      rootOrg = await requestMemoize(requestMemoKeys.orgFindById(selectedOrg.rootOrgId), () =>
-        orgDAL.findById(selectedOrg.rootOrgId as string)
-      );
+      const [fetchedRootOrg, rootOrgMembership] = await Promise.all([
+        requestMemoize(requestMemoKeys.orgFindById(selectedOrg.rootOrgId), () =>
+          orgDAL.findById(selectedOrg.rootOrgId as string)
+        ),
+        // Check user membership in the root organization (accept any status — promotion happens after auth)
+        membershipUserDAL.findOne({
+          actorUserId: user.id,
+          scopeOrgId: selectedOrg.rootOrgId,
+          scope: AccessScope.Organization
+        })
+      ]);
+      rootOrg = fetchedRootOrg;
       if (!rootOrg) {
         throw new BadRequestError({
           message: "Invalid sub-organization"
         });
       }
-
-      // Check user membership in the root organization (accept any status — promotion happens after auth)
-      const rootOrgMembership = await membershipUserDAL.findOne({
-        actorUserId: user.id,
-        scopeOrgId: selectedOrg.rootOrgId,
-        scope: AccessScope.Organization
-      });
 
       if (!rootOrgMembership) {
         throw new ForbiddenRequestError({

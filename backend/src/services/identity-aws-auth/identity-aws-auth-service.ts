@@ -98,14 +98,14 @@ export const identityAwsAuthServiceFactory = ({
   }: TLoginAwsAuthDTO) => {
     const authMetricStartTime = performance.now();
     const appCfg = getConfig();
-    const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
+    const [identityAwsAuth, identity] = await Promise.all([
+      identityAwsAuthDAL.findOne({ identityId }),
+      requestMemoize(requestMemoKeys.identityFindById(identityId), () => identityDAL.findById(identityId))
+    ]);
     if (!identityAwsAuth) {
       throw new NotFoundError({ message: "AWS auth method not found for identity, did you configure AWS auth?" });
     }
 
-    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityAwsAuth.identityId), () =>
-      identityDAL.findById(identityAwsAuth.identityId)
-    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

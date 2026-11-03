@@ -319,7 +319,10 @@ export const identityKubernetesAuthServiceFactory = ({
   const login = async ({ identityId, jwt: serviceAccountJwt, organizationSlug }: TLoginKubernetesAuthDTO) => {
     const authMetricStartTime = performance.now();
     const appCfg = getConfig();
-    const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
+    const [identityKubernetesAuth, identity] = await Promise.all([
+      identityKubernetesAuthDAL.findOne({ identityId }),
+      requestMemoize(requestMemoKeys.identityFindById(identityId), () => identityDAL.findById(identityId))
+    ]);
     if (!identityKubernetesAuth) {
       throw new NotFoundError({
         message: "Kubernetes auth method not found for identity, did you configure Kubernetes auth?"
@@ -330,9 +333,6 @@ export const identityKubernetesAuthServiceFactory = ({
       throw new BadRequestError({ message: getRetiredGatewayMessage("This Kubernetes auth method") });
     }
 
-    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityKubernetesAuth.identityId), () =>
-      identityDAL.findById(identityKubernetesAuth.identityId)
-    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

@@ -667,31 +667,29 @@ export const permissionServiceFactory = ({
       });
     }
 
-    const permissionData = await permissionDAL.getPermission({
-      scopeData: {
-        scope: AccessScope.Project,
-        orgId: projectDetails.orgId,
-        projectId
-      },
-      actorId,
-      actorType: actor
-    });
+    const [permissionData, username] = await Promise.all([
+      permissionDAL.getPermission({
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: projectDetails.orgId,
+          projectId
+        },
+        actorId,
+        actorType: actor
+      }),
+      actor === ActorType.USER
+        ? requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId)).then(
+            (userDetails) => userDetails?.username ?? ""
+          )
+        : requestMemoize(requestMemoKeys.identityFindById(actorId), () => identityDAL.findById(actorId)).then(
+            (identityDetails) => identityDetails?.name ?? ""
+          )
+    ]);
     if (!permissionData?.length)
       throw new ForbiddenRequestError({
         name: "ProjectMembershipNotFound",
         message: `You are not a member of this project with ID ${projectId}. Please assign this ${actor} to the project with the appropriate permissions, then try again.`
       });
-
-    let username = "";
-    if (actor === ActorType.USER) {
-      const userDetails = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
-      username = userDetails?.username ?? "";
-    } else {
-      const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
-        identityDAL.findById(actorId)
-      );
-      username = identityDetails?.name ?? "";
-    }
 
     // Folder-scoped grants ride in the same cached blob, behind the same fingerprint. Admins cannot
     // receive folder grants, but a grant can predate a promotion to admin; skip the fetch so such a

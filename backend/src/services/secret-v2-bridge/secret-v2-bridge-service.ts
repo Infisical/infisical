@@ -392,11 +392,14 @@ export const secretV2BridgeServiceFactory = ({
       throw new BadRequestError({ message: "Must be user to create personal secret" });
     }
 
-    const doesSecretExist = await secretDAL.findOne({
-      key: inputSecret.secretName,
-      type: SecretType.Shared,
-      folderId
-    });
+    const [doesSecretExist, tags] = await Promise.all([
+      secretDAL.findOne({
+        key: inputSecret.secretName,
+        type: SecretType.Shared,
+        folderId
+      }),
+      inputSecret.tagIds ? secretTagDAL.find({ projectId, $in: { id: inputSecret.tagIds } }) : []
+    ]);
     if (inputSecret.type === SecretType.Shared && doesSecretExist)
       throw new BadRequestError({
         message: `Secret '${inputSecret.secretName}' already exists in path '${secretPath}' of environment '${environment}'`
@@ -411,7 +414,6 @@ export const secretV2BridgeServiceFactory = ({
 
     // validate tags
     // fetch all tags and if not same count throw error meaning one was invalid tags
-    const tags = inputSecret.tagIds ? await secretTagDAL.find({ projectId, $in: { id: inputSecret.tagIds } }) : [];
     if ((inputSecret.tagIds || []).length !== tags.length)
       throw new NotFoundError({ message: `Tag not found. Found ${tags.map((el) => el.slug).join(",")}` });
 
@@ -470,11 +472,13 @@ export const secretV2BridgeServiceFactory = ({
 
     await $validateSecretReferences(projectId, permission, allSecretReferences);
 
-    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
+    const [{ encryptor: secretManagerEncryptor }, blindIndexer] = await Promise.all([
+      kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      }),
+      createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService })
+    ]);
     const blindIndexes = await (inputSecretData.secretValue
       ? blindIndexer.generateBlindIndexes(Buffer.from(inputSecretData.secretValue))
       : null);
@@ -766,12 +770,13 @@ export const secretV2BridgeServiceFactory = ({
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
+    const [{ encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor }, blindIndexer] = await Promise.all([
+      kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
-      });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
+      }),
+      createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService })
+    ]);
     const encryptedValue =
       typeof secretValue === "string"
         ? {
@@ -1200,19 +1205,20 @@ export const secretV2BridgeServiceFactory = ({
     const { limit } = filters;
 
     // findByFolderIds windows on distinct keys, so scan one key past the limit to tell a full window from a truncated one
-    const scannedSecrets = await secretDAL.findByFolderIds({
-      folderIds: folderMappings.map((folderMapping) => folderMapping.folderId),
-      userId,
-      tx: undefined,
-      filters: limit ? { ...filters, limit: limit + 1 } : filters
-    });
+    const [scannedSecrets, { decryptor: secretManagerDecryptor }] = await Promise.all([
+      secretDAL.findByFolderIds({
+        folderIds: folderMappings.map((folderMapping) => folderMapping.folderId),
+        userId,
+        tx: undefined,
+        filters: limit ? { ...filters, limit: limit + 1 } : filters
+      }),
+      kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      })
+    ]);
 
     const { items: secrets, isLimitReached } = takeDistinctKeyScanWindow(scannedSecrets, limit, (secret) => secret.key);
-
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
 
     const decryptedSecrets = secrets
       .filter((el) =>
@@ -1428,7 +1434,14 @@ export const secretV2BridgeServiceFactory = ({
       secretPath: path
     });
 
-    const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
+    const [cachedSecretDalVersion, { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor }] =
+      await Promise.all([
+        keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId)),
+        kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        })
+      ]);
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
 
     const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer({
@@ -1439,12 +1452,6 @@ export const secretV2BridgeServiceFactory = ({
       permissionHash: generateCacheKeyFromData(permission.rules),
       requestParamsHash
     });
-
-    const { decryptor: secretManagerDecryptor, encryptor: secretManagerEncryptor } =
-      await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
 
     const encryptedCachedSecrets = await keyStore.getItemBuffer(cacheKey);
     if (encryptedCachedSecrets) {
@@ -1903,7 +1910,13 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
+    const [folder, { decryptor: secretManagerDecryptor }] = await Promise.all([
+      folderDAL.findBySecretPath(projectId, environment, path),
+      kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      })
+    ]);
     if (!folder)
       throw new NotFoundError({
         message: `Folder with path '${path}' in environment with slug '${environment}' not found`,
@@ -1918,11 +1931,6 @@ export const secretV2BridgeServiceFactory = ({
       );
       secretType = SecretType.Shared;
     }
-
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
 
     const secret = await (version === undefined
       ? secretDAL.findOneWithTags({

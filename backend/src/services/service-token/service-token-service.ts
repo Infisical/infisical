@@ -237,11 +237,10 @@ export const serviceTokenServiceFactory = ({
 
     const isMatch = await crypto.hashing().compareHash(tokenSecret, serviceToken.secretHash);
     if (!isMatch) throw new UnauthorizedError({ message: "Invalid service token" });
-    await accessTokenQueue.updateServiceTokenStatus(serviceToken.id);
-
-    const serviceTokenOrgDetails = await requestMemoize(requestMemoKeys.orgFindById(project.orgId), () =>
-      orgDAL.findById(project.orgId)
-    );
+    const [, serviceTokenOrgDetails] = await Promise.all([
+      accessTokenQueue.updateServiceTokenStatus(serviceToken.id),
+      requestMemoize(requestMemoKeys.orgFindById(project.orgId), () => orgDAL.findById(project.orgId))
+    ]);
 
     return {
       ...serviceToken,

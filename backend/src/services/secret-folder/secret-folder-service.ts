@@ -962,10 +962,12 @@ export const secretFolderServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const env = await projectEnvDAL.findOne({ projectId, slug: environment });
+    const [env, parentFolder] = await Promise.all([
+      projectEnvDAL.findOne({ projectId, slug: environment }),
+      folderDAL.findBySecretPath(projectId, environment, secretPath)
+    ]);
     if (!env) throw new NotFoundError({ message: `Environment with slug '${environment}' not found` });
 
-    const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!parentFolder) return [];
 
     if (recursive) {
@@ -1031,7 +1033,10 @@ export const secretFolderServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const envs = await projectEnvDAL.findBySlugs(projectId, environments);
+    const [envs, parentFolders] = await Promise.all([
+      projectEnvDAL.findBySlugs(projectId, environments),
+      folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath)
+    ]);
 
     if (!envs.length)
       throw new NotFoundError({
@@ -1039,7 +1044,6 @@ export const secretFolderServiceFactory = ({
         name: "GetFoldersMultiEnv"
       });
 
-    const parentFolders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!parentFolders.length) return [];
 
     const folders = await folderDAL.findByMultiEnv({
@@ -1073,11 +1077,13 @@ export const secretFolderServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const envs = await projectEnvDAL.findBySlugs(projectId, environments);
+    const [envs, parentFolders] = await Promise.all([
+      projectEnvDAL.findBySlugs(projectId, environments),
+      folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath)
+    ]);
 
     if (!envs.length) throw new NotFoundError({ message: `Environments '${environments.join(", ")}' not found` });
 
-    const parentFolders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!parentFolders.length) return 0;
 
     const folders = await folderDAL.find(
@@ -1138,7 +1144,10 @@ export const secretFolderServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const envs = await projectEnvDAL.findBySlugs(projectId, environments);
+    const [envs, parentFolders] = await Promise.all([
+      projectEnvDAL.findBySlugs(projectId, environments),
+      folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath)
+    ]);
 
     if (!envs.length)
       throw new NotFoundError({
@@ -1146,7 +1155,6 @@ export const secretFolderServiceFactory = ({
         name: "GetFoldersDeep"
       });
 
-    const parentFolders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!parentFolders.length) return [];
 
     const folders = await folderDAL.findByEnvsDeep({ parentIds: parentFolders.map((parent) => parent.id) });

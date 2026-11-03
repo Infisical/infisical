@@ -83,14 +83,14 @@ export const identityAzureAuthServiceFactory = ({
   const login = async ({ identityId, jwt: azureJwt, organizationSlug }: TLoginAzureAuthDTO) => {
     const authMetricStartTime = performance.now();
     const appCfg = getConfig();
-    const identityAzureAuth = await identityAzureAuthDAL.findOne({ identityId });
+    const [identityAzureAuth, identity] = await Promise.all([
+      identityAzureAuthDAL.findOne({ identityId }),
+      requestMemoize(requestMemoKeys.identityFindById(identityId), () => identityDAL.findById(identityId))
+    ]);
     if (!identityAzureAuth) {
       throw new NotFoundError({ message: "Azure auth method not found for identity, did you configure Azure Auth?" });
     }
 
-    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityAzureAuth.identityId), () =>
-      identityDAL.findById(identityAzureAuth.identityId)
-    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

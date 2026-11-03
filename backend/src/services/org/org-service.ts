@@ -224,27 +224,22 @@ export const orgServiceFactory = ({
     const appCfg = getConfig();
     const hasSubOrg = rootOrgId !== actorOrgId;
 
-    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(rootOrgId), () => orgDAL.findOrgById(rootOrgId));
+    const [org, subOrg] = await Promise.all([
+      requestMemoize(requestMemoKeys.orgFindOrgById(rootOrgId), () => orgDAL.findOrgById(rootOrgId)),
+      hasSubOrg ? orgDAL.findOne({ rootOrgId, id: actorOrgId }) : undefined
+    ]);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${rootOrgId}' not found` });
 
-    let subOrg;
-    if (hasSubOrg) {
-      subOrg = await orgDAL.findOne({ rootOrgId, id: actorOrgId });
-
-      if (!subOrg) throw new NotFoundError({ message: `Sub-organization with ID '${actorOrgId}' not found` });
+    if (hasSubOrg && !subOrg) {
+      throw new NotFoundError({ message: `Sub-organization with ID '${actorOrgId}' not found` });
     }
 
     const data = hasSubOrg && subOrg ? subOrg : org;
 
-    const pamProjects = await projectDAL.find(
-      { orgId: data.id, type: ProjectType.PAM },
-      { sort: [["createdAt", "desc"]], limit: 1 }
-    );
-
-    const agentVaultProjects = await projectDAL.find(
-      { orgId: data.id, type: ProjectType.AgentVault },
-      { sort: [["createdAt", "desc"]], limit: 1 }
-    );
+    const [pamProjects, agentVaultProjects] = await Promise.all([
+      projectDAL.find({ orgId: data.id, type: ProjectType.PAM }, { sort: [["createdAt", "desc"]], limit: 1 }),
+      projectDAL.find({ orgId: data.id, type: ProjectType.AgentVault }, { sort: [["createdAt", "desc"]], limit: 1 })
+    ]);
 
     return {
       ...data,

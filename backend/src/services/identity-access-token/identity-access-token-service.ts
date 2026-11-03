@@ -479,7 +479,7 @@ export const identityAccessTokenServiceFactory = ({
       throw new UnauthorizedError({ message: "Identity access token exceeded max age, please re-authenticate" });
     }
 
-    const [, usesRemainingRaw] = await Promise.all([
+    const [, usesRemainingRaw, trustedIpsPayload] = await Promise.all([
       assertTokenIsNotRevoked({
         tokenId,
         identityId: token.identityId,
@@ -488,7 +488,22 @@ export const identityAccessTokenServiceFactory = ({
         authMethod: source.authMethod,
         orgId: source.orgId
       }),
-      keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, tokenId))
+      keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, tokenId)),
+      ipAddress
+        ? withCache<TTrustedIpsCachePayload>({
+            // A Redis read replica can lag behind the primary's DEL on invalidation and serve a stale allowlist
+            keyStore: {
+              getItem: (key, prefix) => keyStore.getItemPrimary(key, prefix),
+              setItemWithExpiry: keyStore.setItemWithExpiry
+            },
+            key: KeyStorePrefixes.IdentityTrustedIps(token.identityId, source.authMethod),
+            ttlSeconds: KeyStoreTtls.IdentityTrustedIpsInSeconds,
+            fetcher: async () => {
+              const ips = await identityDAL.getTrustedIpsByAuthMethod(token.identityId, source.authMethod);
+              return { accessTokenTrustedIps: (ips as TIp[] | null | undefined) ?? null };
+            }
+          })
+        : null
     ]);
 
     // null means unlimited or the Redis counter was lost; <= 0 means exhausted.
@@ -532,26 +547,11 @@ export const identityAccessTokenServiceFactory = ({
       }
     }
 
-    if (ipAddress) {
-      const { accessTokenTrustedIps: trustedIps } = await withCache<TTrustedIpsCachePayload>({
-        // A Redis read replica can lag behind the primary's DEL on invalidation and serve a stale allowlist
-        keyStore: {
-          getItem: (key, prefix) => keyStore.getItemPrimary(key, prefix),
-          setItemWithExpiry: keyStore.setItemWithExpiry
-        },
-        key: KeyStorePrefixes.IdentityTrustedIps(token.identityId, source.authMethod),
-        ttlSeconds: KeyStoreTtls.IdentityTrustedIpsInSeconds,
-        fetcher: async () => {
-          const ips = await identityDAL.getTrustedIpsByAuthMethod(token.identityId, source.authMethod);
-          return { accessTokenTrustedIps: (ips as TIp[] | null | undefined) ?? null };
-        }
+    if (ipAddress && trustedIpsPayload && hasNonWildcardTrustedIps(trustedIpsPayload.accessTokenTrustedIps)) {
+      checkIPAgainstBlocklist({
+        ipAddress,
+        trustedIps: trustedIpsPayload.accessTokenTrustedIps as TIp[]
       });
-      if (hasNonWildcardTrustedIps(trustedIps)) {
-        checkIPAgainstBlocklist({
-          ipAddress,
-          trustedIps: trustedIps as TIp[]
-        });
-      }
     }
 
     return {

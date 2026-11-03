@@ -1495,8 +1495,10 @@ export const createFetchFolderSecretsWithImports = ({
     if (visitedFolderIds.has(folderId)) return [];
     visitedFolderIds.add(folderId);
 
-    const directSecrets = await secretDAL.findByFolderId({ folderId, userId: userIdArg });
-    const rawImports = (await secretImportDAL.findByFolderIds([folderId])) as ImportRow[];
+    const [directSecrets, rawImports] = (await Promise.all([
+      secretDAL.findByFolderId({ folderId, userId: userIdArg }),
+      secretImportDAL.findByFolderIds([folderId])
+    ])) as [SecretRow[], ImportRow[]];
     if (!rawImports.length) return directSecrets;
 
     const reservedIds: string[] = [];

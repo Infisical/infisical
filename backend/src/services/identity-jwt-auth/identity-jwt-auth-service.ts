@@ -99,14 +99,14 @@ export const identityJwtAuthServiceFactory = ({
   const login = async ({ identityId, jwt: jwtValue, organizationSlug }: TLoginJwtAuthDTO) => {
     const authMetricStartTime = performance.now();
     const appCfg = getConfig();
-    const identityJwtAuth = await identityJwtAuthDAL.findOne({ identityId });
+    const [identityJwtAuth, identity] = await Promise.all([
+      identityJwtAuthDAL.findOne({ identityId }),
+      requestMemoize(requestMemoKeys.identityFindById(identityId), () => identityDAL.findById(identityId))
+    ]);
     if (!identityJwtAuth) {
       throw new NotFoundError({ message: "JWT auth method not found for identity, did you configure JWT auth?" });
     }
 
-    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityJwtAuth.identityId), () =>
-      identityDAL.findById(identityJwtAuth.identityId)
-    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

@@ -260,14 +260,15 @@ export const expandSecretReferencesFactory = ({
     let expandedValue = dto.value;
 
     // Ensure the secret can actually be read before we expand it
-    const currentSecret = await fetchSecret(dto.environment, dto.secretPath, dto.secretKey);
+    const [currentSecret, crossProjectSecretSharingEnabled] = await Promise.all([
+      fetchSecret(dto.environment, dto.secretPath, dto.secretKey),
+      checkCrossProjectAllowed()
+    ]);
     if (!canExpandValue(dto.environment, dto.secretPath, dto.secretKey, currentSecret.tags)) {
       throw new ForbiddenRequestError({
         message: `You do not have permission to read secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
       });
     }
-
-    const crossProjectSecretSharingEnabled = await checkCrossProjectAllowed();
 
     while (stack.length) {
       const { value, secretPath, environment, depth, trace, visitedSecrets } = stack.pop()!;
@@ -386,21 +387,22 @@ export const expandSecretReferencesFactory = ({
                     secretCache[crossProjCacheKey] = {};
                     crossProjSecretData = { value: "", tags: [], exists: false };
                   } else {
+                    // Use the explicit raw DAL when same-project resolution wraps secretDAL
+                    // with import-aware behavior.
                     // eslint-disable-next-line no-await-in-loop
-                    const sourceDecrypt = await getProjectDecryptor(sourceProjectId);
+                    const [sourceDecrypt, sourceSecrets] = await Promise.all([
+                      getProjectDecryptor(sourceProjectId),
+                      (crossProjectSecretDAL || secretDAL).findByFolderId({
+                        folderId: sourceFolder.id,
+                        tx
+                      })
+                    ]);
                     if (!sourceDecrypt) {
                       secretCache[crossProjCacheKey] = {};
                       crossProjSecretData = { value: "", tags: [], exists: false };
                       // eslint-disable-next-line no-continue
                       continue;
                     }
-                    // Use the explicit raw DAL when same-project resolution wraps secretDAL
-                    // with import-aware behavior.
-                    // eslint-disable-next-line no-await-in-loop
-                    const sourceSecrets = await (crossProjectSecretDAL || secretDAL).findByFolderId({
-                      folderId: sourceFolder.id,
-                      tx
-                    });
                     throwIfClientDisconnected(abortSignal);
 
                     const crossProjDecrypted = sourceSecrets.reduce<

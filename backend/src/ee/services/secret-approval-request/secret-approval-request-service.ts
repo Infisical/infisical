@@ -436,13 +436,13 @@ export const secretApprovalRequestServiceFactory = ({
       secretPath: secretPath?.[0]?.path
     });
     if (shouldUseSecretV2Bridge) {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-      const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(
-        secretApprovalRequest.id
-      );
+      const [{ decryptor }, encryptedSecrets] = await Promise.all([
+        kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        }),
+        secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(secretApprovalRequest.id)
+      ]);
       secrets = formatSecretApprovalCommitsV2Bridge({ commits: encryptedSecrets, decryptor, canReadSecretValue });
     } else {
       if (!botKey) throw new NotFoundError({ message: `Project bot key not found`, name: "BotKeyNotFound" }); // CLI depends on this error message. TODO(daniel): Make API check for name BotKeyNotFound instead of message

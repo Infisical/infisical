@@ -87,14 +87,14 @@ export const identityGcpAuthServiceFactory = ({
   const login = async ({ identityId, jwt: gcpJwt, organizationSlug }: TLoginGcpAuthDTO) => {
     const authMetricStartTime = performance.now();
     const appCfg = getConfig();
-    const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
+    const [identityGcpAuth, identity] = await Promise.all([
+      identityGcpAuthDAL.findOne({ identityId }),
+      requestMemoize(requestMemoKeys.identityFindById(identityId), () => identityDAL.findById(identityId))
+    ]);
     if (!identityGcpAuth) {
       throw new NotFoundError({ message: "GCP auth method not found for identity, did you configure GCP auth?" });
     }
 
-    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityGcpAuth.identityId), () =>
-      identityDAL.findById(identityGcpAuth.identityId)
-    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"

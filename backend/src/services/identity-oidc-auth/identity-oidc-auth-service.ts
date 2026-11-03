@@ -110,14 +110,14 @@ export const identityOidcAuthServiceFactory = ({
   const login = async ({ identityId, jwt: oidcJwt, organizationSlug }: TLoginOidcAuthDTO) => {
     const authMetricStartTime = performance.now();
     const appCfg = getConfig();
-    const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
+    const [identityOidcAuth, identity] = await Promise.all([
+      identityOidcAuthDAL.findOne({ identityId }),
+      requestMemoize(requestMemoKeys.identityFindById(identityId), () => identityDAL.findById(identityId))
+    ]);
     if (!identityOidcAuth) {
       throw new NotFoundError({ message: "OIDC auth method not found for identity, did you configure OIDC auth?" });
     }
 
-    const identity = await requestMemoize(requestMemoKeys.identityFindById(identityOidcAuth.identityId), () =>
-      identityDAL.findById(identityOidcAuth.identityId)
-    );
     if (!identity)
       throw new UnauthorizedError({
         message: "Identity not found"
@@ -132,10 +132,13 @@ export const identityOidcAuthServiceFactory = ({
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
-      const { decryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.Organization,
-        orgId: identity.orgId
-      });
+      const [{ decryptor }] = await Promise.all([
+        kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId: identity.orgId
+        }),
+        blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl)
+      ]);
 
       let caCert = "";
       if (identityOidcAuth.encryptedCaCertificate) {
@@ -143,8 +146,6 @@ export const identityOidcAuthServiceFactory = ({
       }
 
       const requestAgent = caCert ? new https.Agent({ ca: caCert, rejectUnauthorized: true }) : undefined;
-
-      await blockLocalAndPrivateIpAddresses(identityOidcAuth.oidcDiscoveryUrl);
 
       let discoveryDoc: { jwks_uri: string };
       try {

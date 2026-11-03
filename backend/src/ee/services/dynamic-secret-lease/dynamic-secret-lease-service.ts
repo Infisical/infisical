@@ -106,14 +106,16 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const [plan, folder] = await Promise.all([
+      licenseService.getPlan(actorOrgId),
+      folderDAL.findBySecretPath(projectId, environmentSlug, path)
+    ]);
     if (!plan?.dynamicSecret) {
       throw new BadRequestError({
         message: "Failed to create lease due to plan restriction. Upgrade plan to create dynamic secret."
       });
     }
 
-    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder)
       throw new NotFoundError({
         message: `Folder with path '${path}' in environment with slug '${environmentSlug}' not found`
@@ -134,17 +136,18 @@ export const dynamicSecretLeaseServiceFactory = ({
       })
     );
 
-    const totalLeasesTaken = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id);
+    const [totalLeasesTaken, { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor }] =
+      await Promise.all([
+        dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id),
+        kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        })
+      ]);
     if (totalLeasesTaken >= appCfg.MAX_LEASE_LIMIT)
       throw new BadRequestError({ message: `Max lease limit reached. Limit: ${appCfg.MAX_LEASE_LIMIT}` });
 
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
-
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
 
     const decryptedStoredInput = JSON.parse(
       secretManagerDecryptor({ cipherTextBlob: Buffer.from(dynamicSecretCfg.encryptedInput) }).toString()
@@ -275,25 +278,26 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const plan = await licenseService.getPlan(actorOrgId);
+    const [{ decryptor: secretManagerDecryptor }, plan, folder, dynamicSecretLease] = await Promise.all([
+      kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      }),
+      licenseService.getPlan(actorOrgId),
+      folderDAL.findBySecretPath(projectId, environmentSlug, path),
+      dynamicSecretLeaseDAL.findById(leaseId)
+    ]);
     if (!plan?.dynamicSecret) {
       throw new BadRequestError({
         message: "Failed to renew lease due to plan restriction. Upgrade plan to create dynamic secret."
       });
     }
 
-    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder)
       throw new NotFoundError({
         message: `Folder with path '${path}' in environment with slug '${environmentSlug}' not found`
       });
 
-    const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
     if (!dynamicSecretLease || dynamicSecretLease.dynamicSecret.folderId !== folder.id) {
       throw new NotFoundError({ message: `Dynamic secret lease with ID '${leaseId}' not found` });
     }
@@ -380,18 +384,19 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
-    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
+    const [{ decryptor: secretManagerDecryptor }, folder, dynamicSecretLease] = await Promise.all([
+      kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      }),
+      folderDAL.findBySecretPath(projectId, environmentSlug, path),
+      dynamicSecretLeaseDAL.findById(leaseId)
+    ]);
     if (!folder)
       throw new NotFoundError({
         message: `Folder with path '${path}' in environment with slug '${environmentSlug}' not found`
       });
 
-    const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
     if (!dynamicSecretLease || dynamicSecretLease.dynamicSecret.folderId !== folder.id)
       throw new NotFoundError({ message: `Dynamic secret lease with ID '${leaseId}' not found` });
 
@@ -559,10 +564,12 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
+    const [folder, dynamicSecretLease] = await Promise.all([
+      folderDAL.findBySecretPath(projectId, environmentSlug, path),
+      dynamicSecretLeaseDAL.findById(leaseId)
+    ]);
     if (!folder) throw new NotFoundError({ message: `Folder with path '${path}' not found` });
 
-    const dynamicSecretLease = await dynamicSecretLeaseDAL.findById(leaseId);
     if (!dynamicSecretLease)
       throw new NotFoundError({ message: `Dynamic secret lease with ID '${leaseId}' not found` });
 
