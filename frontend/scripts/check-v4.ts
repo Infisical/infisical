@@ -21,7 +21,8 @@ export type V4Check = {
 
 const isUi = (file: string) => file.startsWith("src/components/v4/");
 const pageScrollerFiles = ["src/components/v4/ui/top-bar.module.css"];
-const isExample = (file: string) => file.startsWith("src/pages/design-system/");
+const isExample = (file: string) =>
+  file.startsWith("src/pages/design-system/") || file.startsWith("src/pages/v4/");
 const isCss = (file: string) => file.endsWith(".css");
 const isMarkup = (file: string) => /\.tsx?$/.test(file);
 const isAuthored = (file: string) => isUi(file) || isExample(file);
@@ -382,7 +383,7 @@ export const scanSource = (file: string, text: string): Finding[] => {
 };
 
 const root = path.resolve(import.meta.dirname, "..");
-const scanRoots = ["src/components/v4", "src/pages/design-system"];
+const scanRoots = ["src/components/v4", "src/pages/design-system", "src/pages/v4"];
 const baselinePath = path.join(root, "scripts/check-v4-baseline.json");
 
 const walk = (dir: string): string[] =>

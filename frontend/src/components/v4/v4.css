@@ -3,6 +3,7 @@
 @reference "tw-animate-css";
 @source "./ui";
 @source "../../pages/design-system";
+@source "../../pages/v4";
 
 .v4 {
   @tailwind utilities source(none);

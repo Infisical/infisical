@@ -1,70 +1,8 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
-import SecurityClient from "@app/components/utilities/SecurityClient";
-import { SessionStorageKeys } from "@app/const";
-import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
-import { resetOrganizationCache } from "@app/hooks/api/organization/cache";
-import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
-import { fetchUserOrgPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
-import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
+import { injectOrgDetails } from "@app/helpers/routeGuards";
 
 // Route context to fill in organization's data like details, subscription etc
 export const Route = createFileRoute("/_authenticate/_inject-org-details")({
-  beforeLoad: async ({ context, params, location }) => {
-    let organizationId: string;
-
-    if ((params as { orgId?: string })?.orgId) {
-      organizationId = (params as { orgId: string }).orgId;
-    } else {
-      organizationId = context.organizationId!;
-    }
-
-    if ((params as { orgId?: string })?.orgId && context.organizationId) {
-      const urlOrgId = (params as { orgId: string }).orgId;
-      const currentTokenOrgId = context.organizationId;
-
-      if (urlOrgId !== currentTokenOrgId) {
-        const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
-          organizationId: urlOrgId
-        });
-
-        if (isMfaEnabled) {
-          sessionStorage.setItem(SessionStorageKeys.MFA_TEMP_TOKEN, token);
-          throw redirect({
-            to: "/login/select-organization",
-            search: {
-              org_id: urlOrgId,
-              mfa_method: mfaMethod,
-              redirect_to: location.href
-            }
-          });
-        }
-
-        SecurityClient.setToken(token);
-        await context.queryClient.fetchQuery({
-          queryKey: authKeys.getAuthToken,
-          queryFn: fetchAuthToken,
-          staleTime: 0
-        });
-      }
-    }
-
-    resetOrganizationCache(context.queryClient, organizationId);
-
-    await context.queryClient.ensureQueryData({
-      queryKey: organizationKeys.getOrgById(organizationId),
-      queryFn: () => fetchOrganizationById(organizationId)
-    });
-
-    await context.queryClient.ensureQueryData({
-      queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId),
-      queryFn: () => fetchOrgSubscription(organizationId)
-    });
-
-    await context.queryClient.ensureQueryData({
-      queryKey: roleQueryKeys.getUserOrgPermissions({ orgId: organizationId }),
-      queryFn: () => fetchUserOrgPermissions({ orgId: organizationId })
-    });
-    return { organizationId };
-  }
+  beforeLoad: injectOrgDetails
 });

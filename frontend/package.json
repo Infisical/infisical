@@ -14,7 +14,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "oxlint --type-aware --report-unused-disable-directives-severity=error --max-warnings 0 src && oxfmt --check 'src/**/*.{ts,tsx}'",
-    "lint:v4": "oxlint --config .oxlintrc.v4.json --max-warnings 0 src/pages/design-system",
+    "lint:v4": "oxlint --config .oxlintrc.v4.json --max-warnings 0 src/pages/design-system src/pages/v4",
     "lint:fix": "oxlint --type-aware --report-unused-disable-directives-severity=error --fix --max-warnings 0 src && oxfmt 'src/**/*.{ts,tsx}'",
     "pretest": "npm run ui:generate",
     "test": "vitest run -c vitest.config.mts",
