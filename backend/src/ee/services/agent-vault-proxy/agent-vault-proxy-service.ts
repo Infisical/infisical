@@ -321,12 +321,12 @@ export const agentVaultProxyServiceFactory = ({
     const servesOwnCa = new ConflictError({
       message: `Proxy '${proxy.name}' serves its own certificate authority. Use the certificate you passed to it with --ca-cert.`
     });
-    // A proxy enrolled before Infisical stored CAs, and started with its own ever since, has a fingerprint and no
-    // certificate. Restarting it would never fill one in.
+    // Rows without a certificate predate stored CAs and proxy tokens. A rotation stores a CA and issues a token.
     if (!proxy.rootCaCertificate) {
-      if (proxy.rootCaFingerprint) throw servesOwnCa;
       throw new ConflictError({
-        message: `Proxy '${proxy.name}' has no certificate authority yet. Start it once with its proxy token, then try again.`
+        message: proxy.rootCaFingerprint
+          ? `Proxy '${proxy.name}' was set up before Infisical stored its certificate authority, so it serves the ca.crt in its data directory. To manage the CA from Infisical, rotate the proxy token and restart the proxy with it.`
+          : `Proxy '${proxy.name}' has no certificate authority yet. Rotate its proxy token, then start the proxy with the new token.`
       });
     }
     const held = parseRootCaCertificate(proxy.rootCaCertificate);
@@ -410,10 +410,11 @@ export const agentVaultProxyServiceFactory = ({
 
     const { stored, reported } = await $newRootCa(proxy.projectId);
     // The fingerprint is the only record that a proxy serves its own CA, and its next start reports that CA again.
-    // Overwriting it here would make the CA download hand out the new CA, which the proxy never serves.
-    const servesOwnCa = proxy.rootCaCertificate
-      ? Boolean(proxy.rootCaFingerprint) && proxy.rootCaFingerprint !== getRootCaFingerprint(proxy.rootCaCertificate)
-      : Boolean(proxy.rootCaFingerprint);
+    // Overwriting it here would make the CA download hand out the new CA, which the proxy never serves. A row with no
+    // certificate predates stored CAs, and its next start serves the CA stored here.
+    const servesOwnCa =
+      Boolean(proxy.rootCaCertificate && proxy.rootCaFingerprint) &&
+      proxy.rootCaFingerprint !== getRootCaFingerprint(proxy.rootCaCertificate as string);
 
     const rotated = await agentVaultProxyDAL.transaction(async (tx) => {
       const updated = await agentVaultProxyDAL.updateById(

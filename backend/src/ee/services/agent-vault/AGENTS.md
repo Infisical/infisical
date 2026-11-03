@@ -212,14 +212,17 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
   sent none; the stored CA is kept for processes that don't bring one, and the row shows whichever CA the latest
   start reported. Create and rotate record the new CA's fingerprint so it can be pinned before
   anything starts, except that rotate keeps the fingerprint of a proxy serving its own CA (it is the only record
-  of that, and the next start reports the same CA). Bootstrap's fingerprint write is tied to the token version
+  of that, and the next start reports the same CA); a row with no certificate predates stored CAs and gets the
+  new fingerprint. Bootstrap's fingerprint write is tied to the token version
   it checked, so a start on a rotated token can't overwrite it.
 - Agents still fetch the CA from the proxy's own unauthenticated `/_agent-vault/ca`, so the agent's trust path
   has no dependency on Infisical. `GET /proxies/:proxyId/ca` (proxy Read) also returns it, for code that
   can't reach the proxy's HTTP port, such as an E2B orchestrator. It returns only the CA Infisical holds: a
   proxy serving its own CA reports just the fingerprint, so a fingerprint that doesn't match the stored
-  certificate, or a fingerprint with no certificate (a proxy enrolled before Infisical stored CAs), is a 409,
-  never the wrong certificate.
+  certificate is a 409. A row with no certificate predates stored CAs and is a 409 that says to rotate the
+  token. The fingerprint is only written at create, rotate and bootstrap, so a proxy that changed its own CA
+  while Infisical was unreachable is recorded only at its next successful start; until then the download can
+  return Infisical's CA.
 - Health is judged against `heartbeatTTL`, the interval the proxy was running when it last checked in, not
   the row's current `pollInterval`. A proxy learns a new interval on its next poll, so comparing against the
   saved one would report a live proxy as unreachable until then. Gateway v2 does the same.
