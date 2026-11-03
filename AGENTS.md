@@ -71,7 +71,7 @@ The backend installs with the npm bundled in Node 26 (11.x), which skips depende
 
 ### Backend Code Quality
 
-**Read [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md) for every backend change, and check the change against it before calling the work done.** This applies to all work under `backend/`: new features, refactors, bug fixes, and reviews alike.
+**Read [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md) for every backend change, and check the change against it before calling the work done.** This applies to all work under `backend/`: new features, refactors, bug fixes, and reviews alike. To review a backend diff or PR, or to self-review before pushing, use the `backend-review` skill (`.agents/skills/backend-review/`).
 
 It is a floor, not an exhaustive standard: user-understandable error messages and no pointless 500s, explicit validation on every API input, correct pagination when calling third-party APIs, avoiding deadlock conditions on a small connection pool (thread `tx`, keep transactions short), REST-aligned API interfaces (flag deviations for the author to confirm rather than implementing them silently), and audit log events an admin can actually read.
 
