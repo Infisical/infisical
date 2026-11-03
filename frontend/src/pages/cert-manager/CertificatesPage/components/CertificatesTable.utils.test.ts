@@ -4,11 +4,66 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 
 import {
+  getApplicationCertificateAccess,
   getCertificateDeletedBySummary,
   getCertificateDeletionWarning,
   getCertificateDisplayStatus,
   isRemovedFromSyncDestination
 } from "./CertificatesTable.utils";
+
+const abilityAllowing = (...actions: string[]) => ({
+  can: (action: string, subjectType: string) =>
+    subjectType === "certificates" && actions.includes(action)
+});
+
+describe("getApplicationCertificateAccess", () => {
+  const applicationName = "payments";
+
+  it("blocks every action for a project admin who is not on the application", () => {
+    const access = getApplicationCertificateAccess({
+      applicationName,
+      permission: abilityAllowing("read", "list")
+    });
+
+    expect(access).toMatchObject({ canRenew: false, canEdit: false, canDelete: false });
+    expect(access.renewBlockedReason).toBe(
+      "You need the Operator or Admin role on payments to renew this certificate."
+    );
+    expect(access.revokeBlockedReason).toBe(
+      "You need the Admin role on payments to revoke this certificate."
+    );
+    expect(access.deleteBlockedReason).toBe(
+      "You need the Admin role on payments to delete this certificate."
+    );
+  });
+
+  it("lets an operator renew but not revoke or delete", () => {
+    const access = getApplicationCertificateAccess({
+      applicationName,
+      permission: abilityAllowing("read", "list", "create", "edit", "import")
+    });
+
+    expect(access).toMatchObject({ canRenew: true, canEdit: true, canDelete: false });
+    expect(access.renewBlockedReason).toBeUndefined();
+    expect(access.editBlockedReason).toBeUndefined();
+    expect(access.deleteBlockedReason).toBeDefined();
+  });
+
+  it("allows everything for an application admin", () => {
+    const access = getApplicationCertificateAccess({
+      applicationName,
+      permission: abilityAllowing("read", "list", "create", "edit", "delete")
+    });
+
+    expect(access).toEqual({ canRenew: true, canEdit: true, canDelete: true });
+  });
+
+  it("keeps actions disabled without blaming a role while the ability loads", () => {
+    const access = getApplicationCertificateAccess({ applicationName });
+
+    expect(access).toEqual({ canRenew: false, canEdit: false, canDelete: false });
+  });
+});
 
 const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
