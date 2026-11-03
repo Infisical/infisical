@@ -16,12 +16,12 @@ import {
   TAgentVaultDelegation,
   TAgentVaultDelegationDetail,
   TAgentVaultGrantedMember,
+  TAgentVaultMcpTool,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
   TAgentVaultOauthAuthorization,
   TAgentVaultPersonalValues,
   TAgentVaultProxy,
-  TAgentVaultProxySettingsDTO,
   TAgentVaultProxyWithToken,
   TAgentVaultService,
   TAgentVaultSession,
@@ -35,15 +35,18 @@ import {
   TCreateAgentVaultAccessBundleDTO,
   TCreateAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultOauthAuthorizationResponse,
+  TCreateAgentVaultProxyDTO,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultSkillDTO,
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
+  TListAgentVaultMcpToolsDTO,
   TSetAgentVaultDelegationDTO,
   TSetAgentVaultPersonalValuesDTO,
   TUpdateAgentVaultAccessBundleDTO,
   TUpdateAgentVaultMemberRolesDTO,
+  TUpdateAgentVaultProxyDTO,
   TUpdateAgentVaultServiceDTO,
   TUpdateAgentVaultSessionLabelDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
@@ -356,7 +359,7 @@ export const useCreateAgentVaultProxy = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (params: TAgentVaultProxySettingsDTO) => {
+    mutationFn: async (params: TCreateAgentVaultProxyDTO) => {
       const { data } = await apiRequest.post<TAgentVaultProxyWithToken>(
         "/api/v1/agent-vault/proxies",
         params
@@ -373,10 +376,7 @@ export const useUpdateAgentVaultProxy = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      proxyId,
-      ...params
-    }: Partial<TAgentVaultProxySettingsDTO> & { proxyId: string }) => {
+    mutationFn: async ({ proxyId, ...params }: TUpdateAgentVaultProxyDTO) => {
       const { data } = await apiRequest.patch<{ proxy: TAgentVaultProxy }>(
         `/api/v1/agent-vault/proxies/${proxyId}`,
         params
@@ -604,6 +604,20 @@ export const useCompleteAgentVaultOauthAuthorization = () =>
         params
       );
       return data.authorization;
+    }
+  });
+
+// A read, but its body can carry a credential, and it only runs when the admin asks.
+export const useListAgentVaultMcpTools = () =>
+  useMutation({
+    // The Tools step shows the server's failure in place.
+    meta: { skipErrorToast: true },
+    mutationFn: async ({ accessBundleId, ...params }: TListAgentVaultMcpToolsDTO) => {
+      const { data } = await apiRequest.post<{ tools: TAgentVaultMcpTool[] }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/mcp-tools/list`,
+        params
+      );
+      return data.tools;
     }
   });
 

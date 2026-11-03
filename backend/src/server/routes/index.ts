@@ -924,7 +924,8 @@ export const registerRoutes = async (
     identityDAL,
     additionalPrivilegeDAL,
     groupDAL,
-    secretFolderDAL: folderDAL
+    secretFolderDAL: folderDAL,
+    orgDAL
   });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
@@ -1667,7 +1668,8 @@ export const registerRoutes = async (
     telemetryService,
     usageMeteringService,
     alertChannelRecipientDAL,
-    eventEmitter: eventOutboxService
+    eventEmitter: eventOutboxService,
+    keyStore
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -2504,6 +2506,26 @@ export const registerRoutes = async (
     secretValueTrackingQueue
   });
 
+  const dynamicSecretProviders = buildDynamicSecretProviders({
+    gatewayV2Service,
+    gatewayPoolService,
+    projectDAL
+  });
+
+  const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
+    queueService,
+    dynamicSecretLeaseDAL,
+    dynamicSecretProviders,
+    dynamicSecretDAL,
+    folderDAL,
+    kmsService,
+    smtpService,
+    userDAL,
+    identityDAL,
+    projectMembershipDAL,
+    projectDAL
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
@@ -2538,7 +2560,12 @@ export const registerRoutes = async (
     roleDAL,
     groupDAL,
     projectAccessRequestDAL,
-    usageMeteringService
+    usageMeteringService,
+    dynamicSecretLeaseDAL,
+    dynamicSecretQueueService,
+    secretV2BridgeDAL,
+    honeyTokenDAL,
+    secretSyncDAL
   });
 
   const projectEnvQueue = projectEnvQueueFactory({
@@ -3137,35 +3164,6 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const certificateCleanupQueue = certificateCleanupQueueFactory({
-    db,
-    cronJob,
-    certificateCleanupConfigDAL,
-    certificateDAL,
-    certificateRequestDAL,
-    auditLogService,
-    telemetryService
-  });
-
-  const dynamicSecretProviders = buildDynamicSecretProviders({
-    gatewayV2Service,
-    gatewayPoolService,
-    projectDAL
-  });
-
-  const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
-    queueService,
-    dynamicSecretLeaseDAL,
-    dynamicSecretProviders,
-    dynamicSecretDAL,
-    folderDAL,
-    kmsService,
-    smtpService,
-    userDAL,
-    identityDAL,
-    projectMembershipDAL,
-    projectDAL
-  });
   const dynamicSecretService = dynamicSecretServiceFactory({
     orgDAL,
     projectDAL,
@@ -3845,6 +3843,23 @@ export const registerRoutes = async (
     pkiSyncQueue
   });
 
+  const certificateCleanupQueue = certificateCleanupQueueFactory({
+    db,
+    cronJob,
+    certificateCleanupConfigDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateRequestDAL,
+    pkiCollectionItemDAL,
+    certificateSyncDAL,
+    pkiSyncDAL,
+    pkiSyncQueue,
+    usageMeteringService,
+    auditLogService,
+    telemetryService
+  });
+
   const pkiSyncHealthCheckQueue = pkiSyncHealthCheckQueueFactory({
     cronJob,
     queueService,
@@ -4046,6 +4061,7 @@ export const registerRoutes = async (
     usageCounterDAL,
     keyStore,
     certificateDAL,
+    certificateRequestDAL,
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
@@ -4074,7 +4090,10 @@ export const registerRoutes = async (
     licenseService,
     usageMeteringService,
     caKeySourceService,
-    internalCertificateAuthorityDAL
+    internalCertificateAuthorityDAL,
+    signerDAL,
+    userDAL,
+    identityDAL
   });
 
   const godaddyCaFns = GoDaddyCertificateAuthorityFns({
@@ -4301,24 +4320,6 @@ export const registerRoutes = async (
   const pamDiscoveredAccountDAL = pamDiscoveredAccountDALFactory(db);
   const pamAccountDependencyDAL = pamAccountDependencyDALFactory(db);
 
-  const pamDiscoveryService = pamDiscoverySourceServiceFactory({
-    orgDAL,
-    pamDiscoverySourceDAL,
-    pamDiscoverySourceRunDAL,
-    pamDiscoveredAccountDAL,
-    pamAccountDependencyDAL,
-    pamAccountDAL,
-    pamAccountService,
-    permissionService,
-    kmsService,
-    gatewayV2DAL,
-    gatewayV2Service,
-    gatewayPoolService,
-    queueService,
-    cronJob,
-    auditLogService
-  });
-
   const pamAccountRotationService = pamAccountRotationServiceFactory({
     pamAccountDAL,
     permissionService,
@@ -4331,6 +4332,25 @@ export const registerRoutes = async (
     pamAccountDependencyDAL,
     pamDiscoverySourceDAL,
     projectDAL
+  });
+
+  const pamDiscoveryService = pamDiscoverySourceServiceFactory({
+    orgDAL,
+    pamDiscoverySourceDAL,
+    pamDiscoverySourceRunDAL,
+    pamDiscoveredAccountDAL,
+    pamAccountDependencyDAL,
+    pamAccountDAL,
+    pamAccountService,
+    pamAccountRotationService,
+    permissionService,
+    kmsService,
+    gatewayV2DAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    queueService,
+    cronJob,
+    auditLogService
   });
 
   const pamAccountHeartbeatService = pamAccountHeartbeatServiceFactory({
@@ -4530,6 +4550,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,
+    certificateDAL,
     certificatePolicyDAL,
     acmeAccountDAL,
     acmeOrderDAL,

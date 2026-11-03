@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/oauth"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
@@ -36,6 +37,17 @@ const (
 	authSecret    = "4bnfe4e407b8921c104518903515b218"
 	encryptionKey = "6c1fe4e407b8911c104518103505b218"
 )
+
+// OAuthClients are the OAuth app credentials the instance boots with, one pair per
+// login provider. A provider fake checks a token request against these.
+var OAuthClients = map[string]string{
+	"CLIENT_ID_GOOGLE_LOGIN":     oauth.GoogleClientID,
+	"CLIENT_SECRET_GOOGLE_LOGIN": oauth.GoogleClientSecret,
+	"CLIENT_ID_GITHUB_LOGIN":     oauth.GitHubClientID,
+	"CLIENT_SECRET_GITHUB_LOGIN": oauth.GitHubClientSecret,
+	"CLIENT_ID_GITLAB_LOGIN":     oauth.GitLabClientID,
+	"CLIENT_SECRET_GITLAB_LOGIN": oauth.GitLabClientSecret,
+}
 
 type module struct {
 	image    Image
@@ -119,6 +131,14 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 	// NODE_EXTRA_CA_CERTS and carries on, so the mounted CA is not optional: without
 	// it HTTP keeps working and every real provider breaks.
 	env["ALLOW_INTERNAL_IP_CONNECTIONS"] = "true"
+	// Audit log streams run their own SSRF check with a separate switch.
+	env["AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP"] = "true"
+
+	// OAuth login strategies are registered only at boot, so a test cannot turn one on
+	// later. The fakes answer for the real hosts; these only have to be non-empty.
+	for k, v := range OAuthClients {
+		env[k] = v
+	}
 
 	// The License Server is one more fake, reached the same way as any other third
 	// party: by name, over TLS fakenet terminates. It is what makes entitlements

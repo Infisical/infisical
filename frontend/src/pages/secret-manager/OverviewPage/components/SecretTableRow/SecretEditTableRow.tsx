@@ -1,5 +1,13 @@
 /* eslint-disable no-nested-ternary */
-import { ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  CSSProperties,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState
+} from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
@@ -1191,6 +1199,7 @@ export const SecretEditTableRow = ({
       setActionBarWidth(0);
       return;
     }
+    setActionBarWidth(node.offsetWidth);
     const observer = new ResizeObserver(() => setActionBarWidth(node.offsetWidth));
     observer.observe(node);
     actionBarResizeObserverRef.current = observer;
@@ -1656,9 +1665,14 @@ export const SecretEditTableRow = ({
             className={twMerge(
               "ml-auto flex shrink-0 items-center",
               isSingleEnvView &&
-                "mr-16 transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16",
+                "mr-(--action-bar-offset) transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-(--action-bar-offset) [@media(hover:hover)]:group-hover:mr-(--action-bar-offset)",
               isSingleEnvView && isFieldActive && "mr-8"
             )}
+            style={
+              isSingleEnvView
+                ? ({ "--action-bar-offset": `${actionBarWidth + 4}px` } as CSSProperties)
+                : undefined
+            }
           >
             <Badge variant="danger">
               <BanIcon className="size-3.5" />

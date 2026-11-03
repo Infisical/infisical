@@ -30,7 +30,8 @@ const InventoryViewFiltersSchema = z
         })
       )
       .max(20)
-      .optional()
+      .optional(),
+    includeDeleted: z.boolean().optional()
   })
   .strict();
 
@@ -75,6 +76,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
               name: z.string(),
               filters: z.object({
                 status: z.array(z.string()).optional(),
+                includeDeleted: z.boolean().optional(),
                 notAfterTo: z.string().optional()
               }),
               columns: z.null(),

@@ -1143,7 +1143,18 @@ export const PROJECTS = {
     template: "The name of the project template, if specified, to apply to this project."
   },
   DELETE: {
-    projectId: "The ID of the project to delete."
+    projectId: "The ID of the project to delete.",
+    hardDelete:
+      "When true, the project is permanently deleted shortly after the request. When false or omitted, a secret manager project is soft-deleted (preserved and scheduled for permanent deletion after a grace period) and hidden from subsequent reads."
+  },
+  LIST_DELETED: {
+    type: "The type of soft-deleted projects to list."
+  },
+  RESTORE: {
+    projectId: "The ID of the soft-deleted project to restore."
+  },
+  PERMANENTLY_DELETE: {
+    projectId: "The ID of the soft-deleted project to permanently delete."
   },
   GET: {
     projectId: "The ID of the project."
@@ -1213,7 +1224,9 @@ export const PROJECTS = {
     forPkiSync: "Retrieve only certificates available for PKI sync.",
     search: "Search by SAN, CN, certificate ID, or serial number.",
     status:
-      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired and revoked. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked.",
+      "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired, revoked and deleted. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked. Deleted certificates match only deleted.",
+    includeDeleted:
+      "Include deleted certificates in the results when no status filter is set. Deleted certificates are excluded by default.",
     profileIds: "Filter by certificate profile IDs.",
     fromDate: "Filter certificates created from this date.",
     toDate: "Filter certificates created until this date.",
@@ -2394,11 +2407,17 @@ export const CERTIFICATES = {
   GET: {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
+    includeDeleted: "Return the certificate even if it was deleted. Without it, a deleted certificate returns 404.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
     externalMetadata:
       "Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.",
     latestRenewalCertificateId:
-      "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked. Use this to follow renewals without walking the chain one certificate at a time."
+      "The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked and deleted certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked or deleted. Use this to follow renewals without walking the chain one certificate at a time.",
+    deletedAt:
+      "When this certificate was deleted, or null if it has not been. A deleted certificate keeps its record, metadata and renewal history, but its certificate and private key are no longer available.",
+    deletedByActorType: "The type of actor that deleted this certificate: 'user' or 'identity'.",
+    deletedByActorId: "The ID of the user or machine identity that deleted this certificate.",
+    deletedByActorName: "The name of the user or machine identity that deleted this certificate, if it still exists."
   },
   RENEW: {
     id: "The ID of the certificate to renew.",
@@ -4226,7 +4245,9 @@ export const OidcSSo = {
     isActive: "Whether to enable or disable this OIDC configuration.",
     manageGroupMemberships:
       "Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.",
-    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification."
+    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification.",
+    mfaClaimName: "The ID token claim that lists the authentication methods the user completed. Defaults to amr.",
+    mfaAmrValues: "Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA."
   },
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the OIDC config for.",
@@ -4246,7 +4267,9 @@ export const OidcSSo = {
     isActive: "Whether to enable or disable this OIDC configuration.",
     manageGroupMemberships:
       "Whether to manage group memberships for the OIDC configuration. If enabled, users will automatically be assigned groups when they sign in, based on which groups they are a member of in the OIDC provider.",
-    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification."
+    jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification.",
+    mfaClaimName: "The ID token claim that lists the authentication methods the user completed. Defaults to amr.",
+    mfaAmrValues: "Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA."
   }
 };
 
@@ -4263,7 +4286,11 @@ export const SamlSso = {
     issuer: "The SAML provider issuer URL or entity ID.",
     cert: "The certificate to use for SAML authentication.",
     enableGroupSync:
-      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups."
+      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.",
+    mfaSignalAttribute:
+      "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
+    mfaAuthnContexts:
+      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
   },
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the SAML config for.",
@@ -4274,7 +4301,11 @@ export const SamlSso = {
     issuer: "The SAML provider issuer URL or entity ID.",
     cert: "The certificate to use for SAML authentication.",
     enableGroupSync:
-      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups."
+      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.",
+    mfaSignalAttribute:
+      "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
+    mfaAuthnContexts:
+      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
   },
   ACS: {
     samlConfigId: "The ID of the SAML configuration the response is for.",
@@ -4665,6 +4696,10 @@ export const AGENT_VAULT = {
       "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
     allowedPathPrefixes:
       "The path prefixes this service allows, matched on whole segments, so `/repos` covers `/repos/octo` but not `/repositories`. `null` allows every path. A path-restricted service also refuses any request whose path would have to be normalised to judge.",
+    allowedTools:
+      "The MCP tools agents can call through this service, by exact, case-sensitive name. Each name is 1 to 128 letters, numbers, underscores (_), hyphens (-), or dots (.). `null` allows every tool. The proxy refuses a call to any other tool and leaves it out of the server's tool list. MCP services only.",
+    mcpToolName: "The tool's name, as the MCP server reports it.",
+    mcpToolDescription: "The server's description of the tool, or null if it gave none.",
     customHeaders:
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
     customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
@@ -4880,9 +4915,10 @@ export const AGENT_VAULT = {
   PROXY: {
     proxyId: "The ID of the proxy.",
     name: "The name of the proxy.",
+    description: "A description of what this proxy is for.",
     orderBy: "What to sort proxies by: name or createdAt.",
     orderDirection: "Which way to sort: asc or desc.",
-    search: "Match proxies by name.",
+    search: "Match proxies by name or description.",
     limit: "The maximum number of proxies to return.",
     offset: "How many proxies to skip.",
     heartbeat: "When the proxy last checked in, or `null` if it never has.",
