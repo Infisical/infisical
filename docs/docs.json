@@ -4452,8 +4452,7 @@
                           "api-reference/endpoints/code-signing/signers/sign",
                           "api-reference/endpoints/code-signing/signers/public-key",
                           "api-reference/endpoints/code-signing/signers/export-certificate",
-                          "api-reference/endpoints/code-signing/signers/enable",
-                          "api-reference/endpoints/code-signing/signers/disable",
+                          "api-reference/endpoints/code-signing/signers/update-status",
                           "api-reference/endpoints/code-signing/signers/reissue-certificate",
                           "api-reference/endpoints/code-signing/signers/import-certificate",
                           "api-reference/endpoints/code-signing/signers/list-operations"
@@ -5710,6 +5709,14 @@
     {
       "source": "/integrations/dynamic-secrets",
       "destination": "/documentation/platform/dynamic-secrets/overview"
+    },
+    {
+      "source": "/api-reference/endpoints/code-signing/signers/enable",
+      "destination": "/api-reference/endpoints/code-signing/signers/update-status"
+    },
+    {
+      "source": "/api-reference/endpoints/code-signing/signers/disable",
+      "destination": "/api-reference/endpoints/code-signing/signers/update-status"
     }
   ]
 }
