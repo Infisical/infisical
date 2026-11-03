@@ -3280,8 +3280,8 @@ export const secretV2BridgeServiceFactory = ({
           {
             type: ProjectEvents.SecretImportMutation,
             projectId,
-            secretPath: sourceFolder.path,
-            environment: sourceFolder.environment.slug
+            secretPath: destinationFolder.path,
+            environment: destinationFolder.environment.slug
           }
         ]
       });

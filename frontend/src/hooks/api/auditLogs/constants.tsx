@@ -129,6 +129,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.DELETE_PKI_COLLECTION_ITEM]: "Delete PKI collection item",
   [EventType.ORG_ADMIN_ACCESS_PROJECT]: "Org admin accessed project",
   [EventType.ORG_ADMIN_BYPASS_SSO]: "Org admin bypassed SSO enforcement",
+  [EventType.SELECT_ORGANIZATION_REFUSED]: "Organization sign-in refused",
   [EventType.CREATE_CERTIFICATE_TEMPLATE]: "Create certificate template",
   [EventType.UPDATE_CERTIFICATE_TEMPLATE]: "Update certificate template",
   [EventType.DELETE_CERTIFICATE_TEMPLATE]: "Delete certificate template",
@@ -290,6 +291,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",
   [EventType.DELETE_PROJECT]: "Delete Project",
+  [EventType.RESTORE_PROJECT]: "Restore Project",
 
   [EventType.CREATE_SECRET_REMINDER]: "Create Secret Reminder",
   [EventType.GET_SECRET_REMINDER]: "Get Secret Reminder",

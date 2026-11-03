@@ -2458,6 +2458,7 @@ export type TAgentVaultServiceCreatedEvent = {
     hostPatternCount: number;
     allowedMethodCount: number;
     allowedPathPrefixCount: number;
+    allowedToolCount: number;
     customHeaderCount: number;
     substitutionCount: number;
     variableReferenceCount: number;
@@ -2474,6 +2475,7 @@ export type TAgentVaultServiceUpdatedEvent = {
     hostPatternCount: number;
     allowedMethodCount: number;
     allowedPathPrefixCount: number;
+    allowedToolCount: number;
     customHeaderCount: number;
     substitutionCount: number;
     variableReferenceCount: number;

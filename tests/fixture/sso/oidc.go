@@ -112,6 +112,16 @@ func (o *OIDC) Session(tt *testing.T, res *api.OidcCallbackResponse) *api.Client
 	return Session(tt, o.Tenant, res.HTTPResponse)
 }
 
+// SignedUp logs a new person in through OIDC and completes their signup, leaving an
+// accepted member with a verified OIDC account.
+func (o *OIDC) SignedUp(tt *testing.T) oidcidp.Person {
+	tt.Helper()
+	person := o.Person()
+	res := o.CompleteSignup(tt, o.Login(tt, person), VerificationCode(tt, o.Tenant, person.Email))
+	require.Equalf(tt, http.StatusOK, res.StatusCode(), "completing SSO signup: %s", apierr.Body(res.Body))
+	return person
+}
+
 func (o *OIDC) CompleteSignup(tt *testing.T, res *api.OidcCallbackResponse, code string) *api.CompleteAccountSignupV3Response {
 	tt.Helper()
 	o.Redirect(tt, res)

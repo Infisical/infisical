@@ -74,7 +74,7 @@ You can view a session's logs if you created the session or you're an Agent Vaul
 
       - `serviceType`: `http` or `mcp`, or `null` if no service matched the request
       - `mcp`: left out for other requests to an MCP service, such as the `GET` that opens an event stream
-      - `mcp.parsed`: `false` if the proxy couldn't read the calls from the request body, such as a compressed body
+      - `mcp.parsed`: `false` if the proxy couldn't read the calls from the request body, such as a compressed body, or if a method or tool name holds characters other than letters, digits, and `_ . : / -` or is longer than 128 characters
       - `mcp.truncated`: `true` if the request held more than 8 calls and the rest weren't recorded (left out otherwise)
     </Step>
   </Steps>

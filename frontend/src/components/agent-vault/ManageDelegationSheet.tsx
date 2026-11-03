@@ -60,6 +60,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { getInitials } from "@app/helpers/string";
 import { useDebounce } from "@app/hooks";
 import {
   useAddAgentVaultDelegationSubjects,
@@ -99,14 +100,6 @@ export type TDelegationSubjectRow = TAgentVaultActor & {
   missingAccessBundles: TAgentVaultMissingAccessBundle[];
 };
 
-const initialsOf = (value: string) =>
-  value
-    .split(/[\s@._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("") || "?";
-
 const SubjectIdentity = ({
   member,
   badge
@@ -120,7 +113,11 @@ const SubjectIdentity = ({
   return (
     <>
       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral/10 text-xs font-semibold text-accent">
-        {member.type === AgentVaultMemberType.User ? initialsOf(name) : <Icon className="size-4" />}
+        {member.type === AgentVaultMemberType.User ? (
+          getInitials(name)
+        ) : (
+          <Icon className="size-4" />
+        )}
         <span className="sr-only">{label}</span>
       </div>
       <div className="min-w-0 flex-1">
