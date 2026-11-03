@@ -1,0 +1,53 @@
+version: v0.167.6
+releasedAt: 2026-11-03T14:48:17-03:00
+sourceTag: v0.167.6
+previousTag: v0.167.5
+impactLevel: low
+summary: Adds additive database columns for Agent Vault and SSO MFA trust.
+  Startup runs the migrations automatically; no required config or deployment
+  changes.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Agent Vault proxy description
+    description: Adds a nullable description column to Agent Vault proxies.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261027150000_agent-vault-proxy-description.ts
+        path: backend/src/db/migrations/20261027150000_agent-vault-proxy-description.ts
+  - title: Agent Vault allowed tools
+    description: Adds an allowedTools column and Agent Vault service table checks.
+      Existing invalid rows do not block startup because constraints are added
+      NOT VALID and only validated when no violation exists.
+    action: If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261029073000_agent-vault-service-allowed-tools.ts
+        path: backend/src/db/migrations/20261029073000_agent-vault-service-allowed-tools.ts
+        description: Adds allowedTools and conditional checks
+  - title: SSO MFA trust settings
+    description: Adds organization, SAML, and OIDC columns for trusting MFA signals
+      from identity providers. Defaults preserve existing behavior with
+      ssoMfaTrust set to none.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261029195045_sso-mfa-trust.ts
+        path: backend/src/db/migrations/20261029195045_sso-mfa-trust.ts
+        description: Adds SSO MFA trust columns and defaults
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-03T19:03:27.597Z
+  sourceRange:
+    from: v0.167.5
+    to: v0.167.6
