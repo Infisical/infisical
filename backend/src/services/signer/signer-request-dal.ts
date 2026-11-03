@@ -50,10 +50,16 @@ export const signerRequestDALFactory = (db: TDbClient) => {
         // An approved request stays "approved" for good; the grant carries what happened to the access afterwards.
         // A grant past its expiresAt can still read "active" until the next sign attempt or the hourly cleanup marks
         // it, so the time is compared directly. A revoked grant reads as "cancelled", the status the signer's own
-        // revoke sets.
+        // revoke sets, unless it was revoked after its window had already ended: that access expired on its own.
         db.raw(
           `CASE
-            WHEN "${TableName.ApprovalRequests}"."status" = ? AND "${TableName.ApprovalRequestGrants}"."status" = ? THEN ?
+            WHEN "${TableName.ApprovalRequests}"."status" = ? AND "${TableName.ApprovalRequestGrants}"."status" = ?
+              AND (
+                "${TableName.ApprovalRequestGrants}"."expiresAt" IS NULL
+                OR "${TableName.ApprovalRequestGrants}"."revokedAt" IS NULL
+                OR "${TableName.ApprovalRequestGrants}"."revokedAt" < "${TableName.ApprovalRequestGrants}"."expiresAt"
+              )
+              THEN ?
             WHEN "${TableName.ApprovalRequests}"."status" = ?
               AND ("${TableName.ApprovalRequestGrants}"."status" = ? OR "${TableName.ApprovalRequestGrants}"."expiresAt" <= NOW())
               THEN ?
