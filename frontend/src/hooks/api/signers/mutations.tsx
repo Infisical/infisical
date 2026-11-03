@@ -23,6 +23,7 @@ import {
   TRemoveSignerIdentityDTO,
   TRemoveSignerUserDTO,
   TRequestToSignDTO,
+  TRevokeSignerCertificateDTO,
   TRevokeSignerRequestDTO,
   TSigner,
   TSignerMember,
@@ -137,6 +138,53 @@ export const useReissueSignerCertificate = () => {
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
       queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
       createNotification({ text: "Certificate re-issue scheduled", type: "success" });
+    }
+  });
+};
+
+export const useRenewSignerCertificate = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<TSigner, object, string>({
+    mutationFn: async (signerId) => {
+      const { data } = await apiRequest.post<TSigner>(
+        `/api/v1/cert-manager/signers/${signerId}/certificate/renew`
+      );
+      return data;
+    },
+    onSuccess: (signer) => {
+      queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
+      queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
+      queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
+      createNotification({
+        text:
+          signer.status === SignerStatus.Pending
+            ? "Certificate renewal scheduled"
+            : "Certificate renewed",
+        type: "success"
+      });
+    }
+  });
+};
+
+export const useRevokeSignerCertificate = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<TSigner, object, TRevokeSignerCertificateDTO>({
+    mutationFn: async ({ signerId, ...body }) => {
+      const { data } = await apiRequest.post<TSigner>(
+        `/api/v1/cert-manager/signers/${signerId}/certificate/revoke`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (signer) => {
+      queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
+      createNotification({ text: "Certificate revoked", type: "success" });
+    },
+    onSettled: (_, __, { signerId }) => {
+      queryClient.invalidateQueries({ queryKey: signerKeys.byId(signerId) });
+      queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signerId) });
     }
   });
 };

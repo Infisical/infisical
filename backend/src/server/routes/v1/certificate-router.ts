@@ -5,7 +5,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
 import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
@@ -1861,7 +1861,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { id: identifier } = req.params;
-      const { revokedAt, cert, applicationName, ca } = await server.services.certificate.revokeCert({
+      const { revokedAt, cert, applicationName, ca, crlUpdateError } = await server.services.certificate.revokeCert({
         ...(isUuidV4(identifier) ? { id: identifier } : { thumbprint: identifier }),
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -1896,6 +1896,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           revocationReason: req.body.revocationReason
         }
       });
+
+      if (crlUpdateError) throw new InternalServerError({ message: crlUpdateError });
 
       return {
         message: "Successfully revoked certificate",

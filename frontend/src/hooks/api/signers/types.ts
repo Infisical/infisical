@@ -1,4 +1,5 @@
 import { CaType } from "@app/hooks/api/ca/enums";
+import { CrlReason } from "@app/hooks/api/certificates/enums";
 import { SigningAlgorithm } from "@app/hooks/api/cmeks";
 
 export type TGetUserSignerPermissionDTO = {
@@ -16,7 +17,8 @@ export enum SignerStatus {
   Active = "active",
   Failed = "failed",
   Disabled = "disabled",
-  Expired = "expired"
+  Expired = "expired",
+  Revoked = "revoked"
 }
 
 export enum SignerKeyAlgorithm {
@@ -33,6 +35,12 @@ export enum CertKeySource {
   Hsm = "hsm",
   AwsKms = "aws-kms"
 }
+
+export const certKeySourceLabels: Record<CertKeySource, string> = {
+  [CertKeySource.Infisical]: "Infisical",
+  [CertKeySource.Hsm]: "HSM",
+  [CertKeySource.AwsKms]: "AWS KMS"
+};
 
 export const HSM_SUPPORTED_KEY_ALGORITHMS: readonly SignerKeyAlgorithm[] = [
   SignerKeyAlgorithm.RSA_2048,
@@ -55,7 +63,8 @@ export const signerStatusLabels: Record<SignerStatus, string> = {
   [SignerStatus.Active]: "Active",
   [SignerStatus.Failed]: "Failed",
   [SignerStatus.Disabled]: "Disabled",
-  [SignerStatus.Expired]: "Expired"
+  [SignerStatus.Expired]: "Expired",
+  [SignerStatus.Revoked]: "Revoked"
 };
 
 export const getSignerStatusBadgeVariant = (status: SignerStatus) => {
@@ -67,6 +76,7 @@ export const getSignerStatusBadgeVariant = (status: SignerStatus) => {
     case SignerStatus.Failed:
       return "danger" as const;
     case SignerStatus.Expired:
+    case SignerStatus.Revoked:
       return "danger" as const;
     case SignerStatus.Disabled:
       return "neutral" as const;
@@ -192,6 +202,8 @@ export type TSigner = {
   certificateNotAfter?: string | null;
   certificateKeySource?: CertKeySource | string | null;
   certificateHsmConnectorId?: string | null;
+  certificateHsmKeyLabel?: string | null;
+  certificateStatus?: string | null;
   approvalPolicyName?: string | null;
   certificateFailureReason?: string | null;
   externalOrder?: {
@@ -384,6 +396,11 @@ export type TUpdateSignerDTO = {
 
 export type TDeleteSignerDTO = {
   signerId: string;
+};
+
+export type TRevokeSignerCertificateDTO = {
+  signerId: string;
+  revocationReason: CrlReason;
 };
 
 export type TReissueSignerCertificateDTO = {

@@ -3,6 +3,7 @@ import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
+import { CertStatus } from "../certificate/certificate-types";
 import { TSignerDALFactory } from "./signer-dal";
 import { SignerStatus } from "./signer-enums";
 import { TSignerServiceFactory } from "./signer-service";
@@ -40,6 +41,7 @@ export const signerAutoRenewalQueueFactory = ({
       scanned += 1;
 
       if (!signer.certificateRenewBeforeDays || signer.certificateRenewBeforeDays < 1) continue;
+      if (signer.certificateStatus === CertStatus.REVOKED) continue;
 
       if (!signer.caId) {
         unrenewable += 1;

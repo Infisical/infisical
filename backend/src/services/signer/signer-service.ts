@@ -10,7 +10,8 @@ import {
   ProjectMembershipRole,
   RESOURCE_SCOPE,
   ResourceMembershipRole,
-  ResourceType
+  ResourceType,
+  TPkiSigners
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -22,6 +23,7 @@ import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -67,9 +69,14 @@ import {
 import { ActorType } from "../auth/auth-type";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
+import {
+  CodeSigningOrderStatus,
+  DigiCertLifecycleMode
+} from "../certificate-authority/digicert/digicert-certificate-authority-enums";
 import { TDigiCertCertificateAuthorityFns } from "../certificate-authority/digicert/digicert-certificate-authority-fns";
 import { MAX_CS_VALIDITY_DAYS } from "../certificate-authority/digicert/digicert-code-signing-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "../certificate-authority/internal/internal-certificate-authority-service";
+import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import {
@@ -78,6 +85,7 @@ import {
   getCertificateCredentials
 } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { TCertificateServiceFactory } from "../certificate/certificate-service";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertStatus, CrlReason } from "../certificate/certificate-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TMembershipDALFactory } from "../membership/membership-dal";
@@ -117,6 +125,8 @@ import {
   TListSignersDTO,
   TListSigningOperationsDTO,
   TReissueCertificateDTO,
+  TRenewCertificateDTO,
+  TRevokeSignerCertificateDTO,
   TSignDataDTO,
   TSignerCertificateInput,
   TSignerExternalCaConfig,
@@ -127,6 +137,7 @@ import { TSigningOperationDALFactory } from "./signing-operation-dal";
 
 const MAX_DATA_BYTES = 128;
 const DEFAULT_CERTIFICATE_TTL_DAYS = 365;
+const SIGNER_CERTIFICATE_LOCK_TTL_MS = 10 * 60 * 1000;
 
 const IMPORTABLE_HSM_KEY_ALGORITHMS: readonly string[] = [
   CertKeyAlgorithm.RSA_3072,
@@ -154,14 +165,25 @@ const assertCaTypeSupportsCodeSigning = (caType: CaType): void => {
   }
 };
 
+const revokedCertificateMessage = (signerName: string) =>
+  `Signer '${signerName}' has a revoked certificate. Create a new signer to keep signing.`;
+
+const renewInProgressMessage = (signerName: string) =>
+  `Signer '${signerName}' has a certificate request in progress. Wait for it to finish before renewing the certificate.`;
+
+const revokeInProgressMessage = (signerName: string) =>
+  `Signer '${signerName}' has a certificate request in progress. Wait for it to finish before revoking the certificate.`;
+
 const computeEffectiveStatus = (signer: {
   status: string;
   certificateNotAfter?: Date | string | null;
   certificateStatus?: string | null;
 }): SignerStatus => {
+  if (signer.status === SignerStatus.Revoked || signer.certificateStatus === CertStatus.REVOKED) {
+    return SignerStatus.Revoked;
+  }
   const dbStatus = signer.status as SignerStatus;
   if (dbStatus !== SignerStatus.Active) return dbStatus;
-  if (signer.certificateStatus === CertStatus.REVOKED) return SignerStatus.Expired;
   if (signer.certificateNotAfter && new Date(signer.certificateNotAfter) < new Date()) {
     return SignerStatus.Expired;
   }
@@ -179,9 +201,15 @@ type TSignerServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
+  certificateService: Pick<TCertificateServiceFactory, "revokeOwnedCertificate">;
   signerIssuanceService: Pick<
     TSignerIssuanceServiceFactory,
-    "requestIssuance" | "getLatestIssuanceKeyConfig" | "runPendingJobNow" | "cancelOpenJobs"
+    | "requestIssuance"
+    | "getLatestIssuanceKeyConfig"
+    | "runPendingJobNow"
+    | "cancelOpenJobs"
+    | "hasOpenJobs"
+    | "revokeUnattachedCertificate"
   >;
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
   digicertFns: Pick<
@@ -204,6 +232,7 @@ type TSignerServiceFactoryDep = {
     "create" | "find" | "delete" | "transaction" | "findResourceMembershipsForActor"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -363,6 +392,7 @@ export const signerServiceFactory = ({
   certificateBodyDAL,
   certificateSecretDAL,
   certificateAuthorityDAL,
+  certificateService,
   signerIssuanceService,
   internalCertificateAuthorityService,
   digicertFns,
@@ -378,7 +408,8 @@ export const signerServiceFactory = ({
   membershipRoleDAL,
   hsmConnectorService,
   licenseService,
-  orgDAL
+  orgDAL,
+  keyStore
 }: TSignerServiceFactoryDep) => {
   const hsmCertIssuanceDeps = {
     certificateAuthorityDAL,
@@ -415,6 +446,13 @@ export const signerServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     });
+
+  const $hasRevokedCertificate = async (signer: Pick<TPkiSigners, "status" | "certificateId">, tx?: Knex) => {
+    if (signer.status === SignerStatus.Revoked) return true;
+    if (!signer.certificateId) return false;
+    const certificate = await certificateDAL.findById(signer.certificateId, tx);
+    return certificate?.status === CertStatus.REVOKED;
+  };
 
   const $issueInternalCaCertificate = async (input: {
     caId: string;
@@ -710,7 +748,7 @@ export const signerServiceFactory = ({
     if (resolvedCaType) assertCaTypeSupportsCodeSigning(resolvedCaType);
     assertExternalConfigurationMatchesCaType(dto.externalConfiguration, resolvedCaType);
 
-    let createDigicertLifecycle: { mode: "reissue"; previousOrderId: number } | undefined;
+    let createDigicertLifecycle: { mode: DigiCertLifecycleMode.Reissue; previousOrderId: number } | undefined;
     const createExternalConfig = dto.externalConfiguration;
     const reissueOrderId = $parseDigiCertOrderId(
       createExternalConfig?.reissueFromExternalOrderId,
@@ -724,7 +762,7 @@ export const signerServiceFactory = ({
     );
     if (reissueOrderId) {
       await digicertFns.assertCodeSigningOrderReusable(resolvedCaId as string, reissueOrderId);
-      createDigicertLifecycle = { mode: "reissue", previousOrderId: reissueOrderId };
+      createDigicertLifecycle = { mode: DigiCertLifecycleMode.Reissue, previousOrderId: reissueOrderId };
     }
 
     const isExternalCa = resolvedCaType !== null && resolvedCaType !== CaType.INTERNAL;
@@ -1166,14 +1204,29 @@ export const signerServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
 
     let externalOrder: { provider: string; orderId: number; status: string | null } | null = null;
-    if (!signer.certificateId) {
+    if (!signer.certificateId || signer.status === SignerStatus.Pending) {
       const keyConfig = await signerIssuanceService.getLatestIssuanceKeyConfig(signer.id);
       if (keyConfig) {
-        signer.certificateKeySource = signer.certificateKeySource ?? keyConfig.keySource;
-        signer.certificateHsmConnectorId = signer.certificateHsmConnectorId ?? keyConfig.hsmConnectorId;
-        signer.certificateKeyAlgorithm = signer.certificateKeyAlgorithm ?? keyConfig.keyAlgorithm;
+        if (!signer.certificateId) {
+          signer.certificateKeySource = signer.certificateKeySource ?? keyConfig.keySource;
+          signer.certificateHsmConnectorId = signer.certificateHsmConnectorId ?? keyConfig.hsmConnectorId;
+          signer.certificateKeyAlgorithm = signer.certificateKeyAlgorithm ?? keyConfig.keyAlgorithm;
+          signer.certificateHsmKeyLabel = signer.certificateHsmKeyLabel ?? keyConfig.hsmKeyLabel;
+        }
         externalOrder = keyConfig.externalOrder;
       }
+    }
+
+    const issuedOrder = DigiCertExternalMetadataSchema.safeParse(signer.certificateExternalMetadata);
+    if (!externalOrder && signer.status !== SignerStatus.Pending && issuedOrder.success) {
+      externalOrder = {
+        provider: CaType.DIGICERT,
+        orderId: issuedOrder.data.orderId,
+        status:
+          signer.certificateStatus === CertStatus.REVOKED
+            ? CodeSigningOrderStatus.Revoked
+            : CodeSigningOrderStatus.Issued
+      };
     }
 
     return { ...signer, status: computeEffectiveStatus(signer), externalOrder };
@@ -1299,7 +1352,20 @@ export const signerServiceFactory = ({
         const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(existingSigner.caId);
         if (ca?.externalCa?.type === CaType.DIGICERT) {
           const cert = await certificateDAL.findById(existingSigner.certificateId);
-          if (cert?.serialNumber && cert.status !== CertStatus.REVOKED) {
+          const digicertOrder = DigiCertExternalMetadataSchema.safeParse(cert?.externalMetadata);
+          const signerSharingCertificate = cert
+            ? await signerDAL.findOneByCertificateOrDigiCertOrder({
+                certificateId: cert.id,
+                caId: cert.caId ?? null,
+                digicertOrderId: digicertOrder.success ? digicertOrder.data.orderId : undefined,
+                excludeSignerId: existingSigner.id
+              })
+            : undefined;
+          if (signerSharingCertificate) {
+            logger.info(
+              `signer delete: kept the DigiCert order because signer '${signerSharingCertificate.name}' still uses it [signerId=${existingSigner.id}] [certificateId=${cert?.id}]`
+            );
+          } else if (cert?.serialNumber && cert.status !== CertStatus.REVOKED) {
             await digicertFns.revokeCertificate({
               caId: existingSigner.caId,
               serialNumber: cert.serialNumber,
@@ -1390,6 +1456,9 @@ export const signerServiceFactory = ({
       ResourcePermissionSub.Signer
     );
 
+    if (await $hasRevokedCertificate(signer)) {
+      throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
+    }
     if (signer.status === SignerStatus.Disabled) return signer;
     return signerDAL.updateById(dto.signerId, { status: SignerStatus.Disabled });
   };
@@ -1404,6 +1473,7 @@ export const signerServiceFactory = ({
     commonName: string;
     certificateTtlDays: number;
     explicitReissueOrderId?: number;
+    digicertLifecycleMode: DigiCertLifecycleMode;
   };
 
   const $reissueExternalSigner = async (ctx: TReissueExecutionContext) => {
@@ -1424,7 +1494,13 @@ export const signerServiceFactory = ({
         }
       : undefined;
 
-    await signerDAL.updateById(dto.signerId, { status: SignerStatus.Pending, certificateFailureReason: null });
+    const pendingSigner = await signerDAL.updateById(dto.signerId, {
+      status: SignerStatus.Pending,
+      certificateFailureReason: null
+    });
+    if (pendingSigner.status === SignerStatus.Revoked) {
+      throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
+    }
 
     const reissueDigicertOrderId =
       reissueCaType === CaType.DIGICERT
@@ -1440,7 +1516,7 @@ export const signerServiceFactory = ({
         keyAlgorithm: target.keyAlgorithm,
         hsm: reissueHsm,
         digicertLifecycle: reissueDigicertOrderId
-          ? { mode: "reissue", previousOrderId: reissueDigicertOrderId }
+          ? { mode: ctx.digicertLifecycleMode, previousOrderId: reissueDigicertOrderId }
           : undefined
       });
       return await signerDAL.findById(dto.signerId);
@@ -1454,6 +1530,26 @@ export const signerServiceFactory = ({
       });
       throw queueErr;
     }
+  };
+
+  const $attachInternalCertificate = async (signerId: string, projectId: string, certificateId: string) => {
+    let revokedSignerName: string | null = null;
+    const attached = await signerDAL.transaction(async (tx) => {
+      const lockedSigner = await signerDAL.findByIdForUpdate(signerId, tx);
+      if (lockedSigner && (await $hasRevokedCertificate(lockedSigner, tx))) {
+        revokedSignerName = lockedSigner.name;
+        return null;
+      }
+      return signerDAL.updateById(
+        signerId,
+        { certificateId, status: SignerStatus.Active, certificateFailureReason: null },
+        tx
+      );
+    });
+    if (attached) return attached;
+
+    await signerIssuanceService.revokeUnattachedCertificate(certificateId, projectId);
+    throw new BadRequestError({ message: revokedCertificateMessage(revokedSignerName ?? signerId) });
   };
 
   const $reissueInternalSigner = async (ctx: TReissueExecutionContext) => {
@@ -1496,11 +1592,7 @@ export const signerServiceFactory = ({
         certificateId = result.certificateId;
       }
 
-      return await signerDAL.updateById(dto.signerId, {
-        certificateId,
-        status: SignerStatus.Active,
-        certificateFailureReason: null
-      });
+      return await $attachInternalCertificate(signer.id, signer.projectId, certificateId);
     } catch (issueErr) {
       logger.error(
         issueErr,
@@ -1530,6 +1622,10 @@ export const signerServiceFactory = ({
       ResourcePermissionSignerActions.ReissueCertificate,
       ResourcePermissionSub.Signer
     );
+
+    if (await $hasRevokedCertificate(signer)) {
+      throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
+    }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
     if (!ca || ca.projectId !== signer.projectId) {
@@ -1564,6 +1660,9 @@ export const signerServiceFactory = ({
         const importedCertificateId = await $attachImportedCertificate(imported, signer.id, tx);
         const lockedSigner = await signerDAL.findByIdForUpdate(signer.id, tx);
         if (!lockedSigner) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
+        if (await $hasRevokedCertificate(lockedSigner, tx)) {
+          throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
+        }
         if (dto.certificateRenewBeforeDays === undefined) {
           assertRenewBeforeFitsImport(lockedSigner.certificateRenewBeforeDays);
         }
@@ -1592,7 +1691,7 @@ export const signerServiceFactory = ({
     return { signer: updatedSigner, caName: ca.name, hsmConnectorName: imported.hsmConnectorName };
   };
 
-  const reissueCertificate = async (dto: TReissueCertificateDTO) => {
+  const $authorizeReissue = async (dto: TRenewCertificateDTO) => {
     const signer = await signerDAL.findById(dto.signerId);
     if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
 
@@ -1608,7 +1707,57 @@ export const signerServiceFactory = ({
       ResourcePermissionSignerActions.ReissueCertificate,
       ResourcePermissionSub.Signer
     );
+    return signer;
+  };
 
+  const $resolveReissueExternalCaConfig = async ({
+    signer,
+    caId,
+    reissueCaType,
+    externalConfiguration
+  }: {
+    signer: TPkiSigners;
+    caId: string;
+    reissueCaType: CaType;
+    externalConfiguration: TReissueCertificateDTO["externalConfiguration"];
+  }) => {
+    const explicitReissueOrderId = $parseDigiCertOrderId(
+      externalConfiguration?.reissueFromExternalOrderId,
+      reissueCaType,
+      "reissueFromExternalOrderId"
+    );
+    if (explicitReissueOrderId) {
+      await digicertFns.assertCodeSigningOrderReusable(caId, explicitReissueOrderId);
+    }
+
+    const providedAdcsTemplate = externalConfiguration?.template?.trim() || undefined;
+    if (providedAdcsTemplate && reissueCaType !== CaType.ADCS) {
+      throw new BadRequestError({
+        message:
+          "A certificate template can only be set for signers backed by an Active Directory Certificate Service CA."
+      });
+    }
+    if (reissueCaType !== CaType.ADCS) return { explicitReissueOrderId, nextExternalCaConfig: null };
+
+    const existingConfig = SignerExternalCaConfigSchema.safeParse(signer.externalCaConfig);
+    const existingAdcsTemplate =
+      existingConfig.success && existingConfig.data.caType === CaType.ADCS ? existingConfig.data.template : undefined;
+    // Keep the signer's existing template when the request doesn't supply a new one.
+    const template = providedAdcsTemplate ?? existingAdcsTemplate;
+    if (!template) {
+      throw new BadRequestError({
+        message: "A certificate template is required for signers backed by an Active Directory Certificate Service CA."
+      });
+    }
+    const nextExternalCaConfig: TSignerExternalCaConfig = { caType: CaType.ADCS, template };
+    return { explicitReissueOrderId, nextExternalCaConfig };
+  };
+
+  const $reissueCertificate = async (
+    signer: TPkiSigners,
+    dto: TReissueCertificateDTO,
+    digicertLifecycleMode: DigiCertLifecycleMode
+  ) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
     if (!ca || ca.projectId !== signer.projectId) {
       throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
@@ -1622,38 +1771,12 @@ export const signerServiceFactory = ({
     assertExternalConfigurationMatchesCaType(dto.externalConfiguration, reissueCaType);
     const reissueIsExternal = reissueCaType !== CaType.INTERNAL;
 
-    const reissueExternalConfig = dto.externalConfiguration;
-    const explicitReissueOrderId = $parseDigiCertOrderId(
-      reissueExternalConfig?.reissueFromExternalOrderId,
+    const { explicitReissueOrderId, nextExternalCaConfig } = await $resolveReissueExternalCaConfig({
+      signer,
+      caId: ca.id,
       reissueCaType,
-      "reissueFromExternalOrderId"
-    );
-    if (explicitReissueOrderId) {
-      await digicertFns.assertCodeSigningOrderReusable(ca.id, explicitReissueOrderId);
-    }
-
-    const providedAdcsTemplate = reissueExternalConfig?.template?.trim() || undefined;
-    if (providedAdcsTemplate && reissueCaType !== CaType.ADCS) {
-      throw new BadRequestError({
-        message:
-          "A certificate template can only be set for signers backed by an Active Directory Certificate Service CA."
-      });
-    }
-    const existingConfig = SignerExternalCaConfigSchema.safeParse(signer.externalCaConfig);
-    const existingAdcsTemplate =
-      existingConfig.success && existingConfig.data.caType === CaType.ADCS ? existingConfig.data.template : undefined;
-    let nextExternalCaConfig: TSignerExternalCaConfig | null = null;
-    if (reissueCaType === CaType.ADCS) {
-      // Keep the signer's existing template when the request doesn't supply a new one.
-      const template = providedAdcsTemplate ?? existingAdcsTemplate;
-      if (!template) {
-        throw new BadRequestError({
-          message:
-            "A certificate template is required for signers backed by an Active Directory Certificate Service CA."
-        });
-      }
-      nextExternalCaConfig = { caType: CaType.ADCS, template };
-    }
+      externalConfiguration: dto.externalConfiguration
+    });
 
     let nextCommonName = signer.commonName;
     let effectiveTtl = signer.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS;
@@ -1674,6 +1797,9 @@ export const signerServiceFactory = ({
       });
     }
 
+    if (await $hasRevokedCertificate(signer)) {
+      throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
+    }
     const reissueCurrentCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
 
     // A never-issued signer has no cert to read the key config from; recover it from the last job so
@@ -1728,14 +1854,164 @@ export const signerServiceFactory = ({
       recoveredKeyConfig,
       commonName: nextCommonName,
       certificateTtlDays: effectiveTtl,
-      explicitReissueOrderId
+      explicitReissueOrderId,
+      digicertLifecycleMode
     };
 
-    if (reissueIsExternal) {
-      return $reissueExternalSigner(reissueCtx);
+    const reissuedSigner = reissueIsExternal
+      ? await $reissueExternalSigner(reissueCtx)
+      : await $reissueInternalSigner(reissueCtx);
+
+    return {
+      signer: reissuedSigner,
+      caName: ca.name,
+      previousSerialNumber: reissueCurrentCert?.serialNumber ?? null
+    };
+  };
+
+  const reissueCertificate = async (dto: TReissueCertificateDTO) => {
+    const signer = await $authorizeReissue(dto);
+    const { signer: reissuedSigner } = await $reissueCertificate(signer, dto, DigiCertLifecycleMode.Reissue);
+    return reissuedSigner;
+  };
+
+  const $acquireSignerCertificateLock = (signerId: string) =>
+    keyStore
+      .acquireLock([KeyStorePrefixes.SignerCertificateLock(signerId)], SIGNER_CERTIFICATE_LOCK_TTL_MS, {
+        retryCount: 0
+      })
+      .catch(() => null);
+
+  const $renewCertificate = async (signer: TPkiSigners, dto: TRenewCertificateDTO) => {
+    const hasIssuanceInProgress = await signerDAL.transaction(async (tx) => {
+      const hasOpenJobs = await signerIssuanceService.hasOpenJobs(signer.id, tx);
+      const lockedSigner = await signerDAL.findByIdForUpdate(signer.id, tx);
+      return hasOpenJobs || lockedSigner?.status === SignerStatus.Pending;
+    });
+    if (hasIssuanceInProgress) {
+      throw new BadRequestError({ message: renewInProgressMessage(signer.name) });
+    }
+    if (!signer.certificateId) {
+      throw new BadRequestError({
+        message: `Signer '${signer.name}' has no certificate to renew yet. Retry issuance instead.`
+      });
+    }
+    if (signer.status === SignerStatus.Disabled) {
+      throw new BadRequestError({
+        message: `Signer '${signer.name}' is disabled. Enable it before renewing its certificate.`
+      });
+    }
+    if (!signer.caId) {
+      throw new BadRequestError({
+        message: `Signer '${signer.name}' has no certificate authority. Edit the signer to choose one, then renew.`
+      });
+    }
+    const { caId } = signer;
+    const renewed = await $reissueCertificate(signer, { ...dto, caId }, DigiCertLifecycleMode.Renew);
+    return { ...renewed, caId };
+  };
+
+  const renewCertificate = async (dto: TRenewCertificateDTO) => {
+    const signer = await $authorizeReissue(dto);
+    const renewLock = await $acquireSignerCertificateLock(signer.id);
+    if (!renewLock) {
+      throw new BadRequestError({
+        message: `Signer '${signer.name}' is already being renewed or revoked. Wait for that request to finish.`
+      });
+    }
+    try {
+      return await $renewCertificate(signer, dto);
+    } finally {
+      await renewLock.release().catch(() => {});
+    }
+  };
+
+  const revokeCertificate = async (dto: TRevokeSignerCertificateDTO) => {
+    const signer = await signerDAL.findById(dto.signerId);
+    if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
+
+    const { permission } = await $loadSignerResourcePermission(
+      signer.id,
+      signer.projectId,
+      dto.actor,
+      dto.actorId,
+      dto.actorAuthMethod,
+      dto.actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionSignerActions.RevokeCertificate,
+      ResourcePermissionSub.Signer
+    );
+
+    const revokeLock = await $acquireSignerCertificateLock(signer.id);
+    if (!revokeLock) {
+      throw new BadRequestError({
+        message: `Signer '${signer.name}' is already being renewed or revoked. Wait for that request to finish.`
+      });
     }
 
-    return $reissueInternalSigner(reissueCtx);
+    try {
+      const { certificateId, previousStatus } = await signerDAL.transaction(async (tx) => {
+        const hasOpenJobs = await signerIssuanceService.hasOpenJobs(signer.id, tx);
+        const lockedSigner = await signerDAL.findByIdForUpdate(signer.id, tx);
+        if (!lockedSigner?.certificateId) {
+          throw new BadRequestError({ message: `Signer '${signer.name}' has no certificate to revoke.` });
+        }
+        const currentCert = await certificateDAL.findById(lockedSigner.certificateId, tx);
+        if (currentCert?.status === CertStatus.REVOKED) {
+          throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
+        }
+        const digicertOrder = DigiCertExternalMetadataSchema.safeParse(currentCert?.externalMetadata);
+        const digicertOrderId = digicertOrder.success ? digicertOrder.data.orderId : undefined;
+        const signerSharingCertificate = await signerDAL.findOneByCertificateOrDigiCertOrder(
+          {
+            certificateId: lockedSigner.certificateId,
+            caId: currentCert?.caId ?? null,
+            digicertOrderId,
+            excludeSignerId: signer.id
+          },
+          tx
+        );
+        if (signerSharingCertificate) {
+          throw new BadRequestError({
+            message:
+              signerSharingCertificate.certificateId !== lockedSigner.certificateId && digicertOrderId !== undefined
+                ? `Signer '${signer.name}' shares DigiCert order ${digicertOrderId} with signer '${signerSharingCertificate.name}'. Revoking it would revoke that signer's certificate too.`
+                : `Signer '${signer.name}' shares its certificate with signer '${signerSharingCertificate.name}'. Revoking it would revoke that signer's certificate too.`
+          });
+        }
+        if (hasOpenJobs || lockedSigner.status === SignerStatus.Pending) {
+          throw new BadRequestError({ message: revokeInProgressMessage(signer.name) });
+        }
+        await signerDAL.updateById(signer.id, { status: SignerStatus.Revoked }, tx);
+        return { certificateId: lockedSigner.certificateId, previousStatus: lockedSigner.status };
+      });
+
+      let revoked: Awaited<ReturnType<typeof certificateService.revokeOwnedCertificate>>;
+      try {
+        revoked = await certificateService.revokeOwnedCertificate({
+          certificateId,
+          revocationReason: dto.revocationReason,
+          orgId: dto.actorOrgId
+        });
+      } catch (err) {
+        const cert = await signerDAL.transaction((tx) => certificateDAL.findById(certificateId, tx));
+        if (cert?.status !== CertStatus.REVOKED) {
+          await signerDAL.restoreStatusAfterFailedRevoke(signer.id, previousStatus as SignerStatus);
+        }
+        throw err;
+      }
+
+      return {
+        signer: { ...signer, certificateId, status: SignerStatus.Revoked },
+        certificateId,
+        crlUpdateError: revoked.crlUpdateError,
+        serialNumber: revoked.cert.serialNumber,
+        commonName: revoked.cert.commonName
+      };
+    } finally {
+      await revokeLock.release().catch(() => {});
+    }
   };
 
   const exportCertificate = async (dto: TExportCertificateDTO) => {
@@ -1954,6 +2230,9 @@ export const signerServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Sign, ResourcePermissionSub.Signer);
 
+    if (signer.status === SignerStatus.Revoked || signer.certificateStatus === CertStatus.REVOKED) {
+      throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
+    }
     if (signer.status !== SignerStatus.Active) {
       throw new BadRequestError({ message: `Signer '${signer.name}' is not active (status: ${signer.status})` });
     }
@@ -1962,11 +2241,6 @@ export const signerServiceFactory = ({
     }
     if (signer.certificateNotAfter && new Date() > new Date(signer.certificateNotAfter)) {
       throw new BadRequestError({ message: `Certificate for signer '${signer.name}' has expired` });
-    }
-    if (signer.certificateStatus === CertStatus.REVOKED) {
-      throw new BadRequestError({
-        message: `Certificate for signer '${signer.name}' has been revoked. Reissue from a CA before signing.`
-      });
     }
 
     const dataBuffer = Buffer.from(dto.data, "base64");
@@ -2325,7 +2599,7 @@ export const signerServiceFactory = ({
     );
   };
 
-  const autoRenewCertificate = async (signerId: string) => {
+  const $autoRenewCertificate = async (signerId: string) => {
     const signer = await signerDAL.findById(signerId);
     if (!signer) {
       logger.warn(`signer auto-renewal: signer '${signerId}' not found, skipping`);
@@ -2334,6 +2608,13 @@ export const signerServiceFactory = ({
     if (!signer.caId) {
       logger.warn(
         `signer auto-renewal: signer '${signer.name}' [signerId=${signer.id}] has no CA configured, skipping`
+      );
+      return;
+    }
+    const currentCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
+    if (signer.status === SignerStatus.Revoked || currentCert?.status === CertStatus.REVOKED) {
+      logger.info(
+        `signer auto-renewal: signer '${signer.name}' [signerId=${signer.id}] has a revoked certificate, skipping`
       );
       return;
     }
@@ -2379,24 +2660,27 @@ export const signerServiceFactory = ({
     const renewKeyAlgorithm: CertKeyAlgorithm = (signer.keyAlgorithm as CertKeyAlgorithm) ?? CertKeyAlgorithm.RSA_2048;
 
     if (isExternal) {
-      const autoRenewCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
       const autoRenewHsm =
-        autoRenewCert?.keySource === CertKeySource.Hsm && autoRenewCert.hsmConnectorId && autoRenewCert.keyAlgorithm
+        currentCert?.keySource === CertKeySource.Hsm && currentCert.hsmConnectorId && currentCert.keyAlgorithm
           ? {
-              hsmConnectorId: autoRenewCert.hsmConnectorId,
-              hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(autoRenewCert.keyAlgorithm),
-              hsmKeyLabel: autoRenewCert.hsmKeyLabel ?? undefined,
-              hsmKeyId: autoRenewCert.hsmKeyId,
-              hsmPublicKeySpki: autoRenewCert.hsmPublicKeySpki ?? undefined
+              hsmConnectorId: currentCert.hsmConnectorId,
+              hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(currentCert.keyAlgorithm),
+              hsmKeyLabel: currentCert.hsmKeyLabel ?? undefined,
+              hsmKeyId: currentCert.hsmKeyId,
+              hsmPublicKeySpki: currentCert.hsmPublicKeySpki ?? undefined
             }
           : undefined;
-      await signerDAL.updateById(signer.id, {
+      const pendingSigner = await signerDAL.updateById(signer.id, {
         status: SignerStatus.Pending,
         certificateFailureReason: null
       });
+      if (pendingSigner.status === SignerStatus.Revoked) {
+        logger.info(`signer auto-renewal: signer '${signer.name}' [signerId=${signer.id}] was revoked, skipping`);
+        return;
+      }
       const autoRenewDigicertOrderId =
         renewalCaType === CaType.DIGICERT
-          ? (autoRenewCert?.externalMetadata as { orderId?: number } | null)?.orderId
+          ? (currentCert?.externalMetadata as { orderId?: number } | null)?.orderId
           : undefined;
       try {
         await signerIssuanceService.requestIssuance({
@@ -2408,7 +2692,7 @@ export const signerServiceFactory = ({
           keyAlgorithm: renewKeyAlgorithm,
           hsm: autoRenewHsm,
           digicertLifecycle: autoRenewDigicertOrderId
-            ? { mode: "renew", previousOrderId: autoRenewDigicertOrderId }
+            ? { mode: DigiCertLifecycleMode.Renew, previousOrderId: autoRenewDigicertOrderId }
             : undefined
         });
       } catch (err) {
@@ -2425,20 +2709,19 @@ export const signerServiceFactory = ({
     }
 
     try {
-      const existingCert = signer.certificateId ? await certificateDAL.findById(signer.certificateId) : null;
-      const renewIsHsm = existingCert?.keySource === CertKeySource.Hsm;
+      const renewIsHsm = currentCert?.keySource === CertKeySource.Hsm;
       let certificateId: string;
-      if (renewIsHsm && existingCert?.hsmConnectorId && existingCert.hsmKeyLabel && existingCert.keyAlgorithm) {
+      if (renewIsHsm && currentCert?.hsmConnectorId && currentCert.hsmKeyLabel && currentCert.keyAlgorithm) {
         const result = await renewHsmBackedSignerCertificate(hsmCertIssuanceDeps, {
           caId: signer.caId,
           projectId: signer.projectId,
           commonName: signer.commonName,
           certificateTtlDays: ttlDays,
-          hsmConnectorId: existingCert.hsmConnectorId,
-          hsmKeyLabel: existingCert.hsmKeyLabel,
-          hsmKeyId: existingCert.hsmKeyId,
-          expectedPublicKeySpkiDer: existingCert.hsmPublicKeySpki ?? undefined,
-          hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(existingCert.keyAlgorithm)
+          hsmConnectorId: currentCert.hsmConnectorId,
+          hsmKeyLabel: currentCert.hsmKeyLabel,
+          hsmKeyId: currentCert.hsmKeyId,
+          expectedPublicKeySpkiDer: currentCert.hsmPublicKeySpki ?? undefined,
+          hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(currentCert.keyAlgorithm)
         });
         certificateId = result.certificateId;
       } else {
@@ -2451,11 +2734,7 @@ export const signerServiceFactory = ({
         });
         certificateId = result.certificateId;
       }
-      await signerDAL.updateById(signer.id, {
-        certificateId,
-        status: SignerStatus.Active,
-        certificateFailureReason: null
-      });
+      await $attachInternalCertificate(signer.id, signer.projectId, certificateId);
       logger.info(
         `signer auto-renewal: renewed signer '${signer.name}' [signerId=${signer.id}] [newCertificateId=${certificateId}]`
       );
@@ -2465,6 +2744,19 @@ export const signerServiceFactory = ({
         certificateFailureReason: formatSignerIssuanceErrorReason(err, "Internal CA auto-renewal failed")
       });
       logger.error(err, `signer auto-renewal: internal CA issuance failed [signerId=${signer.id}]`);
+    }
+  };
+
+  const autoRenewCertificate = async (signerId: string) => {
+    const autoRenewLock = await $acquireSignerCertificateLock(signerId);
+    if (!autoRenewLock) {
+      logger.info(`signer auto-renewal: signer [signerId=${signerId}] is being renewed or revoked, skipping`);
+      return;
+    }
+    try {
+      await $autoRenewCertificate(signerId);
+    } finally {
+      await autoRenewLock.release().catch(() => {});
     }
   };
 
@@ -2493,6 +2785,8 @@ export const signerServiceFactory = ({
     enable,
     disable,
     reissueCertificate,
+    renewCertificate,
+    revokeCertificate,
     importCertificate,
     checkCertificateImport,
     exportCertificate,

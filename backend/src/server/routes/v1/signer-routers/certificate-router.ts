@@ -2,10 +2,12 @@ import { z } from "zod";
 
 import { PkiSignersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
+import { InternalServerError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CrlReason } from "@app/services/certificate/certificate-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import {
@@ -88,6 +90,96 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
           }
         }
       });
+
+      return signer;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/certificate/renew",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "renewSignerCertificate",
+      tags: [ApiDocsTags.PkiSigners],
+      description:
+        "Renew the signer's certificate from the same certificate authority, keeping its common name, validity, and key source.",
+      params: SignerIdParamsSchema,
+      response: { 200: PkiSignersSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { signer, caId, caName, previousSerialNumber } = await server.services.pkiSigner.renewCertificate({
+        signerId: req.params.signerId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: signer.projectId,
+        event: {
+          type: EventType.RENEW_PKI_SIGNER_CERTIFICATE,
+          metadata: { signerId: signer.id, name: signer.name, caId, caName, previousSerialNumber }
+        }
+      });
+
+      return signer;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:signerId/certificate/revoke",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "revokeSignerCertificate",
+      tags: [ApiDocsTags.PkiSigners],
+      description: "Revoke the signer's certificate. This can't be undone. Create a new signer to keep signing.",
+      params: SignerIdParamsSchema,
+      body: z.object({
+        revocationReason: z
+          .nativeEnum(CrlReason)
+          .refine((reason) => reason !== CrlReason.CERTIFICATE_HOLD, {
+            message: "Certificate Hold is a temporary revocation, and revoking a signer's certificate is permanent."
+          })
+          .describe(CERTIFICATES.REVOKE.revocationReason)
+      }),
+      response: { 200: PkiSignersSchema }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { signer, certificateId, crlUpdateError, serialNumber, commonName } =
+        await server.services.pkiSigner.revokeCertificate({
+          signerId: req.params.signerId,
+          revocationReason: req.body.revocationReason,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: signer.projectId,
+        event: {
+          type: EventType.REVOKE_PKI_SIGNER_CERTIFICATE,
+          metadata: {
+            signerId: signer.id,
+            name: signer.name,
+            certificateId,
+            certificateCommonName: commonName,
+            serialNumber,
+            revocationReason: req.body.revocationReason
+          }
+        }
+      });
+
+      if (crlUpdateError) throw new InternalServerError({ message: crlUpdateError });
 
       return signer;
     }

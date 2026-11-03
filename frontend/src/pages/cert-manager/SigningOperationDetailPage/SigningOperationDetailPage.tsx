@@ -76,7 +76,7 @@ export const SigningOperationDetailPage = () => {
       <Link
         to="/organizations/$orgId/cert-manager/code-signing/$signerId"
         params={{ orgId: currentOrg.id, signerId }}
-        search={{ selectedTab: "activity" }}
+        search={{ selectedTab: "overview" }}
         className="flex w-fit items-center gap-1 text-sm text-muted transition-colors hover:text-foreground"
       >
         <ChevronLeftIcon className="size-4" />

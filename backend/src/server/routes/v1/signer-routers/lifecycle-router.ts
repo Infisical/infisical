@@ -28,6 +28,7 @@ const SignerWithCertificateResponseSchema = PkiSignersSchema.extend({
   certificateKeyAlgorithm: z.string().nullable().optional(),
   certificateKeySource: z.string().nullable().optional(),
   certificateHsmConnectorId: z.string().nullable().optional(),
+  certificateHsmKeyLabel: z.string().nullable().optional(),
   certificateStatus: z.string().nullable().optional(),
   certificateCaId: z.string().nullable().optional(),
   approvalPolicyName: z.string().nullable().optional(),

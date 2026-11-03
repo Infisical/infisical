@@ -3,7 +3,8 @@ export enum SignerStatus {
   Active = "active",
   Failed = "failed",
   Disabled = "disabled",
-  Expired = "expired"
+  Expired = "expired",
+  Revoked = "revoked"
 }
 
 export enum SigningOperationStatus {
