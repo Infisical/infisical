@@ -799,7 +799,7 @@ export const SecretEditTableRow = ({
         if (latestRenameKey === renameKey) break;
         renameKey = latestRenameKey;
       }
-      if (renameKey) applyBatchEditsRef.current?.();
+      if (renameKey && !knownPendingChangeId) applyBatchEditsRef.current?.();
       const pendingChangeId = knownPendingChangeId ?? findPendingChangeId();
       if (batchAutoApplyTimer.current) {
         clearTimeout(batchAutoApplyTimer.current);
