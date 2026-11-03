@@ -99,7 +99,10 @@ RUN ARCH=$(dpkg --print-architecture) && \
       ln -sf /lib/x86_64-linux-gnu/libaio.so.1t64 /lib/x86_64-linux-gnu/libaio.so.1; \
     fi
 
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+# The driver lives under the architecture's multiarch directory, so read its path from the package.
+RUN TDS_DRIVER="$(dpkg -L tdsodbc | grep '/odbc/libtdsodbc\.so$')" \
+    && test -f "$TDS_DRIVER" \
+    && printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = %s\nSetup = %s\nFileUsage = 1\n" "$TDS_DRIVER" "$TDS_DRIVER" > /etc/odbcinst.ini
 
 COPY --from=softhsm /out/usr/local /usr/local
 COPY --from=openssl-pqc /opt/openssl-pqc /opt/openssl-pqc

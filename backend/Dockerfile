@@ -83,7 +83,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y --no-install-recommends infisical="$INFISICAL_CLI_VERSION" \
     && rm -rf /var/lib/apt/lists/*
 
-RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+# The driver lives under the architecture's multiarch directory, so read its path from the package.
+RUN TDS_DRIVER="$(dpkg -L tdsodbc | grep '/odbc/libtdsodbc\.so$')" \
+    && test -f "$TDS_DRIVER" \
+    && printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = %s\nSetup = %s\nFileUsage = 1\n" "$TDS_DRIVER" "$TDS_DRIVER" > /etc/odbcinst.ini
 
 # Copy Oracle Instant Client from parallel stage
 COPY --from=oracle /opt/oracle /opt/oracle
