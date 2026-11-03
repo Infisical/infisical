@@ -33,6 +33,15 @@ export enum AgentVaultMemberType {
   Group = "group"
 }
 
+export type TAgentVaultActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
+
+// The `memberships` column that holds each member type's actor id.
+export const AGENT_VAULT_ACTOR_COLUMN: Record<AgentVaultMemberType, TAgentVaultActorColumn> = {
+  [AgentVaultMemberType.User]: "actorUserId",
+  [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
+  [AgentVaultMemberType.Group]: "actorGroupId"
+};
+
 export enum AgentVaultResourceRole {
   Consumer = "consumer"
 }

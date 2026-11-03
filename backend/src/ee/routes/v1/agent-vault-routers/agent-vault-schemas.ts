@@ -810,7 +810,10 @@ export const AgentVaultSkippedActorSchema = z.discriminatedUnion("type", [
 const grantedAtSchema = z.date().describe(AGENT_VAULT.MEMBER.grantedAt);
 
 export const AgentVaultMemberSchema = z.discriminatedUnion("type", [
-  memberActorSchemas.user.extend({ grantedAt: grantedAtSchema }),
+  memberActorSchemas.user.extend({
+    isOrgMembershipPending: z.boolean().describe(AGENT_VAULT.MEMBER.isOrgMembershipPending),
+    grantedAt: grantedAtSchema
+  }),
   memberActorSchemas.machineIdentity.extend({ grantedAt: grantedAtSchema }),
   groupActorSchema.extend({ grantedAt: grantedAtSchema })
 ]);
