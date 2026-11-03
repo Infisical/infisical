@@ -9,6 +9,7 @@ import {
 import {
   buildRenewalFormDefaults,
   buildRenewalRequestAttributes,
+  capTtlToDays,
   getRemovedCertificateNames
 } from "./certificateRenewalUtils";
 
@@ -153,5 +154,16 @@ describe("buildRenewalRequestAttributes", () => {
 
     expect(attributes.keyUsages).toEqual(["key_agreement", "digital_signature"]);
     expect(attributes.extendedKeyUsages).toEqual(["client_auth"]);
+  });
+});
+
+describe("capTtlToDays", () => {
+  it("caps a longer lifetime at the limit", () => {
+    expect(capTtlToDays("365d", 199)).toBe("199d");
+  });
+
+  it("keeps a lifetime within the limit", () => {
+    expect(capTtlToDays("85d", 199)).toBe("85d");
+    expect(capTtlToDays("12h", 199)).toBe("12h");
   });
 });

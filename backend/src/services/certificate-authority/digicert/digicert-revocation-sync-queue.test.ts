@@ -9,6 +9,7 @@ import { digicertRevocationSyncQueueFactory } from "./digicert-revocation-sync-q
 
 const getCertificateOcspStatus = vi.fn<(...args: unknown[]) => Promise<unknown>>();
 const listOrderStatusChanges = vi.fn();
+const downloadCertificatePem = vi.fn();
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ isSecondaryInstance: false }) }));
@@ -18,7 +19,9 @@ vi.mock("@app/services/certificate/certificate-ocsp-client", () => ({
 vi.mock("@app/services/project/project-fns", () => ({
   getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-1")
 }));
-vi.mock("./digicert-api-client", () => ({ createDigiCertApiClient: () => ({ listOrderStatusChanges }) }));
+vi.mock("./digicert-api-client", () => ({
+  createDigiCertApiClient: () => ({ listOrderStatusChanges, downloadCertificatePem })
+}));
 vi.mock("./digicert-certificate-authority-fns", () => ({
   castDbEntryToDigiCertCertificateAuthority: () => ({ id: "ca-1", configuration: { appConnectionId: "connection-1" } }),
   getDigiCertClientCredentials: vi.fn().mockResolvedValue({ apiKey: "key", baseUrl: "https://digicert.example" })
@@ -41,6 +44,7 @@ const replacedCertificate = (id: string) => ({
 });
 
 let certificateBody: { encryptedCertificate: Buffer; encryptedCertificateChain: Buffer };
+let digicertPemBundle: string;
 
 beforeAll(async () => {
   x509.cryptoProvider.set(webcrypto as unknown as Crypto);
@@ -64,6 +68,7 @@ beforeAll(async () => {
     publicKey: leafKeys.publicKey,
     signingAlgorithm: RSA_ALG
   });
+  digicertPemBundle = `${leafCertificate.toString("pem")}\n${caCertificate.toString("pem")}`;
   certificateBody = {
     encryptedCertificate: Buffer.from(leafCertificate.rawData),
     encryptedCertificateChain: Buffer.from(caCertificate.toString("pem"))
@@ -72,10 +77,12 @@ beforeAll(async () => {
 
 const runSync = async ({
   replaced,
-  revokedOrderCertificates = []
+  revokedOrderCertificates = [],
+  storedBody = certificateBody
 }: {
-  replaced: ReturnType<typeof replacedCertificate>[];
+  replaced: (ReturnType<typeof replacedCertificate> & { externalMetadata?: unknown })[];
   revokedOrderCertificates?: ReturnType<typeof replacedCertificate>[];
+  storedBody?: typeof certificateBody | null;
 }) => {
   let handler: (() => Promise<void>) | undefined;
   const certificateDAL = {
@@ -95,7 +102,7 @@ const runSync = async ({
     },
     certificateAuthorityDAL: { findWithAssociatedCa: vi.fn().mockResolvedValue([{ id: "ca-1" }]) },
     certificateDAL,
-    certificateBodyDAL: { findOne: vi.fn().mockResolvedValue(certificateBody) },
+    certificateBodyDAL: { findOne: vi.fn().mockResolvedValue(storedBody) },
     projectDAL: {},
     appConnectionDAL: {},
     kmsService: {
@@ -154,5 +161,26 @@ describe("DigiCert revocation sync, certificates replaced on their order", () =>
 
     expect(getCertificateOcspStatus).not.toHaveBeenCalled();
     expect(certificateDAL.updateById).toHaveBeenCalledTimes(1);
+  });
+
+  test("downloads a deleted certificate from DigiCert to check it", async () => {
+    downloadCertificatePem.mockResolvedValue(digicertPemBundle);
+    getCertificateOcspStatus.mockResolvedValue({ status: OcspCertStatus.Revoked, revokedAt: REVOKED_AT });
+
+    const certificateDAL = await runSync({
+      replaced: [
+        {
+          ...replacedCertificate("cert-1"),
+          externalMetadata: { type: "digicert", orderId: 7001, certificateId: 50001 }
+        }
+      ],
+      storedBody: null
+    });
+
+    expect(downloadCertificatePem).toHaveBeenCalledWith(50001);
+    expect(certificateDAL.updateById).toHaveBeenCalledWith(
+      "cert-1",
+      expect.objectContaining({ status: CertStatus.REVOKED, revokedAt: REVOKED_AT })
+    );
   });
 });

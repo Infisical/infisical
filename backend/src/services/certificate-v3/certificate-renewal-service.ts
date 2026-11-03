@@ -84,7 +84,7 @@ import {
   validateCertificateRequestLicense,
   validatePqcLicense
 } from "../certificate-common/certificate-utils";
-import { CertificateReissueOrderSchemaMap } from "../certificate-common/external-metadata-schemas";
+import { CertificateReissueMap } from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import {
@@ -757,7 +757,8 @@ export const certificateRenewalServiceFactory = ({
     keySource,
     originalSignatureAlgorithm,
     originalKeyAlgorithm,
-    profileCustomExtensions
+    profileCustomExtensions,
+    maxTtlDays
   }: {
     originalCert: TCertificates;
     policy: Parameters<TCertificatePolicyServiceFactory["validateRequestAgainstPolicy"]>[0];
@@ -768,6 +769,7 @@ export const certificateRenewalServiceFactory = ({
     originalSignatureAlgorithm?: CertSignatureAlgorithm;
     originalKeyAlgorithm?: CertKeyAlgorithm;
     profileCustomExtensions?: TProfileCustomExtension[] | null;
+    maxTtlDays?: number;
   }) => {
     const originalTtl = certificateSpanToTtl(originalCert.notBefore, originalCert.notAfter);
 
@@ -809,7 +811,8 @@ export const certificateRenewalServiceFactory = ({
       });
     }
 
-    const ttl = mergedRequest.validity?.ttl || originalTtl;
+    const requestedTtl = mergedRequest.validity?.ttl || originalTtl;
+    const ttl = maxTtlDays && ms(requestedTtl) > ms(`${maxTtlDays}d`) ? `${maxTtlDays}d` : requestedTtl;
     const certificateRequest = { ...mergedRequest, validity: { ttl } };
 
     const validationResult = certificatePolicyService.validateRequestAgainstPolicy(policy, certificateRequest, {
@@ -1161,8 +1164,7 @@ export const certificateRenewalServiceFactory = ({
           if (attributes?.ttl) {
             throw new BadRequestError({ message: "Remove the TTL. It can't be set on a reissue." });
           }
-          const reissueOrderSchema = CertificateReissueOrderSchemaMap[caType];
-          if (!reissueOrderSchema?.safeParse(originalCert.externalMetadata).success) {
+          if (!CertificateReissueMap[caType]?.orderSchema.safeParse(originalCert.externalMetadata).success) {
             throw new BadRequestError({
               message: "This certificate has no order with its CA to reissue. Place a new order instead."
             });
@@ -1178,7 +1180,9 @@ export const certificateRenewalServiceFactory = ({
           keySource,
           originalSignatureAlgorithm,
           originalKeyAlgorithm,
-          profileCustomExtensions: profile?.defaults?.customExtensions
+          profileCustomExtensions: profile?.defaults?.customExtensions,
+          maxTtlDays:
+            externalConfiguration?.reissue && caType ? CertificateReissueMap[caType]?.maxValidityDays : undefined
         });
 
         changedAttributes = buildRenewalAuditChanges(replayedRequest, { ...certificateRequest, validity: { ttl } });

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { AwsAcmValidationMethod } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-enums";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-enums";
 
 export const AwsAcmPublicCaExternalMetadataSchema = z.object({
   type: z.literal(CaType.AWS_ACM_PUBLIC_CA),
@@ -71,8 +72,11 @@ export const CertificateImportLinkageMap: Partial<Record<CaType, TCertificateImp
   }
 };
 
-export const CertificateReissueOrderSchemaMap: Partial<Record<CaType, z.ZodTypeAny>> = {
-  [CaType.DIGICERT]: DigiCertExternalMetadataSchema
+export const CertificateReissueMap: Partial<Record<CaType, { orderSchema: z.ZodTypeAny; maxValidityDays: number }>> = {
+  [CaType.DIGICERT]: {
+    orderSchema: DigiCertExternalMetadataSchema,
+    maxValidityDays: DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS
+  }
 };
 
 export const CA_TYPE_LABEL: Record<CaType, string> = {

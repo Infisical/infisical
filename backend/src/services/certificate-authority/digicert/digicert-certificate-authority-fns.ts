@@ -35,6 +35,7 @@ import { TExternalCertificateAuthorityDALFactory } from "../external-certificate
 import { createDigiCertApiClient, TDigiCertApiClient } from "./digicert-api-client";
 import {
   DIGICERT_FINAL_ISSUED_STATUSES,
+  DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS,
   DigiCertOrderStatus,
   DigiCertPollOutcome
 } from "./digicert-certificate-authority-enums";
@@ -88,8 +89,6 @@ const assertPurposeMatchesProduct = (purpose: DigiCertCaPurpose | undefined, pro
     });
   }
 };
-
-const DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS = 199;
 
 const TTL_RE2 = new RE2("^(\\d+)([dhm])$");
 const parseTtlToDays = (ttl: string): number => {

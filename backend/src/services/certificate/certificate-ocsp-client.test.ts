@@ -51,15 +51,18 @@ let issuingCa: Awaited<ReturnType<typeof createCa>>;
 let otherCa: Awaited<ReturnType<typeof createCa>>;
 let leafCertificate: x509.X509Certificate;
 
-const respondWith = (status: TOcspCertStatus, responder = issuingCa) =>
+const respondWith = (
+  status: TOcspCertStatus,
+  responder = issuingCa,
+  window = { thisUpdate: new Date(), nextUpdate: new Date(Date.now() + 3_600_000) }
+) =>
   post.mockImplementation(async (_url: string, body: Buffer) => {
     const parsed = parseOcspRequest(body);
     const data = await buildSignedOcspResponse({
       signer: responder.signer,
       caCertificate: responder.certificate,
       statuses: parsed!.entries.map((entry) => ({ entry, status })),
-      thisUpdate: new Date(),
-      nextUpdate: new Date(Date.now() + 3_600_000)
+      ...window
     });
     return { data: new Uint8Array(data).buffer };
   });
@@ -120,5 +123,16 @@ describe("getCertificateOcspStatus", () => {
       getCertificateOcspStatus({ certificate: issuingCa.certificate, issuer: issuingCa.certificate })
     ).rejects.toThrow("has no OCSP responder URL");
     expect(post).not.toHaveBeenCalled();
+  });
+
+  test("rejects a response whose validity window has passed", async () => {
+    respondWith({ kind: OcspCertStatus.Good }, issuingCa, {
+      thisUpdate: new Date(Date.now() - 14 * 86_400_000),
+      nextUpdate: new Date(Date.now() - 7 * 86_400_000)
+    });
+
+    await expect(
+      getCertificateOcspStatus({ certificate: leafCertificate, issuer: issuingCa.certificate })
+    ).rejects.toThrow("outside its validity window");
   });
 });

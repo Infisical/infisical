@@ -31,3 +31,5 @@ export enum CodeSigningOrderStatus {
   Expired = "expired",
   Revoked = "revoked"
 }
+
+export const DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS = 199;

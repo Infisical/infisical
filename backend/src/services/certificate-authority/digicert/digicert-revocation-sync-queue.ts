@@ -9,6 +9,7 @@ import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorType } from "@app/services/auth/auth-type";
+import { DigiCertExternalMetadataSchema } from "@app/services/certificate-common/external-metadata-schemas";
 import {
   CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter
@@ -26,11 +27,12 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { createDigiCertApiClient } from "./digicert-api-client";
+import { createDigiCertApiClient, TDigiCertApiClient } from "./digicert-api-client";
 import {
   castDbEntryToDigiCertCertificateAuthority,
   getDigiCertClientCredentials
 } from "./digicert-certificate-authority-fns";
+import { extractLeafAndChain } from "./digicert-certificate-authority-shared";
 
 // 03:00 UTC: off-peak and one hour after the existing daily certificate-cleanup cron (02:00 UTC).
 const REVOCATION_SYNC_CRON_SCHEDULE = "0 3 * * *";
@@ -125,24 +127,37 @@ export const digicertRevocationSyncQueueFactory = ({
   };
 
   const loadCertificateAndIssuer = async (
-    cert: { id: string; projectId: string },
+    cert: { id: string; projectId: string; externalMetadata?: unknown },
+    digicertClient: TDigiCertApiClient,
     getKmsDecryptor: (projectId: string) => Promise<(args: { cipherTextBlob: Buffer }) => Promise<Buffer>>
   ) => {
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
-    if (!certBody?.encryptedCertificateChain) return null;
 
-    const kmsDecryptor = await getKmsDecryptor(cert.projectId);
-    const certificate = new x509.X509Certificate(
-      new Uint8Array(await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate }))
-    );
-    const chain = parsePemCertificateChain(
-      (await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificateChain })).toString()
-    );
-    const issuer = chain?.find((chainCert) => chainCert.subject === certificate.issuer);
+    let certificate: x509.X509Certificate;
+    let chainPem: string;
+    if (certBody?.encryptedCertificateChain) {
+      const kmsDecryptor = await getKmsDecryptor(cert.projectId);
+      certificate = new x509.X509Certificate(
+        new Uint8Array(await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificate }))
+      );
+      chainPem = (await kmsDecryptor({ cipherTextBlob: certBody.encryptedCertificateChain })).toString();
+    } else {
+      const digicertCertificateId = DigiCertExternalMetadataSchema.safeParse(cert.externalMetadata).data?.certificateId;
+      if (!digicertCertificateId) return null;
+      const { leaf, chain } = extractLeafAndChain(await digicertClient.downloadCertificatePem(digicertCertificateId));
+      certificate = new x509.X509Certificate(leaf);
+      chainPem = chain;
+    }
+
+    const issuer = parsePemCertificateChain(chainPem)?.find((chainCert) => chainCert.subject === certificate.issuer);
     return issuer ? { certificate, issuer } : null;
   };
 
-  const syncReplacedCertificateRevocations = async (caId: string, alreadyRevokedIds: Set<string>) => {
+  const syncReplacedCertificateRevocations = async (
+    caId: string,
+    digicertClient: TDigiCertApiClient,
+    alreadyRevokedIds: Set<string>
+  ) => {
     const replacedCertificates = await certificateDAL.findActiveDigiCertCertsReplacedOnOrder(caId);
 
     const kmsDecryptorsByProjectId = new Map<string, (args: { cipherTextBlob: Buffer }) => Promise<Buffer>>();
@@ -158,7 +173,7 @@ export const digicertRevocationSyncQueueFactory = ({
     let revokedCount = 0;
     for (const cert of replacedCertificates.filter(({ id }) => !alreadyRevokedIds.has(id))) {
       try {
-        const certificateAndIssuer = await loadCertificateAndIssuer(cert, getKmsDecryptor);
+        const certificateAndIssuer = await loadCertificateAndIssuer(cert, digicertClient, getKmsDecryptor);
         if (!certificateAndIssuer) {
           throw new Error("No issuer certificate stored for the certificate");
         }
@@ -224,7 +239,7 @@ export const digicertRevocationSyncQueueFactory = ({
       `digicert-revocation-sync: CA done [caId=${ca.id}] [upstreamRevoked=${upstreamRevokedOrderIds.length}] [reconciled=${reconciledCertificateIds.size}]`
     );
 
-    await syncReplacedCertificateRevocations(ca.id, reconciledCertificateIds);
+    await syncReplacedCertificateRevocations(ca.id, digicertClient, reconciledCertificateIds);
   };
 
   const init = () => {

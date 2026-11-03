@@ -1,3 +1,5 @@
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
+
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { CaType } from "./certificate-authority-enums";
 import { certificateIssuanceQueueFactory, TIssueCertificateFromProfileJobData } from "./certificate-issuance-queue";
@@ -144,5 +146,36 @@ describe("certificate issuance queue, DigiCert renewals", () => {
     await runJob({ externalConfiguration: { reissue: true }, csr: "csr" });
 
     expect(runJob.certificateRequestDAL.transitionToPendingValidation).toHaveBeenCalledTimes(1);
+  });
+
+  test("leaves a handed-off reissue pending when DigiCert's answer is lost", async () => {
+    const runJob = buildQueue();
+    digicertFns.reissueCertificate.mockImplementation(
+      async ({ onBeforeSubmit }: { onBeforeSubmit: (prepared: object) => Promise<void> }) => {
+        await onBeforeSubmit({ metadata: digicertResult.metadata, privateKey: "" });
+        throw new InternalServerError({ message: "DigiCert reissue for order 7001 failed (no response)" });
+      }
+    );
+
+    await expect(runJob({ externalConfiguration: { reissue: true }, csr: "csr" })).resolves.toBeUndefined();
+
+    expect(runJob.certificateRequestDAL.setPendingMessage).toHaveBeenCalledWith(
+      CERTIFICATE_REQUEST_ID,
+      expect.stringContaining("didn't confirm the reissue")
+    );
+  });
+
+  test("fails a reissue that DigiCert rejected", async () => {
+    const runJob = buildQueue();
+    digicertFns.reissueCertificate.mockImplementation(
+      async ({ onBeforeSubmit }: { onBeforeSubmit: (prepared: object) => Promise<void> }) => {
+        await onBeforeSubmit({ metadata: digicertResult.metadata, privateKey: "" });
+        throw new BadRequestError({ message: "DigiCert reissue for order 7001 failed: invalid_order_status" });
+      }
+    );
+
+    await expect(runJob({ externalConfiguration: { reissue: true }, csr: "csr" })).rejects.toThrow(
+      "invalid_order_status"
+    );
   });
 });

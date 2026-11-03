@@ -147,7 +147,7 @@ export const certificateDALFactory = (db: TDbClient) => {
             .whereRaw(`newer."externalMetadata"->>'orderId' = ${TableName.Certificate}."externalMetadata"->>'orderId'`)
             .whereRaw(`newer."createdAt" > ${TableName.Certificate}."createdAt"`);
         })
-        .select("id", "commonName", "serialNumber", "projectId", "applicationId", "deletedAt");
+        .select("id", "commonName", "serialNumber", "projectId", "applicationId", "deletedAt", "externalMetadata");
 
       return certs;
     } catch (error) {

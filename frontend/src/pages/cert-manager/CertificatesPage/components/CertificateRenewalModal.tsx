@@ -10,7 +10,6 @@ import {
   Alert,
   AlertDescription,
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -18,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertTitle,
+  Button,
   Field,
   FieldContent,
   FieldDescription,
@@ -67,6 +67,7 @@ import { buildPolicyRules, withRequiredRows } from "./certificatePolicyGuidance"
 import {
   buildRenewalFormDefaults,
   buildRenewalRequestAttributes,
+  capTtlToDays,
   getRemovedCertificateNames,
   unionUsageOptions
 } from "./certificateRenewalUtils";
@@ -337,8 +338,9 @@ const ChoiceCards = <T extends string>({
   );
 };
 
-const REISSUE_VALIDITY_DESCRIPTION =
-  "Same as the current certificate. DigiCert caps it at 199 days and at the end of the order.";
+const REISSUE_MAX_VALIDITY_DAYS = 199;
+
+const REISSUE_VALIDITY_DESCRIPTION = `Same as the current certificate, up to ${REISSUE_MAX_VALIDITY_DAYS} days. DigiCert also caps it at the end of the order.`;
 
 enum DigiCertOrderChoice {
   NewOrder = "new-order",
@@ -687,6 +689,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
   const [isSeeded, setIsSeeded] = useState(false);
   const seededCertificateIdRef = useRef<string | null>(null);
+  const seededTtlRef = useRef("");
   useEffect(() => {
     if (!isOpen) {
       seededCertificateIdRef.current = null;
@@ -703,6 +706,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
     seededCertificateIdRef.current = certificate.id;
     const renewalDefaults = buildRenewalFormDefaults(certificate, constraints, renewalPreview);
+    seededTtlRef.current = renewalDefaults.ttl ?? "";
     // Seed the rows the policy requires so they are visible as fields from the start.
     const seeded = withRequiredRows(
       buildPolicyRules(policyData),
@@ -728,6 +732,16 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     reset,
     getValues
   ]);
+
+  useEffect(() => {
+    if (!isSeeded || !seededTtlRef.current) return;
+    setValue(
+      "ttl",
+      isReissuing
+        ? capTtlToDays(seededTtlRef.current, REISSUE_MAX_VALIDITY_DAYS)
+        : seededTtlRef.current
+    );
+  }, [isSeeded, isReissuing, setValue]);
 
   const closeWizard = () => {
     handlePopUpToggle("renewCertificate", false);
@@ -858,7 +872,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
       onBack={goBack}
       onContinue={goNext}
-      isSubmitting={isSubmitting}
+      isSubmitting={isSubmitting || isConfirmingNameRemoval}
       isSubmitDisabled={!certificate || !isSeeded}
       isContinueDisabled={!certificate || !isSeeded}
     >
@@ -1088,8 +1102,9 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       )}
       <AlertDialog
         open={pendingNameRemovalRenewal !== null}
+        isPending={isConfirmingNameRemoval}
         onOpenChange={(open) => {
-          if (!open && !isConfirmingNameRemoval) setPendingNameRemovalRenewal(null);
+          if (!open) setPendingNameRemovalRenewal(null);
         }}
       >
         <AlertDialogContent>
@@ -1101,14 +1116,15 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isConfirmingNameRemoval}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
               variant="danger"
-              isDisabled={isConfirmingNameRemoval}
+              size="sm"
+              isPending={isConfirmingNameRemoval}
               onClick={confirmNameRemoval}
             >
               Reissue Certificate
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

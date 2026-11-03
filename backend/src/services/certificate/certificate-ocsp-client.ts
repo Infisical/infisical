@@ -8,9 +8,12 @@ import {
   OcspResponseStatus
 } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-enums";
 import { BadRequestError } from "@app/lib/errors";
+import { sanitizeUrlForLog } from "@app/lib/logger/sanitize-url";
 import { safeRequest } from "@app/lib/validator/safe-request";
 
 const OCSP_CLIENT_TIMEOUT_MS = 10_000;
+const OCSP_CLOCK_SKEW_MS = 5 * 60 * 1000;
+const OCSP_MAX_AGE_WITHOUT_NEXT_UPDATE_MS = 7 * 24 * 60 * 60 * 1000;
 const PKIJS_CERT_STATUS: Record<number, OcspCertStatus> = {
   0: OcspCertStatus.Good,
   1: OcspCertStatus.Revoked,
@@ -25,12 +28,21 @@ export const getCertificateOcspUrl = (cert: x509.X509Certificate) => {
   return authorityInfoAccess?.ocsp.find((name) => name.type === "url")?.value;
 };
 
-const getRevocationTime = (basicResponse: pkijs.BasicOCSPResponse, certificate: pkijs.Certificate) => {
+const findSingleResponse = (basicResponse: pkijs.BasicOCSPResponse, certificate: pkijs.Certificate) => {
   const serialHex = Buffer.from(certificate.serialNumber.valueBlock.valueHexView).toString("hex");
-  const singleResponse = basicResponse.tbsResponseData.responses.find(
+  return basicResponse.tbsResponseData.responses.find(
     (response) => Buffer.from(response.certID.serialNumber.valueBlock.valueHexView).toString("hex") === serialHex
   );
-  const revokedInfo = singleResponse?.certStatus as asn1js.Constructed | undefined;
+};
+
+const isWithinValidityWindow = (singleResponse: pkijs.SingleResponse, now: number) => {
+  if (singleResponse.thisUpdate.getTime() > now + OCSP_CLOCK_SKEW_MS) return false;
+  if (singleResponse.nextUpdate) return singleResponse.nextUpdate.getTime() >= now - OCSP_CLOCK_SKEW_MS;
+  return singleResponse.thisUpdate.getTime() >= now - OCSP_MAX_AGE_WITHOUT_NEXT_UPDATE_MS;
+};
+
+const getRevocationTime = (singleResponse: pkijs.SingleResponse) => {
+  const revokedInfo = singleResponse.certStatus as asn1js.Constructed | undefined;
   const revocationTime = revokedInfo?.valueBlock?.value?.[0];
   return revocationTime instanceof asn1js.GeneralizedTime ? revocationTime.toDate() : undefined;
 };
@@ -47,6 +59,7 @@ export const getCertificateOcspStatus = async ({
     throw new BadRequestError({ message: `Certificate ${certificate.serialNumber} has no OCSP responder URL` });
   }
 
+  const responderUrl = sanitizeUrlForLog(ocspUrl);
   const pkijsCertificate = toPkijsCertificate(certificate);
   const pkijsIssuer = toPkijsCertificate(issuer);
 
@@ -62,7 +75,7 @@ export const getCertificateOcspStatus = async ({
   const ocspResponse = pkijs.OCSPResponse.fromBER(new Uint8Array(data).buffer);
   const responseStatus = ocspResponse.responseStatus.valueBlock.valueDec;
   if (responseStatus !== OcspResponseStatus.Successful || !ocspResponse.responseBytes) {
-    throw new BadRequestError({ message: `OCSP responder ${ocspUrl} returned status ${responseStatus}` });
+    throw new BadRequestError({ message: `OCSP responder ${responderUrl} returned status ${responseStatus}` });
   }
 
   const basicResponse = pkijs.BasicOCSPResponse.fromBER(
@@ -82,16 +95,23 @@ export const getCertificateOcspStatus = async ({
     (Boolean(basicResponse.certs?.length) &&
       (await basicResponse.verify({ trustedCerts: [pkijsIssuer] }).catch(() => false)));
   if (!isSignatureValid) {
-    throw new BadRequestError({ message: `OCSP response from ${ocspUrl} failed signature verification` });
+    throw new BadRequestError({ message: `OCSP response from ${responderUrl} failed signature verification` });
   }
 
   const { isForCertificate, status } = await basicResponse.getCertificateStatus(pkijsCertificate, pkijsIssuer);
   if (!isForCertificate) {
-    throw new BadRequestError({ message: `OCSP response from ${ocspUrl} does not cover the requested certificate` });
+    throw new BadRequestError({
+      message: `OCSP response from ${responderUrl} does not cover the requested certificate`
+    });
+  }
+
+  const singleResponse = findSingleResponse(basicResponse, pkijsCertificate);
+  if (!singleResponse || !isWithinValidityWindow(singleResponse, Date.now())) {
+    throw new BadRequestError({ message: `OCSP response from ${responderUrl} is outside its validity window` });
   }
 
   const certStatus = PKIJS_CERT_STATUS[status] ?? OcspCertStatus.Unknown;
   return certStatus === OcspCertStatus.Revoked
-    ? { status: certStatus, revokedAt: getRevocationTime(basicResponse, pkijsCertificate) }
+    ? { status: certStatus, revokedAt: getRevocationTime(singleResponse) }
     : { status: certStatus };
 };

@@ -929,28 +929,50 @@ export const certificateIssuanceQueueFactory = ({
           externalConfiguration?.reissue && renewalOfOrderId !== undefined && originalCertificateId
         );
         let encryptedPrivateKey: Buffer | undefined;
+        let isReissueHandedOff = false;
 
         const digicertResult =
           isReissue && renewalOfOrderId !== undefined && originalCertificateId
-            ? await digicertFns.reissueCertificate({
-                ...digicertRequest,
-                orderId: renewalOfOrderId,
-                ttl,
-                originalCertificateId,
-                onBeforeSubmit: async ({ metadata, privateKey }) => {
-                  encryptedPrivateKey = privateKey ? await encryptPrivateKey(privateKey) : undefined;
-                  const transitioned = await certificateRequestDAL.transitionToPendingValidation(certificateRequestId, {
-                    metadata: JSON.stringify(withRenewalMetadata(metadata)),
-                    ...(encryptedPrivateKey && { encryptedPrivateKey })
-                  });
-                  if (!transitioned) throw new CertificateRequestCancelledError();
-                }
-              })
+            ? await digicertFns
+                .reissueCertificate({
+                  ...digicertRequest,
+                  orderId: renewalOfOrderId,
+                  ttl,
+                  originalCertificateId,
+                  onBeforeSubmit: async ({ metadata, privateKey }) => {
+                    encryptedPrivateKey = privateKey ? await encryptPrivateKey(privateKey) : undefined;
+                    const transitioned = await certificateRequestDAL.transitionToPendingValidation(
+                      certificateRequestId,
+                      {
+                        metadata: JSON.stringify(withRenewalMetadata(metadata)),
+                        ...(encryptedPrivateKey && { encryptedPrivateKey })
+                      }
+                    );
+                    if (!transitioned) throw new CertificateRequestCancelledError();
+                    isReissueHandedOff = true;
+                  }
+                })
+                .catch(async (error: unknown) => {
+                  if (!isReissueHandedOff || error instanceof BadRequestError) throw error;
+                  logger.warn(
+                    error,
+                    `DigiCert did not confirm the reissue, leaving it to the order poller [certificateRequestId=${certificateRequestId}] [orderId=${renewalOfOrderId}]`
+                  );
+                  await setPending(
+                    `DigiCert didn't confirm the reissue on order #${renewalOfOrderId}. Checking the order for the result.`
+                  );
+                  return null;
+                })
             : await digicertFns.orderCertificate({
                 ...digicertRequest,
                 ttl,
                 ...(renewalOfOrderId !== undefined && { renewalOfOrderId })
               });
+
+        if (!digicertResult) {
+          certificateExistsAfterThisJob = false;
+          return;
+        }
 
         if (await isCancelled()) {
           logger.info(

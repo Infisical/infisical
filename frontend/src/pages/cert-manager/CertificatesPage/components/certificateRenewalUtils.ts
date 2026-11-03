@@ -301,3 +301,8 @@ export const getRemovedCertificateNames = ({
     (name) => !requestedNames.has(name)
   );
 };
+
+export const capTtlToDays = (ttl: string, maxDays: number) => {
+  const days = /^(\d+)d$/.exec(ttl)?.[1];
+  return days && Number(days) > maxDays ? `${maxDays}d` : ttl;
+};
