@@ -98,16 +98,16 @@ export const topBarDefinition = {
         when: "A crumb switches the organization, product, project or environment.",
         do: "Give the crumb a switcher and its level's page (link, href or onNavigate), so the name navigates and the chevron opens the Switcher.",
         avoid:
-          "Let the name open the Switcher when the level has a page, or draw a hover ground or padding on the whole segment.",
+          "Let the name open the Switcher when the level has a page, or draw one hover ground across the name and chevron when the name has its own page.",
         reason:
-          "A crumb's name reads as a way back to that level, and an unpadded segment keeps the root text on its edge.",
+          "A crumb's name reads as a way back to that level, and separate grounds on the name and chevron show two targets.",
         evidence: [
           "src/components/v4/ui/top-bar.tsx",
           "src/pages/design-system/examples/top-bar/default.tsx"
         ],
         detect: {
           by: "review",
-          how: "Click each crumb's name and confirm it navigates without opening the popover; Tab reaches the name and then the chevron, and only the chevron takes a hover ground."
+          how: "Click each crumb's name and confirm it navigates without opening the popover; Tab reaches the name and then the chevron. A name with a page and its chevron each take their own hover ground; a crumb whose name only opens the Switcher takes one ground across the whole segment."
         }
       }
     ],
@@ -115,7 +115,7 @@ export const topBarDefinition = {
       {
         state: "open",
         guidance:
-          "The open switcher's chevron and the open account trigger keep the press ground until the popover closes."
+          "The open switcher's chevron, the whole segment of a switcher-only crumb, and the open account trigger keep the press ground until the popover closes."
       },
       {
         state: "overflow",

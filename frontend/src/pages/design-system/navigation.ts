@@ -1,4 +1,5 @@
 import { componentCatalog } from "@app/components/v4/catalog";
+import { type ComponentGroup } from "@app/components/v4/contracts/types";
 import required from "@app/components/v4/required-capabilities.json";
 import guidance from "@app/components/v4/skills/infisical-ui/rules.json";
 
@@ -106,6 +107,46 @@ export const documentationPages = [
 ];
 export type DocumentationPage = (typeof documentationPages)[number]["id"];
 export type ComponentPage = (typeof componentPages)[number]["id"];
+
+export const componentGroupOrder: readonly ComponentGroup[] = [
+  "Actions",
+  "Forms",
+  "Navigation",
+  "Data display",
+  "Feedback",
+  "Overlays",
+  "Composites",
+  "Patterns",
+  "Code",
+  "Utilities"
+];
+
+export type WorkbenchSection = {
+  id: string;
+  title: string;
+  icon: "apps" | "folder" | "sync" | "eye";
+  pages: { id: string; title: string; group?: string }[];
+};
+export const workbenchSections: WorkbenchSection[] = [
+  { id: "foundations", title: "Foundations", icon: "apps", pages: [...foundationPages] },
+  {
+    id: "components",
+    title: "Components",
+    icon: "folder",
+    pages: componentGroupOrder
+      .filter((group) => group !== "Patterns")
+      .flatMap((group) => componentPages.filter((page) => page.group === group))
+  },
+  {
+    id: "patterns",
+    title: "Patterns",
+    icon: "sync",
+    pages: componentPages
+      .filter((page) => page.group === "Patterns")
+      .map(({ id, title }) => ({ id, title }))
+  },
+  { id: "comparisons", title: "Comparisons", icon: "eye", pages: [...comparisonPages] }
+];
 
 export const resolveDocumentationPage = (fullHash: string): DocumentationPage => {
   const hash = fullHash.split("/")[0];

@@ -102,6 +102,12 @@ const SwitcherCrumb = ({
     onChange: switcher.onOpenChange
   });
   const openAtPress = React.useRef(false);
+  const navigates = !current && hasPage(crumb);
+  const media = crumb.media && (
+    <span className={breadcrumbStyles.media} aria-hidden="true">
+      {crumb.media}
+    </span>
+  );
   const label = (
     <span
       id={labelId}
@@ -130,14 +136,14 @@ const SwitcherCrumb = ({
         </button>
       }
       anchor={(trigger) => (
-        <span className={breadcrumbStyles.segment}>
-          {crumb.media && (
-            <span className={breadcrumbStyles.media} aria-hidden="true">
-              {crumb.media}
-            </span>
-          )}
-          {!current && hasPage(crumb) ? (
+        <span
+          className={breadcrumbStyles.segment}
+          data-name-target={navigates ? "page" : "switcher"}
+        >
+          {!navigates && media}
+          {navigates ? (
             <CrumbName crumb={crumb} className={breadcrumbStyles.name} labelId={labelId}>
+              {media}
               {label}
             </CrumbName>
           ) : (

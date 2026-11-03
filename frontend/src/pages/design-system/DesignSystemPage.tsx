@@ -1,10 +1,11 @@
 import { startTransition, Suspense, useEffect, useMemo, useState } from "react";
+import { useRouterState } from "@tanstack/react-router";
 
 import { useTheme } from "@app/components/v3/platform/ThemeProvider/ThemeProvider";
-import { type ComponentGroup } from "@app/components/v4/contracts/types";
 import { V4Scope } from "@app/components/v4/scope";
 import tokens from "@app/components/v4/tokens.json";
-import { type IconName } from "@app/components/v4/ui/icon";
+import { type BreadcrumbCrumb } from "@app/components/v4/ui/breadcrumb";
+import { Icon, type IconName } from "@app/components/v4/ui/icon";
 import { Sidebar } from "@app/components/v4/ui/sidebar";
 import {
   AppInset,
@@ -20,16 +21,20 @@ import "@app/components/v4/v4.css";
 import { AccentPanelButton, AccentPanelProvider, useAccentPanel } from "./accent-panel";
 import { ComparisonPageView } from "./ComparisonPages";
 import { ComponentPreviewPage } from "./ComponentPreviewPage";
-import { ColorPage, OverviewPage, SpacingShapePage, TypographyPage } from "./FoundationPages";
+import { ColorPage, SpacingShapePage, TypographyPage } from "./FoundationPages";
 import { MotionPage } from "./InteractionPages";
 import {
   comparisonPages,
+  componentGroupOrder,
   componentPages,
   type DocumentationPage,
+  documentationPages,
   foundationPages,
   guidancePages,
-  resolveDocumentationPage
+  resolveDocumentationPage,
+  workbenchSections
 } from "./navigation";
+import { OverviewPage } from "./OverviewPage";
 import { RulesPage } from "./RulesPage";
 import { WorkbenchContext } from "./workbench-context";
 import { WorkbenchPalette } from "./workbench-palette";
@@ -71,18 +76,6 @@ const PageContent = ({ page }: { page: DocumentationPage }) => {
   }
 };
 
-const componentGroupOrder: readonly ComponentGroup[] = [
-  "Actions",
-  "Forms",
-  "Navigation",
-  "Data display",
-  "Feedback",
-  "Overlays",
-  "Composites",
-  "Patterns",
-  "Code",
-  "Utilities"
-];
 const groupIcons: Record<string, IconName> = {
   Foundations: "apps",
   Actions: "plus",
@@ -112,8 +105,55 @@ const sidebarSections = navigationGroups.map((group) => ({
   icon: group.icon,
   items: group.pages.map((page) => ({ id: page.id, label: page.title, href: `#${page.id}` }))
 }));
-const groupOf = (page: string) =>
-  navigationGroups.find((group) => group.pages.some((entry) => entry.id === page));
+
+const goTo = (page: string) => {
+  window.location.hash = `#${page}`;
+};
+
+const workbenchCrumbs = (currentPage: DocumentationPage): BreadcrumbCrumb[] => {
+  const section = workbenchSections.find((entry) =>
+    entry.pages.some((page) => page.id === currentPage)
+  );
+  const pageOf = (id: string) => (id === currentPage ? {} : { href: `#${id}` });
+  return [
+    {
+      label: "Design system",
+      ...pageOf("overview"),
+      switcher: {
+        label: "Switch section",
+        options: workbenchSections.map((entry) => ({
+          value: entry.id,
+          label: entry.title,
+          media: <Icon name={entry.icon} />
+        })),
+        value: section?.id ?? "",
+        onChange: (value) =>
+          goTo(workbenchSections.find((entry) => entry.id === value)?.pages[0]?.id ?? "overview")
+      }
+    },
+    ...(section
+      ? [
+          {
+            label: section.title,
+            media: <Icon name={section.icon} />,
+            ...pageOf(section.pages[0].id),
+            switcher: {
+              label: "Switch page",
+              placeholder: `Search ${section.title.toLowerCase()}`,
+              options: section.pages.map((page) => ({
+                value: page.id,
+                label: page.title,
+                group: page.group
+              })),
+              value: currentPage,
+              onChange: goTo
+            }
+          }
+        ]
+      : []),
+    { label: documentationPages.find((page) => page.id === currentPage)?.title ?? currentPage }
+  ];
+};
 
 const WorkbenchBar = (props: Omit<TopBarProps, "account"> & { account: TopBarAccount }) => {
   const accent = useAccentPanel();
@@ -150,6 +190,11 @@ export const DesignSystemPage = () => {
     window.addEventListener("hashchange", follow);
     return () => window.removeEventListener("hashchange", follow);
   }, []);
+  // RowLink navigates through the router, which updates its state before the URL and fires no hashchange.
+  const routerHash = useRouterState({ select: (state) => state.location.hash });
+  useEffect(() => {
+    if (routerHash) startTransition(() => setHash(`#${routerHash}`));
+  }, [routerHash]);
   const currentPage = resolveDocumentationPage(hash);
   const example = hash.split("/")[1];
   useEffect(() => {
@@ -183,15 +228,7 @@ export const DesignSystemPage = () => {
           </a>
           <AppShell>
             <WorkbenchBar
-              breadcrumb={[
-                { label: "Design system", href: "#overview" },
-                ...(groupOf(currentPage) ? [{ label: groupOf(currentPage)?.title ?? "" }] : []),
-                {
-                  label:
-                    groupOf(currentPage)?.pages.find((entry) => entry.id === currentPage)?.title ??
-                    currentPage
-                }
-              ]}
+              breadcrumb={workbenchCrumbs(currentPage)}
               search={{ onClick: () => setPaletteOpen(true), label: "Search the design system" }}
               account={{
                 label: "Workbench",

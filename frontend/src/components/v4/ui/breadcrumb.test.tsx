@@ -35,3 +35,32 @@ it("navigates from a switcher crumb's name without opening its switcher", () => 
   act(() => root.unmount());
   host.remove();
 });
+
+it("separates a switcher crumb's name surface only when the name has its own page", () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  act(() =>
+    root.render(
+      <Breadcrumb
+        items={[
+          {
+            label: "Acme Corp",
+            href: "#home",
+            switcher: { label: "Switch organization", options: [] }
+          },
+          { label: "Production", switcher: { label: "Switch environment", options: [] } },
+          { label: "Secrets" }
+        ]}
+      />
+    )
+  );
+  expect(
+    Array.from(host.querySelectorAll("[data-name-target]"), (node) =>
+      node.getAttribute("data-name-target")
+    )
+  ).toEqual(["page", "switcher"]);
+  act(() => root.unmount());
+  host.remove();
+});

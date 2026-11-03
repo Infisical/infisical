@@ -35,11 +35,11 @@ When a crumb switches the organization, product, project or environment.
 
 Do: Give the crumb a switcher and its level's page (link, href or onNavigate), so the name navigates and the chevron opens the Switcher.
 
-Avoid: Let the name open the Switcher when the level has a page, or draw a hover ground or padding on the whole segment.
+Avoid: Let the name open the Switcher when the level has a page, or draw one hover ground across the name and chevron when the name has its own page.
 
-Why: A crumb's name reads as a way back to that level, and an unpadded segment keeps the root text on its edge.
+Why: A crumb's name reads as a way back to that level, and separate grounds on the name and chevron show two targets.
 
-Checked by: review only. Look for: Click each crumb's name and confirm it navigates without opening the popover; Tab reaches the name and then the chevron, and only the chevron takes a hover ground.
+Checked by: review only. Look for: Click each crumb's name and confirm it navigates without opening the popover; Tab reaches the name and then the chevron. A name with a page and its chevron each take their own hover ground; a crumb whose name only opens the Switcher takes one ground across the whole segment.
 
 Source evidence:
 - src/components/v4/ui/top-bar.tsx
@@ -47,7 +47,7 @@ Source evidence:
 
 ## State guidance
 
-- open: The open switcher's chevron and the open account trigger keep the press ground until the popover closes.
+- open: The open switcher's chevron, the whole segment of a switcher-only crumb, and the open account trigger keep the press ground until the popover closes.
 - overflow: Labels truncate with an ellipsis and keep the full text in the switcher.
 - unread: Unread notifications put the 6px accent-fg square on the bell; below size-shell-collapse the menu button carries it, and the nav Sheet shows the count.
 

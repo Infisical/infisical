@@ -25,7 +25,7 @@ export const baselineNavigation = [
     behavior: [
       "Breadcrumb supports explicit parts or typed items, middle-path collapse and current ancestry. Product crumbs switch context and give way from outer labels inward at narrow widths.",
       "A crumb's name goes to that level's page through one of three props. link takes a typed TanStack route (build it with linkOptions, so to, params, search and hash are checked against the route tree, the way RowLink does it), href a plain URL, and onNavigate an in-page handler that also runs on a link or href click, so it can preventDefault. With none of them the crumb has no page of its own.",
-      "A crumb with a switcher is two targets in one segment: the name, then a standalone chevron button that opens the Switcher, anchored to the segment's start. Clicking the name never opens the Switcher when the crumb has a page; it navigates. The segment draws no ground or padding; the name turns ink on hover, and the chevron draws its own hover, press and open grounds.",
+      "A crumb with a switcher is two targets in one segment: the name, then a standalone chevron button that opens the Switcher, anchored to the segment's start. Clicking the name never opens the Switcher when the crumb has a page; it navigates. When the name has a page, it and the chevron are separate surfaces: the name takes its own segment-hover ground on hover and the opacity-press ink ground while pressed, the chevron keeps its own hover, press and open grounds, and a space-2 gap between them shows two targets. When the name only opens the same Switcher, the whole segment is one surface: hovering the name or the chevron draws segment-hover across the segment, and pressing either or an open Switcher draws the press ground. Either way the ground's inline padding is cancelled by a negative margin, so the text stays on the content edge.",
       "Fallbacks keep every target alive. A switcher crumb without a page, and a switcher crumb that is the current page, make the name a second trigger for the same Switcher. A crumb with neither a page nor a switcher is plain text, and the current crumb without a switcher is plain text marked as the current page.",
       "A Switcher option with onSelect is an action row inside its group, such as New sub-organization under Sub-organizations: choosing it runs the action and closes the popover without changing the value. Options keep their groups in order of first appearance, so the row lands where it is listed. In the TopBar band the root switcher crumb reads in ink at 600, and data-fill on a Breadcrumb lets a single switcher crumb fill its row with the chevron at the end, as in the nav Sheet.",
       "Crumbs are separated by a vertical divider, never a typed slash: a size-crumb-divider-width line, size-crumb-divider tall, in crumb-divider, with space-crumb-divider to the visible text or glyph on each side, in both variants. BreadcrumbSeparator draws the same divider by default. In the product variant the divider's margins cancel the link padding and the inset of the switcher chevron, so hit areas and focus rings keep their full size.",
@@ -132,16 +132,16 @@ export const baselineNavigation = [
           when: "A crumb switches the organization, project or environment.",
           do: "Pass switcher on the crumb and the level's page as link, href or onNavigate, so the name navigates and the chevron alone opens the Switcher.",
           avoid:
-            "Make the name open the Switcher when the level has a page, leave a name that looks clickable and does nothing, or pad the segment and give it a hover ground.",
+            "Make the name open the Switcher when the level has a page, leave a name that looks clickable and does nothing, or give a name with a page the same hover ground as its chevron.",
           reason:
-            "People expect a crumb's name to take them to that level. Keeping switching on the chevron leaves both actions one step away, and an unpadded segment keeps the root text on the content edge.",
+            "People expect a crumb's name to take them to that level. Keeping switching on the chevron leaves both actions one step away, and separate hover grounds show which part does which.",
           evidence: [
             "src/components/v4/ui/breadcrumb.tsx",
             "src/components/v4/ui/breadcrumb.module.css"
           ],
           detect: {
             by: "review",
-            how: "Click each switcher crumb's name: it navigates and no popover opens, unless the level has no page. Tab reaches the name, then the chevron, each with a visible focus ring, and the popover opens from the segment's left edge."
+            how: "Click each switcher crumb's name: it navigates and no popover opens, unless the level has no page. Tab reaches the name, then the chevron, each with a visible focus ring, and the popover opens from the segment's left edge. Hover a name with a page and only the name takes a ground; hover a switcher-only crumb and the whole segment does."
           }
         },
         {
