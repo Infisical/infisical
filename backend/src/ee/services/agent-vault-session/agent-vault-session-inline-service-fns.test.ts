@@ -182,7 +182,8 @@ describe("assertNoAccessBundleConflicts", () => {
     expect(() => assertNoAccessBundleConflicts(prepared, bundle)).toThrow(
       "The service 'github' has the same name as a service in the access bundle 'prod'. Give it a different name."
     );
-    const unnamed = prepareInlineServices([httpBearer({ hostPattern: "github" })]);
+    // Hosts match regardless of case, so a host typed in capitals still clashes.
+    const unnamed = prepareInlineServices([httpBearer({ hostPattern: "GitHub" })]);
     expect(() => assertNoAccessBundleConflicts(unnamed, bundle)).toThrow(
       "The service at index 0 goes by its first host, 'github', which is the name of a service in the access bundle 'prod'. Give it a name."
     );
@@ -204,6 +205,7 @@ describe("inline service reads", () => {
       "api.example.com"
     );
     expect(inlineServiceDisplayName({ name: null, hostPattern: "api.example.com:8443" })).toBe("api.example.com:8443");
+    expect(inlineServiceDisplayName({ name: null, hostPattern: "API.Example.com" })).toBe("api.example.com");
   });
 
   test("the summary names a service sent without a name by its first host", () => {

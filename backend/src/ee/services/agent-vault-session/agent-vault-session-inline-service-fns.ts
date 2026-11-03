@@ -55,9 +55,9 @@ export type TPreparedInlineService = {
 };
 
 // What an inline service is called wherever a name is shown: its own, or its first host when it was sent without one,
-// without the default port, the way every screen shows a host.
+// lowercased and without the default port, since hosts match regardless of case and every screen shows a host that way.
 export const inlineServiceDisplayName = ({ name, hostPattern }: { name?: string | null; hostPattern: string }) =>
-  name || hostPattern.split(",")[0].trim().replace(/:443$/, "");
+  name || hostPattern.split(",")[0].trim().toLowerCase().replace(/:443$/, "");
 
 const toInlineCredential = (
   credential: Exclude<TAgentVaultInlineServiceInput["credential"], { type: AgentVaultCredentialType.OAuth }>
