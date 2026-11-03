@@ -46,7 +46,7 @@ import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionHoneyTokenActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_CREDENTIAL_FIELDS, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import {
-  HoneyTokenHosting,
+  HoneyTokenManagedBy,
   HoneyTokenStatus,
   HoneyTokenType
 } from "@app/hooks/api/honeyTokens/enums";
@@ -206,7 +206,7 @@ const HoneyTokenDetailsContent = ({
             )}
             <Badge variant="shaded" iconPosition="left">
               <CloudIcon size={13} />
-              {honeyToken.config.hosting === HoneyTokenHosting.InfisicalManaged
+              {honeyToken.config.managedBy === HoneyTokenManagedBy.Instance
                 ? "Infisical Managed"
                 : "Self hosted"}
             </Badge>

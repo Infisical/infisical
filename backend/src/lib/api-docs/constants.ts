@@ -5151,16 +5151,19 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
 export const HONEY_TOKENS = {
   CONFIG: {
     config: "Settings that depend on the honey token's type.",
-    hosting:
-      "Which AWS account holds the decoy credentials. `infisical-managed` uses Infisical's account and needs no setup. `customer-account` uses the AWS account your organization connected in Organization Settings. Defaults to `customer-account` when creating."
-  },
-  HOSTING_OPTIONS: {
-    projectId: "The ID of the project the honey token will be created in.",
-    type: "The honey token type to list hosting options for.",
-    infisicalManagedAvailable: "Whether this instance can create honey tokens in an Infisical-managed AWS account.",
-    infisicalManagedUnavailableReason:
-      "Why Infisical-managed honey tokens are unavailable, or null when they are available. `not-configured` means the instance has no managed signing key; `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set; `invalid-role-arn` means the managed role ARN is not an IAM role ARN.",
-    customerAccountConfigStatus:
-      "The state of your organization's own AWS account setup for this type, or null if it has not been connected."
+    managedBy:
+      "Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating."
+  }
+};
+
+export const HONEY_TOKEN_CONFIGS = {
+  GET: {
+    config:
+      "Your organization's own account setup for this honey token type, or null if it has not been connected. Its `status` is `COMPLETE` once the setup is verified.",
+    decryptedConfig:
+      "The saved setup settings, including the webhook signing key. Only returned to members who can set up honey tokens; null for everyone else.",
+    instanceAvailable: "Whether this instance can create honey tokens in its own AWS account.",
+    instanceUnavailableReason:
+      "Why instance-managed honey tokens are unavailable, or null when they are available. `not-configured` means the instance has no managed signing key; `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set; `invalid-role-arn` means the managed role ARN is not an IAM role ARN."
   }
 };

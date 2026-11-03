@@ -1,12 +1,13 @@
 import { z } from "zod";
 
 import { HoneyTokenConfigsSchema } from "@app/db/schemas";
-import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
+import { HoneyTokenManagedUnavailableReason, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
   THoneyTokenConfigByType,
   THoneyTokenTestConnectionResponseByType
 } from "@app/ee/services/honey-token/honey-token-provider-types";
 import { HoneyTokenWebhookPayloadSchema } from "@app/ee/services/honey-token/honey-token-types";
+import { HONEY_TOKEN_CONFIGS } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -110,26 +111,36 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
       response: {
         200: z.object({
           config: SanitizedHoneyTokenConfigSchema.extend({
-            decryptedConfig: routeDecryptedConfigSchema.nullable()
-          }).nullable()
+            decryptedConfig: routeDecryptedConfigSchema.nullable().describe(HONEY_TOKEN_CONFIGS.GET.decryptedConfig)
+          })
+            .nullable()
+            .describe(HONEY_TOKEN_CONFIGS.GET.config),
+          instance: z.object({
+            isAvailable: z.boolean().describe(HONEY_TOKEN_CONFIGS.GET.instanceAvailable),
+            unavailableReason: z
+              .nativeEnum(HoneyTokenManagedUnavailableReason)
+              .nullable()
+              .describe(HONEY_TOKEN_CONFIGS.GET.instanceUnavailableReason)
+          })
         })
       }
     },
     handler: async (req) => {
-      const config = await server.services.honeyTokenConfig.getConfig({
+      const { config, instance } = await server.services.honeyTokenConfig.getConfig({
         orgPermission: req.permission,
         type
       });
 
       if (!config) {
-        return { config: null };
+        return { config: null, instance };
       }
 
       return {
         config: {
           ...config,
           decryptedConfig: config.decryptedConfig ? decryptedConfigSchema.parse(config.decryptedConfig) : null
-        }
+        },
+        instance
       };
     }
   });

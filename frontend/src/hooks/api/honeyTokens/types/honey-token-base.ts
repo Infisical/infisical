@@ -1,11 +1,11 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { HoneyTokenHosting, HoneyTokenStatus } from "@app/hooks/api/honeyTokens/enums";
+import { HoneyTokenManagedBy, HoneyTokenStatus } from "@app/hooks/api/honeyTokens/enums";
 
 export type THoneyTokenBase = {
   id: string;
   name: string;
   description?: string | null;
-  config: { hosting: HoneyTokenHosting };
+  config: { managedBy: HoneyTokenManagedBy };
   status: HoneyTokenStatus;
   projectId: string;
   folderId: string;

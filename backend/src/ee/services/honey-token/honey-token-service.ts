@@ -820,27 +820,6 @@ export const honeyTokenServiceFactory = ({
     return honeyTokenDAL.countByFolderIds(folderIds, search);
   };
 
-  const getCreationOptions = async (
-    { projectId, type }: { projectId: string; type: HoneyTokenType },
-    actor: OrgServiceActor
-  ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Create,
-      ProjectPermissionSub.HoneyTokens
-    );
-
-    const providerType = assertSupportedHoneyTokenType(type);
-    return honeyTokenProviderHooksByType[providerType].getCreationOptions({ orgId: actor.orgId });
-  };
-
   const getOrgHoneyTokenLimit = async ({ projectId }: { projectId: string }, actor: OrgServiceActor) => {
     const { permission: limitPermission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -1241,7 +1220,6 @@ export const honeyTokenServiceFactory = ({
     getHoneyTokenEvents,
     getDashboardHoneyTokenCount,
     getOrgHoneyTokenLimit,
-    getCreationOptions,
     getDashboardHoneyTokens,
     handleTrigger
   };

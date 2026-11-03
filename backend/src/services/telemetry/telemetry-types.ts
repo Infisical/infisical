@@ -1300,7 +1300,7 @@ export type THoneyTokenCreatedEvent = {
   properties: {
     honeyTokenId: string;
     type: string;
-    hosting: string;
+    managedBy: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -1338,7 +1338,7 @@ export type THoneyTokenTriggeredEvent = {
   event: PostHogEventTypes.HoneyTokenTriggered;
   properties: {
     type: string;
-    hosting: string;
+    managedBy: string;
   };
 };
 

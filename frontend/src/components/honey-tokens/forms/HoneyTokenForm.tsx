@@ -8,14 +8,11 @@ import { Button, SheetFooter, Stepper, StepperList, StepperStep } from "@app/com
 import { useOrganization, useProject } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import {
-  useCreateHoneyToken,
-  useGetHoneyTokenHostingOptions,
-  useUpdateHoneyToken
-} from "@app/hooks/api/honeyTokens";
+import { useGetHoneyTokenConfig } from "@app/hooks/api/honeyToken";
+import { useCreateHoneyToken, useUpdateHoneyToken } from "@app/hooks/api/honeyTokens";
 import {
   HoneyTokenConfigStatus,
-  HoneyTokenHosting,
+  HoneyTokenManagedBy,
   HoneyTokenType
 } from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
@@ -54,7 +51,7 @@ const FORM_TABS: FormTab[] = [
     title: "Choose where to plant it",
     subtitle:
       "Choose the AWS account that holds the decoy credentials and the environment where Infisical stores them.",
-    fields: ["hosting", "environment"]
+    fields: ["managedBy", "environment"]
   },
   {
     name: "Mapping",
@@ -91,14 +88,14 @@ export const HoneyTokenForm = ({
 
   const isUpdate = Boolean(honeyToken);
   const {
-    data: hostingOptions,
-    isError: isHostingOptionsError,
-    isFetching: isFetchingHostingOptions,
-    refetch: refetchHostingOptions
-  } = useGetHoneyTokenHostingOptions({
-    projectId: currentProject.id,
-    type,
-    enabled: !isUpdate
+    data: honeyTokenConfig,
+    isError: isConfigError,
+    isFetching: isFetchingConfig,
+    refetch: refetchConfig
+  } = useGetHoneyTokenConfig(type, {
+    enabled: !isUpdate,
+    // The setup page opens in a new tab, so returning here has to pick up the new setup status.
+    refetchOnWindowFocus: "always"
   });
   const formTabs = isUpdate ? FORM_TABS.filter((tab) => tab.key !== "configuration") : FORM_TABS;
 
@@ -109,7 +106,7 @@ export const HoneyTokenForm = ({
     defaultValues: honeyToken
       ? {
           ...honeyToken,
-          hosting: honeyToken.config.hosting,
+          managedBy: honeyToken.config.managedBy,
           environment: currentProject?.environments.find(
             (env) => env.slug === honeyToken.environment.slug
           ),
@@ -125,20 +122,20 @@ export const HoneyTokenForm = ({
   });
 
   useEffect(() => {
-    if (!hostingOptions) return;
-    formMethods.clearErrors("hosting");
-    if (formMethods.getFieldState("hosting").isDirty) return;
+    if (!honeyTokenConfig) return;
+    formMethods.clearErrors("managedBy");
+    if (formMethods.getFieldState("managedBy").isDirty) return;
 
     // An org that connected its own account most likely wants its tokens there. An unusable option is
     // left unselected, so the user opens the list and finds why it is disabled and how to set it up.
-    if (hostingOptions.customerAccount.configStatus === HoneyTokenConfigStatus.Complete) {
-      formMethods.setValue("hosting", HoneyTokenHosting.CustomerAccount);
-    } else if (isInfisicalCloud() && hostingOptions.infisicalManaged.isAvailable) {
-      formMethods.setValue("hosting", HoneyTokenHosting.InfisicalManaged);
+    if (honeyTokenConfig.config?.status === HoneyTokenConfigStatus.Complete) {
+      formMethods.setValue("managedBy", HoneyTokenManagedBy.Organization);
+    } else if (isInfisicalCloud() && honeyTokenConfig.instance.isAvailable) {
+      formMethods.setValue("managedBy", HoneyTokenManagedBy.Instance);
     }
-  }, [hostingOptions]);
+  }, [honeyTokenConfig]);
 
-  const onSubmit = async ({ environment, hosting, ...formData }: THoneyTokenForm) => {
+  const onSubmit = async ({ environment, managedBy, ...formData }: THoneyTokenForm) => {
     if (honeyToken) {
       await updateHoneyToken.mutateAsync({
         honeyTokenId: honeyToken.id,
@@ -155,7 +152,7 @@ export const HoneyTokenForm = ({
     } else {
       const { stackDeployment } = await createHoneyToken.mutateAsync({
         ...formData,
-        config: { hosting },
+        config: { managedBy },
         environment: environment.slug,
         projectId: currentProject.id
       });
@@ -207,9 +204,9 @@ export const HoneyTokenForm = ({
     if (!isValid || formTabs[index].key !== "configuration") return isValid;
 
     // Without the options the form cannot tell whether the selected AWS account is usable.
-    if (!hostingOptions) {
-      formMethods.setError("hosting", {
-        message: isHostingOptionsError
+    if (!honeyTokenConfig) {
+      formMethods.setError("managedBy", {
+        message: isConfigError
           ? "Couldn't load where this honey token can be created."
           : "Still loading where this honey token can be created. Try again in a moment."
       });
@@ -217,12 +214,12 @@ export const HoneyTokenForm = ({
     }
 
     if (
-      formMethods.getValues("hosting") === HoneyTokenHosting.CustomerAccount &&
-      hostingOptions?.customerAccount.configStatus !== HoneyTokenConfigStatus.Complete
+      formMethods.getValues("managedBy") === HoneyTokenManagedBy.Organization &&
+      honeyTokenConfig?.config?.status !== HoneyTokenConfigStatus.Complete
     ) {
-      formMethods.setError("hosting", {
+      formMethods.setError("managedBy", {
         message:
-          isInfisicalCloud() && hostingOptions?.infisicalManaged.isAvailable
+          isInfisicalCloud() && honeyTokenConfig?.instance.isAvailable
             ? "Finish connecting your AWS account, or choose Infisical Managed."
             : "Finish connecting your AWS account to create a honey token."
       });
@@ -324,10 +321,10 @@ export const HoneyTokenForm = ({
       {currentStep.key === "configuration" && (
         <HoneyTokenConfigurationFields
           environments={environments}
-          hostingOptions={hostingOptions}
-          isHostingOptionsError={isHostingOptionsError}
-          isRetryingHostingOptions={isFetchingHostingOptions}
-          onRetryHostingOptions={() => refetchHostingOptions()}
+          honeyTokenConfig={honeyTokenConfig}
+          isConfigError={isConfigError}
+          isRetryingConfig={isFetchingConfig}
+          onRetryConfig={() => refetchConfig()}
         />
       )}
       {currentStep.key === "mapping" && <HoneyTokenMappingFields />}

@@ -115,17 +115,18 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
       actorAuthMethod: orgPermission.authMethod,
       actorOrgId: orgPermission.orgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionHoneyTokenActions.Setup,
-      OrgPermissionSubjects.HoneyTokens
-    );
+    // Any org member can read the setup status, since creating a honey token in a project depends on it.
+    // Only those who can set it up see the decrypted settings, which hold the webhook signing key.
+    const canSetUp = permission.can(OrgPermissionHoneyTokenActions.Setup, OrgPermissionSubjects.HoneyTokens);
 
     const providerType = assertSupportedHoneyTokenType(type);
     const provider = honeyTokenConfigProviderByType[providerType];
     if (!provider) {
       throw new BadRequestError({ message: "Unsupported honey token type" });
     }
-    return provider.getConfig({ orgId: orgPermission.orgId });
+
+    const config = await provider.getConfig({ orgId: orgPermission.orgId, includeDecryptedConfig: canSetUp });
+    return { config, instance: provider.getInstanceAvailability() };
   };
 
   return {

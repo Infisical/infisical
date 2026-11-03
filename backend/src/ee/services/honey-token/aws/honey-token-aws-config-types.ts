@@ -41,4 +41,5 @@ export type TTestAwsHoneyTokenConnectionInput = {
 
 export type TGetAwsHoneyTokenConfigInput = {
   orgId: string;
+  includeDecryptedConfig: boolean;
 };

@@ -2,7 +2,7 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { HoneyTokenType, THoneyTokenConfig } from "./types";
+import { HoneyTokenType, THoneyTokenConfigResponse } from "./types";
 
 export const honeyTokenKeys = {
   config: (type: HoneyTokenType) => ["honey-token", "config", type] as const
@@ -12,9 +12,9 @@ export const useGetHoneyTokenConfig = (
   type: HoneyTokenType,
   options?: Omit<
     UseQueryOptions<
-      THoneyTokenConfig | null,
+      THoneyTokenConfigResponse,
       unknown,
-      THoneyTokenConfig | null,
+      THoneyTokenConfigResponse,
       ReturnType<typeof honeyTokenKeys.config>
     >,
     "queryKey" | "queryFn"
@@ -23,10 +23,10 @@ export const useGetHoneyTokenConfig = (
   useQuery({
     queryKey: honeyTokenKeys.config(type),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ config: THoneyTokenConfig | null }>(
+      const { data } = await apiRequest.get<THoneyTokenConfigResponse>(
         `/api/v1/honey-tokens/${type}/configs`
       );
-      return data.config;
+      return data;
     },
     ...options
   });

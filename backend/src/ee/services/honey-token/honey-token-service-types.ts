@@ -9,11 +9,10 @@ import type {
   THoneyTokenConfigServiceFactoryDep
 } from "../honey-token-config/honey-token-config-types";
 import type { THoneyTokenDALFactory } from "./honey-token-dal";
-import { HoneyTokenHosting, HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenManagedBy, HoneyTokenType } from "./honey-token-enums";
 import {
   THoneyTokenConfigByType,
   THoneyTokenCreateInput,
-  THoneyTokenCreationOptionsByType,
   THoneyTokenDisplayCredentialsByType
 } from "./honey-token-provider-types";
 import type { THoneyTokenServiceFactoryDep } from "./honey-token-service";
@@ -26,8 +25,8 @@ export type THoneyTokenProviderHooksDep = Pick<THoneyTokenServiceFactoryDep, "km
 export type THoneyTokenDeploymentStatus = { deployed: boolean; status: string | null };
 
 export type THoneyTokenCredentialTarget =
-  | { hosting: HoneyTokenHosting.InfisicalManaged }
-  | { hosting: HoneyTokenHosting.CustomerAccount; appConnection: TAppConnection };
+  | { managedBy: HoneyTokenManagedBy.Instance }
+  | { managedBy: HoneyTokenManagedBy.Organization; appConnection: TAppConnection };
 
 // Validates an organization-level connection for the token's project. Provided by the service, which owns
 // the actor's permission to use it.
@@ -44,7 +43,6 @@ export type THoneyTokenTriggerAuthentication =
     };
 
 export type THoneyTokenProviderHooks = {
-  getCreationOptions: (input: { orgId: string }) => Promise<THoneyTokenCreationOptionsByType[HoneyTokenType]>;
   // Throws when the requested configuration cannot be used. orgConnection is set when the credentials live
   // behind the organization's own connection, whose deployment the service verifies.
   prepareCreate: (input: {

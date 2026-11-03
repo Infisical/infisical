@@ -26,7 +26,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { THoneyTokenConfigDALFactory } from "../../honey-token-config/honey-token-config-dal";
 import { HoneyTokenConfigStatus } from "../../honey-token-config/honey-token-config-enums";
 import { TLicenseServiceFactory } from "../../license/license-service";
-import { HoneyTokenHosting, HoneyTokenManagedUnavailableReason, HoneyTokenType } from "../honey-token-enums";
+import { HoneyTokenManagedBy, HoneyTokenManagedUnavailableReason, HoneyTokenType } from "../honey-token-enums";
 import type { THoneyTokenCredentialTarget } from "../honey-token-service-types";
 import { AwsHoneyTokenConfigSchema } from "../honey-token-types";
 import {
@@ -208,7 +208,7 @@ const getManagedIamClient = async () => {
 };
 
 const getIamClient = async (target: THoneyTokenCredentialTarget) => {
-  if (target.hosting === HoneyTokenHosting.InfisicalManaged) {
+  if (target.managedBy === HoneyTokenManagedBy.Instance) {
     return getManagedIamClient();
   }
 
@@ -227,7 +227,7 @@ export const createAwsIamHoneyTokenCredentials = async (target: THoneyTokenCrede
     if (err instanceof LimitExceededException) {
       throw new BadRequestError({
         message:
-          target.hosting === HoneyTokenHosting.InfisicalManaged
+          target.managedBy === HoneyTokenManagedBy.Instance
             ? "Infisical-managed honey tokens are at capacity. Create the honey token in your own AWS account instead, or contact support."
             : "Your AWS account has reached its IAM user limit. Revoke unused honey tokens or IAM users, then try again."
       });
@@ -406,7 +406,8 @@ export const honeyTokenAwsConfigProviderFactory = ({
   };
 
   const getConfig = async ({
-    orgId
+    orgId,
+    includeDecryptedConfig
   }: TGetAwsHoneyTokenConfigInput): Promise<THoneyTokenConfigWithDecrypted | undefined> => {
     const config = await honeyTokenConfigDAL.findOne({
       orgId,
@@ -414,6 +415,9 @@ export const honeyTokenAwsConfigProviderFactory = ({
     });
     if (!config) {
       return undefined;
+    }
+    if (!includeDecryptedConfig) {
+      return { ...config, decryptedConfig: null };
     }
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -428,5 +432,10 @@ export const honeyTokenAwsConfigProviderFactory = ({
     return { ...config, decryptedConfig };
   };
 
-  return { upsertConfig, testConnection, getConfig };
+  const getInstanceAvailability = () => {
+    const unavailableReason = getManagedHoneyTokenUnavailableReason();
+    return { isAvailable: !unavailableReason, unavailableReason };
+  };
+
+  return { upsertConfig, testConnection, getConfig, getInstanceAvailability };
 };

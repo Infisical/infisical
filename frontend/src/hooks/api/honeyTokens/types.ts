@@ -12,7 +12,6 @@ export type {
   THoneyTokenCredentialsResponseMap,
   THoneyTokenDetails,
   THoneyTokenEvent,
-  THoneyTokenHostingOptions,
   THoneyTokenOption,
   THoneyTokenOptionMap,
   TRevokeHoneyTokenDTO,

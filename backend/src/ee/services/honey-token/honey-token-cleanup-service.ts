@@ -7,10 +7,10 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
-import { HoneyTokenHosting, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenManagedBy, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { getHoneyTokenServiceHooksByType, HONEY_TOKEN_PROVIDER_MAP } from "./honey-token-provider-fns";
 import { THoneyTokenCredentialTarget, THoneyTokenProviderHooksDep } from "./honey-token-service-types";
-import { getHoneyTokenHosting } from "./honey-token-types";
+import { getHoneyTokenManagedBy } from "./honey-token-types";
 
 // Managed tokens all live in one shared AWS account, so an org deletion must not burst its IAM rate limit.
 const REVOKE_BATCH_SIZE = 5;
@@ -70,13 +70,13 @@ export const honeyTokenCleanupServiceFactory = ({
       }
       const type = honeyToken.type as HoneyTokenType;
 
-      let target: THoneyTokenCredentialTarget = { hosting: HoneyTokenHosting.InfisicalManaged };
-      if (getHoneyTokenHosting(honeyToken) === HoneyTokenHosting.CustomerAccount) {
+      let target: THoneyTokenCredentialTarget = { managedBy: HoneyTokenManagedBy.Instance };
+      if (getHoneyTokenManagedBy(honeyToken) === HoneyTokenManagedBy.Organization) {
         const appConnection = await findConnection(honeyToken.orgId, type);
         if (!appConnection) {
           throw new NotFoundError({ message: "Organization has no honey token connection" });
         }
-        target = { hosting: HoneyTokenHosting.CustomerAccount, appConnection };
+        target = { managedBy: HoneyTokenManagedBy.Organization, appConnection };
       }
 
       const { decryptor } = await kmsService.createCipherPairWithDataKey({

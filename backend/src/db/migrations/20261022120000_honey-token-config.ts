@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
   });
 
   // Every token created before this column existed is an AWS token in the customer's own account.
-  await knex(TableName.HoneyToken).update({ config: JSON.stringify({ hosting: "customer-account" }) });
+  await knex(TableName.HoneyToken).update({ config: JSON.stringify({ managedBy: "organization" }) });
 
   await knex.schema.alterTable(TableName.HoneyToken, (t) => {
     t.jsonb("config").notNullable().alter();

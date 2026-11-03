@@ -8,9 +8,9 @@ export enum HoneyTokenStatus {
   Revoked = "revoked"
 }
 
-export enum HoneyTokenHosting {
-  InfisicalManaged = "infisical-managed",
-  CustomerAccount = "customer-account"
+export enum HoneyTokenManagedBy {
+  Instance = "instance",
+  Organization = "organization"
 }
 
 export enum HoneyTokenManagedUnavailableReason {

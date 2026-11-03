@@ -4,10 +4,10 @@ import { logger } from "@app/lib/logger";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { HoneyTokenConfigStatus } from "../../honey-token-config/honey-token-config-enums";
-import { HoneyTokenHosting, HoneyTokenManagedUnavailableReason, HoneyTokenType } from "../honey-token-enums";
+import { HoneyTokenManagedBy, HoneyTokenManagedUnavailableReason, HoneyTokenType } from "../honey-token-enums";
 import { isValidHoneyTokenSignature } from "../honey-token-fns";
 import { THoneyTokenProviderHooks, THoneyTokenProviderHooksDep } from "../honey-token-service-types";
-import { AwsHoneyTokenConfigSchema, getHoneyTokenHosting } from "../honey-token-types";
+import { AwsHoneyTokenConfigSchema, getHoneyTokenManagedBy } from "../honey-token-types";
 import {
   createAwsIamHoneyTokenCredentials,
   getManagedHoneyTokenUnavailableReason,
@@ -31,7 +31,7 @@ export const honeyTokenAwsProviderHooksFactory = ({
   honeyTokenDAL,
   honeyTokenConfigDAL
 }: THoneyTokenProviderHooksDep): THoneyTokenProviderHooks => {
-  const $getCompleteCustomerAccountConfig = async (orgId: string) => {
+  const $getCompleteOrganizationConfig = async (orgId: string) => {
     const orgConfig = await honeyTokenConfigDAL.findOne({
       orgId,
       type: HoneyTokenType.AWS,
@@ -55,7 +55,7 @@ export const honeyTokenAwsProviderHooksFactory = ({
     return { ...orgConfig, connectionId: orgConfig.connectionId };
   };
 
-  const $isValidCustomerAccountSignature = async ({
+  const $isValidOrganizationSignature = async ({
     honeyToken,
     timestamp,
     rawBody,
@@ -67,7 +67,7 @@ export const honeyTokenAwsProviderHooksFactory = ({
     signatureHash: string;
   }) => {
     let webhookSigningKey: string | null = null;
-    if (honeyToken && getHoneyTokenHosting(honeyToken) === HoneyTokenHosting.CustomerAccount) {
+    if (honeyToken && getHoneyTokenManagedBy(honeyToken) === HoneyTokenManagedBy.Organization) {
       const config = await honeyTokenConfigDAL.findOne({
         orgId: honeyToken.orgId,
         type: HoneyTokenType.AWS,
@@ -141,31 +141,22 @@ export const honeyTokenAwsProviderHooksFactory = ({
         secretAccessKey: decryptedCredentials.secretAccessKey
       };
     },
-    getCreationOptions: async ({ orgId }) => {
-      const orgConfig = await honeyTokenConfigDAL.findOne({ orgId, type: HoneyTokenType.AWS });
-      const managedUnavailableReason = getManagedHoneyTokenUnavailableReason();
-
-      return {
-        infisicalManaged: { isAvailable: !managedUnavailableReason, unavailableReason: managedUnavailableReason },
-        customerAccount: { configStatus: orgConfig ? (orgConfig.status as HoneyTokenConfigStatus) : null }
-      };
-    },
     prepareCreate: async ({ config, orgId, getAppConnection }) => {
-      if (config.hosting === HoneyTokenHosting.InfisicalManaged) {
+      if (config.managedBy === HoneyTokenManagedBy.Instance) {
         const managedUnavailableReason = getManagedHoneyTokenUnavailableReason();
         if (managedUnavailableReason) {
           throw new BadRequestError({
             message: `Infisical-managed honey tokens are not available on this instance: ${MANAGED_UNAVAILABLE_MESSAGES[managedUnavailableReason]} Create the honey token in your own AWS account instead.`
           });
         }
-        return { target: { hosting: HoneyTokenHosting.InfisicalManaged }, orgConnection: null };
+        return { target: { managedBy: HoneyTokenManagedBy.Instance }, orgConnection: null };
       }
 
-      const orgConfig = await $getCompleteCustomerAccountConfig(orgId);
+      const orgConfig = await $getCompleteOrganizationConfig(orgId);
       const appConnection = await getAppConnection(orgConfig.connectionId);
 
       return {
-        target: { hosting: HoneyTokenHosting.CustomerAccount, appConnection },
+        target: { managedBy: HoneyTokenManagedBy.Organization, appConnection },
         orgConnection: {
           appConnection,
           connectionId: orgConfig.connectionId,
@@ -174,8 +165,8 @@ export const honeyTokenAwsProviderHooksFactory = ({
       };
     },
     getRevokeTarget: async ({ honeyToken, orgId, getAppConnection }) => {
-      if (getHoneyTokenHosting(honeyToken) === HoneyTokenHosting.InfisicalManaged) {
-        return { hosting: HoneyTokenHosting.InfisicalManaged };
+      if (getHoneyTokenManagedBy(honeyToken) === HoneyTokenManagedBy.Instance) {
+        return { managedBy: HoneyTokenManagedBy.Instance };
       }
 
       const orgConfig = await honeyTokenConfigDAL.findOne({
@@ -192,7 +183,7 @@ export const honeyTokenAwsProviderHooksFactory = ({
       }
 
       return {
-        hosting: HoneyTokenHosting.CustomerAccount,
+        managedBy: HoneyTokenManagedBy.Organization,
         appConnection: await getAppConnection(orgConfig.connectionId)
       };
     },
@@ -212,20 +203,20 @@ export const honeyTokenAwsProviderHooksFactory = ({
         : await honeyTokenDAL.findOneByTokenIdentifier(tokenIdentifier);
 
       if (isManagedTrigger) {
-        if (!honeyToken || getHoneyTokenHosting(honeyToken) !== HoneyTokenHosting.InfisicalManaged) {
+        if (!honeyToken || getHoneyTokenManagedBy(honeyToken) !== HoneyTokenManagedBy.Instance) {
           // Our own stack reported a key we no longer track (eg its project was deleted).
           logger.warn(`Managed honey token trigger for an untracked access key [accessKeyId=${tokenIdentifier}]`);
           return { outcome: "ignored" };
         }
       } else {
-        const isValid = await $isValidCustomerAccountSignature({ honeyToken, timestamp, rawBody, signatureHash });
+        const isValid = await $isValidOrganizationSignature({ honeyToken, timestamp, rawBody, signatureHash });
         if (!honeyToken || !isValid) return { outcome: "rejected" };
       }
 
       return {
         outcome: "accepted",
         honeyToken,
-        telemetryProperties: { hosting: getHoneyTokenHosting(honeyToken) }
+        telemetryProperties: { managedBy: getHoneyTokenManagedBy(honeyToken) }
       };
     }
   };

@@ -20,60 +20,60 @@ import {
   useOrgPermission
 } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { HoneyTokenConfigStatus, HoneyTokenHosting } from "@app/hooks/api/honeyTokens/enums";
-import { THoneyTokenHostingOptions } from "@app/hooks/api/honeyTokens/types";
+import { THoneyTokenConfigResponse } from "@app/hooks/api/honeyToken";
+import { HoneyTokenConfigStatus, HoneyTokenManagedBy } from "@app/hooks/api/honeyTokens/enums";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 import { THoneyTokenForm } from "./schemas";
 
 type Props = {
   environments?: ProjectEnv[];
-  hostingOptions?: THoneyTokenHostingOptions;
-  isHostingOptionsError?: boolean;
-  isRetryingHostingOptions?: boolean;
-  onRetryHostingOptions?: () => void;
+  honeyTokenConfig?: THoneyTokenConfigResponse;
+  isConfigError?: boolean;
+  isRetryingConfig?: boolean;
+  onRetryConfig?: () => void;
 };
 
 export const HoneyTokenConfigurationFields = ({
   environments,
-  hostingOptions,
-  isHostingOptionsError,
-  isRetryingHostingOptions,
-  onRetryHostingOptions
+  honeyTokenConfig,
+  isConfigError,
+  isRetryingConfig,
+  onRetryConfig
 }: Props) => {
   const { control, setValue, clearErrors } = useFormContext<THoneyTokenForm>();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
 
-  const canSetUpCustomerAccount = permission.can(
+  const canSetUpOrganizationAccount = permission.can(
     OrgPermissionHoneyTokenActions.Setup,
     OrgPermissionSubjects.HoneyTokens
   );
-  const isManagedAvailable = Boolean(hostingOptions?.infisicalManaged.isAvailable);
-  const customerAccountStatus = hostingOptions?.customerAccount.configStatus ?? null;
-  const isCustomerAccountReady = customerAccountStatus === HoneyTokenConfigStatus.Complete;
+  const isManagedAvailable = Boolean(honeyTokenConfig?.instance.isAvailable);
+  const organizationAccountStatus = honeyTokenConfig?.config?.status ?? null;
+  const isOrganizationAccountReady = organizationAccountStatus === HoneyTokenConfigStatus.Complete;
   const isSetupActionShown =
-    Boolean(hostingOptions) && !isCustomerAccountReady && canSetUpCustomerAccount;
+    Boolean(honeyTokenConfig) && !isOrganizationAccountReady && canSetUpOrganizationAccount;
   const setupActionLabel =
-    customerAccountStatus === HoneyTokenConfigStatus.VerificationPending
+    organizationAccountStatus === HoneyTokenConfigStatus.VerificationPending
       ? "Finish AWS Account Setup"
       : "Connect AWS Account";
 
-  let customerAccountDescription =
+  let organizationAccountDescription =
     "Ask an organization admin to connect your organization's AWS account to use this option.";
-  if (isCustomerAccountReady) {
-    customerAccountDescription =
+  if (isOrganizationAccountReady) {
+    organizationAccountDescription =
       "Infisical creates the decoy credentials in the AWS account your organization connected.";
-  } else if (canSetUpCustomerAccount) {
-    customerAccountDescription = "Connect your organization's AWS account to use this option.";
+  } else if (canSetUpOrganizationAccount) {
+    organizationAccountDescription = "Connect your organization's AWS account to use this option.";
   }
 
   // Infisical-managed honey tokens are only offered on Infisical Cloud.
-  const hostingChoices = [
+  const managedByChoices = [
     ...(isInfisicalCloud()
       ? [
           {
-            value: HoneyTokenHosting.InfisicalManaged,
+            value: HoneyTokenManagedBy.Instance,
             title: "Infisical Managed",
             description: isManagedAvailable
               ? "Infisical creates the decoy credentials in an Infisical-managed AWS account. No setup needed."
@@ -83,10 +83,10 @@ export const HoneyTokenConfigurationFields = ({
         ]
       : []),
     {
-      value: HoneyTokenHosting.CustomerAccount,
+      value: HoneyTokenManagedBy.Organization,
       title: "Self hosted",
-      description: customerAccountDescription,
-      isDisabled: !isCustomerAccountReady
+      description: organizationAccountDescription,
+      isDisabled: !isOrganizationAccountReady
     }
   ];
 
@@ -126,20 +126,20 @@ export const HoneyTokenConfigurationFields = ({
       )}
       <Controller
         control={control}
-        name="hosting"
+        name="managedBy"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel htmlFor="honey-token-hosting">AWS account</FieldLabel>
+            <FieldLabel htmlFor="honey-token-managed-by">AWS account</FieldLabel>
             <Combobox
-              id="honey-token-hosting"
-              value={hostingChoices.find((choice) => choice.value === value) ?? null}
+              id="honey-token-managed-by"
+              value={managedByChoices.find((choice) => choice.value === value) ?? null}
               isClearable={false}
               placeholder="Select an AWS account..."
               onValueChange={(choice) => {
-                clearErrors("hosting");
+                clearErrors("managedBy");
                 onChange(choice.value);
               }}
-              options={hostingChoices}
+              options={managedByChoices}
               getOptionValue={(choice) => choice.value}
               getOptionLabel={(choice) => choice.title}
               isOptionDisabled={(choice) => choice.isDisabled}
@@ -170,13 +170,13 @@ export const HoneyTokenConfigurationFields = ({
               isError={Boolean(error)}
             />
             <FieldDescription>
-              {hostingChoices.find((choice) => choice.value === value)?.description}
+              {managedByChoices.find((choice) => choice.value === value)?.description}
             </FieldDescription>
             {error && <FieldError>{error.message}</FieldError>}
           </Field>
         )}
       />
-      {isHostingOptionsError && !hostingOptions && (
+      {isConfigError && !honeyTokenConfig && (
         <Alert variant="danger">
           <AlertTriangle />
           <AlertDescription className="text-xs">
@@ -185,8 +185,8 @@ export const HoneyTokenConfigurationFields = ({
               <Button
                 variant="danger"
                 size="xs"
-                isPending={isRetryingHostingOptions}
-                onClick={onRetryHostingOptions}
+                isPending={isRetryingConfig}
+                onClick={onRetryConfig}
               >
                 Retry
               </Button>
