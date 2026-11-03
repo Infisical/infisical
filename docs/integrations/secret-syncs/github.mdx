@@ -30,7 +30,7 @@ A GitHub sync writes to one type of GitHub secret: Actions, Dependabot, or Codes
         - `repo`: secrets in repositories and repository environments
         - `admin:org`: secrets in organizations
 
-        If your connection is to GitHub Enterprise Server, you can't sync Codespaces secrets, because this option is not included there.
+        GitHub Enterprise Server doesn't include Codespaces, so you can't sync Codespaces secrets through it.
     </Tab>
     <Tab title="Personal Access Token">
         If you use a classic token, select the `repo` and `admin:org` scopes, which cover every secret type.
