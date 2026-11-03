@@ -73,11 +73,15 @@ export const secretRotationV2QueueServiceFactory = async ({
 
         const secretRotations = await secretRotationV2DAL.findSecretRotationsToQueue(rotateBy);
 
-        logger.info(
-          `secretRotationV2Queue: Queue Rotations [currentTime=${currentTime.toISOString()}] [rotateBy=${rotateBy.toISOString()}] [count=${
-            secretRotations.length
-          }]`
-        );
+        if (secretRotations.length > 0) {
+          logger.info(
+            `secretRotationV2Queue: Queue Rotations [currentTime=${currentTime.toISOString()}] [rotateBy=${rotateBy.toISOString()}] [count=${secretRotations.length}]`
+          );
+        } else {
+          logger.debug(
+            `secretRotationV2Queue: Queue Rotations [currentTime=${currentTime.toISOString()}] [rotateBy=${rotateBy.toISOString()}] [count=0]`
+          );
+        }
 
         for await (const rotation of secretRotations) {
           logger.info(
