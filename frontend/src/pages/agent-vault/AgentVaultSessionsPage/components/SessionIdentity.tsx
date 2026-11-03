@@ -2,63 +2,54 @@ import { ReactElement } from "react";
 import { BotIcon, UserIcon } from "lucide-react";
 
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
-import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { AgentVaultMemberType, TAgentVaultSession } from "@app/hooks/api/agentVault";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  AgentVaultMemberType,
+  TAgentVaultSession,
+  TAgentVaultSessionActor
+} from "@app/hooks/api/agentVault";
 
-// Deleting the machine identity or the user it acts for ends the session, so the cell names whichever was deleted.
-const describeDeleted = ({ actor, onBehalfOf }: TAgentVaultSession) => {
-  const names = [
-    actor.id === null ? memberDisplayName(actor) : null,
-    onBehalfOf && onBehalfOf.id === null ? memberDisplayName(onBehalfOf) : null
-  ].filter((name): name is string => name !== null);
-  if (!names.length) return null;
-  return `${names.map((name) => `"${name}"`).join(" and ")} ${names.length === 1 ? "was" : "were"} deleted`;
+const withTooltip = (trigger: ReactElement, content: string) => (
+  <Tooltip>
+    <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+    <TooltipContent>{content}</TooltipContent>
+  </Tooltip>
+);
+
+// Whichever of the two was deleted is the part that says so, so the row never reads as if the other one is gone.
+const describe = (actor: TAgentVaultSessionActor) => {
+  const name = memberDisplayName(actor);
+  if (actor.id === null) return `"${name}" was deleted`;
+  if (actor.type === AgentVaultMemberType.MachineIdentity) return `${actor.id} (machine identity)`;
+  const subtitle = memberSubtitle(actor);
+  return name === subtitle ? subtitle : `${name} (${subtitle})`;
 };
 
 export const SessionIdentity = ({ session }: { session: TAgentVaultSession }) => {
   const { actor, onBehalfOf } = session;
+  const ActorIcon = actor.type === AgentVaultMemberType.MachineIdentity ? BotIcon : UserIcon;
 
-  if (actor.type === AgentVaultMemberType.User) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex w-fit items-center gap-2">
-            <UserIcon className="size-4 text-muted" />
-            {memberDisplayName(actor)}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>{memberSubtitle(actor)}</TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  const deleted = describeDeleted(session);
-  const explained = (trigger: ReactElement) =>
-    deleted ? (
-      <Tooltip>
-        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-        <TooltipContent>{deleted}</TooltipContent>
-      </Tooltip>
-    ) : (
-      trigger
-    );
-
+  // Two lines tall even without the on-behalf-of line, so every row of the table is the same height.
   return (
-    <div className="flex w-fit items-center gap-2">
-      <BotIcon className="size-4 text-muted" />
-      {onBehalfOf ? memberDisplayName(actor) : explained(<span>{memberDisplayName(actor)}</span>)}
-      {onBehalfOf &&
-        explained(
-          <Badge
-            variant="neutral"
-            iconPosition="left"
-            isTruncatable
-            className={deleted ? "max-w-60 text-muted" : "max-w-60"}
-          >
-            <UserIcon />
-            <span>On Behalf Of {memberDisplayName(onBehalfOf)}</span>
-          </Badge>
-        )}
+    <div className="flex min-h-9 items-center">
+      <div className="flex w-fit items-start gap-2">
+        <ActorIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+        <div className="max-w-72 min-w-0">
+          {withTooltip(
+            <div className="w-fit max-w-full truncate">{memberDisplayName(actor)}</div>,
+            actor.type === AgentVaultMemberType.User && actor.id !== null
+              ? memberSubtitle(actor)
+              : describe(actor)
+          )}
+          {onBehalfOf &&
+            withTooltip(
+              <div className="w-fit max-w-full truncate text-xs leading-4 text-muted">
+                On behalf of {memberDisplayName(onBehalfOf)}
+              </div>,
+              describe(onBehalfOf)
+            )}
+        </div>
+      </div>
     </div>
   );
 };

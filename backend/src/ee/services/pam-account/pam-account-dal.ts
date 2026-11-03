@@ -565,6 +565,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     countByOrgId,
     findRotationCandidates,
     reconcileRotationScheduleForTemplate,
-    reconcileRotationScheduleForAccount
+    reconcileRotationScheduleForAccount,
+    primaryNode: () => db.primaryNode()
   };
 };

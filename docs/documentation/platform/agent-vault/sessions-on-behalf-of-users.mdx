@@ -129,10 +129,11 @@ Infisical checks the delegation again each time the proxy polls, once every [pol
 - An admin removes the delegation, or edits it so it no longer covers the user
 - The delegation covered the user only through a group, and either the user leaves that group or the group is removed from Agent Vault
 - The user is removed from Agent Vault or from your organization, which also takes the user out of the delegation
+- The user or the machine identity is deactivated in your organization
 - An admin removes the machine identity from Agent Vault, which also deletes its delegation
 - Someone deletes the machine identity or the user (the session then shows as **Revoked**)
 
-If an admin sets up the delegation again, or adds the user back to it, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/sessions#revoke-a-session).
+If an admin sets up the delegation again, adds the user back to it, or reactivates the user or the machine identity, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/sessions#revoke-a-session).
 
 If the user or the machine identity can no longer use the access bundle, the session stops getting credentials for the bundle, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes.
 

@@ -6,7 +6,7 @@ import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { ConflictError, UnauthorizedError } from "@app/lib/errors";
+import { ConflictError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
 import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
@@ -46,6 +46,7 @@ const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServic
   encryptedCredential: Buffer.from(JSON.stringify({ accessToken: "snapshot-access" })),
   allowedMethods: null,
   allowedPathPrefixes: null,
+  allowedTools: null,
   memberProvidedFields: null,
   position: 0,
   ...overrides
@@ -277,6 +278,18 @@ describe("resolve's lazy refresh", () => {
     expect(services[1].credential).toMatchObject({ value: "bearer-expanded" });
   });
 
+  test("sends each service's allowed tools, and null for one that allows every tool", async () => {
+    const { service } = setup(
+      async () => refreshed,
+      [
+        serviceRow({ allowedTools: ["read_file", "search"] }),
+        serviceRow({ id: "55555555-5555-4555-8555-555555555555", allowedTools: null })
+      ]
+    );
+    const { services } = await resolve(service);
+    expect(services.map((resolved) => resolved.allowedTools)).toEqual([["read_file", "search"], null]);
+  });
+
   test("an OAuth token is always sent as Authorization: Bearer, whatever its config holds", async () => {
     const { service } = setup(
       async () => refreshed,
@@ -306,22 +319,31 @@ describe("resolve's lazy refresh", () => {
 describe("resolve for a session on a user's behalf", () => {
   const USER_ID = "user-1";
   const IDENTITY_ID = "identity-1";
-  type TActorSetup = { isAdmin?: boolean; grants?: string[]; isActive?: boolean };
+  type TActorSetup = {
+    isAdmin?: boolean;
+    grants?: string[];
+    isActive?: boolean;
+    canRead?: boolean;
+    isMember?: boolean;
+  };
 
   // Each actor gets its own org status, role and bundle grants, and resolve's reach is read off the bundles it asks for.
   const setupOnBehalfOf = ({
     user = {},
     identity = {},
     delegationCoversUser = true,
-    isUserDeleted = false
+    isUserDeleted = false,
+    rows = []
   }: {
     user?: TActorSetup;
     identity?: TActorSetup;
     delegationCoversUser?: boolean;
     isUserDeleted?: boolean;
+    rows?: TResolveServiceRow[];
   }) => {
     const actor = (actorId: string) => (actorId === IDENTITY_ID ? identity : user);
-    const findResolvableServices = vi.fn(async () => [] as TResolveServiceRow[]);
+    const findResolvableServices = vi.fn(async () => rows);
+    const findPersonalValues = vi.fn(async () => []);
     const service = agentVaultProxyServiceFactory({
       agentVaultProxyDAL: {
         findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 })
@@ -330,7 +352,7 @@ describe("resolve for a session on a user's behalf", () => {
       agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
       agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
       agentVaultVariableDAL: { findValuesForResolve: async () => [] },
-      agentVaultPersonalValueDAL: { findForResolve: async () => [] },
+      agentVaultPersonalValueDAL: { findForResolve: findPersonalValues },
       agentVaultSessionDAL: {
         findByTokenHash: async () =>
           ({
@@ -363,17 +385,23 @@ describe("resolve for a session on a user's behalf", () => {
           ({ isActive: actor(actorId).isActive ?? true }) as never
       },
       permissionService: {
-        getProjectPermission: async ({ actorId }: { actorId: string }) =>
-          ({
-            permission: createMongoAbility([
-              {
-                action: ProjectPermissionAgentVaultSessionActions.Read,
-                subject: ProjectPermissionSub.AgentVaultSessions
-              }
-            ]),
+        getProjectPermission: async ({ actorId }: { actorId: string }) => {
+          if (actor(actorId).isMember === false) {
+            throw new ForbiddenRequestError({
+              name: "ProjectMembershipNotFound",
+              message: "Not a member of the project"
+            });
+          }
+          const read = {
+            action: ProjectPermissionAgentVaultSessionActions.Read,
+            subject: ProjectPermissionSub.AgentVaultSessions
+          };
+          return {
+            permission: createMongoAbility(actor(actorId).canRead === false ? [] : [read]),
             hasRole: () => Boolean(actor(actorId).isAdmin),
             memberships: []
-          }) as never
+          } as never;
+        }
       },
       kmsService: {
         createCipherPairWithDataKey: async () =>
@@ -392,7 +420,7 @@ describe("resolve for a session on a user's behalf", () => {
       service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
     const reachedBundles = () =>
       (findResolvableServices.mock.calls[0] as unknown as [{ accessBundleIds: string[] | null }])[0].accessBundleIds;
-    return { resolve, reachedBundles };
+    return { resolve, reachedBundles, findPersonalValues };
   };
 
   test("a non-admin user's reach is narrowed to the bundles the identity reaches too", async () => {
@@ -433,6 +461,36 @@ describe("resolve for a session on a user's behalf", () => {
   test("a session whose user was deleted is a 401, not the identity's own session", async () => {
     const { resolve } = setupOnBehalfOf({ identity: { isAdmin: true }, isUserDeleted: true });
     await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  test("a user without Read on sessions is a 401", async () => {
+    const { resolve } = setupOnBehalfOf({ user: { grants: ["bundle-a"], canRead: false } });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  // A 403 reads to the proxy as "Infisical is unreachable", which would keep the agent running through its grace window.
+  test("a user no longer in Agent Vault is a 401, not a 403", async () => {
+    const { resolve } = setupOnBehalfOf({ user: { isMember: false } });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  test("personal values are looked up for the user, never the identity", async () => {
+    const { resolve, findPersonalValues } = setupOnBehalfOf({
+      user: { isAdmin: true },
+      identity: { isAdmin: true },
+      rows: [
+        serviceRow({
+          type: AgentVaultServiceType.Http,
+          hostPattern: "api.example.com",
+          credentialType: AgentVaultCredentialType.Bearer,
+          credentialConfig: { headerName: "Authorization", headerPrefix: "Bearer" },
+          encryptedCredential: Buffer.from(JSON.stringify({ value: "" })),
+          memberProvidedFields: ["credential-value"]
+        })
+      ]
+    });
+    await resolve();
+    expect(findPersonalValues).toHaveBeenCalledWith({ serviceIds: [SERVICE_ID], owner: { userId: USER_ID } });
   });
 });
 

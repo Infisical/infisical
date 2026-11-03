@@ -95,8 +95,15 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     customHeaders: input.customHeaders,
     substitutions: input.substitutions,
     serverUrl: input.serverUrl,
-    transport: input.transport
+    transport: input.transport,
+    allowedTools: input.allowedTools
   });
+  if (input.allowedTools?.length) {
+    throw new BadRequestError({
+      message:
+        "Services sent with a session can't limit an MCP server's tools, so leave out allowedTools. Add the MCP server to an access bundle to limit its tools."
+    });
+  }
 
   const { credential } = input;
   if (credential.type === AgentVaultCredentialType.OAuth) {
@@ -316,6 +323,8 @@ export const toResolvedInlineService = (
     hostPattern: row.hostPattern,
     allowedMethods: row.allowedMethods ?? null,
     allowedPathPrefixes: row.allowedPathPrefixes ?? null,
+    // An inline MCP server can't be limited to some of its tools, so the proxy filters none.
+    allowedTools: null,
     credential,
     customHeaders: customHeaders.map((header, index) => ({ ...header, value: secrets!.customHeaders[index] })),
     substitutions: substitutions.map((substitution, index) => ({

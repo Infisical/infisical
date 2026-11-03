@@ -12,7 +12,10 @@ import {
 import { TDigiCertExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { extractExternallyIssuedCertificateFields } from "@app/services/certificate/certificate-fns";
+import {
+  assertCertificateNotDeleted,
+  extractExternallyIssuedCertificateFields
+} from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -363,12 +366,13 @@ export const digiCertCodeSigningFns = ({
     const certObj = new x509.X509Certificate(leaf);
     const parsedFields = extractExternallyIssuedCertificateFields(certObj);
     const differentCaError = new BadRequestError({
-      message: `The certificate in DigiCert order ${orderId} is already in Certificate Manager under a different certificate authority. Remove that copy from the certificate inventory, then try again.`
+      message: `The certificate in DigiCert order ${orderId} is already in Certificate Manager under a different certificate authority, so it can't be added under this one. Request a new code signing certificate instead.`
     });
 
     const existingCert = await certificateDAL.findOne({ serialNumber: certObj.serialNumber });
     if (existingCert) {
       if (existingCert.caId !== ca.id) throw differentCaError;
+      assertCertificateNotDeleted(existingCert, "Request a new code signing certificate instead.");
       return { certificatePem: leaf, existingCertificateId: existingCert.id, insert: null };
     }
 

@@ -165,8 +165,9 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
 - **Mint runs `getProjectPermission` for the user, then once more for the caller.** The permission service leaves
   the last actor it ran for in the request context, where the audit log reads the caller's permission metadata. The
   second call is memoized, so it costs no query; dropping it attributes the user's metadata to the identity.
-- **The user's session permission is checked with `can()`, not thrown through CASL**, since a CASL denial would be
-  recorded against the identity making the request.
+- **The user's Read on sessions is checked with `can()`, not thrown through CASL**, at mint as on every resolve: the
+  identity starts the session, so the user only needs a live Agent Vault role. A CASL denial would be recorded against
+  the identity making the request.
 - **TTL defaults to 1h, with no maximum for now**: the user didn't start the session and may not know it exists, so a
   cap probably belongs here too, but any TTL is allowed for now, `never` included. The route's `ttl` is optional rather
   than defaulted because the default depends on `onBehalfOf`.
@@ -220,6 +221,8 @@ alone: nothing edits them, no bundle or other session reads them, and only resol
 - **No member-provided fields and no OAuth.** Every value arrives with the mint, and an OAuth service needs a sign-in in
   the UI and a refresh that writes the service row. The schema accepts both, hidden, so `prepareInlineServices` refuses
   them by name, as a bundle service's create refuses fields its type doesn't take.
+- **No tool filtering.** An inline MCP server takes no `allowedTools`, and resolve sends it `allowedTools: null`, so
+  the proxy lets the agent call every tool on it, as it does for a bundle service with no list set.
 - **The name is optional.** An unnamed service goes by its first host (`inlineServiceDisplayName`), worked out on the
   server only: resolve (so the proxy's messages and session logs), the audit log and the session responses all send
   that name, so `name` is never null on the wire and the frontend shows it as is. Mint refuses a name, given or
@@ -251,10 +254,18 @@ alone: nothing edits them, no bundle or other session reads them, and only resol
   `storeRootCaIfMissing` deciding races. A proxy serving its own CA (`--ca-cert`) reports it at bootstrap and is
   sent none; the stored CA is kept for processes that don't bring one, and the row shows whichever CA the latest
   start reported. Create and rotate record the new CA's fingerprint so it can be pinned before
-  anything starts, and bootstrap's fingerprint write is tied to the token version it checked, so a start on a
-  rotated token can't overwrite it.
+  anything starts, except that rotate keeps the fingerprint of a proxy serving its own CA (it is the only record
+  of that, and the next start reports the same CA); a row with no certificate predates stored CAs and gets the
+  new fingerprint. Bootstrap's fingerprint write is tied to the token version
+  it checked, so a start on a rotated token can't overwrite it.
 - Agents still fetch the CA from the proxy's own unauthenticated `/_agent-vault/ca`, so the agent's trust path
-  has no dependency on Infisical. There is deliberately no admin download endpoint for the CA.
+  has no dependency on Infisical. `GET /proxies/:proxyId/ca` (proxy Read) also returns it, for code that
+  can't reach the proxy's HTTP port, such as an E2B orchestrator. It returns only the CA Infisical holds: a
+  proxy serving its own CA reports just the fingerprint, so a fingerprint that doesn't match the stored
+  certificate is a 409. A row with no certificate predates stored CAs and is a 409 that says to rotate the
+  token. The fingerprint is only written at create, rotate and bootstrap, so a proxy that changed its own CA
+  while Infisical was unreachable is recorded only at its next successful start; until then the download can
+  return Infisical's CA.
 - Health is judged against `heartbeatTTL`, the interval the proxy was running when it last checked in, not
   the row's current `pollInterval`. A proxy learns a new interval on its next poll, so comparing against the
   saved one would report a live proxy as unreachable until then. Gateway v2 does the same.
@@ -293,6 +304,40 @@ the matching at runtime and reimplements the same rules, so a change here needs 
 - Conflict detection is an intersection over individual patterns, because `hostPattern` is a comma-separated
   set. Same bundle: hard reject. Across bundles: allowed, since a session carries one bundle they never meet.
 - Patterns are stored as typed and normalised at match time. `*.com` is accepted; settled as not a bug.
+
+## Tool allowlist
+
+`allowedTools` on an MCP service names the tools agents may call. Like `allowedMethods`, NULL is every tool and an
+empty array is never stored. Names are exact and case-sensitive, and the proxy compares them byte for byte.
+`agent-vault-tool-name-schemas.ts` (mirrored in the frontend's `serviceSchema.ts`) holds the MCP spec's SHOULD as a
+must: 1 to 128 of `A-Z a-z 0-9 _ - .`, which keeps out lone surrogates and U+FFFD (node-pg rewrites the first, Go
+folds both). The Tools step drops server tools outside it, since they could never be allowed. The CLI's
+`mcpNamePattern` is wider (it also takes `:` and `/`) and only decides whether the session log records a name; a call
+outside it is logged unparsed and still checked against the list.
+
+- **The proxy's `tools/call` check is the control.** While a list is set it reads every POST to the service, up to
+  32 MiB, logs on or off, and refuses the whole request when any call names an unlisted tool, before the credential is
+  attached. A larger body gets a 413. The check goes by the body, not the `Content-Type`: a body declared
+  `application/json`, or one whose first byte after whitespace or a BOM is `{` or `[`, is parsed strictly, and any
+  other body (a form-encoded OAuth token request) is forwarded. It fails closed: a compressed body, a charset other
+  than UTF-8, `Mcp-Method`/`Mcp-Name` headers that differ from the body, JSON it can't parse strictly (duplicate or
+  case-variant keys) and a `tools/call` with no tool name get a 400, and so does any other method that carries a body.
+  In a refused batch only the entries that call an unlisted tool name it. A Streamable HTTP client (its `Accept` lists
+  both `application/json` and `text/event-stream`) gets the refusal as a JSON-RPC error with status 200, since MCP
+  clients read a 403 as an auth failure; a legacy SSE client gets 202 and the error on the event stream whose
+  `endpoint` event named the POST's URL, as the server would answer, and the same body with a 403 only when the proxy
+  hasn't seen that stream.
+- **Hiding unlisted tools from `tools/list` is only a convenience.** The proxy filters any result shaped like a tool
+  list, in JSON and SSE responses, by shape rather than by request id. It drops the agent's `Accept-Encoding` so the
+  response arrives uncompressed. A response it can't rewrite (still compressed, over 1 MiB, unparseable) passes
+  through, and a tool entry without a readable name is dropped.
+- An older proxy enforces nothing, as with methods and paths.
+- **Loading a server's tools for the service sheet** is `POST .../mcp-tools/list`, an action route on purpose: on
+  create there is no service yet and the body carries a credential. It sends what a save of the same body would store
+  (omitted values fall back to the saved service, variables expanded as resolve does), reads a pending OAuth
+  authorization without claiming it, and refreshes a stored OAuth token through the usual refresh. The client is
+  hand-rolled on `safeRequest`, not the MCP SDK, which would bypass the SSRF guard. It is not audited, and a
+  member-provided bearer token can't load tools (the admin types names instead).
 
 ## Transformations
 
@@ -386,9 +431,9 @@ An admin can leave a credential field to each member: the bearer token, or eithe
 `credential-username` a username). Custom header and substitution values can't be member-provided yet. The personal
 value tables already carry the reference tables' target columns, but adding them still needs the service's check
 constraint and the API's field enum widened. Each actor saves their own **personal values** for the service, one row
-per field, and a session uses the values of whoever it belongs to. Every actor, admins included, also keeps
-**personal variables**, rows of `agent_vault_variables` with an owner, that only their own personal values can
-reference.
+per field, and a session uses the values of whoever it belongs to, or on a user's behalf that user's. Every actor,
+admins included, also keeps **personal variables**, rows of `agent_vault_variables` with an owner, that only their own
+personal values can reference.
 
 - **`memberProvidedFields` is NULL, never `{}`, for a credential the admin sets in full**, like `allowedMethods`. The
   service's sealed secret holds only the admin's fields, so a bearer token left to members stores no secret at all
@@ -692,6 +737,11 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   five-poll grace window and reset the counter.
 - The enrollment dialog's Docker snippet mounts `/etc/infisical/agent-vault` (the root data dir). Without it a
   re-created container has no CA and a spent token.
+- `--socks5-port` opens a second door: SOCKS5, always over TLS, with the session token as the password, for
+  clients such as E2B that tunnel a sandbox's traffic from outside it. After login it takes the same path as
+  `CONNECT`, so it handles HTTP/1.1 only; other TCP is closed, with a rate-limited warning in the proxy's log. On that door alone, under
+  the any-host policy, a host no service names may not resolve to a private address (cloud metadata, the
+  proxy's own network); `--socks5-allow-private-destinations` turns that off.
 
 ## The frontend
 
@@ -710,3 +760,6 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   `access-bundle-services.png` (columns are now Type and Target, and it should show an MCP row),
   `service-template-picker.png` (the service type sidebar, the MCP Servers section, **Custom HTTP API**), and
   `session-logs-view.png` (the Request column, with a tool call and a `tools/list` row).
+- **Raw passthrough over SOCKS5.** Non-HTTP TCP to hosts no service names could be spliced through untouched,
+  so SSH and databases work for SOCKS5 clients other than E2B. That traffic would carry no credential and
+  produce no request logs.

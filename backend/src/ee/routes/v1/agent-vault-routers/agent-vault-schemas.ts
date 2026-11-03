@@ -28,6 +28,7 @@ import {
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix-schemas";
 import { agentVaultMcpServerUrlSchema } from "@app/ee/services/agent-vault/agent-vault-service-type-fns";
+import { agentVaultAllowedToolsSchema } from "@app/ee/services/agent-vault/agent-vault-tool-name-schemas";
 import {
   acceptsNoVariableReferences,
   acceptsVariableReferences,
@@ -54,6 +55,14 @@ import { AGENT_VAULT } from "@app/lib/api-docs";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 
 export const AgentVaultNameSchema = slugSchema({ max: 64, field: "Name" });
+
+export const AgentVaultDescriptionSchema = z
+  .string()
+  .trim()
+  .max(256, "A description can be at most 256 characters")
+  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  // Blank and absent read the same, so a blank description is stored as null rather than "".
+  .transform((description) => description || null);
 
 export const AgentVaultHostPatternSchema = hostPatternSchema.describe(AGENT_VAULT.SERVICE.hostPattern);
 
@@ -295,6 +304,8 @@ export const AgentVaultAllowedPathPrefixesSchema = agentVaultPathPrefixListSchem
   AGENT_VAULT.SERVICE.allowedPathPrefixes
 );
 
+export const AgentVaultAllowedToolsSchema = agentVaultAllowedToolsSchema.describe(AGENT_VAULT.SERVICE.allowedTools);
+
 export const AgentVaultCustomHeadersInputSchema = AgentVaultCustomHeaderInputSchema.array()
   .max(AGENT_VAULT_MAX_CUSTOM_HEADERS)
   .superRefine(addDuplicateCustomHeaderNameIssues)
@@ -333,7 +344,8 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
       customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
       substitutions: AgentVaultSubstitutionsInputSchema.optional(),
       serverUrl: AgentVaultServerUrlSchema.optional().describe(openApiHidden()),
-      transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden())
+      transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden()),
+      allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden())
     })
     .describe(JSON.stringify({ title: "HTTP service" })),
   z
@@ -343,6 +355,7 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
       serverUrl: AgentVaultServerUrlSchema,
       transport: AgentVaultMcpTransportSchema,
       credential: AgentVaultMcpCredentialInputSchema.describe(AGENT_VAULT.SERVICE.mcpCredential),
+      allowedTools: AgentVaultAllowedToolsSchema.optional(),
       customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
       hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
       allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
@@ -368,7 +381,8 @@ export const AgentVaultUpdateServiceBodySchema = z
         customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
         substitutions: AgentVaultSubstitutionsUpdateSchema.optional(),
         serverUrl: AgentVaultServerUrlSchema.nullable().optional().describe(openApiHidden()),
-        transport: AgentVaultMcpTransportSchema.nullable().optional().describe(openApiHidden())
+        transport: AgentVaultMcpTransportSchema.nullable().optional().describe(openApiHidden()),
+        allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden())
       })
       .describe(JSON.stringify({ title: "HTTP service" })),
     z
@@ -378,6 +392,7 @@ export const AgentVaultUpdateServiceBodySchema = z
         serverUrl: AgentVaultServerUrlSchema.optional(),
         transport: AgentVaultMcpTransportSchema.optional(),
         credential: AgentVaultMcpCredentialUpdateSchema.optional().describe(AGENT_VAULT.SERVICE.mcpCredential),
+        allowedTools: AgentVaultAllowedToolsSchema.optional(),
         customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
         hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
         allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
@@ -470,7 +485,8 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
       customHeaders: AgentVaultInlineCustomHeadersInputSchema.optional(),
       substitutions: AgentVaultInlineSubstitutionsInputSchema.optional(),
       serverUrl: AgentVaultServerUrlSchema.optional().describe(openApiHidden()),
-      transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden())
+      transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden()),
+      allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden())
     })
     .describe(JSON.stringify({ title: "HTTP service" })),
   z
@@ -484,7 +500,9 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
       hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
       allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
       allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
-      substitutions: AgentVaultInlineSubstitutionsInputSchema.optional().describe(openApiHidden())
+      substitutions: AgentVaultInlineSubstitutionsInputSchema.optional().describe(openApiHidden()),
+      // Refused by the session service with a message, rather than dropped, so nobody believes the tools are limited.
+      allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden())
     })
     .describe(JSON.stringify({ title: "MCP service" }))
 ]);
@@ -549,6 +567,16 @@ export const AgentVaultInlineServiceSchema = z.object({
     .describe(AGENT_VAULT.SESSION.inlineSubstitutionsRead)
 });
 
+// The service sheet's unsaved values, so the tools are listed with the credential a save would store. `serviceId`
+// names the saved service whose stored values fill in what is left out.
+export const AgentVaultListMcpToolsBodySchema = z.object({
+  serviceId: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.serviceId),
+  serverUrl: AgentVaultServerUrlSchema,
+  transport: AgentVaultMcpTransportSchema,
+  credential: AgentVaultMcpCredentialUpdateSchema.optional().describe(AGENT_VAULT.SERVICE.mcpCredential),
+  customHeaders: AgentVaultCustomHeadersUpdateSchema.optional()
+});
+
 const variableReferenceBase = {
   variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
   key: z.string().describe(AGENT_VAULT.VARIABLE.key)
@@ -590,6 +618,7 @@ export const AgentVaultServiceSchema = z.object({
   hostPattern: z.string().describe(AGENT_VAULT.SERVICE.hostPattern),
   allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
   allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedPathPrefixes),
+  allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools),
   credential: AgentVaultCredentialSummarySchema,
   customHeaders: z
     .object({
@@ -946,7 +975,10 @@ export const AgentVaultSkippedActorSchema = z.discriminatedUnion("type", [
 const grantedAtSchema = z.date().describe(AGENT_VAULT.MEMBER.grantedAt);
 
 export const AgentVaultMemberSchema = z.discriminatedUnion("type", [
-  memberActorSchemas.user.extend({ grantedAt: grantedAtSchema }),
+  memberActorSchemas.user.extend({
+    isOrgMembershipPending: z.boolean().describe(AGENT_VAULT.MEMBER.isOrgMembershipPending),
+    grantedAt: grantedAtSchema
+  }),
   memberActorSchemas.machineIdentity.extend({ grantedAt: grantedAtSchema }),
   groupActorSchema.extend({ grantedAt: grantedAtSchema })
 ]);

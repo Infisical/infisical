@@ -94,7 +94,8 @@ const buildPermissionService = () =>
     identityDAL: identityDALFactory(testDb),
     additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
     groupDAL: groupDALFactory(testDb),
-    secretFolderDAL: secretFolderDALFactory(testDb)
+    secretFolderDAL: secretFolderDALFactory(testDb),
+    orgDAL: orgDALFactory(testDb)
   });
 
 const grantRows = (
@@ -5044,6 +5045,53 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("a session can be started for a user whose full name is longer than 255 characters", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`obo-long-name-${Date.now()}`);
+      const bot = await createMemberIdentity(`obo-long-name-bot-${Date.now()}`);
+      const alice = await createAgentVaultUser("obo-long-name-alice", projectId);
+      try {
+        // Each half fits its own 255-character column; the snapshot holds both together.
+        await testDb("users")
+          .where({ id: alice.userId })
+          .update({ firstName: "A".repeat(200), lastName: "N".repeat(200) });
+        await grantBundle(bundle.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId] });
+
+        const minted = await mintFor(bot, { userId: alice.userId }, bundle.name);
+        expect(minted.statusCode, minted.payload).toBe(200);
+        const row = await testDb("agent_vault_sessions").where({ id: minted.json().session.id }).first();
+        expect(row.onBehalfOfUserName).toHaveLength(401);
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId]);
+      }
+    });
+
+    test("the database keeps a session on a user's behalf a machine identity's", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`obo-check-${Date.now()}`);
+      const bot = await createMemberIdentity(`obo-check-bot-${Date.now()}`);
+      const alice = await createAgentVaultUser("obo-check-alice", projectId);
+      try {
+        await grantBundle(bundle.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId] });
+        const minted = await mintFor(bot, { userId: alice.userId }, bundle.name);
+        expect(minted.statusCode).toBe(200);
+        const session = () => testDb("agent_vault_sessions").where({ id: minted.json().session.id as string });
+
+        const check = /agent_vault_sessions_on_behalf_of_check/;
+        await expect(session().update({ actorType: null })).rejects.toThrow(check);
+        await expect(session().update({ actorType: "user", userId: alice.userId, identityId: null })).rejects.toThrow(
+          check
+        );
+        await expect(session().update({ onBehalfOfUserName: null })).rejects.toThrow(check);
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId]);
+      }
+    });
+
     test("a revoke that finds the session's user just deleted reports the session as it is now", async () => {
       const bundle = await createAccessBundle(`obo-revoke-race-${Date.now()}`);
       const bot = await createMemberIdentity(`obo-revoke-race-bot-${Date.now()}`);
@@ -5189,6 +5237,29 @@ describe("Agent Vault V1 Router", async () => {
         expect(new Date(replaced.createdAt).getTime()).toBeGreaterThan(
           new Date((first as unknown as { createdAt: string }).createdAt).getTime()
         );
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId, bob.userId]);
+      }
+    });
+
+    test("two requests creating an identity's first delegation at once both land", async () => {
+      const projectId = await getProjectId();
+      const bot = await createMemberIdentity(`obo-first-race-${Date.now()}`);
+      const alice = await createAgentVaultUser("obo-first-race-alice", projectId);
+      const bob = await createAgentVaultUser("obo-first-race-bob", projectId);
+      const subjectsUrl = `${delegationUrl(bot.id)}/subjects`;
+      try {
+        // Neither write finds a delegation, so both insert one and collide on the row. A save and an add, then two adds.
+        for await (const round of Array.from({ length: 20 }, (_, index) => index)) {
+          const first =
+            round % 2 === 0
+              ? inject("PUT", delegationUrl(bot.id), { scope: "selected", userIds: [alice.userId] })
+              : inject("POST", subjectsUrl, { userIds: [alice.userId] });
+          const results = await Promise.all([first, inject("POST", subjectsUrl, { userIds: [bob.userId] })]);
+          expect([round, ...results.map((res) => res.statusCode)]).toEqual([round, 200, 200]);
+          expect((await inject("DELETE", delegationUrl(bot.id))).statusCode).toBe(200);
+        }
       } finally {
         await bot.cleanup();
         await deleteUsers([alice.userId, bob.userId]);
@@ -7384,6 +7455,46 @@ describe("Agent Vault V1 Router", async () => {
       expect(proxy.pollInterval).toBe(60);
     });
 
+    test("a proxy's description is stored, searchable, and can be cleared", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", {
+        name: "described-proxy",
+        description: "Egress for staging"
+      });
+      expect(created.statusCode).toBe(200);
+      const { proxy } = JSON.parse(created.payload) as { proxy: { id: string; description: string | null } };
+      expect(proxy.description).toBe("Egress for staging");
+
+      const listed = await inject("GET", "/api/v1/agent-vault/proxies?search=staging");
+      expect(listed.statusCode).toBe(200);
+      const { proxies } = JSON.parse(listed.payload) as { proxies: { id: string }[] };
+      expect(proxies.map((p) => p.id)).toContain(proxy.id);
+
+      const cleared = await inject("PATCH", `/api/v1/agent-vault/proxies/${proxy.id}`, { description: null });
+      expect(cleared.statusCode).toBe(200);
+      expect((JSON.parse(cleared.payload) as { proxy: { description: string | null } }).proxy.description).toBeNull();
+    });
+
+    test("a blank proxy description is stored as null, and a line break is refused", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", {
+        name: "blank-description-proxy",
+        description: "   "
+      });
+      expect(created.statusCode).toBe(200);
+      const { proxy } = JSON.parse(created.payload) as { proxy: { id: string; description: string | null } };
+      expect(proxy.description).toBeNull();
+
+      const set = await inject("PATCH", `/api/v1/agent-vault/proxies/${proxy.id}`, { description: "Egress" });
+      expect(set.statusCode).toBe(200);
+      const blanked = await inject("PATCH", `/api/v1/agent-vault/proxies/${proxy.id}`, { description: "" });
+      expect(blanked.statusCode).toBe(200);
+      expect((JSON.parse(blanked.payload) as { proxy: { description: string | null } }).proxy.description).toBeNull();
+
+      const multiline = await inject("PATCH", `/api/v1/agent-vault/proxies/${proxy.id}`, {
+        description: "Egress for staging\nowned by platform"
+      });
+      expect(multiline.statusCode).toBe(422);
+    });
+
     test("create and rotate both hand back the proxy token at the top level", async () => {
       const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "flat-token-shape" });
       expect(created.statusCode).toBe(200);
@@ -7642,6 +7753,119 @@ describe("Agent Vault V1 Router", async () => {
       const row = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
       expect(row.rootCaFingerprint).toBe(fingerprintOf(own));
       expect(row.encryptedRootCaPrivateKey).not.toBeNull();
+    });
+
+    test("the CA download returns the CA the proxy serves, to members as well as admins", async () => {
+      const created = await createProxy("ca-download");
+      const { rootCa } = JSON.parse((await asProxy(created.proxyToken, "bootstrap", {})).payload) as {
+        rootCa: TRootCa;
+      };
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(200);
+      const { ca } = JSON.parse(res.payload) as { ca: { certificate: string; fingerprint: string; expiresAt: string } };
+      expect(ca.certificate).toBe(rootCa.certificate);
+      expect(ca.fingerprint).toBe(created.proxy.rootCaFingerprint);
+      expect(new Date(ca.expiresAt).getTime()).toBe(new x509.X509Certificate(rootCa.certificate).notAfter.getTime());
+      expect(res.payload).not.toContain("PRIVATE KEY");
+
+      const member = await createUaIdentity(`av-proxy-ca-member-${Date.now()}`);
+      try {
+        expect(
+          (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [member.id], role: "member" }))
+            .statusCode
+        ).toBe(200);
+        const asMember = await member.asIdentity("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+        expect(asMember.statusCode).toBe(200);
+        expect((JSON.parse(asMember.payload) as { ca: { certificate: string } }).ca.certificate).toBe(
+          rootCa.certificate
+        );
+      } finally {
+        await deleteUaIdentity(member.id);
+      }
+    });
+
+    test("after a rotation the CA download returns the new CA", async () => {
+      const created = await createProxy("ca-download-rotate");
+      const rotated = await rotate(created.proxy.id);
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(200);
+      const { ca } = JSON.parse(res.payload) as { ca: { fingerprint: string } };
+      expect(ca.fingerprint).toBe(rotated.proxy.rootCaFingerprint);
+      expect(ca.fingerprint).not.toBe(created.proxy.rootCaFingerprint);
+    });
+
+    test("the CA download is a 409 for a proxy serving its own CA, which Infisical doesn't hold", async () => {
+      const created = await createProxy("ca-download-own");
+      expect((await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: await caPem() })).statusCode).toBe(
+        200
+      );
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).message).toContain("--ca-cert");
+    });
+
+    test("a rotation keeps the CA download a 409 for a proxy serving its own CA", async () => {
+      const created = await createProxy("ca-download-own-rotate");
+      const own = await caPem();
+      expect((await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: own })).statusCode).toBe(200);
+
+      const rotated = await rotate(created.proxy.id);
+      expect(rotated.proxy.rootCaFingerprint).toBe(fingerprintOf(own));
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).message).toContain("--ca-cert");
+
+      // Started on the new token without its own CA, it takes the one the rotation stored.
+      const boot = await asProxy(rotated.proxyToken, "bootstrap", {});
+      expect(boot.statusCode).toBe(200);
+      const { rootCa } = JSON.parse(boot.payload) as { rootCa: TRootCa };
+      const after = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(after.statusCode).toBe(200);
+      expect((JSON.parse(after.payload) as { ca: { certificate: string } }).ca.certificate).toBe(rootCa.certificate);
+    });
+
+    test("a proxy enrolled before Infisical stored CAs is told about its ca.crt, and a rotation gives it a CA", async () => {
+      const created = await createProxy("ca-download-legacy");
+      const legacy = await caPem();
+      await agentVaultProxyDALFactory(testDb).updateById(created.proxy.id, {
+        rootCaCertificate: null,
+        encryptedRootCaPrivateKey: null,
+        rootCaFingerprint: fingerprintOf(legacy)
+      });
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).message).toContain("ca.crt");
+
+      // Its next start serves the CA the rotation stores, so the rotation records that CA's fingerprint.
+      const rotated = await rotate(created.proxy.id);
+      expect(rotated.proxy.rootCaFingerprint).not.toBe(fingerprintOf(legacy));
+      const after = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(after.statusCode).toBe(200);
+      expect((JSON.parse(after.payload) as { ca: { fingerprint: string } }).ca.fingerprint).toBe(
+        rotated.proxy.rootCaFingerprint
+      );
+    });
+
+    test("a proxy with no CA at all is told to rotate its token", async () => {
+      const created = await createProxy("ca-download-none");
+      await agentVaultProxyDALFactory(testDb).updateById(created.proxy.id, {
+        rootCaCertificate: null,
+        encryptedRootCaPrivateKey: null,
+        rootCaFingerprint: null
+      });
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).message).toContain("Rotate its proxy token");
+    });
+
+    test("the CA download is a 404 for a proxy that doesn't exist", async () => {
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${crypto.randomUUID()}/ca`);
+      expect(res.statusCode).toBe(404);
     });
 
     test("a served CA that isn't a CA, or isn't a certificate, is refused and changes nothing", async () => {
@@ -8011,7 +8235,7 @@ describe("Agent Vault V1 Router", async () => {
 
         expect(byType.group).toMatchObject({ type: "group", id: group.id, name: "av-arms-group" });
         expect(byType.machineIdentity).toMatchObject({ type: "machineIdentity", id: identity.id });
-        expect(byType.user).toMatchObject({ type: "user", id: seedData1.id });
+        expect(byType.user).toMatchObject({ type: "user", id: seedData1.id, isOrgMembershipPending: false });
         expect(byType.user.username).toBeTruthy();
 
         members.forEach((member) => {
@@ -8026,6 +8250,62 @@ describe("Agent Vault V1 Router", async () => {
           expect(member).not.toHaveProperty("identity");
           expect(member).not.toHaveProperty("group");
         });
+      } finally {
+        await deleteOrgIdentity(identity.id);
+        await group.cleanup();
+      }
+    });
+
+    test("the bundle member and candidate lists filter by actor type on the server", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle("member-type-filter");
+      const group = await createProjectGroup(projectId, "av-type-filter-group", ProjectMembershipRole.Member);
+      const identity = await createOrgIdentity(`av-type-filter-identity-${Date.now()}`);
+      const membersUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members`;
+      const list = async (url: string, query: string) => {
+        const res = await inject("GET", `${url}?limit=100&${query}`);
+        expect(res.statusCode).toBe(200);
+        return JSON.parse(res.payload) as { members: { type: string; id: string }[]; totalCount: number };
+      };
+      const idsOf = (listed: { members: { id: string }[] }) => listed.members.map((member) => member.id);
+
+      try {
+        expect(
+          (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [identity.id], role: "member" }))
+            .statusCode
+        ).toBe(200);
+
+        const groupCandidates = await list(`${membersUrl}/available`, "actorType=group");
+        expect(groupCandidates.members.every((member) => member.type === "group")).toBe(true);
+        expect(idsOf(groupCandidates)).toContain(group.id);
+        expect(groupCandidates.totalCount).toBe(groupCandidates.members.length);
+
+        const userCandidates = await list(`${membersUrl}/available`, "actorType=user");
+        expect(userCandidates.members.every((member) => member.type === "user")).toBe(true);
+        expect(idsOf(userCandidates)).not.toContain(group.id);
+
+        expect(
+          (await inject("POST", membersUrl, { groupIds: [group.id], machineIdentityIds: [identity.id] })).statusCode
+        ).toBe(200);
+
+        const groups = await list(membersUrl, "actorType=group");
+        expect(idsOf(groups)).toEqual([group.id]);
+        expect(groups.totalCount).toBe(1);
+
+        const identities = await list(membersUrl, "actorType=machineIdentity");
+        expect(idsOf(identities)).toEqual([identity.id]);
+        expect(identities.totalCount).toBe(1);
+
+        // The creator's own grant is the only user on the bundle.
+        const users = await list(membersUrl, "actorType=user");
+        expect(idsOf(users)).toEqual([seedData1.id]);
+        expect(users.totalCount).toBe(1);
+
+        expect(idsOf(await list(`${membersUrl}/available`, "actorType=group"))).not.toContain(group.id);
+        expect(idsOf(await list(`${membersUrl}/available`, "actorType=machineIdentity"))).not.toContain(identity.id);
+
+        expect((await inject("GET", `${membersUrl}?actorType=nonsense`)).statusCode).toBe(422);
+        expect((await inject("GET", `${membersUrl}/available?actorType=nonsense`)).statusCode).toBe(422);
       } finally {
         await deleteOrgIdentity(identity.id);
         await group.cleanup();

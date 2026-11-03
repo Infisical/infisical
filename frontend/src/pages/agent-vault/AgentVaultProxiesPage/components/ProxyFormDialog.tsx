@@ -32,6 +32,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { agentVaultDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
 import {
   AgentVaultTrafficPolicy,
@@ -58,6 +59,7 @@ const TRAFFIC_POLICY_CHOICES = [
 const schema = z
   .object({
     name: slugSchema({ max: 64, field: "Name" }),
+    description: agentVaultDescriptionSchema.optional(),
     trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy),
     allowedHosts: z.string().trim().max(1024).optional(),
     // Guarded before coercion: z.coerce turns "" into 0, which would report the range error instead.
@@ -156,6 +158,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
 
     reset({
       name: proxy?.name ?? "",
+      description: proxy?.description ?? "",
       trafficPolicy:
         proxy && isServiceHostsPolicy(proxy.trafficPolicy)
           ? AgentVaultTrafficPolicy.ServiceHosts
@@ -177,10 +180,17 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
       };
 
       if (proxy) {
-        await updateProxy.mutateAsync({ proxyId: proxy.id, ...payload });
+        await updateProxy.mutateAsync({
+          proxyId: proxy.id,
+          ...payload,
+          description: data.description || null
+        });
         createNotification({ text: `Proxy "${data.name}" updated`, type: "success" });
       } else {
-        const result = await createProxy.mutateAsync(payload);
+        const result = await createProxy.mutateAsync({
+          ...payload,
+          description: data.description || undefined
+        });
         createNotification({ text: `Proxy "${data.name}" created`, type: "success" });
         onCreated?.({ proxyToken: result.proxyToken });
       }
@@ -288,6 +298,23 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                   <FieldLabel>Name</FieldLabel>
                   <FieldContent>
                     <Input {...field} placeholder="egress-1" isError={Boolean(fieldState.error)} />
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </FieldContent>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="description"
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel>Description</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      {...field}
+                      placeholder="Egress for the staging cluster"
+                      isError={Boolean(fieldState.error)}
+                    />
                     <FieldError>{fieldState.error?.message}</FieldError>
                   </FieldContent>
                 </Field>

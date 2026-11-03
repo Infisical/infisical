@@ -14,11 +14,12 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { actorContext } from "./agent-vault-router-fns";
-import { agentVaultListQuery } from "./agent-vault-schemas";
+import { AgentVaultDescriptionSchema, agentVaultListQuery } from "./agent-vault-schemas";
 
 const ProxyMemberViewSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
   name: z.string().describe(AGENT_VAULT.PROXY.name),
+  description: z.string().nullable().describe(AGENT_VAULT.PROXY.description),
   heartbeat: z.date().nullable().describe(AGENT_VAULT.PROXY.heartbeat),
   isHealthy: z.boolean().describe(AGENT_VAULT.PROXY.isHealthy),
   rootCaFingerprint: z.string().nullable().describe(AGENT_VAULT.PROXY.rootCaFingerprint),
@@ -38,6 +39,8 @@ const ProxyWithTokenSchema = z.object({
   proxy: ProxyAdminViewSchema,
   proxyToken: z.string().describe(AGENT_VAULT.PROXY.proxyToken)
 });
+
+const ProxyDescriptionSchema = AgentVaultDescriptionSchema.describe(AGENT_VAULT.PROXY.description);
 
 const ProxySettingsSchema = {
   trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
@@ -79,6 +82,40 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
+    method: "GET",
+    url: "/:proxyId/ca",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "getAgentVaultProxyCa",
+      description:
+        "Get the certificate authority an Agent Vault proxy serves. Returns 409 when the proxy serves its own certificate authority, which Infisical does not hold.",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      params: z.object({
+        proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId)
+      }),
+      response: {
+        200: z.object({
+          ca: z
+            .object({
+              certificate: z.string().describe(AGENT_VAULT.PROXY.rootCaCertificatePem),
+              fingerprint: z.string().describe(AGENT_VAULT.PROXY.rootCaFingerprint),
+              expiresAt: z.date().describe(AGENT_VAULT.PROXY.rootCaExpiresAt)
+            })
+            .describe(AGENT_VAULT.PROXY.ca)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.agentVaultProxy.getProxyCa({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        proxyId: req.params.proxyId
+      })
+  });
+
+  server.route({
     method: "POST",
     url: "/",
     config: { rateLimit: writeLimit },
@@ -89,6 +126,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       tags: [ApiDocsTags.AgentVaultProxies],
       body: z.object({
         name: slugSchema({ max: 64, field: "Name" }).describe(AGENT_VAULT.PROXY.name),
+        description: ProxyDescriptionSchema.optional(),
         trafficPolicy: ProxySettingsSchema.trafficPolicy.default(AgentVaultTrafficPolicy.AnyHost),
         allowedHosts: ProxySettingsSchema.allowedHosts.default(null),
         pollInterval: ProxySettingsSchema.pollInterval.default(60)
@@ -111,7 +149,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
           projectId: req.internalAgentVaultProjectId,
           event: {
             type: EventType.AGENT_VAULT_PROXY_REGISTER,
-            metadata: { proxyId: proxy.id, name: proxy.name }
+            metadata: { proxyId: proxy.id, name: proxy.name, description: proxy.description ?? null }
           }
         });
       } catch (error) {
@@ -140,12 +178,13 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       operationId: "updateAgentVaultProxy",
-      description: "Update an Agent Vault proxy's name or settings",
+      description: "Update an Agent Vault proxy's name, description, or settings",
       tags: [ApiDocsTags.AgentVaultProxies],
       params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
       body: z
         .object({
           name: slugSchema({ max: 64, field: "Name" }).optional().describe(AGENT_VAULT.PROXY.name),
+          description: ProxyDescriptionSchema.nullable().optional(),
           trafficPolicy: ProxySettingsSchema.trafficPolicy.optional(),
           allowedHosts: ProxySettingsSchema.allowedHosts.optional(),
           pollInterval: ProxySettingsSchema.pollInterval.optional()
@@ -153,6 +192,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         .refine(
           (body) =>
             body.name !== undefined ||
+            body.description !== undefined ||
             body.trafficPolicy !== undefined ||
             body.allowedHosts !== undefined ||
             body.pollInterval !== undefined,

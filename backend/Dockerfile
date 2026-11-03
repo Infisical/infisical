@@ -1,5 +1,5 @@
 # Build stage
-ARG INFISICAL_CLI_VERSION=0.44.6
+ARG INFISICAL_CLI_VERSION=0.44.12
 
 FROM node:26.12.1-trixie-slim AS build
 
@@ -24,6 +24,10 @@ RUN npm ci
 
 COPY . .
 RUN npm run build
+
+# Build output without dev dependencies, copied whole into the production stage
+FROM build AS build-output
+RUN rm -rf ./node_modules ./bdd ./e2e-test
 
 # Oracle Instant Client (parallel stage — downloads while other stages build)
 FROM debian:trixie-slim AS oracle
@@ -64,6 +68,8 @@ RUN apt-get update && apt-get install -y \
 
 COPY package*.json ./
 RUN npm ci --omit=dev
+# Test folders these packages publish, with sample private keys that image scanners flag
+RUN rm -rf node_modules/@fastify/reply-from/test node_modules/ssh2/test node_modules/universal-github-app-jwt/test
 
 # Production stage
 FROM node:26.12.1-trixie-slim
@@ -100,8 +106,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
     echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
     ldconfig
 
-COPY --from=build /app .
-RUN rm -rf ./node_modules ./bdd ./e2e-test
+COPY --from=build-output /app .
 COPY --from=prod-deps /app/node_modules ./node_modules
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \

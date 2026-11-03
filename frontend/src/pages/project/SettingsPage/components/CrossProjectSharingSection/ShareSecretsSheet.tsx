@@ -3,6 +3,14 @@ import { ArrowDown, Box, FolderIcon, Layers, Plus, Trash2, X } from "lucide-reac
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Combobox,
   Field,
@@ -26,11 +34,14 @@ import { useProject } from "@app/context";
 import {
   TProjectFolderGrant,
   useCreateProjectFolderGrant,
-  useDeleteProjectFolderGrant
+  useDeleteProjectFolderGrant,
+  useGetProjectFolderGrantsUsageTotal
 } from "@app/hooks/api/projectFolderGrants";
 import { useGetUserProjectsByType } from "@app/hooks/api/projects";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useGetProjectFolders } from "@app/hooks/api/secretFolders/queries";
+
+import { GrantRevocationImpact } from "./GrantRevocationImpact";
 
 type EnvironmentGroup = {
   environment: string;
@@ -239,6 +250,7 @@ export const ShareSecretsSheet = ({
   const [targetProjects, setTargetProjects] = useState<Project[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmUpdateOpen, setIsConfirmUpdateOpen] = useState(false);
   const createGrant = useCreateProjectFolderGrant();
   const deleteGrant = useDeleteProjectFolderGrant();
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjectsByType(
@@ -280,6 +292,21 @@ export const ShareSecretsSheet = ({
   const availableProjects = projects.filter((p) => p.id !== currentProject.id);
 
   const usedEnvironments = new Set(groups.map((g) => g.environment).filter(Boolean));
+
+  const remainingKeys = new Set(
+    flattenGroups(groups).map((e) => entryKey(e.environment, e.secretPath))
+  );
+  const revokedGrants = (editData?.grants ?? []).filter(
+    (g) =>
+      !remainingKeys.has(entryKey(g.environmentSlug, g.secretPath)) &&
+      canRevokeGrant(g.environmentSlug, g.secretPath)
+  );
+
+  const revokedGrantUsage = useGetProjectFolderGrantsUsageTotal(
+    revokedGrants.map((g) => g.id),
+    currentProject.id,
+    isConfirmUpdateOpen
+  );
 
   const hasValidEntry =
     groups.length > 0 && groups.every((g) => g.environment && g.secretPaths.length > 0);
@@ -489,12 +516,44 @@ export const ShareSecretsSheet = ({
             variant="project"
             disabled={!hasValidEntry || (!isEditMode && targetProjects.length === 0)}
             isPending={isSubmitting}
-            onClick={handleSubmit}
+            onClick={() => {
+              if (revokedGrants.length > 0) {
+                setIsConfirmUpdateOpen(true);
+                return;
+              }
+              handleSubmit();
+            }}
           >
             {isEditMode ? "Save" : "Share"}
           </Button>
         </SheetFooter>
       </SheetContent>
+      <AlertDialog open={isConfirmUpdateOpen} onOpenChange={setIsConfirmUpdateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Access to Shared Folders?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{editData?.targetProjectName}</strong> will lose access to{" "}
+              {revokedGrants.length} shared {revokedGrants.length === 1 ? "folder" : "folders"}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <GrantRevocationImpact
+            usage={revokedGrantUsage}
+            targetProjectName={editData?.targetProjectName}
+            folderCount={revokedGrants.length}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={handleSubmit}
+              isDisabled={revokedGrantUsage.isChecking}
+            >
+              Save
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 };

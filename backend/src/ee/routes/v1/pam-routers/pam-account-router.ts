@@ -653,7 +653,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT,
-          metadata: { accountId: req.params.accountId, rotationAccountId: result.rotationAccountId }
+          metadata: {
+            accountId: req.params.accountId,
+            accountName: result.accountName,
+            rotationAccountId: result.rotationAccountId,
+            rotationAccountName: result.rotationAccountName
+          }
         }
       });
 
@@ -793,10 +798,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
           metadata: {
             accountId: req.params.accountId,
+            accountName: result.accountName,
             accountType: result.accountType,
             rotationStatus: result.rotationStatus,
             manual: true,
             rotationAccountId: result.rotationAccountId,
+            rotationAccountName: result.rotationAccountName,
             ...(result.message ? { message: result.message } : {})
           }
         }

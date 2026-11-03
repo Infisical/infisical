@@ -24,6 +24,8 @@ export type TAgentVaultInlineServiceInput = {
   transport?: AgentVaultMcpTransport;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
+  // Accepted only to be refused by name: an inline MCP server can't be limited to some of its tools.
+  allowedTools?: string[] | null;
   credential:
     | {
         type: AgentVaultCredentialType.Bearer;

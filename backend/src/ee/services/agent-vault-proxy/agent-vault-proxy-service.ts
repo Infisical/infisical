@@ -81,7 +81,7 @@ import {
   RESOURCE_TYPE_AGENT_VAULT_PROXY
 } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { generateProxyRootCa, parseRootCaCertificate } from "./agent-vault-ca-fns";
+import { generateProxyRootCa, getRootCaFingerprint, parseRootCaCertificate } from "./agent-vault-ca-fns";
 import { TAgentVaultProxyDALFactory } from "./agent-vault-proxy-dal";
 import {
   TAgentVaultProxyConfig,
@@ -207,6 +207,7 @@ export const agentVaultProxyServiceFactory = ({
   const toMemberView = (proxy: TAgentVaultProxies) => ({
     id: proxy.id,
     name: proxy.name,
+    description: proxy.description ?? null,
     heartbeat: proxy.heartbeat ?? null,
     isHealthy: isHealthy(proxy),
     rootCaFingerprint: proxy.rootCaFingerprint ?? null,
@@ -325,6 +326,27 @@ export const agentVaultProxyServiceFactory = ({
     return { proxies: proxies.map((proxy) => (isAdmin ? toAdminView(proxy) : toMemberView(proxy))), totalCount };
   };
 
+  // A proxy started with its own CA reports only that CA's fingerprint, so the certificate Infisical holds is not
+  // the one it serves and can't be handed out as if it were.
+  const getProxyCa = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
+    await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Read);
+    const proxy = await $findProxyOr404({ projectId, proxyId });
+    const servesOwnCa = new ConflictError({
+      message: `Proxy '${proxy.name}' serves its own certificate authority. Use the certificate you passed to it with --ca-cert.`
+    });
+    // Rows without a certificate predate stored CAs and proxy tokens. A rotation stores a CA and issues a token.
+    if (!proxy.rootCaCertificate) {
+      throw new ConflictError({
+        message: proxy.rootCaFingerprint
+          ? `Proxy '${proxy.name}' was set up before Infisical stored its certificate authority, so it serves the ca.crt in its data directory. To manage the CA from Infisical, rotate the proxy token and restart the proxy with it.`
+          : `Proxy '${proxy.name}' has no certificate authority yet. Rotate its proxy token, then start the proxy with the new token.`
+      });
+    }
+    const held = parseRootCaCertificate(proxy.rootCaCertificate);
+    if (proxy.rootCaFingerprint && proxy.rootCaFingerprint !== held.fingerprint) throw servesOwnCa;
+    return { ca: { certificate: proxy.rootCaCertificate, fingerprint: held.fingerprint, expiresAt: held.expiresAt } };
+  };
+
   const $resourceActor = (ctx: TCreateProxyDTO["ctx"]) => ({
     type: ctx.actor,
     id: ctx.actorId,
@@ -337,7 +359,7 @@ export const agentVaultProxyServiceFactory = ({
   const $signProxyToken = (proxyId: string, orgId: string, tokenVersion: number) =>
     mintAgentVaultProxyJwt({ agentVaultProxyId: proxyId, orgId, tokenVersion, accessTokenTTL: 0 });
 
-  const createProxy = async ({ projectId, ctx, name, ...settings }: TCreateProxyDTO) => {
+  const createProxy = async ({ projectId, ctx, name, description, ...settings }: TCreateProxyDTO) => {
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Create);
 
     const existing = await agentVaultProxyDAL.findOne({ projectId, name });
@@ -362,6 +384,7 @@ export const agentVaultProxyServiceFactory = ({
           {
             projectId,
             name,
+            description,
             trafficPolicy: toStoredTrafficPolicy(settings.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost),
             allowedHosts: settings.allowedHosts ?? null,
             pollInterval: settings.pollInterval ?? 60,
@@ -399,6 +422,12 @@ export const agentVaultProxyServiceFactory = ({
     const proxy = await $findProxyOr404({ projectId, proxyId });
 
     const { stored, reported } = await $newRootCa(proxy.projectId);
+    // The fingerprint is the only record that a proxy serves its own CA, and its next start reports that CA again.
+    // Overwriting it here would make the CA download hand out the new CA, which the proxy never serves. A row with no
+    // certificate predates stored CAs, and its next start serves the CA stored here.
+    const servesOwnCa =
+      Boolean(proxy.rootCaCertificate && proxy.rootCaFingerprint) &&
+      proxy.rootCaFingerprint !== getRootCaFingerprint(proxy.rootCaCertificate as string);
 
     const rotated = await agentVaultProxyDAL.transaction(async (tx) => {
       const updated = await agentVaultProxyDAL.updateById(
@@ -408,7 +437,7 @@ export const agentVaultProxyServiceFactory = ({
           heartbeat: null,
           heartbeatTTL: null,
           ...stored,
-          ...reported
+          ...(servesOwnCa ? {} : reported)
         },
         tx
       );
@@ -988,6 +1017,7 @@ export const agentVaultProxyServiceFactory = ({
       hostPattern: row.hostPattern,
       allowedMethods: row.allowedMethods,
       allowedPathPrefixes: row.allowedPathPrefixes,
+      allowedTools: row.allowedTools,
       credential: refreshedCredentials.get(row.id) ?? $decryptCredential(row, decryptor),
       customHeaders: customHeaderRows
         .filter((header) => header.serviceId === row.id)
@@ -1169,12 +1199,26 @@ export const agentVaultProxyServiceFactory = ({
         : { username: session.actorEmail ?? session.actorName, email: session.actorEmail ?? null };
     }
 
-    return { skills, session, ownerUser, orgId: project.orgId };
+    // The user a session acts for is named the same way, so the audit event can say whose session it was.
+    let onBehalfOfUser: { id: string | null; username: string; email: string | null } | null = null;
+    if (session.onBehalfOfUserName != null) {
+      const user = session.onBehalfOfUserId ? await userDAL.findById(session.onBehalfOfUserId) : undefined;
+      onBehalfOfUser = user
+        ? { id: user.id, username: user.username, email: user.email ?? null }
+        : {
+            id: null,
+            username: session.onBehalfOfUserEmail ?? session.onBehalfOfUserName,
+            email: session.onBehalfOfUserEmail ?? null
+          };
+    }
+
+    return { skills, session, ownerUser, onBehalfOfUser, orgId: project.orgId };
   };
 
   return {
     getProxyForAuth,
     listProxies,
+    getProxyCa,
     createProxy,
     rotateProxyToken,
     updateProxy,

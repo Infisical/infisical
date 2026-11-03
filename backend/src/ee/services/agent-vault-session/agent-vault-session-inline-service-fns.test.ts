@@ -160,6 +160,20 @@ describe("prepareInlineServices", () => {
     );
   });
 
+  test("refuses a tool list on an MCP server, rather than dropping it", () => {
+    expect(() =>
+      prepareInlineServices([
+        {
+          type: AgentVaultServiceType.Mcp,
+          serverUrl: "https://mcp.example.com/mcp",
+          transport: AgentVaultMcpTransport.StreamableHttp,
+          credential: { type: AgentVaultCredentialType.Bearer, value: "token" },
+          allowedTools: ["search"]
+        }
+      ])
+    ).toThrow(/^Service at index 0: Services sent with a session can't limit an MCP server's tools/);
+  });
+
   test("refuses a basic credential with neither half", () => {
     expect(() => prepareInlineServices([httpBearer({ credential: { type: AgentVaultCredentialType.Basic } })])).toThrow(
       "Service at index 0: A basic credential needs a username, a password, or both"
@@ -244,6 +258,7 @@ describe("toResolvedInlineService", () => {
     expect(resolved).toMatchObject({
       name: "api.example.com",
       accessBundleName: null,
+      allowedTools: null,
       personalValuesMissing: false,
       credential: { type: AgentVaultCredentialType.Bearer, value: "{{literal}}" }
     });
