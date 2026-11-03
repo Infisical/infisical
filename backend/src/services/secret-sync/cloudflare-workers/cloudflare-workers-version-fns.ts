@@ -173,7 +173,7 @@ const $createVersion = async (
   ctx: TFallbackContext,
   baseVersionRef: string,
   changes: TSecretChanges | undefined,
-  { message }: { message: (baseVersionId: string) => string }
+  { message }: { message: string }
 ) => {
   const base = await $getVersion(ctx, baseVersionRef);
   $validateBaseVersion(ctx.scriptId, base);
@@ -238,7 +238,7 @@ const $createVersion = async (
         bindings,
         annotations: {
           "workers/tag": "infisical-sync",
-          "workers/message": message(baseVersionId)
+          "workers/message": message
         }
       },
       {
@@ -340,7 +340,7 @@ const $replaceRejectedVersion = async (
 
   try {
     const restored = await $createVersion(ctx, baseVersionId, undefined, {
-      message: () => `Infisical secret sync (restores ${baseVersionId} in place of rejected ${rejectedVersionId})`
+      message: `Infisical secret sync (restores ${baseVersionId} in place of rejected ${rejectedVersionId})`
     });
     if (!restored) return { replaced: false, unsafeVersionIds };
 
@@ -425,7 +425,7 @@ const $applySecretsWithVersionFallback = async (
       "latest",
       { secretSync, secretMap },
       {
-        message: (baseVersionId) => `Infisical secret sync (fallback, base ${baseVersionId})`
+        message: "Infisical secret sync"
       }
     );
     if (!created) return undefined;
