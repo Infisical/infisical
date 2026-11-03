@@ -12,6 +12,7 @@ import {
   ListAliasesCommand
 } from "@aws-sdk/client-kms";
 
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import {
@@ -24,6 +25,8 @@ import { AwsLoadBalancerType } from "@app/services/app-connection/aws/aws-connec
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+
+const KMS_ALIASES_MAX_PAGES = 50;
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
@@ -44,16 +47,25 @@ const listAwsKmsKeys = async (
 
   const aliasEntries: AliasListEntry[] = [];
   let aliasMarker: string | undefined;
+  let page = 0;
   do {
     // eslint-disable-next-line no-await-in-loop
     const response = await awsKms.send(new ListAliasesCommand({ Limit: 100, Marker: aliasMarker }));
     aliasEntries.push(...(response.Aliases || []));
     aliasMarker = response.NextMarker;
-  } while (aliasMarker);
+    page += 1;
+  } while (aliasMarker && page < KMS_ALIASES_MAX_PAGES);
+
+  if (aliasMarker) {
+    logger.warn(
+      { connectionId: appConnection.id, region, aliasCount: aliasEntries.length },
+      "listAwsKmsKeys: KMS alias list truncated at page limit"
+    );
+  }
 
   const keyMetadataRecord: Record<string, KeyMetadata | undefined> = {};
   for await (const aliasEntry of aliasEntries) {
-    if (aliasEntry.TargetKeyId) {
+    if (aliasEntry.TargetKeyId && !(aliasEntry.TargetKeyId in keyMetadataRecord)) {
       const keyDescription = await awsKms.send(new DescribeKeyCommand({ KeyId: aliasEntry.TargetKeyId }));
 
       keyMetadataRecord[aliasEntry.TargetKeyId] = keyDescription.KeyMetadata;
@@ -61,7 +73,7 @@ const listAwsKmsKeys = async (
   }
 
   const validAliasEntries = aliasEntries.filter((aliasEntry) => {
-    if (!aliasEntry.TargetKeyId) return false;
+    if (!aliasEntry.TargetKeyId || !keyMetadataRecord[aliasEntry.TargetKeyId]?.Arn) return false;
 
     if (destination === SecretSync.AWSParameterStore && aliasEntry.AliasName === "alias/aws/ssm") return true;
 
@@ -82,7 +94,7 @@ const listAwsKmsKeys = async (
     return {
       id: aliasEntry.TargetKeyId!,
       alias: aliasEntry.AliasName!,
-      arn: keyMetadataRecord[aliasEntry.TargetKeyId!]?.Arn
+      arn: keyMetadataRecord[aliasEntry.TargetKeyId!]!.Arn!
     };
   });
 
