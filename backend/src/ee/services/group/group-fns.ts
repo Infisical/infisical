@@ -14,9 +14,7 @@ import {
   TAddUsersToGroup,
   TAddUsersToGroupByUserIds,
   TConvertPendingGroupAdditionsToGroupMemberships,
-  TReapAndDeleteIdentityGroupMemberships,
   TRemoveIdentitiesFromGroup,
-  TRemoveIdentityFromGroupsOwnedByOrg,
   TRemoveUsersFromGroupByUserIds
 } from "./group-types";
 
@@ -636,95 +634,6 @@ export const removeUsersFromGroupByUserIds = async ({
 };
 
 /**
- * Takes [identityIds] out of group [groupId] inside the caller's transaction, first reaping their
- * additional privileges on every project the group was their last route into.
- */
-export const reapAndDeleteIdentityGroupMemberships = async (
-  {
-    groupId,
-    identityIds,
-    membershipDAL,
-    identityGroupMembershipDAL,
-    additionalPrivilegeDAL
-  }: TReapAndDeleteIdentityGroupMemberships,
-  tx: Knex
-) => {
-  const projectIds = Array.from(
-    new Set(
-      (
-        await membershipDAL.find(
-          {
-            scope: AccessScope.Project,
-            actorGroupId: groupId
-          },
-          { tx }
-        )
-      ).map((gp) => gp.scopeProjectId as string)
-    )
-  );
-
-  const stillReach = await identityGroupMembershipDAL.filterProjectsByIdentityMembership(
-    identityIds,
-    groupId,
-    projectIds,
-    tx
-  );
-
-  for await (const identityId of identityIds) {
-    const reachable = stillReach.get(identityId);
-    const projectsToReapPrivilegesFor = projectIds.filter((projectId) => !reachable?.has(projectId));
-
-    if (projectsToReapPrivilegesFor.length) {
-      // additional privileges are keyed on actor + project, not membership, so leaving the
-      // identity's last route into these projects must reap them or they reactivate if the
-      // identity is ever re-added
-      await additionalPrivilegeDAL.delete(
-        {
-          actorIdentityId: identityId,
-          $in: {
-            projectId: projectsToReapPrivilegesFor
-          }
-        },
-        tx
-      );
-    }
-  }
-
-  await identityGroupMembershipDAL.delete(
-    {
-      groupId,
-      $in: {
-        identityId: identityIds
-      }
-    },
-    tx
-  );
-};
-
-/**
- * Takes [identityId] out of every group [orgId] owns, the same way removing it from each group would.
- * Groups go one at a time so a project two of them shared is reaped once the last one is gone.
- */
-export const removeIdentityFromGroupsOwnedByOrg = async (
-  {
-    identityId,
-    orgId,
-    membershipDAL,
-    identityGroupMembershipDAL,
-    additionalPrivilegeDAL
-  }: TRemoveIdentityFromGroupsOwnedByOrg,
-  tx: Knex
-) => {
-  const groupIds = await identityGroupMembershipDAL.findGroupIdsOwnedByOrg({ identityId, orgId }, tx);
-  for await (const groupId of groupIds) {
-    await reapAndDeleteIdentityGroupMemberships(
-      { groupId, identityIds: [identityId], membershipDAL, identityGroupMembershipDAL, additionalPrivilegeDAL },
-      tx
-    );
-  }
-};
-
-/**
  * Remove identities with identity ids [identityIds] from group [group].
  * @param {group} group - group to remove identity(s) from
  * @param {string[]} identityIds - id(s) of identity(s) to remove from group
@@ -783,13 +692,53 @@ export const removeIdentitiesFromGroup = async ({
     }
   });
   return identityDAL.transaction(async (tx) => {
-    await reapAndDeleteIdentityGroupMemberships(
+    const projectIds = Array.from(
+      new Set(
+        (
+          await membershipDAL.find(
+            {
+              scope: AccessScope.Project,
+              actorGroupId: group.id
+            },
+            { tx }
+          )
+        ).map((gp) => gp.scopeProjectId as string)
+      )
+    );
+
+    const stillReach = await identityGroupMembershipDAL.filterProjectsByIdentityMembership(
+      identityIdsArray,
+      group.id,
+      projectIds,
+      tx
+    );
+
+    for await (const identityId of identityIdsArray) {
+      const reachable = stillReach.get(identityId);
+      const projectsToReapPrivilegesFor = projectIds.filter((projectId) => !reachable?.has(projectId));
+
+      if (projectsToReapPrivilegesFor.length) {
+        // additional privileges are keyed on actor + project, not membership, so leaving the
+        // identity's last route into these projects must reap them or they reactivate if the
+        // identity is ever re-added
+        await additionalPrivilegeDAL.delete(
+          {
+            actorIdentityId: identityId,
+            $in: {
+              projectId: projectsToReapPrivilegesFor
+            }
+          },
+          tx
+        );
+      }
+    }
+
+    await identityGroupMembershipDAL.delete(
       {
         groupId: group.id,
-        identityIds: identityIdsArray,
-        membershipDAL,
-        identityGroupMembershipDAL,
-        additionalPrivilegeDAL
+        $in: {
+          identityId: identityIdsArray
+        }
       },
       tx
     );

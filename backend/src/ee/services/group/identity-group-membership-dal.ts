@@ -68,22 +68,23 @@ export const identityGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findGroupIdsOwnedByOrg = async ({ identityId, orgId }: { identityId: string; orgId: string }, tx: Knex) => {
+  const deleteByIdentityIdsInGroupsOwnedByOrgs = async (
+    { identityIds, orgIds }: { identityIds: string[]; orgIds: string[] },
+    tx: Knex
+  ) => {
     try {
-      const rows = (await tx(TableName.IdentityGroupMembership)
-        .join(TableName.Groups, `${TableName.IdentityGroupMembership}.groupId`, `${TableName.Groups}.id`)
-        .where(`${TableName.IdentityGroupMembership}.identityId`, identityId)
-        .where(`${TableName.Groups}.orgId`, orgId)
-        .select(db.ref("groupId").withSchema(TableName.IdentityGroupMembership))) as { groupId: string }[];
-      return rows.map(({ groupId }) => groupId);
+      await tx(TableName.IdentityGroupMembership)
+        .whereIn("identityId", identityIds)
+        .whereIn("groupId", tx(TableName.Groups).whereIn("orgId", orgIds).select("id"))
+        .delete();
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find identity groups owned by org" });
+      throw new DatabaseError({ error, name: "Delete identity group memberships in groups owned by orgs" });
     }
   };
 
   return {
     ...identityGroupMembershipOrm,
     filterProjectsByIdentityMembership,
-    findGroupIdsOwnedByOrg
+    deleteByIdentityIdsInGroupsOwnedByOrgs
   };
 };

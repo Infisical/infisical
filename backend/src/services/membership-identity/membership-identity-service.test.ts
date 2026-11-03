@@ -49,8 +49,8 @@ const createService = ({
   const removeOrgMembershipRevocationMarkers = vi.fn().mockResolvedValue(undefined);
   const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
   const emit = vi.fn().mockResolvedValue(undefined);
-  const findGroupIdsOwnedByOrg = vi.fn().mockResolvedValue(["group-1"]);
-  const deleteGroupMemberships = vi.fn().mockResolvedValue([]);
+  const deleteByIdentityIdsInGroupsOwnedByOrgs = vi.fn().mockResolvedValue(undefined);
+  const deleteMetadata = vi.fn().mockResolvedValue([]);
   const lockActorsForOrgAccess = vi.fn().mockResolvedValue(undefined);
   const revoked = [{ orgId: "org", identityId: IDENTITY_ID, projectIds: ["project-1"], resources: [] }];
   const revokeActorsInOrgs = vi.fn().mockResolvedValue({ revoked, sendPamCancellations: () => {} });
@@ -66,6 +66,7 @@ const createService = ({
     create: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID }),
     updateById: vi.fn().mockImplementation(async (id: string, data: Record<string, unknown>) => ({ id, ...data })),
     deleteById: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID }),
+    delete: vi.fn().mockResolvedValue([]),
     transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(tx))
   };
 
@@ -104,11 +105,8 @@ const createService = ({
     identityDAL: {
       findById: vi.fn().mockResolvedValue({ orgId: ROOT_ORG_ID, projectId: null })
     } as never,
-    identityGroupMembershipDAL: {
-      findGroupIdsOwnedByOrg,
-      filterProjectsByIdentityMembership: vi.fn().mockResolvedValue(new Map()),
-      delete: deleteGroupMemberships
-    },
+    identityMetadataDAL: { delete: deleteMetadata },
+    identityGroupMembershipDAL: { deleteByIdentityIdsInGroupsOwnedByOrgs },
     licenseService: { getPlan: vi.fn() } as never,
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
     projectDAL: {
@@ -134,8 +132,8 @@ const createService = ({
     insertOrgMembershipRevocationMarker,
     removeOrgMembershipRevocationMarkers,
     deleteAlertsForResource,
-    findGroupIdsOwnedByOrg,
-    deleteGroupMemberships,
+    deleteByIdentityIdsInGroupsOwnedByOrgs,
+    deleteMetadata,
     lockActorsForOrgAccess,
     revokeActorsInOrgs,
     createAuditLog,
@@ -260,7 +258,7 @@ describe("deleteMembership alert cleanup", () => {
     // Reaped at the end of the transaction: the write locks it takes on the org-wide alerts table
     // must not be held across the membership work that precedes it.
     expect(deleteAlertsForResource.mock.invocationCallOrder[0]).toBeGreaterThan(
-      membershipIdentityDAL.deleteById.mock.invocationCallOrder[0]
+      membershipIdentityDAL.delete.mock.invocationCallOrder[0]
     );
   });
 
@@ -320,40 +318,84 @@ describe("deleteMembership org access reconcile", () => {
   });
 });
 
-describe("deleteMembership group cleanup", () => {
+describe("deleteMembership org removal", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  test("removing an org membership deletes the identity from that org's groups in the same transaction", async () => {
+  test("deletes the identity's rows in the org, its metadata there and its rows in the org's own groups", async () => {
     const tx = { marker: "tx" } as unknown as Knex;
-    const { service, findGroupIdsOwnedByOrg, deleteGroupMemberships } = createService({ tx });
+    const { service, membershipIdentityDAL, deleteByIdentityIdsInGroupsOwnedByOrgs, deleteMetadata } = createService({
+      tx
+    });
 
     await service.deleteMembership(buildDto());
 
-    expect(findGroupIdsOwnedByOrg).toHaveBeenCalledWith({ identityId: IDENTITY_ID, orgId: SUB_ORG_ID }, tx);
-    expect(deleteGroupMemberships).toHaveBeenCalledWith({ groupId: "group-1", $in: { identityId: [IDENTITY_ID] } }, tx);
+    expect(membershipIdentityDAL.delete).toHaveBeenCalledWith(
+      { actorIdentityId: IDENTITY_ID, scopeOrgId: SUB_ORG_ID },
+      tx
+    );
+    expect(deleteMetadata).toHaveBeenCalledWith({ identityId: IDENTITY_ID, orgId: SUB_ORG_ID }, tx);
+    expect(deleteByIdentityIdsInGroupsOwnedByOrgs).toHaveBeenCalledWith(
+      { identityIds: [IDENTITY_ID], orgIds: [SUB_ORG_ID] },
+      tx
+    );
   });
 
-  test("takes the org access lock that group additions take, before the cleanup", async () => {
+  test("takes the org access lock that group additions take, before anything is removed", async () => {
     const tx = { marker: "tx" } as unknown as Knex;
-    const { service, findGroupIdsOwnedByOrg, lockActorsForOrgAccess } = createService({ tx });
+    const { service, membershipIdentityDAL, lockActorsForOrgAccess } = createService({ tx });
 
     await service.deleteMembership(buildDto());
 
     expect(lockActorsForOrgAccess).toHaveBeenCalledWith({ orgId: SUB_ORG_ID, actorIds: [IDENTITY_ID] }, tx);
     expect(lockActorsForOrgAccess.mock.invocationCallOrder[0]).toBeLessThan(
-      findGroupIdsOwnedByOrg.mock.invocationCallOrder[0]
+      membershipIdentityDAL.delete.mock.invocationCallOrder[0]
+    );
+  });
+
+  test("revokes project access before the membership delete so the removed project rows are audited", async () => {
+    const { service, membershipIdentityDAL, revokeActorsInOrgs } = createService();
+
+    await service.deleteMembership(buildDto());
+
+    expect(revokeActorsInOrgs.mock.invocationCallOrder[0]).toBeLessThan(
+      membershipIdentityDAL.delete.mock.invocationCallOrder[0]
     );
   });
 
   test("removing a project membership leaves the identity's groups alone", async () => {
-    const { service, findGroupIdsOwnedByOrg } = createService();
+    const { service, deleteByIdentityIdsInGroupsOwnedByOrgs } = createService();
 
     await service.deleteMembership({
       ...buildDto(),
       scopeData: { scope: AccessScope.Project, orgId: SUB_ORG_ID, projectId: PROJECT_ID }
     });
 
-    expect(findGroupIdsOwnedByOrg).not.toHaveBeenCalled();
+    expect(deleteByIdentityIdsInGroupsOwnedByOrgs).not.toHaveBeenCalled();
+  });
+});
+
+describe("removeIdentityFromOrg", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("removes the identity in its own transaction, then bumps and audits after commit", async () => {
+    const tx = { marker: "tx" } as unknown as Knex;
+    const { service, membershipIdentityDAL, revokeActorsInOrgs, bumpIdentityRevocationVersion, createAuditLog, emit } =
+      createService({ tx });
+    membershipIdentityDAL.transaction.mockImplementationOnce(async (cb: (tx: Knex) => Promise<unknown>) => {
+      const result = await cb(tx);
+      expect(bumpIdentityRevocationVersion).not.toHaveBeenCalled();
+      expect(createAuditLog).not.toHaveBeenCalled();
+      return result;
+    });
+
+    await service.removeIdentityFromOrg({ identityId: IDENTITY_ID, orgId: SUB_ORG_ID });
+
+    expect(revokeActorsInOrgs).toHaveBeenCalledWith({ orgIds: [SUB_ORG_ID], identityIds: [IDENTITY_ID] }, tx);
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(bumpIdentityRevocationVersion).toHaveBeenCalledWith({ identityId: IDENTITY_ID });
+    expect(createAuditLog.mock.calls[0][0]).toMatchObject({
+      event: { metadata: { identityId: IDENTITY_ID, projectIds: ["project-1"] } }
+    });
   });
 });
 

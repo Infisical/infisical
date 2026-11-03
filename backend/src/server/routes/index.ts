@@ -1342,6 +1342,7 @@ export const registerRoutes = async (
 
   const membershipIdentityService = membershipIdentityServiceFactory({
     identityDAL,
+    identityMetadataDAL,
     identityGroupMembershipDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
@@ -2846,24 +2847,20 @@ export const registerRoutes = async (
   });
 
   const identityService = identityServiceFactory({
-    additionalPrivilegeDAL,
     permissionService,
     identityDAL,
     identityOrgMembershipDAL,
     identityProjectDAL,
     licenseService,
     identityMetadataDAL,
-    identityGroupMembershipDAL,
     keyStore,
     orgDAL,
     membershipIdentityDAL,
+    membershipIdentityService,
     membershipRoleDAL,
     usageMeteringService,
     alertService,
-    identityAccessTokenService,
-    eventEmitter: eventOutboxService,
-    projectAccessRevokeService,
-    auditLogService
+    identityAccessTokenService
   });
 
   const identityV2Service = identityV2ServiceFactory({
