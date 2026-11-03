@@ -683,6 +683,7 @@ dce
 dcr
 als
 ua
+amr
 iss
 
 # --- Surfaced by the code-signing pages ---

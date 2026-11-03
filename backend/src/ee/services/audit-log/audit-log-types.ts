@@ -39,6 +39,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -3748,11 +3749,14 @@ interface OrgAdminBypassSSOEvent {
   metadata: Record<string, string>; // no metadata yet
 }
 
+export type TMfaSatisfiedBy = "not-required" | "infisical" | "idp";
+
 interface UserLoginEvent {
   type: EventType.USER_LOGIN;
   metadata: {
     organizationId?: string;
     authProvider?: string;
+    idpMfa?: TIdpMfaSignal;
   };
 }
 
@@ -3761,6 +3765,7 @@ interface SelectOrganizationEvent {
   metadata: {
     organizationId: string;
     organizationName: string;
+    mfaSatisfiedBy?: TMfaSatisfiedBy;
   };
 }
 
@@ -3770,6 +3775,7 @@ interface SelectSubOrganizationEvent {
     organizationId: string;
     organizationName: string;
     rootOrganizationId: string;
+    mfaSatisfiedBy?: TMfaSatisfiedBy;
   };
 }
 
