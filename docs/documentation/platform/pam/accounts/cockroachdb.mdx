@@ -30,7 +30,7 @@ A CockroachDB [account](/documentation/platform/pam/accounts/overview) stores th
     | **Port** | The cluster's SQL port (defaults to `26257`) |
     | **Database** | The database that sessions connect to |
     | **SSL Enabled** | Whether to connect over TLS (on by default) |
-    | **Reject Unauthorized** | Whether to reject a server certificate that can't be verified (shown when **SSL Enabled** is on) |
+    | **Reject Unauthorized** | Whether to reject a server certificate that can't be verified (on by default, shown when **SSL Enabled** is on) |
     | **SSL Certificate** | The CA certificate that signed the cluster's node certificates (shown when **SSL Enabled** is on) |
 
     By default, CockroachDB only accepts passwords over TLS, so leave **SSL Enabled** on. If a private certificate authority (CA) signed the cluster's node certificates, paste the CA certificate into **SSL Certificate**. For a cluster you set up with `cockroach cert`, the CA certificate is the `ca.crt` file in the cluster's certificates directory.

@@ -223,6 +223,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       sslEnabled: { label: "SSL Enabled", defaultValue: true },
       sslRejectUnauthorized: {
         label: "Reject Unauthorized",
+        defaultValue: true,
         showWhen: { field: "sslEnabled", equals: true }
       },
       sslCertificate: {
