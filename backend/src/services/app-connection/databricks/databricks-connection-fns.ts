@@ -36,43 +36,24 @@ export const getDatabricksConnectionListItem = () => {
   };
 };
 
-const assertDatabricksGatewaySupported = (
-  { gatewayId, gatewayPoolId }: Pick<TDatabricksRequestConfig, "gatewayId" | "gatewayPoolId">,
-  { gatewayV2Service, gatewayPoolService }: TDatabricksGatewayDeps
-) => {
-  if (gatewayPoolId && !gatewayPoolService) {
-    throw new BadRequestError({
-      message: "This Databricks connection uses a Gateway pool, which is not supported on this operation"
-    });
-  }
-
-  if ((gatewayId || gatewayPoolId) && !gatewayV2Service) {
-    throw new BadRequestError({
-      message: "This Databricks connection uses a Gateway, which is not supported on this operation"
-    });
-  }
-};
-
 export const databricksRequest = async <T>(
   config: TDatabricksRequestConfig,
   { path, headers, ...requestConfig }: TDatabricksRequest,
-  deps: TDatabricksGatewayDeps = {}
+  { gatewayV2Service, gatewayPoolService }: TDatabricksGatewayDeps = {}
 ): Promise<T> => {
   const { credentials, gatewayId: directGatewayId, gatewayPoolId } = config;
-  const { gatewayV2Service, gatewayPoolService } = deps;
-
-  assertDatabricksGatewaySupported(config, deps);
 
   const gatewayId =
     gatewayPoolId && gatewayPoolService
       ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId: directGatewayId, gatewayPoolId })
       : directGatewayId;
 
+  const isGateway = Boolean(gatewayId && gatewayV2Service);
   const url = new URL(`${removeTrailingSlash(credentials.workspaceUrl)}${path}`);
+  await blockLocalAndPrivateIpAddresses(url.toString(), isGateway);
 
+  // callers that don't pass the gateway services yet (rotations) reach the workspace directly
   if (!gatewayId || !gatewayV2Service) {
-    await blockLocalAndPrivateIpAddresses(url.toString());
-
     const { data } = await request.request<T>({ ...requestConfig, url: url.toString(), headers });
 
     return data;
@@ -145,10 +126,6 @@ export const getDatabricksConnectionAccessToken = async (
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   deps: TDatabricksGatewayDeps = {}
 ) => {
-  // checked before the cached token is returned, so a caller without gateway support never goes on to call the
-  // workspace directly
-  assertDatabricksGatewaySupported({ gatewayId, gatewayPoolId }, deps);
-
   const { accessToken, expiresAt } = credentials;
 
   // get new token if less than 10 minutes from expiry

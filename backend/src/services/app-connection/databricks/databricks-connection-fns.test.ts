@@ -81,7 +81,10 @@ describe("validateDatabricksConnectionCredentials", () => {
   test("calls the workspace directly when no gateway is set", async () => {
     await validate();
 
-    expect(blockLocalAndPrivateIpAddresses).toHaveBeenCalledWith("https://example.cloud.databricks.com/oidc/v1/token");
+    expect(blockLocalAndPrivateIpAddresses).toHaveBeenCalledWith(
+      "https://example.cloud.databricks.com/oidc/v1/token",
+      false
+    );
     expect(getPlatformConnectionDetailsByGatewayId).not.toHaveBeenCalled();
     expect(sendRequest.mock.calls[0][0].url).toBe("https://example.cloud.databricks.com/oidc/v1/token");
   });
@@ -89,7 +92,10 @@ describe("validateDatabricksConnectionCredentials", () => {
   test("routes the token request through the gateway when one is set", async () => {
     await validate(undefined, "gateway-id");
 
-    expect(blockLocalAndPrivateIpAddresses).not.toHaveBeenCalled();
+    expect(blockLocalAndPrivateIpAddresses).toHaveBeenCalledWith(
+      "https://example.cloud.databricks.com/oidc/v1/token",
+      true
+    );
     expect(getPlatformConnectionDetailsByGatewayId).toHaveBeenCalledWith({
       gatewayId: "gateway-id",
       targetHost: "example.cloud.databricks.com",
@@ -139,6 +145,13 @@ describe("getDatabricksConnectionAccessToken", () => {
       }
     }) as TDatabricksConnection;
 
+  beforeEach(() => {
+    sendRequest.mockReset();
+    sendRequest.mockResolvedValue({ data: { access_token: "access-token", expires_in: 3600 } });
+    getPlatformConnectionDetailsByGatewayId.mockReset();
+    blockLocalAndPrivateIpAddresses.mockReset();
+  });
+
   test("returns the cached token when the connection has no gateway", async () => {
     await expect(
       getDatabricksConnectionAccessToken(connectionOf({}), { updateById: vi.fn() }, {} as never)
@@ -146,11 +159,20 @@ describe("getDatabricksConnectionAccessToken", () => {
   });
 
   test.each([{ gatewayId: "gateway-id" }, { gatewayPoolId: "pool-id" }])(
-    "refuses a connection with %o when the caller can't use a gateway, even with a cached token",
+    "refreshes the token directly for a connection with %o when the caller passes no gateway services",
     async (gateway) => {
-      await expect(
-        getDatabricksConnectionAccessToken(connectionOf(gateway), { updateById: vi.fn() }, {} as never)
-      ).rejects.toThrow(/This Databricks connection uses a Gateway/);
+      const connection = connectionOf(gateway);
+      connection.credentials.expiresAt = 0;
+
+      await expect(getDatabricksConnectionAccessToken(connection, { updateById: vi.fn() }, {} as never)).resolves.toBe(
+        "access-token"
+      );
+      expect(getPlatformConnectionDetailsByGatewayId).not.toHaveBeenCalled();
+      expect(blockLocalAndPrivateIpAddresses).toHaveBeenCalledWith(
+        "https://example.cloud.databricks.com/oidc/v1/token",
+        false
+      );
+      expect(sendRequest.mock.calls[0][0].url).toBe("https://example.cloud.databricks.com/oidc/v1/token");
     }
   );
 });
