@@ -6626,6 +6626,7 @@ interface AgentVaultServiceCreateEvent {
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    allowedTools?: string[] | null;
     // The fields each member sets for themselves, such as credential-value or credential-username.
     memberProvidedFields?: string[];
     // Names and placeholders only. A sealed value must never reach an audit row.
@@ -6655,6 +6656,7 @@ interface AgentVaultServiceUpdateEvent {
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    allowedTools?: string[] | null;
     // The fields each member sets for themselves after the update, present when it touched the credential.
     memberProvidedFields?: string[];
     customHeaderNames?: string[];
