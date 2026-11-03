@@ -327,7 +327,11 @@ export const injectIdentity = fp(
             await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set(RequestContextKey.OrgId, orgId);
           requestContext.set(RequestContextKey.OrgName, orgName);
-          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
+          requestContext.set(RequestContextKey.UserAuthInfo, {
+            userId: user.id,
+            email: user.email || "",
+            issuingRootOrgId: token.issuingRootOrgId
+          });
           req.auth = {
             authMode: AuthMode.JWT,
             user,
@@ -354,7 +358,11 @@ export const injectIdentity = fp(
           if (token.delegation !== OauthDelegationMode.Full) {
             requestContext.set(RequestContextKey.OauthScopes, token.scopes ?? []);
           }
-          requestContext.set(RequestContextKey.UserAuthInfo, { userId: user.id, email: user.email || "" });
+          requestContext.set(RequestContextKey.UserAuthInfo, {
+            userId: user.id,
+            email: user.email || "",
+            issuingRootOrgId: token.issuingRootOrgId
+          });
           req.auth = {
             authMode: AuthMode.OAUTH,
             user,

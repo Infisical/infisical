@@ -73,6 +73,25 @@ export const getRequiredMfaMethod = (
   return { isMfaRequired, requiredMfaMethod };
 };
 
+export const isSsoAuthMethod = (authMethod: AuthMethod) =>
+  isAuthMethodSaml(authMethod) || authMethod === AuthMethod.OIDC || authMethod === AuthMethod.LDAP;
+
+/**
+ * Whether a session counts as this root org's own SSO. The method alone is not enough: a SAML
+ * session another org's IdP minted would otherwise satisfy this org's enforcement without its IdP,
+ * MFA or deprovisioning ever seeing the login. Tokens issued before the claim existed carry no
+ * issuer and are taken at their method, as before.
+ */
+export const isSsoSessionIssuedByOrg = ({
+  authMethod,
+  issuingRootOrgId,
+  rootOrgId
+}: {
+  authMethod: AuthMethod;
+  issuingRootOrgId?: string;
+  rootOrgId: string;
+}) => isSsoAuthMethod(authMethod) && (!issuingRootOrgId || issuingRootOrgId === rootOrgId);
+
 // Whether the MFA the IdP performed satisfies this root org's enforcement. Shared by org selection and OAuth
 // consent so a session that skipped the login prompt is not refused later. Only SAML and OIDC carry a signed
 // IdP signal: password, Google and LDAP never qualify, so break-glass accounts always get the Infisical

@@ -4,6 +4,8 @@ import {
   isIdpMfaTrusted,
   isMfaProofAccepted,
   isOAuthLoginMethodDisabled,
+  isSsoAuthMethod,
+  isSsoSessionIssuedByOrg,
   RECOVERY_CODE_MFA_ASSURANCE
 } from "./auth-fns";
 import { AuthMethod, MfaMethod, SsoMfaTrust } from "./auth-type";
@@ -62,6 +64,40 @@ describe("isMfaProofAccepted", () => {
     expect(isMfaProofAccepted(undefined, [MfaMethod.EMAIL])).toBe(false);
     expect(isMfaProofAccepted("1", [MfaMethod.EMAIL])).toBe(false);
   });
+});
+
+describe("isSsoSessionIssuedByOrg", () => {
+  const rootOrgId = "org-a";
+
+  test.each([
+    AuthMethod.OKTA_SAML,
+    AuthMethod.AZURE_SAML,
+    AuthMethod.KEYCLOAK_SAML,
+    AuthMethod.OIDC,
+    AuthMethod.LDAP
+  ] as const)("accepts a %s session this org's IdP issued", (authMethod) => {
+    expect(isSsoAuthMethod(authMethod)).toBe(true);
+    expect(isSsoSessionIssuedByOrg({ authMethod, issuingRootOrgId: rootOrgId, rootOrgId })).toBe(true);
+  });
+
+  test.each([AuthMethod.OKTA_SAML, AuthMethod.OIDC, AuthMethod.LDAP] as const)(
+    "refuses a %s session another org's IdP issued",
+    (authMethod) => {
+      expect(isSsoSessionIssuedByOrg({ authMethod, issuingRootOrgId: "org-b", rootOrgId })).toBe(false);
+    }
+  );
+
+  test("takes a token issued before the claim existed at its method", () => {
+    expect(isSsoSessionIssuedByOrg({ authMethod: AuthMethod.OKTA_SAML, rootOrgId })).toBe(true);
+  });
+
+  test.each([AuthMethod.EMAIL, AuthMethod.GOOGLE, AuthMethod.GITHUB, AuthMethod.GITLAB] as const)(
+    "never counts an own-credential %s session as the org's SSO",
+    (authMethod) => {
+      expect(isSsoAuthMethod(authMethod)).toBe(false);
+      expect(isSsoSessionIssuedByOrg({ authMethod, issuingRootOrgId: rootOrgId, rootOrgId })).toBe(false);
+    }
+  );
 });
 
 describe("isIdpMfaTrusted", () => {

@@ -76,6 +76,7 @@ export type TOauthConsentDTO = {
   scope?: string;
   userId: string;
   authMethod: AuthMethod;
+  issuingRootOrgId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
   idpMfaOrgId?: string;
@@ -109,6 +110,7 @@ export const OauthAuthorizationCodePayloadSchema = z.object({
   orgId: z.string(),
   userId: z.string(),
   authMethod: z.nativeEnum(AuthMethod),
+  issuingRootOrgId: z.string().optional(),
   isMfaVerified: z.boolean().optional(),
   mfaMethod: z.nativeEnum(MfaMethod).optional(),
   tokenVersionId: z.string(),

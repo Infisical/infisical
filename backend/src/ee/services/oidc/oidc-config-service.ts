@@ -70,7 +70,11 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
-import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
+import {
+  findOrgIdByVerifiedDomain,
+  isIdpAuthoritativeForDomain,
+  verifyEmailDomainOwnership
+} from "../email-domain/email-domain-fns";
 import { TOidcConfigDALFactory } from "./oidc-config-dal";
 import { resolveOidcGroupMembershipChanges } from "./oidc-config-fns";
 import {
@@ -243,7 +247,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
+    const ownedDomain = await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
@@ -256,10 +260,10 @@ export const oidcConfigServiceFactory = ({
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
-    // separate email-verification step (the email-domain ownership check above already proves the
-    // org owns this domain, and password signup is blocked for enforced domains).
-    const skipEmailVerification = Boolean(organization.authEnforced);
+    // The IdP is authoritative, and the separate email-verification step is skipped, only when the
+    // org enforces SSO and owns the asserted domain. Enforcement alone would promote an alias for
+    // any address the IdP asserts; ownership is what makes the assertion proof of the mailbox.
+    const isIdpAuthoritative = isIdpAuthoritativeForDomain({ isAuthEnforced: organization.authEnforced, ownedDomain });
 
     let user: TUsers;
     // A stale, still-unverified alias may point at another user's account. Don't mutate that
@@ -360,8 +364,8 @@ export const oidcConfigServiceFactory = ({
               lastName,
               authMethods: [],
               isGhost: false,
-              isEmailVerified: skipEmailVerification,
-              isAccepted: skipEmailVerification
+              isEmailVerified: isIdpAuthoritative,
+              isAccepted: isIdpAuthoritative
             },
             tx
           );
@@ -377,7 +381,7 @@ export const oidcConfigServiceFactory = ({
             externalId,
             emails: sanitizedEmail ? [sanitizedEmail] : [],
             orgId,
-            isEmailVerified: skipEmailVerification
+            isEmailVerified: isIdpAuthoritative
           },
           tx
         );
@@ -548,8 +552,8 @@ export const oidcConfigServiceFactory = ({
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
-    // When SSO is enforced, mark the user + alias as verified/accepted before issuing a session.
-    if (skipEmailVerification) {
+    // When the IdP is authoritative, mark the user + alias as verified/accepted before issuing a session.
+    if (isIdpAuthoritative) {
       ({ user, userAlias } = await ensureSsoAccountVerified({
         user,
         userAlias,
@@ -568,7 +572,7 @@ export const oidcConfigServiceFactory = ({
       assertedFirstName: firstName,
       assertedLastName: lastName,
       orgId,
-      isAuthEnforced: Boolean(organization.authEnforced),
+      isIdpAuthoritative,
       userDAL,
       userAliasDAL,
       emailDomainDAL,

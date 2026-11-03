@@ -405,6 +405,7 @@ export const authSignupServiceFactory = ({
       userAgent: dto.userAgent,
       authMethod,
       organizationId,
+      issuingRootOrgId: decodedToken.issuingRootOrgId,
       idpMfaOrgId: decodedToken.idpMfaOrgId
     });
 

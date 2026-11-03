@@ -957,6 +957,7 @@ export const orgServiceFactory = ({
         {
           userId: user.id,
           authMethod: decodedToken.authMethod,
+          issuingRootOrgId: decodedToken.issuingRootOrgId,
           ip: ipAddress,
           userAgent: userAgentHeader,
           isMfaVerified: decodedToken.isMfaVerified,

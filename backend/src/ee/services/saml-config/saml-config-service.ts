@@ -53,7 +53,11 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
-import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
+import {
+  findOrgIdByVerifiedDomain,
+  isIdpAuthoritativeForDomain,
+  verifyEmailDomainOwnership
+} from "../email-domain/email-domain-fns";
 import { TGroupDALFactory } from "../group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "../group/group-fns";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
@@ -636,17 +640,17 @@ export const samlConfigServiceFactory = ({
       aliasType: UserAliasType.SAML
     });
 
-    await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
+    const ownedDomain = await verifyEmailDomainOwnership({ email, orgId, emailDomainDAL });
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
 
     const organization = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
-    // separate email-verification step (the email-domain ownership check above already proves the
-    // org owns this domain, and password signup is blocked for enforced domains).
-    const skipEmailVerification = Boolean(organization.authEnforced);
+    // The IdP is authoritative, and the separate email-verification step is skipped, only when the
+    // org enforces SSO and owns the asserted domain. Enforcement alone would promote an alias for
+    // any address the IdP asserts; ownership is what makes the assertion proof of the mailbox.
+    const isIdpAuthoritative = isIdpAuthoritativeForDomain({ isAuthEnforced: organization.authEnforced, ownedDomain });
 
     const samlConfig = await samlConfigDAL.findOne({ orgId });
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
@@ -749,8 +753,8 @@ export const samlConfigServiceFactory = ({
             {
               username: sanitizedEmail,
               email: sanitizedEmail,
-              isEmailVerified: skipEmailVerification,
-              isAccepted: skipEmailVerification,
+              isEmailVerified: isIdpAuthoritative,
+              isAccepted: isIdpAuthoritative,
               firstName,
               lastName,
               authMethods: [],
@@ -770,7 +774,7 @@ export const samlConfigServiceFactory = ({
             externalId,
             emails: sanitizedEmail ? [sanitizedEmail] : [],
             orgId,
-            isEmailVerified: skipEmailVerification
+            isEmailVerified: isIdpAuthoritative
           },
           tx
         );
@@ -862,8 +866,8 @@ export const samlConfigServiceFactory = ({
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
-    // When SSO is enforced, mark the user + alias as verified/accepted before issuing a session.
-    if (skipEmailVerification) {
+    // When the IdP is authoritative, mark the user + alias as verified/accepted before issuing a session.
+    if (isIdpAuthoritative) {
       ({ user, userAlias } = await ensureSsoAccountVerified({
         user,
         userAlias,
@@ -882,7 +886,7 @@ export const samlConfigServiceFactory = ({
       assertedFirstName: firstName,
       assertedLastName: lastName,
       orgId,
-      isAuthEnforced: Boolean(organization.authEnforced),
+      isIdpAuthoritative,
       userDAL,
       userAliasDAL,
       emailDomainDAL,

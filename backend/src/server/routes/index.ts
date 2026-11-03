@@ -924,7 +924,8 @@ export const registerRoutes = async (
     identityDAL,
     additionalPrivilegeDAL,
     groupDAL,
-    secretFolderDAL: folderDAL
+    secretFolderDAL: folderDAL,
+    orgDAL
   });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
