@@ -327,7 +327,7 @@
   gap: var(--v4-space-8);
   height: 28px;
   margin: 0 calc(-1 * var(--v4-space-8)) 0 0;
-  padding-inline-start: 9px;
+  padding-inline-start: var(--v4-space-sidebar-row-inset);
   overflow: hidden;
   color: var(--v4-muted);
   font-family: var(--v4-type-eyebrow-font-family);
@@ -377,7 +377,7 @@
   width: 100%;
   min-width: 0;
   height: var(--v4-size-control-md);
-  padding: 0 9px;
+  padding: 0 var(--v4-space-sidebar-row-inset);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -432,6 +432,8 @@
 }
 .icon {
   flex: none;
+  width: var(--v4-size-sidebar-icon);
+  height: var(--v4-size-sidebar-icon);
 }
 .label {
   flex: 1 1 auto;

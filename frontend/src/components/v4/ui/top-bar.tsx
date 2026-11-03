@@ -507,6 +507,7 @@ export function TopBar({
   const marked = unread > 0 || Boolean(shell?.navigationUnread);
   const [root, ...rest] = breadcrumb;
   const org = root?.switcher ? root : undefined;
+  const orgZone = Boolean(org) && !narrow;
   const switchers = (org ? rest : breadcrumb).filter((crumb) => crumb.switcher);
   const slots = shell?.slots ?? {};
   const notificationsButton = (size: "sm" | "icon-lg") => (
@@ -539,6 +540,7 @@ export function TopBar({
         ref={ref}
         data-slot="top-bar"
         data-mode={mode}
+        data-org-zone={orgZone || undefined}
         className={cn(styles.topBar, className)}
         {...props}
       >
@@ -565,6 +567,7 @@ export function TopBar({
           aria-label={label}
           variant="product"
           items={narrow ? breadcrumb.slice(-2).map(plainCrumb) : breadcrumb}
+          data-org-zone={orgZone || undefined}
           className={styles.trail}
         />
         <div className={styles.actions}>

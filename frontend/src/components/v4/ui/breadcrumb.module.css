@@ -226,6 +226,21 @@
 }
 .product > .entry:first-child > .segment {
   min-inline-size: var(--v4-crumb-root-size, 0px);
+  max-inline-size: var(--v4-crumb-root-max, none);
+}
+.root[data-org-zone] .product > .entry:first-child > .segment[data-name-target="switcher"],
+.root[data-org-zone] .product > .entry:first-child > .segment[data-name-target="page"] > .name {
+  gap: var(--v4-space-10);
+  margin-inline-start: 0;
+  padding-inline-start: var(--v4-space-sidebar-row-inset);
+}
+.root[data-org-zone] .product > .entry:first-child .media,
+.root[data-org-zone] .product > .entry:first-child .media > svg {
+  inline-size: var(--v4-size-sidebar-icon);
+  block-size: var(--v4-size-sidebar-icon);
+}
+.root[data-org-zone] .product > .entry:first-child + .entry > .separator {
+  margin-inline-start: calc(var(--v4-space-8) - var(--v4-space-crumb-divider));
 }
 .product > .entry:first-child[data-switcher] .label {
   color: var(--v4-ink);
