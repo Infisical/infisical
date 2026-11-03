@@ -126,6 +126,7 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
   const [openItem, setOpenItem] = useState<string>(
     hasConfiguredOption || hasAccordionError ? ITEM_VALUE : ""
   );
+  const [pickedAlias, setPickedAlias] = useState<string | null>(null);
 
   useEffect(() => {
     if (hasAccordionError) setOpenItem(ITEM_VALUE);
@@ -148,6 +149,16 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
     { enabled: Boolean(connectionId && region) }
   );
 
+  // A key can carry several aliases and the saved value is an ARN, so show the alias the user picked.
+  const aliasedKeys = kmsKeys.filter(
+    (kmsKey) => kmsKey.arn === watchedKeyId || kmsKey.id === watchedKeyId
+  );
+  const selectedKmsKey = watchedKeyId
+    ? (kmsKeys.find((kmsKey) => kmsKey.alias === watchedKeyId) ??
+      aliasedKeys.find((kmsKey) => kmsKey.alias === pickedAlias) ??
+      aliasedKeys[0] ?? { alias: watchedKeyId, id: watchedKeyId })
+    : null;
+
   return (
     <Accordion
       type="single"
@@ -167,7 +178,7 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
           <Controller
             name="syncOptions.keyId"
             control={control}
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
+            render={({ field: { onChange }, fieldState: { error } }) => (
               <Field className="mb-4">
                 <FieldLabel className="flex items-center gap-1.5">
                   KMS Key
@@ -187,19 +198,15 @@ export const AwsSecretsManagerSyncOptionsFields = () => {
                   <Combobox
                     isLoading={isKmsKeysPending && Boolean(connectionId && region)}
                     isDisabled={!connectionId}
-                    value={
-                      value
-                        ? (kmsKeys.find(
-                            (kmsKey) =>
-                              kmsKey.alias === value || kmsKey.arn === value || kmsKey.id === value
-                          ) ?? {
-                            alias: value,
-                            id: value
-                          })
-                        : null
-                    }
-                    onValueChange={(option) => onChange(option.arn ?? option.alias)}
-                    onClear={() => onChange(undefined)}
+                    value={selectedKmsKey}
+                    onValueChange={(option) => {
+                      setPickedAlias(option.alias);
+                      onChange(option.arn ?? option.alias);
+                    }}
+                    onClear={() => {
+                      setPickedAlias(null);
+                      onChange(undefined);
+                    }}
                     clearAriaLabel="Clear KMS key"
                     isError={Boolean(error)}
                     emptyMessage={(inputValue) =>
