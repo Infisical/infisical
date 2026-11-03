@@ -207,7 +207,8 @@ export const SqlDatabaseProvider = ({
       },
       acquireConnectionTimeout: EXTERNAL_REQUEST_TIMEOUT,
       pool: { min: 0, max: 7 },
-      // knex's Postgres client can't parse CockroachDB's version() and hangs on connect. It only needs the version for DDL we never run.
+      // The value doesn't matter. Passing any version stops knex from running `select version()` on connect,
+      // and knex's Postgres client can't parse CockroachDB's reply to it, which leaves the connection hanging.
       ...(providerInputs.client === SqlProviders.Postgres ? { version: "9.6.0" } : {})
     });
     return db;
