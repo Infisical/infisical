@@ -50,6 +50,7 @@ import { TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSignerDALFactory } from "./signer-dal";
 import { TSignerRequestDALFactory } from "./signer-request-dal";
+import { isSignerRequestRevocable } from "./signer-request-fns";
 import {
   TGetSignerPolicyDTO,
   TListSignerRequestsDTO,
@@ -828,6 +829,11 @@ export const signerPolicyServiceFactory = ({
         { requestId: dto.requestId, status: ApprovalRequestGrantStatus.Active },
         { tx }
       );
+      if (!isSignerRequestRevocable(request, grants)) {
+        throw new BadRequestError({
+          message: `Request '${dto.requestId}' has no signing access left to revoke. Its access already expired, was revoked, or was never approved.`
+        });
+      }
       for (const grant of grants) {
         // eslint-disable-next-line no-await-in-loop
         await approvalRequestGrantsDAL.updateById(
