@@ -98,6 +98,7 @@ export const FolderTableRow = ({
             : "sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover",
           pendingActionBorderClass(pendingAction)
         )}
+        onClick={isNavigationDisabled ? undefined : () => onClick(folderName)}
       >
         <div className="flex h-full items-center justify-center [&>svg]:size-4">
           <Checkbox
