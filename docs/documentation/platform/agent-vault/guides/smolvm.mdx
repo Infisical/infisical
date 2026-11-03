@@ -26,7 +26,7 @@ As a result, a two-machine smolvm setup can route requests through the proxy, bu
 
 Use one of these guides when the agent must only reach services through Agent Vault:
 
-- [Run agents in Docker containers with Agent Vault](/documentation/platform/agent-vault/guides/docker) with a network-isolating runtime such as [gVisor](https://gvisor.dev/docs/user_guide/quick_start/docker/)
+- [Run agents in Docker containers with Agent Vault](/documentation/platform/agent-vault/guides/docker), using Docker's internal network to block direct internet access and a stronger container runtime such as [gVisor](https://gvisor.dev/docs/user_guide/quick_start/docker/) to protect against container escapes
 - [Run agents in Modal sandboxes with Agent Vault](/documentation/platform/agent-vault/guides/modal)
 - [Run agents in Daytona sandboxes with Agent Vault](/documentation/platform/agent-vault/guides/daytona)
 - [Run agents on Kubernetes with Agent Vault](/documentation/platform/agent-vault/guides/kubernetes), using a network plugin that enforces network policies
