@@ -1,6 +1,7 @@
 import type { Plugin } from "vite";
 
 const v4Module = /\/src\/(components|pages)\/v4\//;
+const v4RouteDefinition = /\/src\/pages\/v4\/(?:.+\/)?route\.tsx$/;
 const v4Owner = /\/src\/(components\/v4|pages\/v4|pages\/design-system)\//;
 
 // main must not ship v4 before cutover: no v4 module may load with the entry or a v3 route.
@@ -22,7 +23,11 @@ export const v4BundleFence = (): Plugin => ({
         const chunk = byFile.get(queue.shift()!);
         if (chunk && !seen.has(chunk.fileName)) {
           seen.add(chunk.fileName);
-          found.push(...Object.keys(chunk.modules).filter((id) => v4Module.test(id)));
+          found.push(
+            ...Object.keys(chunk.modules).filter(
+              (id) => v4Module.test(id) && !v4RouteDefinition.test(id)
+            )
+          );
           queue.push(...chunk.imports);
         }
       }
