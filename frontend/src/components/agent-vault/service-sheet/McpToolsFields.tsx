@@ -199,6 +199,7 @@ export const McpToolsFields = ({
                   }
                   creation={{
                     isDisabled: isAtLimit,
+                    emptyLabel: "Type a tool's exact name to add it",
                     isValid: (inputValue) => !toolNameError(inputValue),
                     // The proxy matches names exactly, so a name differing only in case from a listed tool
                     // is almost certainly a typo for it.

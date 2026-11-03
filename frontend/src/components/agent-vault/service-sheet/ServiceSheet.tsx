@@ -761,8 +761,12 @@ export const ServiceSheet = ({
     service
   );
   const isAwaitingAuthorization = current.step === ServiceStep.Credential && isAuthorizationMissing;
-  // Set once a sign-in expired or was refused; only authorizing again on the Credential step clears it.
-  const isAuthorizationRejected = isAuthorizationMissing && Boolean(oauthAuthorizationRejection);
+  // Set once a sign-in expired or was refused, even when a saved login could stand in for it; only authorizing
+  // again or keeping the current login on the Credential step clears it.
+  const isAuthorizationRejected =
+    isMcp &&
+    credentialType === AgentVaultCredentialType.OAuth &&
+    Boolean(oauthAuthorizationRejection);
   const isTemplateStep = current.step === ServiceStep.Template;
   const saveLabel = isUpdate ? "Save" : "Add Service";
 

@@ -1864,6 +1864,22 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       return { name: header.name, prefix: header.prefix, text: openValue(match.encryptedValue) };
     });
     assertCustomHeadersDoNotShadowCredential({ type: credentialType, headerName: credentialHeader.name }, headerTexts);
+    // A rejection only blames the saved token when nothing else in the request differs from what is saved: a wrong
+    // typed header must not refresh the token, or mark the saved service as needing reauthorization.
+    const isSavedConnection =
+      service !== undefined &&
+      transport === (service.config as TAgentVaultServiceConfig | null)?.transport &&
+      (!customHeaders ||
+        (customHeaders.length === storedCustomHeaders.length &&
+          customHeaders.every((header, index) => {
+            const match = matchedHeaders[index];
+            return (
+              header.value === undefined &&
+              match !== undefined &&
+              header.name.toLowerCase() === match.name.toLowerCase() &&
+              (header.prefix ?? "") === match.prefix
+            );
+          })));
 
     const texts = [
       ...(credentialHeader.isTyped ? [credentialHeader.value] : []),
@@ -1894,7 +1910,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     } catch (err) {
       // A saved token can be refused before it expires (revoked, or no expiry from the provider), so it is refreshed
       // once, as the proxy does, before the admin is asked to reauthorize.
-      if (!(err instanceof McpListError && err.isCredentialRejected) || !refreshSavedToken) throw err;
+      if (!(err instanceof McpListError && err.isCredentialRejected) || !refreshSavedToken || !isSavedConnection)
+        throw err;
       const refreshedToken = await refreshSavedToken(hashAccessToken(credentialValue));
       if (refreshedToken === credentialValue) throw err;
       return { tools: await listWith(refreshedToken) };
