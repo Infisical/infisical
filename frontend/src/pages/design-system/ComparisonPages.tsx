@@ -13,6 +13,10 @@ const shots = import.meta.glob<string>("./assets/comparisons/*.webp", {
 const shot = (screen: string, theme: "light" | "dark") =>
   shots[`./assets/comparisons/${screen}-${theme}.webp`];
 
+const AccessComparison = lazy(() =>
+  import("./compositions/access/views").then((module) => ({ default: module.AccessComparison }))
+);
+
 const screens: Record<string, ComponentType> = {
   shell: lazy(() => import("./compositions/shell")),
   home: lazy(() => import("./compositions/home")),
@@ -53,11 +57,9 @@ export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {
         through it.
       </p>
       <Suspense fallback={<p role="status">Loading the v4 page</p>}>
-        {entry.screen === "secrets" ? (
-          <SecretsScenarios>{comparison}</SecretsScenarios>
-        ) : (
-          comparison
-        )}
+        {entry.screen === "secrets" && <SecretsScenarios>{comparison}</SecretsScenarios>}
+        {entry.screen === "access" && <AccessComparison After={Screen} />}
+        {entry.screen !== "secrets" && entry.screen !== "access" && comparison}
       </Suspense>
     </div>
   );
