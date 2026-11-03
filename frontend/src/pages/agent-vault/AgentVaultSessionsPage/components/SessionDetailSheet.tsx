@@ -47,6 +47,8 @@ export const SessionDetailSheet = ({
   const { currentOrg } = useOrganization();
 
   const isOwnerDeleted = session?.actor.id === null;
+  // The API refuses label edits once the owner, or the user it acts on behalf of, is deleted.
+  const canEditLabel = !isOwnerDeleted && session?.onBehalfOf?.id !== null;
   const isMachineIdentity = session?.actor.type === AgentVaultMemberType.MachineIdentity;
   const hasExpired = Boolean(
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
@@ -112,6 +114,28 @@ export const SessionDetailSheet = ({
                         )}
                       </DetailValue>
                     </Detail>
+                    {session.onBehalfOf && (
+                      <Detail className="min-w-0">
+                        <DetailLabel>On Behalf Of</DetailLabel>
+                        <DetailValue
+                          className={twMerge(
+                            "flex items-center gap-2",
+                            !session.onBehalfOf.id && "text-muted"
+                          )}
+                        >
+                          <UserIcon className="size-4 shrink-0 text-muted" />
+                          <span className="truncate">
+                            {memberDisplayName(session.onBehalfOf)}
+                            {!session.onBehalfOf.id && " (deleted)"}
+                          </span>
+                          {session.onBehalfOf.id && (
+                            <span className="truncate text-muted">
+                              {memberSubtitle(session.onBehalfOf)}
+                            </span>
+                          )}
+                        </DetailValue>
+                      </Detail>
+                    )}
                     <Detail className="min-w-0">
                       <DetailLabel>
                         {session.accessBundles.length === 1 ? "Access Bundle" : "Access Bundles"}
@@ -190,7 +214,7 @@ export const SessionDetailSheet = ({
                       {session.label ?? "No label"}
                     </DetailValue>
                   </Detail>
-                  {!isOwnerDeleted && (
+                  {canEditLabel && (
                     <IconButton
                       variant="ghost"
                       size="xs"

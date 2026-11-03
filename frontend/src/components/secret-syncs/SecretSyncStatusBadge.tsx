@@ -5,6 +5,7 @@ import {
   CalendarCheckIcon,
   CheckIcon,
   HourglassIcon,
+  InfoIcon,
   LucideIcon,
   RefreshCwIcon,
   XIcon
@@ -68,6 +69,9 @@ export const SecretSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }:
     return null;
   }, [status, lastSyncMessage]);
 
+  // A sync can succeed and still leave something to do, such as deploying a Cloudflare Worker version.
+  const successNote = status === SecretSyncStatus.Succeeded ? lastSyncMessage : null;
+
   const badge = (
     <Badge variant={variant}>
       <Icon className={[SecretSyncStatus.Running].includes(status) ? "animate-spin" : ""} />
@@ -77,7 +81,7 @@ export const SecretSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }:
 
   if (
     ![SecretSyncStatus.Succeeded, SecretSyncStatus.Failed].includes(status) ||
-    (!lastSyncedAt && !failureMessage)
+    (!lastSyncedAt && !failureMessage && !successNote)
   ) {
     return badge;
   }
@@ -108,6 +112,17 @@ export const SecretSyncStatusBadge = ({ status, lastSyncedAt, lastSyncMessage }:
               </div>
               <div className="rounded-sm bg-surface-active p-2 text-xs break-words">
                 {failureMessage}
+              </div>
+            </div>
+          )}
+          {successNote && (
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 self-start text-info">
+                <InfoIcon className="size-3" />
+                <div className="text-xs">Note</div>
+              </div>
+              <div className="rounded-sm bg-surface-active p-2 text-xs break-words">
+                {successNote}
               </div>
             </div>
           )}
