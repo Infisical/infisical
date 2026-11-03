@@ -12,6 +12,7 @@ import { sanitizeUrlForLog } from "@app/lib/logger/sanitize-url";
 import { safeRequest } from "@app/lib/validator/safe-request";
 
 const OCSP_CLIENT_TIMEOUT_MS = 10_000;
+const OCSP_CLIENT_MAX_RESPONSE_BYTES = 1024 * 1024;
 const OCSP_CLOCK_SKEW_MS = 5 * 60 * 1000;
 const OCSP_MAX_AGE_WITHOUT_NEXT_UPDATE_MS = 7 * 24 * 60 * 60 * 1000;
 const PKIJS_CERT_STATUS: Record<number, OcspCertStatus> = {
@@ -69,7 +70,8 @@ export const getCertificateOcspStatus = async ({
   const { data } = await safeRequest.post<ArrayBuffer>(ocspUrl, Buffer.from(ocspRequest.toSchema(true).toBER(false)), {
     headers: { "Content-Type": OCSP_REQUEST_CONTENT_TYPE },
     responseType: "arraybuffer",
-    timeout: OCSP_CLIENT_TIMEOUT_MS
+    timeout: OCSP_CLIENT_TIMEOUT_MS,
+    maxContentLength: OCSP_CLIENT_MAX_RESPONSE_BYTES
   });
 
   const ocspResponse = pkijs.OCSPResponse.fromBER(new Uint8Array(data).buffer);

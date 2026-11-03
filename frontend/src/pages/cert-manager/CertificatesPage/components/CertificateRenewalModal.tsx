@@ -690,6 +690,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   const [isSeeded, setIsSeeded] = useState(false);
   const seededCertificateIdRef = useRef<string | null>(null);
   const seededTtlRef = useRef("");
+  const newOrderTtlRef = useRef("");
   useEffect(() => {
     if (!isOpen) {
       seededCertificateIdRef.current = null;
@@ -707,6 +708,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     seededCertificateIdRef.current = certificate.id;
     const renewalDefaults = buildRenewalFormDefaults(certificate, constraints, renewalPreview);
     seededTtlRef.current = renewalDefaults.ttl ?? "";
+    newOrderTtlRef.current = "";
     // Seed the rows the policy requires so they are visible as fields from the start.
     const seeded = withRequiredRows(
       buildPolicyRules(policyData),
@@ -735,13 +737,13 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
   useEffect(() => {
     if (!isSeeded || !seededTtlRef.current) return;
-    setValue(
-      "ttl",
-      isReissuing
-        ? capTtlToDays(seededTtlRef.current, REISSUE_MAX_VALIDITY_DAYS)
-        : seededTtlRef.current
-    );
-  }, [isSeeded, isReissuing, setValue]);
+    if (isReissuing) {
+      newOrderTtlRef.current = getValues("ttl");
+      setValue("ttl", capTtlToDays(seededTtlRef.current, REISSUE_MAX_VALIDITY_DAYS));
+      return;
+    }
+    setValue("ttl", newOrderTtlRef.current || seededTtlRef.current);
+  }, [isSeeded, isReissuing, getValues, setValue]);
 
   const closeWizard = () => {
     handlePopUpToggle("renewCertificate", false);
