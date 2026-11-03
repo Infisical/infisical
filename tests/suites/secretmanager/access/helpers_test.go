@@ -3,7 +3,6 @@ package access_test
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -211,14 +210,6 @@ func auditEvent(t *testing.T, tn *harness.Tenant, eventType string, match func(m
 	})
 	require.NoErrorf(t, err, "waiting for a %s audit event", eventType)
 	return found
-}
-
-// sourceIP is a fresh address for a caller whose source address is what the test is
-// about.
-func sourceIP() string {
-	b := make([]byte, 3)
-	_, _ = rand.Read(b)
-	return fmt.Sprintf("10.%d.%d.%d", b[0], b[1], b[2])
 }
 
 func requireStatus(t *testing.T, want, got int, body []byte) {

@@ -37,8 +37,13 @@ const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({
   isActive: true,
   allowedEmailDomains: true,
   manageGroupMemberships: true,
-  jwtSignatureAlgorithm: true
+  jwtSignatureAlgorithm: true,
+  mfaClaimName: true,
+  mfaAmrValues: true
 });
+
+const OidcMfaAmrValuesSchema = z.array(z.string().trim().min(1).max(64)).max(20).nullable().optional();
+const OidcMfaClaimNameSchema = z.string().trim().min(1).max(128).optional();
 
 export const registerOidcRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -136,6 +141,13 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     preValidation: [
       async (req, res) => {
         const oidcIdentifier = req.session.get<any>("oidcIdentifier");
+        // The login session holds which org the callback belongs to; without it (expired, never
+        // started, or already used) there is nothing to resolve the strategy from.
+        if (!oidcIdentifier) {
+          throw new BadRequestError({
+            message: "Your OIDC login session has expired or was not started. Start the login again."
+          });
+        }
         const oidcIdentifierType = req.session.get<any>("oidcIdentifierType") || "domain";
         const callbackPort = req.session.get<any>("callbackPort");
         const oidcStrategy = await server.services.oidc.getOrgAuthStrategy(
@@ -230,7 +242,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           orgId: true,
           allowedEmailDomains: true,
           manageGroupMemberships: true,
-          jwtSignatureAlgorithm: true
+          jwtSignatureAlgorithm: true,
+          mfaClaimName: true,
+          mfaAmrValues: true
         }).extend({
           clientId: z.string(),
           clientSecret: z.string()
@@ -294,6 +308,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientId: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.clientId),
           clientSecret: z.string().trim().describe(OidcSSo.UPDATE_CONFIG.clientSecret),
           isActive: z.boolean().describe(OidcSSo.UPDATE_CONFIG.isActive),
+          mfaClaimName: OidcMfaClaimNameSchema.describe(OidcSSo.UPDATE_CONFIG.mfaClaimName),
+          mfaAmrValues: OidcMfaAmrValuesSchema.describe(OidcSSo.UPDATE_CONFIG.mfaAmrValues),
           manageGroupMemberships: z.boolean().optional().describe(OidcSSo.UPDATE_CONFIG.manageGroupMemberships),
           jwtSignatureAlgorithm: z
             .nativeEnum(OIDCJWTSignatureAlgorithm)
@@ -315,7 +331,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           orgId: true,
           allowedEmailDomains: true,
           isActive: true,
-          manageGroupMemberships: true
+          manageGroupMemberships: true,
+          mfaClaimName: true,
+          mfaAmrValues: true
         })
       }
     },
@@ -394,6 +412,8 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientSecret: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientSecret),
           isActive: z.boolean().describe(OidcSSo.CREATE_CONFIG.isActive),
           organizationId: z.string().trim().describe(OidcSSo.CREATE_CONFIG.organizationId),
+          mfaClaimName: OidcMfaClaimNameSchema.describe(OidcSSo.CREATE_CONFIG.mfaClaimName),
+          mfaAmrValues: OidcMfaAmrValuesSchema.describe(OidcSSo.CREATE_CONFIG.mfaAmrValues),
           manageGroupMemberships: z
             .boolean()
             .optional()

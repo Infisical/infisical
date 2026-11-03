@@ -8,7 +8,7 @@ import { ormify } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
-import { TAgentVaultSessionActor } from "./agent-vault-session-types";
+import { TAgentVaultSessionActor, TAgentVaultSessionOnBehalfOf } from "./agent-vault-session-types";
 
 export type TAgentVaultSessionDALFactory = ReturnType<typeof agentVaultSessionDALFactory>;
 
@@ -16,40 +16,64 @@ export type TAgentVaultSessionListRow = {
   id: string;
   userId: string | null;
   identityId: string | null;
+  onBehalfOfUserId: string | null;
+  onBehalfOfUserName: string | null;
   label: string | null;
   actor: TAgentVaultSessionActor;
+  onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
   accessBundles: { id: string | null; name: string; position: number }[];
 };
 
-// Mirrors deriveSessionStatus: a session with neither actor id counts as revoked.
-const ownerless = (qb: Knex.QueryBuilder) =>
-  void qb.whereNull(`${TableName.AgentVaultSession}.userId`).whereNull(`${TableName.AgentVaultSession}.identityId`);
-const owned = (qb: Knex.QueryBuilder) =>
+// The on-behalf-of user's own alias, since the actor's user is joined under the table's name.
+const ON_BEHALF_OF_USER = "onBehalfOfUser";
+
+// Mirrors deriveSessionStatus: a session with neither actor id, or whose on-behalf-of user was deleted, counts as revoked.
+const orphaned = (qb: Knex.QueryBuilder) =>
   void qb
-    .whereNotNull(`${TableName.AgentVaultSession}.userId`)
-    .orWhereNotNull(`${TableName.AgentVaultSession}.identityId`);
+    .where((sub) => {
+      void sub
+        .whereNull(`${TableName.AgentVaultSession}.userId`)
+        .whereNull(`${TableName.AgentVaultSession}.identityId`);
+    })
+    .orWhere((sub) => {
+      void sub
+        .whereNotNull(`${TableName.AgentVaultSession}.onBehalfOfUserName`)
+        .whereNull(`${TableName.AgentVaultSession}.onBehalfOfUserId`);
+    });
+const live = (qb: Knex.QueryBuilder) =>
+  void qb
+    .where((sub) => {
+      void sub
+        .whereNotNull(`${TableName.AgentVaultSession}.userId`)
+        .orWhereNotNull(`${TableName.AgentVaultSession}.identityId`);
+    })
+    .where((sub) => {
+      void sub
+        .whereNull(`${TableName.AgentVaultSession}.onBehalfOfUserName`)
+        .orWhereNotNull(`${TableName.AgentVaultSession}.onBehalfOfUserId`);
+    });
 
 const statusFilter = (query: Knex.QueryBuilder, status: AgentVaultSessionStatus, now: Date) => {
   if (status === AgentVaultSessionStatus.Revoked) {
     void query.where((qb) => {
-      void qb.whereNotNull(`${TableName.AgentVaultSession}.revokedAt`).orWhere(ownerless);
+      void qb.whereNotNull(`${TableName.AgentVaultSession}.revokedAt`).orWhere(orphaned);
     });
     return;
   }
   if (status === AgentVaultSessionStatus.Expired) {
     void query
       .whereNull(`${TableName.AgentVaultSession}.revokedAt`)
-      .where(owned)
+      .where(live)
       .whereNotNull(`${TableName.AgentVaultSession}.expiresAt`)
       .where(`${TableName.AgentVaultSession}.expiresAt`, "<=", now);
     return;
   }
   void query
     .whereNull(`${TableName.AgentVaultSession}.revokedAt`)
-    .where(owned)
+    .where(live)
     .where((qb) => {
       void qb
         .whereNull(`${TableName.AgentVaultSession}.expiresAt`)
@@ -57,7 +81,39 @@ const statusFilter = (query: Knex.QueryBuilder, status: AgentVaultSessionStatus,
     });
 };
 
-// A deleted owner leaves only the snapshot mint took, which holds a user's full name in one field.
+type TJoinedUser = {
+  id: string | null;
+  username: string | null;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+};
+
+// A deleted user leaves only the snapshot mint took, which holds the full name in one field.
+const toSessionUser = (
+  user: TJoinedUser,
+  snapshot: { name: string; email: string | null }
+): TAgentVaultSessionOnBehalfOf => {
+  if (user.id && user.username) {
+    return {
+      type: AgentVaultMemberType.User,
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName
+    };
+  }
+  return {
+    type: AgentVaultMemberType.User,
+    id: null,
+    username: snapshot.email ?? snapshot.name,
+    email: snapshot.email,
+    firstName: snapshot.name || null,
+    lastName: null
+  };
+};
+
 const toSessionActor = (row: {
   actorType?: string | null;
   userId: string | null;
@@ -79,24 +135,16 @@ const toSessionActor = (row: {
   if (actorType === AgentVaultMemberType.MachineIdentity) {
     return { type: AgentVaultMemberType.MachineIdentity, id: row.identityId, name: row.identityName ?? row.actorName };
   }
-  if (row.userId && row.userUsername) {
-    return {
-      type: AgentVaultMemberType.User,
+  return toSessionUser(
+    {
       id: row.userId,
       username: row.userUsername,
       email: row.userEmail,
       firstName: row.userFirstName,
       lastName: row.userLastName
-    };
-  }
-  return {
-    type: AgentVaultMemberType.User,
-    id: null,
-    username: row.actorEmail ?? row.actorName,
-    email: row.actorEmail,
-    firstName: row.actorName || null,
-    lastName: null
-  };
+    },
+    { name: row.actorName, email: row.actorEmail }
+  );
 };
 
 export const agentVaultSessionDALFactory = (db: TDbClient) => {
@@ -137,6 +185,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query.where(`${TableName.AgentVaultSession}.projectId`, projectId);
         if (sessionId) void query.where(`${TableName.AgentVaultSession}.id`, sessionId);
+        // A session on a user's behalf is the identity's, so it is never in the user's own list.
         if (actor?.type === ActorType.USER) void query.where(`${TableName.AgentVaultSession}.userId`, actor.id);
         if (actor?.type === ActorType.IDENTITY) void query.where(`${TableName.AgentVaultSession}.identityId`, actor.id);
         if (statuses?.length) {
@@ -153,7 +202,12 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           // snapshot alone would miss a renamed actor and match a name no longer shown.
           void query
             .leftJoin(TableName.Users, `${TableName.AgentVaultSession}.userId`, `${TableName.Users}.id`)
-            .leftJoin(TableName.Identity, `${TableName.AgentVaultSession}.identityId`, `${TableName.Identity}.id`);
+            .leftJoin(TableName.Identity, `${TableName.AgentVaultSession}.identityId`, `${TableName.Identity}.id`)
+            .leftJoin(
+              `${TableName.Users} as ${ON_BEHALF_OF_USER}`,
+              `${TableName.AgentVaultSession}.onBehalfOfUserId`,
+              `${ON_BEHALF_OF_USER}.id`
+            );
 
           void query.where((qb) => {
             void qb
@@ -168,6 +222,14 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
               ])
               .orWhereILike(`${TableName.AgentVaultSession}.actorName`, term)
               .orWhereILike(`${TableName.AgentVaultSession}.actorEmail`, term)
+              .orWhereILike(`${ON_BEHALF_OF_USER}.username`, term)
+              .orWhereRaw(`CONCAT_WS(' ', ??, ??) ILIKE ?`, [
+                `${ON_BEHALF_OF_USER}.firstName`,
+                `${ON_BEHALF_OF_USER}.lastName`,
+                term
+              ])
+              .orWhereILike(`${TableName.AgentVaultSession}.onBehalfOfUserName`, term)
+              .orWhereILike(`${TableName.AgentVaultSession}.onBehalfOfUserEmail`, term)
               .orWhereExists((sub) => {
                 void sub
                   .select(db.raw("1"))
@@ -215,6 +277,11 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Users, `${TableName.AgentVaultSession}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.Identity, `${TableName.AgentVaultSession}.identityId`, `${TableName.Identity}.id`)
         .leftJoin(
+          `${TableName.Users} as ${ON_BEHALF_OF_USER}`,
+          `${TableName.AgentVaultSession}.onBehalfOfUserId`,
+          `${ON_BEHALF_OF_USER}.id`
+        )
+        .leftJoin(
           TableName.AgentVaultSessionAccessBundle,
           `${TableName.AgentVaultSessionAccessBundle}.sessionId`,
           `${TableName.AgentVaultSession}.id`
@@ -242,6 +309,13 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("actorName").withSchema(TableName.AgentVaultSession),
           db.ref("actorEmail").withSchema(TableName.AgentVaultSession),
+          db.ref("onBehalfOfUserId").withSchema(TableName.AgentVaultSession),
+          db.ref("onBehalfOfUserName").withSchema(TableName.AgentVaultSession),
+          db.ref("onBehalfOfUserEmail").withSchema(TableName.AgentVaultSession),
+          db.ref("username").withSchema(ON_BEHALF_OF_USER).as("onBehalfOfUserLiveUsername"),
+          db.ref("email").withSchema(ON_BEHALF_OF_USER).as("onBehalfOfUserLiveEmail"),
+          db.ref("firstName").withSchema(ON_BEHALF_OF_USER).as("onBehalfOfUserLiveFirstName"),
+          db.ref("lastName").withSchema(ON_BEHALF_OF_USER).as("onBehalfOfUserLiveLastName"),
           db.ref("accessBundleId").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
@@ -264,6 +338,13 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         identityName: string | null;
         actorName: string;
         actorEmail: string | null;
+        onBehalfOfUserId: string | null;
+        onBehalfOfUserName: string | null;
+        onBehalfOfUserEmail: string | null;
+        onBehalfOfUserLiveUsername: string | null;
+        onBehalfOfUserLiveEmail: string | null;
+        onBehalfOfUserLiveFirstName: string | null;
+        onBehalfOfUserLiveLastName: string | null;
         accessBundleId: string | null;
         accessBundleName: string | null;
         liveAccessBundleName: string | null;
@@ -278,8 +359,23 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
             id: row.id,
             userId: row.userId,
             identityId: row.identityId,
+            onBehalfOfUserId: row.onBehalfOfUserId,
+            onBehalfOfUserName: row.onBehalfOfUserName,
             label: row.label,
             actor: toSessionActor(row),
+            onBehalfOf:
+              row.onBehalfOfUserName !== null
+                ? toSessionUser(
+                    {
+                      id: row.onBehalfOfUserId,
+                      username: row.onBehalfOfUserLiveUsername,
+                      email: row.onBehalfOfUserLiveEmail,
+                      firstName: row.onBehalfOfUserLiveFirstName,
+                      lastName: row.onBehalfOfUserLiveLastName
+                    },
+                    { name: row.onBehalfOfUserName, email: row.onBehalfOfUserEmail }
+                  )
+                : null,
             expiresAt: row.expiresAt,
             revokedAt: row.revokedAt,
             createdAt: row.createdAt,
@@ -302,8 +398,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
   };
 
   // Conditional so two concurrent revokes cannot both believe they were the one that revoked it. The loser
-  // gets no row back, which is what keeps the audit trail down to a single revocation. A session whose owner
-  // was deleted is skipped too: updatedAt is the only record of when, and this write would move it.
+  // gets no row back, which is what keeps the audit trail down to a single revocation. A session whose owner, or the
+  // user it was started on behalf of, was deleted is skipped too: updatedAt is the only record of when, and this write
+  // would move it.
   const revokeIfActive = async (id: string, revokedAt: Date, tx?: Knex) => {
     try {
       const [row] = (await (tx || db)(TableName.AgentVaultSession)
@@ -312,6 +409,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         .where((qb) => {
           void qb.whereNotNull("userId").orWhereNotNull("identityId");
         })
+        .where((qb) => {
+          void qb.whereNull("onBehalfOfUserName").orWhereNotNull("onBehalfOfUserId");
+        })
         .update({ revokedAt }, "*")) as TAgentVaultSessions[];
       return row as TAgentVaultSessions | undefined;
     } catch (error) {
@@ -319,7 +419,8 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  // One statement on the primary: the row is locked, then rewritten only if it still has an owner, and its label
+  // One statement on the primary: the row is locked, then rewritten only if it still has an owner (and, on a
+  // user's behalf, its user), and its label
   // before the write comes back. So two quick edits can't both read a stale label, the caller audits what
   // actually changed, and a session whose owner was just deleted isn't written even if a replica hasn't seen
   // that yet: updatedAt is the only record of when the owner went. No row back means no such session.
@@ -327,10 +428,12 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     try {
       const { rows } = (await (tx || db).raw(
         `WITH previous AS (
-          SELECT id, label, "userId", "identityId" FROM ?? WHERE id = ? AND "projectId" = ? FOR UPDATE
+          SELECT id, label, "userId", "identityId", "onBehalfOfUserId", "onBehalfOfUserName"
+          FROM ?? WHERE id = ? AND "projectId" = ? FOR UPDATE
         ), updated AS (
           UPDATE ?? AS session SET label = ? FROM previous
           WHERE session.id = previous.id AND (previous."userId" IS NOT NULL OR previous."identityId" IS NOT NULL)
+            AND (previous."onBehalfOfUserName" IS NULL OR previous."onBehalfOfUserId" IS NOT NULL)
           RETURNING session.id
         )
         SELECT previous.label AS "previousLabel", EXISTS (SELECT 1 FROM updated) AS "isUpdated" FROM previous`,

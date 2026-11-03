@@ -33,6 +33,15 @@ export enum AgentVaultMemberType {
   Group = "group"
 }
 
+export type TAgentVaultActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
+
+// The `memberships` column that holds each member type's actor id.
+export const AGENT_VAULT_ACTOR_COLUMN: Record<AgentVaultMemberType, TAgentVaultActorColumn> = {
+  [AgentVaultMemberType.User]: "actorUserId",
+  [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
+  [AgentVaultMemberType.Group]: "actorGroupId"
+};
+
 export enum AgentVaultResourceRole {
   Consumer = "consumer"
 }
@@ -68,6 +77,12 @@ export enum AgentVaultSessionStatus {
 export enum AgentVaultSessionScope {
   Mine = "mine",
   All = "all"
+}
+
+/** Which users a machine identity may start sessions on behalf of. */
+export enum AgentVaultDelegationScope {
+  AllMembers = "all-members",
+  Selected = "selected"
 }
 
 /** Which part of a service a variable reference sits in. A basic credential's password is its value. */

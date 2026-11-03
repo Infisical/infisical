@@ -152,20 +152,22 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
         <CardHeader className="border-b">
           <CardTitle>Metadata</CardTitle>
           <CardDescription>Custom key-value pairs attached to this certificate</CardDescription>
-          <CardAction>
-            <IconButton
-              aria-label="Edit certificate metadata"
-              variant="outline"
-              size="xs"
-              onClick={() => {
-                reset({ metadata: metadata.length > 0 ? metadata : [] });
-                setIsModalOpen(true);
-              }}
-              isDisabled={!canEditMetadata}
-            >
-              <PencilIcon />
-            </IconButton>
-          </CardAction>
+          {!certificate?.deletedAt && (
+            <CardAction>
+              <IconButton
+                aria-label="Edit certificate metadata"
+                variant="outline"
+                size="xs"
+                onClick={() => {
+                  reset({ metadata: metadata.length > 0 ? metadata : [] });
+                  setIsModalOpen(true);
+                }}
+                isDisabled={!canEditMetadata}
+              >
+                <PencilIcon />
+              </IconButton>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent>
           {metadata.length > 0 ? (

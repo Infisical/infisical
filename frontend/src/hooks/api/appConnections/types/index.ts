@@ -43,6 +43,7 @@ import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THpeIloConnection } from "./hpe-ilo-connection";
 import { THumanitecConnection } from "./humanitec-connection";
+import { TImpervaConnection } from "./imperva-connection";
 import { TJiraConnection } from "./jira-connection";
 import { TKeeperConnection } from "./keeper-connection";
 import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
@@ -135,6 +136,7 @@ export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./hpe-ilo-connection";
 export * from "./humanitec-connection";
+export * from "./imperva-connection";
 export * from "./jira-connection";
 export * from "./keeper-connection";
 export * from "./kemp-loadmaster-connection";
@@ -253,6 +255,7 @@ export type TAppConnection =
   | TNetScalerConnection
   | TPaloAltoNetworksConnection
   | TKempLoadMasterConnection
+  | TImpervaConnection
   | TDopplerConnection
   | TOvhConnection
   | TDevinConnection

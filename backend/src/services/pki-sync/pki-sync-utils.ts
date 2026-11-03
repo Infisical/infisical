@@ -101,23 +101,6 @@ export const queueCertificateFilterReconcile = async (
   }
 };
 
-export const findPkiSyncIdsHoldingCertificate = async (
-  certificateId: string,
-  dependencies: {
-    certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId" | "primaryNode">;
-  }
-) => {
-  try {
-    return await dependencies.certificateSyncDAL.findPkiSyncIdsByCertificateId(
-      certificateId,
-      dependencies.certificateSyncDAL.primaryNode()
-    );
-  } catch (error) {
-    logger.error(error, `Failed to read PKI sync links for certificate ${certificateId}`);
-    return [];
-  }
-};
-
 export const triggerSyncsForDeletedCertificate = async (
   certificateId: string,
   pkiSyncIds: string[],

@@ -14,6 +14,7 @@ import {
   describeServer,
   MAX_OAUTH_SCOPES,
   OFFLINE_ACCESS_SCOPE,
+  privateNetworkHint,
   splitScopes,
   stripTrailingSlash
 } from "./agent-vault-oauth-discovery-fns";
@@ -168,7 +169,7 @@ export const parseGrantedScopes = (
   return { scopes: splitScopes(scope), commaSeparated: false };
 };
 
-// A reauthorize asks for at most the 100 discovered scopes plus 100 an agent reported, so no real server grants more.
+// A reauthorize asks for at most the 200 discovered scopes plus 200 an agent reported, so no real server grants more.
 // Granted scopes go into the pending authorization in Redis and are asked for again on every reauthorize.
 export const MAX_GRANTED_OAUTH_SCOPES = 2 * MAX_OAUTH_SCOPES;
 
@@ -352,7 +353,7 @@ export const requestToken = async ({
         ok: false,
         errorCode: null,
         message: isPrivateAddress
-          ? `Infisical can't reach the login server '${host}' because it's on a private network. Use a bearer token for this service instead.`
+          ? `Infisical can't reach the login server '${host}' because it's on a private network. Use a bearer token for this service instead.${privateNetworkHint()}`
           : `Couldn't reach the login server '${host}'.`,
         resourceDropped: !withResource
       };

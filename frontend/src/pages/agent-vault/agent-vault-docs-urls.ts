@@ -9,6 +9,7 @@ export const AgentVaultDocsUrls = {
   variables: `${AGENT_VAULT_DOCS_BASE_URL}/variables`,
   skills: `${AGENT_VAULT_DOCS_BASE_URL}/skills`,
   sessions: `${AGENT_VAULT_DOCS_BASE_URL}/sessions`,
+  sessionsOnBehalfOfUsers: `${AGENT_VAULT_DOCS_BASE_URL}/sessions-on-behalf-of-users`,
   proxies: `${AGENT_VAULT_DOCS_BASE_URL}/proxies`,
   sessionLogs: `${AGENT_VAULT_DOCS_BASE_URL}/session-logs`
 } as const;

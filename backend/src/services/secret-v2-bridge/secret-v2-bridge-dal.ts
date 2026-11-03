@@ -48,6 +48,16 @@ interface TSecretV2DalArg {
 export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
 export const SECRET_DAL_VERSION_TTL = "15m";
 export const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
+
+const SECRET_V2_COLUMNS = Object.keys(SecretsV2Schema.shape) as (keyof TSecretsV2)[];
+
+// Same output as SecretsV2Schema.parse for a row selected with selectAllTableCols, without parsing every row.
+const pickSecretV2Columns = (row: TSecretsV2) => {
+  const secret: Record<string, unknown> = {};
+  for (const column of SECRET_V2_COLUMNS) secret[column] = row[column];
+  return secret as TSecretsV2;
+};
+
 export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
@@ -895,7 +905,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         key: "id",
         parentMapper: (el) => ({
           _id: el.id,
-          ...SecretsV2Schema.parse(el),
+          ...pickSecretV2Columns(el),
           isHoneyTokenSecret: Boolean(el.honeyTokenId),
           rotationId: el.rotationId,
           isRotatedSecret: Boolean(el.rotationId)
