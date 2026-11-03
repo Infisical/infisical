@@ -1363,25 +1363,21 @@ export const secretV2BridgeServiceFactory = ({
     if (!folders.length) return [];
 
     const folderEnvironments = new Map(folders.map((folder) => [folder.id, folder.environment.slug]));
-    const secrets = await secretDAL.findByFolderIds({
+    const matches = await secretDAL.findSharedKeyInFolders({
       folderIds: folders.map((folder) => folder.id),
-      userId: actorId,
-      tx: undefined,
-      filters: { keys: [secretKey] }
+      key: secretKey
     });
 
     const existingEnvironments = new Set<string>();
-    secrets.forEach((secret) => {
-      const environment = folderEnvironments.get(secret.folderId);
+    matches.forEach(({ folderId, tagSlugs }) => {
+      const environment = folderEnvironments.get(folderId);
       if (
         environment &&
-        secret.type === SecretType.Shared &&
-        secret.key === secretKey &&
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
           environment,
           secretPath: path,
-          secretName: secret.key,
-          secretTags: secret.tags.map((tag) => tag.slug)
+          secretName: secretKey,
+          secretTags: tagSlugs
         })
       ) {
         existingEnvironments.add(environment);

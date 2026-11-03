@@ -7,6 +7,7 @@ import {
   useRef,
   useState
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { createNotification } from "@app/components/notifications";
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
@@ -19,7 +20,11 @@ import {
   useSecretInputActionShortcuts
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { fetchSecretKeyExistingEnvironments } from "@app/hooks/api/dashboard/queries";
+import { useDebounce } from "@app/hooks";
+import {
+  secretKeyExistsQueryOptions,
+  useGetSecretKeyExistingEnvironments
+} from "@app/hooks/api/dashboard/queries";
 
 import { overviewCountBucket, useOverviewTelemetry } from "../../OverviewTelemetry";
 import { TABLE_ROW_ACTIVE_FILTER_CLASS_NAME } from "../tableRowActionStyles";
@@ -79,10 +84,23 @@ export const QuickAddSecretRow = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [valueEditorStyle, setValueEditorStyle] = useState<CSSProperties>();
   const isMultiEnvironmentView = environments.length > 1;
-  const environmentSlugs = environments.join(",");
+  const queryClient = useQueryClient();
   const latestDraftRef = useRef({ key, value, comment });
   latestDraftRef.current = { key, value, comment };
-  const confirmedFreeKeyRef = useRef<string>(undefined);
+  const trimmedKey = key.trim();
+  const [debouncedKey] = useDebounce(trimmedKey, 500);
+  const isLocalDuplicate = existingSecretKeys.includes(trimmedKey);
+  const { data: environmentsWithKey } = useGetSecretKeyExistingEnvironments(
+    { projectId: currentProject.id, environments, secretPath, secretKey: debouncedKey },
+    { enabled: !existingSecretKeys.includes(debouncedKey) }
+  );
+  const isCheckForCurrentKey = Boolean(trimmedKey) && debouncedKey === trimmedKey;
+  let duplicateError: string | undefined;
+  if (isLocalDuplicate) duplicateError = "A secret with this name already exists";
+  else if (isCheckForCurrentKey && environmentsWithKey?.length)
+    duplicateError = getDuplicateKeyError(environmentsWithKey, isMultiEnvironmentView);
+  const isKeyConfirmedFree = isCheckForCurrentKey && environmentsWithKey?.length === 0;
+  const displayedError = error ?? duplicateError;
 
   useEffect(() => {
     if (!isMultiEnvironmentView) {
@@ -115,46 +133,6 @@ export const QuickAddSecretRow = ({
   }, [isMultiEnvironmentView]);
 
   useEffect(() => {
-    const secretKey = key.trim();
-    if (!secretKey) return undefined;
-
-    if (existingSecretKeys.includes(secretKey)) {
-      setError("A secret with this name already exists");
-      return undefined;
-    }
-
-    let isCancelled = false;
-    const timer = setTimeout(async () => {
-      const environmentsWithKey = await fetchSecretKeyExistingEnvironments({
-        projectId: currentProject.id,
-        environments: environmentSlugs.split(","),
-        secretPath,
-        secretKey
-      }).catch(() => []);
-      if (isCancelled) return;
-      if (!environmentsWithKey.length)
-        confirmedFreeKeyRef.current = `${secretKey}|${environmentSlugs}`;
-      setError(
-        environmentsWithKey.length
-          ? getDuplicateKeyError(environmentsWithKey, isMultiEnvironmentView)
-          : undefined
-      );
-    }, 500);
-
-    return () => {
-      isCancelled = true;
-      clearTimeout(timer);
-    };
-  }, [
-    key,
-    existingSecretKeys,
-    currentProject.id,
-    environmentSlugs,
-    secretPath,
-    isMultiEnvironmentView
-  ]);
-
-  useEffect(() => {
     onActivityChange(activityId, isActive);
   }, [activityId, isActive, onActivityChange]);
 
@@ -177,8 +155,7 @@ export const QuickAddSecretRow = ({
       return;
     }
 
-    if ((!isDirectSave && error) || existingSecretKeys.includes(normalizedKey)) {
-      setError(error ?? "A secret with this name already exists");
+    if (duplicateError) {
       if (refocus) keyInputRef.current?.focus();
       return;
     }
@@ -188,14 +165,18 @@ export const QuickAddSecretRow = ({
 
     try {
       if (isDirectSave) {
-        const environmentsWithKey = await fetchSecretKeyExistingEnvironments({
-          projectId: currentProject.id,
-          environments,
-          secretPath,
-          secretKey: normalizedKey
-        }).catch(() => []);
-        if (environmentsWithKey.length) {
-          setError(getDuplicateKeyError(environmentsWithKey, isMultiEnvironmentView));
+        const takenEnvironments = await queryClient
+          .fetchQuery(
+            secretKeyExistsQueryOptions({
+              projectId: currentProject.id,
+              environments,
+              secretPath,
+              secretKey: normalizedKey
+            })
+          )
+          .catch(() => []);
+        if (takenEnvironments.length) {
+          setError(getDuplicateKeyError(takenEnvironments, isMultiEnvironmentView));
           if (refocus) setTimeout(() => keyInputRef.current?.focus(), 0);
           return;
         }
@@ -206,19 +187,22 @@ export const QuickAddSecretRow = ({
           onCreateSecret(environment, normalizedKey, value, comment, isDirectSave)
         )
       );
-      if (!isDirectSave && confirmedFreeKeyRef.current !== `${normalizedKey}|${environmentSlugs}`) {
+      if (!isDirectSave && !isKeyConfirmedFree) {
         const queuedDraft = { key: normalizedKey, value, comment };
-        fetchSecretKeyExistingEnvironments({
-          projectId: currentProject.id,
-          environments,
-          secretPath,
-          secretKey: normalizedKey
-        })
+        queryClient
+          .fetchQuery(
+            secretKeyExistsQueryOptions({
+              projectId: currentProject.id,
+              environments,
+              secretPath,
+              secretKey: normalizedKey
+            })
+          )
           .catch(() => [])
-          .then((environmentsWithKey) => {
-            if (!environmentsWithKey.length || !onQueuedSecretConflict?.(queuedDraft)) return;
+          .then((takenEnvironments) => {
+            if (!takenEnvironments.length || !onQueuedSecretConflict?.(queuedDraft)) return;
             const duplicateKeyError = getDuplicateKeyError(
-              environmentsWithKey,
+              takenEnvironments,
               isMultiEnvironmentView
             );
             createNotification({
@@ -230,7 +214,6 @@ export const QuickAddSecretRow = ({
             setKey(queuedDraft.key);
             setValue(queuedDraft.value);
             setComment(queuedDraft.comment);
-            setError(duplicateKeyError);
           });
       }
       setKey("");
@@ -350,12 +333,12 @@ export const QuickAddSecretRow = ({
         <form ref={formRef} id="quick-add-secret-form" onSubmit={handleSubmit}>
           <Input
             ref={keyInputRef}
-            aria-describedby={error ? "quick-add-secret-error" : undefined}
+            aria-describedby={displayedError ? "quick-add-secret-error" : undefined}
             aria-label="New secret name"
             autoComplete="off"
             className="h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:border-transparent focus-visible:ring-0"
             disabled={isSubmitting}
-            isError={Boolean(error)}
+            isError={Boolean(displayedError)}
             placeholder="Add a secret name"
             spellCheck={false}
             value={key}
@@ -375,9 +358,9 @@ export const QuickAddSecretRow = ({
               }
             }}
           />
-          {error && (
+          {displayedError && (
             <span id="quick-add-secret-error" className="mt-1 block text-2xs text-danger">
-              {error}
+              {displayedError}
             </span>
           )}
         </form>
@@ -416,7 +399,7 @@ export const QuickAddSecretRow = ({
           {isDraftActive && (
             <SecretInputActions
               className="absolute right-0"
-              isSaveDisabled={isSubmitting}
+              isSaveDisabled={isSubmitting || Boolean(duplicateError)}
               isUndoDisabled={isSubmitting}
               saveLabel={saveLabel}
               onSave={requestSave}

@@ -1985,7 +1985,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/secret-key-exists",
+    url: "/secrets/key-exists",
     config: {
       rateLimit: readLimit
     },
@@ -1998,7 +1998,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        projectId: z.string().trim().uuid().describe(DASHBOARD.SECRET_KEY_EXISTS.projectId),
+        projectId: z.string().trim().min(1).max(64).describe(DASHBOARD.SECRET_KEY_EXISTS.projectId),
         environments: z
           .string()
           .trim()

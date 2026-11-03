@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   BanIcon,
   BellIcon,
@@ -91,10 +92,17 @@ import {
   useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { useDiscardChangesGuard, usePopUp, useTimedReset, useToggle } from "@app/hooks";
+import {
+  useDebounce,
+  useDiscardChangesGuard,
+  usePopUp,
+  useTimedReset,
+  useToggle
+} from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import {
-  fetchSecretKeyExistingEnvironments,
+  secretKeyExistsQueryOptions,
+  useGetSecretKeyExistingEnvironments,
   useGetSecretValue
 } from "@app/hooks/api/dashboard/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
@@ -301,6 +309,7 @@ export const SecretEditTableRow = ({
     setValue,
     setFocus,
     getFieldState,
+    getValues,
     watch,
     formState: { isDirty, dirtyFields, isSubmitting }
   } = useForm({
@@ -503,38 +512,34 @@ export const SecretEditTableRow = ({
   const serializedMetadata = JSON.stringify(watchedMetadata);
   const batchAutoApplyTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const applyBatchEditsRef = useRef<() => void>(undefined);
-  const keyCheckRef = useRef<{ key: string; exists?: boolean; promise: Promise<void> }>(undefined);
+  const queryClient = useQueryClient();
+  const isSavingPendingChangeRef = useRef(false);
+  const getKeyCheckParams = (secretKey: string) => ({
+    projectId: currentProject.id,
+    environments: [environment],
+    secretPath,
+    secretKey
+  });
+  const getCheckedKeyEnvironments = (secretKey: string) => {
+    const state = queryClient.getQueryState<string[]>(
+      secretKeyExistsQueryOptions(getKeyCheckParams(secretKey)).queryKey
+    );
+    if (!state || state.isInvalidated) return undefined;
+    if (state.status === "error") return [];
+    return state.data;
+  };
+  const getRenameKey = () => {
+    const key = getValues("key") as string | undefined;
+    return isSingleEnvView && key && key !== secretName ? key : undefined;
+  };
+  const [debouncedKey] = useDebounce((watchedKey as string | undefined) ?? "", 500);
+  const keyCheck = useGetSecretKeyExistingEnvironments(getKeyCheckParams(debouncedKey), {
+    enabled: isSingleEnvView && debouncedKey !== secretName
+  });
 
   useEffect(() => {
-    if (!isSingleEnvView || !watchedKey || watchedKey === secretName) {
-      keyCheckRef.current = undefined;
-      return undefined;
-    }
-
-    let isCancelled = false;
-    const check: { key: string; exists?: boolean; promise: Promise<void> } = {
-      key: watchedKey,
-      promise: Promise.resolve()
-    };
-    check.promise = new Promise<void>((resolve) => {
-      setTimeout(resolve, 500);
-    }).then(async () => {
-      if (isCancelled) return;
-      const existingEnvironments = await fetchSecretKeyExistingEnvironments({
-        projectId: currentProject.id,
-        environments: [environment],
-        secretPath,
-        secretKey: check.key
-      }).catch(() => []);
-      check.exists = existingEnvironments.length > 0;
-      if (!isCancelled) applyBatchEditsRef.current?.();
-    });
-    keyCheckRef.current = check;
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [watchedKey, secretName, isSingleEnvView, currentProject.id, environment, secretPath]);
+    if (keyCheck.dataUpdatedAt || keyCheck.errorUpdatedAt) applyBatchEditsRef.current?.();
+  }, [keyCheck.dataUpdatedAt, keyCheck.errorUpdatedAt]);
   const lastAppliedRef = useRef<{
     value: unknown;
     key: unknown;
@@ -661,8 +666,8 @@ export const SecretEditTableRow = ({
               s.newSecretName !== key
           );
 
-        const keyCheck = keyCheckRef.current;
-        isKeyCheckPending = keyCheck?.key !== newKey || keyCheck.exists === undefined;
+        const checkedKeyEnvironments = getCheckedKeyEnvironments(newKey);
+        isKeyCheckPending = checkedKeyEnvironments === undefined;
 
         const isTaken =
           (existingSecretKeys.has(newKey) && !isServerKeyFreed(newKey)) ||
@@ -676,7 +681,7 @@ export const SecretEditTableRow = ({
                 // Also check if a create uses this key
                 (s.type === PendingAction.Create && s.secretKey === newKey))
           ) ||
-          (keyCheck?.key === newKey && keyCheck.exists === true && !isServerKeyFreed(newKey));
+          (Boolean(checkedKeyEnvironments?.length) && !isServerKeyFreed(newKey));
         if (isTaken) {
           createNotification({
             type: "error",
@@ -780,23 +785,29 @@ export const SecretEditTableRow = ({
     batchStore.getState().pendingChanges.secrets.find((c) => c.secretKey === secretName)?.id;
 
   const savePendingRow = async (knownPendingChangeId?: string) => {
-    if (!onPendingSave) return;
-    let keyCheck = keyCheckRef.current;
-    while (keyCheck && keyCheck.exists === undefined) {
-      // eslint-disable-next-line no-await-in-loop
-      await keyCheck.promise;
-      if (keyCheckRef.current === keyCheck) break;
-      keyCheck = keyCheckRef.current;
-    }
-    const pendingChangeId = knownPendingChangeId ?? findPendingChangeId();
-    if (batchAutoApplyTimer.current) {
-      clearTimeout(batchAutoApplyTimer.current);
-      if (!knownPendingChangeId) applyBatchEditsRef.current?.();
-    }
+    if (!onPendingSave || isSavingPendingChangeRef.current) return;
+    isSavingPendingChangeRef.current = true;
     setIsSavingPendingChange.on();
     try {
+      let renameKey = getRenameKey();
+      while (renameKey && getCheckedKeyEnvironments(renameKey) === undefined) {
+        // eslint-disable-next-line no-await-in-loop
+        await queryClient
+          .fetchQuery(secretKeyExistsQueryOptions(getKeyCheckParams(renameKey)))
+          .catch(() => []);
+        const latestRenameKey = getRenameKey();
+        if (latestRenameKey === renameKey) break;
+        renameKey = latestRenameKey;
+      }
+      if (renameKey) applyBatchEditsRef.current?.();
+      const pendingChangeId = knownPendingChangeId ?? findPendingChangeId();
+      if (batchAutoApplyTimer.current) {
+        clearTimeout(batchAutoApplyTimer.current);
+        if (!knownPendingChangeId) applyBatchEditsRef.current?.();
+      }
       await onPendingSave(environment, secretName, pendingChangeId);
     } finally {
+      isSavingPendingChangeRef.current = false;
       setIsSavingPendingChange.off();
     }
   };

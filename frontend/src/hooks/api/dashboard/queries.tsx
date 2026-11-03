@@ -1,5 +1,11 @@
 import { useCallback } from "react";
-import { useQueries, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  UseQueryOptions
+} from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
@@ -86,6 +92,17 @@ export const dashboardKeys = {
       "accessible-secrets",
       { projectId, secretPath, environment, filterByAction }
     ] as const,
+  getSecretKeyExists: ({
+    projectId,
+    secretPath,
+    environments,
+    secretKey
+  }: TGetSecretKeyExistsDTO) =>
+    [
+      ...dashboardKeys.getDashboardSecrets({ projectId, secretPath }),
+      "secret-key-exists",
+      { environments, secretKey }
+    ] as const,
   getSecretValuesRoot: () => [...dashboardKeys.all(), "secrets-values"] as const,
   getSecretValue: ({
     projectId,
@@ -126,16 +143,29 @@ export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?
   return data;
 };
 
-export const fetchSecretKeyExistingEnvironments = async ({
-  environments,
-  ...params
-}: TGetSecretKeyExistsDTO) => {
-  const { data } = await apiRequest.get<{ existingEnvironments: string[] }>(
-    "/api/v1/dashboard/secret-key-exists",
-    { params: { ...params, environments: encodeURIComponent(environments.join(",")) } }
-  );
-  return data.existingEnvironments;
-};
+export const secretKeyExistsQueryOptions = (params: TGetSecretKeyExistsDTO) =>
+  queryOptions({
+    queryKey: dashboardKeys.getSecretKeyExists(params),
+    queryFn: async () => {
+      const { environments, ...rest } = params;
+      const { data } = await apiRequest.get<{ existingEnvironments: string[] }>(
+        "/api/v1/dashboard/secrets/key-exists",
+        { params: { ...rest, environments: encodeURIComponent(environments.join(",")) } }
+      );
+      return data.existingEnvironments;
+    },
+    staleTime: 60 * 1000,
+    retry: false
+  });
+
+export const useGetSecretKeyExistingEnvironments = (
+  params: TGetSecretKeyExistsDTO,
+  { enabled = true }: { enabled?: boolean } = {}
+) =>
+  useQuery({
+    ...secretKeyExistsQueryOptions(params),
+    enabled: enabled && Boolean(params.secretKey) && params.environments.length > 0
+  });
 
 export const fetchProjectSecretsOverview = async ({
   environments,
