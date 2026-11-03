@@ -13,12 +13,14 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
   const countOfSecretsWithNullSecretBlindIndex = async (projectId: string, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.Secret)
-        .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
-        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+        .innerJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
+        .innerJoin(TableName.Environment, function joinActiveEnvForFolder() {
           this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
             `${TableName.Environment}.deleteAfter`
           );
         })
+        .innerJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where({ projectId })
         .whereNull("secretBlindIndex")
         .count(`${TableName.Secret}.id` as "id");
@@ -31,12 +33,14 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
   const findAllSecretsByProjectId = async (projectId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.Secret)
-        .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
-        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+        .innerJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
+        .innerJoin(TableName.Environment, function joinActiveEnvForFolder() {
           this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
             `${TableName.Environment}.deleteAfter`
           );
         })
+        .innerJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where({ projectId })
         .select(selectAllTableCols(TableName.Secret))
         .select(
@@ -52,12 +56,14 @@ export const secretBlindIndexDALFactory = (db: TDbClient) => {
   const findSecretsByProjectId = async (projectId: string, secretIds: string[], tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.Secret)
-        .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
-        .leftJoin(TableName.Environment, function joinActiveEnvForFolder() {
+        .innerJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.Secret}.folderId`)
+        .innerJoin(TableName.Environment, function joinActiveEnvForFolder() {
           this.on(`${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`).andOnNull(
             `${TableName.Environment}.deleteAfter`
           );
         })
+        .innerJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where({ projectId })
         .whereIn(`${TableName.Secret}.id`, secretIds)
         .select(selectAllTableCols(TableName.Secret))
