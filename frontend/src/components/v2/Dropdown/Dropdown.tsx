@@ -165,6 +165,4 @@ export const DropdownMenuSeparator = forwardRef<
   />
 ));
 
-DropdownMenuSeparator.displayName = "DropdownMenuSeperator";
-
-DropdownMenuSeparator.displayName = "DropdownMenuSeperator";
+DropdownMenuSeparator.displayName = "DropdownMenuSeparator";
