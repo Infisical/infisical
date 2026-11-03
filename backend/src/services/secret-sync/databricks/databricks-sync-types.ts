@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { TDatabricksConnection, TDatabricksRequestConfig } from "@app/services/app-connection/databricks";
+import { TGatewayDetails } from "@app/services/app-connection/hc-vault/hc-vault-connection-types";
 
 import {
   CreateDatabricksSyncSchema,
@@ -25,6 +26,7 @@ export type TDatabricksListSecretKeysResponse = {
 type TBaseDatabricksSecretRequest = {
   scope: string;
   connection: TDatabricksRequestConfig;
+  gatewayDetails?: TGatewayDetails;
   accessToken: string;
 };
 
