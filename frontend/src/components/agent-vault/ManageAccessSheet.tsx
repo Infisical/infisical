@@ -303,8 +303,9 @@ const ManageAccessContent = ({
           Manage Access
           <DocumentationLinkBadge href={AgentVaultDocsUrls.accessBundles} />
         </SheetTitle>
-        <SheetDescription className="sr-only">
-          Manage who can create sessions with {accessBundle.name}.
+        <SheetDescription>
+          Manage who can create sessions with{" "}
+          <span className="font-medium break-words text-foreground">{accessBundle.name}</span>.
         </SheetDescription>
       </SheetHeader>
 
