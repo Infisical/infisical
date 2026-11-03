@@ -1,6 +1,3 @@
-import net from "node:net";
-
-import { parse as parseSql } from "libpg-query";
 import pg from "pg";
 import Cursor from "pg-cursor";
 
@@ -13,6 +10,7 @@ import {
   type TConnectionController,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
+import { sendCancelRequest, splitPostgresStatements } from "./pam-postgres-data-explorer-fns";
 import { getTableDetailQuery } from "./pam-postgres-data-explorer-metadata";
 
 const pgTypes = {
@@ -25,22 +23,6 @@ const pgTypes = {
     return (val: string | Buffer) => (typeof val === "string" ? val : val.toString("hex"));
   }
 };
-
-const CANCEL_REQUEST_CODE = 80877102;
-
-// The protocol-level cancel psql sends, since CockroachDB has no pg_cancel_backend()
-const sendCancelRequest = (port: number, processId: number, secretKey: number) =>
-  new Promise<void>((resolve, reject) => {
-    const packet = Buffer.alloc(16);
-    packet.writeInt32BE(16, 0);
-    packet.writeInt32BE(CANCEL_REQUEST_CODE, 4);
-    packet.writeInt32BE(processId, 8);
-    packet.writeInt32BE(secretKey, 12);
-    const socket = net.connect({ host: "localhost", port }, () => socket.end(packet));
-    socket.setTimeout(5_000, () => socket.destroy(new Error("Timed out sending the cancel request")));
-    socket.once("error", reject);
-    socket.once("close", () => resolve());
-  });
 
 export const createPostgresConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
   const { relayPort, username, database, sessionId, connectionId, sendResponse, onUnexpectedTermination } = params;
@@ -162,15 +144,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
               const startTime = performance.now();
               const MAX_ROWS = 1000;
 
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-              const parsed = await parseSql(message.sql);
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-              const stmtTexts = (parsed.stmts as Array<{ stmt_location?: number; stmt_len?: number }>).map((s) => {
-                const location = s.stmt_location ?? 0;
-                return s.stmt_len !== undefined
-                  ? message.sql.slice(location, location + s.stmt_len)
-                  : message.sql.slice(location).trim();
-              });
+              const stmtTexts = await splitPostgresStatements(message.sql);
 
               let lastRows: Record<string, unknown>[] = [];
               let lastFields: { name: string }[] = [];
