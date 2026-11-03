@@ -1,5 +1,6 @@
-import { parse as parseSql } from "libpg-query";
 import net from "node:net";
+
+import { parse as parseSql } from "libpg-query";
 import pg from "pg";
 import Cursor from "pg-cursor";
 
