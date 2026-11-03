@@ -85,20 +85,26 @@ type ResourceFilterProps = {
 };
 
 const ResourceFilter = ({ dataSource, value, onChange }: ResourceFilterProps) => {
-  const { data: resources = [], refetch } = useListSecretScanningBasicResources({
+  const {
+    data: resources = [],
+    isFetching,
+    refetch
+  } = useListSecretScanningBasicResources({
     dataSourceId: dataSource.id,
     type: dataSource.type
   });
 
   const { singularTitle, pluralTitle } = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
   const selectedName = resources.find((r) => r.id === value)?.name;
+  // a link can name a resource that was removed or belongs to another data source
+  const unmatchedLabel = isFetching ? "…" : "Unknown";
 
   return (
     // scans add resources after the fact, so refresh the options whenever the menu opens
     <DropdownMenu onOpenChange={(open) => open && refetch()}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline">
-          {singularTitle}: {selectedName ?? "All"}
+          {singularTitle}: {value ? (selectedName ?? unmatchedLabel) : "All"}
           <ChevronDownIcon />
         </Button>
       </DropdownMenuTrigger>
