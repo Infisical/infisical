@@ -330,29 +330,45 @@ const $deleteVersion = async ({ scriptId, accountUrl, headers }: TFallbackContex
 
 // A rejected version is the latest, so the next sync would build on it, and Cloudflare refuses to delete the latest
 // version. An unchanged copy of the base takes its place first, after which the rejected version can be deleted.
-// Returns whether the rejected version was deleted.
-const $replaceRejectedVersion = async (ctx: TFallbackContext, rejectedVersionId: string, baseVersionId: string) => {
-  const restored = await $uploadCheckedVersion(ctx, baseVersionId, undefined, {
-    message: () => `Infisical secret sync (restores ${baseVersionId} in place of rejected ${rejectedVersionId})`
-  });
+// Nothing here is thrown: a failure must not reach the job's retry, which would build on the rejected version.
+const $replaceRejectedVersion = async (
+  ctx: TFallbackContext,
+  rejectedVersionId: string,
+  baseVersionId: string
+): Promise<{ replaced: true; deleted: boolean } | { replaced: false; unsafeVersionIds: string[] }> => {
+  const unsafeVersionIds = [rejectedVersionId];
 
-  if (restored?.differences.length) {
-    throw $fail(
-      ctx.scriptId,
-      `Cloudflare stored versions ${rejectedVersionId} and ${restored.newVersionId} differently from what Infisical uploaded (${restored.differences.join("; ")})`,
-      "Don't deploy either version, and contact support."
+  try {
+    const restored = await $createVersion(ctx, baseVersionId, undefined, {
+      message: () => `Infisical secret sync (restores ${baseVersionId} in place of rejected ${rejectedVersionId})`
+    });
+    if (!restored) return { replaced: false, unsafeVersionIds };
+
+    unsafeVersionIds.push(restored.newVersionId);
+    const differences = await $findDifferences(ctx, restored.newVersionId, restored.expected);
+    if (differences.length) {
+      logger.error(
+        `SecretSync Cloudflare Workers restored version mismatch [syncId=${ctx.syncId}] [scriptId=${ctx.scriptId}] [baseVersionId=${baseVersionId}] [newVersionId=${restored.newVersionId}] [differences=${differences.join("; ")}]`
+      );
+      return { replaced: false, unsafeVersionIds };
+    }
+  } catch (err) {
+    logger.error(
+      err,
+      `SecretSync Cloudflare Workers failed to restore version [syncId=${ctx.syncId}] [scriptId=${ctx.scriptId}] [baseVersionId=${baseVersionId}] [rejectedVersionId=${rejectedVersionId}]`
     );
+    return { replaced: false, unsafeVersionIds };
   }
 
   try {
     await $deleteVersion(ctx, rejectedVersionId);
-    return true;
+    return { replaced: true, deleted: true };
   } catch (err) {
     logger.warn(
       err,
       `SecretSync Cloudflare Workers failed to delete rejected version [syncId=${ctx.syncId}] [scriptId=${ctx.scriptId}] [versionId=${rejectedVersionId}]`
     );
-    return false;
+    return { replaced: true, deleted: false };
   }
 };
 
@@ -419,11 +435,21 @@ const $applySecretsWithVersionFallback = async (
         newVersionId,
         expected: { baseVersionId }
       } = created;
-      const deleted = await $replaceRejectedVersion(ctx, newVersionId, baseVersionId);
+      const outcome = await $replaceRejectedVersion(ctx, newVersionId, baseVersionId);
+      const reason = `Cloudflare stored the new version differently from what Infisical uploaded (${created.differences.join("; ")})`;
+
+      if (!outcome.replaced) {
+        throw $fail(
+          scriptId,
+          reason,
+          `Infisical couldn't put an unchanged copy of version ${baseVersionId} in its place, so don't deploy version ${outcome.unsafeVersionIds.join(" or ")}. The next sync builds on the latest version, so upload a new version of the Worker before syncing again, and contact support.`
+        );
+      }
+
       throw $fail(
         scriptId,
-        `Cloudflare stored the new version differently from what Infisical uploaded (${created.differences.join("; ")})`,
-        deleted
+        reason,
+        outcome.deleted
           ? `Infisical deleted that version and made an unchanged copy of version ${baseVersionId} the latest. Sync again, and contact support if this keeps happening.`
           : `Infisical made an unchanged copy of version ${baseVersionId} the latest, but couldn't delete the rejected version ${newVersionId}. Don't deploy it. Sync again, and contact support if this keeps happening.`
       );

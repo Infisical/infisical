@@ -300,9 +300,33 @@ describe("Cloudflare Workers version fallback", () => {
       installFakeCloudflare();
       alterStoredVersion = tamper;
 
-      await expect(sync({ API_KEY: "new" })).rejects.toThrow("Don't deploy either version");
+      await expect(sync({ API_KEY: "new" })).rejects.toThrow("don't deploy version new-1 or new-2");
       expect(del).not.toHaveBeenCalled();
     });
+
+    it.each([
+      ["reading the base", "/versions/v21", "new-1."],
+      ["reading back the restored copy", "/versions/new-2", "new-1 or new-2."]
+    ])(
+      "doesn't let the job retry build on the rejected version when %s fails",
+      async (label, failingRead, unsafeVersions) => {
+        installFakeCloudflare();
+        tamperFirstUpload();
+        const readVersion = get.getMockImplementation() as (url: string) => Promise<unknown>;
+        get.mockImplementation(async (url: string) => {
+          if (url.endsWith(failingRead)) throw new AxiosError("timeout of 60000ms exceeded", "ECONNABORTED");
+          return readVersion(url);
+        });
+
+        const error = (await sync({ API_KEY: "new" }).catch((err: unknown) => err)) as SecretSyncError;
+
+        expect(error).toBeInstanceOf(SecretSyncError);
+        expect(error.shouldRetry).toBe(false);
+        expect(error.message).toContain(`don't deploy version ${unsafeVersions}`);
+        expect(error.message).toContain("upload a new version of the Worker before syncing again");
+        expect(del).not.toHaveBeenCalled();
+      }
+    );
 
     it("tells the user not to deploy the rejected version when it can't be deleted", async () => {
       installFakeCloudflare();
