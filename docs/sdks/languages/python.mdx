@@ -915,7 +915,7 @@ To find the access bundles that a session on behalf of the user can use, pass th
 
 #### Update session label
 
-Add, change, or remove a session's label, for example to record what the agent is working on. You can also change the label after the session expires or is revoked, unless the user or machine identity that owns the session was deleted.
+Add, change, or remove a session's label, for example to record what the agent is working on. You can also change the label after the session expires or is revoked, unless someone deleted the session's owner or the user that the session was created on behalf of.
 
 ```python
 session = client.agent_vault.sessions.update(
