@@ -17,11 +17,11 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
 import { certificateRequestServiceFactory, TCertificateRequestServiceFactory } from "./certificate-request-service";
@@ -331,6 +331,44 @@ describe("CertificateRequestService", () => {
       expect(projectId).toEqual("550e8400-e29b-41d4-a716-446655440003");
     });
 
+    it("returns the deleted certificate's id and serial number but no certificate body", async () => {
+      const mockPermission = {
+        permission: createMongoAbility<ProjectPermissionSet>([
+          {
+            action: ProjectPermissionCertificateActions.Read,
+            subject: ProjectPermissionSub.Certificates
+          }
+        ])
+      };
+      const mockRequestWithDeletedCert = {
+        id: "550e8400-e29b-41d4-a716-446655440008",
+        projectId: "550e8400-e29b-41d4-a716-446655440003",
+        status: CertificateRequestStatus.ISSUED,
+        certificate: {
+          id: "550e8400-e29b-41d4-a716-446655440009",
+          serialNumber: "0a1b2c",
+          deletedAt: new Date("2026-10-20T14:38:27.000Z")
+        },
+        errorMessage: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(mockRequestWithDeletedCert);
+
+      const { certificateRequest } = await service.getCertificateFromRequest(mockGetData);
+
+      expect(certificateRequest).toMatchObject({
+        status: CertificateRequestStatus.ISSUED,
+        certificateId: "550e8400-e29b-41d4-a716-446655440009",
+        serialNumber: "0a1b2c",
+        certificate: null,
+        privateKey: null
+      });
+      expect(mockCertificateService.getCertBody).not.toHaveBeenCalled();
+    });
+
     it("should get certificate from request successfully when no certificate is attached", async () => {
       const mockPermission = {
         permission: createMongoAbility<ProjectPermissionSet>([
@@ -361,6 +399,7 @@ describe("CertificateRequestService", () => {
         certificate: null,
         privateKey: null,
         serialNumber: null,
+        certificateDeletedAt: null,
         errorMessage: null,
         pendingMessage: null,
         commonName: null,
@@ -556,6 +595,7 @@ describe("CertificateRequestService", () => {
         certificateId: null,
         privateKey: null,
         serialNumber: null,
+        certificateDeletedAt: null,
         errorMessage: "Certificate issuance failed",
         pendingMessage: null,
         commonName: null,

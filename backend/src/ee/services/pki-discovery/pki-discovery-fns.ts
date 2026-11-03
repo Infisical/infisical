@@ -7,6 +7,7 @@ import RE2 from "re2";
 import tls from "tls";
 
 import { getConfig } from "@app/lib/config/env";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
 import {
@@ -312,7 +313,7 @@ const getNameField = (name: x509.Name, field: string) => name.getField(field).jo
 export const parseCertificateDer = (derBuffer: Buffer): TScanCertificateResult | null => {
   try {
     const nodeCert = new crypto.X509Certificate(derBuffer);
-    const x509Cert = new x509.X509Certificate(derBuffer);
+    const x509Cert = new x509.X509Certificate(asNonSharedBuffer(derBuffer));
 
     const altNames = nodeCert.subjectAltName
       ?.split(", ")

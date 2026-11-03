@@ -10,7 +10,7 @@ import * as RealReminderQueue from "../../src/services/reminder/reminder-queue";
 // reminder service the handler does, wired with the server's own dependencies. Only the trigger
 // changes, and the spec can pass the day to run for instead of waiting for it.
 //
-// The handle hangs off globalThis for the reason given in aws-parameter-store-sync-fns.ts: the
+// The handle hangs off globalThis for the reason given in aws-iam-user-secret-rotation-fns.ts: the
 // server and a spec reach this module by different specifiers and get separate copies of it.
 const globalScope = globalThis as typeof globalThis & {
   infisicalReminderService?: TReminderServiceFactory;

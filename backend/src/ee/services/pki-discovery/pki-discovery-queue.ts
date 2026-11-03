@@ -15,12 +15,13 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { TPkiCertificateInstallationCertDALFactory } from "./pki-certificate-installation-cert-dal";
 import { TPkiCertificateInstallationDALFactory } from "./pki-certificate-installation-dal";
 import { TPkiDiscoveryConfigDALFactory } from "./pki-discovery-config-dal";
-import { executeLinuxServerScan } from "./pki-discovery-host-scan-fns";
+import { executeHostScan, LINUX_SERVER_SCAN } from "./pki-discovery-host-scan-fns";
 import { TPkiDiscoveryInstallationDALFactory } from "./pki-discovery-installation-dal";
 import { rescanInstallation } from "./pki-discovery-rescan-fns";
 import { executeScan } from "./pki-discovery-scan-fns";
 import { TPkiDiscoveryScanHistoryDALFactory } from "./pki-discovery-scan-history-dal";
 import { PkiDiscoveryType } from "./pki-discovery-types";
+import { WINDOWS_SERVER_SCAN } from "./pki-discovery-windows-scan-fns";
 
 type TPkiDiscoveryQueueFactoryDep = {
   pkiDiscoveryConfigDAL: TPkiDiscoveryConfigDALFactory;
@@ -105,7 +106,10 @@ export const pkiDiscoveryQueueFactory = ({
                 await executeScan(discoveryId, scanDeps);
                 break;
               case PkiDiscoveryType.LinuxServer:
-                await executeLinuxServerScan(discoveryId, scanDeps);
+                await executeHostScan(discoveryId, LINUX_SERVER_SCAN, scanDeps);
+                break;
+              case PkiDiscoveryType.WindowsServer:
+                await executeHostScan(discoveryId, WINDOWS_SERVER_SCAN, scanDeps);
                 break;
               default:
                 throw new Error(`Unsupported discovery type: ${discoveryType as string}`);

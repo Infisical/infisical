@@ -6,6 +6,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { lockMembershipsById } from "@app/services/membership/membership-dal";
 import { emitGroupMembershipRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 
 import {
@@ -490,18 +491,22 @@ export const removeUsersFromGroupByUserIds = async ({
       }
     });
 
+    const groupProjectMemberships = await membershipGroupDAL.find(
+      {
+        scope: AccessScope.Project,
+        actorGroupId: group.id
+      },
+      { tx }
+    );
     const projectIds = Array.from(
-      new Set(
-        (
-          await membershipGroupDAL.find(
-            {
-              scope: AccessScope.Project,
-              actorGroupId: group.id
-            },
-            { tx }
-          )
-        ).map((gp) => gp.scopeProjectId as string)
-      )
+      new Set(groupProjectMemberships.map((membership) => membership.scopeProjectId as string))
+    );
+    const lockedMemberships = await lockMembershipsById(
+      groupProjectMemberships.map((membership) => membership.id),
+      tx
+    );
+    const lockedProjectIds = new Set(
+      lockedMemberships.flatMap((membership) => (membership.scopeProjectId ? [membership.scopeProjectId] : []))
     );
 
     if (membersToRemoveFromGroupNonPending.length) {
@@ -530,16 +535,22 @@ export const removeUsersFromGroupByUserIds = async ({
 
           // additional privileges are keyed on actor + project, not membership, so leaving the
           // user's last route into these projects must reap them or they reactivate if the user
-          // is ever re-added
-          await additionalPrivilegeDAL.delete(
-            {
-              actorUserId: userId,
-              $in: {
-                projectId: projectsToDeleteKeyFor
-              }
-            },
-            tx
+          // is ever re-added. Skip a project whose group membership was not locked: that row is
+          // already gone, and deleting privileges for it would wipe a grant written after re-add.
+          const projectsToDeletePrivilegesFor = projectsToDeleteKeyFor.filter((projectId) =>
+            lockedProjectIds.has(projectId)
           );
+          if (projectsToDeletePrivilegesFor.length) {
+            await additionalPrivilegeDAL.delete(
+              {
+                actorUserId: userId,
+                $in: {
+                  projectId: projectsToDeletePrivilegesFor
+                }
+              },
+              tx
+            );
+          }
         }
 
         await userGroupMembershipDAL.delete(
@@ -565,12 +576,15 @@ export const removeUsersFromGroupByUserIds = async ({
         const reachable = stillReach.get(userId);
         const projectsToReapGrantsFor = projectIds.filter((projectId) => !reachable?.has(projectId));
 
-        if (projectsToReapGrantsFor.length) {
+        const projectsToReapPrivilegesFor = projectsToReapGrantsFor.filter((projectId) =>
+          lockedProjectIds.has(projectId)
+        );
+        if (projectsToReapPrivilegesFor.length) {
           await additionalPrivilegeDAL.delete(
             {
               actorUserId: userId,
               $in: {
-                projectId: projectsToReapGrantsFor
+                projectId: projectsToReapPrivilegesFor
               },
               $notNull: ["folderId"]
             },

@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { AGENT_VAULT_MAX_GRANTEES } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import {
+  AGENT_VAULT_SKILL_MAX_PATH_LENGTH,
+  AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT
+} from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
+import { AgentVaultSkillFileMode } from "@app/ee/services/agent-vault-skill/agent-vault-skill-types";
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
@@ -21,6 +27,7 @@ import {
 import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix-schemas";
 import { agentVaultMcpServerUrlSchema } from "@app/ee/services/agent-vault/agent-vault-service-type-fns";
+import { agentVaultAllowedToolsSchema } from "@app/ee/services/agent-vault/agent-vault-tool-name-schemas";
 import {
   acceptsVariableReferences,
   addDuplicateCustomHeaderNameIssues,
@@ -40,11 +47,18 @@ import {
   AGENT_VAULT_VARIABLE_KEY_RE,
   AGENT_VAULT_VARIABLE_VALUE_MAX_LENGTH
 } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
-import { AGENT_VAULT_MAX_GRANTEES } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 
 export const AgentVaultNameSchema = slugSchema({ max: 64, field: "Name" });
+
+export const AgentVaultDescriptionSchema = z
+  .string()
+  .trim()
+  .max(256, "A description can be at most 256 characters")
+  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  // Blank and absent read the same, so a blank description is stored as null rather than "".
+  .transform((description) => description || null);
 
 export const AgentVaultHostPatternSchema = hostPatternSchema.describe(AGENT_VAULT.SERVICE.hostPattern);
 
@@ -286,6 +300,8 @@ export const AgentVaultAllowedPathPrefixesSchema = agentVaultPathPrefixListSchem
   AGENT_VAULT.SERVICE.allowedPathPrefixes
 );
 
+export const AgentVaultAllowedToolsSchema = agentVaultAllowedToolsSchema.describe(AGENT_VAULT.SERVICE.allowedTools);
+
 export const AgentVaultCustomHeadersInputSchema = AgentVaultCustomHeaderInputSchema.array()
   .max(AGENT_VAULT_MAX_CUSTOM_HEADERS)
   .superRefine(addDuplicateCustomHeaderNameIssues)
@@ -324,7 +340,8 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
       customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
       substitutions: AgentVaultSubstitutionsInputSchema.optional(),
       serverUrl: AgentVaultServerUrlSchema.optional().describe(openApiHidden()),
-      transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden())
+      transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden()),
+      allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden())
     })
     .describe(JSON.stringify({ title: "HTTP service" })),
   z
@@ -334,6 +351,7 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
       serverUrl: AgentVaultServerUrlSchema,
       transport: AgentVaultMcpTransportSchema,
       credential: AgentVaultMcpCredentialInputSchema.describe(AGENT_VAULT.SERVICE.mcpCredential),
+      allowedTools: AgentVaultAllowedToolsSchema.optional(),
       customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
       hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
       allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
@@ -359,7 +377,8 @@ export const AgentVaultUpdateServiceBodySchema = z
         customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
         substitutions: AgentVaultSubstitutionsUpdateSchema.optional(),
         serverUrl: AgentVaultServerUrlSchema.nullable().optional().describe(openApiHidden()),
-        transport: AgentVaultMcpTransportSchema.nullable().optional().describe(openApiHidden())
+        transport: AgentVaultMcpTransportSchema.nullable().optional().describe(openApiHidden()),
+        allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden())
       })
       .describe(JSON.stringify({ title: "HTTP service" })),
     z
@@ -369,6 +388,7 @@ export const AgentVaultUpdateServiceBodySchema = z
         serverUrl: AgentVaultServerUrlSchema.optional(),
         transport: AgentVaultMcpTransportSchema.optional(),
         credential: AgentVaultMcpCredentialUpdateSchema.optional().describe(AGENT_VAULT.SERVICE.mcpCredential),
+        allowedTools: AgentVaultAllowedToolsSchema.optional(),
         customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
         hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
         allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
@@ -381,6 +401,16 @@ export const AgentVaultUpdateServiceBodySchema = z
     ({ type, ...fields }) => Object.values(fields).some((value) => value !== undefined),
     "Provide at least one field besides 'type' to update"
   );
+
+// The service sheet's unsaved values, so the tools are listed with the credential a save would store. `serviceId`
+// names the saved service whose stored values fill in what is left out.
+export const AgentVaultListMcpToolsBodySchema = z.object({
+  serviceId: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.serviceId),
+  serverUrl: AgentVaultServerUrlSchema,
+  transport: AgentVaultMcpTransportSchema,
+  credential: AgentVaultMcpCredentialUpdateSchema.optional().describe(AGENT_VAULT.SERVICE.mcpCredential),
+  customHeaders: AgentVaultCustomHeadersUpdateSchema.optional()
+});
 
 const variableReferenceBase = {
   variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
@@ -423,6 +453,7 @@ export const AgentVaultServiceSchema = z.object({
   hostPattern: z.string().describe(AGENT_VAULT.SERVICE.hostPattern),
   allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
   allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedPathPrefixes),
+  allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools),
   credential: AgentVaultCredentialSummarySchema,
   customHeaders: z
     .object({
@@ -676,6 +707,12 @@ export const AgentVaultSessionActorSchema = z.discriminatedUnion("type", [
   sessionActorSchemas.machineIdentity
 ]);
 
+// Shaped like a session's user actor, so a client shows the user a session acts for the way it shows an owner.
+export const AgentVaultSessionOnBehalfOfSchema = sessionActorSchemas.user.extend({
+  type: z.literal(AgentVaultMemberType.User).describe(AGENT_VAULT.SESSION.onBehalfOfType),
+  id: z.string().uuid().nullable().describe(AGENT_VAULT.SESSION.onBehalfOfUserIdRead)
+});
+
 // No .default().optional(): the optional wraps the default and the default never applies.
 export const agentVaultListQuery = (docs: { search: string; limit: string; offset: string }) => ({
   search: z
@@ -783,3 +820,79 @@ export const AgentVaultCreatedMemberSchema = z.discriminatedUnion("type", [
   actorRefSchemas.machineIdentity.extend({ grantedAt: grantedAtSchema }),
   actorRefSchemas.group.extend({ grantedAt: grantedAtSchema })
 ]);
+
+// Paths and limits are checked in the service, so a bad file gets a 400 that names it. These are outer bounds.
+const AgentVaultSkillFileSchema = z.object({
+  path: z.string().min(1).max(AGENT_VAULT_SKILL_MAX_PATH_LENGTH).describe(AGENT_VAULT.SKILL.filePath),
+  mode: z.nativeEnum(AgentVaultSkillFileMode).describe(AGENT_VAULT.SKILL.fileMode),
+  contentBase64: z.string().max(AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT).describe(AGENT_VAULT.SKILL.fileContent)
+});
+
+// The service refuses more than AGENT_VAULT_SKILL_MAX_FILES with a 400 that says so; a schema failure would be a 422.
+const AGENT_VAULT_SKILL_UPLOAD_MAX_FILES = 1000;
+
+export const AgentVaultSkillUploadSchema = z.object({
+  files: AgentVaultSkillFileSchema.array()
+    .min(1, "Upload at least SKILL.md")
+    .max(AGENT_VAULT_SKILL_UPLOAD_MAX_FILES)
+    .describe(AGENT_VAULT.SKILL.files)
+});
+
+export const AgentVaultSkillUpdateSchema = AgentVaultSkillUploadSchema.extend({
+  baseVersion: z.number().int().positive().optional().describe(AGENT_VAULT.SKILL.baseVersion)
+});
+
+export const AgentVaultSkillVersionParamSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(2147483647)
+  .describe(AGENT_VAULT.SKILL.version);
+
+export const AgentVaultSkillSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.SKILL.skillId),
+  name: z.string().describe(AGENT_VAULT.SKILL.name),
+  description: z.string().describe(AGENT_VAULT.SKILL.description),
+  latestVersion: z.number().describe(AGENT_VAULT.SKILL.latestVersion),
+  createdAt: z.date().describe(AGENT_VAULT.SKILL.createdAt),
+  updatedAt: z.date().describe(AGENT_VAULT.SKILL.updatedAt)
+});
+
+export const AgentVaultSkillDetailSchema = AgentVaultSkillSchema.extend({
+  accessBundles: z
+    .object({
+      id: z.string().uuid().describe(AGENT_VAULT.SKILL.accessBundleId),
+      name: z.string().describe(AGENT_VAULT.SKILL.accessBundleName)
+    })
+    .array()
+    .describe(AGENT_VAULT.SKILL.accessBundles)
+});
+
+export const AgentVaultSkillVersionSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.SKILL.versionId),
+  version: z.number().describe(AGENT_VAULT.SKILL.version),
+  sha256: z.string().describe(AGENT_VAULT.SKILL.sha256),
+  sizeBytes: z.number().describe(AGENT_VAULT.SKILL.sizeBytes),
+  fileCount: z.number().describe(AGENT_VAULT.SKILL.fileCount),
+  createdAt: z.date().describe(AGENT_VAULT.SKILL.versionCreatedAt)
+});
+
+export const AgentVaultSkillFilesResponseSchema = z
+  .object({
+    path: z.string().describe(AGENT_VAULT.SKILL.filePath),
+    mode: z.nativeEnum(AgentVaultSkillFileMode).describe(AGENT_VAULT.SKILL.fileMode),
+    contentBase64: z.string().describe(AGENT_VAULT.SKILL.fileContent)
+  })
+  .array()
+  .describe(AGENT_VAULT.SKILL.files);
+
+export const AgentVaultSkillVersionWithFilesSchema = AgentVaultSkillVersionSchema.extend({
+  files: AgentVaultSkillFilesResponseSchema
+});
+
+export const AgentVaultBundleSkillSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.SKILL.skillId),
+  name: z.string().describe(AGENT_VAULT.SKILL.name),
+  description: z.string().describe(AGENT_VAULT.SKILL.description),
+  latestVersion: z.number().describe(AGENT_VAULT.SKILL.latestVersion)
+});

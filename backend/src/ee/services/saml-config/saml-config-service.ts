@@ -16,38 +16,41 @@ import {
 } from "@app/db/schemas";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordSsoConfigChangeMetric, SsoConfigAction, SsoProvider } from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
-import { AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
+import { AuthMethod } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { ensureSsoAccountVerified, isStaleSsoAlias, syncSsoUserProfile } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
@@ -57,6 +60,7 @@ import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-d
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { getSamlAssertionReplayDetails, getSamlAssertionReplayWindow } from "./saml-assertion-fns";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
 import { SamlProviders, TSamlConfigServiceFactory } from "./saml-config-types";
 
@@ -111,6 +115,7 @@ type TSamlConfigServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
 };
 
 export const samlConfigServiceFactory = ({
@@ -138,7 +143,8 @@ export const samlConfigServiceFactory = ({
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService
+  usageMeteringService,
+  keyStore
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -298,7 +304,9 @@ export const samlConfigServiceFactory = ({
     isActive,
     entryPoint,
     authProvider,
-    enableGroupSync
+    enableGroupSync,
+    mfaSignalAttribute,
+    mfaAuthnContexts
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -354,7 +362,9 @@ export const samlConfigServiceFactory = ({
       encryptedSamlCertificate: encryptor({ plainText: Buffer.from(idpCert) }).cipherTextBlob,
       encryptedSamlEntryPoint: encryptor({ plainText: Buffer.from(entryPoint) }).cipherTextBlob,
       encryptedSamlIssuer: encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob,
-      enableGroupSync: enableGroupSync || false
+      enableGroupSync: enableGroupSync || false,
+      mfaSignalAttribute,
+      mfaAuthnContexts
     });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Create, orgId });
@@ -373,7 +383,9 @@ export const samlConfigServiceFactory = ({
     isActive,
     entryPoint,
     authProvider,
-    enableGroupSync
+    enableGroupSync,
+    mfaSignalAttribute,
+    mfaAuthnContexts
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -416,14 +428,24 @@ export const samlConfigServiceFactory = ({
       });
     }
 
+    const isMfaSignalOnlyUpdate = [authProvider, isActive, entryPoint, issuer, idpCert, enableGroupSync].every(
+      (value) => value === undefined
+    );
+
     const updateQuery: TSamlConfigsUpdate = {
       authProvider,
       isActive,
-      lastUsed: null
+      ...(!isMfaSignalOnlyUpdate && { lastUsed: null })
     };
 
     if (enableGroupSync !== undefined) {
       updateQuery.enableGroupSync = enableGroupSync;
+    }
+    if (mfaSignalAttribute !== undefined) {
+      updateQuery.mfaSignalAttribute = mfaSignalAttribute;
+    }
+    if (mfaAuthnContexts !== undefined) {
+      updateQuery.mfaAuthnContexts = mfaAuthnContexts;
     }
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -443,7 +465,9 @@ export const samlConfigServiceFactory = ({
     }
 
     const [ssoConfig] = await samlConfigDAL.update({ orgId }, updateQuery);
-    await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false });
+    if (!isMfaSignalOnlyUpdate) {
+      await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false });
+    }
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Update, orgId });
 
@@ -535,8 +559,54 @@ export const samlConfigServiceFactory = ({
       issuer,
       cert,
       lastUsed: samlConfig.lastUsed,
-      enableGroupSync: samlConfig.enableGroupSync
+      enableGroupSync: samlConfig.enableGroupSync,
+      mfaSignalAttribute: samlConfig.mfaSignalAttribute,
+      mfaAuthnContexts: samlConfig.mfaAuthnContexts
     };
+  };
+
+  // Called with the assertion node-saml has already verified, before any login logic. The ID is claimed in
+  // Redis, which every instance shares, until the assertion expires, so a captured response cannot start a
+  // second session; that matters most when the org trusts the MFA it carries. This covers IdP-initiated logins
+  // too, which InResponseTo validation would not.
+  const consumeSamlAssertion: TSamlConfigServiceFactory["consumeSamlAssertion"] = async ({
+    samlConfigId,
+    parsedAssertion
+  }) => {
+    const { assertionId, issuedAt, expiresAt } = getSamlAssertionReplayDetails(parsedAssertion);
+    if (!assertionId) {
+      throw new BadRequestError({
+        message:
+          "The SAML response from your identity provider has no assertion ID, so Infisical cannot make sure it is used only once. Check the SAML app settings in your identity provider."
+      });
+    }
+
+    const replayWindow = getSamlAssertionReplayWindow({ expiresAt, issuedAt });
+    if (!replayWindow.accepted) {
+      throw new BadRequestError({
+        message:
+          replayWindow.reason === "expired"
+            ? "This SAML response has expired. Sign in again through your identity provider."
+            : "The SAML response from your identity provider has no expiry (NotOnOrAfter) or issue time (IssueInstant), so Infisical cannot make sure it is used only once. Check the SAML app settings in your identity provider."
+      });
+    }
+
+    const assertionIdHash = crypto.nativeCrypto.createHash("sha256").update(assertionId).digest("hex");
+    const claimed = await keyStore.setItemWithExpiryNX(
+      KeyStorePrefixes.SamlAssertionReplay(samlConfigId, assertionIdHash),
+      replayWindow.ttlSeconds,
+      "1"
+    );
+
+    if (!claimed) {
+      logger.warn(
+        { samlConfigId, assertionIdHash },
+        `Rejected a SAML assertion that was already used [samlConfigId=${samlConfigId}] [assertionIdHash=${assertionIdHash}]`
+      );
+      throw new BadRequestError({
+        message: "This SAML response was already used. Sign in again through your identity provider."
+      });
+    }
   };
 
   const samlLogin: TSamlConfigServiceFactory["samlLogin"] = async ({
@@ -549,7 +619,8 @@ export const samlConfigServiceFactory = ({
     ip,
     userAgent,
     callbackPort,
-    metadata
+    metadata,
+    idpMfa
   }) => {
     const serverCfg = await getServerCfg();
 
@@ -843,7 +914,8 @@ export const samlConfigServiceFactory = ({
       ip,
       userAgent,
       organizationId: organization.id,
-      callbackPort
+      callbackPort,
+      idpMfa
     });
 
     return { ...callbackResult, userId: user.id, orgId: organization.id, orgName: organization.name };
@@ -853,6 +925,7 @@ export const samlConfigServiceFactory = ({
     createSamlCfg,
     updateSamlCfg,
     getSaml,
-    samlLogin
+    samlLogin,
+    consumeSamlAssertion
   };
 };

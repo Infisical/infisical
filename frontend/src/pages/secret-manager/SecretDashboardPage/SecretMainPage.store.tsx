@@ -1,4 +1,3 @@
-/* eslint-disable no-nested-ternary */
 import { createContext, ReactNode, useContext, useEffect, useRef } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { createStore, StateCreator, StoreApi, useStore } from "zustand";

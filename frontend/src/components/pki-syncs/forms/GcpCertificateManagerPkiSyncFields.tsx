@@ -32,8 +32,8 @@ import {
   GCP_CERTIFICATE_MANAGER_SCOPES
 } from "@app/hooks/api/pkiSyncs/types/gcp-certificate-manager-sync";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncConnectionField } from "./PkiSyncConnectionField";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 type TGcpCertificateManagerForm = TPkiSyncForm & { destination: PkiSync.GcpCertificateManager };
 

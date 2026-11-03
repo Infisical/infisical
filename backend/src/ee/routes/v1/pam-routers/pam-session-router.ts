@@ -3,10 +3,10 @@ import z from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccessMethod, PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
-import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
 import { hostPattern } from "@app/ee/services/pam-account/pam-account-schemas";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
+import { PamAccessMethod, PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
+import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -14,8 +14,8 @@ import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedSessionSchema = PamSessionsSchema.pick({

@@ -5,8 +5,9 @@ import * as asn1js from "asn1js";
 import * as pkijs from "pkijs";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { buildHsmCaSigner, createEphemeralKeyCache } from "@app/services/certificate-authority/ca-signer";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 import { OcspCertStatus, OcspResponseStatus } from "./certificate-authority-ocsp-enums";
 import { buildSignedOcspResponse, parseOcspRequest } from "./certificate-authority-ocsp-fns";
@@ -61,7 +62,8 @@ describe.each(CASES)("HSM-backed OCSP signing: $keyAlgorithm", (testCase) => {
     const signer = buildHsmCaSigner({
       caPublicKey: keys.publicKey,
       keyAlgorithm: testCase.keyAlgorithm,
-      sign: async (tbs) => Buffer.from(await webcrypto.subtle.sign(testCase.sign, keys.privateKey, tbs)),
+      sign: async (tbs) =>
+        Buffer.from(await webcrypto.subtle.sign(testCase.sign, keys.privateKey, asNonSharedBuffer(tbs))),
       ephemeralKeys: createEphemeralKeyCache()
     });
 
@@ -84,7 +86,7 @@ describe.each(CASES)("HSM-backed OCSP signing: $keyAlgorithm", (testCase) => {
       nextUpdate: new Date(thisUpdate.getTime() + 3_600_000)
     });
 
-    const response = pkijs.OCSPResponse.fromBER(der);
+    const response = pkijs.OCSPResponse.fromBER(asNonSharedBuffer(der));
     expect(response.responseStatus.valueBlock.valueDec).toBe(OcspResponseStatus.Successful);
 
     const basic = new pkijs.BasicOCSPResponse({

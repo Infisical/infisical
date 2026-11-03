@@ -11,22 +11,23 @@ import {
 } from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
-import { TAuditLogCollapsedFlushJobData } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
+import { TAuditLogCollapsedFlushJobData } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import {
-  TScanFullRepoEventPayload,
-  TScanPushEventPayload
-} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
-import {
+  TQueueSecretScanningDataSourceEvent,
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
   TQueueSecretScanningResourceDiffScanPayload,
   TQueueSecretScanningSendNotification
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import {
+  TScanFullRepoEventPayload,
+  TScanPushEventPayload
+} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig, createThrottledRedisErrorLogger, TRedisConfigKeys } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto";
@@ -60,16 +61,16 @@ import {
   TQueuePkiSyncSyncCertificatesByIdDTO
 } from "@app/services/pki-sync/pki-sync-types";
 import {
-  TFailedIntegrationSyncEmailsPayload,
-  TIntegrationSyncPayload,
-  TSyncSecretsDTO
-} from "@app/services/secret/secret-types";
-import {
   TQueueSecretSyncImportSecretsByIdDTO,
   TQueueSecretSyncRemoveSecretsByIdDTO,
   TQueueSecretSyncSyncSecretsByIdDTO,
   TQueueSendSecretSyncActionFailedNotificationsDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import {
+  TFailedIntegrationSyncEmailsPayload,
+  TIntegrationSyncPayload,
+  TSyncSecretsDTO
+} from "@app/services/secret/secret-types";
 import { CacheType } from "@app/services/super-admin/super-admin-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 
@@ -189,6 +190,7 @@ export enum QueueJobs {
   // name carry it, and the drain branch on QueueName.SecretScanningV2 matches on it.
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
+  SecretScanningV2DataSourceEvent = "secret-scanning-v2-data-source-event",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
   CaIssueCertificateFromProfile = "ca-issue-certificate-from-profile",
   PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal",
@@ -495,6 +497,10 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.SecretScanningV2SendNotification;
         payload: TQueueSecretScanningSendNotification;
+      }
+    | {
+        name: QueueJobs.SecretScanningV2DataSourceEvent;
+        payload: TQueueSecretScanningDataSourceEvent;
       };
   [QueueName.SecretScanningV2FullScan]: {
     name: QueueJobs.SecretScanningV2FullScan;

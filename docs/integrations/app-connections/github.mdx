@@ -30,10 +30,10 @@ Infisical supports three methods for connecting to GitHub.
                     Disable webhook by unchecking the Active checkbox.
                     ![integrations github app webhook](/images/integrations/github/app/self-hosted-github-app-webhook.png)
 
-                    Set the repository permissions as follows: Metadata: Read-only, Secrets: Read and write, Environments: Read and write, Actions: Read.
+                    Set the repository permissions as follows: Metadata: Read-only, Secrets: Read and write, Environments: Read and write, Actions: Read. To sync [Dependabot or Codespaces secrets](/integrations/secret-syncs/github#secret-types), also set Dependabot secrets or Codespaces secrets to Read and write.
                     ![integrations github app repository](/images/integrations/github/app/self-hosted-github-app-repository.png)
 
-                    Similarly, set the organization permissions as follows: Secrets: Read and write.
+                    Similarly, set the organization permissions as follows: Secrets: Read and write. To sync Dependabot or Codespaces secrets to an organization, also set Organization dependabot secrets or Organization codespaces secrets to Read and write.
                     ![integrations github app organization](/images/integrations/github/app/self-hosted-github-app-organization.png)
 
                     Create the GitHub application.
@@ -224,6 +224,8 @@ Infisical supports three methods for connecting to GitHub.
                         - **Metadata**: Read-only
                         - **Environments**: Read and write
                         - **Secrets**: Read and write
+                        - **Dependabot secrets**: Read and write (only to sync [Dependabot secrets](/integrations/secret-syncs/github#secret-types))
+                        - **Codespaces secrets**: Read and write (only to sync [Codespaces secrets](/integrations/secret-syncs/github#secret-types))
 
                     ![Personal Access Token Form](/images/app-connections/github/create-pat-form.png)
 

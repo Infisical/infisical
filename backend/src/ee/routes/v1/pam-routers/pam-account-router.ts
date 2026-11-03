@@ -2,7 +2,11 @@ import z from "zod";
 
 import { PamAccountsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccountType, PamAccountWarning, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
+import { ROTATION_STATUS } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
+import {
+  PamAccountSettingsOverridesSchema,
+  PamTemplateSettingsSchema
+} from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import {
   ACCOUNT_TYPE_CONFIGS,
   buildPamAccountTypeMetadata,
@@ -10,12 +14,8 @@ import {
   PamAccountTypeMetadataSchema,
   revealedCredentialsSchema
 } from "@app/ee/services/pam-account/pam-account-schemas";
-import { ROTATION_STATUS } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
-import {
-  PamAccountSettingsOverridesSchema,
-  PamTemplateSettingsSchema
-} from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { SESSION_HANDLERS } from "@app/ee/services/pam-web-access/pam-session-handlers";
+import { PamAccountType, PamAccountWarning, PamHeartbeatStatus } from "@app/ee/services/pam/pam-enums";
 import { PasswordRequirementsSchema } from "@app/ee/services/secret-rotation-v2/shared/general/password-requirements-schema";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { BadRequestError } from "@app/lib/errors";
@@ -653,7 +653,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT,
-          metadata: { accountId: req.params.accountId, rotationAccountId: result.rotationAccountId }
+          metadata: {
+            accountId: req.params.accountId,
+            accountName: result.accountName,
+            rotationAccountId: result.rotationAccountId,
+            rotationAccountName: result.rotationAccountName
+          }
         }
       });
 
@@ -793,10 +798,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
           metadata: {
             accountId: req.params.accountId,
+            accountName: result.accountName,
             accountType: result.accountType,
             rotationStatus: result.rotationStatus,
             manual: true,
             rotationAccountId: result.rotationAccountId,
+            rotationAccountName: result.rotationAccountName,
             ...(result.message ? { message: result.message } : {})
           }
         }

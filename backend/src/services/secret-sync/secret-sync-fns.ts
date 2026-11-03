@@ -17,7 +17,11 @@ import {
   AwsSecretsManagerSyncFns
 } from "@app/services/secret-sync/aws-secrets-manager";
 import { DATABRICKS_SYNC_LIST_OPTION, databricksSyncFactory } from "@app/services/secret-sync/databricks";
-import { GITHUB_SYNC_LIST_OPTION, GithubSyncFns } from "@app/services/secret-sync/github";
+import {
+  GITHUB_SYNC_LIST_OPTION,
+  gitHubPreSaveTransformDestinationConfig,
+  GithubSyncFns
+} from "@app/services/secret-sync/github";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import {
@@ -35,6 +39,7 @@ import {
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { TOidcIssuerServiceFactory } from "../oidc-issuer/oidc-issuer-service";
 import { ONEPASS_SYNC_LIST_OPTION, OnePassSyncFns } from "./1password";
 import { AwsSecretsManagerSyncMappingBehavior } from "./aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { AZURE_APP_CONFIGURATION_SYNC_LIST_OPTION, azureAppConfigurationSyncFactory } from "./azure-app-configuration";
@@ -165,7 +170,8 @@ const PRE_SAVE_TRANSFORM_SYNC_OPTIONS_MAP: Partial<Record<SecretSync, TPreSaveTr
 const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPreSaveTransformDestinationConfigFn>> = {
   [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig,
   [SecretSync.Chef]: chefPreSaveTransformDestinationConfig,
-  [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig
+  [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig,
+  [SecretSync.GitHub]: gitHubPreSaveTransformDestinationConfig
 };
 
 export const preSaveTransformSyncOptions = async (
@@ -194,6 +200,7 @@ type TSyncSecretDeps = {
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 // Strip schema from secret keys
@@ -284,7 +291,14 @@ export const SecretSyncFns = {
   syncSecrets: (
     secretSync: TSecretSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { kmsService, appConnectionDAL, gitHubAppDAL, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
+    {
+      kmsService,
+      appConnectionDAL,
+      gitHubAppDAL,
+      gatewayV2Service,
+      gatewayPoolService,
+      oidcIssuerService
+    }: TSyncSecretDeps
   ): Promise<TSyncSecretsResult | void> => {
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -303,12 +317,14 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          oidcIssuerService
         }).syncSecrets(secretSync, payload);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          oidcIssuerService
         }).syncSecrets(secretSync, payload);
       case SecretSync.AzureDevOps:
         return azureDevOpsSyncFactory({
@@ -419,7 +435,7 @@ export const SecretSyncFns = {
   },
   getSecrets: async (
     secretSync: TSecretSyncWithCredentials,
-    { kmsService, appConnectionDAL, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayV2Service, gatewayPoolService, oidcIssuerService }: TSyncSecretDeps
   ): Promise<TSecretMap> => {
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
@@ -443,13 +459,15 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          oidcIssuerService
         }).getSecrets(secretSync);
         break;
       case SecretSync.AzureAppConfiguration:
         secretMap = await azureAppConfigurationSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          oidcIssuerService
         }).getSecrets(secretSync);
         break;
       case SecretSync.AzureDevOps:
@@ -611,7 +629,14 @@ export const SecretSyncFns = {
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { kmsService, appConnectionDAL, gitHubAppDAL, gatewayV2Service, gatewayPoolService }: TSyncSecretDeps
+    {
+      kmsService,
+      appConnectionDAL,
+      gitHubAppDAL,
+      gatewayV2Service,
+      gatewayPoolService,
+      oidcIssuerService
+    }: TSyncSecretDeps
   ): Promise<void> => {
     switch (secretSync.destination) {
       case SecretSync.AWSParameterStore:
@@ -630,12 +655,14 @@ export const SecretSyncFns = {
           appConnectionDAL,
           kmsService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          oidcIssuerService
         }).removeSecrets(secretSync, payload);
       case SecretSync.AzureAppConfiguration:
         return azureAppConfigurationSyncFactory({
           appConnectionDAL,
-          kmsService
+          kmsService,
+          oidcIssuerService
         }).removeSecrets(secretSync, payload);
       case SecretSync.AzureDevOps:
         return azureDevOpsSyncFactory({

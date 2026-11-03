@@ -25,9 +25,9 @@ import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/addition
 import { ActorType } from "../auth/auth-type";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
-import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { emitOrgMembershipRemoved, toOrgMembershipActors } from "../org/org-membership-events";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";

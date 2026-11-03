@@ -288,6 +288,7 @@ export const GithubConfigurePage = () => {
         }
       });
     } catch {
+      // oxlint-disable-next-line no-useless-return
       return;
     } finally {
       setIsLoading(false);

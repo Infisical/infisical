@@ -24,22 +24,22 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { AgentVaultIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { lockMembershipsById, TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { assertWillRetainProjectAdmin } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
-import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias-fns";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { resolveAgentVaultActorNames, TAgentVaultActorName } from "../agent-vault/agent-vault-actor-name-fns";
-import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
 import {
   clearPersonalValuesAfterRevoke,
   TClearPersonalValuesDeps
 } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
+import { resolveAgentVaultActorNames, TAgentVaultActorName } from "../agent-vault/agent-vault-actor-name-fns";
+import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
 
 type TAgentVaultMembershipServiceFactoryDep = {
@@ -669,6 +669,10 @@ export const agentVaultMembershipServiceFactory = ({
         tx
       });
 
+      // In id order before anything is deleted, the order a delegation save takes them in. A multi-row delete takes
+      // its rows in whatever order its plan reads them, so without this the two could each hold a row the other wants.
+      await lockMembershipsById(membershipIds, tx);
+
       await Promise.all(
         ALL_ACTOR_TYPES.map(async (type) => {
           const typeIds = named(held, type);
@@ -685,7 +689,8 @@ export const agentVaultMembershipServiceFactory = ({
         })
       );
 
-      // membership_roles cascades on the membership FK, so the roles go with these rows.
+      // membership_roles and the delegation rows cascade on the membership FK, so the roles go with these rows, as do
+      // an identity's delegation and the users and groups a delegation names.
       await membershipDAL.delete({ $in: { id: membershipIds } }, tx);
 
       // Their bundle grants went above. Their own variables stay, as they would if they only lost a bundle.

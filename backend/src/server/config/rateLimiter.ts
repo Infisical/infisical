@@ -77,6 +77,16 @@ export const ocspLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+// For callbacks an external system sends us without an Infisical identity (delegated approvals), so
+// the IP is all there is to key on. Each resource accepts a bounded number of callbacks before it is
+// closed, so one integration never needs more than this per address.
+export const externalInboundCallbackLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 60,
+  keyGenerator: (req) => req.realIp
+};
+
 // Cloud providers fetch the OIDC issuer's discovery document and JWKS from egress addresses shared by all of
 // their tenants, so readLimit would let one org's token exchanges throttle another's. Responses are small and
 // cacheable; this only has to stop one address flooding us.

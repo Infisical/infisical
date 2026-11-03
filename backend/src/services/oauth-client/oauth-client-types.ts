@@ -78,6 +78,7 @@ export type TOauthConsentDTO = {
   authMethod: AuthMethod;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
+  idpMfaOrgId?: string;
   ip: string;
 };
 

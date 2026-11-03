@@ -371,7 +371,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // posthog-node implements `groupIdentify` as a regular capture of a
       // `$groupidentify` event keyed by the supplied `distinctId`. For an
       // anonymous-share viewer of an org-scoped share, that `distinctId`
-      // is the synthesised `anonymous-<shareId>` value, so calling
+      // is the synthesised `anonymous-<share hash>` value, so calling
       // groupIdentify here would create exactly the per-share person
       // record we are trying to suppress — defeating the
       // `$process_person_profile: false` flag we set on the explicit
@@ -407,7 +407,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       // When `anonymous` is set, we still record the event but instruct
       // PostHog not to create or update a person record for the synthesised
       // distinctId. This prevents per-request distinctIds (e.g. the
-      // `anonymous-<shareId>` keys used by unauthenticated public secret
+      // `anonymous-<share hash>` keys used by unauthenticated public secret
       // shares) from inflating the person count while preserving event
       // counts, funnels, and breakdowns.
       const instanceId = await getInstanceId();

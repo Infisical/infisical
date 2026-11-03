@@ -37,27 +37,27 @@ import {
 } from "@app/lib/validator";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
+import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import {
   adoptProvisionedShadowUser,
@@ -67,6 +67,7 @@ import {
   syncSsoUserProfile
 } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
@@ -215,7 +216,9 @@ export const oidcConfigServiceFactory = ({
       clientId,
       clientSecret,
       manageGroupMemberships: oidcCfg.manageGroupMemberships,
-      jwtSignatureAlgorithm: oidcCfg.jwtSignatureAlgorithm
+      jwtSignatureAlgorithm: oidcCfg.jwtSignatureAlgorithm,
+      mfaClaimName: oidcCfg.mfaClaimName,
+      mfaAmrValues: oidcCfg.mfaAmrValues
     };
   };
 
@@ -229,7 +232,8 @@ export const oidcConfigServiceFactory = ({
     userAgent,
     callbackPort,
     groups = [],
-    manageGroupMemberships
+    manageGroupMemberships,
+    idpMfa
   }: TOidcLoginDTO) => {
     const serverCfg = await getServerCfg();
 
@@ -602,7 +606,8 @@ export const oidcConfigServiceFactory = ({
       ip,
       userAgent,
       organizationId: organization.id,
-      callbackPort: callbackPort ? Number(callbackPort) : undefined
+      callbackPort: callbackPort ? Number(callbackPort) : undefined,
+      idpMfa
     });
 
     return { ...callbackResult, userId: user.id };
@@ -626,7 +631,9 @@ export const oidcConfigServiceFactory = ({
     clientId,
     clientSecret,
     manageGroupMemberships,
-    jwtSignatureAlgorithm
+    jwtSignatureAlgorithm,
+    mfaClaimName,
+    mfaAmrValues
   }: TUpdateOidcCfgDTO) => {
     const org = await orgDAL.findOne({ id: organizationId });
 
@@ -688,6 +695,22 @@ export const oidcConfigServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
     }
 
+    const isMfaSignalOnlyUpdate = [
+      allowedEmailDomains,
+      configurationType,
+      discoveryURL,
+      issuer,
+      authorizationEndpoint,
+      tokenEndpoint,
+      userinfoEndpoint,
+      jwksUri,
+      isActive,
+      clientId,
+      clientSecret,
+      manageGroupMemberships,
+      jwtSignatureAlgorithm
+    ].every((value) => value === undefined);
+
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
       configurationType,
@@ -698,9 +721,11 @@ export const oidcConfigServiceFactory = ({
       userinfoEndpoint,
       jwksUri,
       isActive,
-      lastUsed: null,
+      ...(!isMfaSignalOnlyUpdate && { lastUsed: null }),
       manageGroupMemberships,
-      jwtSignatureAlgorithm
+      jwtSignatureAlgorithm,
+      mfaClaimName,
+      mfaAmrValues
     };
 
     if (clientId !== undefined) {
@@ -712,7 +737,9 @@ export const oidcConfigServiceFactory = ({
     }
 
     const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
-    await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
+    if (!isMfaSignalOnlyUpdate) {
+      await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
+    }
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Update, orgId: org.id });
     return ssoConfig;
   };
@@ -735,7 +762,9 @@ export const oidcConfigServiceFactory = ({
     clientId,
     clientSecret,
     manageGroupMemberships,
-    jwtSignatureAlgorithm
+    jwtSignatureAlgorithm,
+    mfaClaimName,
+    mfaAmrValues
   }: TCreateOidcCfgDTO) => {
     const org = await orgDAL.findOne({ id: organizationId });
     if (!org) {
@@ -799,6 +828,8 @@ export const oidcConfigServiceFactory = ({
       orgId: org.id,
       manageGroupMemberships,
       jwtSignatureAlgorithm,
+      mfaClaimName,
+      mfaAmrValues,
       encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
       encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
     });
@@ -933,7 +964,8 @@ export const oidcConfigServiceFactory = ({
           userAgent: requestContext.get("userAgent") || "",
           groups,
           callbackPort,
-          manageGroupMemberships: oidcCfg.manageGroupMemberships
+          manageGroupMemberships: oidcCfg.manageGroupMemberships,
+          idpMfa: matchIdpMfaSignal({ kind: "oidc", claims, config: oidcCfg })
         })
           .then((loginResult) => {
             cb(null, loginResult);

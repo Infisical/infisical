@@ -2,13 +2,13 @@ import * as x509 from "@peculiar/x509";
 
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import {
   createSerialNumber,
   getNotAfterWithClockSkew,
   getNotBeforeWithClockSkew,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 export type TParsedRootCa = {
   fingerprint: string;

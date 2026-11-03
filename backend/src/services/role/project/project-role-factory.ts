@@ -10,8 +10,8 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getPredefinedRoles as buildPredefinedRoles } from "@app/services/project-role/project-role-fns";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TRoleScopeFactory } from "../role-types";
 

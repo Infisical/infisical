@@ -18,8 +18,8 @@ import {
 import { useNutanixPrismCentralConnectionListClusters } from "@app/hooks/api/appConnections/nutanix-prism-central";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncConnectionField } from "./PkiSyncConnectionField";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 type TNutanixForm = TPkiSyncForm & { destination: PkiSync.NutanixPrismCentral };
 

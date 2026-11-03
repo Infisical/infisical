@@ -42,6 +42,10 @@ import {
   UpdateGcpCertificateManagerPkiSyncDestinationSchema
 } from "./gcp-certificate-manager-pki-sync-destination-schema";
 import {
+  ImpervaPkiSyncDestinationSchema,
+  UpdateImpervaPkiSyncDestinationSchema
+} from "./imperva-pki-sync-destination-schema";
+import {
   KempLoadMasterPkiSyncDestinationSchema,
   UpdateKempLoadMasterPkiSyncDestinationSchema
 } from "./kemp-loadmaster-pki-sync-destination-schema";
@@ -79,6 +83,7 @@ const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   PaloAltoNetworksSslTlsProfileDestinationSchemas.createSchema,
   F5BigIpPkiSyncDestinationSchema,
   KempLoadMasterPkiSyncDestinationSchema,
+  ImpervaPkiSyncDestinationSchema,
   LinuxServerPkiSyncDestinationSchema,
   WindowsServerPkiSyncDestinationSchema,
   NutanixPrismCentralPkiSyncDestinationSchema
@@ -97,6 +102,7 @@ const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   PaloAltoNetworksSslTlsProfileDestinationSchemas.updateSchema,
   UpdateF5BigIpPkiSyncDestinationSchema,
   UpdateKempLoadMasterPkiSyncDestinationSchema,
+  UpdateImpervaPkiSyncDestinationSchema,
   UpdateLinuxServerPkiSyncDestinationSchema,
   UpdateWindowsServerPkiSyncDestinationSchema,
   UpdateNutanixPrismCentralPkiSyncDestinationSchema

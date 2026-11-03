@@ -112,6 +112,10 @@ SecretProviderClass
 CustomResourceDefinition
 Kubebuilder
 Kyverno
+gVisor
+Kata
+containerd
+RuntimeClass
 minikube
 Traefik
 Bitnami
@@ -308,6 +312,7 @@ Tomcat
 HAProxy
 JBoss
 WildFly
+Imperva
 Kemp
 LoadMaster
 NetScaler
@@ -331,6 +336,7 @@ Patroni
 # --- Databases ---
 PostgreSQL
 MySQL
+CockroachDB
 MongoDB
 MongoDB Atlas
 Redis
@@ -553,6 +559,7 @@ VPC(?:s)?
 VPN(?:s)?
 vCPU(?:s)?
 
+booleans
 walkthrough
 walkthroughs
 
@@ -677,6 +684,7 @@ dce
 dcr
 als
 ua
+amr
 iss
 
 # --- Surfaced by the code-signing pages ---
@@ -689,3 +697,6 @@ snowsql
 
 # --- Surfaced by the Stripe API key rotation pages ---
 Stripe
+
+# --- Surfaced by the Agent Vault Docker guide ---
+gVisor
