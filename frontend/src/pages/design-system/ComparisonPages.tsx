@@ -1,5 +1,7 @@
 import { type ComponentType, lazy, Suspense } from "react";
 
+import { Loader } from "@app/components/v4/ui/loader";
+
 import { ComparisonSlider } from "./comparison-slider";
 import { SecretsScenarios } from "./compositions/secrets-scenarios";
 import { PageHeading } from "./doc-parts";
@@ -56,7 +58,7 @@ export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {
         and accent. Drag the handle or use the arrow keys, or switch to the live view to click
         through it.
       </p>
-      <Suspense fallback={<p role="status">Loading the v4 page</p>}>
+      <Suspense fallback={<Loader size="page" label="Loading the v4 page" />}>
         {entry.screen === "secrets" && <SecretsScenarios>{comparison}</SecretsScenarios>}
         {entry.screen === "access" && <AccessComparison After={Screen} />}
         {entry.screen !== "secrets" && entry.screen !== "access" && comparison}

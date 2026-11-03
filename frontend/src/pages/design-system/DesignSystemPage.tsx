@@ -6,6 +6,7 @@ import { V4Scope } from "@app/components/v4/scope";
 import tokens from "@app/components/v4/tokens.json";
 import { type BreadcrumbCrumb } from "@app/components/v4/ui/breadcrumb";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
+import { Loader } from "@app/components/v4/ui/loader";
 import { Sidebar } from "@app/components/v4/ui/sidebar";
 import {
   AppInset,
@@ -248,11 +249,10 @@ export const DesignSystemPage = () => {
             <AppInset>
               <Suspense
                 fallback={
-                  <PageGutter>
-                    <p role="status" className="text-sm">
-                      Loading examples
-                    </p>
-                  </PageGutter>
+                  <Loader
+                    size="page"
+                    label={`Loading ${documentationPages.find((page) => page.id === currentPage)?.title ?? "the page"}`}
+                  />
                 }
               >
                 <div

@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { type ComponentExampleDefinition } from "@app/components/v4/contracts/types";
+import { Loader } from "@app/components/v4/ui/loader";
 
 import { PreviewFrame } from "./doc-parts";
 
@@ -165,7 +166,7 @@ export const ExecutableExample = ({
             else setAttempt((current) => current + 1);
           }}
         >
-          <Suspense fallback={<p role="status">Loading example</p>}>
+          <Suspense fallback={<Loader label="Loading example" />}>
             <div className="w-full max-w-full min-w-0">
               <Render />
             </div>
