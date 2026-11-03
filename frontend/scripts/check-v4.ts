@@ -301,6 +301,15 @@ export const v4Checks: readonly V4Check[] = [
     message: "Separate details with words or layout, not a middle dot or bullet.",
     appliesTo: isAuthored,
     markup: [/\s[·•]\s/g]
+  },
+  {
+    id: "slash-separator",
+    rule: "breadcrumb-divider",
+    message:
+      "Breadcrumb draws its own vertical divider between crumbs from the crumb-divider tokens. Do not type a slash between crumbs.",
+    appliesTo: isAuthored,
+    markup: [/^\s*\/\s*$/g, /(?<!<code)>\s*\/\s*</g],
+    css: [/content\s*:\s*["']\/["']/g]
   }
 ];
 

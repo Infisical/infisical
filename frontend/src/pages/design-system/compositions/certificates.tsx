@@ -727,7 +727,7 @@ const CertificateDetail = ({
           {
             label: "Inventory",
             href: "#inventory",
-            onClick: (event) => {
+            onNavigate: (event) => {
               event.preventDefault();
               onBack();
             }

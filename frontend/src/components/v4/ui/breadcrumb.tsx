@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createLink, type LinkOptions } from "@tanstack/react-router";
 import { Slot } from "radix-ui";
 
 import { useControllableState } from "../lib/use-controllable-state";
@@ -8,34 +9,111 @@ import { Switcher, type SwitcherProps } from "./switcher";
 
 import breadcrumbStyles from "./breadcrumb.module.css";
 
+export type BreadcrumbSwitcher = Omit<SwitcherProps, "trigger" | "anchor">;
+
 export type BreadcrumbCrumb = {
   label: React.ReactNode;
+  link?: LinkOptions;
   href?: string;
-  onClick?: React.MouseEventHandler<HTMLElement>;
+  onNavigate?: React.MouseEventHandler<HTMLElement>;
   mono?: boolean;
   media?: React.ReactNode;
-  menu?: Omit<SwitcherProps, "trigger" | "anchor">;
+  switcher?: BreadcrumbSwitcher;
 };
 
-const MenuCrumb = ({
+function CrumbAnchor({
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"a"> & { ref?: React.Ref<HTMLAnchorElement> }) {
+  return <a ref={ref} {...props} />;
+}
+
+const CrumbLink = createLink(CrumbAnchor);
+
+const hasPage = (crumb: BreadcrumbCrumb) => Boolean(crumb.link || crumb.href || crumb.onNavigate);
+
+const CrumbName = ({
   crumb,
+  className,
+  labelId,
+  children
+}: {
+  crumb: BreadcrumbCrumb;
+  className: string;
+  labelId: string;
+  children: React.ReactNode;
+}) => {
+  if (crumb.link)
+    return (
+      <CrumbLink
+        {...crumb.link}
+        onClick={crumb.onNavigate}
+        data-slot="breadcrumb-name"
+        className={className}
+        aria-labelledby={labelId}
+      >
+        {children}
+      </CrumbLink>
+    );
+  if (crumb.href)
+    return (
+      <a
+        href={crumb.href}
+        onClick={crumb.onNavigate}
+        data-slot="breadcrumb-name"
+        className={className}
+        aria-labelledby={labelId}
+      >
+        {children}
+      </a>
+    );
+  return (
+    <button
+      type="button"
+      onClick={crumb.onNavigate}
+      data-slot="breadcrumb-name"
+      className={className}
+      aria-labelledby={labelId}
+    >
+      {children}
+    </button>
+  );
+};
+
+const Divider = () => (
+  <span data-slot="breadcrumb-divider" className={breadcrumbStyles.separator} aria-hidden="true" />
+);
+
+const SwitcherCrumb = ({
+  crumb,
+  current,
   labelId,
   purposeId
 }: {
-  crumb: BreadcrumbCrumb & { menu: NonNullable<BreadcrumbCrumb["menu"]> };
+  crumb: BreadcrumbCrumb & { switcher: BreadcrumbSwitcher };
+  current: boolean;
   labelId: string;
   purposeId: string;
 }) => {
-  const { menu } = crumb;
+  const { switcher } = crumb;
   const [open, setOpen] = useControllableState({
-    value: menu.open,
-    defaultValue: menu.defaultOpen ?? false,
-    onChange: menu.onOpenChange
+    value: switcher.open,
+    defaultValue: switcher.defaultOpen ?? false,
+    onChange: switcher.onOpenChange
   });
   const openAtPress = React.useRef(false);
+  const label = (
+    <span
+      id={labelId}
+      className={cn(breadcrumbStyles.label, crumb.mono && breadcrumbStyles.mono)}
+      title={typeof crumb.label === "string" ? crumb.label : undefined}
+    >
+      {crumb.label}
+    </span>
+  );
   return (
     <Switcher
-      {...menu}
+      {...switcher}
       open={open}
       onOpenChange={setOpen}
       trigger={
@@ -43,42 +121,41 @@ const MenuCrumb = ({
           type="button"
           data-slot="breadcrumb-switcher"
           className={breadcrumbStyles.chevron}
-          aria-label={menu.label}
           aria-labelledby={`${purposeId} ${labelId}`}
         >
           <span id={purposeId} className="sr-only">
-            {menu.label}
-          </span>
-          <span id={labelId} className="sr-only">
-            {crumb.label}
+            {switcher.label}
           </span>
           <Icon name="chev-ud" size={14} />
         </button>
       }
       anchor={(trigger) => (
-        // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- Pointer convenience; the chevron button is the keyboard trigger for the same popover.
-        <span
-          className={breadcrumbStyles.segment}
-          onPointerDown={() => {
-            openAtPress.current = open;
-          }}
-          onClick={(event) => {
-            if ((event.target as Element).closest("button")) return;
-            setOpen(!openAtPress.current);
-          }}
-        >
+        <span className={breadcrumbStyles.segment}>
           {crumb.media && (
             <span className={breadcrumbStyles.media} aria-hidden="true">
               {crumb.media}
             </span>
           )}
-          <span
-            aria-hidden="true"
-            className={cn(breadcrumbStyles.label, crumb.mono && breadcrumbStyles.mono)}
-            title={typeof crumb.label === "string" ? crumb.label : undefined}
-          >
-            {crumb.label}
-          </span>
+          {!current && hasPage(crumb) ? (
+            <CrumbName crumb={crumb} className={breadcrumbStyles.name} labelId={labelId}>
+              {label}
+            </CrumbName>
+          ) : (
+            <button
+              type="button"
+              data-slot="breadcrumb-name"
+              className={breadcrumbStyles.name}
+              aria-current={current ? "page" : undefined}
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              onPointerDown={() => {
+                openAtPress.current = open;
+              }}
+              onClick={(event) => setOpen(event.detail === 0 ? !open : !openAtPress.current)}
+            >
+              {label}
+            </button>
+          )}
           {trigger}
         </span>
       )}
@@ -125,17 +202,14 @@ function Breadcrumb({
         key={index}
         className={breadcrumbStyles.entry}
         data-current={last || undefined}
-        data-menu={Boolean(crumb.menu) || undefined}
+        data-switcher={Boolean(crumb.switcher) || undefined}
         data-media={Boolean(crumb.media) || undefined}
       >
-        {index > 0 && (
-          <span className={breadcrumbStyles.separator} aria-hidden="true">
-            /
-          </span>
-        )}
-        {crumb.menu ? (
-          <MenuCrumb
-            crumb={{ ...crumb, menu: crumb.menu }}
+        {index > 0 && <Divider />}
+        {crumb.switcher ? (
+          <SwitcherCrumb
+            crumb={{ ...crumb, switcher: crumb.switcher }}
+            current={last}
             labelId={`${nameId}-${index}-label`}
             purposeId={`${nameId}-${index}-purpose`}
           />
@@ -146,24 +220,14 @@ function Breadcrumb({
           >
             {content}
           </span>
-        ) : crumb.href ? (
-          <a
-            href={crumb.href}
-            onClick={crumb.onClick}
+        ) : hasPage(crumb) ? (
+          <CrumbName
+            crumb={crumb}
             className={breadcrumbStyles.link}
-            aria-labelledby={`${nameId}-${index}-label`}
+            labelId={`${nameId}-${index}-label`}
           >
             {content}
-          </a>
-        ) : crumb.onClick ? (
-          <button
-            type="button"
-            onClick={crumb.onClick}
-            className={breadcrumbStyles.link}
-            aria-labelledby={`${nameId}-${index}-label`}
-          >
-            {content}
-          </button>
+          </CrumbName>
         ) : (
           <span className={cn(breadcrumbStyles.link, breadcrumbStyles.static)}>{content}</span>
         )}
@@ -188,9 +252,7 @@ function Breadcrumb({
               return (
                 <React.Fragment key="middle">
                   <li className={breadcrumbStyles.entry}>
-                    <span className={breadcrumbStyles.separator} aria-hidden="true">
-                      /
-                    </span>
+                    <Divider />
                     <button
                       type="button"
                       className={breadcrumbStyles.link}
@@ -289,7 +351,7 @@ function BreadcrumbSeparator({ children, className, ref, ...props }: React.Compo
       className={cn("[&>svg]:size-3.5", className)}
       {...props}
     >
-      {children ?? <Icon name="chev-right" />}
+      {children ?? <Divider />}
     </li>
   );
 }

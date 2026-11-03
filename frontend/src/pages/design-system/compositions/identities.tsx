@@ -610,7 +610,7 @@ export default function Identities() {
         open
           ? [
               org,
-              { label: "Access control" },
+              { label: "Access control", onNavigate: () => setOpenId(undefined) },
               { label: "Machine identities" },
               { label: open.name, mono: true }
             ]

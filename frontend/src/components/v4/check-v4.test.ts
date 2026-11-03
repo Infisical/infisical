@@ -172,6 +172,19 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
   "dot-separator": {
     bad: [[example, "<span>Primary · alias of default</span>"]],
     good: [[example, "<span>Primary, alias of default</span>"]]
+  },
+  "slash-separator": {
+    bad: [
+      [ui, '<span className={styles.separator} aria-hidden="true">\n  /\n</span>'],
+      [example, "<BreadcrumbSeparator>/</BreadcrumbSeparator>"],
+      [css, '.separator::before { content: "/"; }']
+    ],
+    good: [
+      [ui, "<BreadcrumbSeparator />"],
+      [example, '<code>{"/billing/stripe"}</code>'],
+      [example, "<span>matches any characters except <code>/</code></span>"],
+      [example, 'const [path, setPath] = useState("/");']
+    ]
   }
 };
 

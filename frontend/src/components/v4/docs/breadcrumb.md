@@ -31,13 +31,13 @@ Owner: breadcrumb.
 
 When a crumb switches the organization, project or environment.
 
-Do: Pass menu on the crumb so the whole segment opens the Switcher and only the chevron highlights.
+Do: Pass switcher on the crumb and the level's page as link, href or onNavigate, so the name navigates and the chevron alone opens the Switcher.
 
-Avoid: Pad the segment or give it a hover ground, or wrap the label in a second focusable trigger.
+Avoid: Make the name open the Switcher when the level has a page, leave a name that looks clickable and does nothing, or pad the segment and give it a hover ground.
 
-Why: Padding moves the root text off the content edge, and a second trigger doubles the keyboard path to the same popover.
+Why: People expect a crumb's name to take them to that level. Keeping switching on the chevron leaves both actions one step away, and an unpadded segment keeps the root text on the content edge.
 
-Checked by: review only. Look for: Hover and click the crumb text: only the chevron changes, and the popover opens from the segment's left edge.
+Checked by: review only. Look for: Click each switcher crumb's name: it navigates and no popover opens, unless the level has no page. Tab reaches the name, then the chevron, each with a visible focus ring, and the popover opens from the segment's left edge.
 
 Source evidence:
 - src/components/v4/ui/breadcrumb.tsx
@@ -85,22 +85,24 @@ Exports: Breadcrumb, BreadcrumbEllipsis, BreadcrumbItem, BreadcrumbLink, Breadcr
 ## Behavior
 
 - Breadcrumb supports explicit parts or typed items, middle-path collapse and current ancestry. Product crumbs switch context and give way from outer labels inward at narrow widths.
-- A crumb with a menu is a switcher segment: its text and its standalone chevron button open the same Switcher, anchored to the segment's start. The segment draws no ground or padding; hover, press, open and focus states draw on the chevron.
-- Every separator sits space-8 from the visible text or glyph on each side, in both variants. In the product variant the separator's margins cancel the link padding and the inset of the switcher chevron, so hit areas and focus rings keep their full size.
+- A crumb's name goes to that level's page through one of three props. link takes a typed TanStack route (build it with linkOptions, so to, params, search and hash are checked against the route tree, the way RowLink does it), href a plain URL, and onNavigate an in-page handler that also runs on a link or href click, so it can preventDefault. With none of them the crumb has no page of its own.
+- A crumb with a switcher is two targets in one segment: the name, then a standalone chevron button that opens the Switcher, anchored to the segment's start. Clicking the name never opens the Switcher when the crumb has a page; it navigates. The segment draws no ground or padding; the name turns ink on hover, and the chevron draws its own hover, press and open grounds.
+- Fallbacks keep every target alive. A switcher crumb without a page, and a switcher crumb that is the current page, make the name a second trigger for the same Switcher. A crumb with neither a page nor a switcher is plain text, and the current crumb without a switcher is plain text marked as the current page.
+- Crumbs are separated by a vertical divider, never a typed slash: a size-crumb-divider-width line, size-crumb-divider tall, in crumb-divider, with space-crumb-divider to the visible text or glyph on each side, in both variants. BreadcrumbSeparator draws the same divider by default. In the product variant the divider's margins cancel the link padding and the inset of the switcher chevron, so hit areas and focus rings keep their full size.
 - lastIsCurrent={false} keeps every crumb an ancestor, for trails that sit above a page title.
 
 ## Accessibility
 
 - Use the breadcrumb landmark name and aria-current for the current location. Switching menus retain accessible labels when visible text collapses.
-- The chevron is the switcher's only tab stop and carries the popup attributes. Its name joins the menu label and the crumb's text, so the visible label stays hidden from assistive technology.
+- A switcher crumb has two tab stops in reading order, the name and then the chevron, and both draw the ink focus outline. The chevron carries the popup attributes, and its name joins switcher.label and the crumb's text, such as Switch project payments-api. A name that falls back to opening the Switcher is a button with aria-haspopup and aria-expanded.
 
 ## Use cases
 
-- Use real ancestor destinations and typed menu crumbs for actual context changes; retain the current location when middle items collapse.
+- Use real ancestor destinations and give each switcher crumb its level's page as link, href or onNavigate; retain the current location when middle items collapse.
 
 ## Avoid
 
-- Repeat the page title as a fake clickable ancestor or use a decorative separator character to combine unrelated metadata.
+- Repeat the page title as a fake clickable ancestor, make a crumb's name open its switcher when the level has a page, or type a separator character between crumbs.
 
 ## Limits
 
@@ -109,6 +111,12 @@ Exports: Breadcrumb, BreadcrumbEllipsis, BreadcrumbItem, BreadcrumbLink, Breadcr
 ## Declared example coverage
 
 Source declarations and review criteria only. Generation checks references and completeness, not rendered behavior or API parity.
+
+### crumb target
+
+- page and switcher: example `default`, visible label "product".
+- switcher only: example `default`, visible label "product".
+- plain text: example `default`, visible label "product".
 
 ### variant
 
@@ -128,13 +136,16 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/breadcrumb/default.tsx`; its relative imports are generated for that exact path. States: controlled, overflow, keyboard.
 
-Registry items used: @infisical/breadcrumb. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/breadcrumb. Additional packages: @tanstack/react-router@^1.95.1. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
+import { linkOptions } from "@tanstack/react-router";
 import { Breadcrumb } from "../../../../components/v4/ui/breadcrumb";
 export default function Example() {
+    const [org, setOrg] = useState("acme");
     const [project, setProject] = useState("payments");
+    const [environment, setEnvironment] = useState("prod");
     return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
         <Breadcrumb aria-label="Example path" maxItems={3} items={[
@@ -147,17 +158,44 @@ export default function Example() {
       </div><figcaption className="text-muted-foreground text-xs">{"default"}</figcaption></figure>
       <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
         <Breadcrumb aria-label="Product navigation example" variant="product" items={[
-            { label: "Workspace", href: "#breadcrumb" },
+            {
+                label: org === "acme" ? "Acme Corp" : "Globex",
+                link: linkOptions({ to: "/design-system", hash: "breadcrumb" }),
+                switcher: {
+                    label: "Switch organization",
+                    value: org,
+                    options: [
+                        { value: "acme", label: "Acme Corp" },
+                        { value: "globex", label: "Globex" }
+                    ],
+                    onChange: setOrg
+                }
+            },
+            { label: "Secrets Management" },
             {
                 label: project,
-                menu: {
+                mono: true,
+                href: "#breadcrumb",
+                switcher: {
                     label: "Switch project",
                     value: project,
                     options: [
-                        { value: "payments", label: "Payments" },
-                        { value: "platform", label: "Platform" }
+                        { value: "payments", label: "payments", mono: true },
+                        { value: "platform", label: "platform", mono: true }
                     ],
                     onChange: setProject
+                }
+            },
+            {
+                label: environment === "prod" ? "Production" : "Staging",
+                switcher: {
+                    label: "Switch environment",
+                    value: environment,
+                    options: [
+                        { value: "staging", label: "Staging" },
+                        { value: "prod", label: "Production" }
+                    ],
+                    onChange: setEnvironment
                 }
             },
             { label: "Secrets" }

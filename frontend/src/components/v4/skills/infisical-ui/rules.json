@@ -926,6 +926,31 @@
       "exceptions": "Preserve exact payloads, filenames, versions, paths, quotations and user-entered values. Semantic list markers, supported status dots and Chart dot indicator APIs are not decorative separators."
     },
     {
+      "id": "breadcrumb-name-navigates",
+      "title": "A crumb's name navigates; its chevron switches",
+      "category": "Interaction",
+      "instruction": "Give every switcher crumb (organization, project, environment and similar) two targets. The name goes to that level's page through link (a typed route built with linkOptions), href or onNavigate; the chevron is its own button, named for its purpose such as Switch project, and is what opens the Switcher. Only when a level has no page of its own, or is the current page, does its name open the same Switcher. A crumb with neither a page nor a switcher is plain text.",
+      "good": "Acme Corp links to the organization home and its chevron opens Switch organization; Production has no page, so its name and its chevron both open Switch environment.",
+      "avoid": "A crumb whose name opens the switcher popover although the level has a page, or a name that looks like a link and does nothing.",
+      "detect": {
+        "by": "review"
+      },
+      "exceptions": "None: every crumb is a link to its page, a trigger for its switcher, or plain text."
+    },
+    {
+      "id": "breadcrumb-divider",
+      "title": "Separate crumbs with the vertical divider",
+      "category": "Visual",
+      "instruction": "Let Breadcrumb (or BreadcrumbSeparator) draw the separator between crumbs: a 1px vertical divider in crumb-divider, size-crumb-divider tall, with space-crumb-divider on each side. Never type a slash or another character between crumbs.",
+      "good": "Acme Corp | payments-api | Production, with every divider drawn by the component from tokens.",
+      "avoid": "A literal / between crumbs, a chevron glyph used as a separator, or a divider drawn with raw sizes and colors.",
+      "detect": {
+        "by": "lint",
+        "check": "slash-separator"
+      },
+      "exceptions": "Literal paths and values, such as a secret path shown in a code font, keep their slashes."
+    },
+    {
       "id": "shared-component-geometry",
       "title": "Use complete component recipes",
       "instruction": "Choose the owned type, control, row or container recipe as a unit. Size includes border-inclusive height, text role, icon box, gap, insets and nested action space. Use layout wrappers for relationships between components. A missing shared relationship is a component issue, not permission for a caller font, padding or radius patch.",

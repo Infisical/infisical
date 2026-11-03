@@ -1054,7 +1054,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
               {
                 label: project,
                 mono: true,
-                menu: {
+                switcher: {
                   label: "Switch project",
                   options: projects,
                   value: project,

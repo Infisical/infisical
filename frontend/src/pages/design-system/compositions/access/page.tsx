@@ -170,10 +170,8 @@ const ProjectPage = () => {
 export const AccessPage = () => {
   const { nav, navigate, toasts, dismissToast } = useAccess();
   const { org, product, project } = useCrumbs();
-  const base =
-    nav.scope === "org"
-      ? [org, { label: "Access control" }]
-      : [org, product, project, { label: "Access control" }];
+  const access = { label: "Access control", onNavigate: () => navigate({}) };
+  const base = nav.scope === "org" ? [org, access] : [org, product, project, access];
   const crumbs = nav.detail ? [...base, { label: nav.detail.label, mono: nav.detail.mono }] : base;
   return (
     <TooltipProvider>

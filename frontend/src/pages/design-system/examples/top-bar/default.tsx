@@ -36,7 +36,8 @@ const Bar = ({ defaultProject = "payments" }: { defaultProject?: string }) => {
       breadcrumb={[
         {
           label: labelOf(organizations, org),
-          menu: {
+          href: "#top-bar",
+          switcher: {
             label: "Switch organization",
             options: organizations,
             value: org,
@@ -47,7 +48,8 @@ const Bar = ({ defaultProject = "payments" }: { defaultProject?: string }) => {
         {
           label: labelOf(projects, project),
           mono: true,
-          menu: {
+          href: "#top-bar",
+          switcher: {
             label: "Switch project",
             options: projects,
             value: project,
@@ -56,7 +58,7 @@ const Bar = ({ defaultProject = "payments" }: { defaultProject?: string }) => {
         },
         {
           label: labelOf(environments, environment),
-          menu: {
+          switcher: {
             label: "Switch environment",
             options: environments,
             value: environment,

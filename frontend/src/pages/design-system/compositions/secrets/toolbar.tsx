@@ -282,11 +282,11 @@ export function FolderBreadcrumbBar({
           items={[
             {
               label: <Icon name="home" label="Root folder" />,
-              onClick: segments.length ? () => onNavigate("/") : undefined
+              onNavigate: segments.length ? () => onNavigate("/") : undefined
             },
             ...segments.map((segment, index) => ({
               label: segment,
-              onClick:
+              onNavigate:
                 index < segments.length - 1
                   ? () => onNavigate(`/${segments.slice(0, index + 1).join("/")}`)
                   : undefined

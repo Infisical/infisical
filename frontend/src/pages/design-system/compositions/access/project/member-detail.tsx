@@ -92,7 +92,7 @@ export const ProjectMemberDetail = ({ id }: { id: string }) => {
   return (
     <Stack gap={24}>
       <PageHeader
-        breadcrumb={[{ label: "Project users", onClick: back }]}
+        breadcrumb={[{ label: "Project users", onNavigate: back }]}
         title={name}
         description="Configure and manage project access control"
         actions={

@@ -33,13 +33,13 @@ Owner: top-bar.
 
 When a crumb switches the organization, project or environment.
 
-Do: Give the crumb a menu, so the segment opens the Switcher from its text or its chevron and only the chevron highlights.
+Do: Give the crumb a switcher and its level's page (link, href or onNavigate), so the name navigates and the chevron opens the Switcher.
 
-Avoid: Draw a hover ground or padding on the whole segment, or make the label a second focus stop.
+Avoid: Let the name open the Switcher when the level has a page, or draw a hover ground or padding on the whole segment.
 
-Why: A segment without padding keeps the root text on the content edge, and one focusable trigger keeps the keyboard path short.
+Why: A crumb's name reads as a way back to that level, and an unpadded segment keeps the root text on the content edge.
 
-Checked by: review only. Look for: Hover the crumb text and confirm only the chevron takes the hover ground; Tab reaches one stop per crumb.
+Checked by: review only. Look for: Click each crumb's name and confirm it navigates without opening the popover; Tab reaches the name and then the chevron, and only the chevron takes a hover ground.
 
 Source evidence:
 - src/components/v4/ui/top-bar.tsx
@@ -69,7 +69,7 @@ Exports: TopBar, AppShell, AppInset, PageGutter. Source TypeScript defines the A
 
 - AppShell paints the sidebar ground, and AppInset is a framed island on it: space-shell-gap (8px) on its top, right and bottom (and left when there is no sidebar), a 1px line border and square corners. The sidebar has no edge of its own inside the shell, so it meets the island border directly with no gap. One line tint, line, draws the shell chrome: the island border, the TopBar rule and the sidebar separators. Content scrolls inside the island with crisp edges (page and inset scrollers never fade); the island never scrolls away. The shell fills its parent and clips; at page level that parent is 100dvh, so the document never scrolls; hash and palette navigation scroll only the island (scrollInsetTo), and the island's scroll-padding-top clears the sticky TopBar. The TopBar is size-shell-bar (48px) tall, and inside a shell the sidebar tool row is offset so its center matches the TopBar center (gap + border + 24px = 33px) in expanded and rail modes. The breadcrumb root and the page title share the page gutter edge inside the island.
 - TopBar is 48px tall on a line rule and the inset ground, and sticks to the top of the inset while the page scrolls.
-- Each crumb with a menu is a switcher segment: clicking its text or its chevron opens the same Switcher, and only the chevron highlights.
+- Each switcher crumb (organization, project, environment) is two targets: its name goes to that level's page (link, href or onNavigate) and its chevron opens the Switcher. A level without a page of its own, or the current one, makes its name open the same Switcher. Crumbs are separated by the vertical breadcrumb divider.
 - Below size-shell-collapse (800px of shell width, measured on the shell so an embedded shell collapses by its own size) the Sidebar leaves the layout and opens as a left Sheet with the same content, scopes, footer and highlight. TopBar shows a menu button before the breadcrumb, the breadcrumb keeps only the current segment, and search becomes an icon button. The AppInset island drops its gaps, border and radius and fills the shell. Esc or navigating closes the Sheet.
 - AppInset defines one page gutter from its own width and size-content, the one page content width (1160px): the larger of 16px, 5% of the inset capped at 40px, and half of what the inset has beyond size-content. TopBar (narrow included) and PageGutter both pad by it, so the breadcrumb, the page header and the page body share one width and one left edge at every width; in the narrow bar the menu button takes that edge.
 - AppShell owns the Mod+B chord (Cmd+B on Mac, Ctrl+B elsewhere) for the Sidebar it holds: the rail on desktop, the Sheet below size-shell-collapse. The menu button exposes the chord through aria-keyshortcuts.
@@ -77,12 +77,12 @@ Exports: TopBar, AppShell, AppInset, PageGutter. Source TypeScript defines the A
 
 ## Accessibility
 
-- The trail is a named breadcrumb landmark. Each switcher's chevron is the only tab stop for its crumb and is named for its purpose and the current value.
+- The trail is a named breadcrumb landmark. Each switcher crumb takes two tab stops, the name and then the chevron, both with the ink focus outline; the chevron is named for its purpose and the current value.
 - AppInset renders the main landmark.
 
 ## Use cases
 
-- Use TopBar inside AppInset with the organization as the root crumb, then the project and environment, each a switcher, and three or four tools on the right.
+- Use TopBar inside AppInset with the organization as the root crumb, then the project and environment, each a switcher that also links to its page when the level has one, and three or four tools on the right.
 
 ## Avoid
 
@@ -151,7 +151,8 @@ const Bar = ({ defaultProject = "payments" }: {
     return (<TopBar breadcrumb={[
             {
                 label: labelOf(organizations, org),
-                menu: {
+                href: "#top-bar",
+                switcher: {
                     label: "Switch organization",
                     options: organizations,
                     value: org,
@@ -162,7 +163,8 @@ const Bar = ({ defaultProject = "payments" }: {
             {
                 label: labelOf(projects, project),
                 mono: true,
-                menu: {
+                href: "#top-bar",
+                switcher: {
                     label: "Switch project",
                     options: projects,
                     value: project,
@@ -171,7 +173,7 @@ const Bar = ({ defaultProject = "payments" }: {
             },
             {
                 label: labelOf(environments, environment),
-                menu: {
+                switcher: {
                     label: "Switch environment",
                     options: environments,
                     value: environment,

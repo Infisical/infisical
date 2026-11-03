@@ -24,13 +24,15 @@ export const baselineNavigation = [
     referenceNames: ["Breadcrumb", "Switcher"],
     behavior: [
       "Breadcrumb supports explicit parts or typed items, middle-path collapse and current ancestry. Product crumbs switch context and give way from outer labels inward at narrow widths.",
-      "A crumb with a menu is a switcher segment: its text and its standalone chevron button open the same Switcher, anchored to the segment's start. The segment draws no ground or padding; hover, press, open and focus states draw on the chevron.",
-      "Every separator sits space-8 from the visible text or glyph on each side, in both variants. In the product variant the separator's margins cancel the link padding and the inset of the switcher chevron, so hit areas and focus rings keep their full size.",
+      "A crumb's name goes to that level's page through one of three props. link takes a typed TanStack route (build it with linkOptions, so to, params, search and hash are checked against the route tree, the way RowLink does it), href a plain URL, and onNavigate an in-page handler that also runs on a link or href click, so it can preventDefault. With none of them the crumb has no page of its own.",
+      "A crumb with a switcher is two targets in one segment: the name, then a standalone chevron button that opens the Switcher, anchored to the segment's start. Clicking the name never opens the Switcher when the crumb has a page; it navigates. The segment draws no ground or padding; the name turns ink on hover, and the chevron draws its own hover, press and open grounds.",
+      "Fallbacks keep every target alive. A switcher crumb without a page, and a switcher crumb that is the current page, make the name a second trigger for the same Switcher. A crumb with neither a page nor a switcher is plain text, and the current crumb without a switcher is plain text marked as the current page.",
+      "Crumbs are separated by a vertical divider, never a typed slash: a size-crumb-divider-width line, size-crumb-divider tall, in crumb-divider, with space-crumb-divider to the visible text or glyph on each side, in both variants. BreadcrumbSeparator draws the same divider by default. In the product variant the divider's margins cancel the link padding and the inset of the switcher chevron, so hit areas and focus rings keep their full size.",
       "lastIsCurrent={false} keeps every crumb an ancestor, for trails that sit above a page title."
     ],
     accessibility: [
       "Use the breadcrumb landmark name and aria-current for the current location. Switching menus retain accessible labels when visible text collapses.",
-      "The chevron is the switcher's only tab stop and carries the popup attributes. Its name joins the menu label and the crumb's text, so the visible label stays hidden from assistive technology."
+      "A switcher crumb has two tab stops in reading order, the name and then the chevron, and both draw the ink focus outline. The chevron carries the popup attributes, and its name joins switcher.label and the crumb's text, such as Switch project payments-api. A name that falls back to opening the Switcher is a button with aria-haspopup and aria-expanded."
     ],
     limitations: [
       "The owner supplies real destinations and switching callbacks; collapse does not implement routing."
@@ -44,6 +46,27 @@ export const baselineNavigation = [
       }
     ],
     coverage: [
+      {
+        axis: "crumb target",
+        expected: ["page and switcher", "switcher only", "plain text"],
+        shown: [
+          {
+            value: "page and switcher",
+            exampleId: "default",
+            label: "product"
+          },
+          {
+            value: "switcher only",
+            exampleId: "default",
+            label: "product"
+          },
+          {
+            value: "plain text",
+            exampleId: "default",
+            label: "product"
+          }
+        ]
+      },
       {
         axis: "variant",
         expected: ["default", "product"],
@@ -83,10 +106,10 @@ export const baselineNavigation = [
     ],
     guidance: {
       use: [
-        "Use real ancestor destinations and typed menu crumbs for actual context changes; retain the current location when middle items collapse."
+        "Use real ancestor destinations and give each switcher crumb its level's page as link, href or onNavigate; retain the current location when middle items collapse."
       ],
       avoid: [
-        "Repeat the page title as a fake clickable ancestor or use a decorative separator character to combine unrelated metadata."
+        "Repeat the page title as a fake clickable ancestor, make a crumb's name open its switcher when the level has a page, or type a separator character between crumbs."
       ],
       decision:
         "Choose Breadcrumb for page ancestry. Use a context switcher for changing project or environment and Tabs for peer views.",
@@ -106,18 +129,18 @@ export const baselineNavigation = [
         {
           id: "breadcrumb-switcher-segment",
           when: "A crumb switches the organization, project or environment.",
-          do: "Pass menu on the crumb so the whole segment opens the Switcher and only the chevron highlights.",
+          do: "Pass switcher on the crumb and the level's page as link, href or onNavigate, so the name navigates and the chevron alone opens the Switcher.",
           avoid:
-            "Pad the segment or give it a hover ground, or wrap the label in a second focusable trigger.",
+            "Make the name open the Switcher when the level has a page, leave a name that looks clickable and does nothing, or pad the segment and give it a hover ground.",
           reason:
-            "Padding moves the root text off the content edge, and a second trigger doubles the keyboard path to the same popover.",
+            "People expect a crumb's name to take them to that level. Keeping switching on the chevron leaves both actions one step away, and an unpadded segment keeps the root text on the content edge.",
           evidence: [
             "src/components/v4/ui/breadcrumb.tsx",
             "src/components/v4/ui/breadcrumb.module.css"
           ],
           detect: {
             by: "review",
-            how: "Hover and click the crumb text: only the chevron changes, and the popover opens from the segment's left edge."
+            how: "Click each switcher crumb's name: it navigates and no popover opens, unless the level has no page. Tab reaches the name, then the chevron, each with a visible focus ring, and the popover opens from the segment's left edge."
           }
         },
         {

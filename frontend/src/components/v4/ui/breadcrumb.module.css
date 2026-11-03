@@ -11,7 +11,7 @@
   letter-spacing: var(--v4-type-small-letter-spacing);
   display: flex;
   align-items: center;
-  gap: var(--v4-space-8);
+  gap: var(--v4-space-crumb-divider);
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -21,7 +21,7 @@
 .entry {
   display: inline-flex;
   align-items: center;
-  gap: var(--v4-space-8);
+  gap: var(--v4-space-crumb-divider);
   min-width: 0;
 }
 .link {
@@ -57,9 +57,10 @@
   font-family: var(--v4-font-mono);
 }
 .separator {
-  display: inline-flex;
-  flex-shrink: 0;
-  color: var(--v4-faint);
+  flex: none;
+  inline-size: var(--v4-size-crumb-divider-width);
+  block-size: var(--v4-size-crumb-divider);
+  background: var(--v4-crumb-divider);
 }
 .static {
   cursor: default;
@@ -83,7 +84,26 @@
   gap: var(--v4-space-4);
   min-width: 0;
   min-height: var(--v4-size-control-sm);
+}
+.name {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
   cursor: pointer;
+}
+.name:hover {
+  color: var(--v4-ink);
+}
+.name:focus-visible {
+  outline: var(--v4-size-focus-ring) solid var(--v4-ink);
+  outline-offset: var(--v4-size-focus-ring);
 }
 .entry[data-current] .segment .label {
   color: var(--v4-ink);
@@ -110,18 +130,18 @@
 :global([data-theme="dark"]) .chevron {
   --chevron-press: color-mix(in oklab, var(--v4-ink) var(--v4-opacity-press-dark), transparent);
 }
-.segment:hover .chevron {
+.chevron:hover {
   background: var(--v4-segment-hover);
   color: var(--v4-ink);
 }
-.segment:active .chevron,
+.chevron:active,
 .chevron[aria-expanded="true"] {
   background: var(--chevron-press);
   color: var(--v4-ink);
 }
 .chevron:focus-visible {
   outline: var(--v4-size-focus-ring) solid var(--v4-ink);
-  outline-offset: var(--v4-size-focus-ring);
+  outline-offset: calc(-1 * var(--v4-size-focus-ring));
 }
 
 .product {
@@ -138,13 +158,13 @@
 .product .separator {
   margin-inline: 0;
 }
-.product .entry:not([data-menu]) > .separator {
+.product .entry:not([data-switcher]) > .separator {
   margin-inline-end: calc(-1 * var(--v4-space-6));
 }
-.product .entry:not([data-menu]) + .entry > .separator {
+.product .entry:not([data-switcher]) + .entry > .separator {
   margin-inline-start: calc(-1 * var(--v4-space-6));
 }
-.product .entry[data-menu] + .entry > .separator {
+.product .entry[data-switcher] + .entry > .separator {
   margin-inline-start: calc((var(--v4-size-icon-sm) - var(--v4-size-nested-sm)) / 2);
 }
 .product .link:hover {

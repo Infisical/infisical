@@ -175,16 +175,21 @@ export const useCrumbs = (initial: { product?: string; project?: string } = {}) 
   return {
     org: {
       label: labelOf(organizations, org),
-      menu: { label: "Switch organization", options: organizations, value: org, onChange: setOrg }
+      switcher: {
+        label: "Switch organization",
+        options: organizations,
+        value: org,
+        onChange: setOrg
+      }
     } satisfies BreadcrumbCrumb,
     product: {
       label: labelOf(products, product),
-      menu: { label: "Switch product", options: products, value: product, onChange: setProduct }
+      switcher: { label: "Switch product", options: products, value: product, onChange: setProduct }
     } satisfies BreadcrumbCrumb,
     project: {
       label: labelOf(projects, project),
       mono: true,
-      menu: { label: "Switch project", options: projects, value: project, onChange: setProject }
+      switcher: { label: "Switch project", options: projects, value: project, onChange: setProject }
     } satisfies BreadcrumbCrumb
   };
 };
@@ -265,7 +270,21 @@ export const Shell = ({
     kms: [org, product, project, { label: pageLabel }],
     scanning: [org, product, { label: pageLabel }]
   };
-  const crumbs = at.level === initialLevel && at.page === current ? initialCrumbs : trail[at.level];
+  const go = (target: { level: ShellLevel; page: string }) => {
+    setAt(target);
+    onNavigate?.(target.page);
+  };
+  const crumbPages: ({ level: ShellLevel; page: string } | undefined)[] = [
+    { level: "org", page: "home" },
+    { level: "product", page: "projects" },
+    projectHome[initialProduct ?? "secrets"]
+  ];
+  const crumbs = (
+    at.level === initialLevel && at.page === current ? initialCrumbs : trail[at.level]
+  ).map((crumb, index) => {
+    const target = crumbPages[index];
+    return crumb.switcher && target ? { ...crumb, onNavigate: () => go(target) } : crumb;
+  });
   const scope =
     at.level === "org"
       ? undefined
