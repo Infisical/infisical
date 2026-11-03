@@ -24,7 +24,10 @@ const pgTypes = {
   }
 };
 
-export const createPostgresConnectionController = async (params: ControllerParams): Promise<TConnectionController> => {
+export const createPostgresConnectionController = async (
+  params: ControllerParams,
+  { lexicalFallback = false } = {}
+): Promise<TConnectionController> => {
   const { relayPort, username, database, sessionId, connectionId, sendResponse, onUnexpectedTermination } = params;
 
   const pgClient = new pg.Client({
@@ -144,7 +147,7 @@ export const createPostgresConnectionController = async (params: ControllerParam
               const startTime = performance.now();
               const MAX_ROWS = 1000;
 
-              const stmtTexts = await splitPostgresStatements(message.sql);
+              const stmtTexts = await splitPostgresStatements(message.sql, { lexicalFallback });
 
               let lastRows: Record<string, unknown>[] = [];
               let lastFields: { name: string }[] = [];

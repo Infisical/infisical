@@ -98,12 +98,13 @@ const splitStatementsLexically = (sql: string): string[] => {
   return statements;
 };
 
-// libpg-query only parses PostgreSQL's grammar, so a script it rejects (CockroachDB's UPSERT, say) is split lexically
-export const splitPostgresStatements = async (sql: string): Promise<string[]> => {
+// libpg-query only parses PostgreSQL's grammar, so CockroachDB scripts it rejects (UPSERT, say) are split lexically
+export const splitPostgresStatements = async (sql: string, { lexicalFallback = false } = {}): Promise<string[]> => {
   let stmts: { stmt_location?: number; stmt_len?: number }[];
   try {
     ({ stmts } = (await parseSql(sql)) as { stmts: typeof stmts });
-  } catch {
+  } catch (err) {
+    if (!lexicalFallback) throw err;
     return splitStatementsLexically(sql);
   }
   // libpg-query reports UTF-8 byte offsets, not string indexes

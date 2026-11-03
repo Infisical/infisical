@@ -58,10 +58,14 @@ describe("splitPostgresStatements", () => {
     ]);
   });
 
+  test("rejects a script the parser can't read without the fallback, so none of it runs", async () => {
+    await expect(splitPostgresStatements("DELETE FROM orders; SELEC 1")).rejects.toThrow();
+  });
+
   test("passes CockroachDB syntax the PostgreSQL parser rejects through to the server", async () => {
     const script =
       "UPSERT INTO t (id, v) VALUES (1, 'x;y'); SELECT * FROM t AS OF SYSTEM TIME '-1s'; SHOW CREATE TABLE t";
-    expect(await splitPostgresStatements(script)).toEqual([
+    expect(await splitPostgresStatements(script, { lexicalFallback: true })).toEqual([
       "UPSERT INTO t (id, v) VALUES (1, 'x;y')",
       "SELECT * FROM t AS OF SYSTEM TIME '-1s'",
       "SHOW CREATE TABLE t"
@@ -74,7 +78,7 @@ describe("splitPostgresStatements", () => {
       "CREATE FUNCTION f() RETURNS INT LANGUAGE SQL AS $body$ SELECT 1; $body$",
       "SELECT $$;$$ /* outer /* inner; */ still a comment; */ -- trailing;\n"
     ].join("; ");
-    expect(await splitPostgresStatements(script)).toEqual([
+    expect(await splitPostgresStatements(script, { lexicalFallback: true })).toEqual([
       `UPSERT INTO "a;b" VALUES (E'it\\'s;', b'\\';', 'O''Neil;')`,
       "CREATE FUNCTION f() RETURNS INT LANGUAGE SQL AS $body$ SELECT 1; $body$",
       "SELECT $$;$$ /* outer /* inner; */ still a comment; */ -- trailing;"
@@ -82,7 +86,9 @@ describe("splitPostgresStatements", () => {
   });
 
   test("drops segments that hold only comments", async () => {
-    expect(await splitPostgresStatements("UPSERT INTO t VALUES (1); -- done\n/* end */")).toEqual([
+    expect(
+      await splitPostgresStatements("UPSERT INTO t VALUES (1); -- done\n/* end */", { lexicalFallback: true })
+    ).toEqual([
       "UPSERT INTO t VALUES (1)"
     ]);
   });
