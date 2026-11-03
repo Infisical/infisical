@@ -93,13 +93,16 @@ Registry items used: @infisical/input, @infisical/label. Additional packages: no
 ```tsx
 import { Input } from "../../../../components/v4/ui/input";
 import * as UI from "../../../../components/v4/ui/label";
+
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <div className="flex flex-col gap-1.5">
         <UI.Label htmlFor="label-example">Environment name</UI.Label>
-        <Input id="label-example" defaultValue="staging"/>
+        <Input id="label-example" defaultValue="staging" />
       </div>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -112,21 +115,24 @@ Registry items used: @infisical/input, @infisical/label. Additional packages: no
 ```tsx
 import { Input } from "../../../../components/v4/ui/input";
 import { Label } from "../../../../components/v4/ui/label";
+
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="label-required">Name (required)</Label>
-        <Input id="label-required" required/>
+        <Input id="label-required" required />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="label-optional">Description (optional)</Label>
-        <Input id="label-optional"/>
+        <Input id="label-optional" />
       </div>
       <div className="group flex flex-col gap-1.5" data-disabled="true">
         <Label htmlFor="label-disabled">Managed name</Label>
-        <Input id="label-disabled" disabled defaultValue="platform"/>
+        <Input id="label-disabled" disabled defaultValue="platform" />
       </div>
-    </div>);
+    </div>
+  );
 }
 ```
 

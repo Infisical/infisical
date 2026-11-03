@@ -85,14 +85,27 @@ Registry items used: @infisical/cover. Additional packages: none. Install every 
 
 ```tsx
 import { Cover } from "../../../../components/v4/ui/cover";
+
 export default function Example() {
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <Cover title={<>
-            Infisical
-            <br />
-            2.0
-          </>} tagline="A quiet interface for secrets, certificates and access."/>
-    </div><figcaption className="text-muted-foreground text-xs">{"Brand cover, scales with its container"}</figcaption></figure>);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <Cover
+          title={
+            <>
+              Infisical
+              <br />
+              2.0
+            </>
+          }
+          tagline="A quiet interface for secrets, certificates and access."
+        />
+      </div>
+      <figcaption className="text-muted-foreground text-xs">
+        {"Brand cover, scales with its container"}
+      </figcaption>
+    </figure>
+  );
 }
 ```
 

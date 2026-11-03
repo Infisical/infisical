@@ -111,43 +111,53 @@ Registry items used: @infisical/button, @infisical/dialog, @infisical/field, @in
 
 ```tsx
 import { useId, useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/dialog";
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
+
 export default function Example() {
-    const [open, setOpen] = useState(false);
-    const [name, setName] = useState("staging");
-    const formId = useId();
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <UI.Dialog open={open} onOpenChange={setOpen}>
-        <UI.DialogTrigger asChild>
-          <Button variant="outline">Edit environment</Button>
-        </UI.DialogTrigger>
-        <UI.DialogContent>
-          <UI.DialogHeader>
-            <UI.DialogTitle>Edit environment</UI.DialogTitle>
-            <UI.DialogDescription>Choose the name used in navigation.</UI.DialogDescription>
-          </UI.DialogHeader>
-          <form id={formId} onSubmit={(event) => {
-            event.preventDefault();
-            setOpen(false);
-        }}>
-            <Field label="Environment name">
-              <Input required value={name} onChange={(event) => setName(event.target.value)}/>
-            </Field>
-          </form>
-          <UI.DialogFooter>
-            <UI.DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </UI.DialogClose>
-            <Button type="submit" form={formId}>
-              Save changes
-            </Button>
-          </UI.DialogFooter>
-        </UI.DialogContent>
-      </UI.Dialog>
-    </div><figcaption className="text-muted-foreground text-xs">{"Editable form"}</figcaption></figure>);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("staging");
+  const formId = useId();
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <UI.Dialog open={open} onOpenChange={setOpen}>
+          <UI.DialogTrigger asChild>
+            <Button variant="outline">Edit environment</Button>
+          </UI.DialogTrigger>
+          <UI.DialogContent>
+            <UI.DialogHeader>
+              <UI.DialogTitle>Edit environment</UI.DialogTitle>
+              <UI.DialogDescription>Choose the name used in navigation.</UI.DialogDescription>
+            </UI.DialogHeader>
+            <form
+              id={formId}
+              onSubmit={(event) => {
+                event.preventDefault();
+                setOpen(false);
+              }}
+            >
+              <Field label="Environment name">
+                <Input required value={name} onChange={(event) => setName(event.target.value)} />
+              </Field>
+            </form>
+            <UI.DialogFooter>
+              <UI.DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </UI.DialogClose>
+              <Button type="submit" form={formId}>
+                Save changes
+              </Button>
+            </UI.DialogFooter>
+          </UI.DialogContent>
+        </UI.Dialog>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"Editable form"}</figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -160,38 +170,51 @@ Registry items used: @infisical/button, @infisical/dialog. Additional packages: 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/dialog";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <UI.Dialog>
-          <UI.DialogTrigger asChild>
-            <Button variant="outline">Corner close</Button>
-          </UI.DialogTrigger>
-          <UI.DialogContent>
-            <UI.DialogHeader>
-              <UI.DialogTitle>Environment details</UI.DialogTitle>
-              <UI.DialogDescription>Read-only details for Staging.</UI.DialogDescription>
-            </UI.DialogHeader>
-            <p>Region: eu-west-1. Access: Platform team.</p>
-          </UI.DialogContent>
-        </UI.Dialog>
-      </div><figcaption className="text-muted-foreground text-xs">{"Corner close, for read-only or informational dialogs"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <UI.Dialog>
-          <UI.DialogTrigger asChild>
-            <Button variant="outline">Footer close</Button>
-          </UI.DialogTrigger>
-          <UI.DialogContent showCloseButton={false}>
-            <UI.DialogHeader>
-              <UI.DialogTitle>Environment details</UI.DialogTitle>
-              <UI.DialogDescription>Read-only details for Staging.</UI.DialogDescription>
-            </UI.DialogHeader>
-            <p>Region: eu-west-1. Access: Platform team.</p>
-            <UI.DialogFooter showCloseButton/>
-          </UI.DialogContent>
-        </UI.Dialog>
-      </div><figcaption className="text-muted-foreground text-xs">{"Footer close, when the dialog ends in actions"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <UI.Dialog>
+            <UI.DialogTrigger asChild>
+              <Button variant="outline">Corner close</Button>
+            </UI.DialogTrigger>
+            <UI.DialogContent>
+              <UI.DialogHeader>
+                <UI.DialogTitle>Environment details</UI.DialogTitle>
+                <UI.DialogDescription>Read-only details for Staging.</UI.DialogDescription>
+              </UI.DialogHeader>
+              <p>Region: eu-west-1. Access: Platform team.</p>
+            </UI.DialogContent>
+          </UI.Dialog>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Corner close, for read-only or informational dialogs"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <UI.Dialog>
+            <UI.DialogTrigger asChild>
+              <Button variant="outline">Footer close</Button>
+            </UI.DialogTrigger>
+            <UI.DialogContent showCloseButton={false}>
+              <UI.DialogHeader>
+                <UI.DialogTitle>Environment details</UI.DialogTitle>
+                <UI.DialogDescription>Read-only details for Staging.</UI.DialogDescription>
+              </UI.DialogHeader>
+              <p>Region: eu-west-1. Access: Platform team.</p>
+              <UI.DialogFooter showCloseButton />
+            </UI.DialogContent>
+          </UI.Dialog>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Footer close, when the dialog ends in actions"}
+        </figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -236,68 +259,85 @@ Registry items used: @infisical/alert-dialog, @infisical/button, @infisical/dial
 
 ```tsx
 import { useEffect, useId, useState } from "react";
+
 import { useDiscardChangesGuard } from "../../../../components/v4/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "../../../../components/v4/ui/alert-dialog";
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/dialog";
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
+
 export default function Example() {
-    const [saved, setSaved] = useState("staging");
-    const [draft, setDraft] = useState(saved);
-    const [open, setOpen] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const formId = useId();
-    const close = () => {
-        setDraft(saved);
-        setOpen(false);
-    };
-    const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
-        isDirty: draft !== saved,
-        onDiscard: close
-    });
-    useEffect(() => {
-        if (!saving)
-            return undefined;
-        const timer = window.setTimeout(() => {
-            setSaved(draft);
-            setSaving(false);
-            setOpen(false);
-        }, 1500);
-        return () => window.clearTimeout(timer);
-    }, [saving, draft]);
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <UI.Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : requestDiscard())}>
-        <UI.DialogTrigger asChild>
-          <Button variant="outline">Rename environment</Button>
-        </UI.DialogTrigger>
-        <UI.DialogContent pending={saving}>
-          <UI.DialogHeader>
-            <UI.DialogTitle>Rename environment</UI.DialogTitle>
-            <UI.DialogDescription>
-              Closing with unsaved edits asks first. While saving, the dialog cannot close.
-            </UI.DialogDescription>
-          </UI.DialogHeader>
-          <form id={formId} onSubmit={(event) => {
-            event.preventDefault();
-            setSaving(true);
-        }}>
-            <Field label="Environment name">
-              <Input required disabled={saving} value={draft} onChange={(event) => setDraft(event.target.value)}/>
-            </Field>
-          </form>
-          <UI.DialogFooter>
-            <UI.DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </UI.DialogClose>
-            <Button type="submit" form={formId} loading={saving} disabled={draft === saved}>
-              Save Changes
-            </Button>
-          </UI.DialogFooter>
-        </UI.DialogContent>
-      </UI.Dialog>
-      <DiscardChangesAlertDialog {...discardDialogProps} description="Your unsaved changes to this environment will be lost."/>
-    </div><figcaption className="text-muted-foreground text-xs">{`Saved name: ${saved}`}</figcaption></figure>);
+  const [saved, setSaved] = useState("staging");
+  const [draft, setDraft] = useState(saved);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const formId = useId();
+  const close = () => {
+    setDraft(saved);
+    setOpen(false);
+  };
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: draft !== saved,
+    onDiscard: close
+  });
+  useEffect(() => {
+    if (!saving) return undefined;
+    const timer = window.setTimeout(() => {
+      setSaved(draft);
+      setSaving(false);
+      setOpen(false);
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [saving, draft]);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <UI.Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : requestDiscard())}>
+          <UI.DialogTrigger asChild>
+            <Button variant="outline">Rename environment</Button>
+          </UI.DialogTrigger>
+          <UI.DialogContent pending={saving}>
+            <UI.DialogHeader>
+              <UI.DialogTitle>Rename environment</UI.DialogTitle>
+              <UI.DialogDescription>
+                Closing with unsaved edits asks first. While saving, the dialog cannot close.
+              </UI.DialogDescription>
+            </UI.DialogHeader>
+            <form
+              id={formId}
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSaving(true);
+              }}
+            >
+              <Field label="Environment name">
+                <Input
+                  required
+                  disabled={saving}
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                />
+              </Field>
+            </form>
+            <UI.DialogFooter>
+              <UI.DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </UI.DialogClose>
+              <Button type="submit" form={formId} loading={saving} disabled={draft === saved}>
+                Save Changes
+              </Button>
+            </UI.DialogFooter>
+          </UI.DialogContent>
+        </UI.Dialog>
+        <DiscardChangesAlertDialog
+          {...discardDialogProps}
+          description="Your unsaved changes to this environment will be lost."
+        />
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{`Saved name: ${saved}`}</figcaption>
+    </figure>
+  );
 }
 ```
 

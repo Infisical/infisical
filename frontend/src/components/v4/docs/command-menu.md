@@ -130,70 +130,93 @@ Registry items used: @infisical/button, @infisical/command-menu. Additional pack
 
 ```tsx
 import { useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import { CommandMenu } from "../../../../components/v4/ui/command-menu";
+
 export default function Example() {
-    const [open, setOpen] = useState(false);
-    const [pinned, setPinned] = useState(false);
-    const [recent, setRecent] = useState(true);
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        Search commands
-      </Button>
-      <CommandMenu open={open} onOpenChange={setOpen} label="Search commands" recent={recent
-            ? [
-                {
+  const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [recent, setRecent] = useState(true);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <Button variant="outline" onClick={() => setOpen(true)}>
+          Search commands
+        </Button>
+        <CommandMenu
+          open={open}
+          onOpenChange={setOpen}
+          label="Search commands"
+          recent={
+            recent
+              ? [
+                  {
                     id: "recent-secret",
                     label: "stripe_api_key",
                     description: "production",
                     mono: true,
                     kind: "secret"
-                },
-                { id: "recent", label: "Audit logs", href: "#input", kind: "page", icon: "history" }
-            ]
-            : []} groups={[
-            {
-                label: "Go to",
-                items: [
-                    { id: "home", label: "Home", icon: "home", shortcut: "g then h" },
-                    { id: "secrets", label: "Secrets", icon: "key", shortcut: "g then s" },
-                    { id: "certificates", label: "Certificates", icon: "cert", shortcut: "g then c" },
-                    { id: "access", label: "Access", icon: "user" },
-                    { id: "settings", label: "Project settings", kind: "setting" }
+                  },
+                  {
+                    id: "recent",
+                    label: "Audit logs",
+                    href: "#input",
+                    kind: "page",
+                    icon: "history"
+                  }
                 ]
+              : []
+          }
+          groups={[
+            {
+              label: "Go to",
+              items: [
+                { id: "home", label: "Home", icon: "home", shortcut: "g then h" },
+                { id: "secrets", label: "Secrets", icon: "key", shortcut: "g then s" },
+                { id: "certificates", label: "Certificates", icon: "cert", shortcut: "g then c" },
+                { id: "access", label: "Access", icon: "user" },
+                { id: "settings", label: "Project settings", kind: "setting" }
+              ]
             },
             {
-                label: "Commands",
-                items: [
-                    {
-                        id: "history",
-                        label: "View history"
-                    },
-                    {
-                        id: "pin",
-                        label: pinned ? "Unpin recent commands" : "Pin recent commands",
-                        keepOpen: true,
-                        onSelect: () => setPinned(!pinned)
-                    },
-                    { id: "connections", label: "Connections", page: "connections" },
-                    {
-                        id: "clear",
-                        label: "Clear recent commands",
-                        danger: true,
-                        onSelect: () => setRecent(false)
-                    },
-                    { id: "locked", label: "Delete organization", disabled: true }
-                ]
+              label: "Commands",
+              items: [
+                {
+                  id: "history",
+                  label: "View history"
+                },
+                {
+                  id: "pin",
+                  label: pinned ? "Unpin recent commands" : "Pin recent commands",
+                  keepOpen: true,
+                  onSelect: () => setPinned(!pinned)
+                },
+                { id: "connections", label: "Connections", page: "connections" },
+                {
+                  id: "clear",
+                  label: "Clear recent commands",
+                  danger: true,
+                  onSelect: () => setRecent(false)
+                },
+                { id: "locked", label: "Delete organization", disabled: true }
+              ]
             }
-        ]} pages={{
+          ]}
+          pages={{
             connections: {
-                title: "Connections",
-                groups: [
-                    { label: "Staging", items: [{ id: "connection", label: "Inspect connection" }] }
-                ]
+              title: "Connections",
+              groups: [
+                { label: "Staging", items: [{ id: "connection", label: "Inspect connection" }] }
+              ]
             }
-        }} footer={pinned ? "Recent commands pinned" : "acme-platform"}/>
-    </div><figcaption className="text-muted-foreground text-xs">{"Default"}</figcaption></figure>);
+          }}
+          footer={pinned ? "Recent commands pinned" : "acme-platform"}
+        />
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"Default"}</figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -205,28 +228,53 @@ Registry items used: @infisical/button, @infisical/command-menu. Additional pack
 
 ```tsx
 import { useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import { CommandMenu } from "../../../../components/v4/ui/command-menu";
+
 export default function Example() {
-    const [open, setOpen] = useState<"loading" | "empty" | null>(null);
-    const close = (next: boolean) => {
-        if (!next)
-            setOpen(null);
-    };
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <Button variant="outline" onClick={() => setOpen("loading")}>
-          Open palette
-        </Button>
-        <CommandMenu hotkey={false} filter={false} loading label="Loading connections" groups={[]} open={open === "loading"} onOpenChange={close}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Loading results"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <Button variant="outline" onClick={() => setOpen("empty")}>
-          Open palette
-        </Button>
-        <CommandMenu hotkey={false} filter={false} label="Search connections" groups={[]} emptyHint="Enter a connection name." open={open === "empty"} onOpenChange={close}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"No results"}</figcaption></figure>
-    </div>);
+  const [open, setOpen] = useState<"loading" | "empty" | null>(null);
+  const close = (next: boolean) => {
+    if (!next) setOpen(null);
+  };
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <Button variant="outline" onClick={() => setOpen("loading")}>
+            Open palette
+          </Button>
+          <CommandMenu
+            hotkey={false}
+            filter={false}
+            loading
+            label="Loading connections"
+            groups={[]}
+            open={open === "loading"}
+            onOpenChange={close}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Loading results"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <Button variant="outline" onClick={() => setOpen("empty")}>
+            Open palette
+          </Button>
+          <CommandMenu
+            hotkey={false}
+            filter={false}
+            label="Search connections"
+            groups={[]}
+            emptyHint="Enter a connection name."
+            open={open === "empty"}
+            onOpenChange={close}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"No results"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

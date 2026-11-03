@@ -97,39 +97,56 @@ Registry items used: @infisical/alert, @infisical/alert-dialog, @infisical/butto
 
 ```tsx
 import { useState } from "react";
+
 import { Alert, AlertDescription } from "../../../../components/v4/ui/alert";
 import * as UI from "../../../../components/v4/ui/alert-dialog";
 import { Button } from "../../../../components/v4/ui/button";
+
 export default function Example() {
-    const [open, setOpen] = useState<string | null>(null);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {(["Confirmation", "Pending", "Error"] as const).map((state) => (<figure key={state} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <UI.AlertDialog open={open === state} onOpenChange={(next) => setOpen(next ? state : null)}>
-            <UI.AlertDialogTrigger asChild>
-              <Button variant="outline">Revoke access</Button>
-            </UI.AlertDialogTrigger>
-            <UI.AlertDialogContent tone="danger">
-              <UI.AlertDialogHeader>
-                <UI.AlertDialogTitle>Revoke client access?</UI.AlertDialogTitle>
-                <UI.AlertDialogDescription>
-                  This client will no longer read Staging secrets.
-                </UI.AlertDialogDescription>
-              </UI.AlertDialogHeader>
-              {state === "Error" && (<Alert tone="bad">
-                  <AlertDescription>Access could not be revoked. Try again.</AlertDescription>
-                </Alert>)}
-              <UI.AlertDialogFooter>
-                <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
-                <UI.AlertDialogAction asChild>
-                  <Button variant="destructive" loading={state === "Pending"}>
-                    Revoke access
-                  </Button>
-                </UI.AlertDialogAction>
-              </UI.AlertDialogFooter>
-            </UI.AlertDialogContent>
-          </UI.AlertDialog>
-        </div><figcaption className="text-muted-foreground text-xs">{state}</figcaption></figure>))}
-    </div>);
+  const [open, setOpen] = useState<string | null>(null);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {(["Confirmation", "Pending", "Error"] as const).map((state) => (
+        <figure
+          key={state}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <UI.AlertDialog
+              open={open === state}
+              onOpenChange={(next) => setOpen(next ? state : null)}
+            >
+              <UI.AlertDialogTrigger asChild>
+                <Button variant="outline">Revoke access</Button>
+              </UI.AlertDialogTrigger>
+              <UI.AlertDialogContent tone="danger">
+                <UI.AlertDialogHeader>
+                  <UI.AlertDialogTitle>Revoke client access?</UI.AlertDialogTitle>
+                  <UI.AlertDialogDescription>
+                    This client will no longer read Staging secrets.
+                  </UI.AlertDialogDescription>
+                </UI.AlertDialogHeader>
+                {state === "Error" && (
+                  <Alert tone="bad">
+                    <AlertDescription>Access could not be revoked. Try again.</AlertDescription>
+                  </Alert>
+                )}
+                <UI.AlertDialogFooter>
+                  <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
+                  <UI.AlertDialogAction asChild>
+                    <Button variant="destructive" loading={state === "Pending"}>
+                      Revoke access
+                    </Button>
+                  </UI.AlertDialogAction>
+                </UI.AlertDialogFooter>
+              </UI.AlertDialogContent>
+            </UI.AlertDialog>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{state}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -142,31 +159,42 @@ Registry items used: @infisical/alert-dialog, @infisical/button. Additional pack
 ```tsx
 import * as UI from "../../../../components/v4/ui/alert-dialog";
 import { Button } from "../../../../components/v4/ui/button";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {(["default", "sm"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <UI.AlertDialog>
-            <UI.AlertDialogTrigger asChild>
-              <Button variant="outline">
-                {size === "sm" ? "Small confirmation" : "Default confirmation"}
-              </Button>
-            </UI.AlertDialogTrigger>
-            <UI.AlertDialogContent size={size} tone="neutral" icon="folder">
-              <UI.AlertDialogHeader>
-                <UI.AlertDialogTitle>Archive request details?</UI.AlertDialogTitle>
-                <UI.AlertDialogDescription>
-                  Archived requests remain available in the audit log. Cancel to keep this request
-                  open.
-                </UI.AlertDialogDescription>
-              </UI.AlertDialogHeader>
-              <UI.AlertDialogFooter>
-                <UI.AlertDialogCancel>Keep request</UI.AlertDialogCancel>
-                <UI.AlertDialogAction disabled>Archive unavailable</UI.AlertDialogAction>
-              </UI.AlertDialogFooter>
-            </UI.AlertDialogContent>
-          </UI.AlertDialog>
-        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {(["default", "sm"] as const).map((size) => (
+        <figure
+          key={size}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <UI.AlertDialog>
+              <UI.AlertDialogTrigger asChild>
+                <Button variant="outline">
+                  {size === "sm" ? "Small confirmation" : "Default confirmation"}
+                </Button>
+              </UI.AlertDialogTrigger>
+              <UI.AlertDialogContent size={size} tone="neutral" icon="folder">
+                <UI.AlertDialogHeader>
+                  <UI.AlertDialogTitle>Archive request details?</UI.AlertDialogTitle>
+                  <UI.AlertDialogDescription>
+                    Archived requests remain available in the audit log. Cancel to keep this request
+                    open.
+                  </UI.AlertDialogDescription>
+                </UI.AlertDialogHeader>
+                <UI.AlertDialogFooter>
+                  <UI.AlertDialogCancel>Keep request</UI.AlertDialogCancel>
+                  <UI.AlertDialogAction disabled>Archive unavailable</UI.AlertDialogAction>
+                </UI.AlertDialogFooter>
+              </UI.AlertDialogContent>
+            </UI.AlertDialog>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -215,50 +243,67 @@ Registry items used: @infisical/alert-dialog, @infisical/button. Additional pack
 
 ```tsx
 import { useState } from "react";
+
 import * as UI from "../../../../components/v4/ui/alert-dialog";
 import { Button } from "../../../../components/v4/ui/button";
+
 export default function Example() {
-    const [open, setOpen] = useState<string | null>(null);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <UI.AlertDialog open={open === "danger"} onOpenChange={(next) => setOpen(next ? "danger" : null)}>
-          <UI.AlertDialogTrigger asChild>
-            <Button variant="outline">Delete project</Button>
-          </UI.AlertDialogTrigger>
-          <UI.AlertDialogContent tone="danger" confirmText="payments-api">
-            <UI.AlertDialogHeader>
-              <UI.AlertDialogTitle>Delete payments-api?</UI.AlertDialogTitle>
-              <UI.AlertDialogDescription>
-                All 52 secrets, 9 environments and their history are removed. This cannot be undone.
-              </UI.AlertDialogDescription>
-            </UI.AlertDialogHeader>
-            <UI.AlertDialogFooter>
-              <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
-              <UI.AlertDialogAction variant="destructive">Delete project</UI.AlertDialogAction>
-            </UI.AlertDialogFooter>
-          </UI.AlertDialogContent>
-        </UI.AlertDialog>
-      </div><figcaption className="text-muted-foreground text-xs">{"danger"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <UI.AlertDialog open={open === "neutral"} onOpenChange={(next) => setOpen(next ? "neutral" : null)}>
-          <UI.AlertDialogTrigger asChild>
-            <Button variant="outline">Rotate key</Button>
-          </UI.AlertDialogTrigger>
-          <UI.AlertDialogContent tone="neutral">
-            <UI.AlertDialogHeader>
-              <UI.AlertDialogTitle>Rotate the signing key?</UI.AlertDialogTitle>
-              <UI.AlertDialogDescription>
-                Clients pick up the new key on their next request.
-              </UI.AlertDialogDescription>
-            </UI.AlertDialogHeader>
-            <UI.AlertDialogFooter>
-              <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
-              <UI.AlertDialogAction>Rotate key</UI.AlertDialogAction>
-            </UI.AlertDialogFooter>
-          </UI.AlertDialogContent>
-        </UI.AlertDialog>
-      </div><figcaption className="text-muted-foreground text-xs">{"neutral"}</figcaption></figure>
-    </div>);
+  const [open, setOpen] = useState<string | null>(null);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <UI.AlertDialog
+            open={open === "danger"}
+            onOpenChange={(next) => setOpen(next ? "danger" : null)}
+          >
+            <UI.AlertDialogTrigger asChild>
+              <Button variant="outline">Delete project</Button>
+            </UI.AlertDialogTrigger>
+            <UI.AlertDialogContent tone="danger" confirmText="payments-api">
+              <UI.AlertDialogHeader>
+                <UI.AlertDialogTitle>Delete payments-api?</UI.AlertDialogTitle>
+                <UI.AlertDialogDescription>
+                  All 52 secrets, 9 environments and their history are removed. This cannot be
+                  undone.
+                </UI.AlertDialogDescription>
+              </UI.AlertDialogHeader>
+              <UI.AlertDialogFooter>
+                <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
+                <UI.AlertDialogAction variant="destructive">Delete project</UI.AlertDialogAction>
+              </UI.AlertDialogFooter>
+            </UI.AlertDialogContent>
+          </UI.AlertDialog>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"danger"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <UI.AlertDialog
+            open={open === "neutral"}
+            onOpenChange={(next) => setOpen(next ? "neutral" : null)}
+          >
+            <UI.AlertDialogTrigger asChild>
+              <Button variant="outline">Rotate key</Button>
+            </UI.AlertDialogTrigger>
+            <UI.AlertDialogContent tone="neutral">
+              <UI.AlertDialogHeader>
+                <UI.AlertDialogTitle>Rotate the signing key?</UI.AlertDialogTitle>
+                <UI.AlertDialogDescription>
+                  Clients pick up the new key on their next request.
+                </UI.AlertDialogDescription>
+              </UI.AlertDialogHeader>
+              <UI.AlertDialogFooter>
+                <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
+                <UI.AlertDialogAction>Rotate key</UI.AlertDialogAction>
+              </UI.AlertDialogFooter>
+            </UI.AlertDialogContent>
+          </UI.AlertDialog>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"neutral"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -270,20 +315,32 @@ Registry items used: @infisical/alert-dialog, @infisical/button. Additional pack
 
 ```tsx
 import { useState } from "react";
+
 import { DiscardChangesAlertDialog } from "../../../../components/v4/ui/alert-dialog";
 import { Button } from "../../../../components/v4/ui/button";
+
 export default function Example() {
-    const [open, setOpen] = useState(false);
-    const [discarded, setDiscarded] = useState(0);
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        Close Draft
-      </Button>
-      <DiscardChangesAlertDialog open={open} onOpenChange={setOpen} onDiscard={() => {
+  const [open, setOpen] = useState(false);
+  const [discarded, setDiscarded] = useState(0);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <Button variant="outline" onClick={() => setOpen(true)}>
+          Close Draft
+        </Button>
+        <DiscardChangesAlertDialog
+          open={open}
+          onOpenChange={setOpen}
+          onDiscard={() => {
             setDiscarded((count) => count + 1);
             setOpen(false);
-        }} description="Your unsaved changes to this skill will be lost."/>
-    </div><figcaption className="text-muted-foreground text-xs">{`Discarded ${discarded} ${discarded === 1 ? "draft" : "drafts"}`}</figcaption></figure>);
+          }}
+          description="Your unsaved changes to this skill will be lost."
+        />
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{`Discarded ${discarded} ${discarded === 1 ? "draft" : "drafts"}`}</figcaption>
+    </figure>
+  );
 }
 ```
 

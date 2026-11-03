@@ -140,22 +140,33 @@ Registry items used: @infisical/button, @infisical/tooltip. Additional packages:
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
 import { Tooltip, TooltipProvider } from "../../../../components/v4/ui/tooltip";
+
 const placements = [
-    { side: "top", align: "start" },
-    { side: "right", align: "center" },
-    { side: "bottom", align: "end" },
-    { side: "left", align: "center" }
+  { side: "top", align: "start" },
+  { side: "right", align: "center" },
+  { side: "bottom", align: "end" },
+  { side: "left", align: "center" }
 ] as const;
 export default function Example() {
-    return (<TooltipProvider>
-      <div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-        {placements.map(({ side, align }) => (<figure key={side} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-            <Tooltip side={side} align={align} content="Connection status">
-              <Button variant="outline">align {align}</Button>
-            </Tooltip>
-          </div><figcaption className="text-muted-foreground text-xs">{side}</figcaption></figure>))}
+  return (
+    <TooltipProvider>
+      <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+        {placements.map(({ side, align }) => (
+          <figure
+            key={side}
+            className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+          >
+            <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+              <Tooltip side={side} align={align} content="Connection status">
+                <Button variant="outline">align {align}</Button>
+              </Tooltip>
+            </div>
+            <figcaption className="text-muted-foreground text-xs">{side}</figcaption>
+          </figure>
+        ))}
       </div>
-    </TooltipProvider>);
+    </TooltipProvider>
+  );
 }
 ```
 
@@ -167,62 +178,91 @@ Registry items used: @infisical/button, @infisical/command-menu, @infisical/tool
 
 ```tsx
 import { type KeyboardEvent, useRef, useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import { CommandMenu } from "../../../../components/v4/ui/command-menu";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../../../components/v4/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "../../../../components/v4/ui/tooltip";
+
 export default function Example() {
-    const trigger = useRef<HTMLButtonElement>(null);
-    const [open, setOpen] = useState(false);
-    const [search, setSearch] = useState(false);
-    const shortcut = (event: KeyboardEvent<HTMLElement>) => {
-        if (event.defaultPrevented ||
-            event.repeat ||
-            event.nativeEvent.isComposing ||
-            event.key.toLowerCase() !== "k" ||
-            !(event.metaKey || event.ctrlKey) ||
-            (event.metaKey && event.ctrlKey) ||
-            event.altKey ||
-            event.shiftKey)
-            return;
-        if (event.target instanceof HTMLElement &&
-            event.target.closest('input, textarea, select, [role="textbox"], [role="combobox"], [contenteditable]:not([contenteditable="false"])'))
-            return;
-        event.preventDefault();
-        event.stopPropagation();
-        setSearch(true);
-    };
-    return (<section onKeyDownCapture={shortcut} aria-label="Tooltip actions">
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(false);
+  const shortcut = (event: KeyboardEvent<HTMLElement>) => {
+    if (
+      event.defaultPrevented ||
+      event.repeat ||
+      event.nativeEvent.isComposing ||
+      event.key.toLowerCase() !== "k" ||
+      !(event.metaKey || event.ctrlKey) ||
+      (event.metaKey && event.ctrlKey) ||
+      event.altKey ||
+      event.shiftKey
+    )
+      return;
+    if (
+      event.target instanceof HTMLElement &&
+      event.target.closest(
+        'input, textarea, select, [role="textbox"], [role="combobox"], [contenteditable]:not([contenteditable="false"])'
+      )
+    )
+      return;
+    event.preventDefault();
+    event.stopPropagation();
+    setSearch(true);
+  };
+  return (
+    <section onKeyDownCapture={shortcut} aria-label="Tooltip actions">
       <TooltipProvider>
-        <div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-          <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-            <Tooltip content="Open search" shortcut="mod+K">
-              <Button ref={trigger} variant="outline" onClick={() => setSearch(true)}>
-                Search components
-              </Button>
-            </Tooltip>
-          </div><figcaption className="text-muted-foreground text-xs">{"Shortcut hint"}</figcaption></figure>
-          <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-            <Tooltip open={open} onOpenChange={setOpen}>
-              <TooltipTrigger asChild>
-                <Button variant="outline" asChild>
-                  <a href="#field">Retention settings</a>
+        <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+          <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+            <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+              <Tooltip content="Open search" shortcut="mod+K">
+                <Button ref={trigger} variant="outline" onClick={() => setSearch(true)}>
+                  Search components
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>Versions remain available for 30 days.</TooltipContent>
-            </Tooltip>
-          </div><figcaption className="text-muted-foreground text-xs">{"Controlled content"}</figcaption></figure>
+              </Tooltip>
+            </div>
+            <figcaption className="text-muted-foreground text-xs">{"Shortcut hint"}</figcaption>
+          </figure>
+          <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+            <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+              <Tooltip open={open} onOpenChange={setOpen}>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" asChild>
+                    <a href="#field">Retention settings</a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Versions remain available for 30 days.</TooltipContent>
+              </Tooltip>
+            </div>
+            <figcaption className="text-muted-foreground text-xs">
+              {"Controlled content"}
+            </figcaption>
+          </figure>
         </div>
-        <CommandMenu hotkey={false} open={search} onOpenChange={setSearch} label="Find a component" groups={[
+        <CommandMenu
+          hotkey={false}
+          open={search}
+          onOpenChange={setSearch}
+          label="Find a component"
+          groups={[
             {
-                label: "Components",
-                items: [
-                    { id: "input", label: "Input", href: "#input" },
-                    { id: "table", label: "Table", href: "#table" }
-                ]
+              label: "Components",
+              items: [
+                { id: "input", label: "Input", href: "#input" },
+                { id: "table", label: "Table", href: "#table" }
+              ]
             }
-        ]}/>
+          ]}
+        />
       </TooltipProvider>
-    </section>);
+    </section>
+  );
 }
 ```
 

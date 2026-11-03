@@ -165,25 +165,60 @@ Registry items used: @infisical/button, @infisical/empty, @infisical/list. Addit
 import { Button } from "../../../../components/v4/ui/button";
 import { EmptyState } from "../../../../components/v4/ui/empty";
 import { DataList, List, ListRow } from "../../../../components/v4/ui/list";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <List label="Connections" title="Connections">
-          <ListRow value="staging" label="Staging service" title="Staging service" description="Read access to project versions" meta="12 versions"/>
-          <ListRow value="production" label="Production service" title="Production service" description="Write access, approval required" actions={<Button variant="outline">Review</Button>}/>
-          <ListRow value="preview" label="Preview service" title="Preview service" meta="2 versions"/>
-        </List>
-      </div><figcaption className="text-muted-foreground text-xs">{"framed"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <List label="Empty connections" empty={<EmptyState size="sm" media="bare" title="No connections yet"/>}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <DataList variant="stat" items={[
-            ["Connections", 12],
-            ["Policies", 0]
-        ]}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"stat"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List label="Connections" title="Connections">
+            <ListRow
+              value="staging"
+              label="Staging service"
+              title="Staging service"
+              description="Read access to project versions"
+              meta="12 versions"
+            />
+            <ListRow
+              value="production"
+              label="Production service"
+              title="Production service"
+              description="Write access, approval required"
+              actions={<Button variant="outline">Review</Button>}
+            />
+            <ListRow
+              value="preview"
+              label="Preview service"
+              title="Preview service"
+              meta="2 versions"
+            />
+          </List>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"framed"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List
+            label="Empty connections"
+            empty={<EmptyState size="sm" media="bare" title="No connections yet" />}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataList
+            variant="stat"
+            items={[
+              ["Connections", 12],
+              ["Policies", 0]
+            ]}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"stat"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -195,32 +230,74 @@ Registry items used: @infisical/list. Additional packages: none. Install every l
 
 ```tsx
 import * as React from "react";
+
 import { List, ListRow } from "../../../../components/v4/ui/list";
+
 const environments = [
-    { id: "development", title: "Development", description: "14 secrets, synced 2 minutes ago" },
-    { id: "staging", title: "Staging", description: "12 secrets, synced 1 hour ago" },
-    { id: "production", title: "Production", description: "12 secrets, approval required" }
+  { id: "development", title: "Development", description: "14 secrets, synced 2 minutes ago" },
+  { id: "staging", title: "Staging", description: "12 secrets, synced 1 hour ago" },
+  { id: "production", title: "Production", description: "12 secrets, approval required" }
 ];
 export default function Interactive() {
-    const [current, setCurrent] = React.useState("staging");
-    const [opened, setOpened] = React.useState("None");
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <List label="Environments" title="Environments">
-          {environments.map((row) => (<ListRow key={row.id} value={row.id} label={row.title} title={row.title} description={row.description} href={`#list-${row.id}`} current={current === row.id} onClick={(event) => {
-                event.preventDefault();
-                setCurrent(row.id);
-            }}/>))}
-        </List>
-      </div><figcaption className="text-muted-foreground text-xs">{"Link rows, hover a row, staging is current"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <List label="Recent requests" title="Recent requests">
-          <ListRow value="rotate" label="Rotate database credentials" title="Rotate database credentials" meta="2m" onClick={() => setOpened("Rotate database credentials")}/>
-          <ListRow value="access" label="Grant staging access" title="Grant staging access" meta="1h" onClick={() => setOpened("Grant staging access")}/>
-          <ListRow value="expired" label="Expired request" title="Expired request" meta="3d" disabled onClick={() => setOpened("Expired request")}/>
-        </List>
-      </div><figcaption className="text-muted-foreground text-xs">{`Button rows, hover or press a row. Opened: ${opened}`}</figcaption></figure>
-    </div>);
+  const [current, setCurrent] = React.useState("staging");
+  const [opened, setOpened] = React.useState("None");
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List label="Environments" title="Environments">
+            {environments.map((row) => (
+              <ListRow
+                key={row.id}
+                value={row.id}
+                label={row.title}
+                title={row.title}
+                description={row.description}
+                href={`#list-${row.id}`}
+                current={current === row.id}
+                onClick={(event) => {
+                  event.preventDefault();
+                  setCurrent(row.id);
+                }}
+              />
+            ))}
+          </List>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Link rows, hover a row, staging is current"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List label="Recent requests" title="Recent requests">
+            <ListRow
+              value="rotate"
+              label="Rotate database credentials"
+              title="Rotate database credentials"
+              meta="2m"
+              onClick={() => setOpened("Rotate database credentials")}
+            />
+            <ListRow
+              value="access"
+              label="Grant staging access"
+              title="Grant staging access"
+              meta="1h"
+              onClick={() => setOpened("Grant staging access")}
+            />
+            <ListRow
+              value="expired"
+              label="Expired request"
+              title="Expired request"
+              meta="3d"
+              disabled
+              onClick={() => setOpened("Expired request")}
+            />
+          </List>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{`Button rows, hover or press a row. Opened: ${opened}`}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -232,38 +309,77 @@ Registry items used: @infisical/list. Additional packages: none. Install every l
 
 ```tsx
 import { List, ListRow, ListSection } from "../../../../components/v4/ui/list";
-const rows = (prefix: string) => (<>
-    <ListRow value={`${prefix}-api`} label="API service" title="API service" description="Reads production secrets" meta="12 secrets"/>
-    <ListRow value={`${prefix}-worker`} label="Queue worker" title="Queue worker" description="Reads staging secrets" meta="4 secrets"/>
-  </>);
+
+const rows = (prefix: string) => (
+  <>
+    <ListRow
+      value={`${prefix}-api`}
+      label="API service"
+      title="API service"
+      description="Reads production secrets"
+      meta="12 secrets"
+    />
+    <ListRow
+      value={`${prefix}-worker`}
+      label="Queue worker"
+      title="Queue worker"
+      description="Reads staging secrets"
+      meta="4 secrets"
+    />
+  </>
+);
 export default function Variants() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <List label="Machine identities" title="Machine identities" action={<a href="#list">View all</a>}>
-          {rows("framed")}
-        </List>
-      </div><figcaption className="text-muted-foreground text-xs">{"md"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <List label="Grouped identities">
-          <ListSection label="Production" meta="2">
-            {rows("production")}
-          </ListSection>
-          <ListSection label="Staging" meta="1">
-            <ListRow value="staging-preview" label="Preview deploys" title="Preview deploys" description="Reads staging secrets" meta="3 secrets"/>
-          </ListSection>
-        </List>
-      </div><figcaption className="text-muted-foreground text-xs">{"framed, sections"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <List label="Plain identities" variant="plain">
-          {rows("plain")}
-        </List>
-      </div><figcaption className="text-muted-foreground text-xs">{"plain"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <List label="Small identities" size="sm" title="Identities">
-          {rows("sm")}
-        </List>
-      </div><figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List
+            label="Machine identities"
+            title="Machine identities"
+            action={<a href="#list">View all</a>}
+          >
+            {rows("framed")}
+          </List>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"md"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List label="Grouped identities">
+            <ListSection label="Production" meta="2">
+              {rows("production")}
+            </ListSection>
+            <ListSection label="Staging" meta="1">
+              <ListRow
+                value="staging-preview"
+                label="Preview deploys"
+                title="Preview deploys"
+                description="Reads staging secrets"
+                meta="3 secrets"
+              />
+            </ListSection>
+          </List>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"framed, sections"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List label="Plain identities" variant="plain">
+            {rows("plain")}
+          </List>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"plain"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <List label="Small identities" size="sm" title="Identities">
+            {rows("sm")}
+          </List>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -276,31 +392,43 @@ Registry items used: @infisical/badge, @infisical/list. Additional packages: non
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";
 import { type DataListItem, DataList } from "../../../../components/v4/ui/list";
+
 const items: DataListItem[] = [
-    ["ID", <code key="id">4b1e8c2a-93f0-4d55-a1c6-0e7d2f9b3a11</code>],
-    ["Managed by", "Organization", { span: "half" }],
-    ["Organization role", "Member", { span: "half" }],
-    [
-        "Status",
-        <Badge key="status" tone="ok" dot>
+  ["ID", <code key="id">4b1e8c2a-93f0-4d55-a1c6-0e7d2f9b3a11</code>],
+  ["Managed by", "Organization", { span: "half" }],
+  ["Organization role", "Member", { span: "half" }],
+  [
+    "Status",
+    <Badge key="status" tone="ok" dot>
       Active
     </Badge>,
-        { span: "half" }
-    ],
-    ["Delete protection", "On", { span: "half" }],
-    ["Extended key usage", "Server authentication, client authentication"],
-    ["Country", "CA", { span: "half" }],
-    ["Last login", "Never"]
+    { span: "half" }
+  ],
+  ["Delete protection", "On", { span: "half" }],
+  ["Extended key usage", "Server authentication, client authentication"],
+  ["Country", "CA", { span: "half" }],
+  ["Last login", "Never"]
 ];
+
 export default function Density() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <DataList variant="props" items={items}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"default"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <DataList variant="props" density="compact" items={items}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"compact, half pairs and a lone half"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataList variant="props" items={items} />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"default"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataList variant="props" density="compact" items={items} />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"compact, half pairs and a lone half"}
+        </figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

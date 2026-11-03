@@ -132,16 +132,28 @@ Registry items used: @infisical/sensitive-editor. Additional packages: none. Ins
 
 ```tsx
 import { useState } from "react";
+
 import { SensitiveEditor } from "../../../../components/v4/ui/sensitive-editor";
+
 export default function Example() {
-    const [revision, setRevision] = useState(0);
-    const [value, setValue] = useState("fabricated-example-only");
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <SensitiveEditor stored={{ id: "fictional-value", revision: String(revision), hasValue: true }} label="Protected example value" onReveal={async () => value} onSave={async (draft) => {
+  const [revision, setRevision] = useState(0);
+  const [value, setValue] = useState("fabricated-example-only");
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <SensitiveEditor
+          stored={{ id: "fictional-value", revision: String(revision), hasValue: true }}
+          label="Protected example value"
+          onReveal={async () => value}
+          onSave={async (draft) => {
             setValue(draft);
             setRevision((current) => current + 1);
-        }}/>
-    </div><figcaption className="text-muted-foreground text-xs">{"Reveal and replace"}</figcaption></figure>);
+          }}
+        />
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"Reveal and replace"}</figcaption>
+    </figure>
+  );
 }
 ```
 

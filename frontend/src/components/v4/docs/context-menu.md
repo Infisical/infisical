@@ -108,19 +108,25 @@ Registry items used: @infisical/context-menu. Additional packages: none. Install
 
 ```tsx
 import { useState } from "react";
+
 import * as UI from "../../../../components/v4/ui/context-menu";
+
 export default function Example() {
-    const [archived, setArchived] = useState(false);
-    const [metadata, setMetadata] = useState(true);
-    const [details, setDetails] = useState(false);
-    const [done, setDone] = useState(false);
-    const status = [done && "Environment archived", details && "Staging connection"]
-        .filter(Boolean)
-        .join(". ");
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  const [archived, setArchived] = useState(false);
+  const [metadata, setMetadata] = useState(true);
+  const [details, setDetails] = useState(false);
+  const [done, setDone] = useState(false);
+  const status = [done && "Environment archived", details && "Staging connection"]
+    .filter(Boolean)
+    .join(". ");
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <UI.ContextMenu>
         <UI.ContextMenuTrigger asChild>
-          <button type="button" className="text-muted-foreground flex min-h-32 w-full items-center justify-center rounded-sm border border-dashed border-border p-4">
+          <button
+            type="button"
+            className="text-muted-foreground flex min-h-32 w-full items-center justify-center rounded-sm border border-dashed border-border p-4"
+          >
             Right-click this area
           </button>
         </UI.ContextMenuTrigger>
@@ -132,7 +138,11 @@ export default function Example() {
           <UI.ContextMenuCheckboxItem checked={archived} onCheckedChange={setArchived}>
             Show archived
           </UI.ContextMenuCheckboxItem>
-          <UI.ContextMenuCheckboxItem checked={metadata} onCheckedChange={setMetadata} closeOnSelect>
+          <UI.ContextMenuCheckboxItem
+            checked={metadata}
+            onCheckedChange={setMetadata}
+            closeOnSelect
+          >
             Show metadata and close
           </UI.ContextMenuCheckboxItem>
           <UI.ContextMenuSeparator />
@@ -144,7 +154,8 @@ export default function Example() {
       <p role="status" className="sr-only text-sm">
         {status}
       </p>
-    </div>);
+    </div>
+  );
 }
 ```
 

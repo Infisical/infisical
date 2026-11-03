@@ -125,30 +125,46 @@ Registry items used: @infisical/icon, @infisical/toggle. Additional packages: no
 
 ```tsx
 import { useState } from "react";
+
 import { Icon } from "../../../../components/v4/ui/icon";
 import { Toggle } from "../../../../components/v4/ui/toggle";
+
 export default function Example() {
-    const [metadata, setMetadata] = useState(true);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Toggle>Metadata</Toggle>
-      </div><figcaption className="text-muted-foreground text-xs">{"Text, off"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Toggle pressed={metadata} onPressedChange={setMetadata}>
-          Metadata
-        </Toggle>
-      </div><figcaption className="text-muted-foreground text-xs">{"Text, on"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Toggle aria-label="Show values">
-          <Icon name="eye"/>
-        </Toggle>
-      </div><figcaption className="text-muted-foreground text-xs">{"Icon, off"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Toggle aria-label="Show values" defaultPressed>
-          <Icon name="eye"/>
-        </Toggle>
-      </div><figcaption className="text-muted-foreground text-xs">{"Icon, on"}</figcaption></figure>
-    </div>);
+  const [metadata, setMetadata] = useState(true);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Toggle>Metadata</Toggle>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Text, off"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Toggle pressed={metadata} onPressedChange={setMetadata}>
+            Metadata
+          </Toggle>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Text, on"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Toggle aria-label="Show values">
+            <Icon name="eye" />
+          </Toggle>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Icon, off"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Toggle aria-label="Show values" defaultPressed>
+            <Icon name="eye" />
+          </Toggle>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Icon, on"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -161,19 +177,30 @@ Registry items used: @infisical/icon, @infisical/toggle. Additional packages: no
 ```tsx
 import { Icon } from "../../../../components/v4/ui/icon";
 import { Toggle } from "../../../../components/v4/ui/toggle";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {(["outline", "ghost"] as const).map((variant) => (<figure key={variant} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <div className="flex gap-2">
-            <Toggle variant={variant} aria-label="Show history">
-              <Icon name="history"/>
-            </Toggle>
-            <Toggle variant={variant} aria-label="Show values" defaultPressed>
-              <Icon name="eye"/>
-            </Toggle>
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {(["outline", "ghost"] as const).map((variant) => (
+        <figure
+          key={variant}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <div className="flex gap-2">
+              <Toggle variant={variant} aria-label="Show history">
+                <Icon name="history" />
+              </Toggle>
+              <Toggle variant={variant} aria-label="Show values" defaultPressed>
+                <Icon name="eye" />
+              </Toggle>
+            </div>
           </div>
-        </div><figcaption className="text-muted-foreground text-xs">{variant}</figcaption></figure>))}
-    </div>);
+          <figcaption className="text-muted-foreground text-xs">{variant}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 

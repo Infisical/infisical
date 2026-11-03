@@ -100,8 +100,10 @@ Registry items used: @infisical/accordion. Additional packages: none. Install ev
 
 ```tsx
 import * as UI from "../../../../components/v4/ui/accordion";
+
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <UI.Accordion type="single" collapsible>
         <UI.AccordionItem value="retention">
           <UI.AccordionTrigger>Retention policy</UI.AccordionTrigger>
@@ -112,7 +114,8 @@ export default function Example() {
           <UI.AccordionContent>Managed by administrators.</UI.AccordionContent>
         </UI.AccordionItem>
       </UI.Accordion>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -123,36 +126,54 @@ Save this example at `src/pages/design-system/examples/accordion/variants.tsx`; 
 Registry items used: @infisical/accordion. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../../../components/v4/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "../../../../components/v4/ui/accordion";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Accordion type="single" defaultValue="versions">
-          <AccordionItem value="versions">
-            <AccordionTrigger>Version retention</AccordionTrigger>
-            <AccordionContent>Versions remain available for 30 days.</AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="policy">
-            <AccordionTrigger>Access policy</AccordionTrigger>
-            <AccordionContent>Read access expires after one hour.</AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </div><figcaption className="text-muted-foreground text-xs">{"Single, noncollapsible"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Accordion type="multiple" defaultValue={["versions", "policy"]}>
-          {["versions", "policy"].map((value) => (<AccordionItem key={value} value={value}>
-              <AccordionTrigger>
-                {value === "versions" ? "Version retention" : "Access policy"}
-              </AccordionTrigger>
-              <AccordionContent>
-                {value === "versions"
-                ? "Versions remain available for 30 days."
-                : "Read access expires after one hour."}
-              </AccordionContent>
-            </AccordionItem>))}
-        </Accordion>
-      </div><figcaption className="text-muted-foreground text-xs">{"Multiple, both open"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Accordion type="single" defaultValue="versions">
+            <AccordionItem value="versions">
+              <AccordionTrigger>Version retention</AccordionTrigger>
+              <AccordionContent>Versions remain available for 30 days.</AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="policy">
+              <AccordionTrigger>Access policy</AccordionTrigger>
+              <AccordionContent>Read access expires after one hour.</AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Single, noncollapsible"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Accordion type="multiple" defaultValue={["versions", "policy"]}>
+            {["versions", "policy"].map((value) => (
+              <AccordionItem key={value} value={value}>
+                <AccordionTrigger>
+                  {value === "versions" ? "Version retention" : "Access policy"}
+                </AccordionTrigger>
+                <AccordionContent>
+                  {value === "versions"
+                    ? "Versions remain available for 30 days."
+                    : "Read access expires after one hour."}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Multiple, both open"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -164,22 +185,33 @@ Registry items used: @infisical/accordion. Additional packages: none. Install ev
 
 ```tsx
 import { useState } from "react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../../../components/v4/ui/accordion";
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "../../../../components/v4/ui/accordion";
+
 export default function Example() {
-    const [open, setOpen] = useState("versions");
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  const [open, setOpen] = useState("versions");
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <Accordion type="single" value={open} onValueChange={setOpen} collapsible>
-        {["versions", "policy"].map((value) => (<AccordionItem key={value} value={value}>
+        {["versions", "policy"].map((value) => (
+          <AccordionItem key={value} value={value}>
             <AccordionTrigger>
               {value === "versions" ? "Version retention" : "Access policy"}
             </AccordionTrigger>
             <AccordionContent>Managed by project settings.</AccordionContent>
-          </AccordionItem>))}
+          </AccordionItem>
+        ))}
       </Accordion>
       <p role="status" className="sr-only">
         {open ? `Open section: ${open}` : "All sections closed"}
       </p>
-    </div>);
+    </div>
+  );
 }
 ```
 

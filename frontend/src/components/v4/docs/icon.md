@@ -94,13 +94,18 @@ Registry items used: @infisical/icon. Additional packages: none. Install every l
 
 ```tsx
 import { Icon, iconNames } from "../../../../components/v4/ui/icon";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {iconNames.map((name) => (<span key={name} className="flex min-w-0 flex-col items-center gap-2 text-center text-sm">
-          <Icon name={name}/>
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {iconNames.map((name) => (
+        <span key={name} className="flex min-w-0 flex-col items-center gap-2 text-center text-sm">
+          <Icon name={name} />
           <span>{name}</span>
-        </span>))}
-    </div>);
+        </span>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -111,28 +116,46 @@ Save this example at `src/pages/design-system/examples/icon/fallbacks.tsx`; its 
 Registry items used: @infisical/icon. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
 
 ```tsx
-import { ArrowBigUp, ArrowLeft, ArrowRight, ArrowRightToLine, ArrowUpDown, ChevronUp, Command, CornerDownLeft, Delete, Option } from "lucide-react";
+import {
+  ArrowBigUp,
+  ArrowLeft,
+  ArrowRight,
+  ArrowRightToLine,
+  ArrowUpDown,
+  ChevronUp,
+  Command,
+  CornerDownLeft,
+  Delete,
+  Option
+} from "lucide-react";
+
 import { Icon } from "../../../../components/v4/ui/icon";
+
 const fallbacks = [
-    { icon: Command, name: "Command", use: "Kbd" },
-    { icon: ArrowBigUp, name: "ArrowBigUp", use: "Kbd shift" },
-    { icon: Option, name: "Option", use: "Kbd" },
-    { icon: ChevronUp, name: "ChevronUp", use: "Kbd control" },
-    { icon: CornerDownLeft, name: "CornerDownLeft", use: "Kbd enter" },
-    { icon: Delete, name: "Delete", use: "Kbd backspace" },
-    { icon: ArrowLeft, name: "ArrowLeft", use: "Kbd" },
-    { icon: ArrowRight, name: "ArrowRight", use: "Kbd" },
-    { icon: ArrowRightToLine, name: "ArrowRightToLine", use: "Kbd tab" },
-    { icon: ArrowUpDown, name: "ArrowUpDown", use: "Unsorted column" }
+  { icon: Command, name: "Command", use: "Kbd" },
+  { icon: ArrowBigUp, name: "ArrowBigUp", use: "Kbd shift" },
+  { icon: Option, name: "Option", use: "Kbd" },
+  { icon: ChevronUp, name: "ChevronUp", use: "Kbd control" },
+  { icon: CornerDownLeft, name: "CornerDownLeft", use: "Kbd enter" },
+  { icon: Delete, name: "Delete", use: "Kbd backspace" },
+  { icon: ArrowLeft, name: "ArrowLeft", use: "Kbd" },
+  { icon: ArrowRight, name: "ArrowRight", use: "Kbd" },
+  { icon: ArrowRightToLine, name: "ArrowRightToLine", use: "Kbd tab" },
+  { icon: ArrowUpDown, name: "ArrowUpDown", use: "Unsorted column" }
 ];
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {fallbacks.map(({ icon, name, use }) => (<span key={name} className="flex min-w-0 flex-col items-center gap-2 text-center text-sm">
-          <Icon icon={icon}/>
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {fallbacks.map(({ icon, name, use }) => (
+        <span key={name} className="flex min-w-0 flex-col items-center gap-2 text-center text-sm">
+          <Icon icon={icon} />
           <span>{name}</span>
           <span className="text-muted-foreground text-xs">Lucide, {use}</span>
-        </span>))}
-    </div>);
+        </span>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -145,20 +168,37 @@ Registry items used: @infisical/button, @infisical/icon. Additional packages: no
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
 import { Icon } from "../../../../components/v4/ui/icon";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {([12, 16, 20, 24] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <Icon name="key" size={size}/>
-        </div><figcaption className="text-muted-foreground text-xs">{<>{size}px</>}</figcaption></figure>))}
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Icon name="lock" label="Encrypted"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Named image"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button asChild variant="outline" icon="key">
-          <a href="#sensitive-editor">View editor</a>
-        </Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"Action icon"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {([12, 16, 20, 24] as const).map((size) => (
+        <figure
+          key={size}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <Icon name="key" size={size} />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{<>{size}px</>}</figcaption>
+        </figure>
+      ))}
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Icon name="lock" label="Encrypted" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Named image"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button asChild variant="outline" icon="key">
+            <a href="#sensitive-editor">View editor</a>
+          </Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Action icon"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

@@ -91,31 +91,54 @@ Registry items used: @infisical/provider-icon. Additional packages: none. Instal
 
 ```tsx
 import { ProviderIcon } from "../../../../components/v4/ui/provider-icon";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <ProviderIcon icon="Amazon Web Services.png" alt="AWS logo" size="sm"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <ProviderIcon icon="Amazon Web Services.png" alt="AWS logo"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"md"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <ProviderIcon icon="Amazon Web Services.png" alt="AWS logo" size="lg"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"lg"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <ProviderIcon icon="Amazon Web Services.png" alt="AWS logo" size="xl"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"xl"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <div className="flex items-center gap-3">
-          <ProviderIcon icon="GitHub.png" alt="GitHub logo" size="xl"/>
-          <ProviderIcon icon="OpenAI.png" alt="OpenAI logo" size="xl"/>
-          <ProviderIcon icon="Anthropic.png" alt="Anthropic logo" size="xl"/>
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <ProviderIcon icon="Amazon Web Services.png" alt="AWS logo" size="sm" />
         </div>
-      </div><figcaption className="text-muted-foreground text-xs">{"Theme variants"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <ProviderIcon icon="Retired Provider.png" alt="Retired Provider logo" size="xl"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Missing file, fallback"}</figcaption></figure>
-    </div>);
+        <figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <ProviderIcon icon="Amazon Web Services.png" alt="AWS logo" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"md"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <ProviderIcon icon="Amazon Web Services.png" alt="AWS logo" size="lg" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"lg"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <ProviderIcon icon="Amazon Web Services.png" alt="AWS logo" size="xl" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"xl"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="flex items-center gap-3">
+            <ProviderIcon icon="GitHub.png" alt="GitHub logo" size="xl" />
+            <ProviderIcon icon="OpenAI.png" alt="OpenAI logo" size="xl" />
+            <ProviderIcon icon="Anthropic.png" alt="Anthropic logo" size="xl" />
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Theme variants"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <ProviderIcon icon="Retired Provider.png" alt="Retired Provider logo" size="xl" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Missing file, fallback"}
+        </figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

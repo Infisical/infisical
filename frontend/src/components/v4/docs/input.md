@@ -122,29 +122,44 @@ Registry items used: @infisical/field, @infisical/input. Additional packages: no
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Environment name">
-          <Input />
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Managed account" description="Set by the connected provider.">
-          <Input readOnly value="deploy-production"/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Read-only"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Environment name">
-          <Input disabled defaultValue="Inherited from policy"/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Environment slug" error="Use letters, numbers and hyphens.">
-          <Input invalid defaultValue="production /"/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Invalid"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Environment name">
+            <Input />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Managed account" description="Set by the connected provider.">
+            <Input readOnly value="deploy-production" />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Read-only"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Environment name">
+            <Input disabled defaultValue="Inherited from policy" />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Environment slug" error="Use letters, numbers and hyphens.">
+            <Input invalid defaultValue="production /" />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Invalid"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -157,14 +172,25 @@ Registry items used: @infisical/field, @infisical/input. Additional packages: no
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
+
 export default function Example() {
-    return (<div aria-label="Input sizes" className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      {(["sm", "md", "lg"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <Field label={`${size} name`}>
-            <Input size={size} defaultValue="staging"/>
-          </Field>
-        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
-    </div>);
+  return (
+    <div
+      aria-label="Input sizes"
+      className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8"
+    >
+      {(["sm", "md", "lg"] as const).map((size) => (
+        <figure key={size} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <Field label={`${size} name`}>
+              <Input size={size} defaultValue="staging" />
+            </Field>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -176,25 +202,43 @@ Registry items used: @infisical/field, @infisical/input. Additional packages: no
 
 ```tsx
 import { useState } from "react";
+
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
+
 export default function Example() {
-    const [value, setValue] = useState("/services/payments");
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Draft path">
-          <Input aria-label="Draft path" icon="search" mono kbd="⌘ K" trailing="path" value={value} onChange={(event) => setValue(event.target.value)}/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Filled"}</figcaption></figure>
+  const [value, setValue] = useState("/services/payments");
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Draft path">
+            <Input
+              aria-label="Draft path"
+              icon="search"
+              mono
+              kbd="⌘ K"
+              trailing="path"
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+            />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Filled"}</figcaption>
+      </figure>
       <p role="status" className="sr-only text-sm break-all whitespace-pre-wrap" data-draft-value>
         {value}
       </p>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Native width hint" description="Short internal identifier.">
-          <Input size={12} defaultValue="staging"/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Filled"}</figcaption></figure>
-    </div>);
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Native width hint" description="Short internal identifier.">
+            <Input size={12} defaultValue="staging" />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Filled"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

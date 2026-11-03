@@ -149,26 +149,46 @@ Registry items used: @infisical/text. Additional packages: none. Install every l
 
 ```tsx
 import { Heading, Meta, SmallText, Text } from "../../../../components/v4/ui/text";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      {(["display", "page", "section", "subsection"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-          <Heading level={3} size={size}>
-            Credential rotation
-          </Heading>
-        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <Text>Rotate credentials before the current version expires.</Text>
-      </div><figcaption className="text-muted-foreground text-xs">{"Text"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <SmallText>Changes apply to new credentials.</SmallText>
-      </div><figcaption className="text-muted-foreground text-xs">{"SmallText"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <Meta>2026-09-14 10:00 UTC</Meta>
-      </div><figcaption className="text-muted-foreground text-xs">{"Meta, mono"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <Meta mono={false}>Updated 2 hours ago</Meta>
-      </div><figcaption className="text-muted-foreground text-xs">{"Meta, plain"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      {(["display", "page", "section", "subsection"] as const).map((size) => (
+        <figure key={size} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+            <Heading level={3} size={size}>
+              Credential rotation
+            </Heading>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+        </figure>
+      ))}
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <Text>Rotate credentials before the current version expires.</Text>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Text"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <SmallText>Changes apply to new credentials.</SmallText>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"SmallText"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <Meta>2026-09-14 10:00 UTC</Meta>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Meta, mono"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <Meta mono={false}>Updated 2 hours ago</Meta>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Meta, plain"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -180,27 +200,42 @@ Registry items used: @infisical/text. Additional packages: none. Install every l
 
 ```tsx
 import { StatusText } from "../../../../components/v4/ui/text";
+
 export default function Status() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <StatusText tone="ok" icon="check-c">
-          Signed in
-        </StatusText>
-      </div><figcaption className="text-muted-foreground text-xs">{"ok"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <StatusText icon="info">Never signed in</StatusText>
-      </div><figcaption className="text-muted-foreground text-xs">{"neutral"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <StatusText tone="warn" icon="alert">
-          No auth method
-        </StatusText>
-      </div><figcaption className="text-muted-foreground text-xs">{"warn"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <StatusText tone="bad" icon="lock">
-          Universal Auth locked out
-        </StatusText>
-      </div><figcaption className="text-muted-foreground text-xs">{"bad"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <StatusText tone="ok" icon="check-c">
+            Signed in
+          </StatusText>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"ok"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <StatusText icon="info">Never signed in</StatusText>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"neutral"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <StatusText tone="warn" icon="alert">
+            No auth method
+          </StatusText>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"warn"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <StatusText tone="bad" icon="lock">
+            Universal Auth locked out
+          </StatusText>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"bad"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

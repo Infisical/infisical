@@ -139,28 +139,41 @@ Registry items used: @infisical/file-tree. Additional packages: none. Install ev
 
 ```tsx
 import { FileTree, type FileTreeNode } from "../../../../components/v4/ui/file-tree";
+
 const items: FileTreeNode[] = [
-    {
-        id: "project",
-        name: "project",
-        children: [
-            { id: "env", name: "application.production.environment", meta: "12 keys" },
-            {
-                id: "locked",
-                name: "archive",
-                disabled: true,
-                label: "archive, access restricted",
-                children: []
-            }
-        ]
-    }
+  {
+    id: "project",
+    name: "project",
+    children: [
+      { id: "env", name: "application.production.environment", meta: "12 keys" },
+      {
+        id: "locked",
+        name: "archive",
+        disabled: true,
+        label: "archive, access restricted",
+        children: []
+      }
+    ]
+  }
 ];
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
-      {(["sm", "md"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <FileTree label={`${size} file tree`} size={size} items={items} defaultExpanded={["project"]}/>
-        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      {(["sm", "md"] as const).map((size) => (
+        <figure key={size} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <FileTree
+              label={`${size} file tree`}
+              size={size}
+              items={items}
+              defaultExpanded={["project"]}
+            />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -172,35 +185,66 @@ Registry items used: @infisical/file-tree. Additional packages: none. Install ev
 
 ```tsx
 import { useState } from "react";
+
 import { FileTree, type FileTreeNode } from "../../../../components/v4/ui/file-tree";
+
 const items: FileTreeNode[] = [
-    {
-        id: "project",
-        name: "Project configuration",
-        meta: "2 files",
-        children: [
-            { id: "env", name: "Environment variables for the production deployment", meta: "12 keys" },
-            { id: "policy", name: "Access policy", icon: "lock", meta: "Restricted" }
-        ]
-    }
+  {
+    id: "project",
+    name: "Project configuration",
+    meta: "2 files",
+    children: [
+      { id: "env", name: "Environment variables for the production deployment", meta: "12 keys" },
+      { id: "policy", name: "Access policy", icon: "lock", meta: "Restricted" }
+    ]
+  }
 ];
 export default function Example() {
-    const [expanded, setExpanded] = useState<string[]>(["project"]);
-    const [selected, setSelected] = useState<string | null>(null);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <FileTree label="Selectable configuration files" items={items} selectable="files" truncate="end" expanded={expanded} onExpandedChange={setExpanded} selected={selected} onSelect={setSelected}/>
-        <p role="status" className="sr-only">
-          Selected file: {selected ?? "none"}
-        </p>
-      </div><figcaption className="text-muted-foreground text-xs">{"Files only / end truncation"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <FileTree label="Browse configuration" items={items} selectable="none" defaultExpanded={["project"]}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Browse without selection"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <FileTree label="Empty archive" items={[]} empty="No archived configuration files"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Empty folder"}</figcaption></figure>
-    </div>);
+  const [expanded, setExpanded] = useState<string[]>(["project"]);
+  const [selected, setSelected] = useState<string | null>(null);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <FileTree
+            label="Selectable configuration files"
+            items={items}
+            selectable="files"
+            truncate="end"
+            expanded={expanded}
+            onExpandedChange={setExpanded}
+            selected={selected}
+            onSelect={setSelected}
+          />
+          <p role="status" className="sr-only">
+            Selected file: {selected ?? "none"}
+          </p>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Files only / end truncation"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <FileTree
+            label="Browse configuration"
+            items={items}
+            selectable="none"
+            defaultExpanded={["project"]}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Browse without selection"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <FileTree label="Empty archive" items={[]} empty="No archived configuration files" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Empty folder"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -212,33 +256,48 @@ Registry items used: @infisical/button, @infisical/file-tree, @infisical/popover
 
 ```tsx
 import * as React from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import { FileTree, type FileTreeNode } from "../../../../components/v4/ui/file-tree";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../components/v4/ui/popover";
+
 const items: FileTreeNode[] = [
-    {
-        id: "root",
-        name: "project",
-        children: [
-            {
-                id: "config",
-                name: "configuration",
-                children: [{ id: "env", name: "application.production.environment", meta: "12 keys" }]
-            },
-            { id: "shared", name: "shared", disabled: true, label: "shared, read only", children: [] },
-            { id: "readme", name: "README.md" }
-        ]
-    }
+  {
+    id: "root",
+    name: "project",
+    children: [
+      {
+        id: "config",
+        name: "configuration",
+        children: [{ id: "env", name: "application.production.environment", meta: "12 keys" }]
+      },
+      { id: "shared", name: "shared", disabled: true, label: "shared, read only", children: [] },
+      { id: "readme", name: "README.md" }
+    ]
+  }
 ];
 export default function TreePicker() {
-    const [selected, setSelected] = React.useState<string | null>("env");
-    const [foldersOnly, setFoldersOnly] = React.useState(false);
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
-      <Button variant="outline" aria-pressed={foldersOnly} onClick={() => setFoldersOnly((value) => !value)}>
+  const [selected, setSelected] = React.useState<string | null>("env");
+  const [foldersOnly, setFoldersOnly] = React.useState(false);
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      <Button
+        variant="outline"
+        aria-pressed={foldersOnly}
+        onClick={() => setFoldersOnly((value) => !value)}
+      >
         Folders only
       </Button>
       <div className="w-full min-w-0">
-        <FileTree items={items} label="Example files" selected={selected} onSelect={setSelected} defaultExpanded={["root", "config"]} foldersOnly={foldersOnly} maxHeight={240}/>
+        <FileTree
+          items={items}
+          label="Example files"
+          selected={selected}
+          onSelect={setSelected}
+          defaultExpanded={["root", "config"]}
+          foldersOnly={foldersOnly}
+          maxHeight={240}
+        />
       </div>
       <p role="status" className="sr-only">
         Selected {selected ?? "none"}
@@ -248,10 +307,19 @@ export default function TreePicker() {
           <Button variant="outline">Choose folder</Button>
         </PopoverTrigger>
         <PopoverContent>
-          <FileTree items={items} label="Destination folder" foldersOnly selectable="folders" size="sm" defaultExpanded={["root"]} onSelect={(id) => setSelected(id)}/>
+          <FileTree
+            items={items}
+            label="Destination folder"
+            foldersOnly
+            selectable="folders"
+            size="sm"
+            defaultExpanded={["root"]}
+            onSelect={(id) => setSelected(id)}
+          />
         </PopoverContent>
       </Popover>
-    </div>);
+    </div>
+  );
 }
 ```
 

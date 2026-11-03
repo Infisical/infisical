@@ -118,14 +118,20 @@ Registry items used: @infisical/toggle-group. Additional packages: none. Install
 
 ```tsx
 import { ToggleGroup, ToggleGroupItem } from "../../../../components/v4/ui/toggle-group";
+
 export default function Example() {
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <ToggleGroup type="single" defaultValue="all" aria-label="Connection status">
-        <ToggleGroupItem value="all">All</ToggleGroupItem>
-        <ToggleGroupItem value="active">Active</ToggleGroupItem>
-        <ToggleGroupItem value="failing">Failing</ToggleGroupItem>
-      </ToggleGroup>
-    </div><figcaption className="text-muted-foreground text-xs">{"single"}</figcaption></figure>);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <ToggleGroup type="single" defaultValue="all" aria-label="Connection status">
+          <ToggleGroupItem value="all">All</ToggleGroupItem>
+          <ToggleGroupItem value="active">Active</ToggleGroupItem>
+          <ToggleGroupItem value="failing">Failing</ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"single"}</figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -137,22 +143,34 @@ Registry items used: @infisical/toggle-group. Additional packages: none. Install
 
 ```tsx
 import { useState } from "react";
+
 import { ToggleGroup, ToggleGroupItem } from "../../../../components/v4/ui/toggle-group";
+
 export default function Example() {
-    const [values, setValues] = useState(["read", "admin"]);
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <ToggleGroup type="multiple" value={values} onValueChange={setValues} aria-label="Permission flags">
-        <ToggleGroupItem value="read" aria-label="Read permission">
-          Read
-        </ToggleGroupItem>
-        <ToggleGroupItem value="write" aria-label="Write permission">
-          Write
-        </ToggleGroupItem>
-        <ToggleGroupItem value="admin" aria-label="Administrator permission" disabled>
-          Admin
-        </ToggleGroupItem>
-      </ToggleGroup>
-    </div><figcaption className="text-muted-foreground text-xs">{"multiple"}</figcaption></figure>);
+  const [values, setValues] = useState(["read", "admin"]);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <ToggleGroup
+          type="multiple"
+          value={values}
+          onValueChange={setValues}
+          aria-label="Permission flags"
+        >
+          <ToggleGroupItem value="read" aria-label="Read permission">
+            Read
+          </ToggleGroupItem>
+          <ToggleGroupItem value="write" aria-label="Write permission">
+            Write
+          </ToggleGroupItem>
+          <ToggleGroupItem value="admin" aria-label="Administrator permission" disabled>
+            Admin
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"multiple"}</figcaption>
+    </figure>
+  );
 }
 ```
 

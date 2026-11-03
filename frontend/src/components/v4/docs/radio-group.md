@@ -148,24 +148,40 @@ Registry items used: @infisical/field, @infisical/label, @infisical/radio-group.
 import { FieldDescription, FieldError } from "../../../../components/v4/ui/field";
 import { Label } from "../../../../components/v4/ui/label";
 import { RadioGroup, RadioGroupItem } from "../../../../components/v4/ui/radio-group";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
       {[
-            { id: "empty", name: "Empty choice", disabled: false, invalid: false },
-            { id: "invalid", name: "Required choice", disabled: false, invalid: true },
-            { id: "disabled", name: "Policy choice", disabled: true, invalid: false }
-        ].map((item) => (<fieldset key={item.id} className="min-w-0 space-y-3">
+        { id: "empty", name: "Empty choice", disabled: false, invalid: false },
+        { id: "invalid", name: "Required choice", disabled: false, invalid: true },
+        { id: "disabled", name: "Policy choice", disabled: true, invalid: false }
+      ].map((item) => (
+        <fieldset key={item.id} className="min-w-0 space-y-3">
           <legend className="text-sm">{item.name}</legend>
-          <RadioGroup aria-label={item.name} disabled={item.disabled} aria-invalid={item.invalid || undefined} aria-describedby={item.invalid ? "radio-required-error" : undefined}>
-            {["west", "east"].map((value) => (<div key={value} className="flex items-center gap-3">
-                <RadioGroupItem id={`radio-${item.id}-${value}`} value={value} aria-invalid={item.invalid || undefined}/>
+          <RadioGroup
+            aria-label={item.name}
+            disabled={item.disabled}
+            aria-invalid={item.invalid || undefined}
+            aria-describedby={item.invalid ? "radio-required-error" : undefined}
+          >
+            {["west", "east"].map((value) => (
+              <div key={value} className="flex items-center gap-3">
+                <RadioGroupItem
+                  id={`radio-${item.id}-${value}`}
+                  value={value}
+                  aria-invalid={item.invalid || undefined}
+                />
                 <Label htmlFor={`radio-${item.id}-${value}`}>{value}</Label>
-              </div>))}
+              </div>
+            ))}
           </RadioGroup>
           {item.invalid && <FieldError id="radio-required-error">Choose a region.</FieldError>}
           {item.disabled && <FieldDescription>Region is managed by policy.</FieldDescription>}
-        </fieldset>))}
-    </div>);
+        </fieldset>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -178,19 +194,33 @@ Registry items used: @infisical/label, @infisical/radio-group. Additional packag
 ```tsx
 import { Label } from "../../../../components/v4/ui/label";
 import { RadioGroup, RadioGroupItem } from "../../../../components/v4/ui/radio-group";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      {(["horizontal", "vertical"] as const).map((orientation) => (<figure key={orientation} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <RadioGroup orientation={orientation} aria-label={`${orientation} region`} defaultValue="west">
-            <div className={orientation === "horizontal" ? "flex flex-wrap gap-4" : "space-y-3"}>
-              {["west", "east"].map((value) => (<div key={value} className="flex items-center gap-3">
-                  <RadioGroupItem id={`radio-${orientation}-${value}`} value={value}/>
-                  <Label htmlFor={`radio-${orientation}-${value}`}>{value}</Label>
-                </div>))}
-            </div>
-          </RadioGroup>
-        </div><figcaption className="text-muted-foreground text-xs">{orientation}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      {(["horizontal", "vertical"] as const).map((orientation) => (
+        <figure key={orientation} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <RadioGroup
+              orientation={orientation}
+              aria-label={`${orientation} region`}
+              defaultValue="west"
+            >
+              <div className={orientation === "horizontal" ? "flex flex-wrap gap-4" : "space-y-3"}>
+                {["west", "east"].map((value) => (
+                  <div key={value} className="flex items-center gap-3">
+                    <RadioGroupItem id={`radio-${orientation}-${value}`} value={value} />
+                    <Label htmlFor={`radio-${orientation}-${value}`}>{value}</Label>
+                  </div>
+                ))}
+              </div>
+            </RadioGroup>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{orientation}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 

@@ -120,42 +120,92 @@ import { Button } from "../../../../components/v4/ui/button";
 import { Card } from "../../../../components/v4/ui/card";
 import { DetailLayout } from "../../../../components/v4/ui/layout";
 import { DataList, List, ListRow } from "../../../../components/v4/ui/list";
-const Specimen = () => (<DetailLayout asideLabel="Details" aside={<Card title="Details">
-        <DataList variant="props" items={[
+
+const Specimen = () => (
+  <DetailLayout
+    asideLabel="Details"
+    aside={
+      <Card title="Details">
+        <DataList
+          variant="props"
+          items={[
             ["ID", <code key="id">4b1e8c2a-93f0-4d55-a1c6-0e7d2f9b3a11</code>],
             ["Managed by", "Organization"],
             ["Organization role", "Member"],
             [
-                "Metadata",
-                <Badge key="meta" tone="outline" mono>
+              "Metadata",
+              <Badge key="meta" tone="outline" mono>
                 runner=github-actions-self-hosted
               </Badge>
             ],
             ["Last login", "Never"]
-        ]}/>
-      </Card>}>
-    <List label="Auth methods" title="Authentication" action={<Button variant="outline" size="sm" icon="plus">
+          ]}
+        />
+      </Card>
+    }
+  >
+    <List
+      label="Auth methods"
+      title="Authentication"
+      action={
+        <Button variant="outline" size="sm" icon="plus">
           Add auth method
-        </Button>}>
-      <ListRow value="universal" label="Universal Auth" title="Universal Auth" description="Last used 4 minutes ago"/>
-      <ListRow value="oidc" label="OIDC Auth" title="OIDC Auth" description="Not used in the last 30 days"/>
+        </Button>
+      }
+    >
+      <ListRow
+        value="universal"
+        label="Universal Auth"
+        title="Universal Auth"
+        description="Last used 4 minutes ago"
+      />
+      <ListRow
+        value="oidc"
+        label="OIDC Auth"
+        title="OIDC Auth"
+        description="Not used in the last 30 days"
+      />
     </List>
     <List label="Projects" title="Projects">
-      <ListRow value="payments" label="payments-api" title={<code>payments-api</code>} meta="Developer"/>
-      <ListRow value="platform" label="platform-core-shared-infrastructure-eu-west-1" title={<code>platform-core-shared-infrastructure-eu-west-1</code>} meta="Viewer"/>
+      <ListRow
+        value="payments"
+        label="payments-api"
+        title={<code>payments-api</code>}
+        meta="Developer"
+      />
+      <ListRow
+        value="platform"
+        label="platform-core-shared-infrastructure-eu-west-1"
+        title={<code>platform-core-shared-infrastructure-eu-west-1</code>}
+        meta="Viewer"
+      />
     </List>
-  </DetailLayout>);
+  </DetailLayout>
+);
+
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Specimen />
-      </div><figcaption className="text-muted-foreground text-xs">{"Wide container, sidecar on the right"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <div style={{ maxWidth: "var(--v4-size-measure-form)" }}>
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
           <Specimen />
         </div>
-      </div><figcaption className="text-muted-foreground text-xs">{"Narrow container, sidecar stacks above the main cards"}</figcaption></figure>
-    </div>);
+        <figcaption className="text-muted-foreground text-xs">
+          {"Wide container, sidecar on the right"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div style={{ maxWidth: "var(--v4-size-measure-form)" }}>
+            <Specimen />
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Narrow container, sidecar stacks above the main cards"}
+        </figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

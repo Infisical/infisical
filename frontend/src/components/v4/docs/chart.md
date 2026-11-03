@@ -157,28 +157,60 @@ Registry items used: @infisical/chart. Additional packages: recharts@^3.8.1. Ins
 
 ```tsx
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
+
 import * as UI from "../../../../components/v4/ui/chart";
+
 const data = [
-    { day: "Mon", requests: 18 },
-    { day: "Tue", requests: 26 },
-    { day: "Wed", requests: 14 }
+  { day: "Mon", requests: 18 },
+  { day: "Tue", requests: 26 },
+  { day: "Wed", requests: 14 }
 ];
 export default function Example() {
-    return (<figure aria-label="Requests per day" className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <UI.ChartContainer className="aspect-auto h-60" config={{ requests: { label: "Requests", color: "var(--v4-text2)" } }}>
-        <BarChart accessibilityLayer data={data} margin={{ top: 24, right: 12, bottom: 4, left: 0 }}>
-          <CartesianGrid vertical={false} stroke="var(--v4-line)"/>
-          <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: "var(--v4-ink)", style: { fill: "var(--v4-ink)" } }}/>
-          <YAxis width={36} allowDecimals={false} domain={[0, 30]} tickCount={4} tickLine={false} axisLine={false} tick={{ fill: "var(--v4-ink)", style: { fill: "var(--v4-ink)" } }}/>
-          <UI.ChartTooltip content={<UI.ChartTooltipContent />}/>
-          <UI.ChartLegend content={<UI.ChartLegendContent />}/>
-          <Bar isAnimationActive={false} dataKey="requests" fill="var(--color-requests)" maxBarSize={40}>
-            <LabelList dataKey="requests" position="top" fill="var(--v4-ink)"/>
-          </Bar>
-        </BarChart>
-      </UI.ChartContainer>
-      <p className="text-sm">Synthetic example. Monday 18 requests, Tuesday 26, Wednesday 14.</p>
-    </div><figcaption className="text-muted-foreground text-xs">{"Requests per day"}</figcaption></figure>);
+  return (
+    <figure aria-label="Requests per day" className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <UI.ChartContainer
+          className="aspect-auto h-60"
+          config={{ requests: { label: "Requests", color: "var(--v4-text2)" } }}
+        >
+          <BarChart
+            accessibilityLayer
+            data={data}
+            margin={{ top: 24, right: 12, bottom: 4, left: 0 }}
+          >
+            <CartesianGrid vertical={false} stroke="var(--v4-line)" />
+            <XAxis
+              dataKey="day"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: "var(--v4-ink)", style: { fill: "var(--v4-ink)" } }}
+            />
+            <YAxis
+              width={36}
+              allowDecimals={false}
+              domain={[0, 30]}
+              tickCount={4}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: "var(--v4-ink)", style: { fill: "var(--v4-ink)" } }}
+            />
+            <UI.ChartTooltip content={<UI.ChartTooltipContent />} />
+            <UI.ChartLegend content={<UI.ChartLegendContent />} />
+            <Bar
+              isAnimationActive={false}
+              dataKey="requests"
+              fill="var(--color-requests)"
+              maxBarSize={40}
+            >
+              <LabelList dataKey="requests" position="top" fill="var(--v4-ink)" />
+            </Bar>
+          </BarChart>
+        </UI.ChartContainer>
+        <p className="text-sm">Synthetic example. Monday 18 requests, Tuesday 26, Wednesday 14.</p>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"Requests per day"}</figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -190,36 +222,58 @@ Registry items used: @infisical/chart. Additional packages: recharts@^3.8.1. Ins
 
 ```tsx
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "../../../../components/v4/ui/chart";
+
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent
+} from "../../../../components/v4/ui/chart";
+
 const data = [
-    { day: "Mon", read: 18, write: 8 },
-    { day: "Tue", read: 26, write: 12 },
-    { day: "Wed", read: 14, write: 6 }
+  { day: "Mon", read: 18, write: 8 },
+  { day: "Tue", read: 26, write: 12 },
+  { day: "Wed", read: 14, write: 6 }
 ];
 export default function Example() {
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <ChartContainer className="aspect-auto h-60" config={{
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <ChartContainer
+          className="aspect-auto h-60"
+          config={{
             read: { label: "Read", theme: { light: "var(--chart-1)", dark: "var(--chart-1)" } },
             write: { label: "Write", color: "var(--chart-2)" }
-        }}>
-        <BarChart accessibilityLayer data={data} margin={{ top: 20, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid vertical={false}/>
-          <XAxis dataKey="day"/>
-          <YAxis width={28} domain={[0, 30]} allowDecimals={false}/>
-          <ChartTooltip defaultIndex={1} content={<ChartTooltipContent indicator="dot"/>}/>
-          <ChartLegend content={<ChartLegendContent />}/>
-          <Bar dataKey="read" fill="var(--color-read)" isAnimationActive={false}>
-            <LabelList dataKey="read" position="top" fill="var(--v4-ink)"/>
-          </Bar>
-          <Bar dataKey="write" fill="var(--color-write)" isAnimationActive={false}>
-            <LabelList dataKey="write" position="top" fill="var(--v4-ink)"/>
-          </Bar>
-        </BarChart>
-      </ChartContainer>
-      <p className="text-sm">
-        Synthetic counts. Mon: 18 read, 8 write. Tue: 26 read, 12 write. Wed: 14 read, 6 write.
-      </p>
-    </div><figcaption className="text-muted-foreground text-xs">{"Two series with the tooltip held open on Tuesday"}</figcaption></figure>);
+          }}
+        >
+          <BarChart
+            accessibilityLayer
+            data={data}
+            margin={{ top: 20, right: 8, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis dataKey="day" />
+            <YAxis width={28} domain={[0, 30]} allowDecimals={false} />
+            <ChartTooltip defaultIndex={1} content={<ChartTooltipContent indicator="dot" />} />
+            <ChartLegend content={<ChartLegendContent />} />
+            <Bar dataKey="read" fill="var(--color-read)" isAnimationActive={false}>
+              <LabelList dataKey="read" position="top" fill="var(--v4-ink)" />
+            </Bar>
+            <Bar dataKey="write" fill="var(--color-write)" isAnimationActive={false}>
+              <LabelList dataKey="write" position="top" fill="var(--v4-ink)" />
+            </Bar>
+          </BarChart>
+        </ChartContainer>
+        <p className="text-sm">
+          Synthetic counts. Mon: 18 read, 8 write. Tue: 26 read, 12 write. Wed: 14 read, 6 write.
+        </p>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">
+        {"Two series with the tooltip held open on Tuesday"}
+      </figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -233,31 +287,50 @@ Registry items used: @infisical/alert, @infisical/empty, @infisical/skeleton. Ad
 import { Alert, AlertDescription, AlertTitle } from "../../../../components/v4/ui/alert";
 import { EmptyState } from "../../../../components/v4/ui/empty";
 import { Skeleton } from "../../../../components/v4/ui/skeleton";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <div aria-busy="true" className="w-full">
-          <span role="status" className="sr-only">
-            Loading request counts
-          </span>
-          <div className="flex h-40 items-end justify-around border-b border-[color:var(--v4-line)] pl-9">
-            {["60%", "85%", "45%"].map((height) => (<Skeleton key={height} width={40} height={height}/>))}
-          </div>
-          <div className="flex justify-around pt-2 pl-9">
-            {["Mon", "Tue", "Wed"].map((day) => (<Skeleton key={day} width={28} height={10}/>))}
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div aria-busy="true" className="w-full">
+            <span role="status" className="sr-only">
+              Loading request counts
+            </span>
+            <div className="flex h-40 items-end justify-around border-b border-[color:var(--v4-line)] pl-9">
+              {["60%", "85%", "45%"].map((height) => (
+                <Skeleton key={height} width={40} height={height} />
+              ))}
+            </div>
+            <div className="flex justify-around pt-2 pl-9">
+              {["Mon", "Tue", "Wed"].map((day) => (
+                <Skeleton key={day} width={28} height={10} />
+              ))}
+            </div>
           </div>
         </div>
-      </div><figcaption className="text-muted-foreground text-xs">{"Loading"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <EmptyState title="No requests yet" description="Request counts will appear when clients connect."/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Alert variant="destructive">
-          <AlertTitle>Request counts unavailable</AlertTitle>
-          <AlertDescription>Try again when the connection is restored.</AlertDescription>
-        </Alert>
-      </div><figcaption className="text-muted-foreground text-xs">{"Error"}</figcaption></figure>
-    </div>);
+        <figcaption className="text-muted-foreground text-xs">{"Loading"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <EmptyState
+            title="No requests yet"
+            description="Request counts will appear when clients connect."
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Alert variant="destructive">
+            <AlertTitle>Request counts unavailable</AlertTitle>
+            <AlertDescription>Try again when the connection is restored.</AlertDescription>
+          </Alert>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Error"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

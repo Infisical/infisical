@@ -101,10 +101,21 @@ Registry items used: @infisical/button, @infisical/empty. Additional packages: n
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
 import { EmptyState } from "../../../../components/v4/ui/empty";
+
 export default function Example() {
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <EmptyState icon="key" title="No secrets in staging yet" description="Add one, or copy them from development in one step. Syncs pick them up on the next push." actions={<Button icon="plus">Add secret</Button>}/>
-    </div><figcaption className="text-muted-foreground text-xs">{"default"}</figcaption></figure>);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <EmptyState
+          icon="key"
+          title="No secrets in staging yet"
+          description="Add one, or copy them from development in one step. Syncs pick them up on the next push."
+          actions={<Button icon="plus">Add secret</Button>}
+        />
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"default"}</figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -117,15 +128,30 @@ Registry items used: @infisical/button, @infisical/empty. Additional packages: n
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
 import { EmptyState } from "../../../../components/v4/ui/empty";
+
 export default function Example() {
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <EmptyState icon="key" title="No secrets in staging yet" description="Add one, or copy them from development in one step. Syncs pick them up on the next push." actions={<>
-            <Button icon="plus">Add secret</Button>
-            <Button variant="outline" icon="upload">
-              Import from .env
-            </Button>
-          </>}/>
-    </div><figcaption className="text-muted-foreground text-xs">{"Primary and secondary action"}</figcaption></figure>);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <EmptyState
+          icon="key"
+          title="No secrets in staging yet"
+          description="Add one, or copy them from development in one step. Syncs pick them up on the next push."
+          actions={
+            <>
+              <Button icon="plus">Add secret</Button>
+              <Button variant="outline" icon="upload">
+                Import from .env
+              </Button>
+            </>
+          }
+        />
+      </div>
+      <figcaption className="text-muted-foreground text-xs">
+        {"Primary and secondary action"}
+      </figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -137,10 +163,21 @@ Registry items used: @infisical/empty. Additional packages: none. Install every 
 
 ```tsx
 import { EmptyState } from "../../../../components/v4/ui/empty";
+
 export default function Example() {
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <EmptyState media="bare" icon="history" title="No versions yet" description="Each change to this secret saves a version here."/>
-    </div><figcaption className="text-muted-foreground text-xs">{"bare"}</figcaption></figure>);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <EmptyState
+          media="bare"
+          icon="history"
+          title="No versions yet"
+          description="Each change to this secret saves a version here."
+        />
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"bare"}</figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -152,20 +189,43 @@ Registry items used: @infisical/button, @infisical/empty, @infisical/list. Addit
 
 ```tsx
 import { useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import { EmptyState } from "../../../../components/v4/ui/empty";
 import { List, ListRow } from "../../../../components/v4/ui/list";
+
 const secrets = ["DATABASE_URL", "REDIS_URL", "SESSION_KEY"];
+
 export default function Example() {
-    const [query, setQuery] = useState("stripe_web");
-    const rows = secrets.filter((name) => name.toLowerCase().includes(query));
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <List label="Staging secrets" title="Staging secrets" empty={<EmptyState size="sm" icon="search" title={`No secrets match “${query}”`} actions={<Button variant="link" onClick={() => setQuery("")}>
-                Clear filter
-              </Button>}/>}>
-        {rows.map((name) => (<ListRow key={name} value={name} label={name} title={name}/>))}
-      </List>
-    </div><figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption></figure>);
+  const [query, setQuery] = useState("stripe_web");
+  const rows = secrets.filter((name) => name.toLowerCase().includes(query));
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <List
+          label="Staging secrets"
+          title="Staging secrets"
+          empty={
+            <EmptyState
+              size="sm"
+              icon="search"
+              title={`No secrets match “${query}”`}
+              actions={
+                <Button variant="link" onClick={() => setQuery("")}>
+                  Clear filter
+                </Button>
+              }
+            />
+          }
+        >
+          {rows.map((name) => (
+            <ListRow key={name} value={name} label={name} title={name} />
+          ))}
+        </List>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"sm"}</figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -179,23 +239,30 @@ Registry items used: @infisical/button, @infisical/empty, @infisical/icon. Addit
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/empty";
 import { Icon } from "../../../../components/v4/ui/icon";
+
 export default function Example() {
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <UI.Empty>
-        <UI.EmptyMedia variant="tile">
-          <Icon name="key"/>
-        </UI.EmptyMedia>
-        <UI.EmptyHeader>
-          <UI.EmptyTitle>No secrets in staging yet</UI.EmptyTitle>
-          <UI.EmptyDescription>
-            Add one, or copy them from development in one step. Syncs pick them up on the next push.
-          </UI.EmptyDescription>
-        </UI.EmptyHeader>
-        <UI.EmptyContent>
-          <Button icon="plus">Add secret</Button>
-        </UI.EmptyContent>
-      </UI.Empty>
-    </div><figcaption className="text-muted-foreground text-xs">{"tile"}</figcaption></figure>);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <UI.Empty>
+          <UI.EmptyMedia variant="tile">
+            <Icon name="key" />
+          </UI.EmptyMedia>
+          <UI.EmptyHeader>
+            <UI.EmptyTitle>No secrets in staging yet</UI.EmptyTitle>
+            <UI.EmptyDescription>
+              Add one, or copy them from development in one step. Syncs pick them up on the next
+              push.
+            </UI.EmptyDescription>
+          </UI.EmptyHeader>
+          <UI.EmptyContent>
+            <Button icon="plus">Add secret</Button>
+          </UI.EmptyContent>
+        </UI.Empty>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"tile"}</figcaption>
+    </figure>
+  );
 }
 ```
 

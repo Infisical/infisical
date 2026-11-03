@@ -97,31 +97,57 @@ Registry items used: @infisical/checkbox. Additional packages: none. Install eve
 
 ```tsx
 import { useState } from "react";
+
 import { Checkbox } from "../../../../components/v4/ui/checkbox";
+
 const environments = ["Staging", "Production"];
 export default function Example() {
-    const [selected, setSelected] = useState(["Staging"]);
-    const all = selected.length === environments.length;
-    const parentChecked = all || (selected.length > 0 ? "indeterminate" : false);
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  const [selected, setSelected] = useState(["Staging"]);
+  const all = selected.length === environments.length;
+  const parentChecked = all || (selected.length > 0 ? "indeterminate" : false);
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <div className="flex items-center gap-3">
-        <Checkbox id="checkbox-all" label="Select available environments" checked={parentChecked} onCheckedChange={(value) => setSelected(value === true ? environments : [])}/>
+        <Checkbox
+          id="checkbox-all"
+          label="Select available environments"
+          checked={parentChecked}
+          onCheckedChange={(value) => setSelected(value === true ? environments : [])}
+        />
       </div>
       <div className="space-y-3 pl-6">
-        {environments.map((environment) => (<div key={environment} className="flex items-center gap-3">
-            <Checkbox id={`checkbox-${environment}`} label={environment} checked={selected.includes(environment)} onCheckedChange={(value) => setSelected((current) => value === true
-                ? [...current, environment]
-                : current.filter((item) => item !== environment))}/>
-          </div>))}
+        {environments.map((environment) => (
+          <div key={environment} className="flex items-center gap-3">
+            <Checkbox
+              id={`checkbox-${environment}`}
+              label={environment}
+              checked={selected.includes(environment)}
+              onCheckedChange={(value) =>
+                setSelected((current) =>
+                  value === true
+                    ? [...current, environment]
+                    : current.filter((item) => item !== environment)
+                )
+              }
+            />
+          </div>
+        ))}
         <div className="flex items-center gap-3">
-          <Checkbox id="checkbox-policy" label="Audit environment" description="Required by policy." defaultChecked disabled/>
+          <Checkbox
+            id="checkbox-policy"
+            label="Audit environment"
+            description="Required by policy."
+            defaultChecked
+            disabled
+          />
         </div>
       </div>
       <p role="status" className="sr-only">
         {selected.length} of {environments.length} available environments selected. This draft does
         not grant access.
       </p>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -133,21 +159,36 @@ Registry items used: @infisical/checkbox. Additional packages: none. Install eve
 
 ```tsx
 import { Checkbox } from "../../../../components/v4/ui/checkbox";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Checkbox label="Deployments"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Off"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Checkbox label="Deployments" defaultChecked/>
-      </div><figcaption className="text-muted-foreground text-xs">{"On"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Checkbox label="All environments" indeterminate/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Mixed"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Checkbox label="Audit events" disabled defaultChecked/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Checkbox label="Deployments" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Off"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Checkbox label="Deployments" defaultChecked />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"On"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Checkbox label="All environments" indeterminate />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Mixed"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Checkbox label="Audit events" disabled defaultChecked />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

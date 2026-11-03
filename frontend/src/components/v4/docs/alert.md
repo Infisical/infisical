@@ -117,36 +117,56 @@ Registry items used: @infisical/alert. Additional packages: none. Install every 
 
 ```tsx
 import { useState } from "react";
+
 import { Alert, Banner } from "../../../../components/v4/ui/alert";
+
 export default function Example() {
-    const [visible, setVisible] = useState(true);
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Alert title="Rotation is scheduled">The token rotates every 30 days.</Alert>
-      </div><figcaption className="text-muted-foreground text-xs">{"neutral"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Alert tone="info" title="Read access only">
-          This connection can fetch secrets.
-        </Alert>
-      </div><figcaption className="text-muted-foreground text-xs">{"info"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Alert tone="ok" title="Connection verified">
-          The provider accepted the supplied credentials.
-        </Alert>
-      </div><figcaption className="text-muted-foreground text-xs">{"ok"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Alert tone="warn" title="Token expires soon">
-          Replace the token before it expires in 7 days.
-        </Alert>
-      </div><figcaption className="text-muted-foreground text-xs">{"warn"}</figcaption></figure>
-      {visible &&
-        (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <Alert tone="bad" title="Connection failed" onDismiss={() => setVisible(false)}>
-            The provider rejected the token. Check its access scope and try again.
+  const [visible, setVisible] = useState(true);
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Alert title="Rotation is scheduled">The token rotates every 30 days.</Alert>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"neutral"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Alert tone="info" title="Read access only">
+            This connection can fetch secrets.
           </Alert>
-        </div><figcaption className="text-muted-foreground text-xs">{"bad"}</figcaption></figure>)}
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"info"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Alert tone="ok" title="Connection verified">
+            The provider accepted the supplied credentials.
+          </Alert>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"ok"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Alert tone="warn" title="Token expires soon">
+            Replace the token before it expires in 7 days.
+          </Alert>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"warn"}</figcaption>
+      </figure>
+      {visible && (
+        <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <Alert tone="bad" title="Connection failed" onDismiss={() => setVisible(false)}>
+              The provider rejected the token. Check its access scope and try again.
+            </Alert>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{"bad"}</figcaption>
+        </figure>
+      )}
       <Banner>Production changes require an approval.</Banner>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -159,24 +179,41 @@ Registry items used: @infisical/alert, @infisical/button. Additional packages: n
 ```tsx
 import { Alert, AlertDescription, AlertTitle } from "../../../../components/v4/ui/alert";
 import { Button } from "../../../../components/v4/ui/button";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      {(["default", "destructive"] as const).map((variant) => (<figure key={variant} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-          <Alert variant={variant}>
-            <AlertTitle>Connection needs review</AlertTitle>
-            <AlertDescription>
-              The provider configuration differs from the saved version.
-            </AlertDescription>
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      {(["default", "destructive"] as const).map((variant) => (
+        <figure key={variant} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+            <Alert variant={variant}>
+              <AlertTitle>Connection needs review</AlertTitle>
+              <AlertDescription>
+                The provider configuration differs from the saved version.
+              </AlertDescription>
+            </Alert>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{variant}</figcaption>
+        </figure>
+      ))}
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <Alert
+            title="Connection needs review"
+            tone="warn"
+            actions={
+              <Button asChild variant="outline">
+                <a href="#input">Review configuration</a>
+              </Button>
+            }
+          >
+            The provider configuration differs from the saved version.
           </Alert>
-        </div><figcaption className="text-muted-foreground text-xs">{variant}</figcaption></figure>))}
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <Alert title="Connection needs review" tone="warn" actions={<Button asChild variant="outline">
-              <a href="#input">Review configuration</a>
-            </Button>}>
-          The provider configuration differs from the saved version.
-        </Alert>
-      </div><figcaption className="text-muted-foreground text-xs">{"Action"}</figcaption></figure>
-    </div>);
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Action"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

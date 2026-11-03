@@ -108,18 +108,34 @@ Registry items used: @infisical/switch. Additional packages: none. Install every
 
 ```tsx
 import { useState } from "react";
+
 import { Switch } from "../../../../components/v4/ui/switch";
+
 export default function Example() {
-    const [events, setEvents] = useState(true);
-    const [rotation, setRotation] = useState(false);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Switch label="Audit events" checked={events} onChange={setEvents}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Inline"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Switch label="Automatic rotation" description="Rotate credentials every 30 days." layout="row" checked={rotation} onChange={setRotation}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Row with description"}</figcaption></figure>
-    </div>);
+  const [events, setEvents] = useState(true);
+  const [rotation, setRotation] = useState(false);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Switch label="Audit events" checked={events} onChange={setEvents} />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Inline"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Switch
+            label="Automatic rotation"
+            description="Rotate credentials every 30 days."
+            layout="row"
+            checked={rotation}
+            onChange={setRotation}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Row with description"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -131,12 +147,23 @@ Registry items used: @infisical/switch. Additional packages: none. Install every
 
 ```tsx
 import { Switch } from "../../../../components/v4/ui/switch";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {(["sm", "default"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <Switch size={size} label="Audit events" defaultChecked/>
-        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {(["sm", "default"] as const).map((size) => (
+        <figure
+          key={size}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <Switch size={size} label="Audit events" defaultChecked />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -148,21 +175,36 @@ Registry items used: @infisical/switch. Additional packages: none. Install every
 
 ```tsx
 import { Switch } from "../../../../components/v4/ui/switch";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Switch aria-label="Audit events, off"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Off"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Switch aria-label="Audit events, on" defaultChecked/>
-      </div><figcaption className="text-muted-foreground text-xs">{"On"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Switch aria-label="Audit events, disabled off" disabled/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Disabled, off"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Switch aria-label="Audit events, disabled on" disabled defaultChecked/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Disabled, on"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Switch aria-label="Audit events, off" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Off"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Switch aria-label="Audit events, on" defaultChecked />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"On"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Switch aria-label="Audit events, disabled off" disabled />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled, off"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Switch aria-label="Audit events, disabled on" disabled defaultChecked />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled, on"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

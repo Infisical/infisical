@@ -158,39 +158,58 @@ Registry items used: @infisical/field, @infisical/multi-select. Additional packa
 
 ```tsx
 import { useState } from "react";
+
 import { Field } from "../../../../components/v4/ui/field";
 import { MultiSelect, type MultiSelectOption } from "../../../../components/v4/ui/multi-select";
+
 const options: MultiSelectOption[] = [
-    { value: "read", label: "Read", description: "Fetch existing values", group: "Secrets" },
-    { value: "write", label: "Write", description: "Create and edit", group: "Secrets" },
-    { value: "delete", label: "Delete", group: "Secrets" },
-    { value: "admin", label: "Admin", group: "Project", disabled: true },
-    {
-        value: "billing",
-        label: "Billing",
-        description: "Owner only",
-        group: "Project",
-        disabled: true
-    }
+  { value: "read", label: "Read", description: "Fetch existing values", group: "Secrets" },
+  { value: "write", label: "Write", description: "Create and edit", group: "Secrets" },
+  { value: "delete", label: "Delete", group: "Secrets" },
+  { value: "admin", label: "Admin", group: "Project", disabled: true },
+  {
+    value: "billing",
+    label: "Billing",
+    description: "Owner only",
+    group: "Project",
+    disabled: true
+  }
 ];
 export default function Example() {
-    const [roles, setRoles] = useState(["read", "admin"]);
-    const [single, setSingle] = useState<string | null>("read");
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <Field label="Project roles" description="Admin is required by policy. Billing is owner only.">
-        <MultiSelect label="Project roles" allLabel="All project permissions" options={options} value={roles} onChange={setRoles}/>
+  const [roles, setRoles] = useState(["read", "admin"]);
+  const [single, setSingle] = useState<string | null>("read");
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <Field
+        label="Project roles"
+        description="Admin is required by policy. Billing is owner only."
+      >
+        <MultiSelect
+          label="Project roles"
+          allLabel="All project permissions"
+          options={options}
+          value={roles}
+          onChange={setRoles}
+        />
       </Field>
       <Field label="One permission">
-        <MultiSelect label="One permission" multiple={false} value={single} onChange={setSingle} options={options}/>
+        <MultiSelect
+          label="One permission"
+          multiple={false}
+          value={single}
+          onChange={setSingle}
+          options={options}
+        />
       </Field>
       <p role="status" className="sr-only">
         Selected roles:{" "}
         {roles
-            .map((role) => options.find((option) => option.value === role)?.label ?? role)
-            .join(", ") || "none"}
+          .map((role) => options.find((option) => option.value === role)?.label ?? role)
+          .join(", ") || "none"}
         . Single permission: {single ?? "none"}.
       </p>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -202,15 +221,28 @@ Registry items used: @infisical/multi-select. Additional packages: none. Install
 
 ```tsx
 import { MultiSelect } from "../../../../components/v4/ui/multi-select";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      {(["sm", "md"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <MultiSelect size={size} label="Role" options={[
-            { value: "read", label: "Read" },
-            { value: "write", label: "Write" }
-        ]} defaultValue={["read"]}/>
-        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      {(["sm", "md"] as const).map((size) => (
+        <figure key={size} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <MultiSelect
+              size={size}
+              label="Role"
+              options={[
+                { value: "read", label: "Read" },
+                { value: "write", label: "Write" }
+              ]}
+              defaultValue={["read"]}
+            />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -222,30 +254,56 @@ Registry items used: @infisical/field, @infisical/multi-select. Additional packa
 
 ```tsx
 import { useState } from "react";
+
 import { Field } from "../../../../components/v4/ui/field";
 import { MultiSelect, type MultiSelectOption } from "../../../../components/v4/ui/multi-select";
+
 const options: MultiSelectOption[] = [
-    { value: "dev", label: "Development", description: "138 secrets" },
-    { value: "staging", label: "Staging", description: "96 secrets" },
-    { value: "prod", label: "Production", description: "212 secrets" },
-    { value: "pr-482", label: "pr-482", description: "Expires Oct 1", group: "Preview" },
-    { value: "pr-490", label: "pr-490", description: "Expired", group: "Preview", disabled: true }
+  { value: "dev", label: "Development", description: "138 secrets" },
+  { value: "staging", label: "Staging", description: "96 secrets" },
+  { value: "prod", label: "Production", description: "212 secrets" },
+  { value: "pr-482", label: "pr-482", description: "Expires Oct 1", group: "Preview" },
+  { value: "pr-490", label: "pr-490", description: "Expired", group: "Preview", disabled: true }
 ];
 export default function Example() {
-    const [none, setNone] = useState<string[]>([]);
-    const [all, setAll] = useState(["dev", "staging", "prod", "pr-482"]);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Environments">
-          <MultiSelect label="Environments" placeholder="Choose environments" options={options} value={none} onChange={setNone}/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"None selected, Deselect all disabled"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Environments">
-          <MultiSelect label="Environments" allLabel="All environments" options={options} value={all} onChange={setAll}/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"All selected, Select all disabled"}</figcaption></figure>
-    </div>);
+  const [none, setNone] = useState<string[]>([]);
+  const [all, setAll] = useState(["dev", "staging", "prod", "pr-482"]);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Environments">
+            <MultiSelect
+              label="Environments"
+              placeholder="Choose environments"
+              options={options}
+              value={none}
+              onChange={setNone}
+            />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"None selected, Deselect all disabled"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Environments">
+            <MultiSelect
+              label="Environments"
+              allLabel="All environments"
+              options={options}
+              value={all}
+              onChange={setAll}
+            />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"All selected, Select all disabled"}
+        </figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

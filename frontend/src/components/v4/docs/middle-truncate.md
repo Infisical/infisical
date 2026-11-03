@@ -99,18 +99,24 @@ Registry items used: @infisical/middle-truncate, @infisical/sensitive-editor. Ad
 ```tsx
 import { MiddleTruncate } from "../../../../components/v4/ui/middle-truncate";
 import { CopyButton } from "../../../../components/v4/ui/sensitive-editor";
+
 const path = "project/production/services/payment-processing-api";
 export default function Example() {
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <div className="flex w-full items-center gap-2">
-        <div className="w-64 max-w-full min-w-0">
-          <MiddleTruncate mono keepEnd={12}>
-            {path}
-          </MiddleTruncate>
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <div className="flex w-full items-center gap-2">
+          <div className="w-64 max-w-full min-w-0">
+            <MiddleTruncate mono keepEnd={12}>
+              {path}
+            </MiddleTruncate>
+          </div>
+          <CopyButton iconOnly value={path} label="Copy full path" />
         </div>
-        <CopyButton iconOnly value={path} label="Copy full path"/>
       </div>
-    </div><figcaption className="text-muted-foreground text-xs">{"Resource path"}</figcaption></figure>);
+      <figcaption className="text-muted-foreground text-xs">{"Resource path"}</figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -123,28 +129,42 @@ Registry items used: @infisical/middle-truncate, @infisical/sensitive-editor. Ad
 ```tsx
 import { MiddleTruncate } from "../../../../components/v4/ui/middle-truncate";
 import { CopyButton } from "../../../../components/v4/ui/sensitive-editor";
+
 const path = "applications/staging/services/payment-processing/configuration/retention-policy";
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <MiddleTruncate text="project_staging"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Fits fully"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <div className="flex w-full items-center gap-2">
-          <div className="w-48 max-w-full min-w-0">
-            <MiddleTruncate text={path} mono={false}/>
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <MiddleTruncate text="project_staging" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Fits fully"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <div className="flex w-full items-center gap-2">
+            <div className="w-48 max-w-full min-w-0">
+              <MiddleTruncate text={path} mono={false} />
+            </div>
+            <CopyButton iconOnly value={path} label="Copy full resource path" />
           </div>
-          <CopyButton iconOnly value={path} label="Copy full resource path"/>
         </div>
-      </div><figcaption className="text-muted-foreground text-xs">{"Default end, plain text"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <div className="w-16 max-w-full">
-          <MiddleTruncate keepEnd={16} mono>
-            {path}
-          </MiddleTruncate>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Default end, plain text"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <div className="w-16 max-w-full">
+            <MiddleTruncate keepEnd={16} mono>
+              {path}
+            </MiddleTruncate>
+          </div>
         </div>
-      </div><figcaption className="text-muted-foreground text-xs">{"Narrow, end 16"}</figcaption></figure>
-    </div>);
+        <figcaption className="text-muted-foreground text-xs">{"Narrow, end 16"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

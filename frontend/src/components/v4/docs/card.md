@@ -108,51 +108,87 @@ Save this example at `src/pages/design-system/examples/card/default.tsx`; its re
 Registry items used: @infisical/card, @infisical/item. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../../../components/v4/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from "../../../../components/v4/ui/card";
 import { Media } from "../../../../components/v4/ui/item";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Card title="Posture" action={<a href="#card">View report</a>}>
-          412 secrets across 3 environments. 3 are missing in production and 5 rotations are due
-          this week.
-        </Card>
-      </div><figcaption className="text-muted-foreground text-xs">{"framed"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Card footer="Expires in 7 days.">
-          <div className="flex items-center gap-3">
-            <Media icon="key"/>
-            <span>Read access to staging, scoped to the payments project.</span>
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Card title="Posture" action={<a href="#card">View report</a>}>
+            412 secrets across 3 environments. 3 are missing in production and 5 rotations are due
+            this week.
+          </Card>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"framed"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Card footer="Expires in 7 days.">
+            <div className="flex items-center gap-3">
+              <Media icon="key" />
+              <span>Read access to staging, scoped to the payments project.</span>
+            </div>
+          </Card>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"framed, no header, with footer"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Card footer="412 secrets in 3 environments, 5 rotations due" footerPlacement="frame">
+            Read access to staging, scoped to the payments project.
+          </Card>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"framed footer"}</figcaption>
+      </figure>
+      {(
+        [
+          ["w-60", "narrow, 240px"],
+          ["w-80", "narrow, 320px"],
+          ["w-96", "narrow, 384px"]
+        ] as const
+      ).map(([width, label]) => (
+        <figure key={width} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+            <div className={`${width} max-w-full min-w-0`} data-narrow-card>
+              <Card
+                title="Posture"
+                description="Rotation and drift for the payments project"
+                action={<a href="#card">View report</a>}
+                footer="Updated today"
+              >
+                412 secrets across 3 environments.
+              </Card>
+            </div>
           </div>
-        </Card>
-      </div><figcaption className="text-muted-foreground text-xs">{"framed, no header, with footer"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Card footer="412 secrets in 3 environments, 5 rotations due" footerPlacement="frame">
-          Read access to staging, scoped to the payments project.
-        </Card>
-      </div><figcaption className="text-muted-foreground text-xs">{"framed footer"}</figcaption></figure>
-      {([
-        ["w-60", "narrow, 240px"],
-        ["w-80", "narrow, 320px"],
-        ["w-96", "narrow, 384px"]
-    ] as const).map(([width, label]) => (<figure key={width} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-          <div className={`${width} max-w-full min-w-0`} data-narrow-card>
-            <Card title="Posture" description="Rotation and drift for the payments project" action={<a href="#card">View report</a>} footer="Updated today">
-              412 secrets across 3 environments.
-            </Card>
-          </div>
-        </div><figcaption className="text-muted-foreground text-xs">{label}</figcaption></figure>))}
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Card variant="plain">
-          <CardHeader>
-            <CardTitle>Environment defaults</CardTitle>
-            <CardDescription>Inherited by new connections.</CardDescription>
-          </CardHeader>
-          <CardContent>The default environment is staging.</CardContent>
-          <CardFooter>Updated today</CardFooter>
-        </Card>
-      </div><figcaption className="text-muted-foreground text-xs">{"plain"}</figcaption></figure>
-    </div>);
+          <figcaption className="text-muted-foreground text-xs">{label}</figcaption>
+        </figure>
+      ))}
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Card variant="plain">
+            <CardHeader>
+              <CardTitle>Environment defaults</CardTitle>
+              <CardDescription>Inherited by new connections.</CardDescription>
+            </CardHeader>
+            <CardContent>The default environment is staging.</CardContent>
+            <CardFooter>Updated today</CardFooter>
+          </Card>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"plain"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

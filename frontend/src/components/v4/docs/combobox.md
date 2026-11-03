@@ -134,22 +134,35 @@ Registry items used: @infisical/combobox, @infisical/field. Additional packages:
 
 ```tsx
 import { useState } from "react";
+
 import { Combobox } from "../../../../components/v4/ui/combobox";
 import { Field } from "../../../../components/v4/ui/field";
+
 export default function Example() {
-    const [value, setValue] = useState("dev");
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
-      <Field label="Single environment" description="Choose an existing environment. Creation is unavailable.">
-        <Combobox label="Single environment" options={[
+  const [value, setValue] = useState("dev");
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      <Field
+        label="Single environment"
+        description="Choose an existing environment. Creation is unavailable."
+      >
+        <Combobox
+          label="Single environment"
+          options={[
             { value: "dev", label: "Dev", meta: "3 projects" },
             { value: "prod", label: "Prod", meta: "12 projects" },
             { value: "archived", label: "Archived", disabled: true }
-        ]} value={value} onChange={setValue} placeholder="Choose"/>
+          ]}
+          value={value}
+          onChange={setValue}
+          placeholder="Choose"
+        />
       </Field>
       <p role="status" className="sr-only text-sm">
         Selected environment: {value || "none"}
       </p>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -161,23 +174,38 @@ Registry items used: @infisical/combobox, @infisical/field. Additional packages:
 
 ```tsx
 import { useState } from "react";
+
 import { Combobox } from "../../../../components/v4/ui/combobox";
 import { Field } from "../../../../components/v4/ui/field";
+
 export default function Example() {
-    const [values, setValues] = useState(["dev", "staging", "audit", "prod"]);
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
-      <Field label="Visible environments" description="Audit is required by policy, so Clear all keeps it. Creation is unavailable.">
-        <Combobox label="Visible environments" multiple clearable options={[
+  const [values, setValues] = useState(["dev", "staging", "audit", "prod"]);
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      <Field
+        label="Visible environments"
+        description="Audit is required by policy, so Clear all keeps it. Creation is unavailable."
+      >
+        <Combobox
+          label="Visible environments"
+          multiple
+          clearable
+          options={[
             { value: "dev", label: "Dev", meta: "3 projects" },
             { value: "staging", label: "Staging", meta: "2 projects" },
             { value: "prod", label: "Prod", meta: "12 projects" },
             { value: "audit", label: "Audit", disabled: true }
-        ]} value={values} onChange={setValues} placeholder="Choose"/>
+          ]}
+          value={values}
+          onChange={setValues}
+          placeholder="Choose"
+        />
       </Field>
       <p role="status" className="sr-only text-sm">
         Selected environments: {values.join(", ") || "none"}
       </p>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -189,28 +217,40 @@ Registry items used: @infisical/combobox, @infisical/field. Additional packages:
 
 ```tsx
 import { useState } from "react";
+
 import { Combobox, type ComboboxOption } from "../../../../components/v4/ui/combobox";
 import { Field } from "../../../../components/v4/ui/field";
+
 export default function Example() {
-    const [options, setOptions] = useState<ComboboxOption[]>([
-        { value: "dev", label: "Dev" },
-        { value: "prod", label: "Prod" },
-        { value: "archived", label: "Archived", disabled: true }
-    ]);
-    const [value, setValue] = useState("dev");
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <Field label="Environment">
-        <Combobox label="Environment" options={options} value={value} onChange={setValue} onCreate={async (query, { signal }) => {
-            await new Promise((resolve) => {
+  const [options, setOptions] = useState<ComboboxOption[]>([
+    { value: "dev", label: "Dev" },
+    { value: "prod", label: "Prod" },
+    { value: "archived", label: "Archived", disabled: true }
+  ]);
+  const [value, setValue] = useState("dev");
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <Field label="Environment">
+          <Combobox
+            label="Environment"
+            options={options}
+            value={value}
+            onChange={setValue}
+            onCreate={async (query, { signal }) => {
+              await new Promise((resolve) => {
                 setTimeout(resolve, 300);
-            });
-            if (signal.aborted)
-                return;
-            setOptions((previous) => [...previous, { value: query, label: query }]);
-            setValue(query);
-        }}/>
-      </Field>
-    </div><figcaption className="text-muted-foreground text-xs">{"Search and create"}</figcaption></figure>);
+              });
+              if (signal.aborted) return;
+              setOptions((previous) => [...previous, { value: query, label: query }]);
+              setValue(query);
+            }}
+          />
+        </Field>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"Search and create"}</figcaption>
+    </figure>
+  );
 }
 ```
 

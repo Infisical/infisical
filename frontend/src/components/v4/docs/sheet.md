@@ -119,8 +119,10 @@ Registry items used: @infisical/button, @infisical/sheet. Additional packages: n
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/sheet";
+
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <UI.Sheet>
         <UI.SheetTrigger asChild>
           <Button variant="outline">Inspect connection</Button>
@@ -142,7 +144,8 @@ export default function Example() {
           </UI.SheetFooter>
         </UI.SheetContent>
       </UI.Sheet>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -155,29 +158,40 @@ Registry items used: @infisical/button, @infisical/sheet. Additional packages: n
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/sheet";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {(["top", "right", "bottom", "left"] as const).map((side) => (<figure key={side} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <UI.Sheet>
-            <UI.SheetTrigger asChild>
-              <Button variant="outline">{side} sheet</Button>
-            </UI.SheetTrigger>
-            <UI.SheetContent side={side}>
-              <UI.SheetHeader>
-                <UI.SheetTitle>Staging connection</UI.SheetTitle>
-                <UI.SheetDescription>
-                  Read access, last synchronized 12 versions.
-                </UI.SheetDescription>
-              </UI.SheetHeader>
-              <UI.SheetFooter>
-                <UI.SheetClose asChild>
-                  <Button variant="outline">Close connection</Button>
-                </UI.SheetClose>
-              </UI.SheetFooter>
-            </UI.SheetContent>
-          </UI.Sheet>
-        </div><figcaption className="text-muted-foreground text-xs">{side}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {(["top", "right", "bottom", "left"] as const).map((side) => (
+        <figure
+          key={side}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <UI.Sheet>
+              <UI.SheetTrigger asChild>
+                <Button variant="outline">{side} sheet</Button>
+              </UI.SheetTrigger>
+              <UI.SheetContent side={side}>
+                <UI.SheetHeader>
+                  <UI.SheetTitle>Staging connection</UI.SheetTitle>
+                  <UI.SheetDescription>
+                    Read access, last synchronized 12 versions.
+                  </UI.SheetDescription>
+                </UI.SheetHeader>
+                <UI.SheetFooter>
+                  <UI.SheetClose asChild>
+                    <Button variant="outline">Close connection</Button>
+                  </UI.SheetClose>
+                </UI.SheetFooter>
+              </UI.SheetContent>
+            </UI.Sheet>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{side}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -192,40 +206,52 @@ import { Button } from "../../../../components/v4/ui/button";
 import { Field, FieldGroup } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
 import * as UI from "../../../../components/v4/ui/sheet";
+
 const sizes = ["sm", "md", "lg"] as const;
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {sizes.map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <UI.Sheet>
-            <UI.SheetTrigger asChild>
-              <Button variant="outline">{size} sheet</Button>
-            </UI.SheetTrigger>
-            <UI.SheetContent size={size}>
-              <UI.SheetHeader>
-                <UI.SheetTitle>Staging connection</UI.SheetTitle>
-                <UI.SheetDescription>
-                  Edit the name and access key for this connection.
-                </UI.SheetDescription>
-              </UI.SheetHeader>
-              <UI.SheetBody>
-                <FieldGroup>
-                  <Field label="Connection name" wide>
-                    <Input defaultValue="aws-staging-keys"/>
-                  </Field>
-                  <Field label="Access key ID" description="Shown in activity logs." wide>
-                    <Input defaultValue="AKIAEXAMPLESTAGING01"/>
-                  </Field>
-                </FieldGroup>
-              </UI.SheetBody>
-              <UI.SheetFooter>
-                <UI.SheetClose asChild>
-                  <Button variant="outline">Close connection</Button>
-                </UI.SheetClose>
-              </UI.SheetFooter>
-            </UI.SheetContent>
-          </UI.Sheet>
-        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {sizes.map((size) => (
+        <figure
+          key={size}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <UI.Sheet>
+              <UI.SheetTrigger asChild>
+                <Button variant="outline">{size} sheet</Button>
+              </UI.SheetTrigger>
+              <UI.SheetContent size={size}>
+                <UI.SheetHeader>
+                  <UI.SheetTitle>Staging connection</UI.SheetTitle>
+                  <UI.SheetDescription>
+                    Edit the name and access key for this connection.
+                  </UI.SheetDescription>
+                </UI.SheetHeader>
+                <UI.SheetBody>
+                  <FieldGroup>
+                    <Field label="Connection name" wide>
+                      <Input defaultValue="aws-staging-keys" />
+                    </Field>
+                    <Field label="Access key ID" description="Shown in activity logs." wide>
+                      <Input defaultValue="AKIAEXAMPLESTAGING01" />
+                    </Field>
+                  </FieldGroup>
+                </UI.SheetBody>
+                <UI.SheetFooter>
+                  <UI.SheetClose asChild>
+                    <Button variant="outline">Close connection</Button>
+                  </UI.SheetClose>
+                </UI.SheetFooter>
+              </UI.SheetContent>
+            </UI.Sheet>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -283,30 +309,33 @@ Registry items used: @infisical/button, @infisical/code, @infisical/sheet. Addit
 import { Button } from "../../../../components/v4/ui/button";
 import { Code } from "../../../../components/v4/ui/code";
 import * as UI from "../../../../components/v4/ui/sheet";
+
 const keys = [
-    "DATABASE_URL",
-    "DATABASE_POOL_SIZE",
-    "REDIS_URL",
-    "QUEUE_CONCURRENCY",
-    "PAYMENTS_WEBHOOK_URL",
-    "PAYMENTS_RETRY_LIMIT",
-    "LOG_LEVEL",
-    "LOG_FORMAT",
-    "FEATURE_REFUNDS",
-    "FEATURE_INVOICES",
-    "SESSION_TTL",
-    "CORS_ORIGINS",
-    "METRICS_ENDPOINT",
-    "TRACE_SAMPLE_RATE",
-    "SMTP_HOST",
-    "SMTP_PORT",
-    "CACHE_TTL",
-    "RATE_LIMIT_PER_MINUTE",
-    "REGION",
-    "RELEASE_CHANNEL"
+  "DATABASE_URL",
+  "DATABASE_POOL_SIZE",
+  "REDIS_URL",
+  "QUEUE_CONCURRENCY",
+  "PAYMENTS_WEBHOOK_URL",
+  "PAYMENTS_RETRY_LIMIT",
+  "LOG_LEVEL",
+  "LOG_FORMAT",
+  "FEATURE_REFUNDS",
+  "FEATURE_INVOICES",
+  "SESSION_TTL",
+  "CORS_ORIGINS",
+  "METRICS_ENDPOINT",
+  "TRACE_SAMPLE_RATE",
+  "SMTP_HOST",
+  "SMTP_PORT",
+  "CACHE_TTL",
+  "RATE_LIMIT_PER_MINUTE",
+  "REGION",
+  "RELEASE_CHANNEL"
 ];
+
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <UI.Sheet>
         <UI.SheetTrigger asChild>
           <Button variant="outline">Review import</Button>
@@ -321,9 +350,11 @@ export default function Example() {
           </UI.SheetSubheader>
           <UI.SheetBody>
             <ul>
-              {keys.map((key) => (<li key={key}>
+              {keys.map((key) => (
+                <li key={key}>
                   <Code>{key}</Code>
-                </li>))}
+                </li>
+              ))}
             </ul>
           </UI.SheetBody>
           <UI.SheetFooter>
@@ -333,7 +364,8 @@ export default function Example() {
           </UI.SheetFooter>
         </UI.SheetContent>
       </UI.Sheet>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -345,69 +377,87 @@ Registry items used: @infisical/alert-dialog, @infisical/button, @infisical/fiel
 
 ```tsx
 import { useEffect, useId, useState } from "react";
+
 import { useDiscardChangesGuard } from "../../../../components/v4/hooks/use-discard-changes-guard";
 import { DiscardChangesAlertDialog } from "../../../../components/v4/ui/alert-dialog";
 import { Button } from "../../../../components/v4/ui/button";
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
 import * as UI from "../../../../components/v4/ui/sheet";
+
 export default function Example() {
-    const [saved, setSaved] = useState("https://hooks.example.com/infisical");
-    const [draft, setDraft] = useState(saved);
-    const [open, setOpen] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const formId = useId();
-    const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
-        isDirty: draft !== saved,
-        onDiscard: () => {
-            setDraft(saved);
-            setOpen(false);
-        }
-    });
-    useEffect(() => {
-        if (!saving)
-            return undefined;
-        const timer = window.setTimeout(() => {
-            setSaved(draft);
-            setSaving(false);
-            setOpen(false);
-        }, 1500);
-        return () => window.clearTimeout(timer);
-    }, [saving, draft]);
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <UI.Sheet open={open} onOpenChange={(next) => (next ? setOpen(true) : requestDiscard())}>
-        <UI.SheetTrigger asChild>
-          <Button variant="outline">Edit webhook</Button>
-        </UI.SheetTrigger>
-        <UI.SheetContent pending={saving}>
-          <UI.SheetHeader>
-            <UI.SheetTitle>Edit webhook</UI.SheetTitle>
-            <UI.SheetDescription>
-              Closing with unsaved edits asks first. While saving, the sheet cannot close.
-            </UI.SheetDescription>
-          </UI.SheetHeader>
-          <UI.SheetBody>
-            <form id={formId} onSubmit={(event) => {
-            event.preventDefault();
-            setSaving(true);
-        }}>
-              <Field label="Endpoint URL">
-                <Input required mono disabled={saving} value={draft} onChange={(event) => setDraft(event.target.value)}/>
-              </Field>
-            </form>
-          </UI.SheetBody>
-          <UI.SheetFooter>
-            <Button type="submit" form={formId} loading={saving} disabled={draft === saved}>
-              Save Changes
-            </Button>
-            <UI.SheetClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </UI.SheetClose>
-          </UI.SheetFooter>
-        </UI.SheetContent>
-      </UI.Sheet>
-      <DiscardChangesAlertDialog {...discardDialogProps} description="Your unsaved changes to this webhook will be lost."/>
-    </div><figcaption className="text-muted-foreground text-xs">{`Saved URL: ${saved}`}</figcaption></figure>);
+  const [saved, setSaved] = useState("https://hooks.example.com/infisical");
+  const [draft, setDraft] = useState(saved);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const formId = useId();
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: draft !== saved,
+    onDiscard: () => {
+      setDraft(saved);
+      setOpen(false);
+    }
+  });
+  useEffect(() => {
+    if (!saving) return undefined;
+    const timer = window.setTimeout(() => {
+      setSaved(draft);
+      setSaving(false);
+      setOpen(false);
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [saving, draft]);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <UI.Sheet open={open} onOpenChange={(next) => (next ? setOpen(true) : requestDiscard())}>
+          <UI.SheetTrigger asChild>
+            <Button variant="outline">Edit webhook</Button>
+          </UI.SheetTrigger>
+          <UI.SheetContent pending={saving}>
+            <UI.SheetHeader>
+              <UI.SheetTitle>Edit webhook</UI.SheetTitle>
+              <UI.SheetDescription>
+                Closing with unsaved edits asks first. While saving, the sheet cannot close.
+              </UI.SheetDescription>
+            </UI.SheetHeader>
+            <UI.SheetBody>
+              <form
+                id={formId}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setSaving(true);
+                }}
+              >
+                <Field label="Endpoint URL">
+                  <Input
+                    required
+                    mono
+                    disabled={saving}
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                  />
+                </Field>
+              </form>
+            </UI.SheetBody>
+            <UI.SheetFooter>
+              <Button type="submit" form={formId} loading={saving} disabled={draft === saved}>
+                Save Changes
+              </Button>
+              <UI.SheetClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </UI.SheetClose>
+            </UI.SheetFooter>
+          </UI.SheetContent>
+        </UI.Sheet>
+        <DiscardChangesAlertDialog
+          {...discardDialogProps}
+          description="Your unsaved changes to this webhook will be lost."
+        />
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{`Saved URL: ${saved}`}</figcaption>
+    </figure>
+  );
 }
 ```
 

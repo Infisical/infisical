@@ -92,8 +92,10 @@ Registry items used: @infisical/button, @infisical/collapsible. Additional packa
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/collapsible";
+
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <UI.Collapsible>
         <UI.CollapsibleTrigger asChild>
           <Button variant="outline">View connection details</Button>
@@ -102,7 +104,8 @@ export default function Example() {
           <p className="mt-4">Last synchronized 12 versions.</p>
         </UI.CollapsibleContent>
       </UI.Collapsible>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -114,33 +117,49 @@ Registry items used: @infisical/button, @infisical/collapsible, @infisical/input
 
 ```tsx
 import { useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../../components/v4/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from "../../../../components/v4/ui/collapsible";
 import { Input } from "../../../../components/v4/ui/input";
+
 export default function Example() {
-    const [open, setOpen] = useState(true);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <Collapsible open={open} onOpenChange={setOpen}>
-          <CollapsibleTrigger asChild>
-            <Button variant="outline">Connection note</Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent forceMount hidden={!open}>
-            <div className="pt-3">
-              <Input aria-label="Connection note" defaultValue="Keep for 30 days"/>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </div><figcaption className="text-muted-foreground text-xs">{"Controlled, retained draft"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <Collapsible disabled>
-          <CollapsibleTrigger asChild>
-            <Button variant="outline">Managed by policy</Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>Managed by administrators.</CollapsibleContent>
-        </Collapsible>
-      </div><figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption></figure>
-    </div>);
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <Collapsible open={open} onOpenChange={setOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline">Connection note</Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent forceMount hidden={!open}>
+              <div className="pt-3">
+                <Input aria-label="Connection note" defaultValue="Keep for 30 days" />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Controlled, retained draft"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <Collapsible disabled>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline">Managed by policy</Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>Managed by administrators.</CollapsibleContent>
+          </Collapsible>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

@@ -118,41 +118,56 @@ Registry items used: @infisical/button, @infisical/sonner. Additional packages: 
 
 ```tsx
 import { useEffect, useId, useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import { type ToastItem, ToastStack } from "../../../../components/v4/ui/sonner";
+
 const tones = {
-    neutral: { id: "neutral", title: "Version available", tone: "neutral" },
-    ok: { id: "ok", title: "Changes saved", tone: "ok" },
-    bad: { id: "bad", title: "Connection failed", tone: "bad" },
-    loading: { id: "loading", title: "Checking provider", tone: "loading" }
+  neutral: { id: "neutral", title: "Version available", tone: "neutral" },
+  ok: { id: "ok", title: "Changes saved", tone: "ok" },
+  bad: { id: "bad", title: "Connection failed", tone: "bad" },
+  loading: { id: "loading", title: "Checking provider", tone: "loading" }
 } satisfies Record<string, ToastItem>;
+
 const resolved = { id: "loading", title: "Provider connected", tone: "ok" } satisfies ToastItem;
-const ToneDemo = ({ tone }: {
-    tone: keyof typeof tones;
-}) => {
-    const regionId = useId();
-    const [item, setItem] = useState<ToastItem | null>(null);
-    useEffect(() => {
-        if (item?.tone !== "loading")
-            return undefined;
-        const timer = window.setTimeout(() => setItem(resolved), 1800);
-        return () => window.clearTimeout(timer);
-    }, [item]);
-    return (<div className="flex w-full flex-col items-start gap-3">
-      <Button variant="outline" aria-controls={regionId} onClick={() => setItem({ ...tones[tone], duration: 0 })}>
+
+const ToneDemo = ({ tone }: { tone: keyof typeof tones }) => {
+  const regionId = useId();
+  const [item, setItem] = useState<ToastItem | null>(null);
+  useEffect(() => {
+    if (item?.tone !== "loading") return undefined;
+    const timer = window.setTimeout(() => setItem(resolved), 1800);
+    return () => window.clearTimeout(timer);
+  }, [item]);
+  return (
+    <div className="flex w-full flex-col items-start gap-3">
+      <Button
+        variant="outline"
+        aria-controls={regionId}
+        onClick={() => setItem({ ...tones[tone], duration: 0 })}
+      >
         Show {tone} notice
       </Button>
       <div id={regionId} className="min-h-14 w-full">
-        {item && <ToastStack inline items={[item]} onDismiss={() => setItem(null)}/>}
+        {item && <ToastStack inline items={[item]} onDismiss={() => setItem(null)} />}
       </div>
-    </div>);
+    </div>
+  );
 };
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
-      {(Object.keys(tones) as (keyof typeof tones)[]).map((tone) => (<figure key={tone} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <ToneDemo tone={tone}/>
-        </div><figcaption className="text-muted-foreground text-xs">{tone}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      {(Object.keys(tones) as (keyof typeof tones)[]).map((tone) => (
+        <figure key={tone} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <ToneDemo tone={tone} />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{tone}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -166,25 +181,43 @@ Registry items used: @infisical/button, @infisical/sonner. Additional packages: 
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/sonner";
 import { toast } from "../../../../components/v4/ui/sonner";
+
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <div className="flex flex-wrap items-center gap-3">
         <UI.Toaster />
-        <Button onClick={() => toast.success("Changes saved", {
-            description: "New versions are available to clients."
-        })}>
+        <Button
+          onClick={() =>
+            toast.success("Changes saved", {
+              description: "New versions are available to clients."
+            })
+          }
+        >
           Show success toast
         </Button>
-        <Button variant="outline" onClick={() => toast.error("Connection failed", { description: "Reconnect before retrying." })}>
+        <Button
+          variant="outline"
+          onClick={() =>
+            toast.error("Connection failed", { description: "Reconnect before retrying." })
+          }
+        >
           Show failure
         </Button>
-        <Button variant="outline" onClick={() => toast.warning("Sync paused", {
-            description: "Vercel rejected the last three pushes. Secrets stay on the previous version until you reconnect the integration and retry the sync."
-        })}>
+        <Button
+          variant="outline"
+          onClick={() =>
+            toast.warning("Sync paused", {
+              description:
+                "Vercel rejected the last three pushes. Secrets stay on the previous version until you reconnect the integration and retry the sync."
+            })
+          }
+        >
           Show warning
         </Button>
       </div>
-    </div>);
+    </div>
+  );
 }
 ```
 

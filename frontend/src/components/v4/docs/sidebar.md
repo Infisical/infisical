@@ -150,96 +150,116 @@ Registry items used: @infisical/sidebar. Additional packages: none. Install ever
 
 ```tsx
 import { useState } from "react";
+
 import { Sidebar, type SidebarProps } from "../../../../components/v4/ui/sidebar";
+
 const spaces: SidebarProps["spaces"] = [
-    {
-        id: "home",
-        label: "Home",
-        icon: "apps",
-        sections: [
-            {
-                items: [
-                    { id: "home", label: "Home", icon: "home" },
-                    { id: "inbox", label: "Needs you", icon: "inbox", count: 4 }
-                ]
-            },
-            {
-                label: "Products",
-                items: [
-                    {
-                        id: "secrets",
-                        label: "Secrets",
-                        icon: "key",
-                        children: [
-                            { id: "secrets-overview", label: "Overview" },
-                            { id: "secrets-integrations", label: "Integrations" },
-                            { id: "secrets-rotation", label: "Rotation" },
-                            { id: "secrets-approvals", label: "Approvals", count: 2 },
-                            { id: "secrets-scanning", label: "Secret scanning", count: 1 }
-                        ]
-                    },
-                    { id: "certificates", label: "Certificates", icon: "cert" },
-                    { id: "pam", label: "PAM", icon: "terminal" },
-                    { id: "kms", label: "KMS", icon: "lock" }
-                ]
-            }
+  {
+    id: "home",
+    label: "Home",
+    icon: "apps",
+    sections: [
+      {
+        items: [
+          { id: "home", label: "Home", icon: "home" },
+          { id: "inbox", label: "Needs you", icon: "inbox", count: 4 }
         ]
-    },
-    {
-        id: "org",
-        label: "Organization",
-        icon: "building",
-        sections: [
-            {
-                items: [
-                    { id: "integrations", label: "Integrations", icon: "link" },
-                    {
-                        id: "access",
-                        label: "Access",
-                        icon: "user",
-                        children: [
-                            { id: "access-members", label: "Members" },
-                            { id: "access-identities", label: "Machine identities" },
-                            { id: "access-roles", label: "Roles" }
-                        ]
-                    },
-                    { id: "audit", label: "Audit logs", icon: "history" },
-                    { id: "billing", label: "Billing", icon: "file" },
-                    { id: "settings", label: "Settings", icon: "settings" }
-                ]
-            }
+      },
+      {
+        label: "Products",
+        items: [
+          {
+            id: "secrets",
+            label: "Secrets",
+            icon: "key",
+            children: [
+              { id: "secrets-overview", label: "Overview" },
+              { id: "secrets-integrations", label: "Integrations" },
+              { id: "secrets-rotation", label: "Rotation" },
+              { id: "secrets-approvals", label: "Approvals", count: 2 },
+              { id: "secrets-scanning", label: "Secret scanning", count: 1 }
+            ]
+          },
+          { id: "certificates", label: "Certificates", icon: "cert" },
+          { id: "pam", label: "PAM", icon: "terminal" },
+          { id: "kms", label: "KMS", icon: "lock" }
         ]
-    }
+      }
+    ]
+  },
+  {
+    id: "org",
+    label: "Organization",
+    icon: "building",
+    sections: [
+      {
+        items: [
+          { id: "integrations", label: "Integrations", icon: "link" },
+          {
+            id: "access",
+            label: "Access",
+            icon: "user",
+            children: [
+              { id: "access-members", label: "Members" },
+              { id: "access-identities", label: "Machine identities" },
+              { id: "access-roles", label: "Roles" }
+            ]
+          },
+          { id: "audit", label: "Audit logs", icon: "history" },
+          { id: "billing", label: "Billing", icon: "file" },
+          { id: "settings", label: "Settings", icon: "settings" }
+        ]
+      }
+    ]
+  }
 ];
-const Shell = ({ start, defaultCollapsed }: {
-    start: string;
-    defaultCollapsed?: boolean;
-}) => {
-    const [current, setCurrent] = useState(start);
-    const [unseen, setUnseen] = useState(2);
-    return (<Sidebar spaces={spaces} current={current} onNavigate={(item) => setCurrent(item.id)} defaultCollapsed={defaultCollapsed} announcements={{ unread: unseen, onClick: () => setUnseen(0) }} help={{
-            status: { label: "All systems operational", href: "#sidebar" },
-            whatsNew: { unread: unseen, latest: "Oct 30", onSelect: () => setUnseen(0) },
-            items: [
-                { label: "Read Docs", href: "#sidebar", external: true },
-                { label: "Email Support", href: "mailto:support@infisical.com" }
-            ],
-            version: "56a8340"
-        }}/>);
+
+const Shell = ({ start, defaultCollapsed }: { start: string; defaultCollapsed?: boolean }) => {
+  const [current, setCurrent] = useState(start);
+  const [unseen, setUnseen] = useState(2);
+  return (
+    <Sidebar
+      spaces={spaces}
+      current={current}
+      onNavigate={(item) => setCurrent(item.id)}
+      defaultCollapsed={defaultCollapsed}
+      announcements={{ unread: unseen, onClick: () => setUnseen(0) }}
+      help={{
+        status: { label: "All systems operational", href: "#sidebar" },
+        whatsNew: { unread: unseen, latest: "Oct 30", onSelect: () => setUnseen(0) },
+        items: [
+          { label: "Read Docs", href: "#sidebar", external: true },
+          { label: "Email Support", href: "mailto:support@infisical.com" }
+        ],
+        version: "56a8340"
+      }}
+    />
+  );
 };
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <div className="relative min-w-0 w-full overflow-auto h-[600px] isolate [transform:translateZ(0)]">
-          <Shell start="secrets-overview"/>
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="relative isolate h-[600px] w-full min-w-0 [transform:translateZ(0)] overflow-auto">
+            <Shell start="secrets-overview" />
+          </div>
         </div>
-      </div><figcaption className="text-muted-foreground text-xs">{"Expanded, a child page current"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <div className="relative min-w-0 w-full overflow-auto h-[600px] isolate [transform:translateZ(0)]">
-          <Shell start="secrets-approvals" defaultCollapsed/>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Expanded, a child page current"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="relative isolate h-[600px] w-full min-w-0 [transform:translateZ(0)] overflow-auto">
+            <Shell start="secrets-approvals" defaultCollapsed />
+          </div>
         </div>
-      </div><figcaption className="text-muted-foreground text-xs">{"Rail, counts as dots"}</figcaption></figure>
-    </div>);
+        <figcaption className="text-muted-foreground text-xs">{"Rail, counts as dots"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -251,102 +271,123 @@ Registry items used: @infisical/sidebar. Additional packages: none. Install ever
 
 ```tsx
 import { useState } from "react";
+
 import { Sidebar, type SidebarProps } from "../../../../components/v4/ui/sidebar";
+
 const org: SidebarProps["sections"] = [
-    {
-        items: [
-            { id: "home", label: "Home", icon: "home" },
-            { id: "secret-management", label: "Secrets Management", icon: "key", drillIn: true },
-            { id: "integrations", label: "Integrations", icon: "apps" }
-        ]
-    },
-    {
-        label: "Administration",
-        items: [
-            { id: "access", label: "Access control", icon: "user" },
-            { id: "audit", label: "Audit logs", icon: "history" },
-            { id: "settings", label: "Settings", icon: "settings" }
-        ]
-    }
+  {
+    items: [
+      { id: "home", label: "Home", icon: "home" },
+      { id: "secret-management", label: "Secrets Management", icon: "key", drillIn: true },
+      { id: "integrations", label: "Integrations", icon: "apps" }
+    ]
+  },
+  {
+    label: "Administration",
+    items: [
+      { id: "access", label: "Access control", icon: "user" },
+      { id: "audit", label: "Audit logs", icon: "history" },
+      { id: "settings", label: "Settings", icon: "settings" }
+    ]
+  }
 ];
 const product: SidebarProps["sections"] = [
-    {
-        items: [
-            { id: "projects", label: "Projects", icon: "folder", count: 2, drillIn: true },
-            { id: "product-settings", label: "Product settings", icon: "settings" }
-        ]
-    }
+  {
+    items: [
+      { id: "projects", label: "Projects", icon: "folder", count: 2, drillIn: true },
+      { id: "product-settings", label: "Product settings", icon: "settings" }
+    ]
+  }
 ];
 const project: SidebarProps["sections"] = [
-    {
-        items: [
-            { id: "secrets", label: "Secrets", icon: "key" },
-            { id: "project-access", label: "Access control", icon: "user" },
-            { id: "approvals", label: "Approvals", icon: "inbox", count: 4 }
-        ]
-    },
-    {
-        label: "Administration",
-        items: [
-            { id: "project-audit", label: "Audit logs", icon: "history" },
-            { id: "project-settings", label: "Settings", icon: "settings" }
-        ]
-    }
+  {
+    items: [
+      { id: "secrets", label: "Secrets", icon: "key" },
+      { id: "project-access", label: "Access control", icon: "user" },
+      { id: "approvals", label: "Approvals", icon: "inbox", count: 4 }
+    ]
+  },
+  {
+    label: "Administration",
+    items: [
+      { id: "project-audit", label: "Audit logs", icon: "history" },
+      { id: "project-settings", label: "Settings", icon: "settings" }
+    ]
+  }
 ];
+
 type Level = "org" | "product" | "project";
-const opens: Record<string, {
-    level: Level;
-    page: string;
-}> = {
-    "secret-management": { level: "product", page: "projects" },
-    projects: { level: "project", page: "secrets" }
+const opens: Record<string, { level: Level; page: string }> = {
+  "secret-management": { level: "product", page: "projects" },
+  projects: { level: "project", page: "secrets" }
 };
-const up: Record<Level, {
-    level: Level;
-    page: string;
-}> = {
-    org: { level: "org", page: "home" },
-    product: { level: "org", page: "secret-management" },
-    project: { level: "product", page: "projects" }
+const up: Record<Level, { level: Level; page: string }> = {
+  org: { level: "org", page: "home" },
+  product: { level: "org", page: "secret-management" },
+  project: { level: "product", page: "projects" }
 };
-const Scoped = ({ start, collapsed }: {
-    start: Level;
-    collapsed?: boolean;
-}) => {
-    const [at, setAt] = useState<{
-        level: Level;
-        page: string;
-    }>(start === "org" ? up.org : { level: start, page: start === "product" ? "projects" : "secrets" });
-    const scope = at.level === "org"
-        ? undefined
-        : {
-            id: at.level,
-            back: {
-                id: "back",
-                label: at.level === "project" ? "Secrets Management" : "Acme Corp"
-            },
-            sections: at.level === "project" ? project : product
+
+const Scoped = ({ start, collapsed }: { start: Level; collapsed?: boolean }) => {
+  const [at, setAt] = useState<{ level: Level; page: string }>(
+    start === "org" ? up.org : { level: start, page: start === "product" ? "projects" : "secrets" }
+  );
+  const scope =
+    at.level === "org"
+      ? undefined
+      : {
+          id: at.level,
+          back: {
+            id: "back",
+            label: at.level === "project" ? "Secrets Management" : "Acme Corp"
+          },
+          sections: at.level === "project" ? project : product
         };
-    return (<Sidebar sections={org} scope={scope} current={at.page} defaultCollapsed={collapsed} onNavigate={(item) => setAt(item.id === "back" ? up[at.level] : (opens[item.id] ?? { ...at, page: item.id }))}/>);
+  return (
+    <Sidebar
+      sections={org}
+      scope={scope}
+      current={at.page}
+      defaultCollapsed={collapsed}
+      onNavigate={(item) =>
+        setAt(item.id === "back" ? up[at.level] : (opens[item.id] ?? { ...at, page: item.id }))
+      }
+    />
+  );
 };
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <div className="relative min-w-0 w-full overflow-auto h-[600px] isolate [transform:translateZ(0)]">
-          <Scoped start="org"/>
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="relative isolate h-[600px] w-full min-w-0 [transform:translateZ(0)] overflow-auto">
+            <Scoped start="org" />
+          </div>
         </div>
-      </div><figcaption className="text-muted-foreground text-xs">{"Top level"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <div className="relative min-w-0 w-full overflow-auto h-[600px] isolate [transform:translateZ(0)]">
-          <Scoped start="project"/>
+        <figcaption className="text-muted-foreground text-xs">{"Top level"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="relative isolate h-[600px] w-full min-w-0 [transform:translateZ(0)] overflow-auto">
+            <Scoped start="project" />
+          </div>
         </div>
-      </div><figcaption className="text-muted-foreground text-xs">{"Project scope with a back row"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <div className="relative min-w-0 w-full overflow-auto h-[600px] isolate [transform:translateZ(0)]">
-          <Scoped start="project" collapsed/>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Project scope with a back row"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="relative isolate h-[600px] w-full min-w-0 [transform:translateZ(0)] overflow-auto">
+            <Scoped start="project" collapsed />
+          </div>
         </div>
-      </div><figcaption className="text-muted-foreground text-xs">{"Project scope in the rail"}</figcaption></figure>
-    </div>);
+        <figcaption className="text-muted-foreground text-xs">
+          {"Project scope in the rail"}
+        </figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

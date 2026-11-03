@@ -113,10 +113,16 @@ Registry items used: @infisical/snippet. Additional packages: none. Install ever
 
 ```tsx
 import { Snippet } from "../../../../components/v4/ui/snippet";
+
 export default function Example() {
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <Snippet label="Run with project secrets" value="infisical run -- npm start" prompt="$"/>
-    </div><figcaption className="text-muted-foreground text-xs">{"Command"}</figcaption></figure>);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <Snippet label="Run with project secrets" value="infisical run -- npm start" prompt="$" />
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"Command"}</figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -129,18 +135,40 @@ Registry items used: @infisical/field, @infisical/snippet. Additional packages: 
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
 import { Snippet } from "../../../../components/v4/ui/snippet";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      {(["sm", "md"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <Snippet label={`${size} command`} size={size} value="infisical run -- npm start" prompt="$"/>
-        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Snippet label="Managed environment" value="INFISICAL_ENV=staging" copyable={false}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"No prompt, copy disabled"}</figcaption></figure>
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      {(["sm", "md"] as const).map((size) => (
+        <figure key={size} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <Snippet
+              label={`${size} command`}
+              size={size}
+              value="infisical run -- npm start"
+              prompt="$"
+            />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+        </figure>
+      ))}
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Snippet label="Managed environment" value="INFISICAL_ENV=staging" copyable={false} />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"No prompt, copy disabled"}
+        </figcaption>
+      </figure>
       <Field label="Unavailable command" error="Choose a project before using this command.">
-        <Snippet label="Unavailable command" value="infisical run --projectId=project_staging -- npm start" copyable={false}/>
+        <Snippet
+          label="Unavailable command"
+          value="infisical run --projectId=project_staging -- npm start"
+          copyable={false}
+        />
       </Field>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -152,15 +180,26 @@ Registry items used: @infisical/snippet. Additional packages: none. Install ever
 
 ```tsx
 import { useState } from "react";
+
 import { Snippet } from "../../../../components/v4/ui/snippet";
+
 export default function Example() {
-    const [copied, setCopied] = useState("");
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <Snippet label="Project scoped command" value='infisical run --projectId=project_staging --env=staging -- npm run start -- --name="  exact  "' onCopy={setCopied}/>
-      <p role="status" className="sr-only">
-        {copied ? "Command copied" : ""}
-      </p>
-    </div><figcaption className="text-muted-foreground text-xs">{"Exact command copy"}</figcaption></figure>);
+  const [copied, setCopied] = useState("");
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <Snippet
+          label="Project scoped command"
+          value='infisical run --projectId=project_staging --env=staging -- npm run start -- --name="  exact  "'
+          onCopy={setCopied}
+        />
+        <p role="status" className="sr-only">
+          {copied ? "Command copied" : ""}
+        </p>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{"Exact command copy"}</figcaption>
+    </figure>
+  );
 }
 ```
 

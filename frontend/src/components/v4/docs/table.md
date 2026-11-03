@@ -251,55 +251,76 @@ Registry items used: @infisical/button, @infisical/data-table. Additional packag
 
 ```tsx
 import * as React from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import { DataTable, type DataTableColumn, EnvMark } from "../../../../components/v4/ui/data-table";
-type Row = {
-    id: string;
-    name: string;
-    count: number;
-    present: boolean;
-};
+
+type Row = { id: string; name: string; count: number; present: boolean };
 const rows: Row[] = [
-    { id: "production", name: "Production", count: 128, present: true },
-    { id: "staging", name: "Staging", count: 0, present: false }
+  { id: "production", name: "Production", count: 128, present: true },
+  { id: "staging", name: "Staging", count: 0, present: false }
 ];
 export default function Variants() {
-    const [opened, setOpened] = React.useState("");
-    const columns: DataTableColumn<Row>[] = [
-        {
-            id: "name",
-            header: "Environment",
-            primary: true,
-            grow: true,
-            align: "start",
-            render: (row) => row.name
-        },
-        { id: "count", header: "Secrets", align: "end", render: (row) => row.count },
-        {
-            id: "present",
-            header: "Present",
-            align: "center",
-            render: (row) => <EnvMark present={row.present} env={row.name}/>
-        },
-        {
-            id: "actions",
-            header: "Actions",
-            actions: true,
-            pin: true,
-            hideHeader: true,
-            render: (row) => (<Button variant="ghost" aria-label={`Open ${row.name}`} onClick={() => setOpened(`${row.name} contains ${row.count} fabricated secrets.`)}>
+  const [opened, setOpened] = React.useState("");
+  const columns: DataTableColumn<Row>[] = [
+    {
+      id: "name",
+      header: "Environment",
+      primary: true,
+      grow: true,
+      align: "start",
+      render: (row) => row.name
+    },
+    { id: "count", header: "Secrets", align: "end", render: (row) => row.count },
+    {
+      id: "present",
+      header: "Present",
+      align: "center",
+      render: (row) => <EnvMark present={row.present} env={row.name} />
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      actions: true,
+      pin: true,
+      hideHeader: true,
+      render: (row) => (
+        <Button
+          variant="ghost"
+          aria-label={`Open ${row.name}`}
+          onClick={() => setOpened(`${row.name} contains ${row.count} fabricated secrets.`)}
+        >
           Open
-        </Button>)
-        }
-    ];
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      {(["basic", "striped", "bordered"] as const).map((variant) => (<figure key={variant} aria-label={`${variant} variant`} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <DataTable label={`${variant} environments`} rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} variant={variant}/>
-        </div><figcaption className="text-muted-foreground text-xs">{variant}</figcaption></figure>))}
+        </Button>
+      )
+    }
+  ];
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      {(["basic", "striped", "bordered"] as const).map((variant) => (
+        <figure
+          key={variant}
+          aria-label={`${variant} variant`}
+          className="m-0 flex w-full min-w-0 flex-col gap-3"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <DataTable
+              label={`${variant} environments`}
+              rows={rows}
+              columns={columns}
+              getRowId={(row) => row.id}
+              rowLabel={(row) => row.name}
+              variant={variant}
+            />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{variant}</figcaption>
+        </figure>
+      ))}
       <p role="status" className="sr-only">
         {opened}
       </p>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -311,42 +332,93 @@ Registry items used: @infisical/badge, @infisical/data-table, @infisical/empty. 
 
 ```tsx
 import * as React from "react";
+
 import { Badge } from "../../../../components/v4/ui/badge";
 import { DataTable } from "../../../../components/v4/ui/data-table";
 import { EmptyState } from "../../../../components/v4/ui/empty";
+
 const initial = [
-    { id: "owner", name: "Production owner", locked: true, deactivated: false },
-    { id: "worker", name: "Rotation worker", locked: false, deactivated: false },
-    { id: "expired", name: "Expired integration", locked: false, deactivated: true }
+  { id: "owner", name: "Production owner", locked: true, deactivated: false },
+  { id: "worker", name: "Rotation worker", locked: false, deactivated: false },
+  { id: "expired", name: "Expired integration", locked: false, deactivated: true }
 ];
 const columns = [
-    {
-        id: "name",
-        header: "Identity",
-        render: (row: (typeof initial)[number]) => (<span className="inline-flex items-center gap-2">
+  {
+    id: "name",
+    header: "Identity",
+    render: (row: (typeof initial)[number]) => (
+      <span className="inline-flex items-center gap-2">
         {row.name}
         {row.deactivated && <Badge size="sm">Deactivated</Badge>}
-      </span>)
-    },
-    {
-        id: "access",
-        header: "Access",
-        render: (row: (typeof initial)[number]) => (row.locked ? "Owner, protected" : "Revocable")
-    }
+      </span>
+    )
+  },
+  {
+    id: "access",
+    header: "Access",
+    render: (row: (typeof initial)[number]) => (row.locked ? "Owner, protected" : "Revocable")
+  }
 ];
 export default function States() {
-    const [selected, setSelected] = React.useState<string[]>(["worker"]);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <DataTable label="Empty identities" rows={[]} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} empty={<EmptyState size="sm" media="bare" icon="user" title="No identities in this environment"/>}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <DataTable label="Protected identities" rows={initial} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} selectable selectionDisabledReason={(row) => row.locked ? "Owner identities are protected from bulk removal." : undefined} selectedIds={selected} onSelectionChange={setSelected} footer={`${selected.length} eligible loaded identities selected`}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Protected selection"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <DataTable label="Loading identities" rows={initial} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} loadMore={{ label: "Load more identities", loading: true, onClick: () => undefined }}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Loading more, retained rows"}</figcaption></figure>
-    </div>);
+  const [selected, setSelected] = React.useState<string[]>(["worker"]);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataTable
+            label="Empty identities"
+            rows={[]}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+            empty={
+              <EmptyState
+                size="sm"
+                media="bare"
+                icon="user"
+                title="No identities in this environment"
+              />
+            }
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataTable
+            label="Protected identities"
+            rows={initial}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+            selectable
+            selectionDisabledReason={(row) =>
+              row.locked ? "Owner identities are protected from bulk removal." : undefined
+            }
+            selectedIds={selected}
+            onSelectionChange={setSelected}
+            footer={`${selected.length} eligible loaded identities selected`}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Protected selection"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataTable
+            label="Loading identities"
+            rows={initial}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+            loadMore={{ label: "Load more identities", loading: true, onClick: () => undefined }}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Loading more, retained rows"}
+        </figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -413,54 +485,70 @@ Registry items used: @infisical/data-table. Additional packages: none. Install e
 
 ```tsx
 import * as React from "react";
+
 import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
-type Row = {
-    id: string;
-    key: string;
-    updated: string;
-};
+
+type Row = { id: string; key: string; updated: string };
 const all: Row[] = [
-    { id: "stripe", key: "STRIPE_API_KEY", updated: "2 days ago" },
-    { id: "database", key: "DATABASE_URL", updated: "5 hours ago" },
-    { id: "sendgrid", key: "SENDGRID_TOKEN", updated: "3 weeks ago" }
+  { id: "stripe", key: "STRIPE_API_KEY", updated: "2 days ago" },
+  { id: "database", key: "DATABASE_URL", updated: "5 hours ago" },
+  { id: "sendgrid", key: "SENDGRID_TOKEN", updated: "3 weeks ago" }
 ];
-type Sort = {
-    columnId: string;
-    direction: "asc" | "desc";
-};
+type Sort = { columnId: string; direction: "asc" | "desc" };
 const columns: DataTableColumn<Row>[] = [
-    {
-        id: "key",
-        header: "Key",
-        primary: true,
-        sortable: true,
-        text: (row) => row.key,
-        render: (row) => row.key
-    },
-    { id: "updated", header: "Updated", render: (row) => row.updated }
+  {
+    id: "key",
+    header: "Key",
+    primary: true,
+    sortable: true,
+    text: (row) => row.key,
+    render: (row) => row.key
+  },
+  { id: "updated", header: "Updated", render: (row) => row.updated }
 ];
-function SortedTable({ label, initial }: {
-    label: string;
-    initial?: Sort;
-}) {
-    const [sort, setSort] = React.useState<Sort | undefined>(initial);
-    const rows = sort
-        ? [...all].sort((a, b) => a.key.localeCompare(b.key) * (sort.direction === "asc" ? 1 : -1))
-        : all;
-    return (<DataTable label={label} rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.key} sort={sort} onSortChange={setSort}/>);
+function SortedTable({ label, initial }: { label: string; initial?: Sort }) {
+  const [sort, setSort] = React.useState<Sort | undefined>(initial);
+  const rows = sort
+    ? [...all].sort((a, b) => a.key.localeCompare(b.key) * (sort.direction === "asc" ? 1 : -1))
+    : all;
+  return (
+    <DataTable
+      label={label}
+      rows={rows}
+      columns={columns}
+      getRowId={(row) => row.id}
+      rowLabel={(row) => row.key}
+      sort={sort}
+      onSortChange={setSort}
+    />
+  );
 }
 export default function Sorting() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <SortedTable label="Unsorted secrets"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Unsorted"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <SortedTable label="Ascending secrets" initial={{ columnId: "key", direction: "asc" }}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Ascending"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <SortedTable label="Descending secrets" initial={{ columnId: "key", direction: "desc" }}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Descending"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <SortedTable label="Unsorted secrets" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Unsorted"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <SortedTable label="Ascending secrets" initial={{ columnId: "key", direction: "asc" }} />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Ascending"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <SortedTable
+            label="Descending secrets"
+            initial={{ columnId: "key", direction: "desc" }}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Descending"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -472,47 +560,69 @@ Registry items used: @infisical/data-table. Additional packages: none. Install e
 
 ```tsx
 import { useMemo, useState } from "react";
+
 import { DataTable, type DataTableColumn, EnvMark } from "../../../../components/v4/ui/data-table";
-type Row = {
-    id: string;
-    name: string;
-    present: boolean;
-};
+
+type Row = { id: string; name: string; present: boolean };
 const all: Row[] = Array.from({ length: 24 }, (_, index) => ({
-    id: `resource-${index}`,
-    name: `example_resource_${index}`,
-    present: index % 3 !== 0
+  id: `resource-${index}`,
+  name: `example_resource_${index}`,
+  present: index % 3 !== 0
 }));
 export default function Example() {
-    const [selected, setSelected] = useState<string[]>([]);
-    const [sort, setSort] = useState<{
-        columnId: string;
-        direction: "asc" | "desc";
-    }>();
-    const rows = useMemo(() => sort
-        ? [...all].sort((a, b) => a.name.localeCompare(b.name) * (sort.direction === "asc" ? 1 : -1))
-        : all, [sort]);
-    const columns: DataTableColumn<Row>[] = [
-        {
-            id: "name",
-            header: "Name",
-            primary: true,
-            sortable: true,
-            maxWidth: 240,
-            text: (row) => row.name,
-            render: (row) => row.name
-        },
-        {
-            id: "environment",
-            header: "Production",
-            render: (row) => <EnvMark present={row.present} env="Production"/>
-        }
-    ];
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <div className="relative min-w-0 w-full overflow-auto max-h-[400px]">
-        <DataTable label="Example resource table" rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} selectable selectedIds={selected} onSelectionChange={setSelected} sort={sort} height={320} virtual onSortChange={setSort} footer={`${rows.length} resources. ${selected.length} selected.`}/>
+  const [selected, setSelected] = useState<string[]>([]);
+  const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>();
+  const rows = useMemo(
+    () =>
+      sort
+        ? [...all].sort(
+            (a, b) => a.name.localeCompare(b.name) * (sort.direction === "asc" ? 1 : -1)
+          )
+        : all,
+    [sort]
+  );
+  const columns: DataTableColumn<Row>[] = [
+    {
+      id: "name",
+      header: "Name",
+      primary: true,
+      sortable: true,
+      maxWidth: 240,
+      text: (row) => row.name,
+      render: (row) => row.name
+    },
+    {
+      id: "environment",
+      header: "Production",
+      render: (row) => <EnvMark present={row.present} env="Production" />
+    }
+  ];
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <div className="relative max-h-[400px] w-full min-w-0 overflow-auto">
+          <DataTable
+            label="Example resource table"
+            rows={rows}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+            selectable
+            selectedIds={selected}
+            onSelectionChange={setSelected}
+            sort={sort}
+            height={320}
+            virtual
+            onSortChange={setSort}
+            footer={`${rows.length} resources. ${selected.length} selected.`}
+          />
+        </div>
       </div>
-    </div><figcaption className="text-muted-foreground text-xs">{"Selection, sorting and virtual scrolling"}</figcaption></figure>);
+      <figcaption className="text-muted-foreground text-xs">
+        {"Selection, sorting and virtual scrolling"}
+      </figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -524,45 +634,65 @@ Registry items used: @infisical/data-table. Additional packages: none. Install e
 
 ```tsx
 import { useEffect, useState } from "react";
+
 import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
-type Row = {
-    id: string;
-    name: string;
-    time: string;
-};
+
+type Row = { id: string; name: string; time: string };
 const total = 200;
 const page = 40;
-const makeRows = (from: number, count: number): Row[] => Array.from({ length: Math.min(count, total - from) }, (_, offset) => {
+const makeRows = (from: number, count: number): Row[] =>
+  Array.from({ length: Math.min(count, total - from) }, (_, offset) => {
     const minutes = 23 * 60 + 59 - (from + offset) * 7;
     return {
-        id: `event-${from + offset}`,
-        name: `example_event_${from + offset}`,
-        time: `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
+      id: `event-${from + offset}`,
+      name: `example_event_${from + offset}`,
+      time: `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
     };
-});
+  });
 const columns: DataTableColumn<Row>[] = [
-    { id: "time", header: "Time", width: 120, render: (row) => row.time },
-    { id: "name", header: "Event", primary: true, grow: true, render: (row) => row.name }
+  { id: "time", header: "Time", width: 120, render: (row) => row.time },
+  { id: "name", header: "Event", primary: true, grow: true, render: (row) => row.name }
 ];
+
 export default function Example() {
-    const [rows, setRows] = useState(() => makeRows(0, page));
-    const [loading, setLoading] = useState(false);
-    useEffect(() => {
-        if (!loading)
-            return undefined;
-        const timer = window.setTimeout(() => {
-            setRows((current) => [...current, ...makeRows(current.length, page)]);
-            setLoading(false);
-        }, 600);
-        return () => window.clearTimeout(timer);
-    }, [loading]);
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <div className="relative min-w-0 w-full overflow-auto max-h-[400px]">
-        <DataTable label="Example event log" rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} height={320} rowHeight={48} virtual loadMore={rows.length < total
-            ? { label: `Load ${page} more`, loading, onClick: () => setLoading(true) }
-            : undefined} end="End of events" footer={`Showing ${rows.length} of ${total} events`}/>
+  const [rows, setRows] = useState(() => makeRows(0, page));
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!loading) return undefined;
+    const timer = window.setTimeout(() => {
+      setRows((current) => [...current, ...makeRows(current.length, page)]);
+      setLoading(false);
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <div className="relative max-h-[400px] w-full min-w-0 overflow-auto">
+          <DataTable
+            label="Example event log"
+            rows={rows}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+            height={320}
+            rowHeight={48}
+            virtual
+            loadMore={
+              rows.length < total
+                ? { label: `Load ${page} more`, loading, onClick: () => setLoading(true) }
+                : undefined
+            }
+            end="End of events"
+            footer={`Showing ${rows.length} of ${total} events`}
+          />
+        </div>
       </div>
-    </div><figcaption className="text-muted-foreground text-xs">{"Load more after the last row, focus lands on the first new row"}</figcaption></figure>);
+      <figcaption className="text-muted-foreground text-xs">
+        {"Load more after the last row, focus lands on the first new row"}
+      </figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -574,37 +704,58 @@ Registry items used: @infisical/button, @infisical/data-table. Additional packag
 
 ```tsx
 import { useEffect, useRef, useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
-type Row = {
-    id: string;
-    name: string;
-};
+
+type Row = { id: string; name: string };
 const rows: Row[] = Array.from({ length: 30 }, (_, index) => ({
-    id: `client-${index + 1}`,
-    name: `example-machine-identity-${index + 1}`
+  id: `client-${index + 1}`,
+  name: `example-machine-identity-${index + 1}`
 }));
 const columns: DataTableColumn<Row>[] = [
-    { id: "name", header: "Identity", primary: true, grow: true, render: (row) => row.name }
+  { id: "name", header: "Identity", primary: true, grow: true, render: (row) => row.name }
 ];
+
 export default function Example() {
-    const container = useRef<HTMLDivElement>(null);
-    const [scrolled, setScrolled] = useState(false);
-    useEffect(() => {
-        const node = container.current;
-        if (!node)
-            return undefined;
-        const update = () => setScrolled(node.scrollTop > 0);
-        node.addEventListener("scroll", update);
-        return () => node.removeEventListener("scroll", update);
-    }, []);
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <div className="relative min-w-0 w-full overflow-auto max-h-[400px]">
-        <DataTable label="Example identities" rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} height={240} containerRef={container} end={<Button variant="outline" disabled={!scrolled} onClick={() => container.current?.scrollTo({ top: 0 })}>
-              Back to Top
-            </Button>}/>
+  const container = useRef<HTMLDivElement>(null);
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const node = container.current;
+    if (!node) return undefined;
+    const update = () => setScrolled(node.scrollTop > 0);
+    node.addEventListener("scroll", update);
+    return () => node.removeEventListener("scroll", update);
+  }, []);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <div className="relative max-h-[400px] w-full min-w-0 overflow-auto">
+          <DataTable
+            label="Example identities"
+            rows={rows}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+            height={240}
+            containerRef={container}
+            end={
+              <Button
+                variant="outline"
+                disabled={!scrolled}
+                onClick={() => container.current?.scrollTo({ top: 0 })}
+              >
+                Back to Top
+              </Button>
+            }
+          />
+        </div>
       </div>
-    </div><figcaption className="text-muted-foreground text-xs">{"containerRef reads and drives the scroll container"}</figcaption></figure>);
+      <figcaption className="text-muted-foreground text-xs">
+        {"containerRef reads and drives the scroll container"}
+      </figcaption>
+    </figure>
+  );
 }
 ```
 
@@ -617,95 +768,114 @@ Registry items used: @infisical/data-table, @infisical/dropdown-menu, @infisical
 ```tsx
 import * as React from "react";
 import { CodeXmlIcon, EditIcon, TagsIcon } from "lucide-react";
-import { DataTable, type DataTableColumn, type DataTableRowActions } from "../../../../components/v4/ui/data-table";
+
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "../../../../components/v4/ui/data-table";
 import { DropdownMenuItem } from "../../../../components/v4/ui/dropdown-menu";
 import { Icon } from "../../../../components/v4/ui/icon";
 import { Inline } from "../../../../components/v4/ui/layout";
 import { TableRowIndicators } from "../../../../components/v4/ui/table";
-type Row = {
-    id: string;
-    name: string;
-    annotated: boolean;
-    rotated: boolean;
-};
+
+type Row = { id: string; name: string; annotated: boolean; rotated: boolean };
 const rows: Row[] = [
-    { id: "database-url", name: "DATABASE_URL", annotated: true, rotated: false },
-    { id: "log-level", name: "LOG_LEVEL", annotated: false, rotated: false },
-    { id: "jwt-signing-key", name: "JWT_SIGNING_KEY", annotated: false, rotated: true }
+  { id: "database-url", name: "DATABASE_URL", annotated: true, rotated: false },
+  { id: "log-level", name: "LOG_LEVEL", annotated: false, rotated: false },
+  { id: "jwt-signing-key", name: "JWT_SIGNING_KEY", annotated: false, rotated: true }
 ];
+
 export default function RowActions() {
-    const [status, setStatus] = React.useState("");
-    const columns: DataTableColumn<Row>[] = [
-        { id: "name", header: "Name", primary: true, grow: true, render: (row) => row.name },
-        {
-            id: "value",
-            header: "Value",
-            grow: true,
-            render: (row) => (<Inline gap={8} wrap={false}>
+  const [status, setStatus] = React.useState("");
+  const columns: DataTableColumn<Row>[] = [
+    { id: "name", header: "Name", primary: true, grow: true, render: (row) => row.name },
+    {
+      id: "value",
+      header: "Value",
+      grow: true,
+      render: (row) => (
+        <Inline gap={8} wrap={false}>
           <code>••••••••••••</code>
-          {row.annotated && (<TableRowIndicators>
+          {row.annotated && (
+            <TableRowIndicators>
               <span>
-                <Icon icon={TagsIcon} label="Has tags"/>
+                <Icon icon={TagsIcon} label="Has tags" />
               </span>
               <span>
-                <Icon icon={CodeXmlIcon} label="Has metadata"/>
+                <Icon icon={CodeXmlIcon} label="Has metadata" />
               </span>
-            </TableRowIndicators>)}
-        </Inline>)
-        }
-    ];
-    const menu = (row: Row) => (<>
+            </TableRowIndicators>
+          )}
+        </Inline>
+      )
+    }
+  ];
+  const menu = (row: Row) => (
+    <>
       <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
-        <Icon name="eye"/>
+        <Icon name="eye" />
         Open secret
       </DropdownMenuItem>
       <DropdownMenuItem variant="destructive" onSelect={() => setStatus(`Deleted ${row.name}.`)}>
-        <Icon name="trash"/>
+        <Icon name="trash" />
         Delete secret
       </DropdownMenuItem>
-    </>);
-    const copy = {
-        label: "Copy secret",
-        icon: "copy",
-        disabledReason: (row: Row) => (row.rotated ? "Cannot copy rotated secret" : undefined),
-        onSelect: (row: Row) => setStatus(`Copied the fabricated value of ${row.name}.`)
-    } as const;
-    const reminder = {
-        label: (row: Row) => (row.annotated ? "View reminder" : "Add reminder"),
-        icon: "bell",
-        onSelect: (row: Row) => setStatus(`Opened the reminder for ${row.name}.`)
-    } as const;
-    const edit = {
-        label: "Edit value",
-        icon: EditIcon,
-        disabledReason: (row: Row) => (row.rotated ? "Rotated secrets can't be edited" : undefined),
-        onSelect: (row: Row) => setStatus(`Editing ${row.name}.`)
-    } as const;
-    const sets: {
-        label: string;
-        actions: DataTableRowActions<Row>;
-    }[] = [
-        { label: "More only, one square cell", actions: { renderMenu: menu } },
-        { label: "One inline action and More", actions: { inline: [copy], renderMenu: menu } },
-        {
-            label: "Two inline actions and More",
-            actions: { inline: [reminder, copy], renderMenu: menu }
-        },
-        {
-            label: "Three inline actions, the cap, and More",
-            actions: { inline: [reminder, edit, copy], renderMenu: menu }
-        }
-    ];
-    return (<>
-      <div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-        {sets.map((set) => (<figure key={set.label} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-            <DataTable label={`Example secrets, ${set.label.toLowerCase()}`} rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} rowActions={set.actions}/>
-          </div><figcaption className="text-muted-foreground text-xs">{set.label}</figcaption></figure>))}
+    </>
+  );
+  const copy = {
+    label: "Copy secret",
+    icon: "copy",
+    disabledReason: (row: Row) => (row.rotated ? "Cannot copy rotated secret" : undefined),
+    onSelect: (row: Row) => setStatus(`Copied the fabricated value of ${row.name}.`)
+  } as const;
+  const reminder = {
+    label: (row: Row) => (row.annotated ? "View reminder" : "Add reminder"),
+    icon: "bell",
+    onSelect: (row: Row) => setStatus(`Opened the reminder for ${row.name}.`)
+  } as const;
+  const edit = {
+    label: "Edit value",
+    icon: EditIcon,
+    disabledReason: (row: Row) => (row.rotated ? "Rotated secrets can't be edited" : undefined),
+    onSelect: (row: Row) => setStatus(`Editing ${row.name}.`)
+  } as const;
+  const sets: { label: string; actions: DataTableRowActions<Row> }[] = [
+    { label: "More only, one square cell", actions: { renderMenu: menu } },
+    { label: "One inline action and More", actions: { inline: [copy], renderMenu: menu } },
+    {
+      label: "Two inline actions and More",
+      actions: { inline: [reminder, copy], renderMenu: menu }
+    },
+    {
+      label: "Three inline actions, the cap, and More",
+      actions: { inline: [reminder, edit, copy], renderMenu: menu }
+    }
+  ];
+  return (
+    <>
+      <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+        {sets.map((set) => (
+          <figure key={set.label} className="m-0 flex w-full min-w-0 flex-col gap-3">
+            <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+              <DataTable
+                label={`Example secrets, ${set.label.toLowerCase()}`}
+                rows={rows}
+                columns={columns}
+                getRowId={(row) => row.id}
+                rowLabel={(row) => row.name}
+                rowActions={set.actions}
+              />
+            </div>
+            <figcaption className="text-muted-foreground text-xs">{set.label}</figcaption>
+          </figure>
+        ))}
       </div>
       <p role="status" className="sr-only">
         {status}
       </p>
-    </>);
+    </>
+  );
 }
 ```
 
@@ -717,44 +887,50 @@ Registry items used: @infisical/button, @infisical/data-table, @infisical/dropdo
 
 ```tsx
 import * as React from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../../components/v4/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "../../../../components/v4/ui/dropdown-menu";
 import { Meta } from "../../../../components/v4/ui/text";
-type Cert = {
-    id: string;
-    cn: string;
-    serial: string;
-    expires: string;
-};
+
+type Cert = { id: string; cn: string; serial: string; expires: string };
 const certs: Cert[] = [
-    { id: "api", cn: "api.example.com", serial: "4f:1c:9a:02", expires: "2026-12-04" },
-    { id: "auth", cn: "auth.example.com", serial: "7b:20:e1:5d", expires: "2027-02-18" },
-    { id: "billing", cn: "billing.example.com", serial: "0e:93:44:c8", expires: "2027-05-30" }
+  { id: "api", cn: "api.example.com", serial: "4f:1c:9a:02", expires: "2026-12-04" },
+  { id: "auth", cn: "auth.example.com", serial: "7b:20:e1:5d", expires: "2027-02-18" },
+  { id: "billing", cn: "billing.example.com", serial: "0e:93:44:c8", expires: "2027-05-30" }
 ];
+
 export default function RowActivation() {
-    const [status, setStatus] = React.useState("Nothing opened yet.");
-    const [selected, setSelected] = React.useState<string[]>([]);
-    const open = (cert: Cert) => setStatus(`Opened ${cert.cn}.`);
-    const columns: DataTableColumn<Cert>[] = [
-        {
-            id: "cn",
-            header: "Common name",
-            primary: true,
-            grow: true,
-            text: (row) => row.cn,
-            render: (row) => (<Button variant="link" onClick={() => open(row)}>
+  const [status, setStatus] = React.useState("Nothing opened yet.");
+  const [selected, setSelected] = React.useState<string[]>([]);
+  const open = (cert: Cert) => setStatus(`Opened ${cert.cn}.`);
+  const columns: DataTableColumn<Cert>[] = [
+    {
+      id: "cn",
+      header: "Common name",
+      primary: true,
+      grow: true,
+      text: (row) => row.cn,
+      render: (row) => (
+        <Button variant="link" onClick={() => open(row)}>
           {row.cn}
-        </Button>)
-        },
-        { id: "serial", header: "Serial", width: 136, render: (row) => row.serial },
-        { id: "expires", header: "Expires", width: 120, render: (row) => row.expires },
-        {
-            id: "actions",
-            header: "Actions",
-            actions: true,
-            width: 52,
-            render: (row) => (<DropdownMenu>
+        </Button>
+      )
+    },
+    { id: "serial", header: "Serial", width: 136, render: (row) => row.serial },
+    { id: "expires", header: "Expires", width: 120, render: (row) => row.expires },
+    {
+      id: "actions",
+      header: "Actions",
+      actions: true,
+      width: 52,
+      render: (row) => (
+        <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon-row" icon="more" iconOnly>
               {`Actions for ${row.cn}`}
@@ -765,14 +941,33 @@ export default function RowActivation() {
               Renew
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>)
-        }
-    ];
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <DataTable label="Certificates" rows={certs} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.cn} selectable selectedIds={selected} onSelectionChange={setSelected} onRowActivate={open} footer={<Meta mono={false}>{status}</Meta>}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Whole row opens the certificate"}</figcaption></figure>
-    </div>);
+        </DropdownMenu>
+      )
+    }
+  ];
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataTable
+            label="Certificates"
+            rows={certs}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.cn}
+            selectable
+            selectedIds={selected}
+            onSelectionChange={setSelected}
+            onRowActivate={open}
+            footer={<Meta mono={false}>{status}</Meta>}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Whole row opens the certificate"}
+        </figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -784,36 +979,59 @@ Registry items used: @infisical/data-table, @infisical/pagination. Additional pa
 
 ```tsx
 import * as React from "react";
+
 import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
 import { Pagination } from "../../../../components/v4/ui/pagination";
-type Event = {
-    id: string;
-    actor: string;
-    action: string;
-    at: string;
-};
+
+type Event = { id: string; actor: string; action: string; at: string };
 const actors = ["ci-deployer", "sarah@acme.dev", "rotation-worker", "k8s-operator"];
 const actions = ["secret.read", "secret.update", "identity.login", "key.rotate"];
 const events: Event[] = Array.from({ length: 132 }, (_, index) => ({
-    id: `event-${index + 1}`,
-    actor: actors[index % actors.length],
-    action: actions[(index * 3) % actions.length],
-    at: `2026-10-${String(28 - (index % 28)).padStart(2, "0")}`
+  id: `event-${index + 1}`,
+  actor: actors[index % actors.length],
+  action: actions[(index * 3) % actions.length],
+  at: `2026-10-${String(28 - (index % 28)).padStart(2, "0")}`
 }));
 const columns: DataTableColumn<Event>[] = [
-    { id: "actor", header: "Actor", primary: true, grow: true, render: (row) => row.actor },
-    { id: "action", header: "Action", width: 160, render: (row) => row.action },
-    { id: "at", header: "Date", width: 120, render: (row) => row.at }
+  { id: "actor", header: "Actor", primary: true, grow: true, render: (row) => row.actor },
+  { id: "action", header: "Action", width: 160, render: (row) => row.action },
+  { id: "at", header: "Date", width: 120, render: (row) => row.at }
 ];
+
 export default function PaginationSlot() {
-    const [page, setPage] = React.useState(1);
-    const [pageSize, setPageSize] = React.useState(20);
-    const rows = events.slice((page - 1) * pageSize, page * pageSize);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <DataTable label="Audit events" rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => `${row.actor} ${row.action}`} pagination={<Pagination label="Audit event pages" variant="compact" page={page} onPageChange={setPage} total={events.length} pageSize={pageSize} pageSizeOptions={[10, 20, 50, 100]} onPageSizeChange={setPageSize}/>}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Rows per page, range and previous and next"}</figcaption></figure>
-    </div>);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(20);
+  const rows = events.slice((page - 1) * pageSize, page * pageSize);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataTable
+            label="Audit events"
+            rows={rows}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => `${row.actor} ${row.action}`}
+            pagination={
+              <Pagination
+                label="Audit event pages"
+                variant="compact"
+                page={page}
+                onPageChange={setPage}
+                total={events.length}
+                pageSize={pageSize}
+                pageSizeOptions={[10, 20, 50, 100]}
+                onPageSizeChange={setPageSize}
+              />
+            }
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Rows per page, range and previous and next"}
+        </figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -825,74 +1043,98 @@ Registry items used: @infisical/badge, @infisical/button, @infisical/data-table,
 
 ```tsx
 import * as React from "react";
+
 import { Badge } from "../../../../components/v4/ui/badge";
 import { Button } from "../../../../components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
 import { Stack } from "../../../../components/v4/ui/layout";
-type Key = {
-    id: string;
-    name: string;
-    algorithm: string;
-    status: "active" | "disabled";
-};
+
+type Key = { id: string; name: string; algorithm: string; status: "active" | "disabled" };
 const keys: Key[] = [
-    { id: "backup", name: "backup-signing", algorithm: "AES-256-GCM", status: "active" },
-    { id: "billing", name: "billing-pii", algorithm: "AES-256-GCM", status: "active" },
-    { id: "legacy", name: "legacy-exports", algorithm: "AES-128-GCM", status: "disabled" }
+  { id: "backup", name: "backup-signing", algorithm: "AES-256-GCM", status: "active" },
+  { id: "billing", name: "billing-pii", algorithm: "AES-256-GCM", status: "active" },
+  { id: "legacy", name: "legacy-exports", algorithm: "AES-128-GCM", status: "disabled" }
 ];
 const columns: DataTableColumn<Key>[] = [
-    { id: "name", header: "Name", primary: true, grow: true, render: (row) => row.name },
-    { id: "algorithm", header: "Algorithm", width: 136, render: (row) => row.algorithm },
-    {
-        id: "status",
-        header: "Status",
-        width: 112,
-        render: (row) => row.status === "active" ? (<Badge tone="ok" dot>
+  { id: "name", header: "Name", primary: true, grow: true, render: (row) => row.name },
+  { id: "algorithm", header: "Algorithm", width: 136, render: (row) => row.algorithm },
+  {
+    id: "status",
+    header: "Status",
+    width: 112,
+    render: (row) =>
+      row.status === "active" ? (
+        <Badge tone="ok" dot>
           Active
-        </Badge>) : (<Badge tone="outline">Disabled</Badge>)
-    },
-    {
-        id: "actions",
-        header: "Actions",
-        actions: true,
-        width: 52,
-        render: (row) => (<Button variant="ghost" size="icon-row" icon="more" iconOnly>
+        </Badge>
+      ) : (
+        <Badge tone="outline">Disabled</Badge>
+      )
+  },
+  {
+    id: "actions",
+    header: "Actions",
+    actions: true,
+    width: 52,
+    render: (row) => (
+      <Button variant="ghost" size="icon-row" icon="more" iconOnly>
         {`Actions for ${row.name}`}
-      </Button>)
-    }
+      </Button>
+    )
+  }
 ];
-function KeyTable({ label, loading }: {
-    label: string;
-    loading?: boolean;
-}) {
-    return (<DataTable label={label} rows={keys} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} selectable loading={loading} loadingRows={3}/>);
+
+function KeyTable({ label, loading }: { label: string; loading?: boolean }) {
+  return (
+    <DataTable
+      label={label}
+      rows={keys}
+      columns={columns}
+      getRowId={(row) => row.id}
+      rowLabel={(row) => row.name}
+      selectable
+      loading={loading}
+      loadingRows={3}
+    />
+  );
 }
+
 export default function Loading() {
-    const [reloading, setReloading] = React.useState(false);
-    React.useEffect(() => {
-        if (!reloading)
-            return undefined;
-        const timer = window.setTimeout(() => setReloading(false), 1200);
-        return () => window.clearTimeout(timer);
-    }, [reloading]);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <KeyTable label="Keys, loading" loading/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Loading"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <KeyTable label="Keys, loaded"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Loaded"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Stack gap={12}>
-          <div>
-            <Button variant="outline" disabled={reloading} onClick={() => setReloading(true)}>
-              Reload keys
-            </Button>
-          </div>
-          <KeyTable label="Keys, reloadable" loading={reloading}/>
-        </Stack>
-      </div><figcaption className="text-muted-foreground text-xs">{"Reload in place"}</figcaption></figure>
-    </div>);
+  const [reloading, setReloading] = React.useState(false);
+  React.useEffect(() => {
+    if (!reloading) return undefined;
+    const timer = window.setTimeout(() => setReloading(false), 1200);
+    return () => window.clearTimeout(timer);
+  }, [reloading]);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <KeyTable label="Keys, loading" loading />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Loading"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <KeyTable label="Keys, loaded" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Loaded"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Stack gap={12}>
+            <div>
+              <Button variant="outline" disabled={reloading} onClick={() => setReloading(true)}>
+                Reload keys
+              </Button>
+            </div>
+            <KeyTable label="Keys, reloadable" loading={reloading} />
+          </Stack>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Reload in place"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -905,109 +1147,126 @@ Registry items used: @infisical/button, @infisical/data-table, @infisical/icon, 
 ```tsx
 import * as React from "react";
 import { BanIcon, FilterIcon } from "lucide-react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
 import { Icon } from "../../../../components/v4/ui/icon";
 import { Meta } from "../../../../components/v4/ui/text";
 import { Tooltip } from "../../../../components/v4/ui/tooltip";
+
 type Action = "read" | "create" | "edit" | "delete";
 type Grant = boolean | "some";
 type Policy = {
-    id: string;
-    subject: string;
-    managed?: boolean;
-    actions: Action[];
-    grants: Partial<Record<Action, Grant>>;
-    conditions?: Partial<Record<Action, string>>;
-    forbid?: Partial<Record<Action, string>>;
+  id: string;
+  subject: string;
+  managed?: boolean;
+  actions: Action[];
+  grants: Partial<Record<Action, Grant>>;
+  conditions?: Partial<Record<Action, string>>;
+  forbid?: Partial<Record<Action, string>>;
 };
-const actions: {
-    id: Action;
-    header: string;
-}[] = [
-    { id: "read", header: "Read" },
-    { id: "create", header: "Create" },
-    { id: "edit", header: "Edit" },
-    { id: "delete", header: "Delete" }
+
+const actions: { id: Action; header: string }[] = [
+  { id: "read", header: "Read" },
+  { id: "create", header: "Create" },
+  { id: "edit", header: "Edit" },
+  { id: "delete", header: "Delete" }
 ];
 const all: Action[] = ["read", "create", "edit", "delete"];
+
 const initial: Policy[] = [
-    {
-        id: "secrets",
-        subject: "Secrets",
-        actions: all,
-        grants: { read: true, create: true, edit: true },
-        conditions: { edit: "Only in /payments, staging and production" }
-    },
-    {
-        id: "folders",
-        subject: "Secret folders",
-        actions: all,
-        grants: { read: "some" },
-        conditions: { read: "Two rules: /payments allowed, /legacy forbidden" },
-        forbid: { delete: "Forbidden by the Read only folders rule" }
-    },
-    { id: "imports", subject: "Secret imports", actions: all, grants: {} },
-    { id: "rotation", subject: "Secret rotation", actions: ["read", "edit"], grants: { read: true } },
-    { id: "audit", subject: "Audit logs", managed: true, actions: ["read"], grants: { read: true } }
+  {
+    id: "secrets",
+    subject: "Secrets",
+    actions: all,
+    grants: { read: true, create: true, edit: true },
+    conditions: { edit: "Only in /payments, staging and production" }
+  },
+  {
+    id: "folders",
+    subject: "Secret folders",
+    actions: all,
+    grants: { read: "some" },
+    conditions: { read: "Two rules: /payments allowed, /legacy forbidden" },
+    forbid: { delete: "Forbidden by the Read only folders rule" }
+  },
+  { id: "imports", subject: "Secret imports", actions: all, grants: {} },
+  { id: "rotation", subject: "Secret rotation", actions: ["read", "edit"], grants: { read: true } },
+  { id: "audit", subject: "Audit logs", managed: true, actions: ["read"], grants: { read: true } }
 ];
-function Mark({ kind, text }: {
-    kind: "condition" | "forbid";
-    text: string;
-}) {
-    return (<Tooltip content={text}>
+
+function Mark({ kind, text }: { kind: "condition" | "forbid"; text: string }) {
+  return (
+    <Tooltip content={text}>
       <Button type="button" variant="ghost" size="icon-row">
-        <Icon icon={kind === "condition" ? FilterIcon : BanIcon}/>
+        <Icon icon={kind === "condition" ? FilterIcon : BanIcon} />
         <span className="sr-only">
           {kind === "condition" ? `Conditions: ${text}` : `Forbidden: ${text}`}
         </span>
       </Button>
-    </Tooltip>);
+    </Tooltip>
+  );
 }
+
 const markFor = (action: Action) => (row: Policy) => {
-    const condition = row.conditions?.[action];
-    const forbid = row.forbid?.[action];
-    if (forbid)
-        return <Mark kind="forbid" text={forbid}/>;
-    return condition ? <Mark kind="condition" text={condition}/> : null;
+  const condition = row.conditions?.[action];
+  const forbid = row.forbid?.[action];
+  if (forbid) return <Mark kind="forbid" text={forbid} />;
+  return condition ? <Mark kind="condition" text={condition} /> : null;
 };
+
 export default function ColumnToggle() {
-    const [policies, setPolicies] = React.useState(initial);
-    const [status, setStatus] = React.useState("No changes yet.");
-    const columns: DataTableColumn<Policy>[] = [
-        {
-            id: "subject",
-            header: "Policy",
-            primary: true,
-            grow: true,
-            text: (row) => row.subject,
-            render: (row) => row.subject
+  const [policies, setPolicies] = React.useState(initial);
+  const [status, setStatus] = React.useState("No changes yet.");
+  const columns: DataTableColumn<Policy>[] = [
+    {
+      id: "subject",
+      header: "Policy",
+      primary: true,
+      grow: true,
+      text: (row) => row.subject,
+      render: (row) => row.subject
+    },
+    ...actions.map((action): DataTableColumn<Policy> => ({
+      id: action.id,
+      header: action.header,
+      width: 120,
+      toggle: {
+        checked: (row) => {
+          const grant = row.grants[action.id] ?? false;
+          return grant === "some" ? "indeterminate" : grant;
         },
-        ...actions.map((action): DataTableColumn<Policy> => ({
-            id: action.id,
-            header: action.header,
-            width: 120,
-            toggle: {
-                checked: (row) => {
-                    const grant = row.grants[action.id] ?? false;
-                    return grant === "some" ? "indeterminate" : grant;
-                },
-                absent: (row) => !row.actions.includes(action.id),
-                disabledReason: (row) => row.managed ? "Managed by Infisical. Audit log access cannot change." : undefined,
-                adornment: markFor(action.id),
-                onChange: (ids, checked) => {
-                    setPolicies((current) => current.map((row) => ids.includes(row.id)
-                        ? { ...row, grants: { ...row.grants, [action.id]: checked } }
-                        : row));
-                    setStatus(`${checked ? "Allowed" : "Removed"} ${action.header.toLowerCase()} on ${ids.length} ${ids.length === 1 ? "policy" : "policies"}.`);
-                }
-            }
-        }))
-    ];
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
-      <DataTable label="Developer role permissions" rows={policies} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.subject}/>
+        absent: (row) => !row.actions.includes(action.id),
+        disabledReason: (row) =>
+          row.managed ? "Managed by Infisical. Audit log access cannot change." : undefined,
+        adornment: markFor(action.id),
+        onChange: (ids, checked) => {
+          setPolicies((current) =>
+            current.map((row) =>
+              ids.includes(row.id)
+                ? { ...row, grants: { ...row.grants, [action.id]: checked } }
+                : row
+            )
+          );
+          setStatus(
+            `${checked ? "Allowed" : "Removed"} ${action.header.toLowerCase()} on ${ids.length} ${ids.length === 1 ? "policy" : "policies"}.`
+          );
+        }
+      }
+    }))
+  ];
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      <DataTable
+        label="Developer role permissions"
+        rows={policies}
+        columns={columns}
+        getRowId={(row) => row.id}
+        rowLabel={(row) => row.subject}
+      />
       <Meta role="status">{status}</Meta>
-    </div>);
+    </div>
+  );
 }
 ```
 

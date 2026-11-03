@@ -100,22 +100,25 @@ Registry items used: @infisical/label, @infisical/textarea. Additional packages:
 ```tsx
 import { Label } from "../../../../components/v4/ui/label";
 import * as UI from "../../../../components/v4/ui/textarea";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
       <div className="space-y-2">
         <Label htmlFor="description">Connection description</Label>
-        <UI.Textarea id="description" defaultValue="Synchronizes the staging environment."/>
+        <UI.Textarea id="description" defaultValue="Synchronizes the staging environment." />
       </div>
       <div className="space-y-2">
         <Label htmlFor="invalid-description">Change reason</Label>
-        <UI.Textarea id="invalid-description" aria-invalid aria-describedby="reason-error"/>
+        <UI.Textarea id="invalid-description" aria-invalid aria-describedby="reason-error" />
         <p id="reason-error">Explain why access is needed.</p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="managed-description">Managed description</Label>
-        <UI.Textarea id="managed-description" value="Required by policy" disabled/>
+        <UI.Textarea id="managed-description" value="Required by policy" disabled />
       </div>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -127,27 +130,56 @@ Registry items used: @infisical/label, @infisical/textarea. Additional packages:
 
 ```tsx
 import { useState } from "react";
+
 import { Label } from "../../../../components/v4/ui/label";
 import { Textarea } from "../../../../components/v4/ui/textarea";
+
 export default function Example() {
-    const [value, setValue] = useState("Staging deployment notes.\nPreserve line breaks and exact values.");
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Label htmlFor="textarea-draft">Draft notes</Label>
-        <Textarea id="textarea-draft" rows={5} cols={24} value={value} onChange={(event) => setValue(event.target.value)}/>
-        <p role="status" className="sr-only text-sm break-all whitespace-pre-wrap" data-textarea-value>
-          {value}
-        </p>
-      </div><figcaption className="text-muted-foreground text-xs">{"Controlled"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Label htmlFor="textarea-readonly">Saved notes</Label>
-        <Textarea id="textarea-readonly" readOnly value={"Managed by platform policy.\nRetain this exact line break."}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Read-only"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Label htmlFor="textarea-empty">Empty notes</Label>
-        <Textarea id="textarea-empty" placeholder="Describe this connection"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption></figure>
-    </div>);
+  const [value, setValue] = useState(
+    "Staging deployment notes.\nPreserve line breaks and exact values."
+  );
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Label htmlFor="textarea-draft">Draft notes</Label>
+          <Textarea
+            id="textarea-draft"
+            rows={5}
+            cols={24}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
+          <p
+            role="status"
+            className="sr-only text-sm break-all whitespace-pre-wrap"
+            data-textarea-value
+          >
+            {value}
+          </p>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Controlled"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Label htmlFor="textarea-readonly">Saved notes</Label>
+          <Textarea
+            id="textarea-readonly"
+            readOnly
+            value={"Managed by platform policy.\nRetain this exact line break."}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Read-only"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Label htmlFor="textarea-empty">Empty notes</Label>
+          <Textarea id="textarea-empty" placeholder="Describe this connection" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

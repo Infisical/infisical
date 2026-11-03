@@ -131,52 +131,75 @@ Registry items used: @infisical/field, @infisical/icon, @infisical/input-group. 
 
 ```tsx
 import { useState } from "react";
+
 import { Field } from "../../../../components/v4/ui/field";
 import { Icon } from "../../../../components/v4/ui/icon";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "../../../../components/v4/ui/input-group";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput
+} from "../../../../components/v4/ui/input-group";
+
 export default function Example() {
-    const [query, setQuery] = useState("payments");
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Filter secrets">
-          <InputGroup>
-            <InputGroupAddon>
-              <Icon name="search"/>
-            </InputGroupAddon>
-            <InputGroupInput value={query} onChange={(event) => setQuery(event.target.value)}/>
-            <InputGroupAddon align="inline-end">
-              <InputGroupButton onClick={() => setQuery("")} disabled={!query}>
-                Clear
-              </InputGroupButton>
-            </InputGroupAddon>
-          </InputGroup>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Editable with clear action"}</figcaption></figure>
+  const [query, setQuery] = useState("payments");
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Filter secrets">
+            <InputGroup>
+              <InputGroupAddon>
+                <Icon name="search" />
+              </InputGroupAddon>
+              <InputGroupInput value={query} onChange={(event) => setQuery(event.target.value)} />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton onClick={() => setQuery("")} disabled={!query}>
+                  Clear
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Editable with clear action"}
+        </figcaption>
+      </figure>
       <p role="status" className="sr-only text-sm">
         Filter: {query || "all secrets"}
       </p>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Required path" error="Choose an absolute path.">
-          <InputGroup invalid>
-            <InputGroupInput defaultValue="relative"/>
-          </InputGroup>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Invalid"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Managed path">
-          <InputGroup>
-            <InputGroupInput readOnly value="/policy"/>
-          </InputGroup>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Read-only"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Unavailable path">
-          <InputGroup>
-            <InputGroupInput disabled defaultValue="/archived"/>
-          </InputGroup>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption></figure>
-    </div>);
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Required path" error="Choose an absolute path.">
+            <InputGroup invalid>
+              <InputGroupInput defaultValue="relative" />
+            </InputGroup>
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Invalid"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Managed path">
+            <InputGroup>
+              <InputGroupInput readOnly value="/policy" />
+            </InputGroup>
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Read-only"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Unavailable path">
+            <InputGroup>
+              <InputGroupInput disabled defaultValue="/archived" />
+            </InputGroup>
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -188,33 +211,48 @@ Registry items used: @infisical/field, @infisical/icon, @infisical/input-group. 
 
 ```tsx
 import { useState } from "react";
+
 import { Field } from "../../../../components/v4/ui/field";
 import { Icon } from "../../../../components/v4/ui/icon";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "../../../../components/v4/ui/input-group";
-const SizedField = ({ size }: {
-    size: "sm" | "md" | "lg";
-}) => {
-    const [value, setValue] = useState("/payments");
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <Field label={`${size} path`}>
-        <InputGroup size={size}>
-          <InputGroupAddon>
-            <Icon name="search"/>
-          </InputGroupAddon>
-          <InputGroupInput value={value} onChange={(event) => setValue(event.target.value)}/>
-          <InputGroupAddon align="inline-end">
-            <InputGroupButton size="sm" disabled={!value} onClick={() => setValue("")}>
-              Clear
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
-      </Field>
-    </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>);
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput
+} from "../../../../components/v4/ui/input-group";
+
+const SizedField = ({ size }: { size: "sm" | "md" | "lg" }) => {
+  const [value, setValue] = useState("/payments");
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <Field label={`${size} path`}>
+          <InputGroup size={size}>
+            <InputGroupAddon>
+              <Icon name="search" />
+            </InputGroupAddon>
+            <InputGroupInput value={value} onChange={(event) => setValue(event.target.value)} />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton size="sm" disabled={!value} onClick={() => setValue("")}>
+                Clear
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </Field>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+    </figure>
+  );
 };
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      {(["sm", "md", "lg"] as const).map((size) => (<SizedField key={size} size={size}/>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      {(["sm", "md", "lg"] as const).map((size) => (
+        <SizedField key={size} size={size} />
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -227,20 +265,42 @@ Registry items used: @infisical/field, @infisical/icon, @infisical/input-group. 
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
 import { Icon } from "../../../../components/v4/ui/icon";
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText, InputGroupTextarea } from "../../../../components/v4/ui/input-group";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+  InputGroupTextarea
+} from "../../../../components/v4/ui/input-group";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      {(["inline-start", "inline-end", "block-start", "block-end"] as const).map((align) => (<figure key={align} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <Field label={`${align} query`}>
-            <InputGroup>
-              <InputGroupAddon align={align}>
-                {align.startsWith("inline") ? (<Icon name="search"/>) : (<InputGroupText>Query</InputGroupText>)}
-              </InputGroupAddon>
-              {align.startsWith("inline") ? (<InputGroupInput defaultValue="payments"/>) : (<InputGroupTextarea rows={3} defaultValue="Select name from environments"/>)}
-            </InputGroup>
-          </Field>
-        </div><figcaption className="text-muted-foreground text-xs">{align}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      {(["inline-start", "inline-end", "block-start", "block-end"] as const).map((align) => (
+        <figure key={align} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <Field label={`${align} query`}>
+              <InputGroup>
+                <InputGroupAddon align={align}>
+                  {align.startsWith("inline") ? (
+                    <Icon name="search" />
+                  ) : (
+                    <InputGroupText>Query</InputGroupText>
+                  )}
+                </InputGroupAddon>
+                {align.startsWith("inline") ? (
+                  <InputGroupInput defaultValue="payments" />
+                ) : (
+                  <InputGroupTextarea rows={3} defaultValue="Select name from environments" />
+                )}
+              </InputGroup>
+            </Field>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{align}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -252,30 +312,52 @@ Registry items used: @infisical/field, @infisical/icon, @infisical/input-group. 
 
 ```tsx
 import { useState } from "react";
+
 import { Field } from "../../../../components/v4/ui/field";
 import { Icon } from "../../../../components/v4/ui/icon";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "../../../../components/v4/ui/input-group";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput
+} from "../../../../components/v4/ui/input-group";
+
 export default function Example() {
-    const [values, setValues] = useState({
-        xs: "draft",
-        sm: "draft",
-        "icon-xs": "draft",
-        "icon-sm": "draft"
-    });
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      {(["xs", "sm", "icon-xs", "icon-sm"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <Field label={`${size} action`}>
-            <InputGroup>
-              <InputGroupInput value={values[size]} onChange={(event) => setValues({ ...values, [size]: event.target.value })}/>
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton size={size} aria-label={`Clear ${size} draft`} disabled={!values[size]} onClick={() => setValues({ ...values, [size]: "" })}>
-                  {size.startsWith("icon") ? <Icon name="x"/> : "Clear"}
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
-          </Field>
-        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
-    </div>);
+  const [values, setValues] = useState({
+    xs: "draft",
+    sm: "draft",
+    "icon-xs": "draft",
+    "icon-sm": "draft"
+  });
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      {(["xs", "sm", "icon-xs", "icon-sm"] as const).map((size) => (
+        <figure key={size} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <Field label={`${size} action`}>
+              <InputGroup>
+                <InputGroupInput
+                  value={values[size]}
+                  onChange={(event) => setValues({ ...values, [size]: event.target.value })}
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    size={size}
+                    aria-label={`Clear ${size} draft`}
+                    disabled={!values[size]}
+                    onClick={() => setValues({ ...values, [size]: "" })}
+                  >
+                    {size.startsWith("icon") ? <Icon name="x" /> : "Clear"}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+            </Field>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 

@@ -109,52 +109,71 @@ Registry items used: @infisical/input-otp, @infisical/label. Additional packages
 
 ```tsx
 import { Fragment } from "react";
+
 import * as UI from "../../../../components/v4/ui/input-otp";
 import { Label } from "../../../../components/v4/ui/label";
+
 const specimens = [
-    {
-        id: "verification-code",
-        label: "Verification code",
-        help: "Enter the six-digit code from your authenticator.",
-        disabled: false,
-        invalid: false,
-        value: undefined
-    },
-    {
-        id: "verification-disabled",
-        label: "Verification unavailable",
-        help: "Code entry is unavailable while another request is pending.",
-        disabled: true,
-        invalid: false,
-        value: "123456"
-    },
-    {
-        id: "verification-invalid",
-        label: "Rejected verification code",
-        help: "This preview code was rejected. Enter a new code.",
-        disabled: false,
-        invalid: true,
-        value: "654321"
-    }
+  {
+    id: "verification-code",
+    label: "Verification code",
+    help: "Enter the six-digit code from your authenticator.",
+    disabled: false,
+    invalid: false,
+    value: undefined
+  },
+  {
+    id: "verification-disabled",
+    label: "Verification unavailable",
+    help: "Code entry is unavailable while another request is pending.",
+    disabled: true,
+    invalid: false,
+    value: "123456"
+  },
+  {
+    id: "verification-invalid",
+    label: "Rejected verification code",
+    help: "This preview code was rejected. Enter a new code.",
+    disabled: false,
+    invalid: true,
+    value: "654321"
+  }
 ];
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
-      {specimens.map((specimen) => (<div key={specimen.id} className="space-y-3">
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      {specimens.map((specimen) => (
+        <div key={specimen.id} className="space-y-3">
           <Label htmlFor={specimen.id}>{specimen.label}</Label>
-          <UI.InputOTP id={specimen.id} maxLength={6} containerClassName="flex-wrap" pattern="^[0-9]+$" aria-describedby={`${specimen.id}-help`} disabled={specimen.disabled} aria-invalid={specimen.invalid || undefined} defaultValue={specimen.value}>
+          <UI.InputOTP
+            id={specimen.id}
+            maxLength={6}
+            containerClassName="flex-wrap"
+            pattern="^[0-9]+$"
+            aria-describedby={`${specimen.id}-help`}
+            disabled={specimen.disabled}
+            aria-invalid={specimen.invalid || undefined}
+            defaultValue={specimen.value}
+          >
             {[
-                [0, 1, 2],
-                [3, 4, 5]
-            ].map((group, position) => (<Fragment key={group[0]}>
+              [0, 1, 2],
+              [3, 4, 5]
+            ].map((group, position) => (
+              <Fragment key={group[0]}>
                 {position > 0 && <UI.InputOTPSeparator />}
                 <UI.InputOTPGroup>
-                  {group.map((index) => (<UI.InputOTPSlot key={index} index={index}/>))}
+                  {group.map((index) => (
+                    <UI.InputOTPSlot key={index} index={index} />
+                  ))}
                 </UI.InputOTPGroup>
-              </Fragment>))}
+              </Fragment>
+            ))}
           </UI.InputOTP>
           <p id={`${specimen.id}-help`}>{specimen.help}</p>
-        </div>))}
-    </div>);
+        </div>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -166,30 +185,58 @@ Registry items used: @infisical/input-otp, @infisical/label. Additional packages
 
 ```tsx
 import { useState } from "react";
-import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "../../../../components/v4/ui/input-otp";
+
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot
+} from "../../../../components/v4/ui/input-otp";
 import { Label } from "../../../../components/v4/ui/label";
+
 export default function Example() {
-    const [value, setValue] = useState("");
-    const [completed, setCompleted] = useState("");
-    return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-      <Label htmlFor="alphanumeric-code">Recovery code</Label>
-      <InputOTP id="alphanumeric-code" maxLength={4} pattern="^[A-Z0-9]+$" inputMode="text" value={value} onChange={(next) => {
+  const [value, setValue] = useState("");
+  const [completed, setCompleted] = useState("");
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <Label htmlFor="alphanumeric-code">Recovery code</Label>
+        <InputOTP
+          id="alphanumeric-code"
+          maxLength={4}
+          pattern="^[A-Z0-9]+$"
+          inputMode="text"
+          value={value}
+          onChange={(next) => {
             setValue(next);
             setCompleted("");
-        }} onComplete={setCompleted} pasteTransformer={(text) => text.replaceAll("-", "").toUpperCase()} containerClassName="flex-wrap">
-        <InputOTPGroup>
-          {[0, 1].map((index) => (<InputOTPSlot key={index} index={index}/>))}
-        </InputOTPGroup>
-        <InputOTPSeparator />
-        <InputOTPGroup>
-          {[2, 3].map((index) => (<InputOTPSlot key={index} index={index}/>))}
-        </InputOTPGroup>
-      </InputOTP>
-      <p className="text-sm">Letters A to Z and digits 0 to 9.</p>
-      <p role="status" className="sr-only text-sm">
-        {completed ? `Local code complete: ${completed}` : `${value.length} of 4 characters`}
-      </p>
-    </div><figcaption className="text-muted-foreground text-xs">{"Alphanumeric recovery code"}</figcaption></figure>);
+          }}
+          onComplete={setCompleted}
+          pasteTransformer={(text) => text.replaceAll("-", "").toUpperCase()}
+          containerClassName="flex-wrap"
+        >
+          <InputOTPGroup>
+            {[0, 1].map((index) => (
+              <InputOTPSlot key={index} index={index} />
+            ))}
+          </InputOTPGroup>
+          <InputOTPSeparator />
+          <InputOTPGroup>
+            {[2, 3].map((index) => (
+              <InputOTPSlot key={index} index={index} />
+            ))}
+          </InputOTPGroup>
+        </InputOTP>
+        <p className="text-sm">Letters A to Z and digits 0 to 9.</p>
+        <p role="status" className="sr-only text-sm">
+          {completed ? `Local code complete: ${completed}` : `${value.length} of 4 characters`}
+        </p>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">
+        {"Alphanumeric recovery code"}
+      </figcaption>
+    </figure>
+  );
 }
 ```
 

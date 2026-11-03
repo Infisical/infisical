@@ -162,38 +162,63 @@ Registry items used: @infisical/button. Additional packages: none. Install every
 
 ```tsx
 import { useEffect, useRef, useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
+
 export default function Example() {
-    const [pending, setPending] = useState(false);
-    const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-    useEffect(() => () => clearTimeout(timer.current), []);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button loading={pending} onClick={() => {
-            setPending(true);
-            timer.current = setTimeout(() => setPending(false), 900);
-        }}>
-          Save changes
-        </Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"default"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button variant="accent">Grant for 1 hour</Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"accent"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button variant="outline">Edit settings</Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"outline"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button variant="ghost">Cancel</Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"ghost"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button variant="destructive">Delete project</Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"destructive"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button variant="link" asChild>
-          <a href="#input">Input guide</a>
-        </Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"link"}</figcaption></figure>
-    </div>);
+  const [pending, setPending] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button
+            loading={pending}
+            onClick={() => {
+              setPending(true);
+              timer.current = setTimeout(() => setPending(false), 900);
+            }}
+          >
+            Save changes
+          </Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"default"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button variant="accent">Grant for 1 hour</Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"accent"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button variant="outline">Edit settings</Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"outline"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button variant="ghost">Cancel</Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"ghost"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button variant="destructive">Delete project</Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"destructive"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button variant="link" asChild>
+            <a href="#input">Input guide</a>
+          </Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"link"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -205,28 +230,46 @@ Registry items used: @infisical/button. Additional packages: none. Install every
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button variant="outline">Save changes</Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"default, sm"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button size="md" variant="outline">
-          Save changes
-        </Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"md"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button size="lg" variant="outline">
-          Save changes
-        </Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"lg"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button size="icon" variant="outline" icon="settings" iconOnly aria-label="Settings"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"icon"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button size="icon-lg" variant="outline" icon="settings" iconOnly aria-label="Settings"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"icon-lg"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button variant="outline">Save changes</Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"default, sm"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button size="md" variant="outline">
+            Save changes
+          </Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"md"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button size="lg" variant="outline">
+            Save changes
+          </Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"lg"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button size="icon" variant="outline" icon="settings" iconOnly aria-label="Settings" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"icon"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button size="icon-lg" variant="outline" icon="settings" iconOnly aria-label="Settings" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"icon-lg"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -238,23 +281,38 @@ Registry items used: @infisical/button. Additional packages: none. Install every
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button loading={false}>Save changes</Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"Idle"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button loading>Save changes</Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"Loading"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button variant="outline" icon="plus" loading>
-          Add connection
-        </Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"Loading with icon"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button disabled>Save changes</Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button loading={false}>Save changes</Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Idle"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button loading>Save changes</Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Loading"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button variant="outline" icon="plus" loading>
+            Add connection
+          </Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Loading with icon"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button disabled>Save changes</Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -266,20 +324,32 @@ Registry items used: @infisical/button. Additional packages: none. Install every
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button icon="plus">Add connection</Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"Leading icon"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button variant="outline" iconRight="chev-right" asChild>
-          <a href="#pagination">Continue</a>
-        </Button>
-      </div><figcaption className="text-muted-foreground text-xs">{"Trailing icon"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Button variant="ghost" size="icon" icon="eye" iconOnly aria-label="Show preview"/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Icon only"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button icon="plus">Add connection</Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Leading icon"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button variant="outline" iconRight="chev-right" asChild>
+            <a href="#pagination">Continue</a>
+          </Button>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Trailing icon"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Button variant="ghost" size="icon" icon="eye" iconOnly aria-label="Show preview" />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Icon only"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

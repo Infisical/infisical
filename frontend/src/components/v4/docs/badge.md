@@ -134,43 +134,70 @@ Registry items used: @infisical/badge. Additional packages: none. Install every 
 
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Badge tone="outline">Production</Badge>
-      </div><figcaption className="text-muted-foreground text-xs">{"outline"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Badge tone="soft" mono>
-          v2.14.0
-        </Badge>
-      </div><figcaption className="text-muted-foreground text-xs">{"soft"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Badge tone="solid">Inherited</Badge>
-      </div><figcaption className="text-muted-foreground text-xs">{"solid"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Badge tone="accent">New</Badge>
-      </div><figcaption className="text-muted-foreground text-xs">{"accent"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Badge tone="ok" dot>
-          Connected
-        </Badge>
-      </div><figcaption className="text-muted-foreground text-xs">{"ok"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Badge tone="warn" dot>
-          Expires in 7 days
-        </Badge>
-      </div><figcaption className="text-muted-foreground text-xs">{"warn"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Badge tone="bad" dot>
-          Unavailable
-        </Badge>
-      </div><figcaption className="text-muted-foreground text-xs">{"bad"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <Badge tone="info" dot>
-          Syncing
-        </Badge>
-      </div><figcaption className="text-muted-foreground text-xs">{"info"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Badge tone="outline">Production</Badge>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"outline"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Badge tone="soft" mono>
+            v2.14.0
+          </Badge>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"soft"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Badge tone="solid">Inherited</Badge>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"solid"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Badge tone="accent">New</Badge>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"accent"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Badge tone="ok" dot>
+            Connected
+          </Badge>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"ok"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Badge tone="warn" dot>
+            Expires in 7 days
+          </Badge>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"warn"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Badge tone="bad" dot>
+            Unavailable
+          </Badge>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"bad"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Badge tone="info" dot>
+            Syncing
+          </Badge>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"info"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -182,14 +209,25 @@ Registry items used: @infisical/badge. Additional packages: none. Install every 
 
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {(["sm", "md"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <Badge size={size} tone="ok" dot>
-            Connected
-          </Badge>
-        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {(["sm", "md"] as const).map((size) => (
+        <figure
+          key={size}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <Badge size={size} tone="ok" dot>
+              Connected
+            </Badge>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -201,17 +239,28 @@ Registry items used: @infisical/badge. Additional packages: none. Install every 
 
 ```tsx
 import { Count } from "../../../../components/v4/ui/badge";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {(["accent", "ink", "neutral"] as const).map((tone) => (<figure key={tone} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <span className="flex items-center gap-2">
-            Waiting requests
-            <Count tone={tone} aria-label="4 waiting requests">
-              4
-            </Count>
-          </span>
-        </div><figcaption className="text-muted-foreground text-xs">{tone}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {(["accent", "ink", "neutral"] as const).map((tone) => (
+        <figure
+          key={tone}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <span className="flex items-center gap-2">
+              Waiting requests
+              <Count tone={tone} aria-label="4 waiting requests">
+                4
+              </Count>
+            </span>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{tone}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 

@@ -120,59 +120,75 @@ Registry items used: @infisical/button, @infisical/dropdown-menu. Additional pac
 
 ```tsx
 import { useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/dropdown-menu";
+
 export default function Example() {
-    const [checked, setChecked] = useState(false);
-    const [metadata, setMetadata] = useState(false);
-    const [details, setDetails] = useState(false);
-    const [archived, setArchived] = useState(false);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <UI.DropdownMenu>
-          <UI.DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              Environment actions
-            </Button>
-          </UI.DropdownMenuTrigger>
-          <UI.DropdownMenuContent>
-            <UI.DropdownMenuLabel>Staging</UI.DropdownMenuLabel>
-            <UI.DropdownMenuItem onSelect={() => setDetails(!details)}>
-              Connection details
-            </UI.DropdownMenuItem>
-            <UI.DropdownMenuCheckboxItem checked={checked} onCheckedChange={setChecked}>
-              Show archived
-            </UI.DropdownMenuCheckboxItem>
-            <UI.DropdownMenuCheckboxItem checked={metadata} onCheckedChange={setMetadata} closeOnSelect>
-              Show metadata and close
-            </UI.DropdownMenuCheckboxItem>
-            <UI.DropdownMenuSeparator />
-            <UI.DropdownMenuItem disabled description="Turn off protection first">
-              Delete protected environment
-            </UI.DropdownMenuItem>
-          </UI.DropdownMenuContent>
-        </UI.DropdownMenu>
-        {details && <p className="text-sm">Staging connection</p>}
-      </div><figcaption className="text-muted-foreground text-xs">{"default"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <UI.DropdownMenu>
-          <UI.DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              Archive actions
-            </Button>
-          </UI.DropdownMenuTrigger>
-          <UI.DropdownMenuContent>
-            <UI.DropdownMenuLabel>Staging</UI.DropdownMenuLabel>
-            <UI.DropdownMenuItem variant="destructive" onSelect={() => setArchived(true)}>
-              Archive environment
-            </UI.DropdownMenuItem>
-          </UI.DropdownMenuContent>
-        </UI.DropdownMenu>
-        {archived && (<p role="status" className="sr-only text-sm">
-            Environment archived
-          </p>)}
-      </div><figcaption className="text-muted-foreground text-xs">{"destructive"}</figcaption></figure>
-    </div>);
+  const [checked, setChecked] = useState(false);
+  const [metadata, setMetadata] = useState(false);
+  const [details, setDetails] = useState(false);
+  const [archived, setArchived] = useState(false);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <UI.DropdownMenu>
+            <UI.DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                Environment actions
+              </Button>
+            </UI.DropdownMenuTrigger>
+            <UI.DropdownMenuContent>
+              <UI.DropdownMenuLabel>Staging</UI.DropdownMenuLabel>
+              <UI.DropdownMenuItem onSelect={() => setDetails(!details)}>
+                Connection details
+              </UI.DropdownMenuItem>
+              <UI.DropdownMenuCheckboxItem checked={checked} onCheckedChange={setChecked}>
+                Show archived
+              </UI.DropdownMenuCheckboxItem>
+              <UI.DropdownMenuCheckboxItem
+                checked={metadata}
+                onCheckedChange={setMetadata}
+                closeOnSelect
+              >
+                Show metadata and close
+              </UI.DropdownMenuCheckboxItem>
+              <UI.DropdownMenuSeparator />
+              <UI.DropdownMenuItem disabled description="Turn off protection first">
+                Delete protected environment
+              </UI.DropdownMenuItem>
+            </UI.DropdownMenuContent>
+          </UI.DropdownMenu>
+          {details && <p className="text-sm">Staging connection</p>}
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"default"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <UI.DropdownMenu>
+            <UI.DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                Archive actions
+              </Button>
+            </UI.DropdownMenuTrigger>
+            <UI.DropdownMenuContent>
+              <UI.DropdownMenuLabel>Staging</UI.DropdownMenuLabel>
+              <UI.DropdownMenuItem variant="destructive" onSelect={() => setArchived(true)}>
+                Archive environment
+              </UI.DropdownMenuItem>
+            </UI.DropdownMenuContent>
+          </UI.DropdownMenu>
+          {archived && (
+            <p role="status" className="sr-only text-sm">
+              Environment archived
+            </p>
+          )}
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"destructive"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -184,37 +200,50 @@ Registry items used: @infisical/button, @infisical/dropdown-menu. Additional pac
 
 ```tsx
 import { useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/dropdown-menu";
+
 const stateLabel = (checked: boolean | "indeterminate") => {
-    if (checked === "indeterminate")
-        return "Mixed";
-    return checked ? "Checked" : "Unchecked";
+  if (checked === "indeterminate") return "Mixed";
+  return checked ? "Checked" : "Unchecked";
 };
 export default function Example() {
-    const [selected, setSelected] = useState(false);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {([false, true, "indeterminate"] as const).map((checked) => (<figure key={String(checked)} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <UI.DropdownMenu>
-            <UI.DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                Open menu
-              </Button>
-            </UI.DropdownMenuTrigger>
-            <UI.DropdownMenuContent>
-              <UI.DropdownMenuCheckboxItem checked={checked} disabled>
-                Include deployment-client metadata and inherited environment permissions
-              </UI.DropdownMenuCheckboxItem>
-              <UI.DropdownMenuItem onSelect={() => setSelected(true)}>
-                Connection details
-              </UI.DropdownMenuItem>
-            </UI.DropdownMenuContent>
-          </UI.DropdownMenu>
-        </div><figcaption className="text-muted-foreground text-xs">{stateLabel(checked)}</figcaption></figure>))}
-      {selected && (<p role="status" className="sr-only">
+  const [selected, setSelected] = useState(false);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {([false, true, "indeterminate"] as const).map((checked) => (
+        <figure
+          key={String(checked)}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <UI.DropdownMenu>
+              <UI.DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Open menu
+                </Button>
+              </UI.DropdownMenuTrigger>
+              <UI.DropdownMenuContent>
+                <UI.DropdownMenuCheckboxItem checked={checked} disabled>
+                  Include deployment-client metadata and inherited environment permissions
+                </UI.DropdownMenuCheckboxItem>
+                <UI.DropdownMenuItem onSelect={() => setSelected(true)}>
+                  Connection details
+                </UI.DropdownMenuItem>
+              </UI.DropdownMenuContent>
+            </UI.DropdownMenu>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{stateLabel(checked)}</figcaption>
+        </figure>
+      ))}
+      {selected && (
+        <p role="status" className="sr-only">
           Staging connection: vault.example.test
-        </p>)}
-    </div>);
+        </p>
+      )}
+    </div>
+  );
 }
 ```
 
@@ -226,36 +255,50 @@ Registry items used: @infisical/button, @infisical/dropdown-menu. Additional pac
 
 ```tsx
 import { useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/dropdown-menu";
+
 const placements = [
-    { side: "top", align: "start" },
-    { side: "right", align: "center" },
-    { side: "bottom", align: "end" },
-    { side: "left", align: "center" }
+  { side: "top", align: "start" },
+  { side: "right", align: "center" },
+  { side: "bottom", align: "end" },
+  { side: "left", align: "center" }
 ] as const;
 export default function Example() {
-    const [selected, setSelected] = useState(false);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {placements.map(({ side, align }) => (<figure key={side} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <UI.DropdownMenu>
-            <UI.DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                Open menu
-              </Button>
-            </UI.DropdownMenuTrigger>
-            <UI.DropdownMenuContent side={side} align={align}>
-              <UI.DropdownMenuItem onSelect={() => setSelected(true)}>
-                Connection details
-              </UI.DropdownMenuItem>
-              <UI.DropdownMenuItem disabled>Delete locked environment</UI.DropdownMenuItem>
-            </UI.DropdownMenuContent>
-          </UI.DropdownMenu>
-        </div><figcaption className="text-muted-foreground text-xs">{`${side} / ${align}`}</figcaption></figure>))}
-      {selected && (<p role="status" className="sr-only">
+  const [selected, setSelected] = useState(false);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {placements.map(({ side, align }) => (
+        <figure
+          key={side}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <UI.DropdownMenu>
+              <UI.DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Open menu
+                </Button>
+              </UI.DropdownMenuTrigger>
+              <UI.DropdownMenuContent side={side} align={align}>
+                <UI.DropdownMenuItem onSelect={() => setSelected(true)}>
+                  Connection details
+                </UI.DropdownMenuItem>
+                <UI.DropdownMenuItem disabled>Delete locked environment</UI.DropdownMenuItem>
+              </UI.DropdownMenuContent>
+            </UI.DropdownMenu>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{`${side} / ${align}`}</figcaption>
+        </figure>
+      ))}
+      {selected && (
+        <p role="status" className="sr-only">
           Staging connection: vault.example.test
-        </p>)}
-    </div>);
+        </p>
+      )}
+    </div>
+  );
 }
 ```
 

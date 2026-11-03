@@ -110,8 +110,10 @@ import { Button } from "../../../../components/v4/ui/button";
 import { Input } from "../../../../components/v4/ui/input";
 import { Label } from "../../../../components/v4/ui/label";
 import * as UI from "../../../../components/v4/ui/popover";
+
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <UI.Popover>
         <UI.PopoverTrigger asChild>
           <Button variant="outline">Connection settings</Button>
@@ -122,10 +124,11 @@ export default function Example() {
             <UI.PopoverDescription>Choose the destination hostname.</UI.PopoverDescription>
           </UI.PopoverHeader>
           <Label htmlFor="popover-host">Hostname</Label>
-          <Input id="popover-host" defaultValue="vault.example.test"/>
+          <Input id="popover-host" defaultValue="vault.example.test" />
         </UI.PopoverContent>
       </UI.Popover>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -138,26 +141,36 @@ Registry items used: @infisical/button, @infisical/popover. Additional packages:
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
 import * as UI from "../../../../components/v4/ui/popover";
+
 const placements = [
-    { side: "top", align: "start" },
-    { side: "right", align: "center" },
-    { side: "bottom", align: "end" },
-    { side: "left", align: "center" }
+  { side: "top", align: "start" },
+  { side: "right", align: "center" },
+  { side: "bottom", align: "end" },
+  { side: "left", align: "center" }
 ] as const;
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {placements.map(({ side, align }) => (<UI.Popover key={side}>
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {placements.map(({ side, align }) => (
+        <UI.Popover key={side}>
           <UI.PopoverTrigger asChild>
             <Button variant="outline">
               {side} / {align}
             </Button>
           </UI.PopoverTrigger>
-          <UI.PopoverContent side={side} align={align} style={{ minWidth: 0, maxWidth: "var(--radix-popover-content-available-width)" }} aria-label="Staging connection preview">
+          <UI.PopoverContent
+            side={side}
+            align={align}
+            style={{ minWidth: 0, maxWidth: "var(--radix-popover-content-available-width)" }}
+            aria-label="Staging connection preview"
+          >
             <p>Staging connection</p>
             <p>12 versions synchronized. Read access belongs to the Platform team.</p>
           </UI.PopoverContent>
-        </UI.Popover>))}
-    </div>);
+        </UI.Popover>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -169,17 +182,20 @@ Registry items used: @infisical/button, @infisical/dialog, @infisical/field, @in
 
 ```tsx
 import { useState } from "react";
+
 import { Button } from "../../../../components/v4/ui/button";
 import * as Dialog from "../../../../components/v4/ui/dialog";
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
 import * as UI from "../../../../components/v4/ui/popover";
+
 function HostnameForm() {
-    const [open, setOpen] = useState(false);
-    const [saved, setSaved] = useState("vault.example.test");
-    const [draft, setDraft] = useState(saved);
-    const [error, setError] = useState("");
-    return (<div className="flex flex-col gap-3">
+  const [open, setOpen] = useState(false);
+  const [saved, setSaved] = useState("vault.example.test");
+  const [draft, setDraft] = useState(saved);
+  const [error, setError] = useState("");
+  return (
+    <div className="flex flex-col gap-3">
       <UI.Popover open={open} onOpenChange={setOpen} modal>
         <UI.PopoverAnchor asChild>
           <p>Destination: {saved}</p>
@@ -189,48 +205,60 @@ function HostnameForm() {
         </UI.PopoverTrigger>
         <UI.PopoverContent aria-label="Edit destination hostname">
           <UI.PopoverTitle>Destination hostname</UI.PopoverTitle>
-          <form className="flex flex-col gap-3" onSubmit={(event) => {
-            event.preventDefault();
-            if (!draft.trim() || draft.includes(" ")) {
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!draft.trim() || draft.includes(" ")) {
                 setError("Enter a hostname without spaces.");
                 return;
-            }
-            setSaved(draft);
-            setError("");
-            setOpen(false);
-        }}>
+              }
+              setSaved(draft);
+              setError("");
+              setOpen(false);
+            }}
+          >
             <Field label="Hostname" error={error || undefined}>
-              <Input value={draft} onChange={(event) => setDraft(event.target.value)}/>
+              <Input value={draft} onChange={(event) => setDraft(event.target.value)} />
             </Field>
             <Button type="submit">Apply hostname</Button>
           </form>
         </UI.PopoverContent>
       </UI.Popover>
-    </div>);
+    </div>
+  );
 }
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <HostnameForm />
-      </div><figcaption className="text-muted-foreground text-xs">{"Anchored form"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-start">
-        <Dialog.Dialog>
-          <Dialog.DialogTrigger asChild>
-            <Button variant="outline">Edit connection</Button>
-          </Dialog.DialogTrigger>
-          <Dialog.DialogContent>
-            <Dialog.DialogHeader>
-              <Dialog.DialogTitle>Connection editor</Dialog.DialogTitle>
-              <Dialog.DialogDescription>
-                Changes apply to this local connection only.
-              </Dialog.DialogDescription>
-            </Dialog.DialogHeader>
-            <HostnameForm />
-            <Dialog.DialogFooter showCloseButton/>
-          </Dialog.DialogContent>
-        </Dialog.Dialog>
-      </div><figcaption className="text-muted-foreground text-xs">{"Inside a dialog"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <HostnameForm />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Anchored form"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <Dialog.Dialog>
+            <Dialog.DialogTrigger asChild>
+              <Button variant="outline">Edit connection</Button>
+            </Dialog.DialogTrigger>
+            <Dialog.DialogContent>
+              <Dialog.DialogHeader>
+                <Dialog.DialogTitle>Connection editor</Dialog.DialogTitle>
+                <Dialog.DialogDescription>
+                  Changes apply to this local connection only.
+                </Dialog.DialogDescription>
+              </Dialog.DialogHeader>
+              <HostnameForm />
+              <Dialog.DialogFooter showCloseButton />
+            </Dialog.DialogContent>
+          </Dialog.Dialog>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Inside a dialog"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

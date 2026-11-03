@@ -109,20 +109,33 @@ Registry items used: @infisical/avatar. Additional packages: none. Install every
 
 ```tsx
 import { Avatar, AvatarGroup } from "../../../../components/v4/ui/avatar";
+
 const members = ["Ada Morgan", "Sam Lee", "Mina Patel", "Rory Chen", "Eli Ford"];
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <AvatarGroup max={3} label="Project members">
-          {members.map((name) => (<Avatar key={name} name={name}/>))}
-        </AvatarGroup>
-      </div><figcaption className="text-muted-foreground text-xs">{"Group of five, max 3"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-        <AvatarGroup size={24} label="Reviewers">
-          {members.slice(0, 3).map((name) => (<Avatar key={name} name={name}/>))}
-        </AvatarGroup>
-      </div><figcaption className="text-muted-foreground text-xs">{"Small group"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <AvatarGroup max={3} label="Project members">
+            {members.map((name) => (
+              <Avatar key={name} name={name} />
+            ))}
+          </AvatarGroup>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Group of five, max 3"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <AvatarGroup size={24} label="Reviewers">
+            {members.slice(0, 3).map((name) => (
+              <Avatar key={name} name={name} />
+            ))}
+          </AvatarGroup>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Small group"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -134,18 +147,29 @@ Registry items used: @infisical/avatar. Additional packages: none. Install every
 
 ```tsx
 import { Avatar } from "../../../../components/v4/ui/avatar";
+
 const identities = [
-    { kind: "person", name: "Ada Morgan" },
-    { kind: "machine", name: "Deployment service" },
-    { kind: "agent", name: "Rotation agent" },
-    { kind: "fallback", name: "Unknown member" }
+  { kind: "person", name: "Ada Morgan" },
+  { kind: "machine", name: "Deployment service" },
+  { kind: "agent", name: "Rotation agent" },
+  { kind: "fallback", name: "Unknown member" }
 ] as const;
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {identities.map(({ kind, name }) => (<figure key={kind} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <Avatar kind={kind} name={name}/>
-        </div><figcaption className="text-muted-foreground text-xs">{kind}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {identities.map(({ kind, name }) => (
+        <figure
+          key={kind}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <Avatar kind={kind} name={name} />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{kind}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -157,12 +181,23 @@ Registry items used: @infisical/avatar. Additional packages: none. Install every
 
 ```tsx
 import { Avatar } from "../../../../components/v4/ui/avatar";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {(["sm", "default", "lg"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <Avatar size={size} name="Ada Morgan"/>
-        </div><figcaption className="text-muted-foreground text-xs">{size}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {(["sm", "default", "lg"] as const).map((size) => (
+        <figure
+          key={size}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <Avatar size={size} name="Ada Morgan" />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{size}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -174,12 +209,23 @@ Registry items used: @infisical/avatar. Additional packages: none. Install every
 
 ```tsx
 import { Avatar } from "../../../../components/v4/ui/avatar";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-      {(["ok", "warn", "off"] as const).map((status) => (<figure key={status} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-          <Avatar name={`Ada Morgan, ${status}`} status={status} initials="AM"/>
-        </div><figcaption className="text-muted-foreground text-xs">{status}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {(["ok", "warn", "off"] as const).map((status) => (
+        <figure
+          key={status}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <Avatar name={`Ada Morgan, ${status}`} status={status} initials="AM" />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{status}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -191,12 +237,15 @@ Registry items used: @infisical/avatar. Additional packages: none. Install every
 
 ```tsx
 import { Identity } from "../../../../components/v4/ui/avatar";
+
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
-      <Identity name="Alex Kim" description="Workspace administrator"/>
-      <Identity name="deploy-production" kind="machine" mono description="Machine identity"/>
-      <Identity name="rotation-agent" kind="agent" mono description="Read access to staging"/>
-    </div>);
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      <Identity name="Alex Kim" description="Workspace administrator" />
+      <Identity name="deploy-production" kind="machine" mono description="Machine identity" />
+      <Identity name="rotation-agent" kind="agent" mono description="Read access to staging" />
+    </div>
+  );
 }
 ```
 

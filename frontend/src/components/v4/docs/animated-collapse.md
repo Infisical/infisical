@@ -92,22 +92,29 @@ Registry items used: @infisical/animated-collapse, @infisical/button, @infisical
 
 ```tsx
 import { useState } from "react";
+
 import { AnimatedCollapse } from "../../../../components/v4/ui/animated-collapse";
 import { Button } from "../../../../components/v4/ui/button";
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
+
 export default function Example() {
-    const [open, setOpen] = useState(false);
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <Button aria-expanded={open} aria-controls="advanced-settings" onClick={() => setOpen(!open)}>
         Advanced settings
       </Button>
       <AnimatedCollapse className="w-full" id="advanced-settings" open={open} lazy>
-        <Field label="Retention note" description="This draft survives closing and reopening the region.">
-          <Input defaultValue="Keep for 30 days"/>
+        <Field
+          label="Retention note"
+          description="This draft survives closing and reopening the region."
+        >
+          <Input defaultValue="Keep for 30 days" />
         </Field>
       </AnimatedCollapse>
-    </div>);
+    </div>
+  );
 }
 ```
 

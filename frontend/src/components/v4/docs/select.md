@@ -143,29 +143,33 @@ Registry items used: @infisical/field, @infisical/input, @infisical/select. Addi
 
 ```tsx
 import { useState } from "react";
+
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
 import { Select, type SelectOption } from "../../../../components/v4/ui/select";
+
 const options: SelectOption[] = [
-    { value: "dev", label: "Development", description: "138 secrets", group: "Active" },
-    { value: "staging", label: "Staging", description: "96 secrets", group: "Active" },
-    { value: "prod", label: "Production", description: "212 secrets", group: "Active" },
-    { value: "pr-482", label: "pr-482", description: "Expires Oct 1", group: "Preview" },
-    { value: "pr-490", label: "pr-490", description: "Expired", disabled: true, group: "Preview" }
+  { value: "dev", label: "Development", description: "138 secrets", group: "Active" },
+  { value: "staging", label: "Staging", description: "96 secrets", group: "Active" },
+  { value: "prod", label: "Production", description: "212 secrets", group: "Active" },
+  { value: "pr-482", label: "pr-482", description: "Expires Oct 1", group: "Preview" },
+  { value: "pr-490", label: "pr-490", description: "Expired", disabled: true, group: "Preview" }
 ];
 export default function Example() {
-    const [value, setValue] = useState("dev");
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  const [value, setValue] = useState("dev");
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <Field label="Secret name">
-        <Input defaultValue="DATABASE_URL"/>
+        <Input defaultValue="DATABASE_URL" />
       </Field>
       <Field label="Environment">
-        <Select options={options} value={value} onChange={setValue}/>
+        <Select options={options} value={value} onChange={setValue} />
       </Field>
       <p role="status" className="sr-only text-sm">
         Current environment: {value}
       </p>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -178,17 +182,31 @@ Registry items used: @infisical/field, @infisical/select. Additional packages: n
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
 import { Select } from "../../../../components/v4/ui/select";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      {(["default", "md", "lg"] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <Field label={`${size} region`}>
-            <Select size={size} options={[
-            { value: "west", label: "West" },
-            { value: "east", label: "East" }
-        ]} defaultValue="west"/>
-          </Field>
-        </div><figcaption className="text-muted-foreground text-xs">{size === "default" ? "default, sm" : size}</figcaption></figure>))}
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      {(["default", "md", "lg"] as const).map((size) => (
+        <figure key={size} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <Field label={`${size} region`}>
+              <Select
+                size={size}
+                options={[
+                  { value: "west", label: "West" },
+                  { value: "east", label: "East" }
+                ]}
+                defaultValue="west"
+              />
+            </Field>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">
+            {size === "default" ? "default, sm" : size}
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -201,27 +219,44 @@ Registry items used: @infisical/field, @infisical/select. Additional packages: n
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
 import { Select } from "../../../../components/v4/ui/select";
+
 const options = [
-    { value: "west", label: "West", description: "2 projects" },
-    {
-        value: "long",
-        label: "Long resource identifier",
-        description: "environment_very_long_identifier_01234567890123456789"
-    }
+  { value: "west", label: "West", description: "2 projects" },
+  {
+    value: "long",
+    label: "Long resource identifier",
+    description: "environment_very_long_identifier_01234567890123456789"
+  }
 ];
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Region">
-          <Select options={options} defaultValue="west"/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Menu at trigger width, metadata truncates"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Region">
-          <Select options={options} defaultValue="west" menuWidth="min(32rem, calc(100vw - 2rem))"/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Long metadata, wide menu"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Region">
+            <Select options={options} defaultValue="west" />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Menu at trigger width, metadata truncates"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Region">
+            <Select
+              options={options}
+              defaultValue="west"
+              menuWidth="min(32rem, calc(100vw - 2rem))"
+            />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Long metadata, wide menu"}
+        </figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -234,28 +269,40 @@ Registry items used: @infisical/field, @infisical/select. Additional packages: n
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
 import { Select } from "../../../../components/v4/ui/select";
+
 const options = [
-    { value: "dev", label: "Development" },
-    { value: "prod", label: "Production" }
+  { value: "dev", label: "Development" },
+  { value: "prod", label: "Production" }
 ];
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))]">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Environment">
-          <Select options={options} placeholder="Choose an environment"/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Placeholder"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Environment">
-          <Select options={options} defaultValue="prod" disabled/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Field label="Environment" error="Choose an environment.">
-          <Select options={options} placeholder="Choose an environment"/>
-        </Field>
-      </div><figcaption className="text-muted-foreground text-xs">{"Invalid"}</figcaption></figure>
-    </div>);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Environment">
+            <Select options={options} placeholder="Choose an environment" />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Placeholder"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Environment">
+            <Select options={options} defaultValue="prod" disabled />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Environment" error="Choose an environment.">
+            <Select options={options} placeholder="Choose an environment" />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Invalid"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 

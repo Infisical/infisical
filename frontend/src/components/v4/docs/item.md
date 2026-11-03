@@ -134,24 +134,56 @@ Registry items used: @infisical/badge, @infisical/button, @infisical/item. Addit
 
 ```tsx
 import { useState } from "react";
+
 import { Badge } from "../../../../components/v4/ui/badge";
 import { Button } from "../../../../components/v4/ui/button";
 import { Item, ItemGroup, Media, Tile } from "../../../../components/v4/ui/item";
+
 export default function Example() {
-    const [selected, setSelected] = useState(false);
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  const [selected, setSelected] = useState(false);
+
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <ItemGroup>
-        <Item title="Deployment service" description="Read access to production secrets." media={<Media icon="machine"/>} badge={<Badge tone="ok" dot>
+        <Item
+          title="Deployment service"
+          description="Read access to production secrets."
+          media={<Media icon="machine" />}
+          badge={
+            <Badge tone="ok" dot>
               Active
-            </Badge>} meta="2 minutes ago" unread actions={<Button asChild variant="outline">
+            </Badge>
+          }
+          meta="2 minutes ago"
+          unread
+          actions={
+            <Button asChild variant="outline">
               <a href="#radio-group">View access guide</a>
-            </Button>}/>
-        <Item title="Token needs attention" description="Its provider scope no longer permits reads." icon="alert" error="Update the token scope to reconnect." actionsPlacement="below" actions={<Button asChild variant="outline">
+            </Button>
+          }
+        />
+        <Item
+          title="Token needs attention"
+          description="Its provider scope no longer permits reads."
+          icon="alert"
+          error="Update the token scope to reconnect."
+          actionsPlacement="below"
+          actions={
+            <Button asChild variant="outline">
               <a href="#input">Provider settings</a>
-            </Button>}/>
+            </Button>
+          }
+        />
       </ItemGroup>
-      <Tile title="Vault provider" description="Connect an existing vault." media={<Media icon="lock"/>} selected={selected} onClick={() => setSelected(!selected)}/>
-    </div>);
+      <Tile
+        title="Vault provider"
+        description="Connect an existing vault."
+        media={<Media icon="lock" />}
+        selected={selected}
+        onClick={() => setSelected(!selected)}
+      />
+    </div>
+  );
 }
 ```
 
@@ -164,32 +196,80 @@ Registry items used: @infisical/button, @infisical/item. Additional packages: no
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
 import { Item, Media, Tile } from "../../../../components/v4/ui/item";
+
 export default function Example() {
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
-      {(["default", "outline", "muted"] as const).map((variant) => (<figure key={variant} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <Item variant={variant} title="Deployment service" description="Read access to staging"/>
-        </div><figcaption className="text-muted-foreground text-xs">{variant}</figcaption></figure>))}
-      {([
-        ["default", "default, md"],
-        ["sm", "sm"],
-        ["xs", "xs"]
-    ] as const).map(([size, label]) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-          <Item size={size} title="Deployment service" description="Read access to staging"/>
-        </div><figcaption className="text-muted-foreground text-xs">{label}</figcaption></figure>))}
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Item title="applications/staging/services/payment-processing/configuration" description="Versions synchronized successfully" resolved truncate={false} mono actionsPlacement="below" actions={<Button asChild variant="outline">
-              <a href="#code">View configuration guide</a>
-            </Button>}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Resolved, full text"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Tile title="Managed vault" description="Connection managed by the organization" disabled selected={false}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"Disabled selection"}</figcaption></figure>
-      <div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-        {(["ok", "warn", "bad", "info"] as const).map((tone) => (<figure key={tone} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-            <Media tone={tone} icon="lock" size="sm"/>
-          </div><figcaption className="text-muted-foreground text-xs">{tone}</figcaption></figure>))}
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      {(["default", "outline", "muted"] as const).map((variant) => (
+        <figure key={variant} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <Item
+              variant={variant}
+              title="Deployment service"
+              description="Read access to staging"
+            />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{variant}</figcaption>
+        </figure>
+      ))}
+      {(
+        [
+          ["default", "default, md"],
+          ["sm", "sm"],
+          ["xs", "xs"]
+        ] as const
+      ).map(([size, label]) => (
+        <figure key={size} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <Item size={size} title="Deployment service" description="Read access to staging" />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{label}</figcaption>
+        </figure>
+      ))}
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Item
+            title="applications/staging/services/payment-processing/configuration"
+            description="Versions synchronized successfully"
+            resolved
+            truncate={false}
+            mono
+            actionsPlacement="below"
+            actions={
+              <Button asChild variant="outline">
+                <a href="#code">View configuration guide</a>
+              </Button>
+            }
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Resolved, full text"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Tile
+            title="Managed vault"
+            description="Connection managed by the organization"
+            disabled
+            selected={false}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled selection"}</figcaption>
+      </figure>
+      <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+        {(["ok", "warn", "bad", "info"] as const).map((tone) => (
+          <figure
+            key={tone}
+            className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+          >
+            <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+              <Media tone={tone} icon="lock" size="sm" />
+            </div>
+            <figcaption className="text-muted-foreground text-xs">{tone}</figcaption>
+          </figure>
+        ))}
       </div>
-    </div>);
+    </div>
+  );
 }
 ```
 
@@ -202,66 +282,118 @@ Registry items used: @infisical/button, @infisical/icon, @infisical/item. Additi
 ```tsx
 import { useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+
 import { Button } from "../../../../components/v4/ui/button";
 import { Icon } from "../../../../components/v4/ui/icon";
-import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle, Media } from "../../../../components/v4/ui/item";
-const manifestImage = `data:image/svg+xml,${encodeURIComponent(renderToStaticMarkup(<Icon name="file" xmlns="http://www.w3.org/2000/svg" color="CanvasText"/>))}`;
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+  Media
+} from "../../../../components/v4/ui/item";
+
+const manifestImage = `data:image/svg+xml,${encodeURIComponent(
+  renderToStaticMarkup(<Icon name="file" xmlns="http://www.w3.org/2000/svg" color="CanvasText" />)
+)}`;
+
 export default function Example() {
-    const [imageAvailable, setImageAvailable] = useState(true);
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Item variant="outline">
-          <ItemMedia variant="icon">
-            <Icon name="key"/>
-          </ItemMedia>
-          <ItemContent>
-            <ItemTitle>Staging service</ItemTitle>
-            <ItemDescription>Read access to project versions</ItemDescription>
-          </ItemContent>
-          <ItemActions>
-            <Button asChild variant="outline">
-              <a href="#input">View settings</a>
-            </Button>
-          </ItemActions>
-        </Item>
-      </div><figcaption className="text-muted-foreground text-xs">{"Explicit parts"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        {(["default", "icon", "image"] as const).map((variant) => (<figure key={variant} className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-            <Item variant="outline">
-              <ItemMedia variant={variant}>
-                {variant === "default" && <span>ENV</span>}
-                {variant === "icon" && <Icon name="file"/>}
-                {variant === "image" &&
-            (imageAvailable ? (<img src={manifestImage} alt="Staging deployment manifest thumbnail" onError={() => setImageAvailable(false)}/>) : (<Icon name="file" label="Manifest preview unavailable"/>))}
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle>Staging deployment manifest</ItemTitle>
-                <ItemDescription>Environment configuration, staging.env</ItemDescription>
-              </ItemContent>
-            </Item>
-          </div><figcaption className="text-muted-foreground text-xs">{variant}</figcaption></figure>))}
-        {!imageAvailable && (<p role="status" className="sr-only">
-            Manifest preview unavailable
-          </p>)}
-      </div><figcaption className="text-muted-foreground text-xs">{"ItemMedia recipes"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 justify-items-center grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
-          {(["sm", "md", 24] as const).map((size) => (<figure key={size} className="m-0 flex min-w-0 w-full flex-col gap-3 items-center text-center"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-center">
-              <Media icon="key" size={size}/>
-            </div><figcaption className="text-muted-foreground text-xs">{typeof size === "number" ? `${size}px` : size}</figcaption></figure>))}
-        </div>
-      </div><figcaption className="text-muted-foreground text-xs">{"Media sizes"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Item asChild>
-          <a href="#input">
+  const [imageAvailable, setImageAvailable] = useState(true);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Item variant="outline">
+            <ItemMedia variant="icon">
+              <Icon name="key" />
+            </ItemMedia>
             <ItemContent>
-              <ItemTitle>Input guide</ItemTitle>
-              <ItemDescription>Provider configuration controls</ItemDescription>
+              <ItemTitle>Staging service</ItemTitle>
+              <ItemDescription>Read access to project versions</ItemDescription>
             </ItemContent>
-          </a>
-        </Item>
-      </div><figcaption className="text-muted-foreground text-xs">{"Linked row"}</figcaption></figure>
-    </div>);
+            <ItemActions>
+              <Button asChild variant="outline">
+                <a href="#input">View settings</a>
+              </Button>
+            </ItemActions>
+          </Item>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Explicit parts"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          {(["default", "icon", "image"] as const).map((variant) => (
+            <figure key={variant} className="m-0 flex w-full min-w-0 flex-col gap-3">
+              <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+                <Item variant="outline">
+                  <ItemMedia variant={variant}>
+                    {variant === "default" && <span>ENV</span>}
+                    {variant === "icon" && <Icon name="file" />}
+                    {variant === "image" &&
+                      (imageAvailable ? (
+                        <img
+                          src={manifestImage}
+                          alt="Staging deployment manifest thumbnail"
+                          onError={() => setImageAvailable(false)}
+                        />
+                      ) : (
+                        <Icon name="file" label="Manifest preview unavailable" />
+                      ))}
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>Staging deployment manifest</ItemTitle>
+                    <ItemDescription>Environment configuration, staging.env</ItemDescription>
+                  </ItemContent>
+                </Item>
+              </div>
+              <figcaption className="text-muted-foreground text-xs">{variant}</figcaption>
+            </figure>
+          ))}
+          {!imageAvailable && (
+            <p role="status" className="sr-only">
+              Manifest preview unavailable
+            </p>
+          )}
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"ItemMedia recipes"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+            {(["sm", "md", 24] as const).map((size) => (
+              <figure
+                key={size}
+                className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+              >
+                <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+                  <Media icon="key" size={size} />
+                </div>
+                <figcaption className="text-muted-foreground text-xs">
+                  {typeof size === "number" ? `${size}px` : size}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Media sizes"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Item asChild>
+            <a href="#input">
+              <ItemContent>
+                <ItemTitle>Input guide</ItemTitle>
+                <ItemDescription>Provider configuration controls</ItemDescription>
+              </ItemContent>
+            </a>
+          </Item>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Linked row"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
@@ -273,20 +405,24 @@ Registry items used: @infisical/item. Additional packages: none. Install every l
 
 ```tsx
 import { useState } from "react";
+
 import { Media, Tile } from "../../../../components/v4/ui/item";
+
 export default function Example() {
-    const [selected, setSelected] = useState(false);
-    return (<div className="flex min-w-0 w-full flex-col items-start gap-6">
+  const [selected, setSelected] = useState(false);
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
       <Tile selected={selected} onClick={() => setSelected(!selected)}>
         <span className="flex items-center gap-3">
-          <Media icon="machine"/>
+          <Media icon="machine" />
           Machine identity
         </span>
       </Tile>
       <p role="status" className="sr-only">
         {selected ? "Machine identity selected" : "No identity selected"}
       </p>
-    </div>);
+    </div>
+  );
 }
 ```
 

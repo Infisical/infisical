@@ -115,33 +115,49 @@ Registry items used: @infisical/tabs. Additional packages: none. Install every l
 
 ```tsx
 import { Tabs } from "../../../../components/v4/ui/tabs";
+
 export default function Example() {
-    return (<div className="grid min-w-0 w-full items-start gap-x-6 gap-y-8 grid-cols-1">
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Tabs label="Secret sections" tabs={[
-            { value: "overview", label: "Overview", content: "Value, comment and tags." },
-            { value: "versions", label: "Versions", count: 15, content: "15 versions." },
-            { value: "syncs", label: "Syncs", count: 3, content: "3 synced destinations." },
-            {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Tabs
+            label="Secret sections"
+            tabs={[
+              { value: "overview", label: "Overview", content: "Value, comment and tags." },
+              { value: "versions", label: "Versions", count: 15, content: "15 versions." },
+              { value: "syncs", label: "Syncs", count: 3, content: "3 synced destinations." },
+              {
                 value: "policy",
                 label: "Policy",
                 disabled: true,
                 content: "Unavailable on this plan."
-            }
-        ]}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"underline"}</figcaption></figure>
-      <figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-        <Tabs label="Environment" variant="segmented" tabs={[
-            { value: "staging", label: "Staging", count: 12, content: "12 staging connections." },
-            {
+              }
+            ]}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"underline"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Tabs
+            label="Environment"
+            variant="segmented"
+            tabs={[
+              { value: "staging", label: "Staging", count: 12, content: "12 staging connections." },
+              {
                 value: "production",
                 label: "Production",
                 count: 4,
                 content: "4 production connections."
-            }
-        ]}/>
-      </div><figcaption className="text-muted-foreground text-xs">{"segmented"}</figcaption></figure>
-    </div>);
+              }
+            ]}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"segmented"}</figcaption>
+      </figure>
+    </div>
+  );
 }
 ```
 
