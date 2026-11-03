@@ -122,6 +122,11 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
       await request.put(`${baseURL}/order/certificate/${orderId}/revoke`, { comments }, { headers });
     }, `order revocation for ${orderId}`);
 
+  const cancelOrderReissue = async (orderId: number, note: string) =>
+    wrap(async () => {
+      await request.put(`${baseURL}/order/certificate/${orderId}/status`, { status: "canceled", note }, { headers });
+    }, `reissue cancellation for order ${orderId}`);
+
   const revokeCertificate = async (certificateId: number, comments: string) =>
     wrap(async () => {
       await request.put(`${baseURL}/certificate/${certificateId}/revoke`, { comments }, { headers });
@@ -147,6 +152,7 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
     getOrdersByAlternativeId,
     revokeOrder,
     revokeCertificate,
+    cancelOrderReissue,
     listOrderStatusChanges
   };
 };

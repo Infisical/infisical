@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import {
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
+} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
-import { buildRenewalFormDefaults } from "./certificateRenewalUtils";
+import { buildRenewalFormDefaults, getRemovedCertificateNames } from "./certificateRenewalUtils";
 
 const certificate = {
   id: "cert-1",
@@ -66,5 +69,60 @@ describe("buildRenewalFormDefaults", () => {
     );
     expect(defaults.subjectAltNames?.map((san) => san.value)).toEqual(["ca-added.example.com"]);
     expect(defaults.signatureAlgorithm).toBe("RSA-SHA384");
+  });
+});
+
+describe("getRemovedCertificateNames", () => {
+  const reissuedCertificate = {
+    commonName: "example.com",
+    altNames: "example.com,www.example.com"
+  };
+  const shownSections = { shouldShowSubjectSection: true, shouldShowSanSection: true };
+  const formWith = (commonName: string, altNames: string[]) => ({
+    subjectAttributes: [{ type: CertSubjectAttributeType.COMMON_NAME, value: commonName }],
+    subjectAltNames: altNames.map((value) => ({
+      type: CertSubjectAlternativeNameType.DNS_NAME,
+      value
+    }))
+  });
+
+  it("lists nothing when every name is kept, ignoring case and order", () => {
+    expect(
+      getRemovedCertificateNames({
+        certificate: reissuedCertificate,
+        formData: formWith("Example.com", ["new.example.com", "WWW.example.com", "example.com"]),
+        constraints: shownSections
+      })
+    ).toEqual([]);
+  });
+
+  it("lists an alternative name that is dropped", () => {
+    expect(
+      getRemovedCertificateNames({
+        certificate: reissuedCertificate,
+        formData: formWith("example.com", ["example.com"]),
+        constraints: shownSections
+      })
+    ).toEqual(["www.example.com"]);
+  });
+
+  it("lists the common name when it changes", () => {
+    expect(
+      getRemovedCertificateNames({
+        certificate: { commonName: "example.com", altNames: "www.example.com" },
+        formData: formWith("other.example.com", ["www.example.com"]),
+        constraints: shownSections
+      })
+    ).toEqual(["example.com"]);
+  });
+
+  it("keeps the current names of a section the policy hides", () => {
+    expect(
+      getRemovedCertificateNames({
+        certificate: reissuedCertificate,
+        formData: formWith("example.com", []),
+        constraints: { shouldShowSubjectSection: true, shouldShowSanSection: false }
+      })
+    ).toEqual([]);
   });
 });

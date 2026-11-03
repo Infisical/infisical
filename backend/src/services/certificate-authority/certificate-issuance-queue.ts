@@ -79,6 +79,7 @@ import { CaType } from "./certificate-authority-enums";
 import { keyAlgorithmToAlgCfg } from "./certificate-authority-fns";
 import { assertCaSupportsCustomExtensions } from "./certificate-authority-maps";
 import { DigiCertCertificateAuthorityFns } from "./digicert/digicert-certificate-authority-fns";
+import { TDigiCertCertificateRequestMetadata } from "./digicert/digicert-certificate-authority-types";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
 import { GoDaddyCertificateAuthorityFns } from "./godaddy/godaddy-certificate-authority-fns";
 import { VenafiTppCertificateAuthorityFns } from "./venafi-tpp/venafi-tpp-certificate-authority-fns";
@@ -896,13 +897,44 @@ export const certificateIssuanceQueueFactory = ({
           ...(csr && { csr })
         };
 
-        const digicertResult =
+        const encryptPrivateKey = async (privateKey: string) => {
+          const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+            projectId: ca.projectId,
+            projectDAL,
+            kmsService
+          });
+          const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+          const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(privateKey) });
+          return cipherTextBlob;
+        };
+        const withRenewalMetadata = (metadata: TDigiCertCertificateRequestMetadata) => ({
+          ...metadata,
+          digicert: {
+            ...metadata.digicert,
+            ...(isRenewal && originalCertificateId ? { isRenewal: true, originalCertificateId } : {})
+          }
+        });
+
+        const isReissue = Boolean(
           externalConfiguration?.reissue && renewalOfOrderId !== undefined && originalCertificateId
+        );
+        let encryptedPrivateKey: Buffer | undefined;
+
+        const digicertResult =
+          isReissue && renewalOfOrderId !== undefined && originalCertificateId
             ? await digicertFns.reissueCertificate({
                 ...digicertRequest,
                 orderId: renewalOfOrderId,
                 ttl,
-                originalCertificateId
+                originalCertificateId,
+                onBeforeSubmit: async ({ metadata, privateKey }) => {
+                  encryptedPrivateKey = privateKey ? await encryptPrivateKey(privateKey) : undefined;
+                  const transitioned = await certificateRequestDAL.transitionToPendingValidation(certificateRequestId, {
+                    metadata: JSON.stringify(withRenewalMetadata(metadata)),
+                    ...(encryptedPrivateKey && { encryptedPrivateKey })
+                  });
+                  if (!transitioned) throw new CertificateRequestCancelledError();
+                }
               })
             : await digicertFns.orderCertificate({
                 ...digicertRequest,
@@ -910,47 +942,34 @@ export const certificateIssuanceQueueFactory = ({
                 ...(renewalOfOrderId !== undefined && { renewalOfOrderId })
               });
 
-        const untrackedReissueMessage = `DigiCert reissue on order ${digicertResult.orderId} is still open but will not be tracked; cancel it in DigiCert CertCentral before reissuing again [certificateRequestId=${certificateRequestId}]`;
-
         if (await isCancelled()) {
           logger.info(
             `Cancelled after DigiCert order — order placed at CA but will not be tracked locally [certificateRequestId=${certificateRequestId}]`
           );
-          if (externalConfiguration?.reissue) logger.error(untrackedReissueMessage);
+          if (isReissue) await digicertFns.cancelReissue({ caId, orderId: digicertResult.orderId });
           return;
         }
 
-        let encryptedPrivateKey: Buffer | undefined;
-        if (digicertResult.privateKey) {
-          const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-            projectId: ca.projectId,
-            projectDAL,
-            kmsService
-          });
-          const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
-          const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(digicertResult.privateKey) });
-          encryptedPrivateKey = cipherTextBlob;
-        }
-
-        const metadataWithRenewal = {
-          ...digicertResult.metadata,
-          digicert: {
-            ...digicertResult.metadata.digicert,
-            ...(isRenewal && originalCertificateId ? { isRenewal: true, originalCertificateId } : {})
+        if (isReissue) {
+          if (digicertResult.immediateCertificateId) {
+            await certificateRequestDAL.updateById(certificateRequestId, {
+              metadata: JSON.stringify(withRenewalMetadata(digicertResult.metadata))
+            });
           }
-        };
+        } else {
+          if (digicertResult.privateKey) encryptedPrivateKey = await encryptPrivateKey(digicertResult.privateKey);
 
-        const transitioned = await certificateRequestDAL.transitionToPendingValidation(certificateRequestId, {
-          metadata: JSON.stringify(metadataWithRenewal),
-          ...(encryptedPrivateKey && { encryptedPrivateKey })
-        });
+          const transitioned = await certificateRequestDAL.transitionToPendingValidation(certificateRequestId, {
+            metadata: JSON.stringify(withRenewalMetadata(digicertResult.metadata)),
+            ...(encryptedPrivateKey && { encryptedPrivateKey })
+          });
 
-        if (!transitioned) {
-          logger.info(
-            `Skipping DigiCert validation transition — request is no longer pending [certificateRequestId=${certificateRequestId}]`
-          );
-          if (externalConfiguration?.reissue) logger.error(untrackedReissueMessage);
-          return;
+          if (!transitioned) {
+            logger.info(
+              `Skipping DigiCert validation transition — request is no longer pending [certificateRequestId=${certificateRequestId}]`
+            );
+            return;
+          }
         }
 
         if (digicertResult.immediateCertificateId) {

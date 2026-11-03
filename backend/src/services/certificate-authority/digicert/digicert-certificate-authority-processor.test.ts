@@ -43,6 +43,7 @@ const buildRequest = (orderPlacedAt = new Date().toISOString()) =>
 
 const buildDeps = () => {
   const fetchAndAttachIssuedCertificate = vi.fn().mockResolvedValue({ certificateId: "new-cert", certificatePem: "" });
+  const cancelReissue = vi.fn().mockResolvedValue(true);
   const deps = {
     certificateAuthorityDAL: { findByIdWithAssociatedCa: vi.fn() },
     appConnectionDAL: { findById: vi.fn() },
@@ -53,12 +54,12 @@ const buildDeps = () => {
       attachCertificateToRequest: vi.fn()
     },
     resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() },
-    digicertFns: { fetchAndAttachIssuedCertificate },
+    digicertFns: { fetchAndAttachIssuedCertificate, cancelReissue },
     projectDAL: { findById: vi.fn().mockResolvedValue({ orgId: "org-1" }) },
     telemetryService: { sendPostHogEvents: vi.fn() },
     certificateAlertEventEmitter: { notify: vi.fn() }
   } as unknown as TProcessDigiCertRequestDeps;
-  return { deps, fetchAndAttachIssuedCertificate };
+  return { deps, fetchAndAttachIssuedCertificate, cancelReissue };
 };
 
 const buildClientCache = (client: Partial<TDigiCertApiClient>) => new Map([[CA_ID, client as TDigiCertApiClient]]);
@@ -105,16 +106,17 @@ describe("processDigiCertPendingValidationRequest reissue", () => {
     expect(result.status).toBe(CertificateRequestStatus.ISSUED);
   });
 
-  test("fails a reissue that DigiCert hasn't finished within 24 hours with a next step", async () => {
-    const { deps } = buildDeps();
+  test("cancels a reissue that DigiCert hasn't finished within 24 hours", async () => {
+    const { deps, cancelReissue } = buildDeps();
     const dayAgo = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
 
     const result = await processDigiCertPendingValidationRequest(deps, buildRequest(dayAgo), buildClientCache({}));
 
+    expect(cancelReissue).toHaveBeenCalledWith({ caId: CA_ID, orderId: ORDER_ID });
     expect(result.status).toBe(CertificateRequestStatus.FAILED);
     expect(deps.certificateRequestService.updateCertificateRequestStatus).toHaveBeenCalledWith(
       expect.objectContaining({
-        errorMessage: expect.stringContaining(`reissue on order ${ORDER_ID} within 24 hours`) as string
+        errorMessage: expect.stringContaining(`within 24 hours, so it was canceled`) as string
       })
     );
   });

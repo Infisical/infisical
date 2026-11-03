@@ -84,7 +84,8 @@ describe("CertificateRequestService", () => {
       identityDAL: mockIdentityDAL as any,
       certificateProfileDAL: mockCertificateProfileDAL as any,
       certificateAuthorityDAL: mockCertificateAuthorityDAL as any,
-      auditLogService: mockAuditLogService
+      auditLogService: mockAuditLogService,
+      digicertFns: { cancelReissue: vi.fn().mockResolvedValue(true) }
     });
   });
 

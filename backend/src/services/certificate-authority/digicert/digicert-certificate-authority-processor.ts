@@ -67,7 +67,7 @@ export type TProcessDigiCertRequestDeps = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "setPendingMessage">;
   certificateRequestService: TDigiCertCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
-  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
+  digicertFns: Pick<TDigiCertCertificateAuthorityFns, "fetchAndAttachIssuedCertificate" | "cancelReissue">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
@@ -140,15 +140,22 @@ export const processDigiCertPendingValidationRequest = async (
 
   const age = Date.now() - new Date(parsed.digicert.orderPlacedAt).getTime();
   if (age >= DIGICERT_VALIDATION_TIMEOUT_MS) {
+    let errorMessage = "Validation timed out after 24h";
+    if (parsed.digicert.previousCertificateId !== undefined) {
+      const isReissueCanceled = await deps.digicertFns.cancelReissue({
+        caId: request.caId,
+        orderId: parsed.digicert.orderId
+      });
+      errorMessage = isReissueCanceled
+        ? `DigiCert didn't finish the reissue on order ${parsed.digicert.orderId} within 24 hours, so it was canceled. Submit a new request to reissue again.`
+        : `DigiCert didn't finish the reissue on order ${parsed.digicert.orderId} within 24 hours. Cancel the reissue in DigiCert CertCentral and submit a new request. Finishing it in CertCentral won't bring its certificate into Infisical.`;
+    }
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
       operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
       originalCertificateId: parsed.digicert.originalCertificateId,
-      errorMessage:
-        parsed.digicert.previousCertificateId !== undefined
-          ? `DigiCert didn't finish the reissue on order ${parsed.digicert.orderId} within 24 hours. Finish or cancel it in DigiCert CertCentral.`
-          : "Validation timed out after 24h"
+      errorMessage
     });
     logger.info(`DigiCert validation timed out [certificateRequestId=${request.id}]`);
     return { status: CertificateRequestStatus.FAILED, orderStatus: "timeout", reason: "timeout" };

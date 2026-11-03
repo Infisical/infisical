@@ -135,6 +135,7 @@ type Props = {
       renewalError?: string;
       renewedFromCertificateId?: string;
       renewedByCertificateId?: string;
+      canRevoke?: boolean;
     }
   ) => void;
   externalFilter?: {
@@ -1247,7 +1248,8 @@ export const CertificatesTable = ({
                                       e.stopPropagation();
                                       handlePopUpOpen("renewCertificate", {
                                         certificateId: certificate.id,
-                                        commonName: certificate.commonName
+                                        commonName: certificate.commonName,
+                                        canRevoke: canDeleteCertificate
                                       });
                                     }}
                                   >

@@ -71,6 +71,10 @@ export const CertificateImportLinkageMap: Partial<Record<CaType, TCertificateImp
   }
 };
 
+export const CertificateReissueOrderSchemaMap: Partial<Record<CaType, z.ZodTypeAny>> = {
+  [CaType.DIGICERT]: DigiCertExternalMetadataSchema
+};
+
 export const CA_TYPE_LABEL: Record<CaType, string> = {
   [CaType.INTERNAL]: "Internal CA",
   [CaType.ACME]: "ACME",

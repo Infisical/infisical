@@ -264,3 +264,30 @@ export const buildRenewalRequestAttributes = ({
 
   return attributes;
 };
+
+export const getRemovedCertificateNames = ({
+  certificate,
+  formData,
+  constraints
+}: {
+  certificate: Pick<TCertificate, "commonName" | "altNames">;
+  formData: Pick<RenewalFormData, "subjectAttributes" | "subjectAltNames">;
+  constraints: Pick<TemplateConstraints, "shouldShowSubjectSection" | "shouldShowSanSection">;
+}): string[] => {
+  const normalize = (names: (string | null | undefined)[]) =>
+    names.map((name) => name?.trim().toLowerCase()).filter((name): name is string => Boolean(name));
+  const originalAltNames = (certificate.altNames ?? "").split(",");
+  const requestedNames = new Set(
+    normalize([
+      constraints.shouldShowSubjectSection
+        ? getAttributeValue(formData.subjectAttributes, CertSubjectAttributeType.COMMON_NAME)
+        : certificate.commonName,
+      ...(constraints.shouldShowSanSection
+        ? (formData.subjectAltNames ?? []).map((san) => san.value)
+        : originalAltNames)
+    ])
+  );
+  return [...new Set(normalize([certificate.commonName, ...originalAltNames]))].filter(
+    (name) => !requestedNames.has(name)
+  );
+};

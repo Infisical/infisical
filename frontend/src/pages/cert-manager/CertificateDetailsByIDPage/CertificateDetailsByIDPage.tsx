@@ -420,7 +420,8 @@ const Page = () => {
                     onClick={() =>
                       handlePopUpOpen("renewCertificate", {
                         certificateId: certificate.id,
-                        commonName: displayName
+                        commonName: displayName,
+                        canRevoke: canDeleteCertificate
                       })
                     }
                   >

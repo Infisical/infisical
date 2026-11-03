@@ -531,12 +531,14 @@ export const DigiCertCertificateAuthorityFns = ({
     keyAlgorithm = CertKeyAlgorithm.RSA_2048,
     csr,
     ttl,
-    originalCertificateId
+    originalCertificateId,
+    onBeforeSubmit
   }: {
     caId: string;
     orderId: number;
     ttl: string;
     originalCertificateId: string;
+    onBeforeSubmit?: (prepared: { metadata: TDigiCertCertificateRequestMetadata; privateKey: string }) => Promise<void>;
     commonName: string;
     altNames?: string[];
     signatureAlgorithm?: string;
@@ -560,20 +562,30 @@ export const DigiCertCertificateAuthorityFns = ({
     }
     if (orderStatus !== DigiCertOrderStatus.Issued || !order.certificate?.id) {
       throw new BadRequestError({
-        message: `DigiCert order ${orderId} is ${order.status ?? "not issued"}, so it can't be reissued.`
+        message: `DigiCert order ${orderId} can't be reissued because its status in DigiCert is "${order.status ?? "unknown"}". Only issued orders can be reissued.`
       });
     }
     const previousCertificateId = order.certificate.id;
 
     const originalCertificate = await certificateDAL.findById(originalCertificateId);
-    const originalMetadata = DigiCertExternalMetadataSchema.safeParse(originalCertificate?.externalMetadata);
-    if (originalCertificate && originalMetadata.success && !originalMetadata.data.certificateId) {
-      const previousSerialNumber = await $getCertificateSerialNumber(client, previousCertificateId);
-      if (previousSerialNumber === originalCertificate.serialNumber.toLowerCase()) {
-        await certificateDAL.updateById(originalCertificate.id, {
-          externalMetadata: { ...originalMetadata.data, certificateId: previousCertificateId }
-        });
-      }
+    if (!originalCertificate) {
+      throw new NotFoundError({ message: `Certificate not found [certificateId=${originalCertificateId}]` });
+    }
+    const originalMetadata = DigiCertExternalMetadataSchema.safeParse(originalCertificate.externalMetadata);
+    const storedCertificateId = originalMetadata.success ? originalMetadata.data.certificateId : undefined;
+    const isCurrentOnOrder = storedCertificateId
+      ? storedCertificateId === previousCertificateId
+      : (await $getCertificateSerialNumber(client, previousCertificateId)) ===
+        originalCertificate.serialNumber.toLowerCase();
+    if (!isCurrentOnOrder) {
+      throw new BadRequestError({
+        message: `This certificate is no longer the current one on DigiCert order ${orderId}, so it can't be reissued. Reissue the order's current certificate instead.`
+      });
+    }
+    if (originalMetadata.success && !storedCertificateId) {
+      await certificateDAL.updateById(originalCertificate.id, {
+        externalMetadata: { ...originalMetadata.data, certificateId: previousCertificateId }
+      });
     }
 
     const { certificate, privateKeyPem } = await $buildCertificatePayload({
@@ -586,11 +598,24 @@ export const DigiCertCertificateAuthorityFns = ({
     });
 
     const reissuePayload: TReissueOrderRequest = {
-      certificate,
-      cert_validity: { days: Math.min(parseTtlToDays(ttl), DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS) },
+      certificate: {
+        ...certificate,
+        cert_validity: { days: Math.min(parseTtlToDays(ttl), DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS) }
+      },
       dcv_method: "dns-txt-token",
       skip_approval: true
     };
+    const metadata: TDigiCertCertificateRequestMetadata = {
+      digicert: {
+        orderId,
+        productNameId,
+        organizationId,
+        orderPlacedAt: new Date().toISOString(),
+        previousCertificateId
+      }
+    };
+    await onBeforeSubmit?.({ metadata, privateKey: privateKeyPem });
+
     const reissueResponse = await client.reissueOrder(orderId, reissuePayload);
     const immediateCertificateId =
       reissueResponse.certificate_id && reissueResponse.certificate_id !== previousCertificateId
@@ -598,20 +623,23 @@ export const DigiCertCertificateAuthorityFns = ({
         : undefined;
 
     return {
-      metadata: {
-        digicert: {
-          orderId,
-          certificateId: immediateCertificateId,
-          productNameId,
-          organizationId,
-          orderPlacedAt: new Date().toISOString(),
-          previousCertificateId
-        }
-      },
+      metadata: { digicert: { ...metadata.digicert, certificateId: immediateCertificateId } },
       privateKey: privateKeyPem,
       immediateCertificateId,
       orderId
     };
+  };
+
+  const cancelReissue = async ({ caId, orderId }: { caId: string; orderId: number }): Promise<boolean> => {
+    try {
+      const { client } = await $getActiveDigiCertCa(caId);
+      await client.cancelOrderReissue(orderId, "Canceled from Infisical");
+      logger.info(`DigiCert reissue canceled [caId=${caId}] [orderId=${orderId}]`);
+      return true;
+    } catch (error) {
+      logger.warn(error, `Failed to cancel DigiCert reissue [caId=${caId}] [orderId=${orderId}]`);
+      return false;
+    }
   };
 
   const fetchAndAttachIssuedCertificate = async ({
@@ -865,7 +893,7 @@ export const DigiCertCertificateAuthorityFns = ({
         const currentSerialNumber = await $getCertificateSerialNumber(client, currentCertificateId);
         if (currentSerialNumber !== cert.serialNumber.toLowerCase()) {
           throw new BadRequestError({
-            message: `This certificate is no longer the current one on DigiCert order ${orderId}, and revoking the order would also revoke the certificate that replaced it. Revoke this certificate in DigiCert CertCentral.`
+            message: `This certificate is no longer the current one on DigiCert order ${orderId}, and revoking the order would also revoke the certificate that replaced it. Revoke the certificate with serial number ${cert.serialNumber} in DigiCert CertCentral.`
           });
         }
         digicertCertificateId = currentCertificateId;
@@ -901,6 +929,7 @@ export const DigiCertCertificateAuthorityFns = ({
     listCertificateAuthorities,
     orderCertificate,
     reissueCertificate,
+    cancelReissue,
     fetchAndAttachIssuedCertificate,
     pollOrderForCertificate,
     revokeCertificate,

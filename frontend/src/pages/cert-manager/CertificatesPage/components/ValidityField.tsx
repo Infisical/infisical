@@ -17,6 +17,7 @@ type Props = {
   policyError?: string;
   /** Policy findings stay hidden until the requester tries to leave the step. */
   revealPolicyError?: boolean;
+  isReadOnly?: boolean;
 };
 
 /**
@@ -30,7 +31,8 @@ export const ValidityField = ({
   className,
   hint,
   policyError,
-  revealPolicyError
+  revealPolicyError,
+  isReadOnly
 }: Props) => (
   <Controller
     control={control}
@@ -43,7 +45,12 @@ export const ValidityField = ({
           <FieldLabel>
             {label} <span className="text-danger">*</span>
           </FieldLabel>
-          <Input {...field} placeholder="30d, 1y, 8760h" isError={Boolean(shownError)} />
+          <Input
+            {...field}
+            readOnly={isReadOnly}
+            placeholder="30d, 1y, 8760h"
+            isError={Boolean(shownError)}
+          />
           {description && <FieldDescription>{description}</FieldDescription>}
           {shownError && <PolicyRowMessage isError lines={[shownError]} />}
           {!shownError && hint && <PolicyRowMessage lines={hint} />}

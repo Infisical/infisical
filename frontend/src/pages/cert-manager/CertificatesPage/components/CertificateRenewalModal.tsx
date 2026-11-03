@@ -2,11 +2,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, TriangleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertTitle,
   Field,
   FieldContent,
   FieldDescription,
@@ -53,6 +64,7 @@ import { buildPolicyRules, withRequiredRows } from "./certificatePolicyGuidance"
 import {
   buildRenewalFormDefaults,
   buildRenewalRequestAttributes,
+  getRemovedCertificateNames,
   unionUsageOptions
 } from "./certificateRenewalUtils";
 import { isExternalTemplateCa, rowErrorsOf } from "./certificateUtils";
@@ -274,6 +286,9 @@ const ChoiceCards = <T extends string>({
   </Field>
 );
 
+const REISSUE_VALIDITY_DESCRIPTION =
+  "Same as the current certificate. DigiCert caps it at 199 days and at the end of the order.";
+
 enum DigiCertOrderChoice {
   NewOrder = "new-order",
   Reissue = "reissue"
@@ -320,7 +335,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   const navigate = useNavigate();
 
   const isOpen = Boolean(popUp?.renewCertificate?.isOpen);
-  const { certificateId } = (popUp?.renewCertificate?.data as { certificateId?: string }) ?? {};
+  const { certificateId, canRevoke = true } =
+    (popUp?.renewCertificate?.data as { certificateId?: string; canRevoke?: boolean }) ?? {};
 
   const { data: certificateData } = useGetCertificateById(
     isOpen && certificateId ? certificateId : ""
@@ -405,6 +421,24 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       CaCapability.REISSUE_CERTIFICATES
     );
   const isReissuing = isReissueAvailable && watch("reissue");
+  const removedNames =
+    isReissuing && certificate && keySource !== CertificateRenewalKeySource.Csr
+      ? getRemovedCertificateNames({
+          certificate,
+          formData: {
+            subjectAttributes: watch("subjectAttributes"),
+            subjectAltNames: watch("subjectAltNames")
+          },
+          constraints
+        })
+      : [];
+  const nameRemovalError =
+    removedNames.length && !canRevoke
+      ? "Removing or changing a name on a reissue revokes the current certificate, and you don't have permission to revoke it."
+      : undefined;
+  const [pendingNameRemovalRenewal, setPendingNameRemovalRenewal] =
+    useState<RenewalFormData | null>(null);
+  const [isConfirmingNameRemoval, setIsConfirmingNameRemoval] = useState(false);
   const watchedIsCA = watch("basicConstraints.isCA") || false;
   const sanTypesInForm = (watch("subjectAltNames") ?? []).map((san) => san.type).join(",");
   const watchedKeyUsages = Object.keys(watch("keyUsages") ?? {})
@@ -537,7 +571,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     isSubjectSectionShown: constraints.shouldShowSubjectSection,
     isSanSectionShown: constraints.shouldShowSanSection,
     isSubjectEvaluated: keySource !== CertificateRenewalKeySource.Csr,
-    isValidityEvaluated: !isExternalTemplateProfile && !isReissuing,
+    isValidityEvaluated: !isExternalTemplateProfile,
     resetKey: certificate?.id
   });
 
@@ -548,6 +582,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     validateStep: async (fields) => {
       // Leaving a step reveals the findings on its own fields; entering it must stay quiet.
       policy.reveal(fields);
+      if (nameRemovalError && fields.includes("subjectAltNames")) return false;
       if (!(await trigger(fields as (keyof RenewalFormData)[]))) return false;
       return policy.findBlockedFields(fields).length === 0;
     }
@@ -642,22 +677,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     setStep(0);
   };
 
-  const onFormSubmit = async (formData: RenewalFormData) => {
+  const submitRenewal = async (formData: RenewalFormData) => {
     if (!certificateId) return;
-
-    // Reachable when a step was skipped or its values changed after it was cleared. Reveal the
-    // whole offending step, so the finding is visible wherever in it the requester lands.
-    const [blockedField] = policy.findBlockedFields(stepKeys.flatMap((key) => STEP_FIELDS[key]));
-    if (blockedField) {
-      const blockedStep = stepKeys.findIndex((key) => STEP_FIELDS[key].includes(blockedField));
-      policy.reveal(blockedStep >= 0 ? STEP_FIELDS[stepKeys[blockedStep]] : [blockedField]);
-      if (blockedStep >= 0) setStep(blockedStep);
-      createNotification({
-        text: "Resolve the policy violations before renewing this certificate.",
-        type: "error"
-      });
-      return;
-    }
 
     const attributes = buildRenewalRequestAttributes({
       formData,
@@ -691,6 +712,48 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
         },
         ...(applicationName && { search: { fromApplication: applicationName } })
       });
+    }
+  };
+
+  const onFormSubmit = async (formData: RenewalFormData) => {
+    if (!certificateId) return;
+
+    // Reachable when a step was skipped or its values changed after it was cleared. Reveal the
+    // whole offending step, so the finding is visible wherever in it the requester lands.
+    const [blockedField] = policy.findBlockedFields(stepKeys.flatMap((key) => STEP_FIELDS[key]));
+    if (blockedField) {
+      const blockedStep = stepKeys.findIndex((key) => STEP_FIELDS[key].includes(blockedField));
+      policy.reveal(blockedStep >= 0 ? STEP_FIELDS[stepKeys[blockedStep]] : [blockedField]);
+      if (blockedStep >= 0) setStep(blockedStep);
+      createNotification({
+        text: "Resolve the policy violations before renewing this certificate.",
+        type: "error"
+      });
+      return;
+    }
+
+    if (nameRemovalError) {
+      setStep(stepKeys.indexOf("subject"));
+      createNotification({ text: nameRemovalError, type: "error" });
+      return;
+    }
+
+    if (removedNames.length) {
+      setPendingNameRemovalRenewal(formData);
+      return;
+    }
+
+    await submitRenewal(formData);
+  };
+
+  const confirmNameRemoval = async () => {
+    if (!pendingNameRemovalRenewal) return;
+    setIsConfirmingNameRemoval(true);
+    try {
+      await submitRenewal(pendingNameRemovalRenewal);
+    } finally {
+      setIsConfirmingNameRemoval(false);
+      setPendingNameRemovalRenewal(null);
     }
   };
 
@@ -763,7 +826,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                       value: DigiCertOrderChoice.Reissue,
                       label: "Reissue the existing order",
                       description:
-                        "Issues the certificate on the same DigiCert order. Removing or changing a name revokes the current certificate within 72 hours."
+                        "Issues the certificate on the same DigiCert order, so it can't outlast the order. For longer coverage, place a new order. Removing or changing a name revokes the current certificate and any earlier copies on the order within 72 hours."
                     }
                   ]}
                 />
@@ -812,15 +875,15 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               </Field>
             )}
           />
-          {!isReissuing && (
-            <ValidityField
-              control={control}
-              label="Validity (TTL)"
-              hint={policy.ttlHint}
-              policyError={policy.ttlError}
-              revealPolicyError={policy.isRevealed("ttl")}
-            />
-          )}
+          <ValidityField
+            control={control}
+            label="Validity (TTL)"
+            isReadOnly={isReissuing}
+            description={isReissuing ? REISSUE_VALIDITY_DESCRIPTION : undefined}
+            hint={policy.ttlHint}
+            policyError={policy.ttlError}
+            revealPolicyError={policy.isRevealed("ttl")}
+          />
         </div>
       )}
 
@@ -831,6 +894,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               control={control}
               allowedAttributeTypes={selectableSubjectAttributeTypes}
               error={
+                (!constraints.shouldShowSanSection && nameRemovalError) ||
                 (formState.errors as { subjectAttributes?: { message?: string } }).subjectAttributes
                   ?.message
               }
@@ -847,6 +911,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               control={control}
               allowedSanTypes={selectableSanTypes}
               error={
+                nameRemovalError ??
                 (formState.errors as { subjectAltNames?: { message?: string } }).subjectAltNames
                   ?.message
               }
@@ -857,6 +922,17 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               policyNotices={policy.sans.notices}
               revealPolicyErrors={policy.isRevealed("subjectAltNames")}
             />
+          )}
+          {removedNames.length > 0 && !nameRemovalError && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>DigiCert will revoke the current certificate</AlertTitle>
+              <AlertDescription>
+                This reissue removes {removedNames.join(", ")}. Once the new certificate is issued,
+                DigiCert revokes the current certificate and any earlier reissues and duplicates on
+                this order within 72 hours.
+              </AlertDescription>
+            </Alert>
           )}
           <IssuerModifiedNotice fields={subjectIssuerChanges} />
         </div>
@@ -877,12 +953,17 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
       {currentStepKey === "options" && (
         <div className="space-y-4">
-          {!isExternalTemplateProfile && !isReissuing && (
+          {!isExternalTemplateProfile && (
             <ValidityField
               control={control}
               className="mb-4"
               label="Validity (TTL)"
-              description="The renewed certificate is valid for this long, starting now."
+              isReadOnly={isReissuing}
+              description={
+                isReissuing
+                  ? REISSUE_VALIDITY_DESCRIPTION
+                  : "The renewed certificate is valid for this long, starting now."
+              }
               hint={policy.ttlHint}
               policyError={policy.ttlError}
               revealPolicyError={policy.isRevealed("ttl")}
@@ -947,6 +1028,32 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
           <IssuerModifiedNotice fields={optionsIssuerChanges} />
         </div>
       )}
+      <AlertDialog
+        open={pendingNameRemovalRenewal !== null}
+        onOpenChange={(open) => {
+          if (!open && !isConfirmingNameRemoval) setPendingNameRemovalRenewal(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reissue without {removedNames.join(", ")}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Once the new certificate is issued, DigiCert revokes the current certificate and any
+              earlier reissues and duplicates on this order within 72 hours.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isConfirmingNameRemoval}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isDisabled={isConfirmingNameRemoval}
+              onClick={confirmNameRemoval}
+            >
+              Reissue Certificate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </CertificateWizardSheet>
   );
 };

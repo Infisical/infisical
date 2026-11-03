@@ -32,13 +32,7 @@ export type TPlaceOrderRequest = {
 };
 
 export type TReissueOrderRequest = {
-  certificate: {
-    common_name: string;
-    dns_names?: string[];
-    csr: string;
-    signature_hash?: string;
-  };
-  cert_validity?: { days: number };
+  certificate: TPlaceOrderRequest["certificate"] & { cert_validity?: { days: number } };
   dcv_method?: "dns-txt-token";
   skip_approval?: boolean;
 };

@@ -4022,7 +4022,8 @@ export const registerRoutes = async (
     identityDAL,
     certificateProfileDAL,
     certificateAuthorityDAL,
-    auditLogService
+    auditLogService,
+    digicertFns: digicertCaFns
   });
 
   const certificateIssuanceQueue = certificateIssuanceQueueFactory({
@@ -4369,6 +4370,8 @@ export const registerRoutes = async (
     cronJob,
     certificateAuthorityDAL,
     certificateDAL,
+    certificateBodyDAL,
+    projectDAL,
     appConnectionDAL,
     kmsService,
     auditLogService,

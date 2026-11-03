@@ -20,7 +20,10 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
-import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
+import {
+  caSupportsCapability,
+  CERTIFICATE_AUTHORITIES_TYPE_MAP
+} from "@app/services/certificate-authority/certificate-authority-maps";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
   TProfileCustomExtension,
@@ -80,7 +83,7 @@ import {
   validateCertificateRequestLicense,
   validatePqcLicense
 } from "../certificate-common/certificate-utils";
-import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
+import { CertificateReissueOrderSchemaMap } from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import {
@@ -1134,24 +1137,24 @@ export const certificateRenewalServiceFactory = ({
           tx
         );
 
-        if (
-          externalConfiguration?.reissue &&
-          !(caType && caSupportsCapability(caType, CaCapability.REISSUE_CERTIFICATES))
-        ) {
-          throw new BadRequestError({
-            message: "Reissue is only available for DigiCert certificates."
-          });
-        }
-        if (externalConfiguration?.reissue && attributes?.ttl) {
-          throw new BadRequestError({ message: "Remove the TTL. It can't be set on a reissue." });
-        }
-        if (
-          externalConfiguration?.reissue &&
-          !DigiCertExternalMetadataSchema.safeParse(originalCert.externalMetadata).success
-        ) {
-          throw new BadRequestError({
-            message: "This certificate has no DigiCert order to reissue. Place a new order instead."
-          });
+        if (externalConfiguration?.reissue) {
+          if (!(caType && caSupportsCapability(caType, CaCapability.REISSUE_CERTIFICATES))) {
+            const reissuingCaNames = Object.values(CaType)
+              .filter((type) => caSupportsCapability(type, CaCapability.REISSUE_CERTIFICATES))
+              .map((type) => CERTIFICATE_AUTHORITIES_TYPE_MAP[type]);
+            throw new BadRequestError({
+              message: `Reissue is only available for certificates issued by these CAs: ${reissuingCaNames.join(", ")}.`
+            });
+          }
+          if (attributes?.ttl) {
+            throw new BadRequestError({ message: "Remove the TTL. It can't be set on a reissue." });
+          }
+          const reissueOrderSchema = CertificateReissueOrderSchemaMap[caType];
+          if (!reissueOrderSchema?.safeParse(originalCert.externalMetadata).success) {
+            throw new BadRequestError({
+              message: "This certificate has no order with its CA to reissue. Place a new order instead."
+            });
+          }
         }
 
         const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
