@@ -1356,7 +1356,9 @@ export const secretV2BridgeServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
+    // the folder lookup ignores empty segments, so check permissions against the same canonical path
+    const secretPath = `/${path.split("/").filter(Boolean).join("/")}`;
+    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return [];
 
     const folderEnvironments = new Map(folders.map((folder) => [folder.id, folder.environment.slug]));
@@ -1372,7 +1374,7 @@ export const secretV2BridgeServiceFactory = ({
         environment &&
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
           environment,
-          secretPath: path,
+          secretPath,
           secretName: secretKey,
           secretTags: tagSlugs
         })
