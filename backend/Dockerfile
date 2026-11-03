@@ -110,7 +110,7 @@ COPY --from=build-output /app .
 COPY --from=prod-deps /app/node_modules ./node_modules
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \
-    CMD node healthcheck.js
+    CMD curl -f http://localhost:${PORT:-4000}/api/status || exit 1
 
 ENV HOST=0.0.0.0
 
