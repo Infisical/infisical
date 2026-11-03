@@ -349,7 +349,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     if (accountType === PamAccountType.WindowsAd) detail = "in the same domain as";
     else if (isWindowsRotatableType(accountType)) detail = "on the same host as";
     else if (accountType === PamAccountType.OracleDB) detail = "on the same resource (host, port and service name) as";
-    throw new BadRequestError({ message: `Rotation account is no longer ${detail} this account` });
+    throw new BadRequestError({ message: `Rotation account must be ${detail} this account` });
   };
 
   // Stable key for the identity an account authenticates as, to detect two PAM objects on the same credential:
