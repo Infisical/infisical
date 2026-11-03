@@ -993,7 +993,7 @@ from infisical_sdk import AgentVaultTrafficPolicy
 response = client.agent_vault.proxies.create(
     name="edge-proxy",
     traffic_policy=AgentVaultTrafficPolicy.BUNDLE_HOSTS, # Optional
-    allowed_hosts=["registry.npmjs.org", "pypi.org"], # Optional
+    allowed_hosts=["pypi.org", "files.pythonhosted.org"], # Optional
     poll_interval=60, # Optional
     description="Proxy for CI runners" # Optional
 )
