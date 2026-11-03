@@ -524,8 +524,8 @@ export const SecretEditTableRow = ({
     const state = queryClient.getQueryState<string[]>(
       secretKeyExistsQueryOptions(getKeyCheckParams(secretKey)).queryKey
     );
+    if (state?.status === "error" && state.fetchStatus === "idle") return [];
     if (!state || state.isInvalidated) return undefined;
-    if (state.status === "error") return [];
     return state.data;
   };
   const getRenameKey = () => {
