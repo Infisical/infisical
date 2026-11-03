@@ -1958,27 +1958,20 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        projectId: z.string().trim().min(1).max(64).describe(DASHBOARD.SECRET_KEY_EXISTS.projectId),
+        projectId: z.string().trim().min(1).max(64),
         environments: z
           .string()
           .trim()
           .max(4000)
           .transform(decodeURIComponent)
           .transform((value) => value.split(",").filter(Boolean))
-          .pipe(slugSchema({ field: "Environment" }).array().min(1).max(100))
-          .describe(DASHBOARD.SECRET_KEY_EXISTS.environments),
-        secretPath: z
-          .string()
-          .trim()
-          .max(1000)
-          .default("/")
-          .transform(removeTrailingSlash)
-          .describe(DASHBOARD.SECRET_KEY_EXISTS.secretPath),
-        secretKey: z.string().trim().max(500).pipe(SecretNameSchema).describe(DASHBOARD.SECRET_KEY_EXISTS.secretKey)
+          .pipe(slugSchema({ field: "Environment" }).array().min(1).max(100)),
+        secretPath: z.string().trim().max(1000).default("/").transform(removeTrailingSlash),
+        secretKey: z.string().trim().max(500).pipe(SecretNameSchema)
       }),
       response: {
         200: z.object({
-          existingEnvironments: z.string().array().describe(DASHBOARD.SECRET_KEY_EXISTS.existingEnvironments)
+          existingEnvironments: z.string().array()
         })
       }
     },
