@@ -478,7 +478,6 @@ export const membershipIdentityServiceFactory = ({
 
     await factory.onDeleteMembershipIdentityGuard(dto);
 
-    const scopeField = factory.getScopeField(scopeData);
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipIdentityDAL.findOne({
       scope: scopeData.scope,
@@ -510,10 +509,7 @@ export const membershipIdentityServiceFactory = ({
       });
 
       await additionalPrivilegeDAL.delete(
-        {
-          actorIdentityId: dto.selector.identityId,
-          [scopeField.key]: scopeField.value
-        },
+        { actorIdentityId: dto.selector.identityId, projectId: scopeData.projectId },
         tx
       );
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);

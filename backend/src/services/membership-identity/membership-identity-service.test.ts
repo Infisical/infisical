@@ -52,7 +52,7 @@ const createService = ({
   const deleteByIdentityIdsInGroupsOwnedByOrgs = vi.fn().mockResolvedValue(undefined);
   const deleteMetadata = vi.fn().mockResolvedValue([]);
   const lockActorsForOrgAccess = vi.fn().mockResolvedValue(undefined);
-  const revoked = [{ orgId: "org", identityId: IDENTITY_ID, projectIds: ["project-1"], resources: [] }];
+  const revoked = [{ orgId: SUB_ORG_ID, identityId: IDENTITY_ID, projectIds: ["project-1"], resources: [] }];
   const revokeActorsInOrgs = vi.fn().mockResolvedValue({ revoked, sendPamCancellations: () => {} });
   const createAuditLog = vi.fn().mockResolvedValue(undefined);
 

@@ -22,7 +22,7 @@ type TDeleteOrgMemberships = {
   orgId: string;
   orgDAL: Pick<TOrgDALFactory, "transaction" | "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "deleteByUserIdsInGroupsOwnedByOrgs">;
-  membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "find" | "countActiveAdmins">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "countActiveAdmins">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
   userId?: string;

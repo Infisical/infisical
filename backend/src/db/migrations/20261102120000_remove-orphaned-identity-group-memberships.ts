@@ -8,10 +8,11 @@ export async function up(knex: Knex): Promise<void> {
   await knex(TableName.IdentityGroupMembership)
     .whereNotExists(
       knex(TableName.Groups)
-        .join(TableName.Membership, (join) => {
-          void join
-            .on(`${TableName.Membership}.scopeOrgId`, `${TableName.Groups}.orgId`)
-            .andOn(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityGroupMembership}.identityId`);
+        .join(TableName.Membership, (qb) => {
+          qb.on(`${TableName.Membership}.scopeOrgId`, `${TableName.Groups}.orgId`).andOn(
+            `${TableName.Membership}.actorIdentityId`,
+            `${TableName.IdentityGroupMembership}.identityId`
+          );
         })
         .whereRaw("?? = ??", [`${TableName.Groups}.id`, `${TableName.IdentityGroupMembership}.groupId`])
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
