@@ -16,14 +16,6 @@ export const foundationPages = [
 
 export const comparisonPages = [
   {
-    id: "compare-shell",
-    href: "/v4/organizations/demo/projects/secret-management/payments-api/overview",
-    screen: "shell",
-    title: "App shell",
-    description: "The sidebar, top bar and switchers around the payments-api secrets overview.",
-    start: 0
-  },
-  {
     id: "compare-home",
     href: "/v4/organizations/demo/projects",
     screen: "home",
@@ -34,14 +26,14 @@ export const comparisonPages = [
     id: "compare-secrets",
     href: "/v4/organizations/demo/projects/secret-management/payments-api/overview",
     screen: "secrets",
-    title: "Secrets",
+    title: "Secrets project",
     description: "A local Secrets Overview with scoped resources and interactive fixture scenarios."
   },
   {
     id: "compare-access",
     href: "/v4/organizations/demo/access-management?selectedTab=members",
     screen: "access",
-    title: "Access control",
+    title: "Organization and project access control",
     description:
       "Organization and project access control ported from main: users, machine identities, groups, service tokens, roles and the role editor, with every flow on local demo data. Pick a page or flow to compare."
   },
@@ -56,14 +48,14 @@ export const comparisonPages = [
     id: "compare-approvals",
     href: "/v4/organizations/demo/projects/secret-management/payments-api/approval",
     screen: "approvals",
-    title: "Change requests",
+    title: "Secrets project change requests",
     description: "4 open production change requests in the ApprovalQueue pattern."
   },
   {
     id: "compare-certificates",
     href: "/v4/organizations/demo/cert-manager/inventory",
     screen: "certificates",
-    title: "Certificates",
+    title: "Certificate inventory",
     description:
       "The internal-pki inventory in a DataTable, with each certificate opening its detail page."
   },
@@ -71,14 +63,14 @@ export const comparisonPages = [
     id: "compare-kms",
     href: "/v4/organizations/demo/projects/kms/kms-keys/overview",
     screen: "kms",
-    title: "KMS keys",
+    title: "KMS project keys",
     description: "The 7 keys in kms-keys with their usage, algorithm, status and key actions."
   },
   {
     id: "compare-connections",
     href: "/v4/organizations/demo/integrations",
     screen: "connections",
-    title: "App connections",
+    title: "Organization app connections",
     description:
       "9 app connections with method, owner and status, and New connection opens a three-step Sheet."
   },
@@ -86,7 +78,7 @@ export const comparisonPages = [
     id: "compare-identities",
     href: "/v4/organizations/demo/access-management?selectedTab=identities",
     screen: "identities",
-    title: "Machine identities",
+    title: "Organization machine identities",
     description:
       "6 machine identities with their auth methods; open one for its details, auth methods and projects."
   },
@@ -94,7 +86,7 @@ export const comparisonPages = [
     id: "compare-audit-logs",
     href: "/v4/organizations/demo/audit-logs",
     screen: "audit-logs",
-    title: "Audit logs",
+    title: "Organization audit logs",
     description:
       "12,408 organization events from the last 30 days in a virtual DataTable that loads 500 rows at a time."
   },
@@ -242,6 +234,7 @@ export const legacyHashLink = (fullHash: string): LinkOptions | undefined => {
     return page && { ...page.link, hash };
   };
   if (name === "button-directions") return pageLink("button");
+  if (name === "compare-shell") return fallbackLink("comparisons");
   const alias = Object.entries(required.aliases).find(([entry]) => entry === name)?.[1];
   if (alias) return pageLink(alias);
   if (guidance.rules.some((rule) => `rule-${rule.id}` === name)) return pageLink("rules", name);
