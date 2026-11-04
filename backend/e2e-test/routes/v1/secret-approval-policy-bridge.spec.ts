@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import { TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { EnforcementLevel } from "@app/lib/types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
@@ -17,6 +18,8 @@ const GLOB_BASE = "/sap-policy-bridge-glob";
 const V1_PATH = "/sap-policy-bridge-v1";
 const MIGRATED_PATH = "/sap-policy-bridge-migrated";
 const MIGRATED_MOVED_PATH = "/sap-policy-bridge-migrated-moved";
+const KEEP_FIELDS_PATH = "/sap-policy-bridge-keep-fields";
+const KEEP_FIELDS_LEGACY_PATH = "/sap-policy-bridge-keep-fields-legacy";
 const authHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 const approvers = [{ type: ApproverType.User, id: seedData1.id }];
 
@@ -396,5 +399,52 @@ describe("Secret approval policy bridge routing", () => {
     expect(await bridgeRow(policyId)).toMatchObject({ type: ApprovalPolicyType.SecretChange, projectId });
     expect(await bridgeEnvRows(policyId)).toMatchObject([{ policyId, envId, secretPath: V1_PATH }]);
     expect(await legacyRow(policyId)).toBeUndefined();
+  });
+
+  test("an update that omits approvals, enforcement level and self approval keeps their stored values", async () => {
+    const renameOnly = (id: string) =>
+      testServer.inject({
+        method: "PATCH",
+        url: `/api/v2/secret-approvals/${id}`,
+        headers: authHeaders(),
+        body: { approvers, name: "keep-fields-renamed" }
+      });
+
+    const createRes = await createBridgePolicy(KEEP_FIELDS_PATH);
+    expect(createRes.statusCode).toBe(200);
+    const bridgeId = createRes.json().approval.id as string;
+    bridgeIds.push(bridgeId);
+    const restrictRes = await updatePolicy(bridgeId, {
+      allowedSelfApprovals: false,
+      enforcementLevel: EnforcementLevel.Soft
+    });
+    expect(restrictRes.statusCode).toBe(200);
+
+    const bridgeRes = await renameOnly(bridgeId);
+    expect(bridgeRes.statusCode).toBe(200);
+    expect(bridgeRes.json().approval).toMatchObject({
+      name: "keep-fields-renamed",
+      allowedSelfApprovals: false,
+      enforcementLevel: EnforcementLevel.Soft
+    });
+    expect(await bridgeRow(bridgeId)).toMatchObject({
+      enforcementLevel: EnforcementLevel.Soft,
+      constraints: { version: 1, constraints: { allowedSelfApprovals: false } }
+    });
+
+    const legacyId = (await seedLegacyPolicy(KEEP_FIELDS_LEGACY_PATH)).id;
+    legacyIds.push(legacyId);
+    await getDb()(TableName.SecretApprovalPolicy)
+      .where({ id: legacyId })
+      .update({ approvals: 2, allowedSelfApprovals: false, enforcementLevel: EnforcementLevel.Soft });
+
+    const legacyRes = await renameOnly(legacyId);
+    expect(legacyRes.statusCode).toBe(200);
+    expect(await legacyRow(legacyId)).toMatchObject({
+      name: "keep-fields-renamed",
+      approvals: 2,
+      allowedSelfApprovals: false,
+      enforcementLevel: EnforcementLevel.Soft
+    });
   });
 });

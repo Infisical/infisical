@@ -644,7 +644,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       const delegatedApprovalAfterUpdate =
         delegatedApproval === undefined ? existingDelegatedApproval : delegatedApproval;
       const involvesDelegatedApproval = Boolean(existingDelegatedApproval || delegatedApprovalAfterUpdate);
-      const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApprovalAfterUpdate;
+      const allowedSelfApprovals =
+        allowedSelfApprovalsInput ?? (delegatedApprovalAfterUpdate ? false : current.allowedSelfApprovals);
       const reviewers = await $resolveReviewers(
         {
           delegatedApproval: delegatedApprovalAfterUpdate,
