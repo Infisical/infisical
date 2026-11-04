@@ -88,6 +88,8 @@ import { Route as secretManagerIntegrationsRouteGcpOauthRedirectImport } from '.
 import { Route as secretManagerIntegrationsRouteBitbucketOauthRedirectImport } from './pages/secret-manager/integrations/route-bitbucket-oauth-redirect'
 import { Route as secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-key-vault-oauth-redirect'
 import { Route as secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-app-configurations-oauth-redirect'
+import { Route as v4SecretManagerOverviewPageRouteImport } from './pages/v4/secret-manager/OverviewPage/route'
+import { Route as v4SecretManagerSecretApprovalsPageRouteImport } from './pages/v4/secret-manager/SecretApprovalsPage/route'
 import { Route as v4KmsOverviewPageRouteImport } from './pages/v4/kms/OverviewPage/route'
 import { Route as organizationRoleByIDPageRouteImport } from './pages/organization/RoleByIDPage/route'
 import { Route as organizationProjectsPageProjectTypePageRouteImport } from './pages/organization/ProjectsPage/ProjectTypePage/route'
@@ -111,6 +113,7 @@ import { Route as projectAccessControlPageRouteAgentVaultImport } from './pages/
 import { Route as redirectsSecretScanningIndexRedirectImport } from './pages/redirects/secret-scanning-index-redirect'
 import { Route as certManagerDashboardPageRouteIndexImport } from './pages/cert-manager/DashboardPage/route-index'
 import { Route as redirectsAgentVaultIndexRedirectImport } from './pages/redirects/agent-vault-index-redirect'
+import { Route as v4SecretManagerSecretDashboardPageRouteImport } from './pages/v4/secret-manager/SecretDashboardPage/route'
 import { Route as organizationSettingsPageOauthCallbackPageRouteImport } from './pages/organization/SettingsPage/OauthCallbackPage/route'
 import { Route as secretScanningSettingsPageRouteImport } from './pages/secret-scanning/SettingsPage/route'
 import { Route as secretScanningSecretScanningFindingsPageRouteImport } from './pages/secret-scanning/SecretScanningFindingsPage/route'
@@ -1072,6 +1075,20 @@ const secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute =
     } as any,
   )
 
+const v4SecretManagerOverviewPageRouteRoute =
+  v4SecretManagerOverviewPageRouteImport.update({
+    id: '/secret-management/$projectId/overview',
+    path: '/secret-management/$projectId/overview',
+    getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+  } as any)
+
+const v4SecretManagerSecretApprovalsPageRouteRoute =
+  v4SecretManagerSecretApprovalsPageRouteImport.update({
+    id: '/secret-management/$projectId/approval',
+    path: '/secret-management/$projectId/approval',
+    getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+  } as any)
+
 const v4KmsOverviewPageRouteRoute = v4KmsOverviewPageRouteImport.update({
   id: '/kms/$projectId/overview',
   path: '/kms/$projectId/overview',
@@ -1409,6 +1426,13 @@ const redirectsAgentVaultIndexRedirectRoute =
     id: '/',
     path: '/',
     getParentRoute: () => agentVaultLayoutRoute,
+  } as any)
+
+const v4SecretManagerSecretDashboardPageRouteRoute =
+  v4SecretManagerSecretDashboardPageRouteImport.update({
+    id: '/secret-management/$projectId/secrets/$envSlug',
+    path: '/secret-management/$projectId/secrets/$envSlug',
+    getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
 
 const organizationSettingsPageOauthCallbackPageRouteRoute =
@@ -3401,6 +3425,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4KmsOverviewPageRouteImport
       parentRoute: typeof V4OrganizationsOrgIdProjectsImport
     }
+    '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': {
+      id: '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
+      path: '/secret-management/$projectId/approval'
+      fullPath: '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
+      preLoaderRoute: typeof v4SecretManagerSecretApprovalsPageRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
+    }
+    '/v4/organizations/$orgId/projects/secret-management/$projectId/overview': {
+      id: '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
+      path: '/secret-management/$projectId/overview'
+      fullPath: '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
+      preLoaderRoute: typeof v4SecretManagerOverviewPageRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback': {
       id: '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback'
       path: '/azure-app-configuration/oauth2/callback'
@@ -3666,6 +3704,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/settings/oauth/callback'
       preLoaderRoute: typeof organizationSettingsPageOauthCallbackPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsImport
+    }
+    '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug': {
+      id: '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
+      path: '/secret-management/$projectId/secrets/$envSlug'
+      fullPath: '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
+      preLoaderRoute: typeof v4SecretManagerSecretDashboardPageRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/'
@@ -5034,6 +5079,9 @@ interface V4OrganizationsOrgIdProjectsRouteChildren {
   v4OrganizationProjectsPageRouteRoute: typeof v4OrganizationProjectsPageRouteRoute
   v4OrganizationNotPortedPageProjectsRouteRoute: typeof v4OrganizationNotPortedPageProjectsRouteRoute
   v4KmsOverviewPageRouteRoute: typeof v4KmsOverviewPageRouteRoute
+  v4SecretManagerSecretApprovalsPageRouteRoute: typeof v4SecretManagerSecretApprovalsPageRouteRoute
+  v4SecretManagerOverviewPageRouteRoute: typeof v4SecretManagerOverviewPageRouteRoute
+  v4SecretManagerSecretDashboardPageRouteRoute: typeof v4SecretManagerSecretDashboardPageRouteRoute
 }
 
 const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRouteChildren =
@@ -5042,6 +5090,12 @@ const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRou
     v4OrganizationNotPortedPageProjectsRouteRoute:
       v4OrganizationNotPortedPageProjectsRouteRoute,
     v4KmsOverviewPageRouteRoute: v4KmsOverviewPageRouteRoute,
+    v4SecretManagerSecretApprovalsPageRouteRoute:
+      v4SecretManagerSecretApprovalsPageRouteRoute,
+    v4SecretManagerOverviewPageRouteRoute:
+      v4SecretManagerOverviewPageRouteRoute,
+    v4SecretManagerSecretDashboardPageRouteRoute:
+      v4SecretManagerSecretDashboardPageRouteRoute,
   }
 
 const V4OrganizationsOrgIdProjectsRouteWithChildren =
@@ -6529,6 +6583,8 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/overview': typeof v4SecretManagerOverviewPageRouteRoute
   '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   '/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
   '/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
@@ -6563,6 +6619,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/secret-scanning/findings': typeof secretScanningSecretScanningFindingsPageRouteRoute
   '/organizations/$orgId/secret-scanning/settings': typeof secretScanningSettingsPageRouteRoute
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug': typeof v4SecretManagerSecretDashboardPageRouteRoute
   '/organizations/$orgId/agent-vault/': typeof redirectsAgentVaultIndexRedirectRoute
   '/organizations/$orgId/cert-manager/': typeof certManagerDashboardPageRouteIndexRoute
   '/organizations/$orgId/secret-scanning/': typeof redirectsSecretScanningIndexRedirectRoute
@@ -6828,6 +6885,8 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/overview': typeof v4SecretManagerOverviewPageRouteRoute
   '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   '/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
   '/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
@@ -6862,6 +6921,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/secret-scanning/findings': typeof secretScanningSecretScanningFindingsPageRouteRoute
   '/organizations/$orgId/secret-scanning/settings': typeof secretScanningSettingsPageRouteRoute
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug': typeof v4SecretManagerSecretDashboardPageRouteRoute
   '/organizations/$orgId/agent-vault/access-management': typeof projectAccessControlPageRouteAgentVaultRoute
   '/organizations/$orgId/agent-vault/audit-logs': typeof projectAuditLogsPageRouteAgentVaultRoute
   '/organizations/$orgId/cert-manager/access-management': typeof projectAccessControlPageRouteCertManagerRoute
@@ -7119,6 +7179,8 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/overview': typeof v4SecretManagerOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
@@ -7157,6 +7219,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/findings': typeof secretScanningSecretScanningFindingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/settings': typeof secretScanningSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug': typeof v4SecretManagerSecretDashboardPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/': typeof redirectsAgentVaultIndexRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/': typeof certManagerDashboardPageRouteIndexRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/': typeof redirectsSecretScanningIndexRedirectRoute
@@ -7434,6 +7497,8 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/$type'
     | '/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
     | '/integrations/azure-app-configuration/oauth2/callback'
     | '/integrations/azure-key-vault/oauth2/callback'
     | '/integrations/bitbucket/oauth2/callback'
@@ -7468,6 +7533,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/secret-scanning/findings'
     | '/organizations/$orgId/secret-scanning/settings'
     | '/organizations/$orgId/settings/oauth/callback'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
     | '/organizations/$orgId/agent-vault/'
     | '/organizations/$orgId/cert-manager/'
     | '/organizations/$orgId/secret-scanning/'
@@ -7732,6 +7798,8 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/$type'
     | '/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
     | '/integrations/azure-app-configuration/oauth2/callback'
     | '/integrations/azure-key-vault/oauth2/callback'
     | '/integrations/bitbucket/oauth2/callback'
@@ -7766,6 +7834,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/secret-scanning/findings'
     | '/organizations/$orgId/secret-scanning/settings'
     | '/organizations/$orgId/settings/oauth/callback'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
     | '/organizations/$orgId/agent-vault/access-management'
     | '/organizations/$orgId/agent-vault/audit-logs'
     | '/organizations/$orgId/cert-manager/access-management'
@@ -8021,6 +8090,8 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$type'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback'
@@ -8059,6 +8130,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/findings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/'
@@ -8572,7 +8644,10 @@ export const routeTree = rootRoute
       "children": [
         "/v4/organizations/$orgId/projects/",
         "/v4/organizations/$orgId/projects/$",
-        "/v4/organizations/$orgId/projects/kms/$projectId/overview"
+        "/v4/organizations/$orgId/projects/kms/$projectId/overview",
+        "/v4/organizations/$orgId/projects/secret-management/$projectId/approval",
+        "/v4/organizations/$orgId/projects/secret-management/$projectId/overview",
+        "/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
       ]
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout/": {
@@ -8777,6 +8852,14 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/projects/kms/$projectId/overview": {
       "filePath": "v4/kms/OverviewPage/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
+    },
+    "/v4/organizations/$orgId/projects/secret-management/$projectId/approval": {
+      "filePath": "v4/secret-manager/SecretApprovalsPage/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
+    },
+    "/v4/organizations/$orgId/projects/secret-management/$projectId/overview": {
+      "filePath": "v4/secret-manager/OverviewPage/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
     },
     "/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback": {
@@ -9005,6 +9088,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback": {
       "filePath": "organization/SettingsPage/OauthCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings"
+    },
+    "/v4/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug": {
+      "filePath": "v4/secret-manager/SecretDashboardPage/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout/": {
       "filePath": "redirects/agent-vault-index-redirect.tsx",
