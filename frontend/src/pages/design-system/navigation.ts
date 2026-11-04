@@ -17,25 +17,29 @@ export const foundationPages = [
 export const comparisonPages = [
   {
     id: "compare-shell",
+    href: "/v4/organizations/demo/projects/secret-management/payments-api/overview",
     screen: "shell",
     title: "App shell",
-    description: "The sidebar, top bar and switchers on payments-api, with page content left out.",
+    description: "The sidebar, top bar and switchers around the payments-api secrets overview.",
     start: 0
   },
   {
     id: "compare-home",
+    href: "/v4/organizations/demo/projects",
     screen: "home",
     title: "Organization home",
     description: "The products with their live counts, stats in the card frame band."
   },
   {
     id: "compare-secrets",
+    href: "/v4/organizations/demo/projects/secret-management/payments-api/overview",
     screen: "secrets",
     title: "Secrets",
     description: "A local Secrets Overview with scoped resources and interactive fixture scenarios."
   },
   {
     id: "compare-access",
+    href: "/v4/organizations/demo/access-management?selectedTab=members",
     screen: "access",
     title: "Access control",
     description:
@@ -43,18 +47,21 @@ export const comparisonPages = [
   },
   {
     id: "compare-settings",
+    href: "/v4/organizations/demo/settings?selectedTab=tab-org-general",
     screen: "settings",
     title: "Organization settings",
     description: "General settings as SettingsCard sections with Field, Input and Select."
   },
   {
     id: "compare-approvals",
+    href: "/v4/organizations/demo/projects/secret-management/payments-api/approval",
     screen: "approvals",
     title: "Change requests",
     description: "4 open production change requests in the ApprovalQueue pattern."
   },
   {
     id: "compare-certificates",
+    href: "/v4/organizations/demo/cert-manager/inventory",
     screen: "certificates",
     title: "Certificates",
     description:
@@ -62,12 +69,14 @@ export const comparisonPages = [
   },
   {
     id: "compare-kms",
+    href: "/v4/organizations/demo/projects/kms/kms-keys/overview",
     screen: "kms",
     title: "KMS keys",
     description: "The 7 keys in kms-keys with their usage, algorithm, status and key actions."
   },
   {
     id: "compare-connections",
+    href: "/v4/organizations/demo/integrations",
     screen: "connections",
     title: "App connections",
     description:
@@ -75,6 +84,7 @@ export const comparisonPages = [
   },
   {
     id: "compare-identities",
+    href: "/v4/organizations/demo/access-management?selectedTab=identities",
     screen: "identities",
     title: "Machine identities",
     description:
@@ -82,6 +92,7 @@ export const comparisonPages = [
   },
   {
     id: "compare-audit-logs",
+    href: "/v4/organizations/demo/audit-logs",
     screen: "audit-logs",
     title: "Audit logs",
     description:
@@ -89,6 +100,7 @@ export const comparisonPages = [
   },
   {
     id: "compare-secret-scanning",
+    href: "/v4/organizations/demo/secret-scanning/findings",
     screen: "secret-scanning",
     title: "Secret Scanning findings",
     description:

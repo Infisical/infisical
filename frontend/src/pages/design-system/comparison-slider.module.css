@@ -24,7 +24,9 @@
   left: 0;
   width: 1706px;
   height: 971px;
+  border: 0;
   transform-origin: 0 0;
+  pointer-events: none;
 }
 .before {
   position: absolute;
@@ -106,18 +108,4 @@
 }
 .handle:focus-visible .grip {
   box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring);
-}
-.full {
-  margin-inline: calc(50% - 50cqi + var(--v4-space-16));
-  overflow: auto;
-  border: var(--v4-size-control-border) solid var(--v4-line);
-  border-radius: 0;
-}
-.frame {
-  width: 100%;
-  height: min(100dvh, 971px);
-  contain: layout;
-}
-.scope {
-  height: 100%;
 }

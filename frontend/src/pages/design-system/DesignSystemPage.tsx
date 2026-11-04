@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useMatches, useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { useTheme } from "@app/components/v3/platform/ThemeProvider/ThemeProvider";
@@ -31,7 +31,6 @@ import {
   workbenchCategories,
   workbenchPage
 } from "./navigation";
-import { WorkbenchContext } from "./workbench-context";
 import { WorkbenchPalette } from "./workbench-palette";
 
 const pullRequest = "https://github.com/Infisical/infisical/pull/8753";
@@ -199,72 +198,63 @@ export const DesignSystemPage = () => {
     return () => cancelAnimationFrame(frame);
   }, [currentPage.id, hash]);
   const nextTheme = theme === "dark" ? "light" : "dark";
-  const workbench = useMemo(
-    () => ({
-      theme: { value: themeChoice, onChange: setTheme },
-      openSearch: () => setPaletteOpen(true)
-    }),
-    [themeChoice]
-  );
   const crumbs = useWorkbenchCrumbs(currentPage);
   const go = (id: string) => navigate(workbenchPage(id).link as Parameters<typeof navigate>[0]);
   if (legacyTarget)
     return <Navigate {...(legacyTarget as Parameters<typeof Navigate>[0])} replace />;
   return (
     <V4Scope className="flex h-dvh flex-col overflow-clip" theme={theme}>
-      <WorkbenchContext value={workbench}>
-        <AccentPanelProvider>
-          <a href="#workbench-content" className="sr-only focus:not-sr-only focus:p-3">
-            Skip to content
-          </a>
-          <AppShell>
-            <WorkbenchBar
-              breadcrumb={crumbs}
-              search={{ onClick: () => setPaletteOpen(true), label: "Search the design system" }}
-              account={{
-                label: "Workbench",
-                name: "Infisical 2.0 workbench",
-                email: `Design system v${tokens.version}`,
-                items: [
-                  { label: "Overview", icon: "home", onSelect: () => go("overview") },
-                  { label: "Rules", icon: "file", onSelect: () => go("rules") },
-                  { type: "separator" },
-                  {
-                    label: "Pull request on GitHub",
-                    icon: "git",
-                    href: pullRequest,
-                    external: true
-                  },
-                  { label: "Documentation", icon: "file", href: documentation, external: true }
-                ],
-                theme: workbench.theme
-              }}
-            />
-            <Sidebar label="Design system" levels={sidebarLevels} />
-            <AppInset ref={insetRef}>
-              <div
-                key={currentPage.id}
-                id="workbench-content"
-                data-document-view="human"
-                tabIndex={-1}
-                className="min-w-0 flex-1 outline-none"
-              >
-                <PageGutter>
-                  <article>
-                    <Outlet />
-                  </article>
-                </PageGutter>
-              </div>
-            </AppInset>
-            <WorkbenchPalette
-              open={paletteOpen}
-              onOpenChange={setPaletteOpen}
-              groups={paletteGroups}
-              toggleTheme={() => setTheme(nextTheme)}
-            />
-          </AppShell>
-        </AccentPanelProvider>
-      </WorkbenchContext>
+      <AccentPanelProvider>
+        <a href="#workbench-content" className="sr-only focus:not-sr-only focus:p-3">
+          Skip to content
+        </a>
+        <AppShell>
+          <WorkbenchBar
+            breadcrumb={crumbs}
+            search={{ onClick: () => setPaletteOpen(true), label: "Search the design system" }}
+            account={{
+              label: "Workbench",
+              name: "Infisical 2.0 workbench",
+              email: `Design system v${tokens.version}`,
+              items: [
+                { label: "Overview", icon: "home", onSelect: () => go("overview") },
+                { label: "Rules", icon: "file", onSelect: () => go("rules") },
+                { type: "separator" },
+                {
+                  label: "Pull request on GitHub",
+                  icon: "git",
+                  href: pullRequest,
+                  external: true
+                },
+                { label: "Documentation", icon: "file", href: documentation, external: true }
+              ],
+              theme: { value: themeChoice, onChange: setTheme }
+            }}
+          />
+          <Sidebar label="Design system" levels={sidebarLevels} />
+          <AppInset ref={insetRef}>
+            <div
+              key={currentPage.id}
+              id="workbench-content"
+              data-document-view="human"
+              tabIndex={-1}
+              className="min-w-0 flex-1 outline-none"
+            >
+              <PageGutter>
+                <article>
+                  <Outlet />
+                </article>
+              </PageGutter>
+            </div>
+          </AppInset>
+          <WorkbenchPalette
+            open={paletteOpen}
+            onOpenChange={setPaletteOpen}
+            groups={paletteGroups}
+            toggleTheme={() => setTheme(nextTheme)}
+          />
+        </AppShell>
+      </AccentPanelProvider>
     </V4Scope>
   );
 };
