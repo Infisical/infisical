@@ -155,18 +155,30 @@ describe("getDatabricksConnectionAccessToken", () => {
     ).resolves.toBe("cached-token");
   });
 
-  test.each([{ gatewayId: "gateway-id" }, { gatewayPoolId: "pool-id" }])(
-    "refreshes the token directly for a connection with %o when the caller passes no gateway services",
-    async (gateway) => {
-      const connection = connectionOf(gateway);
-      connection.credentials.expiresAt = 0;
-
-      await expect(getDatabricksConnectionAccessToken(connection, { updateById: vi.fn() }, {} as never)).resolves.toBe(
-        "access-token"
-      );
-      expect(getPlatformConnectionDetailsByGatewayId).not.toHaveBeenCalled();
+  test.each([
+    { gateway: { gatewayId: "gateway-id" }, message: "uses a Gateway," },
+    { gateway: { gatewayPoolId: "pool-id" }, message: "uses a Gateway pool," }
+  ])(
+    "refuses a connection with $gateway when the caller can't use a gateway, even with a cached token",
+    async ({ gateway, message }) => {
+      await expect(
+        getDatabricksConnectionAccessToken(connectionOf(gateway), { updateById: vi.fn() }, {} as never)
+      ).rejects.toThrow(`This Databricks connection ${message} which is not supported on this operation`);
+      expect(safeSendRequest).not.toHaveBeenCalled();
       expect(sendRequest).not.toHaveBeenCalled();
-      expect(safeSendRequest.mock.calls[0][0].url).toBe("https://example.cloud.databricks.com/oidc/v1/token");
     }
   );
+
+  test("refreshes the token through the gateway when the caller passes the gateway service", async () => {
+    getPlatformConnectionDetailsByGatewayId.mockResolvedValue({ relayHost: "relay" });
+    sendRequest.mockResolvedValue({ data: { access_token: "access-token", expires_in: 3600 } });
+    const connection = connectionOf({ gatewayId: "gateway-id" });
+    connection.credentials.expiresAt = 0;
+
+    await expect(
+      getDatabricksConnectionAccessToken(connection, { updateById: vi.fn() }, {} as never, { gatewayV2Service })
+    ).resolves.toBe("access-token");
+    expect(safeSendRequest).not.toHaveBeenCalled();
+    expect(sendRequest.mock.calls[0][0].url).toBe("https://localhost:4444/oidc/v1/token");
+  });
 });

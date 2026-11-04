@@ -151,6 +151,8 @@ export const databricksSyncFactory = ({
       }
     }
 
+    if (secretSync.syncOptions.disableSecretDeletion) return;
+
     const databricksSecretKeys = await listDatabricksSecrets(
       {
         connection,
@@ -159,8 +161,6 @@ export const databricksSyncFactory = ({
       },
       deps
     );
-
-    if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const secret of databricksSecretKeys) {
       // eslint-disable-next-line no-continue
