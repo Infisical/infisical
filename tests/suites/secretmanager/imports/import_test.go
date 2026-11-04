@@ -93,7 +93,7 @@ func TestSecretImport_Errors(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should answer not found with the generic message when the source environment does not exist", func(t *testing.T) {
+	t.Run("should answer not found naming the environment when the source environment does not exist", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -105,8 +105,7 @@ func TestSecretImport_Errors(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusNotFound, res.StatusCode())
-		require.Equal(t, "The requested entity is not found", res.JSON404.Message,
-			"today the message does not name the environment; a fix that names it updates this claim")
+		require.Equal(t, "Imported environment with slug 'nope' in project with ID '"+proj.ID+"' not found", res.JSON404.Message)
 		require.Empty(t, listImports(t, proj, "dev", "/"))
 	})
 
