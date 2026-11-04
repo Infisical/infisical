@@ -438,11 +438,17 @@ describe("Secret approval policy bridge routing", () => {
       .where({ id: legacyId })
       .update({ approvals: 2, allowedSelfApprovals: false, enforcementLevel: EnforcementLevel.Soft });
 
+    const tooFewApproversRes = await renameOnly(legacyId);
+    expect(tooFewApproversRes.statusCode).toBe(400);
+    expect(tooFewApproversRes.json().message).toBe("Approvals cannot be greater than approvers");
+    expect(await legacyRow(legacyId)).toMatchObject({ approvals: 2 });
+
+    await getDb()(TableName.SecretApprovalPolicy).where({ id: legacyId }).update({ approvals: 1 });
     const legacyRes = await renameOnly(legacyId);
     expect(legacyRes.statusCode).toBe(200);
     expect(await legacyRow(legacyId)).toMatchObject({
       name: "keep-fields-renamed",
-      approvals: 2,
+      approvals: 1,
       allowedSelfApprovals: false,
       enforcementLevel: EnforcementLevel.Soft
     });

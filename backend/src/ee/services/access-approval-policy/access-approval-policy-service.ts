@@ -534,6 +534,12 @@ export const accessApprovalPolicyServiceFactory = ({
 
     const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
     const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
+      // Lock the policy row so concurrent updates serialize their delete-then-insert of approvers and bypassers.
+      const lockedPolicy = await accessApprovalPolicyDAL.findByIdForUpdate(accessApprovalPolicy.id, tx);
+      if (!lockedPolicy) {
+        throw new NotFoundError({ message: `Access approval policy with ID '${policyId}' not found` });
+      }
+
       const policyUpdate = {
         approvals,
         secretPath,
@@ -546,7 +552,7 @@ export const accessApprovalPolicyServiceFactory = ({
       // an approvers-only update leaves every column undefined, and knex rejects an empty update
       const doc = Object.values(policyUpdate).some((value) => value !== undefined)
         ? await accessApprovalPolicyDAL.updateById(accessApprovalPolicy.id, policyUpdate, tx)
-        : await accessApprovalPolicyDAL.findOne({ id: accessApprovalPolicy.id }, tx);
+        : lockedPolicy;
 
       await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 
