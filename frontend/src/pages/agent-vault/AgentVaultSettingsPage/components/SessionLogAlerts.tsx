@@ -4,40 +4,35 @@ import { CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { Alert, AlertAction, AlertDescription, Button } from "@app/components/v3";
 import { useSubscription } from "@app/context";
+import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
-  areAgentVaultSessionLogsOn,
-  isAgentVaultSessionLogPlanLapsed
-} from "@app/helpers/agentVaultSessionLogs";
-import {
-  useGetAgentVaultSessionLogCorsProbe,
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
+import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
 
 import { SessionLogReadAccessAlert } from "./SessionLogReadAccessAlert";
 
 export const SessionLogAlerts = () => {
-  const { data: config, isPending: isSettingsPending } = useGetAgentVaultSessionLogSettings();
-  const { data: health, isPending: isHealthPending } = useGetAgentVaultSessionLogHealth();
-  const { data: readCheck } = useGetAgentVaultSessionLogCorsProbe();
+  const { data: state } = useGetAgentVaultSessionLogSettings();
+  const { data: health } = useGetAgentVaultSessionLogHealth();
   const { subscription } = useSubscription();
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
-  const hasDestination = Boolean(config?.bucket);
-  const isLapsed = Boolean(config && isAgentVaultSessionLogPlanLapsed(config, subscription));
-  const isRecording = config ? areAgentVaultSessionLogsOn(config) : false;
-  const isReadBlocked = Boolean(readCheck && readCheck.status !== "readable");
+  const settings = state?.settings ?? null;
+  const storageType = settings?.storage.type;
+  const isDefaultStorage = storageType === AgentVaultSessionLogStorageType.Default;
+  const isBlockedByPlan = isAgentVaultSessionLogBlockedByPlan(settings, subscription);
 
-  const notRecordingReason = (() => {
-    if (!config?.enabled) {
-      if (!config?.appConnectionId) {
-        return "Session logs are off, and without an AWS connection the logs already in the bucket can't be read.";
-      }
-      if (isReadBlocked) return "Session logs are off, so nothing new is being stored.";
-      return "Session logs are off. Logs already in the bucket are still readable, but nothing new is being stored.";
-    }
-    return "Session logs are on, but Storage isn't complete, so nothing is being written to the bucket.";
-  })();
+  let planMessage: string | null = null;
+  // Default storage can be on without anyone choosing it, so its message can't say the plan "no longer" includes it.
+  if (isBlockedByPlan && isDefaultStorage) {
+    planMessage =
+      "Your plan doesn't include default storage, so session logs aren't being recorded. Upgrade to record and view them.";
+  } else if (isBlockedByPlan) {
+    planMessage =
+      "Your plan no longer includes external storage. Upgrade to see recorded logs and keep recording. Recorded logs stay in your bucket.";
+  }
 
   return (
     <>
@@ -48,14 +43,11 @@ export const SessionLogAlerts = () => {
         </Alert>
       )}
 
-      {isLapsed && (
+      {planMessage && (
         <Alert variant="warning">
           <TriangleAlertIcon />
           <AlertDescription>
-            <p>
-              Your plan no longer includes session logs, so new requests aren&apos;t recorded.
-              {config?.appConnectionId && " Saved logs stay viewable."}
-            </p>
+            <p>{planMessage}</p>
             <AlertAction>
               <Button variant="outline" size="sm" onClick={() => setIsUpgradeOpen(true)}>
                 Upgrade
@@ -65,25 +57,14 @@ export const SessionLogAlerts = () => {
         </Alert>
       )}
 
-      {/* While the connection is broken, fixing it comes first, so its error shows alone. */}
-      {!health?.connectionError && (
-        <>
-          {!isSettingsPending &&
-            !isHealthPending &&
-            hasDestination &&
-            !isLapsed &&
-            !isRecording && (
-              <Alert variant="warning">
-                <TriangleAlertIcon />
-                <AlertDescription>{notRecordingReason}</AlertDescription>
-              </Alert>
-            )}
+      {/* While the storage is broken, fixing it comes first, so its error shows alone. */}
+      {!health?.connectionError && <SessionLogReadAccessAlert />}
 
-          <SessionLogReadAccessAlert />
-        </>
-      )}
-
-      <AgentVaultSessionLogUpgradeModal isOpen={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />
+      <AgentVaultSessionLogUpgradeModal
+        isOpen={isUpgradeOpen}
+        onOpenChange={setIsUpgradeOpen}
+        storageType={storageType}
+      />
     </>
   );
 };

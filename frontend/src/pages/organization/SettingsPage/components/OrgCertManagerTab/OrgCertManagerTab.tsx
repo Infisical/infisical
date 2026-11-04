@@ -20,7 +20,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -266,7 +266,7 @@ export const OrgCertManagerTab = () => {
         </DialogContent>
       </Dialog>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(pendingDelete)}
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);

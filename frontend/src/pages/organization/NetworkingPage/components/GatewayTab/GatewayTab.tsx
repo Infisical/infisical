@@ -49,6 +49,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   OverflowBadgeList,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -73,7 +74,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { useSubscription } from "@app/context/SubscriptionContext";
 import { withPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways";
@@ -90,6 +91,7 @@ import { PoolDetailSheet } from "./components/PoolDetailSheet";
 
 export const GatewayTab = withPermission(
   () => {
+    const scopeVariant = useScopeVariant();
     const navigate = useNavigate();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
@@ -194,7 +196,7 @@ export const GatewayTab = withPermission(
                 >
                   {(isAllowed: boolean) => (
                     <Button
-                      variant="org"
+                      variant={scopeVariant}
                       onClick={() => handlePopUpOpen("deployGateway")}
                       isDisabled={!isAllowed}
                     >
@@ -210,7 +212,7 @@ export const GatewayTab = withPermission(
                 >
                   {(isAllowed: boolean) => (
                     <Button
-                      variant="org"
+                      variant={scopeVariant}
                       onClick={() => {
                         if (!subscription?.gatewayPool) {
                           handlePopUpOpen("upgradePlan");
@@ -331,24 +333,21 @@ export const GatewayTab = withPermission(
                         ))}
                       {filteredGateway?.map((el) => {
                         return (
-                          <TableRow
-                            key={el.id}
-                            className="cursor-pointer"
-                            onClick={() =>
-                              navigate({
-                                to: "/organizations/$orgId/networking/gateways/$gatewayId",
-                                params: { orgId, gatewayId: el.id }
-                              })
-                            }
-                          >
+                          <TableRow key={el.id} linked>
                             <TableCell>
                               <div className="flex min-w-0 items-center gap-2">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="min-w-0 flex-1 truncate">{el.name}</span>
-                                  </TooltipTrigger>
-                                  <TooltipContent>{el.name}</TooltipContent>
-                                </Tooltip>
+                                <RowLink
+                                  to="/organizations/$orgId/networking/gateways/$gatewayId"
+                                  params={{ orgId, gatewayId: el.id }}
+                                  className="min-w-0 flex-1"
+                                >
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span>{el.name}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>{el.name}</TooltipContent>
+                                  </Tooltip>
+                                </RowLink>
                               </div>
                             </TableCell>
                             {showPoolsTab && (
@@ -359,6 +358,7 @@ export const GatewayTab = withPermission(
                                     getKey={(pool) => pool.id}
                                     getLabel={(pool) => pool.name}
                                     appearance="text"
+                                    className="pointer-events-none [&_[data-slot=tooltip-trigger]]:pointer-events-auto [&_button]:pointer-events-auto"
                                     onItemClick={(pool) => setSelectedPoolId(pool.id)}
                                     maxBadgeWidth={144}
                                   />
@@ -388,7 +388,7 @@ export const GatewayTab = withPermission(
                                 heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
                               />
                             </TableCell>
-                            <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
+                            <TableCell variant="action">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <IconButton
@@ -463,6 +463,7 @@ export const GatewayTab = withPermission(
                   />
                 )}
                 <AlertDialog
+                  isPending={deleteGatewayV2ById.isPending}
                   open={popUp.deleteGateway.isOpen}
                   confirmationValue={
                     (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
@@ -486,12 +487,9 @@ export const GatewayTab = withPermission(
                       <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
                     </Alert>
                     <AlertDialogFooter>
-                      <AlertDialogCancel isDisabled={deleteGatewayV2ById.isPending}>
-                        Cancel
-                      </AlertDialogCancel>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         variant="danger"
-                        isPending={deleteGatewayV2ById.isPending}
                         onClick={(event) => {
                           event.preventDefault();
                           handleDeleteGateway();

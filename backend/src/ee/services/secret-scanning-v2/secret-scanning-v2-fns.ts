@@ -3,6 +3,9 @@ import { join } from "path";
 import picomatch from "picomatch";
 import RE2 from "re2";
 
+import { BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/bitbucket";
+import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/github";
+import { GITLAB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/gitlab";
 import {
   execFileBounded,
   getGitThreadLimitArgs,
@@ -19,15 +22,13 @@ import {
   writeTextToFile
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
-import { BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/bitbucket";
-import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/github";
-import { GITLAB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/gitlab";
 import { getConfig, SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
+import { GitLabDataSourceScope } from "./gitlab/gitlab-secret-scanning-enums";
 import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secret-scanning-v2-enums";
 import { TCloneRepository, TGetFindingsPayload, TSecretScanningDataSourceListItem } from "./secret-scanning-v2-types";
 
@@ -40,6 +41,20 @@ const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSec
 export const listSecretScanningDataSourceOptions = () => {
   return Object.values(SECRET_SCANNING_SOURCE_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
 };
+
+// GitLab only reports new projects through group webhooks, so discovery needs a group. Self-hosted system
+// hooks would also work, but are not supported.
+export const doesDataSourceSupportDiscovery = ({ type, config }: { type: string; config?: unknown }) =>
+  type !== SecretScanningDataSource.GitLab || (config as { scope?: string })?.scope === GitLabDataSourceScope.Group;
+
+// Push events drive both discovery and new commit scans, so with both off there is nothing to listen for.
+export const isDataSourceWebhookRequired = ({
+  isDiscoveryEnabled,
+  isScanNewCommitsEnabled
+}: {
+  isDiscoveryEnabled?: boolean | null;
+  isScanNewCommitsEnabled?: boolean | null;
+}) => Boolean(isDiscoveryEnabled || isScanNewCommitsEnabled);
 
 // The scanner exits 77 when it wrote findings; that is a successful scan, not a failure.
 const SCAN_FINDINGS_EXIT_CODE = 77;
@@ -404,6 +419,10 @@ export const replaceNonChangesWithNewlines = (patch: string) => {
 
 const HunkHeaderRegex = new RE2(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
 
+/**
+ * Maps a line of `patch`, numbered from 1 as the scanner numbers the lines of `replaceNonChangesWithNewlines(patch)`,
+ * to the line it is on in the new file. The patch must be scanned exactly as it is, with nothing added before it.
+ */
 export const convertPatchLineToFileLineNumber = (patch: string, patchLineNumber: number) => {
   const lines = patch.split("\n");
   let currentPatchLine = 0;

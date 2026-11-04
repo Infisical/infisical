@@ -1,14 +1,14 @@
 import { useEffect, useRef } from "react";
-import { Helmet } from "react-helmet";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,7 +34,7 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { DiscoveryJobModal } from "../DiscoveryPage/components/DiscoveryJobModal";
+import { DiscoveryJobSheet } from "../DiscoveryPage/components/DiscoveryJobSheet";
 import {
   DiscoveryDetailsSection,
   DiscoveryInstallationsSection,
@@ -174,7 +174,7 @@ const Page = () => {
             <DiscoveryDetailsSection discovery={discovery} />
             <DiscoveryTargetSection discovery={discovery} />
           </div>
-          <div className="flex flex-1 flex-col gap-y-5">
+          <div className="flex min-w-0 flex-1 flex-col gap-y-5">
             <DiscoveryScanLogsSection
               discoveryId={discoveryId}
               onTriggerScan={handleTriggerScan}
@@ -191,20 +191,20 @@ const Page = () => {
         </div>
       </div>
 
-      <DiscoveryJobModal
+      <DiscoveryJobSheet
         isOpen={popUp.editJob.isOpen}
         onClose={() => handlePopUpClose("editJob")}
         projectId={projectId}
         discovery={popUp.editJob.data as TPkiDiscovery | undefined}
       />
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteJob.isOpen}
         title="Are you sure you want to delete this discovery job?"
-        subTitle="This action cannot be undone. The discovery configuration will be permanently deleted."
-        onChange={(isOpen) => handlePopUpToggle("deleteJob", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={handleDelete}
+        description="This action cannot be undone. The discovery configuration will be permanently deleted."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteJob", isOpen)}
+        confirmKey="confirm"
+        onConfirm={handleDelete}
       />
     </div>
   );
@@ -213,10 +213,8 @@ const Page = () => {
 export const DiscoveryDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Discovery Job Details</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Discovery Job Details" />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

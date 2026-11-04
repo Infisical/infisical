@@ -6,6 +6,7 @@ import {
   useGetAgentVaultSessionLogCorsProbe,
   useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
+import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultSessionLogReadAccess } from "@app/hooks/api/agentVault/types";
 
 import { AwsSetupDialog, HostBlockedMessage } from "./AwsSetupDialog";
@@ -31,7 +32,11 @@ const READ_ACCESS_ALERTS: Record<
 
 export const SessionLogReadAccessAlert = () => {
   const [isAwsSetupOpen, setIsAwsSetupOpen] = useState(false);
-  const { data: config } = useGetAgentVaultSessionLogSettings();
+  const { data: state } = useGetAgentVaultSessionLogSettings();
+  const external =
+    state?.settings?.storage.type === AgentVaultSessionLogStorageType.External
+      ? state.settings.storage
+      : null;
   const { data: readCheck } = useGetAgentVaultSessionLogCorsProbe();
   const readAlert =
     readCheck && readCheck.status !== "readable" ? READ_ACCESS_ALERTS[readCheck.status] : null;
@@ -57,8 +62,8 @@ export const SessionLogReadAccessAlert = () => {
       <AwsSetupDialog
         isOpen={isAwsSetupOpen}
         onOpenChange={setIsAwsSetupOpen}
-        bucket={config?.bucket ?? null}
-        keyPrefix={config?.keyPrefix ?? null}
+        bucket={external?.bucket ?? null}
+        keyPrefix={external?.keyPrefix ?? null}
       />
     </>
   );

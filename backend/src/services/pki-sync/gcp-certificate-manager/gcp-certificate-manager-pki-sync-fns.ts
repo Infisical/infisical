@@ -3,9 +3,9 @@ import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 
 import { PkiSyncError } from "../pki-sync-errors";
 import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
@@ -407,7 +407,8 @@ export const gcpCertificateManagerPkiSyncFactory = ({
 
     const syncRecordLookupId = renewedFromCertificateId || certificateId;
     const existingSyncRecord =
-      typeof syncRecordLookupId === "string" ? syncRecordsByCertId.get(syncRecordLookupId) : undefined;
+      (typeof syncRecordLookupId === "string" ? syncRecordsByCertId.get(syncRecordLookupId) : undefined) ??
+      (preserveItemOnRenewal && typeof certificateId === "string" ? syncRecordsByCertId.get(certificateId) : undefined);
     const reusableResourceName =
       preserveItemOnRenewal &&
       existingSyncRecord?.externalIdentifier &&

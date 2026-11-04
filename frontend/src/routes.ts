@@ -338,8 +338,9 @@ const kmsRoutes = route("/organizations/$orgId/projects/kms/$projectId", [
   ])
 ]);
 
-const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanning/$projectId", [
+const secretScanningRoutes = route("/organizations/$orgId/secret-scanning", [
   layout("secret-scanning-layout", "secret-scanning/layout.tsx", [
+    index("redirects/secret-scanning-index-redirect.tsx"),
     route("/data-sources", [
       index("secret-scanning/SecretScanningDataSourcesPage/route.tsx"),
       route("/$type/$dataSourceId", "secret-scanning/SecretScanningDataSourceByIdPage/route.tsx")
@@ -385,6 +386,8 @@ const agentVaultRoutes = route("/organizations/$orgId/agent-vault", [
       index("agent-vault/AgentVaultAccessBundlesPage/route.tsx"),
       route("/$accessBundleId", "agent-vault/AgentVaultAccessBundleDetailPage/route.tsx")
     ]),
+    route("/variables", "agent-vault/AgentVaultVariablesPage/route.tsx"),
+    route("/skills", "agent-vault/AgentVaultSkillsPage/route.tsx"),
     route("/proxies", "agent-vault/AgentVaultProxiesPage/route.tsx"),
     route("/settings", "agent-vault/AgentVaultSettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-agent-vault.tsx"),
@@ -491,6 +494,7 @@ export const routes = rootRoute("root.tsx", [
   middleware("authenticate.tsx", [
     route("/password-setup", "auth/PasswordSetupPage/route.tsx"),
     route("/mfa-session/$mfaSessionId", "MfaSessionPage/route.tsx"),
+    route("/agent-vault/oauth/callback", "agent-vault/AgentVaultOAuthCallbackPage/route.tsx"),
     route("/personal-settings", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),
@@ -527,6 +531,10 @@ export const routes = rootRoute("root.tsx", [
         ),
         kmsRoutes,
         secretScanningRoutes,
+        route(
+          "/organizations/$orgId/projects/secret-scanning/$projectId/$",
+          "redirects/secret-scanning-project-url-redirect.tsx"
+        ),
         pamRoutes,
         agentVaultRoutes
       ])

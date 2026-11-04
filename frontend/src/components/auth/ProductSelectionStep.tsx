@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type JSX, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -102,7 +102,6 @@ export default function ProductSelectionStep({
     try {
       const projects = createdProjectsRef.current;
       // Projects are set up one at a time so a failure points at a specific product.
-      // eslint-disable-next-line no-restricted-syntax
       for (const type of orderedSelection) {
         if (!(type in projects)) {
           failedProduct = getSignupProduct(type)?.name;

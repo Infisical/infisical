@@ -4,7 +4,7 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { CIPHER_OID_MAP, DIGEST_OID_TO_HASH } from "./pki-scep-types";
 
-export { rsaPkcs1Decrypt, rsaPkcs1Encrypt, rsaSign } from "@app/lib/crypto/rsa";
+export { rsaOaepDecrypt, rsaPkcs1Decrypt, rsaPkcs1Encrypt, rsaSign } from "@app/lib/crypto/rsa";
 
 const { nativeCrypto, randomBytes } = crypto;
 

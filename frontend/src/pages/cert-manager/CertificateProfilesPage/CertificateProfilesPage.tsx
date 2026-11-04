@@ -1,6 +1,4 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
-
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
@@ -10,12 +8,9 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { CertificateProfilesTab } from "../PoliciesPage/components";
 
 export const CertificateProfilesPage = () => {
-  const { t } = useTranslation();
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Certificate Profiles" })}</title>
-      </Helmet>
+      <PageTitle title="Certificate Profiles" />
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}

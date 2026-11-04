@@ -16,7 +16,7 @@ import {
   CardTitle,
   DocumentationLinkBadge
 } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub,
@@ -121,7 +121,7 @@ export const ExternalCaSection = () => {
         <ExternalCaTable handlePopUpOpen={handlePopUpOpen} />
       </CardContent>
       <ExternalCaModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure you want to remove the CA ${
           (popUp?.deleteCa?.data as { dn: string })?.dn || ""
@@ -136,7 +136,7 @@ export const ExternalCaSection = () => {
           )
         }
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.caStatus.isOpen}
         title={`Are you sure you want to ${
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE

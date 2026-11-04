@@ -20,16 +20,13 @@ const userAgent = "infisical-harness"
 // is no hand-written HTTP path: a route the generated client cannot reach is a route
 // missing an operationId, and the fix is upstream in the router rather than an
 // escape hatch here.
-func NewClient(baseURL string, editors ...api.RequestEditorFn) (*api.ClientWithResponses, error) {
-	opts := []api.ClientOption{
+func NewClient(baseURL string, opts ...api.ClientOption) (*api.ClientWithResponses, error) {
+	opts = append([]api.ClientOption{
 		api.WithRequestEditorFn(func(_ context.Context, req *http.Request) error {
 			req.Header.Set("User-Agent", userAgent)
 			return nil
 		}),
-	}
-	for _, e := range editors {
-		opts = append(opts, api.WithRequestEditorFn(e))
-	}
+	}, opts...)
 
 	c, err := api.NewClientWithResponses(baseURL, opts...)
 	if err != nil {
@@ -53,19 +50,27 @@ func NewClient(baseURL string, editors ...api.RequestEditorFn) (*api.ClientWithR
 // share. If it stops being honoured the limits collapse back to per-process, which is
 // slow and flaky rather than wrong, and the fallback is raising them through the
 // super-admin API.
-func ForwardedFor(ip string) api.RequestEditorFn {
-	return func(_ context.Context, req *http.Request) error {
+func ForwardedFor(ip string) api.ClientOption {
+	return api.WithRequestEditorFn(func(_ context.Context, req *http.Request) error {
 		req.Header.Set("X-Forwarded-For", ip)
 		return nil
-	}
+	})
 }
 
 // BearerAuth attaches a token to every request.
-func BearerAuth(token string) api.RequestEditorFn {
-	return func(_ context.Context, req *http.Request) error {
+func BearerAuth(token string) api.ClientOption {
+	return api.WithRequestEditorFn(func(_ context.Context, req *http.Request) error {
 		req.Header.Set("Authorization", "Bearer "+token)
 		return nil
-	}
+	})
+}
+
+// NoRedirects hands back a redirect as the response instead of following it, so the
+// caller can read its Location and Set-Cookie.
+func NoRedirects() api.ClientOption {
+	return api.WithHTTPClient(&http.Client{
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	})
 }
 
 // apiError renders a non-2xx response in a form worth reading.

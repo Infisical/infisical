@@ -1,5 +1,6 @@
 import { areSecretSyncDestinationConfigsEqual } from "./secret-sync-duplicate-check";
 import { SecretSync } from "./secret-sync-enums";
+import { SECRET_SYNC_SKIP_FIELDS_MAP } from "./secret-sync-maps";
 
 describe("secret sync destination comparison", () => {
   test.each([
@@ -52,6 +53,31 @@ describe("secret sync destination comparison", () => {
     ).toBe(true);
   });
 
+  test.each([
+    [SecretSync.CloudflarePages, { projectName: "site", environment: "production" }],
+    [SecretSync.CloudflareWorkers, { scriptId: "worker" }]
+  ] as const)(
+    "treats %s syncs to the same target as duplicates whatever their variable type",
+    (destination, config) => {
+      expect(
+        areSecretSyncDestinationConfigsEqual(
+          destination,
+          { ...config, variableType: "secret_text" },
+          { ...config, variableType: "plain_text" },
+          SECRET_SYNC_SKIP_FIELDS_MAP[destination]
+        )
+      ).toBe(true);
+      expect(
+        areSecretSyncDestinationConfigsEqual(
+          destination,
+          config,
+          { ...config, variableType: "plain_text" },
+          SECRET_SYNC_SKIP_FIELDS_MAP[destination]
+        )
+      ).toBe(true);
+    }
+  );
+
   test("does not strip empty values in other providers", () => {
     expect(
       areSecretSyncDestinationConfigsEqual(
@@ -61,5 +87,20 @@ describe("secret sync destination comparison", () => {
         []
       )
     ).toBe(false);
+  });
+
+  test("treats a GitHub config saved before secretType existed as an Actions destination", () => {
+    const legacy = { scope: "repository", owner: "acme", repo: "app" };
+
+    expect(
+      areSecretSyncDestinationConfigsEqual(SecretSync.GitHub, legacy, { ...legacy, secretType: "actions" }, [])
+    ).toBe(true);
+    expect(
+      areSecretSyncDestinationConfigsEqual(SecretSync.GitHub, { ...legacy, secretType: "actions" }, legacy, [])
+    ).toBe(true);
+    expect(
+      areSecretSyncDestinationConfigsEqual(SecretSync.GitHub, legacy, { ...legacy, secretType: "dependabot" }, [])
+    ).toBe(false);
+    expect(legacy).not.toHaveProperty("secretType");
   });
 });

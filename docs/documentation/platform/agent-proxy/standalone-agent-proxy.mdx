@@ -4,6 +4,10 @@ sidebarTitle: "Standalone proxy"
 description: "Run an Agent Proxy on a host of its own, serving agents across your network."
 ---
 
+import AgentProxyMovedCallout from "/snippets/agent-proxy-moved-callout.mdx";
+
+<AgentProxyMovedCallout />
+
 A standalone proxy serves agents that run somewhere other than your own computer, and is the setup to use when a team shares one proxy. `agent-proxy start` runs it as one long-lived process on a machine of its own, and `agent-proxy connect` launches each agent behind it. Because the agent is on a different host, it has no access at all to the process holding the real credentials; that separation is the security boundary, and most of what follows exists to keep it intact.
 
 ```text
@@ -69,8 +73,8 @@ Every option resolves from the same sources, in order: **the flag → an environ
 | Auth | `--client-id` / `--client-secret` | `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` / `_SECRET` | — |
 | Instance | `--domain` | `INFISICAL_DOMAIN` | `general.domain` |
 | Project | `--projectId` | `INFISICAL_PROJECT_ID` | `secrets-management.project-id` |
-| Environment slug | `--env` | `INFISICAL_ENVIRONMENT` | `secrets-management.default-environment` |
-| Secret path | `--path` | `INFISICAL_SECRET_PATH` | `secrets-management.default-secret-path` |
+| Environment slug | `--env` | `INFISICAL_ENVIRONMENT` | `secrets-management.environment` |
+| Secret path | `--path` | `INFISICAL_SECRET_PATH` | `secrets-management.secret-path` |
 | Proxy address | `--proxy` | `INFISICAL_AGENT_PROXY_ADDRESS` | — |
 
 <Note>

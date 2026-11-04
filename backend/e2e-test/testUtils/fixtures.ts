@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 
+import { OrgMembershipRole, TableName } from "@app/db/schemas";
+import { seedData1 } from "@app/db/seed-data";
+
 import { selectOrg } from "./auth";
+import { addUserMembership } from "./users";
 
 // Creates a project in whichever org `authToken` is scoped to, and returns its id. Cleanup comes
 // with the org: deleting it cascades to every project underneath.
@@ -55,4 +59,24 @@ export const createIsolatedOrgAndProject = async (namePrefix: string) => {
   };
 
   return { orgId, projectId, authToken, cleanup };
+};
+
+// Nothing in the test plan creates sub-orgs, so the row is written directly and the seed user made its
+// admin to get a scoped token. Deleting the root org cascades to it (parentOrgId), so no cleanup needed.
+export const createSubOrgAndProject = async (dto: { rootOrgId: string; namePrefix: string }) => {
+  const slug = `${dto.namePrefix}-${randomUUID().slice(0, 8)}`;
+  const [subOrg] = await testDb(TableName.Organization)
+    .insert({ name: slug, slug, parentOrgId: dto.rootOrgId, rootOrgId: dto.rootOrgId })
+    .returning("id");
+  const subOrgId = (subOrg as { id: string }).id;
+
+  await addUserMembership({ userId: seedData1.id, orgId: subOrgId, role: OrgMembershipRole.Admin });
+
+  const selectOrgRes = await selectOrg(jwtAuthToken, subOrgId);
+  expect(selectOrgRes.statusCode).toBe(200);
+  const authToken = selectOrgRes.payload.token as string;
+
+  const projectId = await createProject(authToken, slug);
+
+  return { subOrgId, projectId, authToken };
 };

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -21,6 +22,7 @@ import {
   Input
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateOrgRole, useGetOrgRole, useUpdateOrgRole } from "@app/hooks/api";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
@@ -41,6 +43,7 @@ type Props = {
 };
 
 export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -64,6 +67,8 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
+    setValue,
+    getFieldState,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -165,6 +170,14 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                       placeholder="Billing Team"
                       isError={Boolean(error)}
                       {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        const slugState = getFieldState("slug");
+                        if (role || slugState.isDirty) return;
+                        setValue("slug", slugify(e.target.value, { lowercase: true }), {
+                          shouldValidate: Boolean(slugState.error)
+                        });
+                      }}
                       autoComplete="off"
                       name="org-role-name"
                     />
@@ -210,7 +223,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
               </DialogClose>
               <Button
                 type="submit"
-                variant="org"
+                variant={scopeVariant}
                 isPending={isSubmitting}
                 isDisabled={isSubmitting}
               >

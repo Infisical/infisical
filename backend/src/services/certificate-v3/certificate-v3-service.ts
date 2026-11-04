@@ -30,17 +30,9 @@ import {
   TCertRequestRequestData
 } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-import {
-  CertificateApplicationAlertEvent,
-  TCertificateAlertEventEmitter,
-  TCertificateAlertEventInput
-} from "@app/services/certificate/certificate-alert-events";
-import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
-import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
@@ -58,6 +50,16 @@ import { recordNewCertificateQuotaKey } from "@app/services/certificate-common/c
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  CertificateApplicationAlertEvent,
+  TCertificateAlertEventEmitter,
+  TCertificateAlertEventInput
+} from "@app/services/certificate/certificate-alert-events";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
+import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
+import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -139,6 +141,8 @@ type TCertificateV3ServiceFactoryDep = {
     TCertificateDALFactory,
     | "findOne"
     | "findById"
+    | "findByIdForUpdate"
+    | "findByIdForShare"
     | "updateById"
     | "transaction"
     | "create"
@@ -159,6 +163,7 @@ type TCertificateV3ServiceFactoryDep = {
     "validateCertificateRequest" | "validateRequestAgainstPolicy" | "getPolicyById"
   >;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "resolveCsrSignatureAlgorithm">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
@@ -197,7 +202,7 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
   usageCounterDAL: Pick<
     TUsageCounterDALFactory,
     "countActiveCertificateQuotaKeysByOrg" | "isCertificateQuotaKeyActiveInOrg" | "resolveRootOrgId"
@@ -346,6 +351,7 @@ export const certificateV3ServiceFactory = ({
   acmeAccountDAL,
   certificatePolicyService,
   internalCaService,
+  caKeySourceService,
   permissionService,
   certificateSyncDAL,
   pkiSyncDAL,
@@ -1419,8 +1425,17 @@ export const certificateV3ServiceFactory = ({
     const certificateRequest = applyProfileDefaults(csrCertificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
 
-    const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
+    const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: csrSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
+    const extractedSignatureAlgorithm = (
+      ca.internalCa
+        ? await caKeySourceService.resolveCsrSignatureAlgorithm({
+            caId: ca.id,
+            keyAlgorithm: ca.internalCa.keyAlgorithm as CertKeyAlgorithm,
+            csrSignatureAlgorithm
+          })
+        : csrSignatureAlgorithm
+    ) as typeof csrSignatureAlgorithm;
 
     mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
     mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
@@ -2310,6 +2325,8 @@ export const certificateV3ServiceFactory = ({
       resourceMetadataDAL
     });
 
+    assertCertificateNotDeleted(certificate);
+
     if (metadata && projectPermission) {
       assertCanEditCertificateResult({
         projectPermission,
@@ -2324,6 +2341,11 @@ export const certificateV3ServiceFactory = ({
 
     if (metadata) {
       await certificateDAL.transaction(async (tx) => {
+        const lockedCertificate = await certificateDAL.findByIdForShare(certificateId, tx);
+        if (!lockedCertificate) {
+          throw new NotFoundError({ message: "Certificate not found" });
+        }
+        assertCertificateNotDeleted(lockedCertificate);
         await resourceMetadataDAL.delete({ certificateId }, tx);
         await insertMetadataForCertificate(resourceMetadataDAL, {
           metadata,

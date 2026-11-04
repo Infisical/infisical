@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -19,6 +18,7 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
@@ -54,6 +54,7 @@ import {
   IconButton,
   PageHeader,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -85,6 +86,7 @@ import {
   PROJECT_TILE_STYLE,
   urlSlugToProjectType
 } from "@app/helpers/project";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -107,8 +109,10 @@ import {
   ProjectVersion,
   SearchProjectSortBy
 } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningProjectId } from "@app/hooks/api/secretScanningV2";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import { DeletedProjectsTable } from "@app/pages/organization/ProjectsPage/components/DeletedProjectsTable";
 import {
   ProjectListToggle,
   ProjectListView
@@ -259,6 +263,29 @@ export const ProjectTypePage = () => {
     }
   }, [projectType, certManagerInstance, orgId, navigate]);
 
+  // Resolving also creates the project for older orgs that never opened Secret Scanning. Non-members land
+  // on the product's access page, which offers joining or requesting access.
+  const { data: secretScanningProjectId, isError: isSecretScanningProjectError } =
+    useGetSecretScanningProjectId(orgId, {
+      enabled: projectType === ProjectType.SecretScanning
+    });
+
+  useEffect(() => {
+    if (projectType !== ProjectType.SecretScanning) return;
+
+    if (secretScanningProjectId) {
+      setSecretScanningActiveProjectCookie(orgId, secretScanningProjectId);
+      navigate({
+        to: "/organizations/$orgId/secret-scanning/data-sources",
+        params: { orgId }
+      });
+    } else if (isSecretScanningProjectError) {
+      // Failed queries are not reported globally, so without this the page would stay blank.
+      createNotification({ type: "error", text: "Couldn't open Secret Scanning. Try again." });
+      navigate({ to: "/organizations/$orgId/projects", params: { orgId } });
+    }
+  }, [projectType, secretScanningProjectId, isSecretScanningProjectError, orgId, navigate]);
+
   useEffect(() => {
     if (projectType === ProjectType.PAM) {
       navigate({
@@ -273,7 +300,7 @@ export const ProjectTypePage = () => {
   useEffect(() => {
     if (projectType === ProjectType.AgentVault) {
       navigate({
-        to: "/organizations/$orgId/agent-vault/sessions",
+        to: "/organizations/$orgId/agent-vault",
         params: { orgId }
       });
     }
@@ -281,22 +308,29 @@ export const ProjectTypePage = () => {
 
   if (projectType === ProjectType.CertificateManager) {
     return (
-      <CertManagerNotConfiguredModal
-        isOpen={isCertManagerSetupOpen}
-        onOpenChange={(open) => {
-          setIsCertManagerSetupOpen(open);
-          if (!open) {
-            navigate({
-              to: "/organizations/$orgId/projects",
-              params: { orgId }
-            });
-          }
-        }}
-      />
+      <>
+        <PageTitle title={getProjectTitle(projectType)} />
+        <CertManagerNotConfiguredModal
+          isOpen={isCertManagerSetupOpen}
+          onOpenChange={(open) => {
+            setIsCertManagerSetupOpen(open);
+            if (!open) {
+              navigate({
+                to: "/organizations/$orgId/projects",
+                params: { orgId }
+              });
+            }
+          }}
+        />
+      </>
     );
   }
 
-  if (projectType === ProjectType.PAM || projectType === ProjectType.AgentVault) {
+  if (
+    projectType === ProjectType.PAM ||
+    projectType === ProjectType.AgentVault ||
+    projectType === ProjectType.SecretScanning
+  ) {
     return null;
   }
 
@@ -347,10 +381,8 @@ const ProjectTypeContent = ({
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
-      <Helmet>
-        <title>{typeTitle} Projects</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={`${typeTitle} Projects`} />
+      <link rel="icon" href="/infisical.ico" />
       <PageHeader
         title={typeTitle}
         scope={projectType}
@@ -382,6 +414,9 @@ const ProjectTypeContent = ({
           isAddingProjectsAllowed={isAddingProjectsAllowed}
           hideProjectListToggle={!canRequestAccess}
         />
+      )}
+      {projectType === ProjectType.SecretManager && (
+        <DeletedProjectsTable projectType={projectType} />
       )}
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
@@ -542,7 +577,8 @@ const MyProjectsForType = ({
     return (
       <Card
         key={workspace.id}
-        className={`group relative h-full cursor-pointer transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
+        linked
+        className={`h-full transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
       >
         <CardHeader>
           <div className="flex min-w-0 items-start gap-3">
@@ -554,20 +590,20 @@ const MyProjectsForType = ({
                 {/* The name is the card's link, so the accessible name comes from visible text
                     rather than a duplicated label, and its stretched pseudo-element covers the
                     card. Siblings raised above it (CardAction) stay outside the anchor. */}
-                <Link
+                <RowLink
                   to={getProjectHomePage(workspace.type, workspace.environments)}
                   params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
-                  className="block truncate outline-0 after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                  className="after:rounded-lg"
                 >
                   {workspace.name}
-                </Link>
+                </RowLink>
               </CardTitle>
               <p className="truncate text-sm leading-5 text-muted">
                 {getProjectTitle(workspace.type)}
               </p>
             </div>
           </div>
-          <CardAction className="relative z-10">{renderFavoriteButton(workspace)}</CardAction>
+          <CardAction data-row-interactive>{renderFavoriteButton(workspace)}</CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="line-clamp-2 text-sm leading-relaxed text-accent">
@@ -681,20 +717,19 @@ const MyProjectsForType = ({
             {workspacesWithFaveProp.map((workspace) => {
               const WorkspaceIcon = getProjectLucideIcon(workspace.type);
               return (
-                <TableRow key={workspace.id} className="group relative cursor-pointer">
+                <TableRow key={workspace.id} linked>
                   <TableCell className="w-0">
                     <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
                       <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
                     </div>
                   </TableCell>
                   <TableCell isTruncatable>
-                    <Link
+                    <RowLink
                       to={getProjectHomePage(workspace.type, workspace.environments)}
                       params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
-                      className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                     >
                       {workspace.name}
-                    </Link>
+                    </RowLink>
                   </TableCell>
                   <TableCell isTruncatable>
                     {workspace.description || <span className="text-muted">—</span>}
@@ -702,7 +737,7 @@ const MyProjectsForType = ({
                   <TableCell className="w-0 text-xs whitespace-nowrap">
                     {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                   </TableCell>
-                  <TableCell className="relative z-10 w-0 text-right">
+                  <TableCell data-row-interactive className="w-0 text-right">
                     {renderFavoriteButton(workspace)}
                   </TableCell>
                 </TableRow>
@@ -923,29 +958,21 @@ const AllProjectsForType = ({
           {searchedProjects?.projects?.map((workspace) => {
             const WorkspaceIcon = getProjectLucideIcon(workspace.type);
             return (
-              <TableRow
-                key={workspace.id}
-                className={twMerge("group relative", workspace.isMember && "cursor-pointer")}
-              >
+              <TableRow key={workspace.id} linked={workspace.isMember} className="group">
                 <TableCell className="w-0">
                   <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
                     <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
                   </div>
                 </TableCell>
                 <TableCell isTruncatable>
-                  {/* Only members can open the project, so only their rows get the stretched
-                      anchor; everyone else sees plain text with no navigation. */}
-                  {workspace.isMember ? (
-                    <Link
-                      to={getProjectHomePage(workspace.type, workspace.environments)}
-                      params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
-                      className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
-                    >
-                      {workspace.name}
-                    </Link>
-                  ) : (
-                    workspace.name
-                  )}
+                  {/* Only members can open the project, so everyone else sees plain text. */}
+                  <RowLink
+                    to={getProjectHomePage(workspace.type, workspace.environments)}
+                    params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+                    disabled={!workspace.isMember}
+                  >
+                    {workspace.name}
+                  </RowLink>
                 </TableCell>
                 <TableCell isTruncatable>
                   {workspace.description || <span className="text-muted">—</span>}
@@ -953,7 +980,7 @@ const AllProjectsForType = ({
                 <TableCell className="w-0 text-xs whitespace-nowrap">
                   {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                 </TableCell>
-                <TableCell className="relative z-10 w-0 pr-3 text-right">
+                <TableCell data-row-interactive className="w-0 pr-3 text-right">
                   {(() => {
                     const joinedBadge = (
                       <DropdownMenu>
@@ -1136,17 +1163,14 @@ const AllProjectsForType = ({
         project={requestedWorkspaceDetails}
       />
       <AlertDialog
+        isPending={leaveProject.isPending}
         open={popUp.leaveProjectConfirmation.isOpen}
         confirmationValue="confirm"
         onOpenChange={(isOpen) => {
-          if (!leaveProject.isPending) handlePopUpToggle("leaveProjectConfirmation", isOpen);
+          handlePopUpToggle("leaveProjectConfirmation", isOpen);
         }}
       >
-        <AlertDialogContent
-          onEscapeKeyDown={(event) => {
-            if (leaveProject.isPending) event.preventDefault();
-          }}
-        >
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Leave {projectToLeave?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -1155,16 +1179,13 @@ const AllProjectsForType = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogConfirmationField
-            inputProps={{ placeholder: "Type confirm here", disabled: leaveProject.isPending }}
+            inputProps={{ placeholder: "Type confirm here" }}
             onConfirm={handleLeaveProject}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel variant="outline" isDisabled={leaveProject.isPending}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel variant="outline">Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={leaveProject.isPending}
               onClick={(event) => {
                 event.preventDefault();
                 handleLeaveProject();
@@ -1309,31 +1330,6 @@ const EmptyState = ({
   isAddingProjectsAllowed: boolean;
 }) => {
   const typeTitle = getProjectTitle(projectType);
-  const { permission } = useOrgPermission();
-
-  if (projectType === ProjectType.SecretScanning) {
-    const canRequestAccess = permission.can(
-      OrgPermissionProjectActions.RequestAccess,
-      OrgPermissionSubjects.Project
-    );
-
-    return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <ProductIcon />
-          </EmptyMedia>
-          <EmptyTitle>You don&apos;t have access to Secret Scanning</EmptyTitle>
-          <EmptyDescription>
-            {canRequestAccess
-              ? "Switch to All Projects to request access to the Secret Scanning project."
-              : "Ask an organization admin to add you to the Secret Scanning project."}
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
-
   return (
     <Empty className="border">
       <EmptyHeader>

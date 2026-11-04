@@ -1,6 +1,6 @@
 import { AuditLogEventClass } from "../auditLogSettings/types";
 import { CaStatus } from "../ca";
-import { CrlReason } from "../certificates/enums";
+import { CertStatus, CrlReason } from "../certificates/enums";
 import { IdentityTrustedIp } from "../identities/types";
 import { PkiItemType } from "../pkiCollections/constants";
 import { WorkflowIntegration } from "../workflowIntegrations/types";
@@ -702,7 +702,8 @@ interface DeleteCert {
     serialNumber: string;
     notAfter: string;
     source: string;
-    deletionAllowedReason: string;
+    statusAtDeletion?: CertStatus;
+    deletionAllowedReason?: string;
     applicationId?: string | null;
     applicationName?: string | null;
   };
@@ -978,6 +979,26 @@ interface PamAccessPolicyBypassedEvent {
   };
 }
 
+interface PamAccessRequestAutoApprovedEvent {
+  type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED;
+  metadata: {
+    approvalRequestId: string;
+    grantId?: string;
+    accountId?: string;
+    accountName?: string;
+    folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
+    duration?: string;
+    accessType: string;
+    ruleId: string | null;
+    ruleName?: string;
+    linkedRecords: { label: string; value: string }[];
+    conditions: string[];
+  };
+}
+
 interface CreateProjectFolderGrantEvent {
   type: EventType.CREATE_PROJECT_FOLDER_GRANT;
   metadata: {
@@ -1118,6 +1139,7 @@ export type Event =
   | IntegrationSyncedEvent
   | ClearIdentityLdapAuthLockoutsEvent
   | PamAccessPolicyBypassedEvent
+  | PamAccessRequestAutoApprovedEvent
   | CreateProjectFolderGrantEvent
   | DeleteProjectFolderGrantEvent
   | CreateSecretFolderAccessEvent

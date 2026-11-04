@@ -2,7 +2,9 @@ import { useState } from "react";
 import {
   AlertTriangleIcon,
   BellIcon,
+  CheckIcon,
   CircleStopIcon,
+  CopyIcon,
   EyeIcon,
   InfoIcon,
   MoreHorizontalIcon,
@@ -25,7 +27,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +48,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useToggle } from "@app/hooks";
 import {
   AlertRunStatus,
   CertificateAlertResourceType,
@@ -62,13 +65,13 @@ import {
   CERTIFICATE_ALERT_EVENT_LABELS,
   CERTIFICATE_FILTER_DEFINITIONS,
   CertificateAlertScopeKind,
-  CertificateFilterKind,
   formatAlertBefore,
   fromApiEventType,
   getAlertResourceId,
+  getFilterKinds,
   getFilterName,
   getScopeEventTypes,
-  isFilterableEventType,
+  isSignerEventType,
   pluralize,
   TCertificateAlertScope,
   toConditionNames
@@ -94,17 +97,18 @@ const SCOPE_CARD_CONFIG: Record<
 
 const AlertFiltersSummary = ({ alert }: { alert: TAlert }) => {
   const conditionNames = toConditionNames(alert);
-  const activeFilters = Object.values(CertificateFilterKind).flatMap((kind) => {
+  const eventType = alert.eventType as TCertificateAlertEventType;
+  const activeFilters = getFilterKinds(eventType).flatMap((kind) => {
     const ids: string[] = alert.condition?.[kind] ?? [];
     return ids.length ? [{ kind, ids }] : [];
   });
 
-  if (!isFilterableEventType(alert.eventType as TCertificateAlertEventType)) {
-    return <span className="text-muted">All signers</span>;
-  }
-
   if (!activeFilters.length) {
-    return <span className="text-muted">All certificates</span>;
+    return (
+      <span className="text-muted">
+        {isSignerEventType(eventType) ? "All signers" : "All certificates"}
+      </span>
+    );
   }
 
   return (
@@ -159,6 +163,18 @@ const AlertRow = ({
   scope
 }: AlertRowProps) => {
   const { mutate: updateAlert } = useUpdateAlert();
+  const [isIdCopied, setIsIdCopied] = useToggle(false);
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(alert.id);
+      setIsIdCopied.on();
+      createNotification({ type: "info", text: "Alert ID copied to clipboard" });
+      setTimeout(() => setIsIdCopied.off(), 2000);
+    } catch {
+      createNotification({ type: "error", text: "Could not copy to clipboard" });
+    }
+  };
 
   const handleToggleAlert = () =>
     updateAlert(
@@ -239,6 +255,10 @@ const AlertRow = ({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-44" align="end" sideOffset={2}>
+            <DropdownMenuItem onClick={handleCopyId}>
+              {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+              Copy ID
+            </DropdownMenuItem>
             {!canEdit && (
               <DropdownMenuItem onClick={onView}>
                 <EyeIcon />
@@ -461,7 +481,7 @@ export const CertificateAlertsCard = ({
         isReadOnly={alertModal.isReadOnly}
         usedEventTypes={usedEventTypes}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={deleteAlertModal.isOpen}
         confirmKey="delete"
         title={`Delete Alert "${deleteAlertModal.name ?? ""}"?`}

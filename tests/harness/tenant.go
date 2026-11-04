@@ -336,9 +336,20 @@ func (s *Stack) scopeToOrg(t *testing.T, unscoped string, orgID uuid.UUID, ip st
 // loses the tenant's X-Forwarded-For address, and the calls then draw down whatever
 // bucket the default source address lands in -- which is shared with every other
 // test, so the symptom is a 429 somewhere unrelated.
-func (t *Tenant) Client(tt *testing.T, token string) *api.ClientWithResponses {
+func (t *Tenant) Client(tt *testing.T, token string, opts ...api.ClientOption) *api.ClientWithResponses {
 	tt.Helper()
-	return t.stack.client(tt, token, t.ip)
+	return t.stack.client(tt, token, t.ip, opts...)
+}
+
+// Anonymous builds a client with no credentials, on this tenant's rate-limit bucket.
+func (t *Tenant) Anonymous(tt *testing.T, opts ...api.ClientOption) *api.ClientWithResponses {
+	tt.Helper()
+	c, err := infisical.NewClient(t.stack.app.BaseURL(infra.External),
+		append([]api.ClientOption{infisical.ForwardedFor(t.ip)}, opts...)...)
+	if err != nil {
+		tt.Fatalf("harness: %v", err)
+	}
+	return c
 }
 
 // Module returns a container handle, or fails the test naming the profile to use.
@@ -350,10 +361,10 @@ func (t *Tenant) Module(tt *testing.T, key infra.ModuleKey, option string) infra
 }
 
 // client builds an API client carrying a token and a rate-limit bucket.
-func (s *Stack) client(t *testing.T, token, ip string) *api.ClientWithResponses {
+func (s *Stack) client(t *testing.T, token, ip string, opts ...api.ClientOption) *api.ClientWithResponses {
 	t.Helper()
 	c, err := infisical.NewClient(s.app.BaseURL(infra.External),
-		infisical.BearerAuth(token), infisical.ForwardedFor(ip))
+		append([]api.ClientOption{infisical.BearerAuth(token), infisical.ForwardedFor(ip)}, opts...)...)
 	if err != nil {
 		t.Fatalf("harness: %v", err)
 	}

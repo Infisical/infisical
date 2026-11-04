@@ -36,6 +36,9 @@ export type TCreateMembershipUserDTO = {
       temporaryRange?: string;
       temporaryAccessStartTime?: string;
     }[];
+    // Org scope only: users already grantable in the org count as members, so a project invite doesn't turn
+    // a group-only user into a direct org member.
+    skipUsersWithOrgAccess?: boolean;
   };
 };
 

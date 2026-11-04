@@ -20,6 +20,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import {
+  CapabilityUpgradeAlternative,
   CapabilityUpgradeIntent,
   CONTACT_SALES_URL,
   getCapabilityUpgradeUrl
@@ -33,6 +34,7 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   onOpenAutoFocus?: (event: Event) => void;
   onCloseAutoFocus?: (event: Event) => void;
+  alternative?: CapabilityUpgradeAlternative;
 };
 
 const CapabilityUpgradeDialog = ({
@@ -42,6 +44,7 @@ const CapabilityUpgradeDialog = ({
   onOpenChange,
   onOpenAutoFocus,
   onCloseAutoFocus,
+  alternative,
   canManageBilling = false,
   canReadBilling = false,
   productPlans = []
@@ -51,6 +54,7 @@ const CapabilityUpgradeDialog = ({
   productPlans?: ProductPlanSummary[];
 }) => {
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { subscription } = useSubscription();
   const route = useRouterState({ select: (state) => state.matches.at(-1)?.routeId ?? "unknown" });
   const { pathname } = useLocation();
   const isAgentVault =
@@ -62,6 +66,7 @@ const CapabilityUpgradeDialog = ({
     paywallText: string;
     route: string;
     isEnterpriseFeature: boolean;
+    plan: string;
   } | null>(null);
 
   useEffect(() => {
@@ -74,12 +79,12 @@ const CapabilityUpgradeDialog = ({
       paywallKey,
       paywallText: intent.description,
       route,
-      isEnterpriseFeature: intent.isEnterpriseFeature
+      isEnterpriseFeature: intent.isEnterpriseFeature,
+      plan: subscription.slug ?? "free"
     };
     eventPropertiesRef.current = eventProperties;
     analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, currentOrg.id, eventProperties);
     // Capture the opening intent once, even when the triggering popup data changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -199,6 +204,23 @@ const CapabilityUpgradeDialog = ({
           </li>
         </ul>
       </section>
+      {alternative && (
+        <>
+          <Separator />
+          <section aria-label="Alternative option" className="flex flex-col gap-3">
+            <h3 className="text-sm">{alternative.title}</h3>
+            <p className="text-sm text-muted">{alternative.description}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={alternative.onSelect}
+            >
+              {alternative.actionLabel}
+            </Button>
+          </section>
+        </>
+      )}
       {!isInstance && !isAgentVault && visiblePlans.length > 0 && (
         <>
           <Separator />

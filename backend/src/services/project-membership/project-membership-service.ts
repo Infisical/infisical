@@ -15,6 +15,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-dal";
@@ -27,21 +28,22 @@ import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-da
 import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { lockMembershipsById } from "../membership/membership-dal";
 import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
-import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "../user-alias/user-alias-fns";
+import { TUserDALFactory } from "../user/user-dal";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
 import {
   TAddUsersToWorkspaceDTO,
@@ -59,7 +61,7 @@ type TProjectMembershipServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete" | "findRolesByMembershipIds">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
@@ -340,6 +342,16 @@ export const projectMembershipServiceFactory = ({
       }
     });
 
+    const deactivatedUserIds = new Set(orgMembers.filter((el) => !el.isActive).map((el) => el.actorUserId));
+    if (deactivatedUserIds.size) {
+      const deactivatedUsers = orgMembershipUsernames.filter((el) => deactivatedUserIds.has(el.id));
+      throw new BadRequestError({
+        message: `${deactivatedUsers.map((el) => `'${el.email || el.username}'`).join(", ")} ${
+          deactivatedUsers.length === 1 ? "is" : "are"
+        } deactivated in this organization. Reactivate them before adding them to this project.`
+      });
+    }
+
     const memberRolePermissions = await permissionService.getProjectPermissionByRoles(
       [ProjectMembershipRole.Member],
       projectId
@@ -367,6 +379,10 @@ export const projectMembershipServiceFactory = ({
     );
 
     await membershipUserDAL.transaction(async (tx) => {
+      await lockAndAssertActiveOrgAccess(
+        { orgDAL, orgId: actorOrgId, userIds: orgMembers.map(({ actorUserId }) => actorUserId as string) },
+        tx
+      );
       const projectMemberships = await membershipUserDAL.insertMany(
         orgMembers.map(({ actorUserId }) => ({
           scopeProjectId: projectId,
@@ -506,15 +522,25 @@ export const projectMembershipServiceFactory = ({
         tx
       });
 
-      await additionalPrivilegeDAL.delete(
-        {
-          projectId,
-          $in: {
-            actorUserId: projectMembers.map((membership) => membership.user.id)
-          }
-        },
+      const lockedMemberships = await lockMembershipsById(
+        projectMembers.map(({ id }) => id),
         tx
       );
+      const lockedMembershipIds = new Set(lockedMemberships.map(({ id }) => id));
+      const actorUserIds = projectMembers
+        .filter(({ id }) => lockedMembershipIds.has(id))
+        .map((membership) => membership.user.id);
+      if (actorUserIds.length) {
+        await additionalPrivilegeDAL.delete(
+          {
+            projectId,
+            $in: {
+              actorUserId: actorUserIds
+            }
+          },
+          tx
+        );
+      }
 
       const deletedMemberships = await membershipUserDAL.delete(
         {
@@ -622,6 +648,14 @@ export const projectMembershipServiceFactory = ({
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
       await assertProductWillRetainAdmin({ project, excludeMembershipIds: [actorMembership.id], tx });
 
+      const [lockedMembership] = await lockMembershipsById([actorMembership.id], tx);
+      if (!lockedMembership) {
+        throw new BadRequestError({
+          message:
+            "Your membership in this project changed before the leave completed. Leave the project again if you still want to remove it."
+        });
+      }
+
       await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,
@@ -638,16 +672,7 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
-      const membership = (
-        await membershipUserDAL.delete(
-          {
-            scope: AccessScope.Project,
-            scopeProjectId: project.id,
-            actorUserId: actorId
-          },
-          tx
-        )
-      )?.[0];
+      const membership = await membershipUserDAL.deleteById(lockedMembership.id, tx);
 
       await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
         {

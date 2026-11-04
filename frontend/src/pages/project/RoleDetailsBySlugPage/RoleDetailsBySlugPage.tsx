@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
@@ -30,7 +30,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -120,7 +120,7 @@ const Page = () => {
                 }}
               >
                 <ChevronLeftIcon aria-hidden className="size-4" />
-                {isCertManager ? "Roles" : "Project Roles"}
+                {hidesProjects(currentProject?.type) ? "Roles" : "Project Roles"}
               </Link>
             }
           >
@@ -254,16 +254,10 @@ const Page = () => {
 
 export const RoleDetailsBySlugPage = () => {
   const { t } = useTranslation();
-  const { currentProject } = useProject();
-  const isCertManager = currentProject.type === ProjectType.CertificateManager;
   return (
     <>
-      <Helmet>
-        <title>
-          {t("common.head-title", { title: isCertManager ? "Role" : "Project Settings" })}
-        </title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.role")} />
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         I={ProjectPermissionActions.Read}
         a={ProjectPermissionSub.Role}

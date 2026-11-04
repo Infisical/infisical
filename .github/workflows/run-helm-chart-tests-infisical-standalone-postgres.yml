@@ -39,6 +39,27 @@ jobs:
       - name: Run chart-testing (lint)
         run: ct lint --config ct.yaml --charts helm-charts/infisical-standalone-postgres
 
+      - name: Check rolloutOnEveryRender rendering
+        working-directory: helm-charts/infisical-standalone-postgres
+        run: |
+          set -euo pipefail
+          ls charts/*.tgz >/dev/null 2>&1 || helm dependency build .
+          render() { helm template infisical . -s templates/infisical.yaml "${@:2}" | yq ea "[select(.kind == \"Deployment\")] | .[0] | ($1)"; }
+          check() { [ "$(render "$@")" = "true" ]; }
+          both_stamped='.metadata.annotations.updatedAt != null and .spec.template.metadata.annotations.updatedAt != null'
+
+          check "$both_stamped"
+          check "$both_stamped" --set infisical.rolloutOnEveryRender=null
+
+          check '(.metadata | has("annotations") | not) and (.spec.template.metadata | has("annotations") | not)' --set infisical.rolloutOnEveryRender=false
+          check '(.metadata.annotations | keys | join(",")) == "deploy" and (.spec.template.metadata.annotations | keys | join(",")) == "pod"' \
+            --set infisical.rolloutOnEveryRender=false --set infisical.podAnnotations.pod=a --set infisical.deploymentAnnotations.deploy=b
+
+          render . --set infisical.rolloutOnEveryRender=false > "$RUNNER_TEMP/first.yaml"
+          sleep 2
+          render . --set infisical.rolloutOnEveryRender=false > "$RUNNER_TEMP/second.yaml"
+          diff "$RUNNER_TEMP/first.yaml" "$RUNNER_TEMP/second.yaml"
+
       - name: Create kind cluster
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
 
@@ -66,5 +87,5 @@ jobs:
             --config ct.yaml \
             --charts helm-charts/infisical-standalone-postgres \
             --helm-extra-args="--timeout=300s" \
-            --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.replicaCount=1 --set infisical.image.tag=v0.151.0 --set infisical.autoBootstrap.enabled=true --set-string infisical.extraEnv[0].name=TELEMETRY_ENABLED --set-string infisical.extraEnv[0].value=false" \
+            --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.replicaCount=1 --set infisical.image.tag=v0.167.0 --set infisical.autoBootstrap.enabled=true --set-string infisical.extraEnv[0].name=TELEMETRY_ENABLED --set-string infisical.extraEnv[0].value=false" \
             --namespace infisical-standalone-postgres

@@ -1,5 +1,4 @@
-import { Fragment, ReactNode, useEffect } from "react";
-import { Helmet } from "react-helmet";
+import { Fragment, ReactNode, useCallback } from "react";
 import {
   FingerprintIcon,
   FolderIcon,
@@ -13,6 +12,7 @@ import {
   SecretAccessInsightsUpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3/platform";
 import {
   ProjectPermissionInsightsActions,
@@ -25,6 +25,7 @@ import { ProjectPermissionHoneyTokenActions } from "@app/context/ProjectPermissi
 import { withProjectPermission } from "@app/hoc";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useGetInsightsCounts } from "@app/hooks/api/secretInsights/queries";
+import { InsightsUpgradePreview } from "@app/pages/organization/SecretInsightsPage/components";
 
 import {
   AuditReportsCard,
@@ -32,29 +33,27 @@ import {
   CalendarCard,
   DuplicatedSecretsCard,
   InsightsSummaryCards,
-  SecretAccessChart
+  SecretAccessChart,
+  UnusedAccessCard
 } from "./components";
 
-export const InsightsPage = withProjectPermission(
+const InsightsPageContent = withProjectPermission(
   () => {
     const { subscription } = useSubscription();
     const { currentProject, projectId } = useProject();
     const { permission } = useProjectPermission();
     const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
-    const { data: counts } = useGetInsightsCounts(
-      { projectId },
-      { enabled: Boolean(subscription?.secretAccessInsights) }
-    );
+    const hasInsightsPlan = Boolean(subscription?.secretAccessInsights);
 
-    useEffect(() => {
-      if (subscription && !subscription.secretAccessInsights) {
-        openUpgradeGate({
-          intent: SecretAccessInsightsUpgradeIntent,
-          paywallKey: "secret-manager.insights"
-        });
-      }
-    }, [openUpgradeGate, subscription]);
+    const { data: counts } = useGetInsightsCounts({ projectId }, { enabled: hasInsightsPlan });
+
+    const handleUpgrade = useCallback(() => {
+      openUpgradeGate({
+        intent: SecretAccessInsightsUpgradeIntent,
+        paywallKey: "secret-manager.insights"
+      });
+    }, [openUpgradeGate]);
 
     const canReadHoneyTokens = permission.can(
       ProjectPermissionHoneyTokenActions.Read,
@@ -119,9 +118,6 @@ export const InsightsPage = withProjectPermission(
 
     return (
       <>
-        <Helmet>
-          <title>Insights</title>
-        </Helmet>
         <PageHeader
           className="mb-4 dashboard:mb-10"
           scope={ProjectType.SecretManager}
@@ -131,20 +127,29 @@ export const InsightsPage = withProjectPermission(
           {headerStats.length > 0 && renderStatStrip("hidden justify-end dashboard:flex")}
         </PageHeader>
         {headerStats.length > 0 && renderStatStrip("mb-6 flex justify-start dashboard:hidden")}
-        <InsightsSummaryCards />
-        <div className="mt-6">
-          <AuditReportsCard />
-        </div>
-        <div className="mt-6 grid items-start gap-6 xl:grid-cols-[1.3fr_1fr]">
-          <div className="flex flex-col gap-6">
-            <DuplicatedSecretsCard />
-            <CalendarCard />
-          </div>
-          <div className="flex flex-col gap-6">
-            <SecretAccessChart />
-            <AuthMethodChart />
-          </div>
-        </div>
+        {hasInsightsPlan ? (
+          <>
+            <InsightsSummaryCards />
+            <div className="mt-6">
+              <AuditReportsCard />
+            </div>
+            <div className="mt-6">
+              <UnusedAccessCard />
+            </div>
+            <div className="mt-6 grid items-start gap-6 xl:grid-cols-[1.3fr_1fr]">
+              <div className="flex flex-col gap-6">
+                <DuplicatedSecretsCard />
+                <CalendarCard />
+              </div>
+              <div className="flex flex-col gap-6">
+                <SecretAccessChart />
+                <AuthMethodChart />
+              </div>
+            </div>
+          </>
+        ) : (
+          <InsightsUpgradePreview onUpgrade={handleUpgrade} />
+        )}
         {upgradeGate}
       </>
     );
@@ -154,4 +159,11 @@ export const InsightsPage = withProjectPermission(
     subject: ProjectPermissionSub.Insights,
     accessRestrictedMode: "dialog"
   }
+);
+
+export const InsightsPage = () => (
+  <>
+    <PageTitle title="Insights" />
+    <InsightsPageContent />
+  </>
 );

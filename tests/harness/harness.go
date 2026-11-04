@@ -54,12 +54,26 @@ type Option func(*config)
 type config struct {
 	extra []infra.Module
 	plan  *license.Plan
+	env   map[string]string
 }
 
 // WithInfra adds a container the harness does not know about, for a suite that needs
 // one: Pebble for ACME, a target database for rotation.
 func WithInfra(mods ...infra.Module) Option {
 	return func(c *config) { c.extra = append(c.extra, mods...) }
+}
+
+// WithInfisicalEnv sets an environment variable on the package's own Infisical, such as
+// RELAY_AUTH_SECRET. Isolated only: a shared instance is adopted by name and keeps the
+// environment it was created with, so a Shared package asking for one would silently
+// not get it.
+func WithInfisicalEnv(key, value string) Option {
+	return func(c *config) {
+		if c.env == nil {
+			c.env = map[string]string{}
+		}
+		c.env[key] = value
+	}
 }
 
 // WithDefaultPlan sets the entitlements a tenant gets unless it asks for others.
@@ -148,7 +162,10 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 		return nil, nil, err
 	}
 
-	mods, scopes := profile.modules(img, fnImg, caFile, cfg.extra...)
+	if len(cfg.env) > 0 && profile != Isolated {
+		return nil, nil, fmt.Errorf("harness: WithInfisicalEnv needs harness.Isolated; a shared instance keeps the environment it was created with")
+	}
+	mods, scopes := profile.modules(img, fnImg, caFile, cfg.env, cfg.extra...)
 	plan, err := infra.Resolve(mods, scopes)
 	if err != nil {
 		return nil, nil, err

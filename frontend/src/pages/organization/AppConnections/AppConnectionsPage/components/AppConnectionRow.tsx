@@ -41,8 +41,11 @@ import {
   buildGitHubAppUrl,
   getAppConnectionMethodDetails
 } from "@app/helpers/appConnections";
-import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
-import { getProjectBaseURL, getProjectDisplayName } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectDisplayName
+} from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { GitHubConnectionMethod, TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -97,7 +100,6 @@ export const AppConnectionRow = ({
 
     const timer = setTimeout(() => setIsIdCopied.off(), 2000);
 
-    // eslint-disable-next-line consistent-return
     return () => clearTimeout(timer);
   }, [isIdCopied]);
 
@@ -199,21 +201,18 @@ export const AppConnectionRow = ({
         <TableCell className="max-w-0 min-w-32!">
           {project ? (
             <Link
-              // @ts-expect-error app-connections aren't in kms/ssh
-              to={
-                project.type === ProjectType.AgentVault
-                  ? "/organizations/$orgId/agent-vault/settings"
-                  : `${getProjectBaseURL(project.type)}/app-connections`
-              }
-              params={{
-                orgId: currentOrg?.id || "",
-                projectId: project.id
-              }}
-              onClick={() => {
-                if (project.type === ProjectType.CertificateManager && currentOrg?.id) {
-                  setCertManagerActiveProjectCookie(currentOrg.id, project.id);
-                }
-              }}
+              {...(getInstancePinningLink(currentOrg?.id || "", project, "app-connections") ??
+                // app-connections aren't in kms/ssh, which the route types can't express
+                ({
+                  to:
+                    project.type === ProjectType.AgentVault
+                      ? "/organizations/$orgId/agent-vault/settings"
+                      : `${getProjectBaseURL(project.type)}/app-connections`,
+                  params: {
+                    orgId: currentOrg?.id || "",
+                    projectId: project.id
+                  }
+                } as never))}
               className="underline"
             >
               <p className="flex items-center gap-1.5 truncate">

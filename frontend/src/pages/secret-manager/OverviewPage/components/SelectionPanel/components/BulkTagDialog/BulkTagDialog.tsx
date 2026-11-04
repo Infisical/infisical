@@ -7,7 +7,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  CreatableSelect,
+  Combobox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -273,15 +273,16 @@ const BulkTagDialogContent = ({
 
       <div className="flex shrink-0 flex-col gap-4">
         <Field>
-          <FieldLabel>Tags</FieldLabel>
+          <FieldLabel htmlFor="bulk-tag-select">Tags</FieldLabel>
           <FieldContent>
             <Controller
               name="tags"
               control={control}
               render={({ field }) => (
-                <CreatableSelect
-                  isMulti
-                  noOptionsMessage={({ inputValue }) =>
+                <Combobox
+                  id="bulk-tag-select"
+                  multiple
+                  emptyMessage={(inputValue) =>
                     inputValue && !slugSchema().safeParse(inputValue).success
                       ? "Tag must be slug-friendly"
                       : "No tags match search"
@@ -290,13 +291,25 @@ const BulkTagDialogContent = ({
                   placeholder="Select or create tags..."
                   options={tagOptions}
                   value={field.value}
-                  onChange={(newValue) => field.onChange(newValue)}
-                  onCreateOption={handleCreateTag}
-                  isValidNewOption={(inputValue) =>
-                    !canAddTags
-                      ? false
-                      : slugSchema().safeParse(inputValue).success &&
-                        !projectTags?.map((tag) => tag.slug).includes(inputValue)
+                  onValueChange={field.onChange}
+                  getOptionValue={(option) => option.value}
+                  getOptionLabel={(option) => option.label}
+                  creation={
+                    canAddTags
+                      ? {
+                          onCreate: handleCreateTag,
+                          isValid: (inputValue) =>
+                            slugSchema().safeParse(inputValue).success &&
+                            !projectTags?.map((tag) => tag.slug).includes(inputValue),
+                          formatLabel: (inputValue) => {
+                            if (!slugSchema().safeParse(inputValue).success)
+                              return "Tag must be slug-friendly";
+                            if (projectTags?.some((tag) => tag.slug === inputValue))
+                              return "Tag already exists";
+                            return `Create "${inputValue}"`;
+                          }
+                        }
+                      : undefined
                   }
                 />
               )}

@@ -1,9 +1,16 @@
 import { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
+import RE2 from "re2";
 
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 const SECRET_SCANNING_PREFIX = "/api/v2/secret-scanning/";
+
+const COOKIE_PREFIX = "infisical-ss-active-project-";
+
+const secretScanningActiveProjectCookieName = (orgId: string) => `${COOKIE_PREFIX}${orgId}`;
+
+const UUID_REGEX = new RE2("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", "i");
 
 type TSchemaWithShape = { shape?: Record<string, unknown> } | undefined;
 
@@ -26,6 +33,15 @@ const readProjectIdFromRequest = (
   const projectId = (source as { projectId?: unknown } | undefined)?.projectId;
   if (typeof projectId === "string" && projectId.trim().length > 0) return projectId.trim();
   return null;
+};
+
+const readProjectIdFromCookie = (
+  cookies: Record<string, string | undefined> | undefined,
+  orgId: string
+): string | null => {
+  const value = cookies?.[secretScanningActiveProjectCookieName(orgId)];
+  if (!value || !UUID_REGEX.test(value)) return null;
+  return value;
 };
 
 export const injectSecretScanningProjectId: FastifyPluginAsync = fp(async (server) => {
@@ -52,6 +68,20 @@ export const injectSecretScanningProjectId: FastifyPluginAsync = fp(async (serve
       }
       req.internalSecretScanningProjectId = explicit;
       return;
+    }
+
+    // The cookie is the project the user last opened in the UI. A stale one is ignored rather than
+    // rejected, since the user never typed it.
+    const fromCookie = readProjectIdFromCookie(req.cookies, req.permission.orgId);
+    if (fromCookie) {
+      const isValidForOrg = await server.services.secretScanningV2ProjectResolver.isSecretScanningProject(
+        fromCookie,
+        req.permission.orgId
+      );
+      if (isValidForOrg) {
+        req.internalSecretScanningProjectId = fromCookie;
+        return;
+      }
     }
 
     // Never creates the project: these routes accept tokens whose scopes are only checked later, against it.

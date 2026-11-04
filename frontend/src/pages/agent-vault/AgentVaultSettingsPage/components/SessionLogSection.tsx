@@ -3,7 +3,6 @@ import { subject } from "@casl/ability";
 import { useQueryClient } from "@tanstack/react-query";
 import { AsteriskIcon, ChevronDownIcon, PlugIcon } from "lucide-react";
 
-import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import {
   Badge,
   Button,
@@ -38,13 +37,14 @@ import {
   useSubscription
 } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { areAgentVaultSessionLogsOn } from "@app/helpers/agentVaultSessionLogs";
+import { isAgentVaultSessionLogStorageOnPlan } from "@app/helpers/agentVaultSessionLogs";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   agentVaultKeys,
   fetchAgentVaultSessionLogReadAccess,
   useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
+import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultSessionLogSettings } from "@app/hooks/api/agentVault/types";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -67,31 +67,32 @@ export const SessionLogSection = () => {
   const { subscription } = useSubscription();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [isConnectionsSheetOpen, setIsConnectionsSheetOpen] = useState(false);
   const [isEditCredentialsOpen, setIsEditCredentialsOpen] = useState(false);
   const [awsSetup, setAwsSetup] = useState<{
     bucket: string | null;
     keyPrefix: string | null;
   } | null>(null);
-  const { data: config, isPending } = useGetAgentVaultSessionLogSettings();
+  const { data: state, isPending } = useGetAgentVaultSessionLogSettings();
   const { data: connections } = useListAvailableAppConnections(
     AppConnection.AWS,
     currentProject.id
   );
   const { data: agentVaultConnections = [] } = useListAppConnections(currentProject.id);
 
-  const hasDestination = Boolean(config?.bucket);
-  const isEnabled = Boolean(config?.enabled) && subscription.agentVaultByoS3;
-  // Without the plan, Configure still opens for an existing setup so an admin can switch it off and
-  // detach the connection; there is nothing to clean up otherwise, so it offers the upgrade.
-  const isCleanupOnly =
-    !subscription.agentVaultByoS3 && Boolean(config?.enabled || config?.appConnectionId);
+  const settings = state?.settings ?? null;
+  const external =
+    settings?.storage.type === AgentVaultSessionLogStorageType.External ? settings.storage : null;
+  // Not on the plan means nothing is recorded, so the card says Disabled even while the setting is on.
+  const isEnabled = Boolean(
+    settings?.enabled && isAgentVaultSessionLogStorageOnPlan(settings.storage.type, subscription)
+  );
 
   // Saving with session logs on already proved Infisical can write, so the dialog only opens for a
   // step the read check finds missing.
-  const offerAwsSetup = async (settings: TAgentVaultSessionLogSettings) => {
-    if (!areAgentVaultSessionLogsOn(settings)) return;
+  const offerAwsSetup = async (saved: TAgentVaultSessionLogSettings | null) => {
+    if (!saved?.enabled || saved.storage.type !== AgentVaultSessionLogStorageType.External) return;
+    const { bucket, keyPrefix } = saved.storage;
     const readCheck = await queryClient
       .fetchQuery({
         queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id),
@@ -99,23 +100,25 @@ export const SessionLogSection = () => {
       })
       .catch(() => null);
     if (readCheck?.status === "cors-missing" || readCheck?.status === "access-denied") {
-      setAwsSetup({ bucket: settings.bucket, keyPrefix: settings.keyPrefix });
+      setAwsSetup({ bucket, keyPrefix });
     }
   };
 
-  const connection = connections?.find(({ id }) => id === config?.appConnectionId);
+  const connection = connections?.find(({ id }) => id === external?.appConnectionId);
   const connectionName = connection?.name ?? null;
   const isOrgConnection = Boolean(connection && !connection.projectId);
   // The available list holds only names and IDs, and the credentials editor needs the full
   // connection, which only Agent Vault's own list returns.
-  const editableConnection = agentVaultConnections.find(({ id }) => id === config?.appConnectionId);
+  const editableConnection = agentVaultConnections.find(
+    ({ id }) => id === external?.appConnectionId
+  );
   const canEditConnection = editableConnection
     ? permission.can(
         ProjectPermissionAppConnectionActions.Edit,
         subject(ProjectPermissionSub.AppConnections, { connectionId: editableConnection.id })
       )
     : false;
-  const hasConnectionMenu = Boolean(config?.appConnectionId) || agentVaultConnections.length > 0;
+  const hasConnectionMenu = Boolean(external?.appConnectionId) || agentVaultConnections.length > 0;
 
   return (
     <>
@@ -126,20 +129,13 @@ export const SessionLogSection = () => {
             <DocumentationLinkBadge href={AgentVaultDocsUrls.sessionLogs} />
           </CardTitle>
           <CardDescription>
-            Requests your agents make through a proxy, encrypted and written to a bucket you own.
+            Requests your agents make through a proxy, encrypted and kept in default storage or in a
+            bucket you own.
           </CardDescription>
           <CardAction>
             <ButtonGroup>
-              <Button
-                variant="av"
-                isDisabled={isPending}
-                onClick={() =>
-                  subscription.agentVaultByoS3 || isCleanupOnly
-                    ? setIsModalOpen(true)
-                    : setIsUpgradeOpen(true)
-                }
-              >
-                {!config || hasDestination ? "Configure" : "Set Up Session Logs"}
+              <Button variant="av" isDisabled={isPending} onClick={() => setIsModalOpen(true)}>
+                {settings ? "Configure" : "Set Up Session Logs"}
               </Button>
               {hasConnectionMenu && (
                 <DropdownMenu>
@@ -153,7 +149,7 @@ export const SessionLogSection = () => {
                     </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" sideOffset={4} className="min-w-48">
-                    {config?.appConnectionId && (
+                    {external?.appConnectionId && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div>
@@ -185,11 +181,11 @@ export const SessionLogSection = () => {
           </CardAction>
         </CardHeader>
 
-        {(isPending || (hasDestination && config)) && (
+        {(isPending || settings) && (
           <CardContent>
             {isPending && <Skeleton className="h-10 w-full" />}
 
-            {!isPending && hasDestination && config && (
+            {!isPending && settings && (
               <DetailGroup className="flex-row flex-wrap gap-x-8">
                 <Detail>
                   <DetailLabel>Status</DetailLabel>
@@ -199,31 +195,41 @@ export const SessionLogSection = () => {
                     </Badge>
                   </DetailValue>
                 </Detail>
-                <Detail>
-                  <DetailLabel>Connection</DetailLabel>
-                  <DetailValue className="flex items-center gap-2">
-                    {connectionName && (
-                      <ProviderIcon
-                        alt={`${AWS_CONNECTION.name} connection`}
-                        icon={AWS_CONNECTION.image}
-                        className="w-4 shrink-0"
-                      />
-                    )}
-                    {connectionName ?? "None"}
-                  </DetailValue>
-                </Detail>
-                <Detail>
-                  <DetailLabel>Region</DetailLabel>
-                  <DetailValue>{config.region}</DetailValue>
-                </Detail>
-                <Detail>
-                  <DetailLabel>Bucket</DetailLabel>
-                  <DetailValue>{config.bucket}</DetailValue>
-                </Detail>
-                <Detail>
-                  <DetailLabel>Key Prefix</DetailLabel>
-                  <DetailValue>{config.keyPrefix || "None"}</DetailValue>
-                </Detail>
+                {settings.enabled && (
+                  <Detail>
+                    <DetailLabel>Storage</DetailLabel>
+                    <DetailValue>{external ? "External storage" : "Default storage"}</DetailValue>
+                  </Detail>
+                )}
+                {external && (
+                  <>
+                    <Detail>
+                      <DetailLabel>Connection</DetailLabel>
+                      <DetailValue className="flex items-center gap-2">
+                        {connectionName && (
+                          <ProviderIcon
+                            alt={`${AWS_CONNECTION.name} connection`}
+                            icon={AWS_CONNECTION.image}
+                            className="w-4 shrink-0"
+                          />
+                        )}
+                        {connectionName ?? "None"}
+                      </DetailValue>
+                    </Detail>
+                    <Detail>
+                      <DetailLabel>Region</DetailLabel>
+                      <DetailValue>{external.region}</DetailValue>
+                    </Detail>
+                    <Detail>
+                      <DetailLabel>Bucket</DetailLabel>
+                      <DetailValue>{external.bucket}</DetailValue>
+                    </Detail>
+                    <Detail>
+                      <DetailLabel>Key Prefix</DetailLabel>
+                      <DetailValue>{external.keyPrefix || "None"}</DetailValue>
+                    </Detail>
+                  </>
+                )}
               </DetailGroup>
             )}
           </CardContent>
@@ -235,10 +241,7 @@ export const SessionLogSection = () => {
         onOpenChange={setIsModalOpen}
         onSaved={offerAwsSetup}
         onEditCredentials={canEditConnection ? () => setIsEditCredentialsOpen(true) : undefined}
-        isCleanupOnly={isCleanupOnly}
       />
-
-      <AgentVaultSessionLogUpgradeModal isOpen={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />
 
       <AwsSetupDialog
         isOpen={Boolean(awsSetup)}

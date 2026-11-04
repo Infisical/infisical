@@ -63,12 +63,17 @@ import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants"
 import { caKeys } from "@app/hooks/api/ca/queries";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
-import { useGetHsmConnectorById } from "@app/hooks/api/hsmConnectors";
 import { CertKeySource } from "@app/hooks/api/signers";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 type Props = {
   caId: string;
+};
+
+const KEY_SOURCE_LABELS: Record<CertKeySource, string> = {
+  [CertKeySource.Infisical]: "Infisical",
+  [CertKeySource.Hsm]: "HSM",
+  [CertKeySource.AwsKms]: "AWS KMS"
 };
 
 const getStatusVariant = (status: CaStatus) => {
@@ -98,6 +103,9 @@ export const CaDetailsSection = ({ caId }: Props) => {
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
+  const [, isCopyingKeyArn, setCopyTextKeyArn] = useTimedReset<string>({
+    initialState: "Copy ARN to clipboard"
+  });
   const { popUp, handlePopUpToggle } = usePopUp(["editAutoRenewal"] as const);
 
   const { data } = useGetCa({
@@ -118,9 +126,8 @@ export const CaDetailsSection = ({ caId }: Props) => {
   const parentCa = parentCaData as TInternalCertificateAuthority | undefined;
 
   const isHsmBacked = ca?.configuration?.keySource === CertKeySource.Hsm;
-  const { data: hsmConnector } = useGetHsmConnectorById(ca?.configuration?.hsmConnectorId, {
-    enabled: Boolean(isHsmBacked && ca?.configuration?.hsmConnectorId)
-  });
+
+  const isAwsKmsBacked = ca?.configuration?.keySource === CertKeySource.AwsKms;
 
   const { data: autoRenewal } = useGetCaAutoRenewal(caId, {
     enabled:
@@ -300,8 +307,8 @@ export const CaDetailsSection = ({ caId }: Props) => {
             <Detail>
               <DetailLabel>Key Source</DetailLabel>
               <DetailValue>
-                <Badge variant={isHsmBacked ? "info" : "neutral"}>
-                  {isHsmBacked ? "HSM" : "Infisical"}
+                <Badge variant={isHsmBacked || isAwsKmsBacked ? "info" : "neutral"}>
+                  {KEY_SOURCE_LABELS[ca.configuration.keySource ?? CertKeySource.Infisical]}
                 </Badge>
               </DetailValue>
             </Detail>
@@ -311,16 +318,65 @@ export const CaDetailsSection = ({ caId }: Props) => {
                 <Detail>
                   <DetailLabel>HSM Connector</DetailLabel>
                   <DetailValue className="break-all">
-                    {hsmConnector?.name ?? ca.configuration.hsmConnectorId ?? "-"}
+                    {ca.configuration.hsmConnectorName ?? ca.configuration.hsmConnectorId ?? "-"}
                   </DetailValue>
                 </Detail>
-                {ca.configuration.hsmKeyLabel && (
+                {ca.configuration.externalKeyId && (
                   <Detail>
                     <DetailLabel>HSM Key Label</DetailLabel>
                     <DetailValue className="font-mono text-xs break-all">
-                      {ca.configuration.hsmKeyLabel}
+                      {ca.configuration.externalKeyId}
                     </DetailValue>
                   </Detail>
+                )}
+              </>
+            )}
+
+            {isAwsKmsBacked && (
+              <>
+                <Detail>
+                  <DetailLabel>AWS Connection</DetailLabel>
+                  <DetailValue className="break-all">
+                    {ca.configuration.appConnectionName ?? ca.configuration.appConnectionId ?? "-"}
+                  </DetailValue>
+                </Detail>
+                {ca.configuration.externalKeyId && (
+                  <>
+                    <Detail>
+                      <DetailLabel>Region</DetailLabel>
+                      <DetailValue>{ca.configuration.region ?? "-"}</DetailValue>
+                    </Detail>
+                    <Detail>
+                      <DetailLabel>Key ARN</DetailLabel>
+                      <DetailValue className="flex items-center gap-x-1">
+                        <span className="break-all">{ca.configuration.externalKeyId}</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label="Copy key ARN"
+                              onClick={() => {
+                                navigator.clipboard.writeText(
+                                  ca.configuration.externalKeyId as string
+                                );
+                                setCopyTextKeyArn("Copied");
+                              }}
+                            >
+                              {isCopyingKeyArn ? (
+                                <CheckIcon />
+                              ) : (
+                                <ClipboardListIcon className="text-label" />
+                              )}
+                            </IconButton>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isCopyingKeyArn ? "Copied" : "Copy ARN to clipboard"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </DetailValue>
+                    </Detail>
+                  </>
                 )}
               </>
             )}

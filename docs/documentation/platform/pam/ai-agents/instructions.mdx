@@ -1,0 +1,33 @@
+---
+title: "Agent instructions"
+sidebarTitle: "Agent instructions"
+description: "Tell an AI agent which PAM accounts it can use and how to reach them."
+---
+
+An agent only uses the accounts it knows about. When you [run an agent](/documentation/platform/pam/ai-agents/run), the CLI writes an instruction file for the run. The file lists the accounts the agent can use and tells the agent that it doesn't need credentials, that Infisical records everything it runs, and that it shouldn't connect to anything else.
+
+## Where the instructions go
+
+The CLI delivers the instructions in a format each agent reads:
+
+| Agent | Where the instructions go |
+|---|---|
+| `claude` | Passed to Claude Code directly, without changing your repository |
+| `codex` | A block in `AGENTS.md`, removed when the run ends |
+| `gemini` | A block in `GEMINI.md`, removed when the run ends |
+| Any other agent | A block in `AGENTS.md`, removed when the run ends |
+
+<Note>
+If your agent runs under a wrapper script, the CLI can't recognize it by name. Pass `--agent` with `claude`, `codex`, `gemini`, or `generic` to choose the format.
+</Note>
+
+## Agents you build yourself
+
+Every run sets the `INFISICAL_PAM_CONTEXT_FILE` environment variable to the path of the instruction file. To give your own agent the instructions, read the file and add its contents to your agent's system prompt:
+
+```python
+import os
+
+with open(os.environ["INFISICAL_PAM_CONTEXT_FILE"]) as file:
+    pam_context = file.read()  # add this to your agent's system prompt
+```

@@ -1,13 +1,12 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,11 +24,10 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { useGetWorkspaceGroupMembershipDetails } from "@app/hooks/api/projects/queries";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { GroupDetailsSection } from "./components/GroupDetailsSection";
@@ -72,9 +70,7 @@ const Page = () => {
     }
 
     createNotification({
-      text: `Successfully removed group from ${
-        currentProject.type === ProjectType.CertificateManager ? "certificate manager" : "project"
-      }`,
+      text: `Successfully removed group from ${getProjectLabel(currentProject.type).toLowerCase()}`,
       type: "success"
     });
 
@@ -92,8 +88,7 @@ const Page = () => {
     });
   };
 
-  const isCertManager = currentProject.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject.type);
 
   if (isPending) {
     return (
@@ -126,7 +121,7 @@ const Page = () => {
       selectedTab: ProjectAccessControlTabs.Groups
     }
   } as const;
-  const backLinkLabel = isCertManager ? "Groups" : "Project Groups";
+  const backLinkLabel = hidesProjects(currentProject.type) ? "Groups" : "Project Groups";
 
   return (
     <div className="@container mx-auto flex max-w-8xl flex-col">
@@ -135,11 +130,7 @@ const Page = () => {
           <PageHeader
             scope={currentProject.type}
             title={groupMembership.group.name}
-            description={
-              isCertManager
-                ? "Configure and manage certificate manager access control"
-                : "Configure and manage project access control"
-            }
+            description={`Configure and manage ${productLabel.toLowerCase()} access control`}
             backLink={
               <Link {...backLinkProps}>
                 <ChevronLeftIcon aria-hidden className="size-4" />
@@ -209,7 +200,7 @@ const Page = () => {
           </Empty>
         </div>
       )}
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteGroup.isOpen}
         onOpenChange={(isOpen) => {
           if (!isRemovingGroup) handlePopUpToggle("deleteGroup", isOpen);
@@ -226,17 +217,12 @@ const Page = () => {
 };
 
 export const GroupDetailsByIDPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
-  const isCertManager = currentProject.type === ProjectType.CertificateManager;
+  const projectsHidden = hidesProjects(currentProject.type);
   return (
     <>
-      <Helmet>
-        <title>
-          {t("common.head-title", { title: isCertManager ? "Group" : "Project Group" })}
-        </title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={projectsHidden ? "Group" : "Project Group"} />
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         I={ProjectPermissionActions.Read}
         a={ProjectPermissionSub.Groups}

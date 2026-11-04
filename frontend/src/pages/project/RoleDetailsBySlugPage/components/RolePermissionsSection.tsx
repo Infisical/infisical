@@ -20,6 +20,7 @@ import {
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
+import { useScopeVariant } from "@app/hooks";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -147,6 +148,7 @@ export const renderConditionalComponents = (
 };
 
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { currentProject, projectId } = useProject();
 
   const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
@@ -260,7 +262,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     </Button>
                   )}
                   <Button
-                    variant="project"
+                    variant={scopeVariant}
                     type="submit"
                     isDisabled={isDisabled || isSubmitting || !isDirty}
                     isPending={isSubmitting}
@@ -304,12 +306,9 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                         onRemoveLastRule={
                           !isDisabled
                             ? () =>
-                                form.setValue(
-                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                  `permissions.${subject}` as any,
-                                  [],
-                                  { shouldDirty: true }
-                                )
+                                form.setValue(`permissions.${subject}` as any, [], {
+                                  shouldDirty: true
+                                })
                             : undefined
                         }
                         onShowAccessTree={

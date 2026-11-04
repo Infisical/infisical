@@ -367,6 +367,7 @@
                       "integrations/secret-syncs/octopus-deploy",
                       "integrations/secret-syncs/ona",
                       "integrations/secret-syncs/ovh",
+                      "integrations/secret-syncs/portainer",
                       "integrations/secret-syncs/qovery",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
@@ -383,34 +384,6 @@
                       "integrations/secret-syncs/zabbix"
                     ]
                   }
-                ]
-              }
-            ]
-          },
-          {
-            "item": "Secrets Scanning",
-            "icon": "radar",
-            "pages": [
-              "documentation/platform/secret-scanning/overview",
-              {
-                "group": "Secrets scanning",
-                "pages": [
-                  "documentation/platform/secret-scanning/scan-locally",
-                  {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/secret-scanning/concepts/secret-scanning"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Product reference",
-                "pages": [
-                  "documentation/platform/secret-scanning/usage",
-                  "documentation/platform/secret-scanning/bitbucket",
-                  "documentation/platform/secret-scanning/github",
-                  "documentation/platform/secret-scanning/gitlab"
                 ]
               }
             ]
@@ -536,6 +509,7 @@
                       "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
                       "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                       "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                      "documentation/platform/pki/applications/certificate-syncs/imperva",
                       "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks",
                       "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile",
                       "documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster",
@@ -555,7 +529,9 @@
                     "group": "Discovery",
                     "root": "documentation/platform/pki/discovery/overview",
                     "pages": [
-                      "documentation/platform/pki/discovery/network"
+                      "documentation/platform/pki/discovery/network",
+                      "documentation/platform/pki/discovery/linux-server",
+                      "documentation/platform/pki/discovery/windows-server"
                     ]
                   },
                   {
@@ -601,66 +577,31 @@
             ]
           },
           {
-            "item": "KMS",
-            "icon": "lock",
-            "pages": [
-              "documentation/platform/kms/overview",
-              {
-                "group": "Infisical KMS",
-                "pages": [
-                  "documentation/platform/kms/kubernetes-encryption",
-                  {
-                    "group": "KMIP integration",
-                    "pages": [
-                      "documentation/platform/kms/kmip",
-                      "documentation/platform/kms/kmip-dell-poweredge"
-                    ]
-                  },
-                  "documentation/platform/kms/sigstore-cosign"
-                ]
-              }
-            ]
-          },
-          {
-            "item": "Privileged Access Management",
+            "item": "Privileged Access Management (PAM)",
             "icon": "users",
             "pages": [
               "documentation/platform/pam/overview",
               {
-                "group": "Privileged access manager",
+                "group": "Get started",
                 "pages": [
-                  {
-                    "group": "Quickstarts",
-                    "pages": [
-                      "documentation/platform/pam/quick-starts/launch-first-session"
-                    ]
-                  },
-                  {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/pam/concepts/pam-components",
-                      "documentation/platform/pam/concepts/session-lifecycle",
-                      "documentation/platform/pam/concepts/access-control"
-                    ]
-                  },
-                  {
-                    "group": "Guides",
-                    "pages": [
-                      "documentation/platform/pam/guides/team-access",
-                      "documentation/platform/pam/guides/ssh-certificate-auth"
-                    ]
-                  }
+                  "documentation/platform/pam/quick-starts/launch-first-session",
+                  "documentation/platform/pam/concepts/overview",
+                  "documentation/platform/pam/concepts/session-lifecycle",
+                  "documentation/platform/pam/architecture"
                 ]
               },
               {
-                "group": "Product reference",
+                "group": "Accounts",
                 "pages": [
-                  "documentation/platform/pam/folders/overview",
-                  "documentation/platform/pam/templates/overview",
+                  "documentation/platform/pam/accounts/overview",
+                  "documentation/platform/pam/accounts/add",
+                  "documentation/platform/pam/accounts/connect",
+                  "documentation/platform/pam/accounts/view-credentials",
+                  "documentation/platform/pam/accounts/manage",
                   {
-                    "group": "Accounts",
+                    "group": "Account types",
+                    "root": "documentation/platform/pam/accounts/account-types",
                     "pages": [
-                      "documentation/platform/pam/accounts/overview",
                       "documentation/platform/pam/accounts/postgresql",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
@@ -669,7 +610,13 @@
                       "documentation/platform/pam/accounts/redis",
                       "documentation/platform/pam/accounts/snowflake",
                       "documentation/platform/pam/accounts/clickhouse",
-                      "documentation/platform/pam/accounts/ssh",
+                      {
+                        "group": "SSH",
+                        "root": "documentation/platform/pam/accounts/ssh",
+                        "pages": [
+                          "documentation/platform/pam/guides/ssh-certificate-auth"
+                        ]
+                      },
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
                       "documentation/platform/pam/accounts/gcp-service-account",
@@ -677,47 +624,64 @@
                       "documentation/platform/pam/accounts/windows",
                       "documentation/platform/pam/accounts/windows-ad"
                     ]
-                  },
+                  }
+                ]
+              },
+              {
+                "group": "Access control",
+                "pages": [
+                  "documentation/platform/pam/concepts/access-control",
+                  "documentation/platform/pam/folders/overview",
+                  "documentation/platform/pam/templates/overview",
                   "documentation/platform/pam/access-requests/overview",
+                  "documentation/platform/pam/access-requests/auto-approval",
+                  "documentation/platform/pam/access-requests/break-glass"
+                ]
+              },
+              {
+                "group": "AI agents",
+                "pages": [
                   "documentation/platform/pam/ai-agents/overview",
-                  {
-                    "group": "Credential rotation",
-                    "pages": [
-                      "documentation/platform/pam/product-reference/credential-rotation/overview",
-                      "documentation/platform/pam/product-reference/credential-rotation/postgresql",
-                      "documentation/platform/pam/product-reference/credential-rotation/mysql",
-                      "documentation/platform/pam/product-reference/credential-rotation/mssql",
-                      "documentation/platform/pam/product-reference/credential-rotation/oracledb",
-                      "documentation/platform/pam/product-reference/credential-rotation/windows"
-                    ]
-                  },
-                  "documentation/platform/pam/product-reference/credential-health/overview",
-                  {
-                    "group": "Discovery",
-                    "pages": [
-                      "documentation/platform/pam/discovery/overview",
-                      "documentation/platform/pam/discovery/active-directory",
-                      "documentation/platform/pam/discovery/unix",
-                      "documentation/platform/pam/discovery/postgres",
-                      "documentation/platform/pam/discovery/mssql"
-                    ]
-                  },
-                  {
-                    "group": "Dependencies",
-                    "pages": [
-                      "documentation/platform/pam/dependencies/overview"
-                    ]
-                  },
+                  "documentation/platform/pam/ai-agents/run",
+                  "documentation/platform/pam/ai-agents/instructions",
+                  "documentation/platform/pam/ai-agents/unattended",
+                  "documentation/platform/pam/ai-agents/review"
+                ]
+              },
+              {
+                "group": "Credential rotation",
+                "pages": [
+                  "documentation/platform/pam/credential-rotation/overview",
+                  "documentation/platform/pam/credential-rotation/postgresql",
+                  "documentation/platform/pam/credential-rotation/mysql",
+                  "documentation/platform/pam/credential-rotation/mssql",
+                  "documentation/platform/pam/credential-rotation/oracledb",
+                  "documentation/platform/pam/credential-rotation/windows"
+                ]
+              },
+              {
+                "group": "Monitoring",
+                "pages": [
                   {
                     "group": "Sessions",
+                    "root": "documentation/platform/pam/sessions/overview",
                     "pages": [
-                      "documentation/platform/pam/sessions/overview",
                       "documentation/platform/pam/sessions/session-recording",
                       "documentation/platform/pam/sessions/external-storage"
                     ]
                   },
                   "documentation/platform/pam/auditing",
-                  "documentation/platform/pam/architecture"
+                  "documentation/platform/pam/credential-health/overview",
+                  {
+                    "group": "Discovery",
+                    "root": "documentation/platform/pam/discovery/overview",
+                    "pages": [
+                      "documentation/platform/pam/discovery/active-directory",
+                      "documentation/platform/pam/discovery/unix",
+                      "documentation/platform/pam/discovery/postgres",
+                      "documentation/platform/pam/discovery/mssql"
+                    ]
+                  }
                 ]
               }
             ]
@@ -738,45 +702,118 @@
                 ]
               },
               {
-                "group": "Agent guides",
+                "group": "Guides",
                 "pages": [
-                  "documentation/platform/agent-vault/guides/claude-code",
-                  "documentation/platform/agent-vault/guides/codex",
-                  "documentation/platform/agent-vault/guides/opencode",
+                  "documentation/platform/agent-vault/guides/modal",
+                  "documentation/platform/agent-vault/guides/daytona",
+                  "documentation/platform/agent-vault/guides/e2b",
                   {
-                    "group": "Hermes Agent",
-                    "root": "documentation/platform/agent-vault/guides/hermes",
+                    "group": "Kubernetes",
+                    "icon": "/images/stack/kubernetes.png",
+                    "root": "documentation/platform/agent-vault/guides/kubernetes",
                     "pages": [
-                      "documentation/platform/agent-vault/guides/hermes-gateway"
+                      "documentation/platform/agent-vault/guides/kubernetes-setup"
                     ]
                   },
-                  {
-                    "group": "OpenClaw",
-                    "root": "documentation/platform/agent-vault/guides/openclaw",
-                    "pages": [
-                      "documentation/platform/agent-vault/guides/openclaw-gateway"
-                    ]
-                  },
-                  "documentation/platform/agent-vault/guides/custom-agent"
+                  "documentation/platform/agent-vault/guides/docker"
                 ]
               },
               {
                 "group": "Concepts",
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
-                  "documentation/platform/agent-vault/services",
+                  {
+                    "group": "Services",
+                    "root": "documentation/platform/agent-vault/services",
+                    "pages": [
+                      "documentation/platform/agent-vault/http-apis",
+                      "documentation/platform/agent-vault/mcp-servers"
+                    ]
+                  },
                   "documentation/platform/agent-vault/variables",
+                  "documentation/platform/agent-vault/skills",
                   {
                     "group": "Sessions",
                     "root": "documentation/platform/agent-vault/sessions",
                     "pages": [
                       "documentation/platform/agent-vault/sessions-cli",
                       "documentation/platform/agent-vault/sessions-api",
+                      "documentation/platform/agent-vault/sessions-on-behalf-of-users",
+                      "documentation/platform/agent-vault/inline-services",
                       "documentation/platform/agent-vault/session-logs"
                     ]
                   },
                   "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/access-control"
+                ]
+              }
+            ]
+          },
+          {
+            "item": "Key Management Service (KMS)",
+            "icon": "lock",
+            "pages": [
+              "documentation/platform/kms/overview",
+              "documentation/platform/kms/concepts",
+              {
+                "group": "Key management",
+                "pages": [
+                  "documentation/platform/kms/keys",
+                  "documentation/platform/kms/encrypt-decrypt",
+                  "documentation/platform/kms/sign-verify",
+                  "documentation/platform/kms/mac",
+                  "documentation/platform/kms/key-rotation",
+                  "documentation/platform/kms/export-import"
+                ]
+              },
+              {
+                "group": "KMIP",
+                "pages": [
+                  "documentation/platform/kms/kmip",
+                  "documentation/platform/kms/kmip-server",
+                  "documentation/platform/kms/kmip-clients",
+                  "documentation/platform/kms/kmip-dell-poweredge"
+                ]
+              },
+              {
+                "group": "Integrations",
+                "pages": [
+                  "documentation/platform/kms/kubernetes-encryption",
+                  "documentation/platform/kms/sigstore-cosign"
+                ]
+              }
+            ]
+          },
+          {
+            "item": "Secret Scanning",
+            "icon": "radar",
+            "pages": [
+              "documentation/platform/secret-scanning/overview",
+              "documentation/platform/secret-scanning/concepts/secret-scanning",
+              {
+                "group": "Scanning locally",
+                "pages": [
+                  "documentation/platform/secret-scanning/scan-locally",
+                  "documentation/platform/secret-scanning/pre-commit-hook",
+                  "documentation/platform/secret-scanning/ignore-findings",
+                  "documentation/platform/secret-scanning/local-configuration"
+                ]
+              },
+              {
+                "group": "Scanning repositories",
+                "pages": [
+                  "documentation/platform/secret-scanning/scan-repositories",
+                  {
+                    "group": "Data sources",
+                    "expanded": true,
+                    "pages": [
+                      "documentation/platform/secret-scanning/github",
+                      "documentation/platform/secret-scanning/gitlab",
+                      "documentation/platform/secret-scanning/bitbucket"
+                    ]
+                  },
+                  "documentation/platform/secret-scanning/findings",
+                  "documentation/platform/secret-scanning/configuration"
                 ]
               }
             ]
@@ -1047,6 +1084,8 @@
                   "integrations/app-connections/heroku",
                   "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
+                  "integrations/app-connections/imperva",
+                  "integrations/app-connections/jira",
                   "integrations/app-connections/keeper",
                   "integrations/app-connections/kemp-loadmaster",
                   "integrations/app-connections/external-infisical",
@@ -1071,6 +1110,7 @@
                   "integrations/app-connections/oracledb",
                   "integrations/app-connections/ovh",
                   "integrations/app-connections/palo-alto-networks",
+                  "integrations/app-connections/portainer",
                   "integrations/app-connections/postgres",
                   "integrations/app-connections/powerdns",
                   "integrations/app-connections/qovery",
@@ -1192,7 +1232,8 @@
                   "self-hosting/guides/custom-certificates",
                   "self-hosting/guides/hsm-integration",
                   "self-hosting/guides/automated-bootstrapping",
-                  "self-hosting/guides/cdn-caching"
+                  "self-hosting/guides/cdn-caching",
+                  "self-hosting/guides/session-log-storage"
                 ]
               },
               {
@@ -1278,7 +1319,6 @@
             "pages": [
               "cli/overview",
               "cli/cloudsmith-migration",
-              "cli/project-config-migration",
               {
                 "group": "Get started",
                 "pages": [
@@ -1286,7 +1326,8 @@
                   "cli/usage",
                   "cli/upgrade",
                   "cli/project-config",
-                  "cli/faq"
+                  "cli/faq",
+                  "cli/troubleshooting"
                 ]
               },
               {
@@ -1303,6 +1344,7 @@
                   "cli/reference/kmip",
                   "cli/reference/login",
                   "cli/reference/logout",
+                  "cli/reference/migrate-config",
                   "cli/reference/org",
                   "cli/reference/pam",
                   "cli/reference/profile",
@@ -1319,6 +1361,7 @@
                       "cli/reference/sm/agent-proxy",
                       "cli/reference/sm/dynamic-secrets",
                       "cli/reference/sm/export",
+                      "cli/reference/sm/projects",
                       "cli/reference/sm/run",
                       "cli/reference/sm/secrets"
                     ]
@@ -1469,7 +1512,6 @@
                       "api-reference/endpoints/projects/get-project",
                       "api-reference/endpoints/projects/list-projects",
                       "api-reference/endpoints/projects/update-project",
-                      "api-reference/endpoints/projects/secret-snapshots",
                       {
                         "group": "Legacy",
                         "pages": [
@@ -2085,6 +2127,18 @@
                         ]
                       },
                       {
+                        "group": "Jira",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/jira/list",
+                          "api-reference/endpoints/app-connections/jira/available",
+                          "api-reference/endpoints/app-connections/jira/get-by-id",
+                          "api-reference/endpoints/app-connections/jira/get-by-name",
+                          "api-reference/endpoints/app-connections/jira/create",
+                          "api-reference/endpoints/app-connections/jira/update",
+                          "api-reference/endpoints/app-connections/jira/delete"
+                        ]
+                      },
+                      {
                         "group": "Keeper",
                         "pages": [
                           "api-reference/endpoints/app-connections/keeper/list",
@@ -2097,10 +2151,12 @@
                         ]
                       },
                       {
+                        "group": "Imperva",
+                        "pages": ["api-reference/endpoints/app-connections/imperva/create"]
+                      },
+                      {
                         "group": "Kemp LoadMaster",
-                        "pages": [
-                          "api-reference/endpoints/app-connections/kemp-loadmaster/create"
-                        ]
+                        "pages": ["api-reference/endpoints/app-connections/kemp-loadmaster/create"]
                       },
                       {
                         "group": "Laravel Forge",
@@ -2325,6 +2381,18 @@
                         ]
                       },
                       {
+                        "group": "Portainer",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/portainer/list",
+                          "api-reference/endpoints/app-connections/portainer/available",
+                          "api-reference/endpoints/app-connections/portainer/get-by-id",
+                          "api-reference/endpoints/app-connections/portainer/get-by-name",
+                          "api-reference/endpoints/app-connections/portainer/create",
+                          "api-reference/endpoints/app-connections/portainer/update",
+                          "api-reference/endpoints/app-connections/portainer/delete"
+                        ]
+                      },
+                      {
                         "group": "PostgreSQL",
                         "pages": [
                           "api-reference/endpoints/app-connections/postgres/list",
@@ -2430,6 +2498,18 @@
                           "api-reference/endpoints/app-connections/stripe/create",
                           "api-reference/endpoints/app-connections/stripe/update",
                           "api-reference/endpoints/app-connections/stripe/delete"
+                        ]
+                      },
+                      {
+                        "group": "ServiceNow",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/servicenow/list",
+                          "api-reference/endpoints/app-connections/servicenow/available",
+                          "api-reference/endpoints/app-connections/servicenow/get-by-id",
+                          "api-reference/endpoints/app-connections/servicenow/get-by-name",
+                          "api-reference/endpoints/app-connections/servicenow/create",
+                          "api-reference/endpoints/app-connections/servicenow/update",
+                          "api-reference/endpoints/app-connections/servicenow/delete"
                         ]
                       },
                       {
@@ -2583,6 +2663,16 @@
                     ]
                   },
                   {
+                    "group": "Alerts",
+                    "pages": [
+                      "api-reference/endpoints/alerts/list",
+                      "api-reference/endpoints/alerts/create",
+                      "api-reference/endpoints/alerts/get-by-id",
+                      "api-reference/endpoints/alerts/update",
+                      "api-reference/endpoints/alerts/delete"
+                    ]
+                  },
+                  {
                     "group": "Events",
                     "pages": [
                       "api-reference/endpoints/events/project-events"
@@ -2732,7 +2822,7 @@
                 ]
               },
               {
-                "group": "Secrets management",
+                "group": "Secrets Management",
                 "boost": 0.25,
                 "pages": [
                   {
@@ -2861,17 +2951,6 @@
                       "api-reference/endpoints/dynamic-secrets/delete-lease",
                       "api-reference/endpoints/dynamic-secrets/renew-lease",
                       "api-reference/endpoints/dynamic-secrets/get-lease"
-                    ]
-                  },
-                  {
-                    "group": "Proxied services",
-                    "pages": [
-                      "api-reference/endpoints/proxied-services/create",
-                      "api-reference/endpoints/proxied-services/update",
-                      "api-reference/endpoints/proxied-services/delete",
-                      "api-reference/endpoints/proxied-services/get-by-id",
-                      "api-reference/endpoints/proxied-services/get-by-name",
-                      "api-reference/endpoints/proxied-services/list"
                     ]
                   },
                   {
@@ -3311,9 +3390,7 @@
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/create",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/update",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/delete",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/import-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/remove-secrets"
+                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets"
                         ]
                       },
                       {
@@ -3731,6 +3808,20 @@
                         ]
                       },
                       {
+                        "group": "Portainer",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/portainer/list",
+                          "api-reference/endpoints/secret-syncs/portainer/get-by-id",
+                          "api-reference/endpoints/secret-syncs/portainer/get-by-name",
+                          "api-reference/endpoints/secret-syncs/portainer/create",
+                          "api-reference/endpoints/secret-syncs/portainer/update",
+                          "api-reference/endpoints/secret-syncs/portainer/delete",
+                          "api-reference/endpoints/secret-syncs/portainer/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/portainer/import-secrets",
+                          "api-reference/endpoints/secret-syncs/portainer/remove-secrets"
+                        ]
+                      },
+                      {
                         "group": "Qovery",
                         "pages": [
                           "api-reference/endpoints/secret-syncs/qovery/list",
@@ -3939,7 +4030,7 @@
                 ]
               },
               {
-                "group": "Certificate management",
+                "group": "Certificate Management",
                 "boost": 0.25,
                 "pages": [
                   {
@@ -3980,6 +4071,7 @@
                           "api-reference/endpoints/certificates/delete",
                           "api-reference/endpoints/certificates/cert-body",
                           "api-reference/endpoints/certificates/bundle",
+                          "api-reference/endpoints/certificates/pkcs12",
                           "api-reference/endpoints/certificates/private-key",
                           "api-reference/endpoints/certificates/import-certificate"
                         ]
@@ -4128,6 +4220,13 @@
                               "api-reference/endpoints/pki/syncs/f5-big-ip/delete",
                               "api-reference/endpoints/pki/syncs/f5-big-ip/sync-certificates",
                               "api-reference/endpoints/pki/syncs/f5-big-ip/remove-certificates"
+                            ]
+                          },
+                          {
+                            "group": "Imperva",
+                            "pages": [
+                              "api-reference/endpoints/pki/syncs/imperva/create",
+                              "api-reference/endpoints/pki/syncs/imperva/sync-certificates"
                             ]
                           },
                           {
@@ -4358,6 +4457,7 @@
                           "api-reference/endpoints/code-signing/signers/enable",
                           "api-reference/endpoints/code-signing/signers/disable",
                           "api-reference/endpoints/code-signing/signers/reissue-certificate",
+                          "api-reference/endpoints/code-signing/signers/import-certificate",
                           "api-reference/endpoints/code-signing/signers/list-operations"
                         ]
                       },
@@ -4426,7 +4526,130 @@
                 ]
               },
               {
-                "group": "Infisical KMS",
+                "group": "Agent Vault",
+                "pages": [
+                  {
+                    "group": "Access bundles",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-access-bundles/list",
+                      "api-reference/endpoints/agent-vault-access-bundles/get",
+                      "api-reference/endpoints/agent-vault-access-bundles/create",
+                      "api-reference/endpoints/agent-vault-access-bundles/update",
+                      "api-reference/endpoints/agent-vault-access-bundles/delete"
+                    ]
+                  },
+                  {
+                    "group": "Services",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-services/create",
+                      "api-reference/endpoints/agent-vault-services/update",
+                      "api-reference/endpoints/agent-vault-services/delete",
+                      "api-reference/endpoints/agent-vault-services/set-personal-values",
+                      "api-reference/endpoints/agent-vault-services/delete-personal-values"
+                    ]
+                  },
+                  {
+                    "group": "Variables",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-variables/list",
+                      "api-reference/endpoints/agent-vault-variables/create",
+                      "api-reference/endpoints/agent-vault-variables/update",
+                      "api-reference/endpoints/agent-vault-variables/delete",
+                      "api-reference/endpoints/agent-vault-variables/get-value"
+                    ]
+                  },
+                  {
+                    "group": "Skills",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-skills/list",
+                      "api-reference/endpoints/agent-vault-skills/get",
+                      "api-reference/endpoints/agent-vault-skills/create",
+                      "api-reference/endpoints/agent-vault-skills/delete",
+                      "api-reference/endpoints/agent-vault-skills/list-versions",
+                      "api-reference/endpoints/agent-vault-skills/get-version",
+                      "api-reference/endpoints/agent-vault-skills/update",
+                      "api-reference/endpoints/agent-vault-skills/restore-version",
+                      "api-reference/endpoints/agent-vault-skills/list-bundle-skills",
+                      "api-reference/endpoints/agent-vault-skills/add",
+                      "api-reference/endpoints/agent-vault-skills/remove"
+                    ]
+                  },
+                  {
+                    "group": "Access bundle members",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-access-bundle-members/list",
+                      "api-reference/endpoints/agent-vault-access-bundle-members/list-available",
+                      "api-reference/endpoints/agent-vault-access-bundle-members/add",
+                      "api-reference/endpoints/agent-vault-access-bundle-members/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Members",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-members/list",
+                      "api-reference/endpoints/agent-vault-members/list-available",
+                      "api-reference/endpoints/agent-vault-members/add",
+                      "api-reference/endpoints/agent-vault-members/update-role",
+                      "api-reference/endpoints/agent-vault-members/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Delegations",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-delegations/list",
+                      "api-reference/endpoints/agent-vault-delegations/get",
+                      "api-reference/endpoints/agent-vault-delegations/set",
+                      "api-reference/endpoints/agent-vault-delegations/add-subjects",
+                      "api-reference/endpoints/agent-vault-delegations/remove-subjects",
+                      "api-reference/endpoints/agent-vault-delegations/list-available-subjects",
+                      "api-reference/endpoints/agent-vault-delegations/delete"
+                    ]
+                  },
+                  {
+                    "group": "Proxies",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-proxies/list",
+                      "api-reference/endpoints/agent-vault-proxies/get-ca",
+                      "api-reference/endpoints/agent-vault-proxies/create",
+                      "api-reference/endpoints/agent-vault-proxies/update",
+                      "api-reference/endpoints/agent-vault-proxies/delete",
+                      "api-reference/endpoints/agent-vault-proxies/rotate-token",
+                      "api-reference/endpoints/agent-vault-proxies/revoke"
+                    ]
+                  },
+                  {
+                    "group": "Sessions",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-sessions/list",
+                      "api-reference/endpoints/agent-vault-sessions/get",
+                      "api-reference/endpoints/agent-vault-sessions/create",
+                      "api-reference/endpoints/agent-vault-sessions/update",
+                      "api-reference/endpoints/agent-vault-sessions/revoke",
+                      "api-reference/endpoints/agent-vault-session-logs/list",
+                      "api-reference/endpoints/agent-vault-session-logs/tail"
+                    ]
+                  },
+                  {
+                    "group": "Settings",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-settings/get-session-log-settings",
+                      "api-reference/endpoints/agent-vault-settings/update-session-log-settings"
+                    ]
+                  },
+                  {
+                    "group": "App connections",
+                    "pages": [
+                      "api-reference/endpoints/agent-vault-app-connections/list",
+                      "api-reference/endpoints/agent-vault-app-connections/get",
+                      "api-reference/endpoints/agent-vault-app-connections/create",
+                      "api-reference/endpoints/agent-vault-app-connections/update",
+                      "api-reference/endpoints/agent-vault-app-connections/delete"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Key Management Service (KMS)",
                 "boost": 0.25,
                 "pages": [
                   {
@@ -4464,97 +4687,6 @@
                     "pages": [
                       "api-reference/endpoints/kms/mac/generate-mac",
                       "api-reference/endpoints/kms/mac/verify-mac"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Agent Vault",
-                "pages": [
-                  {
-                    "group": "Access bundles",
-                    "pages": [
-                      "api-reference/endpoints/agent-vault-access-bundles/list",
-                      "api-reference/endpoints/agent-vault-access-bundles/get",
-                      "api-reference/endpoints/agent-vault-access-bundles/create",
-                      "api-reference/endpoints/agent-vault-access-bundles/update",
-                      "api-reference/endpoints/agent-vault-access-bundles/delete"
-                    ]
-                  },
-                  {
-                    "group": "Services",
-                    "pages": [
-                      "api-reference/endpoints/agent-vault-services/create",
-                      "api-reference/endpoints/agent-vault-services/update",
-                      "api-reference/endpoints/agent-vault-services/delete"
-                    ]
-                  },
-                  {
-                    "group": "Variables",
-                    "pages": [
-                      "api-reference/endpoints/agent-vault-variables/list",
-                      "api-reference/endpoints/agent-vault-variables/create",
-                      "api-reference/endpoints/agent-vault-variables/update",
-                      "api-reference/endpoints/agent-vault-variables/delete",
-                      "api-reference/endpoints/agent-vault-variables/get-value"
-                    ]
-                  },
-                  {
-                    "group": "Access bundle members",
-                    "pages": [
-                      "api-reference/endpoints/agent-vault-access-bundle-members/list",
-                      "api-reference/endpoints/agent-vault-access-bundle-members/list-available",
-                      "api-reference/endpoints/agent-vault-access-bundle-members/add",
-                      "api-reference/endpoints/agent-vault-access-bundle-members/revoke"
-                    ]
-                  },
-                  {
-                    "group": "Members",
-                    "pages": [
-                      "api-reference/endpoints/agent-vault-members/list",
-                      "api-reference/endpoints/agent-vault-members/list-available",
-                      "api-reference/endpoints/agent-vault-members/add",
-                      "api-reference/endpoints/agent-vault-members/update-role",
-                      "api-reference/endpoints/agent-vault-members/revoke"
-                    ]
-                  },
-                  {
-                    "group": "Proxies",
-                    "pages": [
-                      "api-reference/endpoints/agent-vault-proxies/list",
-                      "api-reference/endpoints/agent-vault-proxies/create",
-                      "api-reference/endpoints/agent-vault-proxies/update",
-                      "api-reference/endpoints/agent-vault-proxies/delete",
-                      "api-reference/endpoints/agent-vault-proxies/enrollment-token",
-                      "api-reference/endpoints/agent-vault-proxies/revoke"
-                    ]
-                  },
-                  {
-                    "group": "Sessions",
-                    "pages": [
-                      "api-reference/endpoints/agent-vault-sessions/list",
-                      "api-reference/endpoints/agent-vault-sessions/get",
-                      "api-reference/endpoints/agent-vault-sessions/create",
-                      "api-reference/endpoints/agent-vault-sessions/revoke",
-                      "api-reference/endpoints/agent-vault-session-logs/list",
-                      "api-reference/endpoints/agent-vault-session-logs/tail"
-                    ]
-                  },
-                  {
-                    "group": "Settings",
-                    "pages": [
-                      "api-reference/endpoints/agent-vault-settings/get-session-log-settings",
-                      "api-reference/endpoints/agent-vault-settings/update-session-log-settings"
-                    ]
-                  },
-                  {
-                    "group": "App connections",
-                    "pages": [
-                      "api-reference/endpoints/agent-vault-app-connections/list",
-                      "api-reference/endpoints/agent-vault-app-connections/get",
-                      "api-reference/endpoints/agent-vault-app-connections/create",
-                      "api-reference/endpoints/agent-vault-app-connections/update",
-                      "api-reference/endpoints/agent-vault-app-connections/delete"
                     ]
                   }
                 ]
@@ -4690,8 +4822,24 @@
         "header": "PRODUCT",
         "items": [
           {
-            "label": "Secret Management",
-            "href": "https://infisical.com/"
+            "label": "Secrets Management",
+            "href": "https://infisical.com/platform/secrets-management"
+          },
+          {
+            "label": "Certificate Management",
+            "href": "https://infisical.com/platform/certificate-management"
+          },
+          {
+            "label": "Privileged Access Management (PAM)",
+            "href": "https://infisical.com/platform/pam"
+          },
+          {
+            "label": "Agent Vault",
+            "href": "https://infisical.com/platform/agent-vault"
+          },
+          {
+            "label": "Key Management Service (KMS)",
+            "href": "https://infisical.com/docs/documentation/platform/kms/overview"
           },
           {
             "label": "Secret Scanning",
@@ -4866,6 +5014,14 @@
   },
   "redirects": [
     {
+      "source": "/api-reference/endpoints/agent-vault-proxies/enrollment-token",
+      "destination": "/api-reference/endpoints/agent-vault-proxies/rotate-token"
+    },
+    {
+      "source": "/documentation/platform/secret-scanning/usage",
+      "destination": "/documentation/platform/secret-scanning/scan-repositories"
+    },
+    {
       "source": "/cli/scanning-overview",
       "destination": "/documentation/platform/secret-scanning/scan-locally"
     },
@@ -4916,6 +5072,10 @@
     {
       "source": "/cli/commands/init",
       "destination": "/cli/reference#init"
+    },
+    {
+      "source": "/cli/project-config-migration",
+      "destination": "/cli/project-config"
     },
     {
       "source": "/cli/commands/kmip",
@@ -5054,6 +5214,18 @@
       "destination": "/documentation/getting-started/set-up-with-ai"
     },
     {
+      "source": "/documentation/getting-started/cli",
+      "destination": "/documentation/guides/local-development"
+    },
+    {
+      "source": "/documentation/getting-started/docker",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/documentation/getting-started/sdks",
+      "destination": "/sdks/overview"
+    },
+    {
       "source": "/integrations/platforms/docker-intro",
       "destination": "/integrations/platforms/docker"
     },
@@ -5135,7 +5307,35 @@
     },
     {
       "source": "/documentation/platform/pam/product-reference/credential-rotation",
-      "destination": "/documentation/platform/pam/product-reference/credential-rotation/overview"
+      "destination": "/documentation/platform/pam/credential-rotation/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-rotation/:slug*",
+      "destination": "/documentation/platform/pam/credential-rotation/:slug*"
+    },
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-health/overview",
+      "destination": "/documentation/platform/pam/credential-health/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/concepts/pam-components",
+      "destination": "/documentation/platform/pam/concepts/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/guides/team-access",
+      "destination": "/documentation/platform/pam/quick-starts/launch-first-session"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/sandbox",
+      "destination": "/documentation/platform/pam/ai-agents/run#sandbox"
+    },
+    {
+      "source": "/documentation/platform/pam/dependencies/overview",
+      "destination": "/documentation/platform/pam/credential-rotation/windows#dependencies"
+    },
+    {
+      "source": "/documentation/platform/pam/recording-storage",
+      "destination": "/documentation/platform/pam/sessions/external-storage"
     },
     {
       "source": "/documentation/platform/pki/guides/applications/k8s-cert-manager",

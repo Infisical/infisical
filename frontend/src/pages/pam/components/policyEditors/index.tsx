@@ -27,6 +27,7 @@ const CommandBlockingEditor = ({ accountType, ...props }: PolicyEditorProps) => 
 
 export const POLICY_EDITORS: Partial<Record<PamPolicyType, ComponentType<PolicyEditorProps>>> = {
   [PamPolicyType.RequiresApproval]: BooleanPolicyEditor,
+  [PamPolicyType.AllowAutoApproval]: BooleanPolicyEditor,
   [PamPolicyType.AllowBreakGlass]: BooleanPolicyEditor,
   [PamPolicyType.RequireMfa]: BooleanPolicyEditor,
   [PamPolicyType.RequireReason]: BooleanPolicyEditor,

@@ -20,6 +20,7 @@ import {
   FieldContent,
   FieldDescription,
   Label,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep,
@@ -28,6 +29,7 @@ import {
 import {
   getCertificateDisplayName,
   isPaloAltoNetworksPkiSync,
+  PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE,
   PKI_SYNC_MAP
 } from "@app/helpers/pkiSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -49,6 +51,14 @@ import {
   hasPkiSyncRemovalOptions,
   PkiSyncRemovalOptionsFields
 } from "../PkiSyncRemovalOptionsFields";
+import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
+import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
+import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
+import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
+import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
+import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
+import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
+import { PkiSyncTargetHostField } from "./PkiSyncTargetHostField";
 import {
   isPaloAltoNetworksTemplateMissing,
   PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
@@ -58,14 +68,6 @@ import {
   TUpdatePkiSyncForm,
   UpdatePkiSyncFormSchema
 } from "./schemas/pki-sync-schema";
-import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
-import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
-import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
-import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
-import { PkiSyncHealthCheckCommandFields } from "./PkiSyncHealthCheckCommandFields";
-import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
-import { PkiSyncPostSyncCommandFields } from "./PkiSyncPostSyncCommandFields";
-import { PkiSyncTargetHostField } from "./PkiSyncTargetHostField";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
@@ -169,8 +171,9 @@ const getFormSteps = (
     title: "Certificates",
     subtitle: "Describe the certificates this sync holds.",
     rightLabel: "CERTIFICATES",
-    rightDescription:
-      "Anything in the application matching these filters is synced as it is issued, and anything that stops matching is no longer synced. Nothing changes until you save."
+    rightDescription: `Anything in the application matching these filters is synced as it is issued, and anything that stops matching is no longer synced. Nothing changes until you save.${
+      isPaloAltoNetworksPkiSync(destination) ? `\n\n${PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE}` : ""
+    }`
   });
 
   steps.push({
@@ -336,10 +339,10 @@ export const EditPkiSyncForm = ({
 
   const needsUnlinkRemovalOptions = Boolean(
     pendingUnlink &&
-      hasPkiSyncRemovalOptions(pkiSync.destination) &&
-      (pendingUnlink.formData.syncOptions as { canRemoveCertificates?: boolean } | undefined)
-        ?.canRemoveCertificates &&
-      pendingUnlink.preview.toUnlinkAtDestinationCount > 0
+    hasPkiSyncRemovalOptions(pkiSync.destination) &&
+    (pendingUnlink.formData.syncOptions as { canRemoveCertificates?: boolean } | undefined)
+      ?.canRemoveCertificates &&
+    pendingUnlink.preview.toUnlinkAtDestinationCount > 0
   );
 
   const areUnlinkRemovalOptionsComplete =
@@ -474,16 +477,8 @@ export const EditPkiSyncForm = ({
           </aside>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+        <SheetFooter className="shrink-0 items-center justify-between border-t">
           <div className="flex items-center gap-3">
-            <Button
-              variant="project"
-              type="submit"
-              isPending={isSubmitting}
-              isDisabled={!isDirty || isSubmitting || isDetectingPaloAltoNetworksDevice}
-            >
-              Save
-            </Button>
             <Button
               variant="outline"
               type="button"
@@ -513,8 +508,16 @@ export const EditPkiSyncForm = ({
             >
               Next
             </Button>
+            <Button
+              variant="project"
+              type="submit"
+              isPending={isSubmitting}
+              isDisabled={!isDirty || isSubmitting || isDetectingPaloAltoNetworksDevice}
+            >
+              Save
+            </Button>
           </div>
-        </div>
+        </SheetFooter>
       </form>
 
       <AlertDialog

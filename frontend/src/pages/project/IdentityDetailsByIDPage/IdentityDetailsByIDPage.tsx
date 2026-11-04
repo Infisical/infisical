@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { useQuery } from "@tanstack/react-query";
@@ -15,8 +14,10 @@ import {
   VenetianMaskIcon
 } from "lucide-react";
 
+import { IdentityDelegationSection } from "@app/components/agent-vault/IdentityDelegationSection";
 import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
@@ -54,7 +55,12 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
+import {
+  getProjectBaseURL,
+  getProjectLabel,
+  hidesProjects,
+  supportsAssumePrivileges
+} from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteProjectIdentityMembership,
@@ -115,9 +121,12 @@ const Page = () => {
     removeMenuItemLabel = "Remove From Agent Vault";
   }
 
+  const projectsHidden = hidesProjects(currentProject?.type);
+  const namesProduct = isStandaloneProduct || projectsHidden;
+
   let accessControlLabel = "project";
-  if (isCertManager) {
-    accessControlLabel = "certificate manager";
+  if (projectsHidden) {
+    accessControlLabel = getProjectLabel(currentProject?.type).toLowerCase();
   } else if (isPam) {
     accessControlLabel = "PAM";
   } else if (isAgentVault) {
@@ -167,7 +176,7 @@ const Page = () => {
       });
     }
     createNotification({
-      text: `Successfully removed machine identity from ${isStandaloneProduct ? accessControlLabel : "project"}`,
+      text: `Successfully removed machine identity from ${namesProduct ? accessControlLabel : "project"}`,
       type: "success"
     });
     handlePopUpClose("removeIdentity");
@@ -238,7 +247,7 @@ const Page = () => {
                 }}
               >
                 <ChevronLeftIcon aria-hidden className="size-4" />
-                {isStandaloneProduct ? "Machine Identities" : "Project Machine Identities"}
+                {namesProduct ? "Machine Identities" : "Project Machine Identities"}
               </Link>
             }
           >
@@ -396,6 +405,12 @@ const Page = () => {
                   </CardContent>
                 </Card>
               )}
+              {isAgentVault && (
+                <IdentityDelegationSection
+                  machineIdentityId={identityId}
+                  machineIdentityName={identityMembershipDetails.identity.name}
+                />
+              )}
               {!isAgentVault && (
                 <IdentityRoleDetailsSection
                   identityMembershipDetails={identityMembershipDetails}
@@ -426,10 +441,10 @@ const Page = () => {
           <IdentityActionConfirmationDialog
             open={popUp.removeIdentity.isOpen}
             title={`Remove ${identityMembershipDetails.identity.name} from ${
-              isStandaloneProduct ? accessControlLabel : "the project"
+              namesProduct ? accessControlLabel : "the project"
             }?`}
             description={`The machine identity will lose access to ${
-              isStandaloneProduct ? accessControlLabel : "this project"
+              namesProduct ? accessControlLabel : "this project"
             } but remain available in its organization.`}
             descriptionAsAlert
             confirmationText="remove"
@@ -481,19 +496,11 @@ const Page = () => {
 
 export const IdentityDetailsByIDPage = () => {
   const { t } = useTranslation();
-  const { currentProject } = useProject();
-  const isAgentVault = currentProject?.type === ProjectType.AgentVault;
 
   return (
     <>
-      <Helmet>
-        <title>
-          {t("common.head-title", {
-            title: isAgentVault ? "Machine Identity" : t("settings.members.title")
-          })}
-        </title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.machine-identity")} />
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         I={ProjectPermissionActions.Read}
         a={ProjectPermissionSub.Identity}

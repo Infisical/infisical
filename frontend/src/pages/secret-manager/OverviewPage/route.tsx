@@ -1,4 +1,4 @@
-import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react-router";
+import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -34,16 +34,12 @@ export const Route = createFileRoute(
       })
     ]
   },
-  beforeLoad: ({ context, params }) => ({
+  beforeLoad: ({ context }) => ({
     ...context,
     breadcrumbs: [
       ...context.breadcrumbs,
       {
-        label: "Secrets",
-        link: linkOptions({
-          to: "/organizations/$orgId/projects/secret-management/$projectId/overview",
-          params
-        })
+        label: "Secrets"
       }
     ]
   })

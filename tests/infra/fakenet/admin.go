@@ -103,6 +103,21 @@ func (s *Server) Admin(ca *CA) http.Handler {
 		_ = json.NewEncoder(w).Encode(calls)
 	})
 
+	mux.HandleFunc("PUT "+AdminPrefix+"/dns/txt/{name}", func(w http.ResponseWriter, r *http.Request) {
+		var values []string
+		if err := json.NewDecoder(r.Body).Decode(&values); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		s.txt.set(r.PathValue("name"), values)
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	mux.HandleFunc("DELETE "+AdminPrefix+"/dns/txt/{name}", func(w http.ResponseWriter, r *http.Request) {
+		s.txt.remove(r.PathValue("name"))
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	mux.HandleFunc("DELETE "+AdminPrefix+"/scopes/{host}/{key}", func(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		delete(s.scopes, scopeID{r.PathValue("host"), r.PathValue("key")})

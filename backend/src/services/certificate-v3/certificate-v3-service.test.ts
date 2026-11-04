@@ -10,6 +10,7 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { InstanceType } from "@app/ee/services/license/license-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -19,9 +20,6 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
@@ -36,6 +34,9 @@ import {
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
@@ -90,6 +91,8 @@ describe("CertificateV3Service", () => {
     TCertificateDALFactory,
     | "findOne"
     | "findById"
+    | "findByIdForUpdate"
+    | "findByIdForShare"
     | "updateById"
     | "transaction"
     | "create"
@@ -101,6 +104,8 @@ describe("CertificateV3Service", () => {
   > = {
     findOne: vi.fn(),
     findById: vi.fn(),
+    findByIdForUpdate: vi.fn(),
+    findByIdForShare: vi.fn(),
     findCertificatesMatchingSyncFilters: vi.fn().mockResolvedValue([]),
     findActiveCertificatesByIds: vi.fn().mockResolvedValue([]),
     updateById: vi.fn(),
@@ -195,7 +200,7 @@ describe("CertificateV3Service", () => {
   const mockUsageCounterDAL = {
     resolveRootOrgId: vi.fn(async (id: string) => id),
     countActiveCertificateQuotaKeysByOrg: vi.fn(async () => ({ total: 0, wildcard: 0 })),
-    isCertificateQuotaKeyActiveInOrg: vi.fn((orgId: string, quotaKey: string) =>
+    isCertificateQuotaKeyActiveInOrg: vi.fn((orgId: string | undefined, quotaKey: string) =>
       Promise.resolve(Boolean(orgId && quotaKey && false))
     )
   };
@@ -207,7 +212,8 @@ describe("CertificateV3Service", () => {
   };
 
   const mockLicenseService = {
-    getPlan: vi.fn().mockResolvedValue({ pkiPqc: true })
+    getPlan: vi.fn().mockResolvedValue({ pkiPqc: true }),
+    getInstanceType: vi.fn(() => InstanceType.OnPrem)
   };
 
   const mockCertificateIssuanceQueue = {
@@ -260,6 +266,7 @@ describe("CertificateV3Service", () => {
       const mockTx = {};
       return callback(mockTx);
     });
+    vi.mocked(mockCertificateDAL.findByIdForUpdate).mockImplementation((id: string) => mockCertificateDAL.findById(id));
     vi.mocked(mockCertificateDAL.getRequestEnrollmentTypeByCertId).mockResolvedValue(null);
     vi.mocked(mockCertificateDAL.getOriginatingRequestByCertId).mockResolvedValue({
       enrollmentType: null,
@@ -331,6 +338,11 @@ describe("CertificateV3Service", () => {
       certificatePolicyService: mockCertificatePolicyService,
       acmeAccountDAL: mockAcmeAccountDAL,
       internalCaService: mockInternalCaService,
+      caKeySourceService: {
+        resolveCsrSignatureAlgorithm: vi.fn(
+          async ({ csrSignatureAlgorithm }: { csrSignatureAlgorithm?: string }) => csrSignatureAlgorithm
+        )
+      },
       permissionService: mockPermissionService,
       certificateSyncDAL: {
         findPkiSyncIdsByCertificateId: vi.fn().mockResolvedValue([]),
@@ -2602,6 +2614,52 @@ describe("CertificateV3Service", () => {
       });
     });
 
+    describe("DigiCert reissue", () => {
+      const setupRenewal = (ca: unknown) => {
+        vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+        vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+        vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(ca as any);
+        vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
+        vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
+          isValid: true,
+          errors: [],
+          warnings: []
+        } as any);
+      };
+
+      it("rejects a reissue for a certificate that a DigiCert CA did not issue", async () => {
+        setupRenewal(mockCA);
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            externalConfiguration: { reissue: true },
+            ...mockActor
+          })
+        ).rejects.toThrow("Reissue is only available for certificates issued by these CAs: DigiCert.");
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
+      });
+
+      it("rejects a TTL on a DigiCert reissue", async () => {
+        setupRenewal({
+          ...mockCA,
+          internalCa: undefined,
+          externalCa: { id: "ext-ca-1", type: CaType.DIGICERT, configuration: {} }
+        });
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            externalConfiguration: { reissue: true },
+            attributes: { ttl: "30d" },
+            ...mockActor
+          })
+        ).rejects.toThrow("Remove the TTL. It can't be set on a reissue.");
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
+      });
+    });
+
     it("should successfully renew eligible certificate", async () => {
       // Three reads: the pre-transaction licence check, the in-transaction load, then the renewed row.
       vi.mocked(mockCertificateDAL.findById)
@@ -3124,6 +3182,28 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow("Certificate is revoked and cannot be renewed");
+    });
+
+    it("should reject renewal if certificate is deleted", async () => {
+      const deletedCert = {
+        ...mockOriginalCert,
+        deletedAt: new Date("2026-10-20T14:38:27.000Z")
+      };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(deletedCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(deletedCert);
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+        callback({})
+      );
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow("was deleted on 2026-10-20T14:38:27.000Z. It can no longer be renewed or changed");
     });
 
     it("should reject renewal if CA is inactive", async () => {

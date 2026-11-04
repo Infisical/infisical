@@ -21,7 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { DeleteConfirmDialog } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionMemberActions,
@@ -29,9 +29,13 @@ import {
   useOrganization,
   useUser
 } from "@app/context";
-import { useDeleteOrgMembership, useGetOrgUsers, useUpdateOrgMembership } from "@app/hooks/api";
+import {
+  useDeleteOrgMembership,
+  useGetOrgUserAccess,
+  useUpdateOrgMembership
+} from "@app/hooks/api";
 import { useDeleteOrgMembershipBatch } from "@app/hooks/api/users/queries";
-import { OrgUser } from "@app/hooks/api/users/types";
+import { TOrgUserAccess } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddOrgMemberModal } from "./AddOrgMemberModal";
@@ -114,14 +118,16 @@ export const OrgMembersSection = () => {
     handlePopUpClose("removeMember");
   };
 
-  const { data: members = [] } = useGetOrgUsers(orgId);
+  const { data: members = [] } = useGetOrgUserAccess(orgId);
+  const membersToRemove = (popUp.removeMembers.data?.selectedOrgMemberships ??
+    []) as TOrgUserAccess[];
 
-  const handleRemoveMembers = async (selectedMembers: OrgUser[]) => {
+  const handleRemoveMembers = async (selectedMembers: TOrgUserAccess[]) => {
     await deleteBatchMutateAsync({
       orgId,
-      membershipIds: selectedMembers
-        .filter((member) => member.user.id !== userId)
-        .map((member) => member.id)
+      membershipIds: selectedMembers.flatMap((member) =>
+        member.membership && member.user.id !== userId ? [member.membership.id] : []
+      )
     });
 
     createNotification({
@@ -148,8 +154,8 @@ export const OrgMembersSection = () => {
             <Button
               variant="danger"
               onClick={() => {
-                const selectedOrgMemberships = members.filter((member) =>
-                  selectedMemberIds.includes(member.id)
+                const selectedOrgMemberships = members.filter(
+                  (member) => member.membership && selectedMemberIds.includes(member.membership.id)
                 );
 
                 if (!selectedOrgMemberships.length) return;
@@ -213,7 +219,7 @@ export const OrgMembersSection = () => {
         setCompleteInviteLinks={setCompleteInviteLinks}
       />
       <AddSubOrgMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.removeMember.isOpen}
         title={`Are you sure you want to remove member with username ${
           (popUp?.removeMember?.data as { username: string })?.username || ""
@@ -227,7 +233,7 @@ export const OrgMembersSection = () => {
           )
         }
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deactivateMember.isOpen}
         title={`Are you sure you want to deactivate member with username ${
           (popUp?.deactivateMember?.data as { username: string })?.username || ""
@@ -242,25 +248,24 @@ export const OrgMembersSection = () => {
         }
         confirmLabel="Deactivate"
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.removeMembers.isOpen}
         title="Are you sure you want to remove the following members?"
         description="This action is irreversible."
         onOpenChange={(isOpen) => handlePopUpToggle("removeMembers", isOpen)}
         confirmKey="confirm"
-        onConfirm={() =>
-          handleRemoveMembers(popUp.removeMembers.data.selectedOrgMemberships as OrgUser[])
-        }
+        onConfirm={() => handleRemoveMembers(membersToRemove)}
         confirmLabel="Remove"
       >
         <div className="text-sm text-muted">
           The following members will be removed:
           <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border-control bg-danger/10 p-4 pl-8 text-sm text-danger">
             <ul className="list-disc">
-              {(popUp.removeMembers.data?.selectedOrgMemberships as OrgUser[])?.map((member) => {
-                const email = member.user.email ?? member.user.username ?? member.inviteEmail;
+              {membersToRemove.map((member) => {
+                const email =
+                  member.user.email ?? member.user.username ?? member.membership?.inviteEmail;
                 return (
-                  <li key={member.id}>
+                  <li key={member.user.id}>
                     <div className="flex items-center">
                       <p className={userId === member.user.id ? "line-through" : ""}>
                         {member.user.firstName || member.user.lastName ? (
@@ -292,7 +297,7 @@ export const OrgMembersSection = () => {
             </ul>
           </div>
         </div>
-      </DeleteConfirmDialog>
+      </ConfirmationAlertDialog>
       <UpgradeGate
         paywallKey="organization.org-members"
         isOpen={popUp.upgradePlan.isOpen}

@@ -27,8 +27,8 @@ import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/mic
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -222,17 +222,24 @@ export const secretChangeGlobalRequestFnsFactory = ({
 
     for await (const approver of approvers) {
       if (!approver.email) continue;
-      await smtpService.sendMail({
-        recipients: [approver.email],
-        subjectLine: "Infisical Secret Change Request",
-        substitutions: {
-          firstName: approver.firstName,
-          projectName: project.name,
-          organizationName: project.organization.name,
-          approvalUrl
-        },
-        template: SmtpTemplates.SecretApprovalRequestNeedsReview
-      });
+      try {
+        await smtpService.sendMail({
+          recipients: [approver.email],
+          subjectLine: "Infisical Secret Change Request",
+          substitutions: {
+            firstName: approver.firstName,
+            projectName: project.name,
+            organizationName: project.organization.name,
+            approvalUrl
+          },
+          template: SmtpTemplates.SecretApprovalRequestNeedsReview
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to send secret change request email to approver [requestId=${requestId}] [userId=${approver.id}]`
+        );
+      }
     }
   };
 

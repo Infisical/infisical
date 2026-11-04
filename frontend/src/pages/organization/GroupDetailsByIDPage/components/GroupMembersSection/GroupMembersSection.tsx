@@ -10,7 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog
+  ConfirmationAlertDialog
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import {
@@ -127,7 +127,7 @@ export const GroupMembersSection = ({ groupId, groupSlug, isLinkedGroup = false 
         handlePopUpToggle={handlePopUpToggle}
         isOidcManageGroupMembershipsEnabled={isOidcManageGroupMembershipsEnabled}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.removeMemberFromGroup.isOpen}
         title={`Are you sure you want to remove ${getMemberName(popUp?.removeMemberFromGroup?.data)} from the group?`}
         description="This action is irreversible."

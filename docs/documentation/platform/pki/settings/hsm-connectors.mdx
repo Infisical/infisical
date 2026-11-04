@@ -150,7 +150,7 @@ In **Certificate Manager > Settings > HSM Connectors**, select **Add HSM Connect
     Yes. Append `--pkcs11-module` to the start command of an existing Gateway and that Gateway will serve HSM operations alongside its other traffic. Restart is required for the driver to load.
   </Accordion>
   <Accordion title="Does a Gateway Pool need every member to be PKCS#11-capable?">
-    No. Connectors routed through a pool ignore non-capable members. You can mix one or two PKCS#11-enabled Gateways with the rest of your pool freely.
+    No. Connectors routed through a pool ignore non-capable members. You can mix one or two PKCS#11-enabled Gateways with the rest of your pool freely. For ML-DSA keys, at least one PKCS#11 Gateway in the pool must meet the requirements listed under [HSM-backed internal CAs](/documentation/platform/pki/ca/private-ca#hsm-backed-internal-cas).
   </Accordion>
   <Accordion title="Which mechanisms are supported?">
     The PKCS#11 bridge supports the following signing mechanisms:
@@ -164,8 +164,9 @@ In **Certificate Manager > Settings > HSM Connectors**, select **Add HSM Connect
     | ECDSA with SHA-256 | ECDSA signing with SHA-256 inside the HSM |
     | ECDSA with SHA-384 | ECDSA signing with SHA-384 inside the HSM |
     | ECDSA with SHA-512 | ECDSA signing with SHA-512 inside the HSM |
+    | ML-DSA | ML-DSA signing inside the HSM |
 
-    Key algorithms supported for generation: RSA 2048-bit, RSA 4096-bit, ECDSA P-256, and ECDSA P-384.
+    Key algorithms supported for generation: RSA 2048-bit, RSA 4096-bit, ECDSA P-256, ECDSA P-384, ML-DSA-44, ML-DSA-65, and ML-DSA-87. ML-DSA keys work with HSM-backed CAs only, not code signers.
   </Accordion>
   <Accordion title="Can I rotate the PIN without recreating resources that reference the Connector?">
     Yes. Edit the Connector and update the PIN. The next operation uses the new credential. Existing references continue to work unchanged.

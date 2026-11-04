@@ -37,12 +37,13 @@ import {
   CertificateAlertKind,
   expiryDedupWindowHours,
   ExpiryFieldsSchema,
+  filterIdsSchema,
+  formatIds,
   getScopeWideAlertWebhookSource,
-  resolveCertManagerProjectId
+  resolveCertManagerProjectId,
+  toIdSet
 } from "./cert-manager-alert-fns";
 import { TAlertCertificate, TCertManagerCertificateAlertDALFactory } from "./cert-manager-certificate-alert-dal";
-
-const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 
 const ALERT_KIND_BY_EVENT: Record<CertificateManagerAlertEvent, CertificateAlertKind> = {
   [CertificateManagerAlertEvent.Expiry]: CertificateAlertKind.Expiry,
@@ -57,34 +58,12 @@ const EVENTS_SOURCED_FROM_APPLICATION_EVENTS: [CertificateManagerAlertEvent, Cer
   [CertificateManagerAlertEvent.Revocation, CertificateApplicationAlertEvent.Revocation]
 ];
 
-const filterIdsSchema = (field: string, noun: string) =>
-  z
-    .array(z.string().uuid())
-    .min(1, `${field} must list at least one ${noun}. Omit it to cover every ${noun}.`)
-    .max(MAX_CERTIFICATE_ALERT_FILTER_IDS)
-    .superRefine((ids, ctx) => {
-      const seen = new Set<string>();
-      const duplicates = new Set<string>();
-      ids.forEach((id) => {
-        const key = id.toLowerCase();
-        if (seen.has(key)) duplicates.add(id);
-        seen.add(key);
-      });
-      if (duplicates.size) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `${field} lists the same ID more than once: ${[...duplicates].map((id) => `'${id}'`).join(", ")}`
-        });
-      }
-    })
-    .optional();
-
 const CertificateFilterSchema = z.object({
   applicationIds: filterIdsSchema("applicationIds", "application"),
   profileIds: filterIdsSchema("profileIds", "profile"),
   sources: z
     .array(z.nativeEnum(CertificateSource))
-    .min(1, "sources must list at least one source. Omit it to cover every source.")
+    .min(1, "sources must list at least one source. To cover them all, leave sources out.")
     .refine((sources) => new Set(sources).size === sources.length, "sources lists the same source more than once")
     .optional()
 });
@@ -92,10 +71,6 @@ const CertificateFilterSchema = z.object({
 const ExpirationConditionSchema = ExpiryFieldsSchema.merge(CertificateFilterSchema).strict();
 
 const EventConditionSchema = CertificateFilterSchema.strict().nullish();
-
-const formatIds = (ids: string[]) => ids.map((id) => `'${id}'`).join(", ");
-
-const toIdSet = (ids: string[] = []) => new Set(ids.map((id) => id.toLowerCase()));
 
 const parseFilters = (condition: unknown) => {
   const filters = CertificateFilterSchema.safeParse(condition ?? {});

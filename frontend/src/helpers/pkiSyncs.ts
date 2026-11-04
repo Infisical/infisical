@@ -82,6 +82,12 @@ export const PKI_SYNC_MAP: Record<
     category: "Networking",
     description: "Sync certificates to F5 BIG-IP."
   },
+  [PkiSync.Imperva]: {
+    name: "Imperva",
+    image: "Imperva.png",
+    category: "Networking",
+    description: "Sync certificates to Imperva Cloud WAF websites."
+  },
   [PkiSync.KempLoadMaster]: {
     name: "Kemp LoadMaster",
     image: "Kemp LoadMaster.png",
@@ -148,6 +154,7 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.PaloAltoNetworksSslTlsProfile]: AppConnection.PaloAltoNetworks,
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
   [PkiSync.KempLoadMaster]: AppConnection.KempLoadMaster,
+  [PkiSync.Imperva]: AppConnection.Imperva,
   [PkiSync.LinuxServer]: AppConnection.SSH,
   [PkiSync.WindowsServer]: AppConnection.WinRM,
   [PkiSync.NutanixPrismCentral]: AppConnection.NutanixPrismCentral
@@ -194,12 +201,21 @@ export const PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS: PkiSync[] = [
   PkiSync.PaloAltoNetworksSslTlsProfile
 ];
 
+// Destinations that name a certificate themselves, so a name schema has nothing to drive.
+export const CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS: PkiSync[] = [
+  PkiSync.NutanixPrismCentral,
+  PkiSync.Imperva
+];
+
 export const INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS: PkiSync[] = [
   PkiSync.CloudflareCustomCertificate,
   PkiSync.NutanixPrismCentral,
   PkiSync.PaloAltoNetworks,
   PkiSync.PaloAltoNetworksSslTlsProfile
 ];
+
+export const PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE =
+  "Palo Alto Networks needs each certificate's private key. Certificates without one, such as those issued from a CSR generated outside Infisical, are skipped.";
 
 export const isPaloAltoNetworksPkiSync = (destination?: PkiSync) =>
   destination === PkiSync.PaloAltoNetworks || destination === PkiSync.PaloAltoNetworksSslTlsProfile;

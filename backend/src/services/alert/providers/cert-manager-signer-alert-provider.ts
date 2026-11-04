@@ -1,7 +1,9 @@
+import { z } from "zod";
+
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { CERT_MANAGER_SIGNER_RESOURCE_TYPE, SignerAlertEvent } from "@app/services/signer/signer-alert-events";
 import { PkiAlertScope } from "@app/services/telemetry/telemetry-types";
@@ -13,6 +15,7 @@ import {
   AlertTriggerType,
   IScheduledAlertProvider,
   TAlertContext,
+  TAlertFilters,
   TAlertPermissionInput,
   TAlertTelemetryInput,
   TFindScheduledTargetsInput
@@ -25,18 +28,28 @@ import {
   certificateDisplayName,
   expiryDedupWindowHours,
   ExpiryFieldsSchema,
+  filterIdsSchema,
+  formatIds,
   getScopeWideAlertWebhookSource,
   resolveCertManagerProjectId,
-  splitAltNames
+  splitAltNames,
+  toIdSet
 } from "./cert-manager-alert-fns";
 import { TCertManagerSignerAlertDALFactory, TSignerAlertCertificate } from "./cert-manager-signer-alert-dal";
 
-const SignerExpirationConditionSchema = ExpiryFieldsSchema.strict();
+const SignerFilterSchema = z.object({ signerIds: filterIdsSchema("signerIds", "signer") });
+
+const SignerExpirationConditionSchema = ExpiryFieldsSchema.merge(SignerFilterSchema).strict();
+
+const parseFilters = (condition: unknown) => {
+  const filters = SignerFilterSchema.safeParse(condition ?? {});
+  return filters.success ? filters.data : {};
+};
 
 const assertNoResource = (resourceId?: string | null) =>
   assertNoAlertResource(
     resourceId,
-    "Signer certificate expiration alerts cover every signer in Certificate Manager and can't be bound to a resource. Remove resourceId."
+    "Signer certificate expiration alerts aren't bound to a single signer. Remove resourceId, and use signerIds to narrow the alert to specific signers."
   );
 
 const formatSigners = (signerNames: string[]) =>
@@ -57,10 +70,11 @@ export const certManagerSignerAlertProviderFactory = ({
 }: TCertManagerSignerAlertProviderDep): IScheduledAlertProvider<TSignerAlertCertificate> => {
   const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TSignerAlertCertificate[]> => {
     if (!input.projectId || input.resourceId || !input.alreadyAlerted?.channelIds.length) return [];
-    const { alertBefore } = SignerExpirationConditionSchema.parse(input.condition);
+    const { alertBefore, signerIds } = SignerExpirationConditionSchema.parse(input.condition);
 
     return certManagerSignerAlertDAL.findExpiringSignerCertificates({
       projectId: input.projectId,
+      signerIds,
       alertBeforeInterval: `${durationToDays(alertBefore)} days`,
       leadInterval: ALERT_SCAN_LEAD_INTERVAL,
       asOf: input.asOf,
@@ -137,6 +151,52 @@ export const certManagerSignerAlertProviderFactory = ({
     );
   };
 
+  const assertConditionInScope = async (input: {
+    projectId?: string | null;
+    condition: unknown;
+    previousCondition?: unknown;
+  }): Promise<void> => {
+    if (!input.projectId) return;
+    const { signerIds = [] } = SignerFilterSchema.parse(input.condition ?? {});
+
+    const savedSignerIds = toIdSet(parseFilters(input.previousCondition).signerIds);
+    const addedSignerIds = signerIds.filter((id) => !savedSignerIds.has(id.toLowerCase()));
+    if (!addedSignerIds.length) return;
+
+    const foundSignerIds = toIdSet(
+      await certManagerSignerAlertDAL.findProjectSignerIds(input.projectId, addedSignerIds)
+    );
+    const missingSignerIds = addedSignerIds.filter((id) => !foundSignerIds.has(id.toLowerCase()));
+    if (missingSignerIds.length) {
+      throw new NotFoundError({
+        message: `${missingSignerIds.length === 1 ? "Signer" : "Signers"} not found in Certificate Manager: ${formatIds(missingSignerIds)}`
+      });
+    }
+  };
+
+  const getFilters = async ({
+    projectId,
+    alerts
+  }: {
+    projectId: string | null;
+    alerts: { id: string; condition: unknown }[];
+  }): Promise<Map<string, TAlertFilters>> => {
+    const filtersByAlert = alerts.map((alert) => ({ id: alert.id, ...parseFilters(alert.condition) }));
+    const signerIds = [...new Set(filtersByAlert.flatMap((filters) => filters.signerIds ?? []))];
+
+    const signers = projectId ? await certManagerSignerAlertDAL.findSignerNamesByIds(projectId, signerIds) : [];
+    const nameById = new Map(signers.map((signer) => [signer.id.toLowerCase(), signer.name]));
+
+    return new Map(
+      filtersByAlert.map((filters) => [
+        filters.id,
+        {
+          signers: (filters.signerIds ?? []).map((id) => ({ id, name: nameById.get(id.toLowerCase()) ?? null }))
+        }
+      ])
+    );
+  };
+
   const getTelemetryEvent = ({ action, orgId, projectId }: TAlertTelemetryInput) => {
     if (!projectId) return undefined;
     return buildPkiAlertTelemetryEvent(
@@ -163,10 +223,12 @@ export const certManagerSignerAlertProviderFactory = ({
     dedupWindowHours: expiryDedupWindowHours,
     assertPermission,
     assertResourceInScope: async ({ resourceId }) => assertNoResource(resourceId),
+    assertConditionInScope,
     assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
     getWebhookSource: getScopeWideAlertWebhookSource,
+    getFilters,
     getTelemetryEvent,
     resolveProjectId: async ({ orgId, resourceId }) => {
       assertNoResource(resourceId);

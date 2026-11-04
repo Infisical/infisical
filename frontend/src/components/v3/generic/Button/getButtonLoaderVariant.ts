@@ -19,6 +19,7 @@ const buttonLoaderVariants = {
   warning: "warning",
   pam: "pam",
   av: "av",
+  ss: "ss",
   product: "product"
 } satisfies Record<NonNullable<ButtonProps["variant"] | IconButtonProps["variant"]>, LoaderVariant>;
 

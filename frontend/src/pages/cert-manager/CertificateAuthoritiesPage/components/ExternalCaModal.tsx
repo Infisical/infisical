@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { ArrowLeftIcon, Loader2Icon, Lock, type LucideIcon, Search } from "lucide-react";
 
 import {
@@ -11,6 +12,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
+  DiscardChangesAlertDialog,
   Field,
   FieldDescription,
   FieldError,
@@ -23,6 +25,7 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
@@ -54,8 +57,10 @@ import {
 import {
   DigiCertCaPurpose,
   TCreateCertificateAuthorityDTO,
+  TUnifiedCertificateAuthority,
   TUpdateCertificateAuthorityDTO
 } from "@app/hooks/api/ca/types";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { AcmeFields, TAcmeDnsZone } from "./ExternalCaFields/AcmeFields";
@@ -104,6 +109,7 @@ type ExternalCaConfigurationPayload =
 type Props = {
   popUp: UsePopUpState<["ca"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["ca"]>, state?: boolean) => void;
+  onComplete?: (createdCA: TUnifiedCertificateAuthority) => void | Promise<void>;
 };
 
 type ExternalCaOption = {
@@ -227,7 +233,7 @@ const CaTypeCard = ({
   );
 };
 
-export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const ExternalCaModal = ({ popUp, handlePopUpToggle, onComplete }: Props) => {
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
@@ -244,7 +250,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting },
+    formState: { isSubmitting, isDirty },
     watch,
     setValue
   } = useForm<FormData>({
@@ -264,6 +270,35 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const editCaId = (popUp?.ca?.data as { caId?: string })?.caId;
   const isEditMode = Boolean(editCaId);
+
+  const getSuggestedName = () => {
+    const typeName = caType ? CA_TYPE_NAME[caType] : undefined;
+    if (isEditMode || !typeName) return "";
+
+    let issuer = "";
+    if (configuration && "directoryUrl" in configuration) {
+      try {
+        const { hostname } = new URL(configuration.directoryUrl);
+        if (/[a-z]/i.test(hostname) && !hostname.includes(":")) {
+          const labels = hostname.split(".");
+          if (labels.length > 1) labels.pop();
+          if (labels.length > 1 && /^(ac|co|com|edu|gov|net|org)$/.test(labels[labels.length - 1]))
+            labels.pop();
+          issuer = labels[labels.length - 1];
+        }
+      } catch {
+        issuer = "";
+      }
+    } else if (configuration && "caName" in configuration) {
+      issuer = configuration.caName ?? "";
+    } else if (configuration && "policyDN" in configuration) {
+      issuer = configuration.policyDN.split("\\").filter(Boolean).pop() ?? "";
+    }
+
+    return slugify(`${typeName} ${issuer}`, { lowercase: true, decamelize: false })
+      .slice(0, 64)
+      .replace(/-+$/, "");
+  };
 
   const [selectedType, setSelectedType] = useState<CaType | null>(null);
   const [search, setSearch] = useState("");
@@ -384,7 +419,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (popUp?.ca?.isOpen && isEditMode && editType) {
       reset(getInitialValuesForType(editType));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [popUp?.ca?.isOpen, isEditMode]);
 
   const { data: availableRoute53Connections, isPending: isRoute53Pending } =
@@ -903,6 +937,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       throw new Error("Invalid certificate authority configuration");
     }
 
+    let createdCA: TUnifiedCertificateAuthority | undefined;
     if (ca) {
       await updateMutateAsync({
         id: ca.id,
@@ -912,7 +947,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         configuration: configPayload
       } as TUpdateCertificateAuthorityDTO);
     } else {
-      await createMutateAsync({
+      createdCA = await createMutateAsync({
         name,
         type,
         status,
@@ -920,6 +955,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       } as TCreateCertificateAuthorityDTO);
     }
 
+    if (createdCA) await onComplete?.(createdCA);
     reset();
     handlePopUpToggle("ca", false);
 
@@ -947,21 +983,31 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     );
   });
 
+  const discardActionRef = useRef<VoidFunction>(() => {});
+  const { isDiscardDialogOpen, setIsDiscardDialogOpen, requestDiscard, confirmDiscard } =
+    useDiscardChangesGuard({ isDirty, onDiscard: () => discardActionRef.current() });
+  const isPendingSave = isSubmitting || isCheckingCsValidation;
+  const requestClose = () => {
+    if (isPendingSave) return;
+    discardActionRef.current = () => {
+      reset();
+      setSelectedType(null);
+      setSearch("");
+      handlePopUpToggle("ca", false);
+    };
+    requestDiscard();
+  };
+
   return (
     <>
       <Sheet
         open={popUp?.ca?.isOpen}
         onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            reset();
-            setSelectedType(null);
-            setSearch("");
-          }
-          handlePopUpToggle("ca", isOpen);
+          if (!isOpen) requestClose();
         }}
       >
-        <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-2xl">
-          <SheetHeader className="border-b border-border">
+        <SheetContent size="form" isPending={isPendingSave}>
+          <SheetHeader>
             {showGrid ? (
               <>
                 <SheetTitle>Connect External CA</SheetTitle>
@@ -975,21 +1021,26 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 {!isEditMode && (
                   <button
                     type="button"
-                    onClick={() => setSelectedType(null)}
+                    disabled={isPendingSave}
+                    onClick={() => {
+                      discardActionRef.current = () => {
+                        reset();
+                        setSelectedType(null);
+                      };
+                      requestDiscard();
+                    }}
                     className="mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-foreground hover:underline"
                   >
                     <ArrowLeftIcon className="size-3" />
                     Select Another CA
                   </button>
                 )}
-                <SheetTitle>
-                  <ExternalCaHeader
-                    name={headerTitle}
-                    subtitle="Define the connection and credentials used to issue certificates from this CA."
-                    image={activeTypeMedia?.image}
-                    icon={activeTypeMedia?.icon}
-                  />
-                </SheetTitle>
+                <ExternalCaHeader
+                  name={headerTitle}
+                  subtitle="Define the connection and credentials used to issue certificates from this CA."
+                  image={activeTypeMedia?.image}
+                  icon={activeTypeMedia?.icon}
+                />
               </>
             )}
           </SheetHeader>
@@ -1024,7 +1075,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             </div>
           ) : (
             <form onSubmit={handleSubmit(onFormSubmit)} className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+              <fieldset disabled={isPendingSave} className="min-h-0 flex-1 overflow-y-auto p-4">
                 {ca && (
                   <Field className="mb-4">
                     <FieldLabel>CA ID</FieldLabel>
@@ -1043,6 +1094,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       <Input
                         {...field}
                         placeholder="my-external-ca"
+                        suggestedValue={getSuggestedName()}
                         disabled={Boolean(ca)}
                         isError={Boolean(error)}
                         autoComplete="off"
@@ -1133,12 +1185,13 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     isPending={isPending}
                   />
                 )}
-              </div>
-              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
+              </fieldset>
+              <SheetFooter className="justify-end border-t">
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={() => handlePopUpToggle("ca", false)}
+                  variant="ghost"
+                  isDisabled={isPendingSave}
+                  onClick={requestClose}
                 >
                   Cancel
                 </Button>
@@ -1150,11 +1203,18 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 >
                   {isEditMode ? "Update" : "Create"}
                 </Button>
-              </div>
+              </SheetFooter>
             </form>
           )}
         </SheetContent>
       </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your certificate authority configuration changes will be lost."
+      />
       {upgradeGate}
     </>
   );

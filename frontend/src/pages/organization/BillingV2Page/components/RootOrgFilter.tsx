@@ -45,29 +45,30 @@ export const RootOrgFilter = ({
   const selectedOrg = orgInPage ?? (lastSelected?.id === value ? lastSelected : null);
 
   return (
-    <Combobox<BillingV2Organization>
-      id="billing-root-org-filter"
-      className="w-[34rem] max-w-full"
-      placeholder="Select an organization..."
-      searchPlaceholder="Search organizations..."
-      searchAriaLabel="Search root organizations"
-      isLoading={isLoading}
-      isClearable={false}
-      options={options}
-      value={selectedOrg}
-      getOptionGroup={(option) => (option.id === ALL_ORGS_VALUE ? "" : "Organizations")}
-      onValueChange={(option) => onChange(option.id)}
-      onSearchChange={onSearchChange}
-      getOptionValue={(option) => option.id}
-      getOptionLabel={(option) => option.name}
-      renderOption={(option) => <OrgLabel org={option} />}
-      renderValue={(option) => <OrgLabel org={option} />}
-      emptyMessage="No organizations found"
-      listFooter={
-        totalCount > orgs.length
-          ? `Showing ${orgs.length.toLocaleString()} of ${totalCount.toLocaleString()}. Type in the input to search.`
-          : null
-      }
-    />
+    <div className="w-[34rem] max-w-full">
+      <Combobox<BillingV2Organization>
+        id="billing-root-org-filter"
+        placeholder="Select an organization..."
+        searchPlaceholder="Search organizations..."
+        searchAriaLabel="Search root organizations"
+        isLoading={isLoading}
+        isClearable={false}
+        options={options}
+        value={selectedOrg}
+        getOptionGroup={(option) => (option.id === ALL_ORGS_VALUE ? "" : "Organizations")}
+        onValueChange={(option) => onChange(option.id)}
+        onSearchChange={onSearchChange}
+        getOptionValue={(option) => option.id}
+        getOptionLabel={(option) => option.name}
+        renderOption={(option) => <OrgLabel org={option} />}
+        renderValue={(option) => <OrgLabel org={option} />}
+        emptyMessage="No organizations found"
+        listFooter={
+          totalCount > orgs.length
+            ? `Showing ${orgs.length.toLocaleString()} of ${totalCount.toLocaleString()}. Type in the input to search.`
+            : null
+        }
+      />
+    </div>
   );
 };

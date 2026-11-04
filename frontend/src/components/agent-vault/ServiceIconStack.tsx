@@ -1,11 +1,10 @@
-import { ComponentPropsWithoutRef, forwardRef, ReactNode, useMemo, useState } from "react";
+import { ComponentPropsWithoutRef, forwardRef, useMemo, useState } from "react";
 import { GlobeIcon } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { cn } from "@app/components/v3/utils";
-import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
-import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import { findAnyTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 
 type TServiceIcon = {
   label: string;
@@ -22,7 +21,7 @@ const labelOf = (pattern: string) => {
 };
 
 const iconFromHostPattern = (hostPattern: string): TServiceIcon => {
-  const template = findTemplateForHostPattern(hostPattern);
+  const template = findAnyTemplateForHostPattern(hostPattern);
   return { label: template?.name ?? labelOf(hostPattern), image: template?.image };
 };
 
@@ -81,36 +80,17 @@ export const ServiceIcon = ({
   return <ServiceChip icon={icon} className={className} />;
 };
 
-// Host patterns collapse to one chip per provider. Services keep a chip each under their own name,
-// since two services on one provider are still two services.
+// Host patterns collapse to one chip per provider.
 type Props = {
+  hostPatterns: string[];
   maxVisible?: number;
-  emptyPlaceholder?: ReactNode;
   className?: string;
-} & (
-  | { hostPatterns: string[]; services?: never }
-  | { services: Pick<TAgentVaultService, "name" | "hostPattern">[]; hostPatterns?: never }
-);
+};
 
-export const ServiceIconStack = ({
-  hostPatterns,
-  services,
-  maxVisible = 4,
-  emptyPlaceholder = <span className="text-muted">&mdash;</span>,
-  className
-}: Props) => {
-  const icons = useMemo(
-    () =>
-      services
-        ? services.map((service) => ({
-            label: service.name,
-            image: findTemplateForHostPattern(service.hostPattern)?.image
-          }))
-        : iconsFromHostPatterns(hostPatterns),
-    [hostPatterns, services]
-  );
+export const ServiceIconStack = ({ hostPatterns, maxVisible = 4, className }: Props) => {
+  const icons = useMemo(() => iconsFromHostPatterns(hostPatterns), [hostPatterns]);
 
-  if (icons.length === 0) return emptyPlaceholder;
+  if (icons.length === 0) return <span className="text-muted">&mdash;</span>;
 
   const visible = icons.slice(0, maxVisible);
   const hidden = icons.slice(maxVisible);
@@ -118,8 +98,13 @@ export const ServiceIconStack = ({
   return (
     // The leftmost chip has to paint on top, and flex-row-reverse cannot do it: reversing the
     // direction moves a chip visually and its paint order follows, so the right edge wins either
-    // way. `isolate` confines these depths to the stack.
-    <div className={cn("isolate flex items-center -space-x-1.5", className)}>
+    // way. `isolate` confines these depths to the stack, which also traps the chips below a linked
+    // row's overlay, so the stack itself is marked interactive for RowLink to lift it. `w-fit` keeps the
+    // lifted area to the chips, so the rest of the cell still opens the row.
+    <div
+      data-row-interactive
+      className={cn("isolate flex w-fit items-center -space-x-1.5", className)}
+    >
       {/* A screen reader never opens the hover tooltips, so it reads the names here. First, since the
           spacing puts a negative margin on every child but the last, and the last has to stay a chip. */}
       <span className="sr-only">{icons.map((icon) => icon.label).join(", ")}</span>
@@ -139,9 +124,16 @@ export const ServiceIconStack = ({
       {hidden.length > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
+            {/* Inside a linked row, RowLink lifts every tooltip trigger to z-10, so the overflow chip
+                needs its own depth to stay under the last icon like the rest of the stack. */}
             <div
               aria-hidden
-              className={cn(chipClassName, stackedChipClassName, "text-[10px] font-medium")}
+              className={cn(
+                chipClassName,
+                stackedChipClassName,
+                "relative text-[10px] font-medium"
+              )}
+              style={{ zIndex: 0 }}
             >
               +{hidden.length}
             </div>

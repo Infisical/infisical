@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { FingerprintIcon, PlusIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
 
+import { EnrollmentStepUp } from "@app/components/mfa/setup";
+import { createNotification } from "@app/components/notifications";
 import {
   Alert,
   AlertDescription,
@@ -24,6 +26,7 @@ import {
   SheetTitle,
   Skeleton
 } from "@app/components/v3";
+import { TMfaStepUpChallenge } from "@app/helpers/mfaSession";
 import { useGetWebAuthnCredentials, useRegisterPasskey } from "@app/hooks/api/webauthn";
 
 import { useRemovePasskey } from "./useRemovePasskey";
@@ -36,7 +39,10 @@ type Props = {
 export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
   const { data, isPending, isError, refetch } = useGetWebAuthnCredentials();
   const credentials = data?.credentials ?? [];
-  const { registerPasskey, isRegistering } = useRegisterPasskey();
+  const [stepUpChallenge, setStepUpChallenge] = useState<TMfaStepUpChallenge | null>(null);
+  const { registerPasskey, isRegistering } = useRegisterPasskey({
+    onStepUpRequired: setStepUpChallenge
+  });
   const { removePasskey, isBusy: isRemoving } = useRemovePasskey();
 
   const [name, setName] = useState("");
@@ -76,7 +82,13 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
 
   return (
     <>
-      <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <Sheet
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) setStepUpChallenge(null);
+          onOpenChange(open);
+        }}
+      >
         <SheetContent side="right" className="flex flex-col gap-0 sm:max-w-lg">
           <SheetHeader className="border-b">
             <SheetTitle>Manage passkeys</SheetTitle>
@@ -96,10 +108,31 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
                   placeholder="New passkey name (optional)"
                 />
               </Field>
-              <Button variant="neutral" isPending={isRegistering} onClick={handleAdd}>
+              <Button
+                variant="neutral"
+                isPending={isRegistering}
+                isDisabled={Boolean(stepUpChallenge)}
+                onClick={handleAdd}
+              >
                 <PlusIcon /> Add
               </Button>
             </div>
+
+            {stepUpChallenge && (
+              <div className="rounded-lg border border-border bg-container p-4">
+                <EnrollmentStepUp
+                  challenge={stepUpChallenge}
+                  variant="neutral"
+                  onVerified={() => {
+                    setStepUpChallenge(null);
+                    createNotification({
+                      text: "Verified. Select Add to register your passkey.",
+                      type: "success"
+                    });
+                  }}
+                />
+              </div>
+            )}
 
             {hasSecurityKeyCredential && (
               <Alert variant="warning">

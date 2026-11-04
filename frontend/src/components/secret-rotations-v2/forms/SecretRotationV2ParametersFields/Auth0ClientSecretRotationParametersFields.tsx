@@ -1,19 +1,17 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { InfoIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
+  Combobox,
   Field,
   FieldFeedback,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { useAuth0ConnectionListClients } from "@app/hooks/api/appConnections/auth0";
-import { TAuth0Client } from "@app/hooks/api/appConnections/auth0/types";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 export const Auth0ClientSecretRotationParametersFields = () => {
@@ -37,19 +35,19 @@ export const Auth0ClientSecretRotationParametersFields = () => {
       render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
         <Field data-invalid={Boolean(error)}>
           <FieldLabelWithTooltip htmlFor="auth0-application">Application</FieldLabelWithTooltip>
-          <FilterableSelect
-            inputId="auth0-application"
+          <Combobox
+            id="auth0-application"
             isLoading={isClientsPending && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={clients?.find((client) => client.id === value) ?? null}
             onBlur={onBlur}
-            onChange={(option) => {
-              onChange((option as SingleValue<TAuth0Client>)?.id ?? null);
-            }}
+            onValueChange={(option) => onChange(option.id)}
+            isClearable={false}
             options={clients}
             placeholder="Select an application..."
             getOptionLabel={(option) => option.name}
             getOptionValue={(option) => option.id}
+            getOptionKeywords={(option) => [option.id]}
             isError={Boolean(error)}
             aria-describedby="auth0-application-feedback"
           />

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateAppConnection, useUpdateAppConnection } from "@app/hooks/api/appConnections";
@@ -96,6 +97,7 @@ export const HerokuOAuthCallbackPage = () => {
 
   return (
     <div className="flex h-screen items-center justify-center">
+      <PageTitle title="Connecting Heroku Integration" />
       <div className="text-center">
         <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-project" />
         <p className="text-label">Connecting to Heroku...</p>

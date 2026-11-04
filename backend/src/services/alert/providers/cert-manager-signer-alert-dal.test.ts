@@ -54,6 +54,17 @@ describe("cert manager signer alert DAL", () => {
     expect(bindings).toEqual(expect.arrayContaining([PROJECT_ID, "active", "alert-1"]));
   });
 
+  test("limits the scan, and the signers named for each certificate, to the filtered signers", async () => {
+    const signerId = "9a7c5e3b-1d2f-4a6b-8c0e-7f9d1b3a5c2e";
+    const { dal, queries } = buildDAL();
+
+    await dal.findExpiringSignerCertificates({ ...scope, signerIds: [signerId] });
+
+    const [{ sql, bindings }] = queries;
+    expect(sql).toContain('"pki_signers"."id" in (?) group by "pki_signers"."certificateId"');
+    expect(bindings).toContain(signerId);
+  });
+
   test("fills the rest of the run with certificates delivered on every channel, least recently first", async () => {
     const { dal, queries } = buildDAL();
 

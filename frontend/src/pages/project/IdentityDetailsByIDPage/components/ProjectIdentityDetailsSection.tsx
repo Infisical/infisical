@@ -30,6 +30,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub, useProject } from "@app/context";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { usePopUp, useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, TProjectIdentity } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
@@ -50,13 +51,14 @@ export const ProjectIdentityDetailsSection = ({
   membership
 }: Props) => {
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const projectsHidden = hidesProjects(currentProject?.type);
   const isPam = currentProject?.type === ProjectType.PAM;
   const isAgentVault = currentProject?.type === ProjectType.AgentVault;
+  const isSecretScanning = currentProject?.type === ProjectType.SecretScanning;
 
   let productLabel = "Project";
-  if (isCertManager) {
-    productLabel = "Certificate Manager";
+  if (projectsHidden) {
+    productLabel = getProjectLabel(currentProject?.type);
   } else if (isPam) {
     productLabel = "PAM";
   } else if (isAgentVault) {
@@ -64,15 +66,15 @@ export const ProjectIdentityDetailsSection = ({
   }
 
   let joinedLabel = "Joined project";
-  if (isCertManager) {
-    joinedLabel = "Joined certificate manager";
+  if (projectsHidden) {
+    joinedLabel = `Joined ${getProjectLabel(currentProject?.type).toLowerCase()}`;
   } else if (isPam) {
     joinedLabel = "Joined PAM";
   } else if (isAgentVault) {
     joinedLabel = "Joined Agent Vault";
   }
 
-  // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -149,7 +151,10 @@ export const ProjectIdentityDetailsSection = ({
                     {isSubOrgIdentity ? "Sub-" : ""}Organization
                   </Badge>
                 ) : (
-                  <Badge variant={isAgentVault ? "av" : "project"}>
+                  <Badge
+                    // eslint-disable-next-line no-nested-ternary
+                    variant={isAgentVault ? "av" : isSecretScanning ? "ss" : "project"}
+                  >
                     {isAgentVault ? <VaultIcon /> : <ProjectIcon />}
                     {productLabel}
                   </Badge>
@@ -229,7 +234,7 @@ export const ProjectIdentityDetailsSection = ({
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>
-              Edit {isAgentVault || isCertManager ? "Machine" : "Project"} Identity
+              Edit {isAgentVault || projectsHidden ? "Machine" : "Project"} Identity
             </DialogTitle>
             <DialogDescription>
               Update the identity&apos;s name, delete protection, and metadata.

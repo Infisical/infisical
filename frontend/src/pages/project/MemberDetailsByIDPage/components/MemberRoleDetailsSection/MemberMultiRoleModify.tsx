@@ -20,6 +20,7 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -39,6 +40,7 @@ type Props = {
 };
 
 export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClose }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { subscription } = useSubscription();
   const { projectId, currentProject } = useProject();
   const {
@@ -168,17 +170,17 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClo
           )}
         </ProjectPermissionCan>
       </div>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
           type="submit"
-          variant="project"
+          variant={scopeVariant}
           isDisabled={!roleForm.formState.isDirty || isEditDisabled}
           isPending={roleForm.formState.isSubmitting}
         >
           Save Roles
-        </Button>
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
         </Button>
       </SheetFooter>
     </form>

@@ -1,18 +1,25 @@
-import { ReactNode, useCallback, useMemo, useState } from "react";
-import { components, MenuListProps } from "react-select";
+import { ReactNode, useId, useMemo, useState } from "react";
+import { subject } from "@casl/ability";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
-import { MoreHorizontalIcon, PencilIcon, PlusIcon, Settings2Icon, Trash2Icon } from "lucide-react";
+import {
+  CheckIcon,
+  CopyIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  Settings2Icon,
+  Trash2Icon
+} from "lucide-react";
 
 import {
   CertificateApprovalPoliciesUpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -22,12 +29,16 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Combobox,
+  ConfirmationAlertDialog,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +48,8 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  FilterableSelect,
+  Field,
+  FieldLabel,
   IconButton,
   Skeleton,
   Table,
@@ -55,7 +67,7 @@ import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
@@ -74,10 +86,12 @@ import {
   useDetachPkiApplicationProfile,
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
 import { CertificateAlertsCard } from "@app/pages/cert-manager/components/CertificateAlerts/CertificateAlertsCard";
 import { CertificateAlertScopeKind } from "@app/pages/cert-manager/components/CertificateAlerts/types";
 import { CreateProfileModal } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/CreateProfileModal";
+import { useProfileCreation } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/useProfileCreation";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 import {
@@ -103,6 +117,59 @@ const methodBadges = (p: TPkiApplicationProfile) => {
 const getPolicyProfileNames = (policy: TApprovalPolicy): string[] => {
   const conditions = policy.conditions.conditions as CertRequestPolicyConditions;
   return conditions.flatMap((c: { profileNames: string[] }) => c.profileNames);
+};
+
+type ApplicationPolicyActionsMenuProps = {
+  policy: TApprovalPolicy;
+  onEdit: (policy: TApprovalPolicy) => void;
+  onDelete: (policy: TApprovalPolicy) => void;
+  canEdit: boolean;
+  canDelete: boolean;
+};
+
+const ApplicationPolicyActionsMenu = ({
+  policy,
+  onEdit,
+  onDelete,
+  canEdit,
+  canDelete
+}: ApplicationPolicyActionsMenuProps) => {
+  const [isIdCopied, setIsIdCopied] = useToggle(false);
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(policy.id);
+      setIsIdCopied.on();
+      createNotification({ type: "info", text: "Approval policy ID copied to clipboard" });
+      setTimeout(() => setIsIdCopied.off(), 2000);
+    } catch {
+      createNotification({ type: "error", text: "Could not copy to clipboard" });
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <IconButton variant="ghost" size="xs" aria-label="Policy actions">
+          <MoreHorizontalIcon />
+        </IconButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
+        <DropdownMenuItem onClick={handleCopyId}>
+          {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+          Copy ID
+        </DropdownMenuItem>
+        <DropdownMenuItem isDisabled={!canEdit} onClick={() => onEdit(policy)}>
+          <PencilIcon />
+          Edit Policy
+        </DropdownMenuItem>
+        <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={() => onDelete(policy)}>
+          <Trash2Icon />
+          Delete Policy
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 };
 
 type ApplicationPoliciesTableProps = {
@@ -205,27 +272,13 @@ const ApplicationPoliciesTable = ({
                   {formatDistance(new Date(policy.createdAt), new Date(), { addSuffix: true })}
                 </TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <IconButton variant="ghost" size="xs" aria-label="Policy actions">
-                        <MoreHorizontalIcon />
-                      </IconButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
-                      <DropdownMenuItem isDisabled={!canEdit} onClick={() => onEdit(policy)}>
-                        <PencilIcon />
-                        Edit Policy
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        variant="danger"
-                        isDisabled={!canDelete}
-                        onClick={() => onDelete(policy)}
-                      >
-                        <Trash2Icon />
-                        Delete Policy
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <ApplicationPolicyActionsMenu
+                    policy={policy}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                  />
                 </TableCell>
               </TableRow>
             );
@@ -278,6 +331,19 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const [isAttachOpen, setIsAttachOpen] = useState(false);
   const [isCreateProfileOpen, setIsCreateProfileOpen] = useState(false);
   const [profilesToAttach, setProfilesToAttach] = useState<TProfileOption[]>([]);
+  const profileInputId = useId();
+  const closeAttach = () => {
+    setIsAttachOpen(false);
+    setProfilesToAttach([]);
+  };
+  const { requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({ isDirty: profilesToAttach.length > 0, onDiscard: closeAttach });
+  const profileCreation = useProfileCreation((createdProfile) =>
+    setProfilesToAttach((previous) => [
+      ...previous,
+      { value: createdProfile.id, label: createdProfile.slug }
+    ])
+  );
   const [profileToDetach, setProfileToDetach] = useState<TPkiApplicationProfile | null>(null);
   const [profileToConfigure, setProfileToConfigure] = useState<TPkiApplicationProfile | null>(null);
   const [enrollmentMethodToOpen, setEnrollmentMethodToOpen] = useState<EnrollmentMethod>();
@@ -288,10 +354,26 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   };
 
   const { permission } = useProjectPermission();
-  const canCreateProfile = permission.can(
-    ProjectPermissionCertificateProfileActions.Create,
-    ProjectPermissionSub.CertificateProfiles
-  );
+  const canCreateAndAttachProfile =
+    permission.can(
+      ProjectPermissionCertificateProfileActions.Create,
+      ProjectPermissionSub.CertificateProfiles
+    ) &&
+    permission.can(
+      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+      ProjectPermissionSub.CertificateProfiles
+    );
+  const validateCreatedProfileSlug = (slug: string) => {
+    const profileSubject = subject(ProjectPermissionSub.CertificateProfiles, { slug });
+    return canManageProfileAttachments &&
+      permission.can(ProjectPermissionCertificateProfileActions.Create, profileSubject) &&
+      permission.can(
+        ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+        profileSubject
+      )
+      ? undefined
+      : "You don't have permission to create and attach a profile with this name. Choose an allowed name.";
+  };
 
   const { data: profileList } = useListCertificateProfiles({ limit: 100 });
   const attachMutation = useAttachPkiApplicationProfiles();
@@ -349,36 +431,12 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const totalProfileCount = profileList?.totalCount ?? 0;
   const hasAttachableProfiles = totalProfileCount > profiles.length;
   let attachDisabledReason: ReactNode | null = null;
-  if (!hasAttachableProfiles && !canCreateProfile) {
+  if (!hasAttachableProfiles && !canCreateAndAttachProfile) {
     attachDisabledReason =
       totalProfileCount === 0
-        ? "No certificate profiles exist yet, and you do not have permission to create one."
+        ? "No certificate profiles exist yet, and you do not have permission to create and attach one."
         : "All certificate profiles are already attached.";
   }
-
-  // Pinned above the scrolling option list, so creating a profile is not a selectable option
-  // masquerading as one.
-  const ProfileMenuList = useCallback(
-    (menuProps: MenuListProps<TProfileOption, true>) => (
-      <>
-        {canCreateProfile ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            isFullWidth
-            className="justify-start"
-            onClick={() => setIsCreateProfileOpen(true)}
-          >
-            <PlusIcon />
-            Add Certificate Profile
-          </Button>
-        ) : null}
-        <components.MenuList {...menuProps} />
-      </>
-    ),
-    [canCreateProfile]
-  );
 
   const handleAttach = async () => {
     if (profilesToAttach.length === 0) return;
@@ -637,81 +695,110 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         applicationId={application.id}
       />
       {upgradeGate}
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePolicy.isOpen}
-        deleteKey="delete"
+        description="This action is irreversible."
+        confirmKey="delete"
         title={`Delete approval policy ${(popUp.deletePolicy.data as TApprovalPolicy | undefined)?.name ?? ""}?`}
-        onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
-        onDeleteApproved={handleDeletePolicy}
+        onOpenChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
+        onConfirm={handleDeletePolicy}
       />
 
       <Dialog
         open={isAttachOpen}
         onOpenChange={(open) => {
-          setIsAttachOpen(open);
-          if (!open) setProfilesToAttach([]);
+          if (open) setIsAttachOpen(true);
+          else requestDiscard();
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent isPending={attachMutation.isPending}>
           <DialogHeader>
             <DialogTitle>Attach Profiles</DialogTitle>
             <DialogDescription>
               Select one or more profiles to attach to this application.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2">
-            <FilterableSelect
-              isMulti
-              value={profilesToAttach}
-              onChange={(val) => setProfilesToAttach((val ?? []) as TProfileOption[])}
-              options={availableProfiles}
-              components={{ MenuList: ProfileMenuList }}
-              placeholder="Select profiles..."
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAttachOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="project"
-              onClick={handleAttach}
-              isDisabled={profilesToAttach.length === 0 || attachMutation.isPending}
-              isPending={attachMutation.isPending}
-            >
-              Attach
-            </Button>
-          </DialogFooter>
+          <form
+            className="flex min-h-0 flex-1 flex-col gap-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (profilesToAttach.length && !attachMutation.isPending) handleAttach();
+            }}
+          >
+            <DialogBody>
+              <fieldset disabled={attachMutation.isPending} className="min-w-0">
+                <Field>
+                  <FieldLabel htmlFor={profileInputId}>Certificate Profiles</FieldLabel>
+                  <Combobox
+                    id={profileInputId}
+                    multiple
+                    value={profilesToAttach}
+                    onValueChange={setProfilesToAttach}
+                    getOptionValue={(option) => option.value}
+                    getOptionLabel={(option) => option.label}
+                    options={availableProfiles}
+                    creation={profileCreation}
+                    placeholder="Select profiles..."
+                  />
+                </Field>
+              </fieldset>
+            </DialogBody>
+            <DialogFooter>
+              <Button
+                variant="ghost"
+                isDisabled={attachMutation.isPending}
+                onClick={requestDiscard}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="project"
+                type="submit"
+                isDisabled={profilesToAttach.length === 0 || attachMutation.isPending}
+                isPending={attachMutation.isPending}
+              >
+                Attach
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Profile Selection?"
+        description="Your pending profile attachments will be lost."
+      />
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={Boolean(profileToDetach)}
         title={`Detach profile ${profileToDetach?.profileSlug ?? ""}?`}
-        subTitle="This application will no longer be able to issue from this Profile. Existing certificates remain."
-        deleteKey="confirm"
-        onChange={(open) => {
+        description="This application will no longer be able to issue from this Profile. Existing certificates remain."
+        confirmKey="confirm"
+        onOpenChange={(open) => {
           if (!open) setProfileToDetach(null);
         }}
-        onDeleteApproved={handleDetach}
+        onConfirm={handleDetach}
       />
 
       <CreateProfileModal
         isOpen={isCreateProfileOpen}
         onClose={() => setIsCreateProfileOpen(false)}
-        onComplete={(createdProfile) => {
-          setIsCreateProfileOpen(false);
-          // Created from inside the attach dialog: add it to the pending selection so it is
-          // attached alongside whatever else was picked. Created straight from the card, there is
-          // no selection to submit, so attach it now.
-          if (isAttachOpen) {
-            setProfilesToAttach((prev) => [
-              ...prev,
-              { value: createdProfile.id, label: createdProfile.slug }
-            ]);
-            return;
+        validateSlug={validateCreatedProfileSlug}
+        onComplete={async (createdProfile) => {
+          if (
+            !canManageProfileAttachments ||
+            !permission.can(
+              ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+              subject(ProjectPermissionSub.CertificateProfiles, { slug: createdProfile.slug })
+            )
+          ) {
+            throw new Error(
+              "The profile was created, but you no longer have permission to attach it to this application."
+            );
           }
-          attachMutation.mutate({
+          await attachMutation.mutateAsync({
             applicationId: application.id,
             profileIds: [createdProfile.id]
           });

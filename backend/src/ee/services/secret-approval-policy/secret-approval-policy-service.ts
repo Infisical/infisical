@@ -6,8 +6,10 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { assertPolicyTypeSupportsDelegatedApproval } from "@app/services/delegated-approval/delegated-approval-fns";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { approvalPolicyMembershipVerifierFactory } from "../access-approval-policy/access-approval-policy-fns";
@@ -100,6 +102,8 @@ export const secretApprovalPolicyServiceFactory = ({
     Boolean(await secretChangeGlobalPolicyBridgeService.findSecretChangePolicy(policyId));
 
   const createSecretApprovalPolicy = async (dto: TCreateSapDTO) => {
+    if (dto.delegatedApproval) assertPolicyTypeSupportsDelegatedApproval(ApprovalPolicyType.SecretChange);
+
     const project = await projectDAL.findById(dto.projectId);
     if (project?.version === ProjectVersion.V3) {
       return secretChangeGlobalPolicyBridgeService.createSecretChangePolicy(dto);
@@ -326,6 +330,8 @@ export const secretApprovalPolicyServiceFactory = ({
   };
 
   const updateSecretApprovalPolicy = async (dto: TUpdateSapDTO) => {
+    if (dto.delegatedApproval) assertPolicyTypeSupportsDelegatedApproval(ApprovalPolicyType.SecretChange);
+
     if (await $useSecretChangeGlobalPolicyBridge(dto.secretPolicyId)) {
       return secretChangeGlobalPolicyBridgeService.updateSecretChangePolicy(dto);
     }

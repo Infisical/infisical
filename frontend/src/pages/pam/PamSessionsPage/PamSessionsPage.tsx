@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { Activity, Ban, SearchIcon, Video } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Badge,
@@ -38,7 +37,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3/platform";
 import { useOrganization, useProject } from "@app/context";
 import {
   getUserTablePreference,
@@ -143,7 +142,6 @@ const FolderNameCell = ({ session, search }: { session: TPamSession; search: str
 };
 
 export const PamSessionsPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
@@ -205,9 +203,7 @@ export const PamSessionsPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Sessions" })}</title>
-      </Helmet>
+      <PageTitle title="Sessions" />
       <PageHeader
         scope={ProjectType.PAM}
         icon={Video}
@@ -384,7 +380,7 @@ export const PamSessionsPage = () => {
         onTerminate={requestTerminate}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={!!sessionToTerminate}
         onOpenChange={(open) => {
           if (!open) setSessionToTerminate(null);

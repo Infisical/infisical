@@ -479,6 +479,7 @@ const cryptographyFactory = () => {
       createDecipheriv: crypto.createDecipheriv,
       createPublicKey: crypto.createPublicKey,
       createPrivateKey: crypto.createPrivateKey,
+      privateDecrypt: crypto.privateDecrypt,
       getRandomValues: crypto.getRandomValues,
       randomUUID: crypto.randomUUID,
       // The same object as node:crypto's webcrypto.subtle, but DOM-typed: @peculiar/x509 expects DOM

@@ -169,3 +169,35 @@ func (s *Scope[S]) do(method, suffix string, in, out any) error {
 	}
 	return nil
 }
+
+// SetTXT publishes TXT records for a name until the test ends.
+func SetTXT(tt *testing.T, adminURL, name string, values ...string) {
+	tt.Helper()
+	recordURL := strings.TrimSuffix(adminURL, "/") + AdminPrefix + "/dns/txt/" + url.PathEscape(name)
+	raw, err := json.Marshal(values)
+	if err != nil {
+		tt.Fatalf("fakenet: encoding TXT for %s: %v", name, err)
+	}
+	if err := adminDo(http.MethodPut, recordURL, raw); err != nil {
+		tt.Fatalf("fakenet: setting TXT for %s: %v", name, err)
+	}
+	tt.Cleanup(func() { _ = adminDo(http.MethodDelete, recordURL, nil) })
+}
+
+func adminDo(method, target string, body []byte) error {
+	req, err := http.NewRequest(method, target, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	res, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = res.Body.Close() }()
+	if res.StatusCode >= 300 {
+		raw, _ := io.ReadAll(res.Body)
+		return fmt.Errorf("%s %s returned %d: %s", method, target, res.StatusCode, strings.TrimSpace(string(raw)))
+	}
+	return nil
+}

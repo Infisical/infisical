@@ -45,7 +45,7 @@ export const checkPasswordBreachStatus = async (
   const HAVE_I_BEEN_PWNED_API_URL = "https://api.pwnedpasswords.com";
   const maxRetryAttempts = 3;
 
-  let encodedPwd: Uint8Array | undefined;
+  let encodedPwd: Uint8Array<ArrayBuffer> | undefined;
   let hashedPwdBuffer: ArrayBuffer | undefined;
 
   try {

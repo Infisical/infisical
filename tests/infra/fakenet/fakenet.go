@@ -88,6 +88,7 @@ type Server struct {
 	denied []Denied
 
 	events *eventLog
+	txt    *txtRecords
 }
 
 // Denied is one outbound call that reached no fake.
@@ -99,7 +100,7 @@ type Denied struct {
 }
 
 func New(services ...Service) *Server {
-	s := &Server{services: map[string]Service{}, scopes: map[scopeID]*scope{}, events: newEventLog()}
+	s := &Server{services: map[string]Service{}, scopes: map[scopeID]*scope{}, events: newEventLog(), txt: newTXTRecords()}
 	for _, svc := range services {
 		s.services[svc.Host()] = svc
 	}
@@ -183,6 +184,18 @@ func (s *Server) scope(host string, svc Service, key string) *scope {
 		s.scopes[id] = sc
 	}
 	return sc
+}
+
+// Lookup returns a scope's fake if a test has opened it, for a listener that is not
+// HTTP and so resolves its own scope, such as the LDAP directory.
+func (s *Server) Lookup(host, key string) (Fake, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sc, ok := s.scopes[scopeID{host, key}]
+	if !ok {
+		return nil, false
+	}
+	return sc.fake, true
 }
 
 // Emitter publishes under host and key for a fake that is not an HTTP Service and so

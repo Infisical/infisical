@@ -1,5 +1,4 @@
 import crypto from "crypto";
-
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,12 +36,12 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { AzureAppConfigurationFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
-import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
 type ClientSecretForm = z.infer<typeof clientSecretSchema>;
 

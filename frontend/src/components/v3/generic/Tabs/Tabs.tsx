@@ -50,7 +50,7 @@ const Tabs = React.forwardRef<
   );
 });
 
-type TabsVariant = "filled" | "project" | "org" | "sub-org" | "pam" | "av";
+type TabsVariant = "filled" | "project" | "org" | "sub-org" | "pam" | "av" | "ss";
 
 const tabsListVariants: Record<"filled" | "underline", string> = {
   filled: "border p-1 border-border",
@@ -64,7 +64,8 @@ const tabsListStyleByVariant: Record<TabsVariant, "filled" | "underline"> = {
   org: "underline",
   "sub-org": "underline",
   pam: "underline",
-  av: "underline"
+  av: "underline",
+  ss: "underline"
 };
 
 const tabsListAriaLabelByVariant: Record<TabsVariant, string> = {
@@ -73,7 +74,8 @@ const tabsListAriaLabelByVariant: Record<TabsVariant, string> = {
   org: "Organization sections",
   "sub-org": "Sub-organization sections",
   pam: "PAM sections",
-  av: "Agent Vault sections"
+  av: "Agent Vault sections",
+  ss: "Secret Scanning sections"
 };
 
 const TabsList = React.forwardRef<
@@ -133,6 +135,7 @@ const TabsTrigger = React.forwardRef<
       "group-data-[variant=sub-org]/tabs-list:after:bg-sub-org",
       "group-data-[variant=pam]/tabs-list:after:bg-product-pam",
       "group-data-[variant=av]/tabs-list:after:bg-product-av",
+      "group-data-[variant=ss]/tabs-list:after:bg-product-ss",
       className
     )}
     ref={ref}

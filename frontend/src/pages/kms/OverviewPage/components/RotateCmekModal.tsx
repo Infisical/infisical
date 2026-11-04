@@ -1,7 +1,7 @@
 import { TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Alert, AlertDescription, DeleteConfirmDialog } from "@app/components/v3";
+import { Alert, AlertDescription, ConfirmationAlertDialog } from "@app/components/v3";
 import { TCmek, useRotateCmek } from "@app/hooks/api/cmeks";
 
 type Props = {
@@ -32,7 +32,7 @@ export const RotateCmekModal = ({ isOpen, onOpenChange, cmek }: Props) => {
   };
 
   return (
-    <DeleteConfirmDialog
+    <ConfirmationAlertDialog
       isOpen={isOpen}
       title={`Are you sure you want to rotate ${name}?`}
       description={

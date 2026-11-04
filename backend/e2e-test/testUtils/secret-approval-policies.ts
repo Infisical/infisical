@@ -10,13 +10,14 @@ import { request } from "./request";
 // approval system can only be seeded directly.
 export const seedLegacySecretApprovalPolicy = async (
   db: Knex,
-  dto: { projectId: string; environment: string; secretPath: string; name: string; approverUserId: string }
+  dto: { projectId: string; environment: string; secretPath: string; name: string; approverUserId: string; id?: string }
 ) => {
   const env = await db(TableName.Environment).where({ projectId: dto.projectId, slug: dto.environment }).first();
   if (!env) throw new Error(`environment '${dto.environment}' not found in project ${dto.projectId}`);
 
   const [policy] = await db(TableName.SecretApprovalPolicy)
     .insert({
+      ...(dto.id ? { id: dto.id } : {}),
       name: dto.name,
       secretPath: dto.secretPath,
       approvals: 1,

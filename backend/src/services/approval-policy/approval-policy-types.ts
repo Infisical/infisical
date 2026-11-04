@@ -21,6 +21,13 @@ import {
   EnforcementLevel
 } from "./approval-policy-enums";
 import {
+  TAutoApprovalConfig,
+  TAutoApprovalEvidence,
+  TAutoApprovalInputValue,
+  TAutoApprovalOutcome,
+  TAutoApprovalPolicyResponse
+} from "./auto-approval/auto-approval-types";
+import {
   TCertRequestPolicy,
   TCertRequestPolicyConditions,
   TCertRequestPolicyConstraints,
@@ -89,6 +96,10 @@ export type TBypassAffordances = {
   bypassReason: string | null;
 };
 
+export type TAutoApprovalAffordance = {
+  autoApproval: TAutoApprovalOutcome | null;
+};
+
 export type BreakGlassBypassMetadata = {
   grantId: string;
   bypassReason: string;
@@ -129,6 +140,7 @@ export interface TCreatePolicyDTO {
   bypassForMachineIdentities?: boolean;
   enforcementLevel?: EnforcementLevel;
   bypassers?: PolicyBypasser[];
+  autoApproval?: TAutoApprovalConfig;
 }
 
 export interface TUpdatePolicyDTO {
@@ -140,6 +152,7 @@ export interface TUpdatePolicyDTO {
   bypassForMachineIdentities?: boolean;
   enforcementLevel?: EnforcementLevel;
   bypassers?: PolicyBypasser[];
+  autoApproval?: TAutoApprovalConfig;
 }
 
 // Request DTOs
@@ -153,6 +166,9 @@ export interface TCreateRequestDTO {
   // Set by a caller that decides the request in the same breath (break-glass), so approvers are not
   // asked to act on something that is already resolved
   skipApproverNotification?: boolean;
+  autoApprovalInputs?: TAutoApprovalInputValue[];
+  // Break-glass approves the request itself, so its rules are not evaluated
+  skipAutoApproval?: boolean;
 }
 
 export interface TCreateRequestFromPolicyDTO {
@@ -167,6 +183,7 @@ export interface TCreateRequestFromPolicyDTO {
   requesterName: string;
   requesterEmail: string;
   skipApproverNotification?: boolean;
+  autoApprovalEvidence?: TAutoApprovalEvidence | null;
   tx?: Knex;
 }
 
@@ -195,6 +212,15 @@ export type TApprovalResource<
     breakGlass?: { bypassReason: string }
   ) => Promise<{ grantId: string } | void>;
   postApprovalRoutine?: (request: TApprovalRequest, actor?: TApprovalActor) => Promise<void>;
+
+  // Policies of this type can hold auto-approval rules
+  supportsAutoApproval?: boolean;
+  // Whether the policy's auto-approval rules may decide this request
+  allowsAutoApproval?: (args: {
+    projectId: string;
+    requestData: TApprovalRequestData | TApprovalPolicyInputs;
+    tx?: Knex;
+  }) => Promise<boolean>;
   postRejectionRoutine?: (request: TApprovalRequest) => Promise<void>;
 
   // Whether a stored grant's attributes or a request's payload is for the thing these inputs name.
@@ -280,6 +306,8 @@ export type TApprovalResource<
     policy: TApprovalPolicy;
     requestData: TApprovalRequestData;
     actor: TApprovalActor;
+    hasAutoApprovalRules: boolean;
+    skipsAutoApproval: boolean;
   }) => Promise<void>;
   assertCanReview?: (args: {
     request: TApprovalRequests;
@@ -320,6 +348,7 @@ export type TApprovalAccessStatus = {
 export type TApprovalScopeConfiguration = {
   steps: { requiredApprovals: number; approvers: PolicyBypasser[] }[];
   bypassers: PolicyBypasser[];
+  autoApproval: TAutoApprovalPolicyResponse;
 };
 
 export type TApprovalResourceRegistry = Partial<Record<ApprovalPolicyType, TApprovalResource>>;

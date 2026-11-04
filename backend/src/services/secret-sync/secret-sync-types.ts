@@ -39,7 +39,7 @@ import {
   TGitHubSyncListItem,
   TGitHubSyncWithCredentials
 } from "@app/services/secret-sync/github";
-import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
+import { TSecretSyncWithFolder } from "@app/services/secret-sync/secret-sync-dal";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
   TWindmillSync,
@@ -192,6 +192,12 @@ import {
 } from "./octopus-deploy";
 import { TOnaSync, TOnaSyncInput, TOnaSyncListItem, TOnaSyncWithCredentials } from "./ona";
 import { TOvhSync, TOvhSyncInput, TOvhSyncListItem, TOvhSyncWithCredentials } from "./ovh";
+import {
+  TPortainerSync,
+  TPortainerSyncInput,
+  TPortainerSyncListItem,
+  TPortainerSyncWithCredentials
+} from "./portainer/portainer-sync-types";
 import { TQoverySync, TQoverySyncInput, TQoverySyncListItem, TQoverySyncWithCredentials } from "./qovery";
 import {
   TRailwaySync,
@@ -285,6 +291,7 @@ export type TSecretSync =
   | TChecklySync
   | TSupabaseSync
   | TRundeckSync
+  | TPortainerSync
   | TNetlifySync
   | TNorthflankSync
   | TBitbucketSync
@@ -336,6 +343,7 @@ export type TSecretSyncWithCredentials =
   | TChecklySyncWithCredentials
   | TSupabaseSyncWithCredentials
   | TRundeckSyncWithCredentials
+  | TPortainerSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
   | TNorthflankSyncWithCredentials
@@ -389,6 +397,7 @@ export type TSecretSyncInput =
   | TChecklySyncInput
   | TSupabaseSyncInput
   | TRundeckSyncInput
+  | TPortainerSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
   | TNorthflankSyncInput
@@ -443,6 +452,7 @@ export type TSecretSyncListItem =
   | TChecklySyncListItem
   | TSupabaseSyncListItem
   | TRundeckSyncListItem
+  | TPortainerSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
   | TNorthflankSyncListItem
@@ -543,9 +553,13 @@ export type TSyncSecretsResult = {
   createdSecretKeys: string[];
   updatedSecretKeys: string[];
   deletedSecretKeys: string[];
+  // Something the user has to act on although the sync succeeded; saved as the sync's last message.
+  message?: string;
 };
 
-export type TSecretSyncRaw = NonNullable<Awaited<ReturnType<TSecretSyncDALFactory["findById"]>>>;
+// ReturnType<> resolves findById's includeFolderPath generic to boolean, a union whose members may
+// lack `folder`, so the default row (path resolved) is named here directly.
+export type TSecretSyncRaw = TSecretSyncWithFolder;
 
 export type TQueueSecretSyncsByPathDTO = {
   secretPath: string;

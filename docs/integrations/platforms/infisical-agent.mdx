@@ -528,3 +528,34 @@ After defining the agent configuration file, run the command below pointing to t
 ```bash
 infisical agent --config example-agent-config-file.yaml
 ```
+
+## Run the agent as a service
+
+To keep the agent running after you close the terminal, and start it again when the machine boots, install it as a service with [infisical agent service install](/cli/reference#agent-service-install). On Linux, the agent runs as a systemd service. On Windows, it runs as a Windows service.
+
+<Tabs>
+  <Tab title="Linux">
+    The service can't read `/home`, and it doesn't share `/tmp` or `/var/tmp` with the rest of the machine. Keep the config, and the files the agent reads and writes, in another directory, such as `/etc/infisical/agents`.
+
+    ```bash
+    sudo infisical agent service install my-agent --config=/etc/infisical/agents/my-agent.yaml
+    sudo infisical agent service start my-agent
+    ```
+
+    To read the agent's logs, run `sudo journalctl -u my-agent`.
+  </Tab>
+  <Tab title="Windows">
+    Open PowerShell with **Run as administrator**, then run:
+
+    ```powershell
+    infisical agent service install my-agent --config=C:\infisical\agent-config.yaml
+    infisical agent service start my-agent
+    ```
+
+    The agent logs to `C:\ProgramData\Infisical\Agent\my-agent.log` and also writes errors to the Windows Event Log. To upgrade the service, uninstall it and install it again with the new `infisical.exe`.
+  </Tab>
+</Tabs>
+
+The service runs its own copy of your config that only administrators can change, and `install` prints where the copy is. Relative paths in the copy still resolve from the directory of the original config. To change the config, edit the original, then uninstall and install the service again. If you edit the copy instead, stop and start the service to apply the change, and also make the change in the original, because uninstalling the service deletes the copy.
+
+To stop the service or remove it, use [infisical agent service stop](/cli/reference#agent-service-stop) or [infisical agent service uninstall](/cli/reference#agent-service-uninstall).

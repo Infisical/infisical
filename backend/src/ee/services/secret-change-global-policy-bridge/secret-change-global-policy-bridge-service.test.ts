@@ -139,7 +139,10 @@ const buildService = ({
           )
       )
     },
-    secretApprovalPolicyDAL: { findPolicyByEnvIdAndSecretPath: vi.fn().mockResolvedValue(existingLegacyPolicy) },
+    secretApprovalPolicyDAL: {
+      findPolicyByEnvIdAndSecretPath: vi.fn().mockResolvedValue(existingLegacyPolicy),
+      update: vi.fn().mockResolvedValue([])
+    },
     projectEnvDAL: {
       find: vi.fn(({ $in }: { $in: { slug: string[] } }) =>
         Promise.resolve(envs.filter((env) => $in.slug.includes(env.slug)))
@@ -768,6 +771,11 @@ describe("secretChangeGlobalPolicyBridge deleteSecretChangePolicy", () => {
       TX
     );
     expect(deps.approvalPolicyDAL.deleteById).toHaveBeenCalledWith("policy-1", TX);
+    expect(deps.secretApprovalPolicyDAL.update).toHaveBeenCalledWith(
+      { id: "policy-1", deletedAt: null },
+      { deletedAt: expect.any(Date) as Date },
+      TX
+    );
     const [lockOrder] = deps.approvalPolicyDAL.findByIdForUpdate.mock.invocationCallOrder;
     const [closeOrder] = deps.approvalRequestDAL.update.mock.invocationCallOrder;
     const [deleteOrder] = deps.approvalPolicyDAL.deleteById.mock.invocationCallOrder;

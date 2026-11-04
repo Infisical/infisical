@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
+import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { SecretOperations } from "@app/services/secret/secret-types";
 
@@ -12,6 +13,9 @@ import {
   TMergedSecretsV2Bridge,
   TSecretApprovalBridgeCommit
 } from "./secret-approval-request-merge-fns";
+
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: "https://app.test" }) }));
+vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 
 const commit = (overrides: Record<string, unknown>) =>
   ({
@@ -83,6 +87,21 @@ describe("detectSecretApprovalCommitConflicts", () => {
       { op: SecretOperations.Update, secretId: "commit-A" }
     ]);
     expect(result.updates).toEqual([clean]);
+  });
+
+  test("refuses a request that creates the same key twice before reading the folder", async () => {
+    const { fns, secretV2BridgeDAL } = buildFns([]);
+    const commits = [
+      commit({ op: SecretOperations.Create, key: "A", id: "commit-A-1" }),
+      commit({ op: SecretOperations.Create, key: "A", id: "commit-A-2" }),
+      commit({ op: SecretOperations.Create, key: "B" })
+    ];
+
+    const result = fns.detectSecretApprovalCommitConflicts({ folderId: "folder-1", commits });
+
+    await expect(result).rejects.toBeInstanceOf(BadRequestError);
+    await expect(result).rejects.toThrow("it creates secret 'A' more than once");
+    expect(secretV2BridgeDAL.findBySecretKeys).not.toHaveBeenCalled();
   });
 });
 
@@ -166,5 +185,48 @@ describe("buildRequestedByActor", () => {
     });
 
     expect(buildRequestedByActor({})).toBeUndefined();
+  });
+});
+
+describe("notifySecretApprovalBypass", () => {
+  const build = () => {
+    const deps = {
+      userDAL: {
+        findOne: vi.fn().mockResolvedValue({ firstName: "Alice", lastName: "Smith", email: "alice@example.com" }),
+        find: vi.fn().mockResolvedValue([
+          { id: "user-2", email: "bob@example.com" },
+          { id: "user-3", email: "eve@example.com" }
+        ])
+      },
+      notificationService: { createUserNotifications: vi.fn().mockResolvedValue(undefined) },
+      smtpService: { sendMail: vi.fn().mockResolvedValue(undefined) }
+    };
+    const fns = secretApprovalRequestMergeFnsFactory(
+      deps as unknown as Parameters<typeof secretApprovalRequestMergeFnsFactory>[0]
+    );
+    const run = () =>
+      fns.notifySecretApprovalBypass({
+        project: { id: "project-1", name: "Project", orgId: "org-1" },
+        environmentName: "Development",
+        secretPath: "/",
+        actorId: "user-1",
+        approverUserIds: ["user-2", "user-3"],
+        bypassReason: "hotfix"
+      });
+    return { deps, run };
+  };
+
+  test("a failed bypass email does not reject, and approvers still get the in-app notification", async () => {
+    const { deps, run } = build();
+    deps.smtpService.sendMail.mockRejectedValueOnce(new Error("Invalid login: 535 Authentication Credentials Invalid"));
+
+    await expect(run()).resolves.toBeUndefined();
+    expect(deps.smtpService.sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({ recipients: ["bob@example.com", "eve@example.com"] })
+    );
+    expect(deps.notificationService.createUserNotifications).toHaveBeenCalledWith([
+      expect.objectContaining({ userId: "user-2" }),
+      expect.objectContaining({ userId: "user-3" })
+    ]);
   });
 });

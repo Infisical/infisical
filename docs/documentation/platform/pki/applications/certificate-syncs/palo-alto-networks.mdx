@@ -1,5 +1,5 @@
 ---
-title: "Palo Alto Networks"
+title: "Sync certificates to Palo Alto Networks"
 sidebarTitle: "Palo Alto Networks"
 description: "Deploy certificates to the certificate store of PAN-OS firewalls and Panorama templates."
 ---
@@ -14,6 +14,11 @@ For a certificate that a service on the device uses, such as the management web 
 - A [Palo Alto Networks connection](/integrations/app-connections/palo-alto-networks) to the firewall or Panorama
 - On a Panorama, a template
 - To push to firewalls, a template stack that contains the template
+- Certificates that include a private key
+
+<Note>
+  Each certificate the sync deploys needs its private key, because a firewall service can't use a certificate without it. The issuing CA certificates the sync imports alongside don't need theirs. If a certificate was issued from a CSR generated elsewhere, for example by an agent that keeps the key on its own host, the sync can't deploy it and skips it.
+</Note>
 
 ## Create a sync
 

@@ -34,6 +34,7 @@ import {
 } from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import {
@@ -43,7 +44,6 @@ import {
   identityLockoutLockKey,
   persistIdentityLockoutState
 } from "../identity/identity-fns";
-import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { recordIdentityLastLogin, shouldRecordIdentityLastLogin } from "../membership-identity/membership-identity-fns";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -275,7 +275,7 @@ export const identityUaServiceFactory = ({
         }
       }
 
-      if (clientSecretNumUsesLimit > 0 && clientSecretNumUses >= clientSecretNumUsesLimit) {
+      if (Number(clientSecretNumUsesLimit) > 0 && Number(clientSecretNumUses) >= Number(clientSecretNumUsesLimit)) {
         // number of times client secret can be used for
         // a login operation reached
         await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {

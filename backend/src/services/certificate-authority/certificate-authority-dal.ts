@@ -377,36 +377,36 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Internal CAs across the org tree, excluding soft-deleted projects. External and ACME CAs are
-  // intentionally not counted; maxCas covers those via countCasByOrgId below.
-  const countInternalCasByOrgId = async (orgId: string, tx?: Knex) => {
+  // Internal CAs across the org tree (orgId null: the whole instance), excluding soft-deleted projects.
+  // External and ACME CAs are intentionally not counted; maxCas covers those via countCasByOrgId below.
+  const countInternalCasByOrgId = async (orgId: string | null, tx?: Knex) => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.CertificateAuthority)
+      const query = (tx || db.replicaNode())(TableName.CertificateAuthority)
         .join(
           TableName.InternalCertificateAuthority,
           `${TableName.CertificateAuthority}.id`,
           `${TableName.InternalCertificateAuthority}.caId`
         )
         .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
-        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(tx || db.replicaNode(), orgId))
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .count();
+        .whereNull(`${TableName.Project}.deleteAfter`);
+      if (orgId) void query.whereIn(`${TableName.Project}.orgId`, orgTreeIds(tx || db.replicaNode(), orgId));
+      const doc = await query.count();
       return Number(doc?.[0]?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count Internal CAs By Org ID - Certificate Authority" });
     }
   };
 
-  // Every CA type across the org tree. Counting all types rather than INTERNAL + ACME behaves
-  // identically, since tiers that set maxCas cannot create the others (pkiEnterpriseCaIntegrations
-  // blocks them) and is simpler.
-  const countCasByOrgId = async (orgId: string, tx?: Knex) => {
+  // Every CA type across the org tree (orgId null: the whole instance): maxCas caps internal, ACME and
+  // external CAs together. ACME CAs need no extra entitlement; external ones need
+  // pkiEnterpriseCaIntegrations.
+  const countCasByOrgId = async (orgId: string | null, tx?: Knex) => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.CertificateAuthority)
+      const query = (tx || db.replicaNode())(TableName.CertificateAuthority)
         .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
-        .whereIn(`${TableName.Project}.orgId`, orgTreeIds(tx || db.replicaNode(), orgId))
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .count();
+        .whereNull(`${TableName.Project}.deleteAfter`);
+      if (orgId) void query.whereIn(`${TableName.Project}.orgId`, orgTreeIds(tx || db.replicaNode(), orgId));
+      const doc = await query.count();
       return Number(doc?.[0]?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count CAs By Org ID - Certificate Authority" });

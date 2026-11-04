@@ -138,6 +138,15 @@ describe("mfaLockoutService recent-auth is bound to the session, not the user", 
 
     await expect(service.hasRecentMfaAuth(USER_ID, "session-a", [MfaMethod.EMAIL])).resolves.toBe(false);
   });
+
+  test("clearing drops only that session's marker", async () => {
+    const keyStore = makeKeyStore();
+    const service = makeService(keyStore);
+
+    await service.clearRecentMfaAuth(USER_ID, "session-a");
+
+    expect(keyStore.deleteItem).toHaveBeenCalledWith(KeyStorePrefixes.RecentMfaAuth(USER_ID, "session-a"));
+  });
 });
 
 describe("mfaLockoutService.handleFailedMfaAttempt progressive lockout", () => {

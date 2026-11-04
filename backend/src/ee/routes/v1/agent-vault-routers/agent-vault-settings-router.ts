@@ -4,6 +4,7 @@ import {
   AgentVaultSessionLogSettingsResponseSchema,
   AgentVaultSessionLogSettingsUpdateSchema
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
+import { buildSessionLogSettingsAuditMetadata } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -49,39 +50,35 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { settings, appConnectionName } = await server.services.agentVaultSessionLog.updateSessionLogSettings({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req),
-        actor: {
-          type: req.permission.type,
-          id: req.permission.id,
-          authMethod: req.permission.authMethod,
-          orgId: req.permission.orgId,
-          rootOrgId: req.permission.rootOrgId,
-          parentOrgId: req.permission.parentOrgId
-        },
-        ...req.body
-      });
+      const { settings, defaultStorage, appConnectionName, previous } =
+        await server.services.agentVaultSessionLog.updateSessionLogSettings({
+          projectId: req.internalAgentVaultProjectId,
+          ctx: actorContext(req),
+          actor: {
+            type: req.permission.type,
+            id: req.permission.id,
+            authMethod: req.permission.authMethod,
+            orgId: req.permission.orgId,
+            rootOrgId: req.permission.rootOrgId,
+            parentOrgId: req.permission.parentOrgId
+          },
+          ...req.body
+        });
 
+      const metadata = buildSessionLogSettingsAuditMetadata({ settings, appConnectionName, previous });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE,
-          metadata: { ...settings, appConnectionName }
-        }
+        event: { type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE, metadata }
       });
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultSessionLogSettingsUpdated,
-        properties: {
-          enabled: settings.enabled,
-          hasDestination: Boolean(settings.bucket)
-        }
+        properties: { enabled: metadata.enabled, storageType: metadata.storageType }
       });
 
-      return { settings };
+      return { settings, defaultStorage };
     }
   });
 

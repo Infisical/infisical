@@ -1,19 +1,17 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { InfoIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
+  Combobox,
   Field,
   FieldFeedback,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { useAzureConnectionListClients } from "@app/hooks/api/appConnections/azure";
-import { TAzureClient } from "@app/hooks/api/appConnections/azure/types";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 export const AzureClientSecretRotationParametersFields = () => {
@@ -37,21 +35,23 @@ export const AzureClientSecretRotationParametersFields = () => {
       render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
         <Field data-invalid={Boolean(error)}>
           <FieldLabelWithTooltip htmlFor="azure-application">Application</FieldLabelWithTooltip>
-          <FilterableSelect
-            inputId="azure-application"
+          <Combobox
+            id="azure-application"
             isLoading={isClientsPending && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={clients?.find((client) => client.id === value) ?? null}
             onBlur={onBlur}
-            onChange={(option) => {
-              onChange((option as SingleValue<TAzureClient>)?.id ?? null);
-              setValue("parameters.appName", (option as SingleValue<TAzureClient>)?.name ?? "");
-              setValue("parameters.clientId", (option as SingleValue<TAzureClient>)?.appId ?? "");
+            onValueChange={(option) => {
+              onChange(option.id);
+              setValue("parameters.appName", option.name);
+              setValue("parameters.clientId", option.appId);
             }}
+            isClearable={false}
             options={clients}
             placeholder="Select an application..."
             getOptionLabel={(option) => option.name}
             getOptionValue={(option) => option.id}
+            getOptionKeywords={(option) => [option.id]}
             isError={Boolean(error)}
             aria-describedby="azure-application-feedback"
           />

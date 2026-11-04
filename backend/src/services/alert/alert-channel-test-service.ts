@@ -4,11 +4,7 @@ import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
-import {
-  assertChannelConfigValid,
-  getChannelDefinition,
-  mergeChannelConfigWithStored
-} from "./alert-channel-config-fns";
+import { getChannelDefinition, mergeChannelConfigWithStored, parseChannelConfig } from "./alert-channel-config-fns";
 import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelServiceFactory } from "./alert-channel-service";
@@ -94,8 +90,7 @@ export const alertChannelTestServiceFactory = ({
     const incoming = dto.config ?? {};
 
     if (!dto.channelId) {
-      assertChannelConfigValid(definition, dto.channelType, incoming);
-      return incoming;
+      return parseChannelConfig(definition, dto.channelType, incoming);
     }
 
     const channel = await alertChannelDAL.findById(dto.channelId);
@@ -117,8 +112,7 @@ export const alertChannelTestServiceFactory = ({
     const stored = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, decryptor);
 
     const merged = mergeChannelConfigWithStored(dto.channelType, incoming, stored);
-    assertChannelConfigValid(definition, dto.channelType, merged);
-    return merged;
+    return parseChannelConfig(definition, dto.channelType, merged);
   };
 
   const $resolveRecipients = async (

@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
 
+import { parseAixPasswordFlags } from "./aix-password-flags";
 import {
+  runAdminCommand,
   runManagedPasswordChange,
   runSelfPasswordChange,
   runSuLoginVerification,
@@ -18,6 +20,7 @@ type TFakeStream = {
   writes: string[];
   feed: (text: string) => void;
   feedBytes: (chunk: Buffer) => void;
+  exit: (code: number) => void;
   close: () => void;
 };
 
@@ -25,11 +28,13 @@ const createFakeStream = (): TFakeStream => {
   const writes: string[] = [];
   const dataListeners: ((chunk: Buffer) => void)[] = [];
   const closeListeners: (() => void)[] = [];
+  const exitListeners: ((code: number | null) => void)[] = [];
 
   const stream = {
     on: (event: string, listener: unknown) => {
       if (event === "data") dataListeners.push(listener as (chunk: Buffer) => void);
       if (event === "close") closeListeners.push(listener as () => void);
+      if (event === "exit") exitListeners.push(listener as (code: number | null) => void);
     },
     write: (data: string) => {
       writes.push(data);
@@ -44,6 +49,7 @@ const createFakeStream = (): TFakeStream => {
     writes,
     feed: (text: string) => feedBytes(Buffer.from(text, "utf8")),
     feedBytes,
+    exit: (code: number) => exitListeners.forEach((listener) => listener(code)),
     close: () => closeListeners.forEach((listener) => listener())
   };
 };
@@ -314,5 +320,117 @@ describe("runSuLoginVerification", () => {
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toMatch(/su authentication failed for user root/);
     expect((error as Error).message).not.toContain(ROTATED_SENTINEL);
+  });
+});
+
+describe("runAdminCommand", () => {
+  // `lssec -f /etc/security/passwd -s svc -a flags` over a PTY, after sudo asked for a password.
+  const SUDO_LSSEC_TRANSCRIPT = "[sudo] password for svc: \r\nsvc flags=ADMCHG,ADMIN\r\n";
+
+  test("answers the sudo prompt once and returns the output and exit code", async () => {
+    const fake = createFakeStream();
+    const result = runAdminCommand(fake.stream, SUDO_SENTINEL);
+
+    fake.feed(SUDO_LSSEC_TRANSCRIPT);
+    fake.exit(0);
+    fake.close();
+
+    await expect(result).resolves.toEqual({ output: SUDO_LSSEC_TRANSCRIPT, exitCode: 0 });
+    expect(fake.writes).toEqual([`${SUDO_SENTINEL}\n`]);
+  });
+
+  test("answers a sudo prompt split across data events exactly once", async () => {
+    const runs = everySplitOf(SUDO_LSSEC_TRANSCRIPT).map(({ offset, chunks }) => {
+      const fake = createFakeStream();
+      const result = runAdminCommand(fake.stream, SUDO_SENTINEL);
+      chunks.forEach((chunk) => fake.feed(chunk));
+      fake.exit(0);
+      fake.close();
+      return { offset, result, writes: fake.writes };
+    });
+
+    await Promise.all(runs.map(({ result }) => expect(result).resolves.toMatchObject({ exitCode: 0 })));
+
+    runs.forEach(({ offset, writes }) => {
+      expect(writes, `split at offset ${offset}`).toEqual([`${SUDO_SENTINEL}\n`]);
+    });
+  });
+
+  test("returns a non-zero exit code when the command fails instead of rejecting", async () => {
+    const fake = createFakeStream();
+    const result = runAdminCommand(fake.stream);
+
+    fake.feed("sudo: a password is required\r\n");
+    fake.exit(1);
+    fake.close();
+
+    await expect(result).resolves.toEqual({ output: "sudo: a password is required\r\n", exitCode: 1 });
+    expect(fake.writes).toEqual([]);
+  });
+
+  test("reports a null exit code when the host never sends one", async () => {
+    const fake = createFakeStream();
+    const result = runAdminCommand(fake.stream);
+
+    fake.feed("svc flags=\r\n");
+    fake.close();
+
+    await expect(result).resolves.toEqual({ output: "svc flags=\r\n", exitCode: null });
+  });
+
+  test("rejects with sudoers guidance when sudo asks for a password we do not have", async () => {
+    const fake = createFakeStream();
+    const result = runAdminCommand(fake.stream);
+
+    fake.feed("[sudo] password for svc: ");
+
+    await expect(result).rejects.toThrow(/NOPASSWD in sudoers/);
+    expect(fake.writes).toEqual([]);
+  });
+
+  test("rejects when sudo prompts a second time rather than resending the password", async () => {
+    const fake = createFakeStream();
+    const result = runAdminCommand(fake.stream, SUDO_SENTINEL);
+
+    fake.feed("[sudo] password for svc: \r\nSorry, try again.\r\n[sudo] password for svc: ");
+
+    await expect(result).rejects.toThrow(/sudo rejected the app connection password/);
+    expect(fake.writes).toEqual([`${SUDO_SENTINEL}\n`]);
+  });
+
+  test("redacts the app connection password from the returned output", async () => {
+    const fake = createFakeStream();
+    const result = runAdminCommand(fake.stream, SUDO_SENTINEL);
+
+    fake.feed(`[sudo] password for svc: ${SUDO_SENTINEL}\r\nsvc flags=ADMCHG\r\n`);
+    fake.exit(0);
+    fake.close();
+
+    const { output } = await result;
+
+    expect(output).not.toContain(SUDO_SENTINEL);
+    expect(output).toContain("svc flags=ADMCHG");
+  });
+});
+
+describe("parseAixPasswordFlags", () => {
+  test.each([
+    ["svc flags=ADMCHG\r\n", ["ADMCHG"]],
+    ["svc flags=ADMCHG,ADMIN\r\n", ["ADMCHG", "ADMIN"]],
+    ["svc flags=ADMIN, NOCHECK\r\n", ["ADMIN", "NOCHECK"]],
+    ["svc flags=\r\n", []],
+    ["[sudo] password for svc: \r\nsvc flags=ADMCHG\r\n", ["ADMCHG"]]
+  ])("parses %j", (output, expected) => {
+    expect(parseAixPasswordFlags(output)).toEqual(expected);
+  });
+
+  test("rejects flag values that are not plain flag names", () => {
+    expect(parseAixPasswordFlags("svc flags=ADMIN;reboot\r\n")).toBeUndefined();
+    expect(parseAixPasswordFlags("svc flags=ADMIN,$(id)\r\n")).toBeUndefined();
+  });
+
+  test("returns undefined when lssec printed an error instead of the flags", () => {
+    expect(parseAixPasswordFlags('3004-704 Cannot open file "/etc/security/passwd".\r\n')).toBeUndefined();
+    expect(parseAixPasswordFlags("")).toBeUndefined();
   });
 });

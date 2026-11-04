@@ -137,6 +137,12 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       store[key] = String(next);
       return next;
     },
+    incrementByIfUnderLimitWithFixedExpiry: async (key, value, limit) => {
+      const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;
+      if (current + value > limit) return -1;
+      store[key] = String(current + value);
+      return current + value;
+    },
     claimLeastLoaded: async (keys, baseOccupancies) => {
       if (keys.length === 0) return 0;
       if (keys.length !== baseOccupancies.length) {
@@ -156,6 +162,14 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       const current = typeof store[chosen] === "string" ? parseInt(store[chosen] as string, 10) : 0;
       store[chosen] = String(current + 1);
       return bestIdx;
+    },
+    decrementIfExists: async (key) => {
+      if (typeof store[key] !== "string") {
+        return null;
+      }
+      const next = parseInt(store[key] as string, 10) - 1;
+      store[key] = String(next);
+      return next;
     },
     decrementByOrDelete: async (key) => {
       const current = typeof store[key] === "string" ? parseInt(store[key] as string, 10) : 0;

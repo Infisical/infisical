@@ -1,0 +1,42 @@
+---
+title: "Scan changes before you commit"
+sidebarTitle: "Pre-commit hook"
+description: "Prevent secrets from getting committed with a pre-commit hook that runs infisical scan."
+---
+
+`infisical scan git-changes` scans only the changes in your working tree, so you can catch a secret before it's in a commit. A pre-commit hook runs that scan for you before every commit.
+
+## Prerequisites
+
+- The [Infisical CLI](/cli/install) installed
+- Git installed
+
+## Scan your changes
+
+To scan the changes you've staged for your next commit, run:
+
+```bash
+infisical scan git-changes --staged --verbose
+```
+
+## Install the pre-commit hook
+
+To scan your staged changes before every commit, run this command in your repository:
+
+```bash
+infisical scan install --pre-commit-hook
+```
+
+The CLI adds the hook to `.git/hooks/pre-commit`, and Git then blocks any commit the scan finds a secret in.
+
+To turn the hook off in a repository, run `git config hooks.infisical-scan false`.
+
+## Use a Git hook manager
+
+If a hook manager such as [Husky](https://typicode.github.io/husky/) runs your Git hooks, add the scan to the hook manager's pre-commit script, such as `.husky/pre-commit`, instead of running `infisical scan install`:
+
+```bash
+infisical scan git-changes --staged --verbose
+```
+
+Hook managers point Git's `core.hooksPath` setting at their own folder. The install command offers to change that setting back to `.git/hooks`, which stops the hook manager's hooks from running.

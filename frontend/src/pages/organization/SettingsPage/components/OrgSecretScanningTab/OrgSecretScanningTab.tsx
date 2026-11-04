@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { BoxIcon, ExternalLinkIcon, RadarIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
@@ -69,19 +69,20 @@ export const OrgSecretScanningTab = () => {
 
   const isMember = (projectId: string) => userProjects.some((p) => p.id === projectId);
 
-  const handleOpen = async (project: TSecretScanningInstanceProject) => {
-    if (!isMember(project.id)) {
-      try {
-        await orgAdminAccessProject.mutateAsync({ projectId: project.id });
-      } catch {
-        // The global mutation error handler already reports the failure.
-        return;
-      }
+  const getProjectDataSourcesLink = (projectId: string) =>
+    ({
+      to: "/organizations/$orgId/projects/secret-scanning/$projectId/$",
+      params: { orgId: currentOrg.id, projectId, _splat: "data-sources" }
+    }) as const;
+
+  const handleJoinAndOpen = async (project: TSecretScanningInstanceProject) => {
+    try {
+      await orgAdminAccessProject.mutateAsync({ projectId: project.id });
+    } catch {
+      // The global mutation error handler already reports the failure.
+      return;
     }
-    navigate({
-      to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
-      params: { orgId: currentOrg.id, projectId: project.id }
-    });
+    navigate(getProjectDataSourcesLink(project.id));
   };
 
   return (
@@ -131,18 +132,29 @@ export const OrgSecretScanningTab = () => {
                     {canOpen ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <IconButton
-                            variant="ghost"
-                            size="xs"
-                            aria-label={`Open ${project.name}`}
-                            isPending={
-                              orgAdminAccessProject.isPending &&
-                              orgAdminAccessProject.variables?.projectId === project.id
-                            }
-                            onClick={() => handleOpen(project)}
-                          >
-                            <ExternalLinkIcon />
-                          </IconButton>
+                          {isMember(project.id) ? (
+                            <IconButton variant="ghost" size="xs" asChild>
+                              <Link
+                                {...getProjectDataSourcesLink(project.id)}
+                                aria-label={`Open ${project.name}`}
+                              >
+                                <ExternalLinkIcon />
+                              </Link>
+                            </IconButton>
+                          ) : (
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label={`Open ${project.name}`}
+                              isPending={
+                                orgAdminAccessProject.isPending &&
+                                orgAdminAccessProject.variables?.projectId === project.id
+                              }
+                              onClick={() => handleJoinAndOpen(project)}
+                            >
+                              <ExternalLinkIcon />
+                            </IconButton>
+                          )}
                         </TooltipTrigger>
                         <TooltipContent>Open project</TooltipContent>
                       </Tooltip>

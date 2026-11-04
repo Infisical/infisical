@@ -32,13 +32,15 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { agentVaultDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
 import {
   AgentVaultTrafficPolicy,
+  isServiceHostsPolicy,
   useCreateAgentVaultProxy,
   useUpdateAgentVaultProxy
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultEnrollment, TAgentVaultProxy } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultProxy, TAgentVaultProxyToken } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
 const TRAFFIC_POLICY_CHOICES = [
@@ -48,15 +50,16 @@ const TRAFFIC_POLICY_CHOICES = [
     description: "Allow requests to reach any host."
   },
   {
-    value: AgentVaultTrafficPolicy.BundleHosts,
-    title: "Access bundle hosts only",
-    description: "Only allow requests to reach hosts specified in access bundles."
+    value: AgentVaultTrafficPolicy.ServiceHosts,
+    title: "Service hosts only",
+    description: "Only allow requests to reach hosts that the session's services cover."
   }
 ];
 
 const schema = z
   .object({
     name: slugSchema({ max: 64, field: "Name" }),
+    description: agentVaultDescriptionSchema.optional(),
     trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy),
     allowedHosts: z.string().trim().max(1024).optional(),
     // Guarded before coercion: z.coerce turns "" into 0, which would report the range error instead.
@@ -72,10 +75,10 @@ const schema = z
           .max(300, "Poll interval must be at most 300 seconds")
       )
   })
-  // Only under the bundle-hosts policy, where the field is on screen: an any-host proxy ignores the
+  // Only under the service-hosts policy, where the field is on screen: an any-host proxy ignores the
   // list, and a stale value in a hidden field would block Save with an error nothing shows.
   .superRefine((data, ctx) => {
-    if (data.trafficPolicy !== AgentVaultTrafficPolicy.BundleHosts) return;
+    if (data.trafficPolicy !== AgentVaultTrafficPolicy.ServiceHosts) return;
     addHostListIssues(data.allowedHosts, ctx, ["allowedHosts"]);
   });
 
@@ -120,7 +123,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   proxy?: TAgentVaultProxy;
-  onCreated?: (enrollment: TAgentVaultEnrollment) => void;
+  onCreated?: (proxyToken: TAgentVaultProxyToken) => void;
 };
 
 export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Props) => {
@@ -141,7 +144,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
     formState: { isSubmitting }
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  const isBundleOnly = watch("trafficPolicy") === AgentVaultTrafficPolicy.BundleHosts;
+  const isServiceHostsOnly = watch("trafficPolicy") === AgentVaultTrafficPolicy.ServiceHosts;
 
   const saveDelayNote = (() => {
     if (!shownProxy?.heartbeat) return null;
@@ -155,7 +158,11 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
 
     reset({
       name: proxy?.name ?? "",
-      trafficPolicy: proxy?.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost,
+      description: proxy?.description ?? "",
+      trafficPolicy:
+        proxy && isServiceHostsPolicy(proxy.trafficPolicy)
+          ? AgentVaultTrafficPolicy.ServiceHosts
+          : AgentVaultTrafficPolicy.AnyHost,
       allowedHosts: proxy?.allowedHosts ?? "",
       pollInterval: proxy?.pollInterval ?? 60
     });
@@ -173,12 +180,19 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
       };
 
       if (proxy) {
-        await updateProxy.mutateAsync({ proxyId: proxy.id, ...payload });
+        await updateProxy.mutateAsync({
+          proxyId: proxy.id,
+          ...payload,
+          description: data.description || null
+        });
         createNotification({ text: `Proxy "${data.name}" updated`, type: "success" });
       } else {
-        const result = await createProxy.mutateAsync(payload);
+        const result = await createProxy.mutateAsync({
+          ...payload,
+          description: data.description || undefined
+        });
         createNotification({ text: `Proxy "${data.name}" created`, type: "success" });
-        onCreated?.({ token: result.token, expiresAt: result.expiresAt });
+        onCreated?.({ proxyToken: result.proxyToken });
       }
 
       onOpenChange(false);
@@ -217,7 +231,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
           </Field>
         )}
       />
-      {isBundleOnly && (
+      {isServiceHostsOnly && (
         <Controller
           control={control}
           name="allowedHosts"
@@ -284,6 +298,23 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                   <FieldLabel>Name</FieldLabel>
                   <FieldContent>
                     <Input {...field} placeholder="egress-1" isError={Boolean(fieldState.error)} />
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </FieldContent>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="description"
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel>Description</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      {...field}
+                      placeholder="Egress for the staging cluster"
+                      isError={Boolean(fieldState.error)}
+                    />
                     <FieldError>{fieldState.error?.message}</FieldError>
                   </FieldContent>
                 </Field>

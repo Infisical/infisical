@@ -7,7 +7,6 @@ import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 interface SecretScanningScanFailedTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   dataSourceName: string;
   resourceName: string;
-  projectName: string;
   timestamp: string;
   url: string;
   errorMessage: string;
@@ -16,7 +15,6 @@ interface SecretScanningScanFailedTemplateProps extends Omit<BaseEmailWrapperPro
 export const SecretScanningScanFailedTemplate = ({
   dataSourceName,
   resourceName,
-  projectName,
   siteUrl,
   errorMessage,
   url,
@@ -36,8 +34,6 @@ export const SecretScanningScanFailedTemplate = ({
         <Text className="text-[14px] mt-[4px]">{resourceName}</Text>
         <strong>Data Source</strong>
         <Text className="text-[14px] mt-[4px]">{dataSourceName}</Text>
-        <strong>Project</strong>
-        <Text className="text-[14px] mt-[4px]">{projectName}</Text>
         <strong>Timestamp</strong>
         <Text className="text-[14px] mt-[4px]">{timestamp}</Text>
         <strong>Error</strong>
@@ -55,7 +51,6 @@ export default SecretScanningScanFailedTemplate;
 SecretScanningScanFailedTemplate.PreviewProps = {
   dataSourceName: "my-data-source",
   resourceName: "my-resource",
-  projectName: "my-project",
   timestamp: "May 3rd 2025, 5:42 pm",
   url: "https://infisical.com",
   errorMessage: "401 Unauthorized",

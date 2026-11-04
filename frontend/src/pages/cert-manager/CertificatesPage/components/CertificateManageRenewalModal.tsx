@@ -1,13 +1,31 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DiscardChangesAlertDialog,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useUpdateRenewalConfig } from "@app/hooks/api";
 import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const DEFAULT_RENEWAL_BEFORE_DAYS = 20;
@@ -47,58 +65,6 @@ type Props = {
   popUp: UsePopUpState<["manageRenewal"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["manageRenewal"]>, state?: boolean) => void;
 };
-
-const RenewalConfigForm = ({
-  control,
-  errors,
-  onSubmit,
-  isLoading,
-  buttonText,
-  onCancel
-}: {
-  control: any;
-  errors: { renewBeforeDays?: { message?: string } };
-  onSubmit: (e?: React.BaseSyntheticEvent) => Promise<void>;
-  isLoading: boolean;
-  buttonText: string;
-  onCancel: () => void;
-}) => (
-  <form onSubmit={onSubmit}>
-    <FormControl
-      label="Auto-renew days before expiry"
-      isError={Boolean(errors.renewBeforeDays)}
-      errorText={errors.renewBeforeDays?.message}
-      className="mb-6"
-    >
-      <Controller
-        control={control}
-        name="renewBeforeDays"
-        render={({ field }) => (
-          <Input
-            {...field}
-            type="number"
-            min={MIN_RENEWAL_BEFORE_DAYS}
-            max={MAX_RENEWAL_BEFORE_DAYS}
-            onChange={(e) => {
-              const value = parseInt(e.target.value, 10);
-              field.onChange(value);
-            }}
-            placeholder="Enter days before expiration"
-          />
-        )}
-      />
-    </FormControl>
-
-    <div className="flex justify-end gap-3">
-      <Button type="button" colorSchema="secondary" variant="plain" onClick={onCancel}>
-        Cancel
-      </Button>
-      <Button type="submit" colorSchema="primary" isLoading={isLoading} isDisabled={isLoading}>
-        {buttonText}
-      </Button>
-    </div>
-  </form>
-);
 
 export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
@@ -145,7 +111,7 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { isDirty, isSubmitting },
     reset
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -153,6 +119,13 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
       renewBeforeDays: defaultRenewalDays
     }
   });
+
+  const isPending = isUpdatingConfig || isSubmitting;
+  const { isDiscardDialogOpen, setIsDiscardDialogOpen, requestDiscard, confirmDiscard } =
+    useDiscardChangesGuard({
+      isDirty,
+      onDiscard: () => handlePopUpToggle("manageRenewal", false)
+    });
 
   useEffect(() => {
     if (popUp.manageRenewal.isOpen) {
@@ -201,54 +174,76 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
   }
 
   return (
-    <Modal
-      isOpen={popUp?.manageRenewal?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("manageRenewal", isOpen);
-      }}
-    >
-      <ModalContent title={getModalTitle()}>
-        {hasRenewalError && (
-          <div className="mb-6 rounded-md border border-danger bg-danger/20 p-4">
-            <div className="flex items-start gap-3">
-              <div className="mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger">
-                <span className="text-xs font-bold text-white">!</span>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-normal text-danger">Automatic Renewal Failed</h3>
-                <p className="mt-1 text-sm text-danger">
-                  The last automatic renewal attempt failed: {certificateData.renewalError}
-                </p>
-                <p className="mt-2 text-sm text-danger">
-                  You can reconfigure auto-renewal below or disable it completely.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {(!isAutoRenewalEnabled || hasRenewalError) && (
-          <RenewalConfigForm
-            control={control}
-            errors={errors}
-            onSubmit={handleSubmit(onUpdateRenewal)}
-            isLoading={isUpdatingConfig}
-            buttonText={isAutoRenewalEnabled ? "Update Configuration" : "Enable Auto-Renewal"}
-            onCancel={() => handlePopUpToggle("manageRenewal", false)}
-          />
-        )}
-
-        {isAutoRenewalEnabled && !hasRenewalError && (
-          <RenewalConfigForm
-            control={control}
-            errors={errors}
-            onSubmit={handleSubmit(onUpdateRenewal)}
-            isLoading={isUpdatingConfig}
-            buttonText="Update Configuration"
-            onCancel={() => handlePopUpToggle("manageRenewal", false)}
-          />
-        )}
-      </ModalContent>
-    </Modal>
+    <>
+      <Dialog
+        open={popUp.manageRenewal.isOpen}
+        onOpenChange={(open) => {
+          if (!open && !isPending) requestDiscard();
+        }}
+      >
+        <DialogContent isPending={isPending}>
+          <DialogHeader>
+            <DialogTitle>{getModalTitle()}</DialogTitle>
+            <DialogDescription>
+              Configure when this certificate is automatically renewed.
+            </DialogDescription>
+          </DialogHeader>
+          {hasRenewalError && (
+            <Alert variant="danger">
+              <CircleAlertIcon />
+              <AlertTitle>Automatic Renewal Failed</AlertTitle>
+              <AlertDescription>
+                The last automatic renewal attempt failed: {certificateData.renewalError}
+              </AlertDescription>
+            </Alert>
+          )}
+          <form id="certificate-renewal-form" onSubmit={handleSubmit(onUpdateRenewal)}>
+            <Controller
+              control={control}
+              name="renewBeforeDays"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="certificate-renewal-days">
+                    Auto-Renew Days Before Expiry
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="certificate-renewal-days"
+                    type="number"
+                    min={MIN_RENEWAL_BEFORE_DAYS}
+                    max={MAX_RENEWAL_BEFORE_DAYS}
+                    disabled={isPending}
+                    isError={Boolean(error)}
+                    onChange={(event) => field.onChange(parseInt(event.target.value, 10))}
+                    placeholder="Enter days before expiration"
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+          </form>
+          <DialogFooter>
+            <Button variant="ghost" onClick={requestDiscard} isDisabled={isPending}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="certificate-renewal-form"
+              variant="project"
+              isPending={isPending}
+            >
+              {isAutoRenewalEnabled ? "Update Configuration" : "Enable Auto-Renewal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your auto-renewal configuration changes will be lost."
+      />
+    </>
   );
 };

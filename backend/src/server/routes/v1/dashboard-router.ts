@@ -12,7 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -1816,56 +1816,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/accessible-secrets",
-    config: {
-      rateLimit: secretsLimit
-    },
-    schema: {
-      operationId: "getAccessibleSecrets",
-      querystring: z.object({
-        projectId: z.string().trim(),
-        environment: z.string().trim(),
-        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
-        recursive: booleanSchema.default(false),
-        filterByAction: z
-          .enum([ProjectPermissionSecretActions.DescribeSecret, ProjectPermissionSecretActions.ReadValue])
-          .default(ProjectPermissionSecretActions.ReadValue)
-      }),
-      response: {
-        200: z.object({
-          // TODO(scott): omit secretValue here, but requires refactor of uploading env/copy from board
-          secrets: secretRawSchema
-            .extend({
-              secretPath: z.string().optional(),
-              secretValueHidden: z.boolean()
-            })
-            .array()
-            .optional()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
-    handler: async (req) => {
-      const { projectId, environment, secretPath, filterByAction, recursive } = req.query;
-
-      const { secrets } = await server.services.secret.getAccessibleSecrets({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        environment,
-        secretPath,
-        projectId,
-        filterByAction,
-        recursive
-      });
-
-      return { secrets };
-    }
-  });
-
-  server.route({
-    method: "GET",
     url: "/secrets-by-keys",
     config: {
       rateLimit: secretsLimit
@@ -1882,7 +1832,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         keys: z.string().trim().transform(decodeURIComponent),
-        viewSecretValue: booleanSchema.default(false)
+        viewSecretValue: booleanSchema.default(false),
+        // returns unreadable values masked instead of refusing the whole request, so one shared value
+        // the user cannot read does not stop the overview from loading the rest in bulk
+        hideUnreadableValues: booleanSchema.default(false)
       }),
       response: {
         200: z.object({
@@ -1901,7 +1854,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { secretPath, projectId, environment, viewSecretValue } = req.query;
+      const { secretPath, projectId, environment, viewSecretValue, hideUnreadableValues } = req.query;
 
       const keys = req.query.keys?.split(",").filter((key) => Boolean(key.trim())) ?? [];
       if (!keys.length) throw new BadRequestError({ message: "One or more keys required" });
@@ -1913,12 +1866,23 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         viewSecretValue,
+        throwOnMissingReadValuePermission: !hideUnreadableValues,
         environment,
         actorAuthMethod: req.permission.authMethod,
         projectId,
         path: secretPath,
         keys
       });
+
+      if (viewSecretValue) {
+        void server.services.secretReadActivity.recordRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId,
+          secretIds: secrets.filter((secret) => !secret.secretValueHidden).map((secret) => secret.id),
+          referencesExpanded: false
+        });
+      }
 
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -1933,6 +1897,30 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      // Reveal All and copying selected secrets read values here instead of /secret-value, so each
+      // returned value is logged the same way to keep "who read this secret" queryable
+      if (viewSecretValue) {
+        await Promise.all(
+          secrets
+            .filter((secret) => !secret.secretValueHidden)
+            .map((secret) =>
+              server.services.auditLog.createAuditLog({
+                projectId,
+                ...req.auditLogInfo,
+                event: {
+                  type: EventType.DASHBOARD_GET_SECRET_VALUE,
+                  metadata: {
+                    environment,
+                    secretPath,
+                    secretKey: secret.secretKey,
+                    secretId: secret.id
+                  }
+                }
+              })
+            )
+        );
+      }
 
       if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
         await server.services.telemetry.sendPostHogEvents({
@@ -1952,6 +1940,57 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       return { secrets };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secrets/key-exists",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "getSecretKeyExists",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        projectId: z.string().trim().min(1).max(64),
+        environments: z
+          .string()
+          .trim()
+          .max(4000)
+          .transform(decodeURIComponent)
+          .transform((value) => value.split(",").filter(Boolean))
+          .pipe(slugSchema({ field: "Environment" }).array().min(1).max(100)),
+        secretPath: z.string().trim().max(1000).default("/").transform(removeTrailingSlash),
+        secretKey: z.string().trim().max(500).pipe(SecretNameSchema)
+      }),
+      response: {
+        200: z.object({
+          existingEnvironments: z.string().array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId, environments, secretPath, secretKey } = req.query;
+
+      const existingEnvironments = await server.services.secret.getSecretKeyEnvironments({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectId,
+        environments,
+        path: secretPath,
+        secretKey
+      });
+
+      return { existingEnvironments };
     }
   });
 
@@ -2006,6 +2045,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       if (isOverride) {
         return { valueOverride: secret.secretValue };
       }
+
+      void server.services.secretReadActivity.recordRead({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        projectId,
+        secretIds: [secret.id],
+        referencesExpanded: false
+      });
 
       await server.services.auditLog.createAuditLog({
         projectId,

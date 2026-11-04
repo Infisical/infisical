@@ -13,8 +13,8 @@ import {
 } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -45,7 +45,7 @@ type TSecretChangeGlobalPolicyBridgeServiceFactoryDep = {
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
   secretChangeGlobalPolicyBridgeDAL: Pick<TSecretChangeGlobalPolicyBridgeDALFactory, "findSecretChangePolicies">;
-  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
+  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath" | "update">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
@@ -351,6 +351,7 @@ export const secretChangeGlobalPolicyBridgeServiceFactory = ({
         tx
       );
       await approvalPolicyDAL.deleteById(policy.id, tx);
+      await secretApprovalPolicyDAL.update({ id: policy.id, deletedAt: null }, { deletedAt: new Date() }, tx);
     });
 
     return { ...policy, deletedAt: new Date() };

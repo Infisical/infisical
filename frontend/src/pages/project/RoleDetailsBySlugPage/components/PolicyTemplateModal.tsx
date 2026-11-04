@@ -45,6 +45,7 @@ import {
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { ProjectPermissionSub } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
@@ -183,6 +184,7 @@ const PolicyGroupsDetailedView = ({ groups }: { groups: TemplatePolicyGroup[] })
 );
 
 const Content = ({ onClose, type: projectType }: ContentProps) => {
+  const scopeVariant = useScopeVariant();
   const rootForm = useFormContext<TFormSchema>();
 
   const templates = RoleTemplates[projectType ?? ProjectType.SecretManager];
@@ -353,7 +355,9 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
                         <TooltipTrigger asChild>
                           <IconButton
                             size="sm"
-                            variant={policyLayout === POLICY_LAYOUT.Compact ? "project" : "outline"}
+                            variant={
+                              policyLayout === POLICY_LAYOUT.Compact ? scopeVariant : "outline"
+                            }
                             aria-label="List view"
                             aria-pressed={policyLayout === POLICY_LAYOUT.Compact}
                             className={policyLayout === POLICY_LAYOUT.Compact ? "z-10" : ""}
@@ -369,7 +373,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
                           <IconButton
                             size="sm"
                             variant={
-                              policyLayout === POLICY_LAYOUT.Detailed ? "project" : "outline"
+                              policyLayout === POLICY_LAYOUT.Detailed ? scopeVariant : "outline"
                             }
                             aria-label="Card view"
                             aria-pressed={policyLayout === POLICY_LAYOUT.Detailed}
@@ -398,7 +402,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
         <SheetClose asChild>
           <Button variant="ghost">Cancel</Button>
         </SheetClose>
-        <Button variant="project" isDisabled={!selectedTemplate} onClick={onApply}>
+        <Button variant={scopeVariant} isDisabled={!selectedTemplate} onClick={onApply}>
           Apply Template
         </Button>
       </SheetFooter>

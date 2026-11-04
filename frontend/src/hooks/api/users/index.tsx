@@ -20,6 +20,7 @@ export {
   useGetMySessions,
   useGetOrgMembership,
   useGetOrgMembershipProjectMemberships,
+  useGetOrgUserAccess,
   useGetOrgUsers,
   useGetUser,
   useGetUserAction,

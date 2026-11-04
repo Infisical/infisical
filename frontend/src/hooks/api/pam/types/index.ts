@@ -1,3 +1,9 @@
+import {
+  TAutoApprovalConfig,
+  TAutoApprovalConfigResponse,
+  TAutoApprovalInputValue,
+  TAutoApprovalOutcome
+} from "../../approvalPolicies/types";
 import { OrderByDirection } from "../../generic/types";
 import {
   PamAccessRequestDecision,
@@ -122,14 +128,23 @@ export type TTriggerPamDiscoveryScanDTO = { sourceId: string; discoveryType: Pam
 export type TImportPamDiscoveredAccountsDTO = {
   sourceId: string;
   folderId: string;
-  accounts: { discoveredAccountId: string; templateId: string; name?: string }[];
+  accounts: {
+    discoveredAccountId: string;
+    templateId: string;
+    name?: string;
+    rotationAccountId?: string;
+  }[];
 };
 
 export type TImportPamDiscoveredAccountResult = {
   discoveredAccountId: string;
   status: string;
   accountId?: string;
+  name?: string;
   message?: string;
+  rotationAccountId?: string;
+  rotationStatus?: PamRotationStatus;
+  rotationMessage?: string;
 };
 
 export type PamFolderPermissionSet = [
@@ -160,6 +175,8 @@ export type TPamFieldDescriptor = {
   showWhen?: TPamFieldCondition;
   forceWhen?: { when: TPamFieldCondition; value: string | number | boolean; reason: string }[];
   tooltip?: string;
+  description?: string;
+  descriptionWhen?: TPamFieldCondition;
 };
 
 export type TPamPolicyDescriptor = {
@@ -200,7 +217,7 @@ export const accountTypeRequiresRecording = (type: PamAccountType): boolean =>
   type === PamAccountType.Windows || type === PamAccountType.WindowsAd;
 
 export type TPamAccountSettingsOverrides = {
-  recordingS3Config?: { bucket: string; region: string; keyPrefix?: string };
+  recordingS3Config?: { bucket: string; region?: string; keyPrefix?: string };
 };
 
 export type TPamAccount = {
@@ -743,6 +760,8 @@ export type TPamAccessRequest = {
   grantStatus?: string | null;
   isBreakGlass?: boolean;
   bypassReason?: string | null;
+  autoApprovedAt?: string | null;
+  autoApproval?: TAutoApprovalOutcome | null;
 };
 
 export type TPamNotificationConfig = {
@@ -761,6 +780,7 @@ export type TPamApprovalConfig = {
     integrationSlug: string;
   })[];
   breakGlassUsers: { type: PamApproverType; id: string }[];
+  autoApproval: TAutoApprovalConfigResponse;
 };
 
 export type TPamAccessGrant = {
@@ -783,6 +803,7 @@ export type TCreatePamAccessRequestDTO = {
   reason?: string;
   duration: string;
   accessType?: PamAccessType;
+  autoApprovalInputs?: TAutoApprovalInputValue[];
 };
 
 export type TReviewPamAccessRequestDTO = {
@@ -800,6 +821,10 @@ export type TBreakGlassPamAccessRequestDTO = {
   bypassReason: string;
 };
 
+export type TCancelPamAccessRequestDTO = {
+  requestId: string;
+};
+
 export type TSetPamApprovalConfigDTO = {
   folderId: string;
   steps: {
@@ -807,4 +832,6 @@ export type TSetPamApprovalConfigDTO = {
   }[];
   notificationConfigs?: TPamNotificationConfig[];
   breakGlassUsers?: { type: PamApproverType; id: string }[];
+  // Omit to leave the folder's auto-approval rules unchanged
+  autoApproval?: TAutoApprovalConfig;
 };

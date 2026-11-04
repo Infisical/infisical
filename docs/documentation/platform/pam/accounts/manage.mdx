@@ -1,0 +1,124 @@
+---
+title: "Manage an account"
+sidebarTitle: "Manage an account"
+description: "Change an account's details, access, and settings after you add it."
+---
+
+After you [add an account](/documentation/platform/pam/accounts/add), you can change its connection details and credentials, move it to another folder, give people access to it, override its template's settings, or delete it.
+
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the account or its folder
+
+## Open an account's settings
+
+Go to **Privileged Access Management** > **Accounts**, open the options menu on the account's row, and select **Configure**. Selecting the row itself launches a session or opens an access request.
+
+The account's settings have the following tabs:
+
+| Tab | What you can do there |
+| --- | --- |
+| **Permissions** | Give users, groups, and machine identities access to this account only |
+| **Configuration** | Change the account's name, folder, template, connection details, and credentials |
+| **Rotation** | Set the account that rotates this account's password, or rotate the password now (PostgreSQL, MySQL, Microsoft SQL Server, Oracle, Windows, and Windows AD accounts only) |
+| **Advanced** | Override the gateway or recording storage that the account's template sets |
+
+## Edit the account
+
+On the **Configuration** tab, change the fields you need, then select **Save Changes**. Infisical keeps the stored password or key unless you enter a new one.
+
+If you change the connection details, credentials, gateway, or template, Infisical tests the connection before it saves the account. If the test fails, Infisical doesn't save the change, and the error says why.
+
+### Move the account to another folder
+
+To move the account, select a different **Folder**. You need the Admin role on the destination folder too.
+
+People who had access through the old folder lose it, and people with a role on the new folder get access.
+
+### Change the template
+
+To change the rules for the account's sessions, select a different **Template** of the same account type. Only product admins can change an account's template.
+
+You can't change an account's type. To use a different type, add a new account.
+
+### Change the host, username, or gateway
+
+If you change the account's host, port, username, authentication method, or gateway, Infisical clears the account's [rotation account](/documentation/platform/pam/credential-rotation/overview), so the account doesn't rotate until you set one again.
+
+Changing the host, port, authentication method, or gateway also has these effects:
+
+- Any other account that used this account as its rotation account loses it
+- If you changed the host or gateway and can't view the account's credentials, Infisical [pauses credential health checks](/documentation/platform/pam/credential-health/overview#when-checks-stop) on the account
+
+## Grant access to one account
+
+A role on a folder applies to every account in the folder. To give a user, group, or machine identity access to one account only, assign them a role on the account:
+
+<Steps>
+  <Step>
+    Open the account's settings and go to the **Permissions** tab.
+  </Step>
+  <Step>
+    Select **Assign Access**.
+  </Step>
+  <Step>
+    Select the **Assignee** and the **Role**. To make the access temporary, select an **Expiry**.
+  </Step>
+  <Step>
+    Select **Assign**.
+  </Step>
+</Steps>
+
+To change a member's role, open the options menu on their row and select **Edit**. You can't change an expiry, so to change one, remove the member and assign them again.
+
+The **Inherited Permissions** section lists the members who have access through the account's folder. To change their access, go to the [folder's](/documentation/platform/pam/folders/overview) **Permissions** tab.
+
+To learn what each role allows, see [Access control](/documentation/platform/pam/concepts/access-control).
+
+## Override the template's settings
+
+The account's [template](/documentation/platform/pam/templates/overview) sets its gateway and, for Windows and Windows AD accounts, where Infisical stores its session recordings. To use a different setting for this account only, go to the **Advanced** tab and select **Override** next to the setting:
+
+- **Gateway**: Select a different gateway or gateway pool (every account type except AWS IAM)
+- **Recording Settings**: Select a different bucket for this account's recordings (Windows and Windows AD accounts only, and only if the template's **Storage backend** is **S3 Bucket**), as described in [External storage](/documentation/platform/pam/sessions/external-storage)
+
+Select **Save Changes**. To go back to the template's setting, select **Remove Override**.
+
+## Delete an account
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts**, open the options menu on the account's row, and select **Delete Account**.
+  </Step>
+  <Step>
+    Enter the account's name to confirm, then select **Delete**.
+  </Step>
+</Steps>
+
+When you delete an account, Infisical does the following:
+
+- Ends every active session on the account
+- Cancels pending [access requests](/documentation/platform/pam/access-requests/overview) for the account, and revokes approved ones
+- Removes the account's direct memberships
+
+Infisical keeps the account's past sessions and recordings, but only product admins can view them.
+
+<Warning>
+  If the account's recordings are stored in an [S3 bucket](/documentation/platform/pam/sessions/external-storage), you can't play them back in Infisical after you delete the account. This includes every Windows and Windows AD recording.
+</Warning>
+
+You can't delete an account in these cases:
+
+- The account is the rotation account of another account (set a different rotation account on the other account first)
+- The account is the credential for a [discovery source](/documentation/platform/pam/discovery/overview) (change the source's credential, or delete the source, first)
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Credential rotation" icon="rotate-cw" href="/documentation/platform/pam/credential-rotation/overview">
+    Change the passwords of your PAM accounts on a schedule.
+  </Card>
+  <Card title="Access control" icon="shield-half" href="/documentation/platform/pam/concepts/access-control">
+    Control who can manage PAM and who can connect to each account.
+  </Card>
+</CardGroup>

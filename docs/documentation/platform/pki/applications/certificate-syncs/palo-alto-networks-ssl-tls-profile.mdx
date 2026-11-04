@@ -1,5 +1,5 @@
 ---
-title: "Palo Alto Networks SSL/TLS profile"
+title: "Sync certificates to a Palo Alto Networks SSL/TLS profile"
 sidebarTitle: "Palo Alto Networks SSL/TLS profile"
 description: "Deploy a certificate to a PAN-OS firewall or Panorama template and set it on an SSL/TLS service profile."
 ---
@@ -15,6 +15,11 @@ To deploy several certificates without changing a profile, use a [Palo Alto Netw
 - On a Panorama, a template
 - To push to firewalls, a template stack that contains the template
 - An SSL/TLS service profile on the firewall or in the template, either shared or in a virtual system
+- A certificate that includes a private key
+
+<Note>
+  An SSL/TLS service profile can only use a certificate that was imported with its private key. If a certificate was issued from a CSR generated elsewhere, for example by an agent that keeps the key on its own host, the sync can't deploy it and skips it. See [Imported Certificate Not Showing Under SSL/TLS Service Profile](https://knowledgebase.paloaltonetworks.com/KCSArticleDetail?id=kA10g000000PLmJCAW).
+</Note>
 
 ## Create a sync
 

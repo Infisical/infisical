@@ -292,7 +292,6 @@ export const reminderServiceFactory = ({
             {
               orgId: reminder.orgId,
               projectId: reminder.projectId,
-              reminderId: reminder.id,
               secretId,
               note: current.message,
               repeatDays: current.repeatDays,

@@ -1,9 +1,9 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { MoreVerticalIcon, RefreshCwIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -18,7 +18,7 @@ import {
   Field,
   FieldLabel
 } from "@app/components/v3";
-import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
@@ -76,12 +76,10 @@ export const IntegrationDetailsByIDPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Integration Details | Infisical</title>
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content="Manage your .env files in seconds" />
-        <meta name="og:description" content={t("integrations.description") as string} />
-      </Helmet>
+      <PageTitle title="Integration Details" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content="Manage your .env files in seconds" />
+      <meta name="og:description" content={t("integrations.description") as string} />
       <div className="mx-auto flex max-w-8xl flex-col justify-between bg-page text-foreground-inverse">
         {integration ? (
           <div className="mx-auto mb-6 w-full max-w-8xl">
@@ -150,7 +148,7 @@ export const IntegrationDetailsByIDPage = () => {
         )}
       </div>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure you want to remove ${integration?.integration || " "} integration for ${
           integration?.app || "this project"
@@ -190,8 +188,8 @@ export const IntegrationDetailsByIDPage = () => {
             </FieldLabel>
           </Field>
         )}
-      </DeleteConfirmDialog>
-      <DeleteConfirmDialog
+      </ConfirmationAlertDialog>
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteSecretsConfirmation.isOpen}
         title={`Are you sure you also want to delete secrets on ${integration?.integration}?`}
         description="By confirming, you acknowledge that all secrets managed by this integration will be removed from the destination. This action is irreversible."

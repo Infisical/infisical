@@ -1,8 +1,8 @@
-import { Helmet } from "react-helmet";
 import { Link, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ChevronLeftIcon, FileSignatureIcon, HardDriveIcon, UserIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Card,
@@ -42,18 +42,27 @@ export const SigningOperationDetailPage = () => {
   const { currentOrg } = useOrganization();
   const { data, isPending } = useGetSigningOperation(signerId, operationId);
 
-  if (isPending) return <PageLoader />;
+  if (isPending)
+    return (
+      <>
+        <PageTitle title="Signing Operation" />
+        <PageLoader />
+      </>
+    );
 
   if (!data) {
     return (
-      <div className="mx-auto flex max-w-4xl flex-col px-6 py-6">
-        <Empty className="border border-solid">
-          <EmptyTitle>Signing operation not found</EmptyTitle>
-          <EmptyDescription>
-            The operation may belong to a different signer, or you may not have access to it.
-          </EmptyDescription>
-        </Empty>
-      </div>
+      <>
+        <PageTitle title="Signing Operation" />
+        <div className="mx-auto flex max-w-4xl flex-col px-6 py-6">
+          <Empty className="border border-solid">
+            <EmptyTitle>Signing operation not found</EmptyTitle>
+            <EmptyDescription>
+              The operation may belong to a different signer, or you may not have access to it.
+            </EmptyDescription>
+          </Empty>
+        </div>
+      </>
     );
   }
 
@@ -62,9 +71,7 @@ export const SigningOperationDetailPage = () => {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-y-4 px-6 py-6">
-      <Helmet>
-        <title>Signing Operation | {signerName}</title>
-      </Helmet>
+      <PageTitle title={signerName ? `Signing Operation: ${signerName}` : "Signing Operation"} />
 
       <Link
         to="/organizations/$orgId/cert-manager/code-signing/$signerId"

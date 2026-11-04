@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { faCheck, faTimes, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,8 +7,21 @@ import { formatDistance } from "date-fns";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Modal, ModalContent, TextArea } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  DiscardChangesAlertDialog,
+  Field,
+  FieldError,
+  FieldLabel,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  TextArea
+} from "@app/components/v3";
 import { useProject, useProjectPermission, useUser } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
@@ -22,6 +35,7 @@ import {
   useCancelApprovalRequest,
   useRejectApprovalRequest
 } from "@app/hooks/api/approvalRequests";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 // Helper function to format validity TTL (e.g., "365d" -> "365 days")
@@ -112,10 +126,39 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
     register,
     handleSubmit,
     reset,
-    formState: { errors }
+    formState: { errors, isDirty, isSubmitting }
   } = useForm<TCommentForm>({
-    resolver: zodResolver(commentSchema)
+    resolver: zodResolver(commentSchema),
+    defaultValues: { comment: "" }
   });
+  const isPending = isApproving || isRejecting || isCancelling || isSubmitting;
+  const discardAction = useRef<() => void>(() => undefined);
+  const { requestDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen, confirmDiscard } =
+    useDiscardChangesGuard({
+      isDirty,
+      onDiscard: () => discardAction.current()
+    });
+  const clearComment = () => {
+    setShowCommentForm(null);
+    reset();
+  };
+  const handleDismiss = () => {
+    if (isPending) return;
+    discardAction.current = () => {
+      clearComment();
+      handlePopUpToggle("requestDetail", false);
+    };
+    requestDiscard();
+  };
+  const handleCommentCancel = () => {
+    if (isPending) return;
+    discardAction.current = clearComment;
+    requestDiscard();
+  };
+  useEffect(() => {
+    setShowCommentForm(null);
+    reset();
+  }, [request?.id, isOpen, reset]);
 
   const getApproverLabel = (approverId: string, approverType: ApproverType) => {
     if (approverType === ApproverType.User) {
@@ -162,7 +205,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   const handleApprove = async (data: TCommentForm) => {
-    if (!request) return;
+    if (!request || isApproving || isRejecting || isCancelling) return;
 
     try {
       await approveRequest({
@@ -187,7 +230,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   const handleReject = async (data: TCommentForm) => {
-    if (!request) return;
+    if (!request || isApproving || isRejecting || isCancelling) return;
 
     try {
       await rejectRequest({
@@ -212,7 +255,7 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   const handleCancel = async () => {
-    if (!request) return;
+    if (!request || isPending) return;
 
     try {
       await cancelRequest({
@@ -240,217 +283,263 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
   const showCancelButton = canUserCancel();
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={(open) => handlePopUpToggle("requestDetail", open)}>
-      <ModalContent
-        title="Certificate Issuance Request"
-        subTitle="Review the details of this certificate request"
-        className="max-w-2xl"
-      >
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <Badge variant={getStatusBadgeColor(request.status)} className="capitalize">
-              {request.status.split("-").join(" ")}
-            </Badge>
-            <span className="text-sm text-muted">
-              Requested{" "}
-              {formatDistance(new Date(request.createdAt), new Date(), { addSuffix: true })}
-            </span>
-          </div>
-
-          <div>
-            <h4 className="mb-2 text-sm font-normal text-foreground-secondary">Requester</h4>
-            <div className="rounded border border-border-control bg-surface-hover p-3">
-              <div className="text-sm font-medium text-foreground">
-                {request.requesterName || "Unknown"}
-              </div>
-              <div className="text-xs text-muted">{request.requesterEmail}</div>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) handleDismiss();
+      }}
+    >
+      <SheetContent size="form" isPending={isPending}>
+        <SheetHeader>
+          <SheetTitle>Certificate Issuance Request</SheetTitle>
+          <SheetDescription>Review the details of this certificate request.</SheetDescription>
+        </SheetHeader>
+        <form
+          className="contents"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (!showCommentForm || isPending) return;
+            await handleSubmit(showCommentForm === "approve" ? handleApprove : handleReject)(event);
+          }}
+        >
+          <div className="min-h-0 thin-scrollbar flex-1 space-y-6 overflow-y-auto p-4">
+            <div className="flex items-center justify-between">
+              <Badge variant={getStatusBadgeColor(request.status)} className="capitalize">
+                {request.status.split("-").join(" ")}
+              </Badge>
+              <span className="text-sm text-muted">
+                Requested{" "}
+                {formatDistance(new Date(request.createdAt), new Date(), { addSuffix: true })}
+              </span>
             </div>
-          </div>
 
-          <div>
-            <h4 className="mb-2 text-sm font-normal text-foreground-secondary">
-              Certificate Details
-            </h4>
-            <div className="space-y-2 rounded border border-border-control bg-surface-hover p-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted">Profile</span>
-                <span className="text-sm text-foreground-secondary">{requestData.profileName}</span>
+            <div>
+              <h4 className="mb-2 text-sm font-normal text-foreground-secondary">Requester</h4>
+              <div className="rounded border border-border-control bg-surface-hover p-3">
+                <div className="text-sm font-medium text-foreground">
+                  {request.requesterName || "Unknown"}
+                </div>
+                <div className="text-xs text-muted">{request.requesterEmail}</div>
               </div>
-              {requestData.certificateRequest?.commonName && (
+            </div>
+
+            <div>
+              <h4 className="mb-2 text-sm font-normal text-foreground-secondary">
+                Certificate Details
+              </h4>
+              <div className="space-y-2 rounded border border-border-control bg-surface-hover p-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted">Common Name</span>
+                  <span className="text-sm text-muted">Profile</span>
                   <span className="text-sm text-foreground-secondary">
-                    {requestData.certificateRequest.commonName}
+                    {requestData.profileName}
                   </span>
                 </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-sm text-muted">Validity</span>
-                <span className="text-sm text-foreground-secondary">
-                  {requestData.certificateRequest?.validity?.ttl
-                    ? formatValidity(requestData.certificateRequest.validity.ttl)
-                    : "Not specified"}
-                </span>
-              </div>
-              {requestData.certificateRequest?.domainComponents &&
-                requestData.certificateRequest.domainComponents.length > 0 && (
-                  <div>
-                    <span className="text-sm text-muted">Domain Components</span>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {requestData.certificateRequest.domainComponents.map((dc) => (
-                        <span
-                          key={dc}
-                          className="rounded bg-surface-active px-2 py-0.5 text-xs text-foreground-secondary"
-                        >
-                          {dc}
-                        </span>
-                      ))}
-                    </div>
+                {requestData.certificateRequest?.commonName && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted">Common Name</span>
+                    <span className="text-sm text-foreground-secondary">
+                      {requestData.certificateRequest.commonName}
+                    </span>
                   </div>
                 )}
-              {requestData.certificateRequest?.altNames &&
-                requestData.certificateRequest.altNames.length > 0 && (
-                  <div>
-                    <span className="text-sm text-muted">Alt Names</span>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {requestData.certificateRequest.altNames.map(
-                        (san: { type: string; value: string }) => (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted">Validity</span>
+                  <span className="text-sm text-foreground-secondary">
+                    {requestData.certificateRequest?.validity?.ttl
+                      ? formatValidity(requestData.certificateRequest.validity.ttl)
+                      : "Not specified"}
+                  </span>
+                </div>
+                {requestData.certificateRequest?.domainComponents &&
+                  requestData.certificateRequest.domainComponents.length > 0 && (
+                    <div>
+                      <span className="text-sm text-muted">Domain Components</span>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {requestData.certificateRequest.domainComponents.map((dc) => (
                           <span
-                            key={`${san.type}-${san.value}`}
+                            key={dc}
                             className="rounded bg-surface-active px-2 py-0.5 text-xs text-foreground-secondary"
                           >
-                            {san.type}: {san.value}
+                            {dc}
                           </span>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
-            </div>
-          </div>
-
-          {request.justification && (
-            <div>
-              <h4 className="mb-2 text-sm font-normal text-foreground-secondary">Justification</h4>
-              <div className="rounded border border-border-control bg-surface-hover p-3 text-sm text-label">
-                {request.justification}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <h4 className="mb-2 text-sm font-normal text-foreground-secondary">
-              Approval Progress
-            </h4>
-            <div className="space-y-2">
-              {request.steps.map((step, index) => (
-                <div
-                  key={step.id}
-                  className="rounded border border-border-control bg-surface-hover p-3"
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${getStepNumberClass(step.status)}`}
-                      >
-                        {index + 1}
-                      </span>
-                      <span className="text-sm font-medium text-foreground-secondary">
-                        {step.name || `Step ${index + 1}`}
-                      </span>
-                    </div>
-                    <Badge variant={getStepBadgeVariant(step.status)} className="capitalize">
-                      {step.status.split("-").join(" ")}
-                    </Badge>
-                  </div>
-                  <div className="text-xs text-muted">
-                    {step.approvals.length} of {step.requiredApprovals} approvals
-                  </div>
-                  {step.approvals.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {step.approvals.map((approval) => (
-                        <div
-                          key={approval.id}
-                          className="flex items-center gap-1 rounded bg-success/10 px-2 py-0.5 text-xs text-success"
-                        >
-                          <FontAwesomeIcon icon={faUsers} />
-                          {getApproverLabel(approval.approverUserId, ApproverType.User)}
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
-                </div>
-              ))}
+                {requestData.certificateRequest?.altNames &&
+                  requestData.certificateRequest.altNames.length > 0 && (
+                    <div>
+                      <span className="text-sm text-muted">Alt Names</span>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {requestData.certificateRequest.altNames.map(
+                          (san: { type: string; value: string }) => (
+                            <span
+                              key={`${san.type}-${san.value}`}
+                              className="rounded bg-surface-active px-2 py-0.5 text-xs text-foreground-secondary"
+                            >
+                              {san.type}: {san.value}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+              </div>
             </div>
-          </div>
 
-          {showCommentForm && (
-            <form
-              onSubmit={handleSubmit(showCommentForm === "approve" ? handleApprove : handleReject)}
-            >
-              <FormControl
-                label="Comment (Optional)"
-                isError={Boolean(errors.comment)}
-                errorText={errors.comment?.message}
-              >
-                <TextArea {...register("comment")} placeholder="Add a comment..." rows={3} />
-              </FormControl>
-              <div className="mt-4 flex gap-2">
-                <Button
-                  type="submit"
-                  colorSchema={showCommentForm === "approve" ? "primary" : "danger"}
-                  isLoading={isApproving || isRejecting}
-                  isDisabled={isApproving || isRejecting}
-                >
-                  {showCommentForm === "approve" ? "Confirm Approve" : "Confirm Reject"}
-                </Button>
+            {request.justification && (
+              <div>
+                <h4 className="mb-2 text-sm font-normal text-foreground-secondary">
+                  Justification
+                </h4>
+                <div className="rounded border border-border-control bg-surface-hover p-3 text-sm text-label">
+                  {request.justification}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <h4 className="mb-2 text-sm font-normal text-foreground-secondary">
+                Approval Progress
+              </h4>
+              <div className="space-y-2">
+                {request.steps.map((step, index) => (
+                  <div
+                    key={step.id}
+                    className="rounded border border-border-control bg-surface-hover p-3"
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${getStepNumberClass(step.status)}`}
+                        >
+                          {index + 1}
+                        </span>
+                        <span className="text-sm font-medium text-foreground-secondary">
+                          {step.name || `Step ${index + 1}`}
+                        </span>
+                      </div>
+                      <Badge variant={getStepBadgeVariant(step.status)} className="capitalize">
+                        {step.status.split("-").join(" ")}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted">
+                      {step.approvals.length} of {step.requiredApprovals} approvals
+                    </div>
+                    {step.approvals.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {step.approvals.map((approval) => (
+                          <div
+                            key={approval.id}
+                            className="flex items-center gap-1 rounded bg-success/10 px-2 py-0.5 text-xs text-success"
+                          >
+                            <FontAwesomeIcon icon={faUsers} />
+                            {getApproverLabel(approval.approverUserId, ApproverType.User)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {showCommentForm && (
+              <Field data-invalid={Boolean(errors.comment)}>
+                <FieldLabel htmlFor="approval-request-comment">Comment (Optional)</FieldLabel>
+                <TextArea
+                  id="approval-request-comment"
+                  {...register("comment")}
+                  placeholder="Add a comment..."
+                  rows={3}
+                  maxLength={500}
+                  disabled={isPending}
+                  isError={Boolean(errors.comment)}
+                  aria-describedby={errors.comment ? "approval-request-comment-error" : undefined}
+                />
+                {errors.comment && (
+                  <FieldError id="approval-request-comment-error">
+                    {errors.comment.message}
+                  </FieldError>
+                )}
+              </Field>
+            )}
+          </div>
+          <SheetFooter className="justify-end border-t">
+            {showCommentForm ? (
+              <>
                 <Button
                   type="button"
-                  variant="outline_bg"
-                  onClick={() => {
-                    setShowCommentForm(null);
-                    reset();
-                  }}
+                  variant="ghost"
+                  onClick={handleCommentCancel}
+                  isDisabled={isPending}
                 >
                   Cancel
                 </Button>
-              </div>
-            </form>
-          )}
-
-          {!showCommentForm && (showApprovalButtons || showCancelButton) && (
-            <div className="flex gap-2 border-t border-border-control pt-4">
-              {showApprovalButtons && (
-                <>
-                  <Button
-                    leftIcon={<FontAwesomeIcon icon={faCheck} />}
-                    onClick={() => setShowCommentForm("approve")}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    colorSchema="danger"
-                    leftIcon={<FontAwesomeIcon icon={faTimes} />}
-                    onClick={() => setShowCommentForm("reject")}
-                  >
-                    Reject
-                  </Button>
-                </>
-              )}
-              {showCancelButton && (
                 <Button
-                  variant="outline_bg"
-                  onClick={handleCancel}
-                  isLoading={isCancelling}
-                  isDisabled={isCancelling}
+                  type="submit"
+                  variant={showCommentForm === "approve" ? "project" : "danger"}
+                  isPending={isPending}
+                  isDisabled={isPending}
                 >
-                  Cancel Request
+                  {showCommentForm === "approve" ? "Confirm Approve" : "Confirm Reject"}
                 </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </ModalContent>
-    </Modal>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleDismiss}
+                  isDisabled={isPending}
+                >
+                  Close
+                </Button>
+                {showCancelButton && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancel}
+                    isPending={isCancelling}
+                    isDisabled={isPending}
+                  >
+                    Cancel Request
+                  </Button>
+                )}
+                {showApprovalButtons && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      isDisabled={isPending}
+                      onClick={() => setShowCommentForm("reject")}
+                    >
+                      <FontAwesomeIcon icon={faTimes} />
+                      Reject
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="project"
+                      isDisabled={isPending}
+                      onClick={() => setShowCommentForm("approve")}
+                    >
+                      <FontAwesomeIcon icon={faCheck} />
+                      Approve
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
+          </SheetFooter>
+        </form>
+        <DiscardChangesAlertDialog
+          open={isDiscardDialogOpen}
+          onOpenChange={setIsDiscardDialogOpen}
+          onDiscard={confirmDiscard}
+          title="Discard Changes?"
+          description="Your unsaved request comment will be lost."
+        />
+      </SheetContent>
+    </Sheet>
   );
 };

@@ -62,11 +62,11 @@ Used to signal the scope a surface, badge, or action belongs to.
 | Project          | `--color-project` |
 | Admin            | `--color-admin`   |
 
-PAM and Agent Vault are product identities rather than additional levels in
-the org/project hierarchy. Use `--color-product-pam` and `--color-product-av`
-when the current product calls for them; `PageHeader` maps the PAM and Agent
-Vault project types to these accents, while `Button` exposes `pam` and `av`
-variants. Check each component's supported variants instead of treating all
+PAM, Agent Vault and Secret Scanning are product identities rather than
+additional levels in the org/project hierarchy. Use `--color-product-pam`,
+`--color-product-av` and `--color-product-ss` when the current product calls
+for them; `PageHeader` and the org sidebar map those project types to these
+accents, while `Button` exposes `pam`, `av` and `ss` variants. Check each component's supported variants instead of treating all
 scope and product variants as interchangeable.
 
 ### Semantic colors
@@ -95,10 +95,6 @@ scope and product variants as interchangeable.
 | Accent text       | `--color-accent`          |
 | Muted text        | `--color-muted`           |
 | Label text        | `--color-label`           |
-
-The `mineshaft-*` scale (50–900) is the underlying neutral ramp; see
-`index.css` for the full list. Prefer semantic tokens (`card`, `border`,
-`accent`) over raw mineshaft values.
 
 ### Product-area accents (secret-manager)
 
@@ -164,11 +160,9 @@ labels, and dropdown menu items. See §8 for voice rules on copy itself.
 
 ## 4. Component Stylings
 
-Prefer v3 components from [`frontend/src/components/v3/`](frontend/src/components/v3)
-for new UI. The v2 library is legacy; use it for new work only when v3 does not
-cover the required behavior. Existing v2 consumers marked blocked in the
-[lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) need
-consumer-specific parity checks before replacement, even on mixed pages.
+Use v3 components from [`frontend/src/components/v3/`](frontend/src/components/v3)
+for all UI. A deprecated API carries an `@deprecated` tag that names its
+replacement.
 
 For exact tokens, classes, and supported variants, read component source and
 the story when present; stories may not enumerate every implemented variant.
@@ -217,12 +211,12 @@ specialized primitives not listed here (for example `CodeBlock`, `CopyButton`,
 | [`InputGroup`](frontend/src/components/v3/generic/InputGroup/InputGroup.tsx)                                                              | Input with left/right addons — search bars, prefixed values.                                                |
 | [`Select`](frontend/src/components/v3/generic/Select/Select.tsx)                                                                          | Non-searchable single-select with a short, known option list.                                               |
 | [`Combobox`](frontend/src/components/v3/generic/Combobox/Combobox.tsx)                                                                    | Searchable single- or multi-select, including grouped/rich rows and inline or dialog creation when its contract fits. |
-| [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts)                                                                  | Deprecated compatibility for consumers needing react-select-specific overrides; see the lifecycle ledger. |
 | [`Toggle`](frontend/src/components/v3/generic/Toggle/Toggle.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
 | [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                    | Date / multi-date / range picker primitive.                                                                 |
 | [`DateRangeFilter`](frontend/src/components/v3/platform/DateRangeFilter/DateRangeFilter.tsx)                                               | Platform date-range filter with presets — for filter bars.                                                  |
-| [`SecretInput`](frontend/src/components/v3/platform/SecretInput/SecretInput.tsx)                                                           | Platform secret-value editor with mask toggle and `${var}` highlighting.                                    |
+| [`SecretInput`](frontend/src/components/v3/platform/SecretInput/SecretInput.tsx)                                                           | Platform secret-value editor with masking and `${var}` highlighting; callers own any reveal toggle.          |
 | [`PasswordGenerator`](frontend/src/components/v3/platform/PasswordGenerator/PasswordGenerator.tsx)                                         | Platform password generator against project secret-validation rules.                                        |
+| [`EmailInput`](frontend/src/components/v3/platform/EmailInput/EmailInput.tsx)                                                              | Platform chip field for one or more free-text email addresses. Validate it with `emailListSchema` from `@app/helpers/email`; check single addresses or picker-created invitees with `isValidEmail` rather than a local regex or `z.string().email()`. |
 
 #### Containers & overlays
 
@@ -302,6 +296,7 @@ host component; don't override unless necessary.
 - **Forms inside Sheets/Dialog** — create / edit flows open in a Sheet or Dialog, never inline, never as a full-page route. **Pick by form size:** small forms (1–2 fields, e.g. "Add domain", "Rename") go in a centered `Dialog`; large or multi-step forms (multiple fields, scrollable detail, file uploads, wizard steps) go in a right-side `Sheet`. When in doubt, default to Dialog — Sheet is for cases where Dialog feels cramped.
 - **Authentication form stacks** — use `CardContent className="flex flex-col gap-4"` for the major vertical rhythm between fields, validation groups, and primary actions. Use a nested `flex flex-col gap-2` only for compact sets of equivalent actions such as social or SSO provider buttons. Use `FieldSeparator` between alternate authentication paths. Do not recreate sibling spacing with `mt-*`, `mb-*`, or `py-*`; keep a wrapper only when it owns animation, responsive visibility, conditional grouping, or tightly coupled control/error content.
 - **Spacing rhythm** — `gap-1.5` (intra-element), `gap-2 / gap-3` (adjacent elements), `p-4 / p-5` (section padding). Card = `p-5 gap-5`; Sheet header/footer = `p-4`.
+- **Sheet and Dialog footers** — actions sit right-aligned with the primary action last: `SheetFooter className="justify-end border-t"` (`DialogFooter` is right-aligned by default), then Cancel (`ghost`), then the primary button. Back navigation in a multi-step flow sits on the left with `mr-auto`, and wizard footers with status text on the left use `justify-between`. A single full-width action needs no alignment class.
 
 ## 6. Depth & Elevation
 
@@ -338,7 +333,6 @@ remain legible across the control edge.
 - **DO** pair destructive confirmations with the resource name and the
   consequence (see §9).
 - **DO** cite tokens (`bg-card`) over hex (`#xxxxxx`) in new code.
-- **DON'T** replace existing blocked v2 consumers based on matching component names alone; check the lifecycle ledger and interaction parity first.
 - **DON'T** add ad hoc box-shadows as a depth cue — borders and surface tones do
   that work. The shared `Card` already has `shadow-xs`; floating elements
   (Popover, DropdownMenu, Sheet, SelectedActionBar) include stronger shadows.
@@ -474,7 +468,7 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 4. **Adding a variant** — extend the `cva()` block in the component and add
    a story when appropriate. Match the existing variant family rather than
    imposing a tint recipe on neutral, outline, or product variants.
-5. **Prefer v3 for new code** — use v2 only where needed for behavior not covered
-   by v3. Existing blocked v2 consumers migrate after lifecycle parity review.
+5. **Use v3.** Don't reach for an API marked `@deprecated`; use the
+   replacement it names.
 6. **Before merging** — `make reviewable-ui` (lint + type-check).
 7. **When in doubt** — mirror `OverviewPage`.

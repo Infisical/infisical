@@ -80,7 +80,7 @@ export const HoneyTokenTableRow = ({
   onViewDetails
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
-  const [, isNameCopied, setIsNameCopied] = useTimedReset({ initialState: false });
+  const [, isNameCopied, setIsNameCopied] = useTimedReset<boolean>({ initialState: false });
 
   const isSingleEnvView = environments.length === 1;
   const totalCols = environments.length + 2;

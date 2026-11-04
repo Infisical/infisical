@@ -1,11 +1,10 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { InfoIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
-  CreatableSelect,
+  Combobox,
   Field,
   FieldError,
   FieldFeedback,
@@ -19,11 +18,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useSnowflakeConnectionListUsers } from "@app/hooks/api/appConnections/snowflake";
-import { TSnowflakeUser } from "@app/hooks/api/appConnections/snowflake/types";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
-
-// The create-option row shows its own label ("Add user ...") while the form value stays the raw username.
-type TUserOption = TSnowflakeUser & { label?: string };
 
 const RSA_MODULUS_LENGTHS = [2048, 4096] as const;
 
@@ -49,27 +44,23 @@ export const SnowflakeUserKeyPairRotationParametersFields = () => {
         render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
           <Field data-invalid={Boolean(error)}>
             <FieldLabelWithTooltip htmlFor="snowflake-user">User</FieldLabelWithTooltip>
-            <CreatableSelect<TUserOption>
-              inputId="snowflake-user"
+            <Combobox
+              id="snowflake-user"
               isLoading={isUsersPending && Boolean(connectionId) && !isUpdate}
               isDisabled={!connectionId || isUpdate}
               value={users?.find((user) => user.name === value) ?? (value ? { name: value } : null)}
               onBlur={onBlur}
-              onChange={(option) => {
-                const selectedUser = option as SingleValue<TUserOption>;
-                onChange(selectedUser?.name ?? null);
+              onValueChange={(selectedUser) => onChange(selectedUser?.name ?? null)}
+              creation={{
+                mode: "inline",
+                onCreate: (inputValue) => onChange(inputValue),
+                formatLabel: (inputValue) => `Add user "${inputValue}"`,
+                emptyLabel: "Add user"
               }}
-              onCreateOption={(inputValue) => onChange(inputValue)}
-              getNewOptionData={(inputValue) => ({
-                name: inputValue,
-                label: `Add user "${inputValue}"`
-              })}
-              isValidNewOption={(inputValue) => inputValue.trim().length > 0}
               options={users}
               placeholder="Select or add a new user..."
-              getOptionLabel={(option) => option.label ?? option.name}
+              getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.name}
-              isClearable
               isError={Boolean(error)}
               aria-describedby="snowflake-user-feedback"
             />

@@ -43,7 +43,6 @@ export const sendApprovalEmailsFn = async ({
     }))
   );
 
-  // now we need to go through each of the reviewers and print out all the commits that they need to approve
   for await (const reviewerUser of policy.userApprovers) {
     await smtpService.sendMail({
       recipients: [reviewerUser?.email as string],

@@ -2,6 +2,7 @@ import React, {
   ChangeEvent,
   DragEvent,
   forwardRef,
+  type JSX,
   useImperativeHandle,
   useRef,
   useState

@@ -71,7 +71,10 @@ const createGuard = ({
         }))
       )
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
+    orgDAL: {
+      findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }),
+      findActorsWithActiveOrgAccess: vi.fn().mockResolvedValue({ userIds: new Set(), identityIds: new Set() })
+    } as never,
     projectDAL: { findById: vi.fn().mockResolvedValue({ id: PROJECT_ID, type: "secret-manager" }) } as never,
     userDAL: { findById: vi.fn().mockResolvedValue({ id: USER_ID, email: targetEmail }) } as never,
     membershipUserDAL: {
