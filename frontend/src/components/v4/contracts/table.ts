@@ -65,6 +65,7 @@ export const tableDefinition = {
     "Native table/header/cell semantics, labelled selection and aria-sort buttons.",
     "selectionDisabledReason(row) disables that row's selection Checkbox, shows the reason in a tooltip and sets it as the Checkbox's accessible description. Header select-all skips and does not count those rows; isSelectable remains for rows that need no explanation.",
     "With virtual rows, screen readers still hear the total row count and each row's real position.",
+    "A truncated cell never clips the focus ring of a control rendered in it, and Tab scrolls a control far enough above the scroll frame's bottom edge to show its whole ring.",
     "Focus remains on native controls; loading and selected totals announced politely.",
     'Each row action is a named button: "<label> for <rowLabel>", and the More trigger is "More actions for <rowLabel>" unless menuLabel renames it. A disabled action carries its reason as its accessible description and in its tooltip. The header cell names the column Actions for screen readers.',
     "After load-more appends rows, the table scrolls the first new row into view and moves focus to it, so keyboard and screen reader users continue from what just arrived.",

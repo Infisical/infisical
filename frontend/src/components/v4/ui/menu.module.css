@@ -39,6 +39,7 @@
   width: min(var(--v4-size-popover), var(--radix-popper-available-width, 100vw));
   max-height: var(--radix-popper-available-height, none);
   overflow-y: auto;
+  scroll-padding-block: var(--v4-focus-clearance);
   padding: var(--v4-space-12);
 }
 .tooltip {

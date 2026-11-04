@@ -71,6 +71,9 @@
 }
 
 .v4 {
+  /* How far a focus ring reaches past its control: an outline size-focus-ring wide past an equal
+     offset, or a field's size-focus-glow. Overflow containers keep this much clear at their edges. */
+  --v4-focus-clearance: max(var(--v4-size-focus-glow), 2 * var(--v4-size-focus-ring));
   --default-transition-duration: var(--v4-duration-fast);
   --default-transition-timing-function: var(--v4-ease-fade);
   --background: var(--color-background);
@@ -435,8 +438,25 @@
   padding: var(--v4-dialog-pad);
   gap: var(--v4-space-content-group);
 }
+/* Every overlay scroller keeps --v4-focus-clearance clear at its block edges, so overflow never
+   clips the ring of the first or last control, or of one Tab scrolls to an edge. */
+.v4
+  :is(
+    [data-slot="dialog-scroll"],
+    [data-slot="alert-dialog-scroll"],
+    [data-slot="sheet-scroll"],
+    [data-slot="dialog-content"],
+    [data-slot="alert-dialog-content"],
+    [data-slot="sheet-content"]
+  ) {
+  scroll-padding-block: var(--v4-focus-clearance);
+}
+.v4 [data-slot="scroll-area-viewport"] {
+  scroll-padding: var(--v4-focus-clearance);
+}
 .v4 [data-slot="alert-dialog-scroll"]:has(+ [data-slot="alert-dialog-footer"]) {
-  padding-bottom: 0;
+  padding-bottom: var(--v4-focus-clearance);
+  margin-bottom: calc(-1 * var(--v4-focus-clearance));
 }
 .v4 [data-slot="dialog-head"] {
   display: flex;

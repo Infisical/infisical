@@ -74,6 +74,7 @@ Exports: Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 ## Accessibility
 
 - Title and Description name the dialog. Focus stays inside it and returns to the trigger. Escape inside an open editor closes that editor before the dialog.
+- A focus ring is never clipped by the scroll region under the pinned header or above the pinned footer: the content pad clears the ring of the first and last control, and Tab scrolls a control the ring's reach (size-focus-ring outline past an equal offset, or size-focus-glow, whichever is larger) inside either edge.
 
 ## Use cases
 

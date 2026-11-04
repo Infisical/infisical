@@ -38,7 +38,8 @@ export const baselineOverlays = [
       "DiscardChangesAlertDialog is the v3 discard prompt: a danger alert with the alert icon, title (default Discard Changes?), description (default Your changes will be lost.), Keep Editing and a destructive Discard that calls onDiscard. useDiscardChangesGuard({ isDirty, onDiscard }) returns the v3 shape (requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen) plus discardDialogProps to spread on the prompt. requestDiscard calls onDiscard at once when clean and opens the prompt when dirty; route a Dialog or Sheet onOpenChange(false) through it."
     ],
     accessibility: [
-      "Title and Description name the alert dialog. Focus starts on Cancel and returns to the trigger on close. The dialog stays inside the viewport, and Escape inside an open editor closes that editor first."
+      "Title and Description name the alert dialog. Focus starts on Cancel and returns to the trigger on close. The dialog stays inside the viewport, and Escape inside an open editor closes that editor first.",
+      "A focus ring is never clipped where the scroll region meets the footer: the region keeps the ring's reach (size-focus-ring outline past an equal offset, or size-focus-glow, whichever is larger) clear below its last control, such as the confirmText field, without moving the footer, and Tab scrolls a control that far inside either edge."
     ],
     limitations: [
       "Action does not await a request or infer success; prevent its default close or control open while an async operation settles."
@@ -186,7 +187,8 @@ export const baselineOverlays = [
       "For a form, route onOpenChange(false) through useDiscardChangesGuard so a dirty dialog asks with DiscardChangesAlertDialog before it closes."
     ],
     accessibility: [
-      "Title and Description name the dialog. Focus stays inside it and returns to the trigger. Escape inside an open editor closes that editor before the dialog."
+      "Title and Description name the dialog. Focus stays inside it and returns to the trigger. Escape inside an open editor closes that editor before the dialog.",
+      "A focus ring is never clipped by the scroll region under the pinned header or above the pinned footer: the content pad clears the ring of the first and last control, and Tab scrolls a control the ring's reach (size-focus-ring outline past an equal offset, or size-focus-glow, whichever is larger) inside either edge."
     ],
     limitations: [
       "Dialog does not submit forms, await requests or choose success/error copy; the task owner controls those states and closure."
@@ -649,7 +651,8 @@ export const baselineOverlays = [
       "pending on SheetContent (v3 isPending) blocks Escape, outside clicks and focus moves, and disables the corner close and SheetClose while a save is in flight; the content is aria-busy. Clicks on a toast never dismiss the sheet. Route onOpenChange(false) through useDiscardChangesGuard so a dirty form asks with DiscardChangesAlertDialog first."
     ],
     accessibility: [
-      "Provide SheetTitle and SheetDescription. Focus stays in the sheet and returns to the trigger. Escape inside an open editor closes the editor before the sheet."
+      "Provide SheetTitle and SheetDescription. Focus stays in the sheet and returns to the trigger. Escape inside an open editor closes the editor before the sheet.",
+      "A focus ring is never clipped by the scroll region under the pinned header or above the pinned footer: SheetBody's inset clears the ring of the first and last control, and Tab scrolls a control the ring's reach (size-focus-ring outline past an equal offset, or size-focus-glow, whichever is larger) inside either edge."
     ],
     limitations: [
       "Sheet does not own request state or automatically preserve unsaved work; the host passes pending and routes closing through useDiscardChangesGuard."

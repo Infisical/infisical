@@ -10,6 +10,9 @@
   overflow: auto;
   position: relative;
 }
+.tableScroll {
+  scroll-padding-block: var(--v4-focus-clearance);
+}
 .gridScroll {
   background: var(--v4-surface);
   border: var(--v4-size-control-border) solid var(--v4-line);
@@ -1049,12 +1052,18 @@ button.rowTitle::after {
   outline: var(--v4-size-focus-ring) solid var(--v4-ink);
   outline-offset: var(--v4-size-focus-ring);
 }
+/* The overflow that truncates a cell would clip the ring of a control rendered in it, so the box
+   reaches --v4-focus-clearance past the text on every side and gives it back as negative margin.
+   content-box keeps min-width and a column's maxWidth on the text, as before. */
 .tableValue,
 .tablePrimary {
+  box-sizing: content-box;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: var(--v4-size-cell-min);
+  padding: var(--v4-focus-clearance);
+  margin: calc(-1 * var(--v4-focus-clearance));
 }
 .tablePrimary {
   font-family: var(--v4-type-mono-font-family);

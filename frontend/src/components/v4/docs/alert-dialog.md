@@ -60,6 +60,7 @@ Exports: AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 ## Accessibility
 
 - Title and Description name the alert dialog. Focus starts on Cancel and returns to the trigger on close. The dialog stays inside the viewport, and Escape inside an open editor closes that editor first.
+- A focus ring is never clipped where the scroll region meets the footer: the region keeps the ring's reach (size-focus-ring outline past an equal offset, or size-focus-glow, whichever is larger) clear below its last control, such as the confirmText field, without moving the footer, and Tab scrolls a control that far inside either edge.
 
 ## Use cases
 

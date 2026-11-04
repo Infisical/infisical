@@ -73,6 +73,7 @@ Exports: Sheet, SheetBody, SheetClose, SheetContent, SheetDescription, SheetFoot
 ## Accessibility
 
 - Provide SheetTitle and SheetDescription. Focus stays in the sheet and returns to the trigger. Escape inside an open editor closes the editor before the sheet.
+- A focus ring is never clipped by the scroll region under the pinned header or above the pinned footer: SheetBody's inset clears the ring of the first and last control, and Tab scrolls a control the ring's reach (size-focus-ring outline past an equal offset, or size-focus-glow, whichever is larger) inside either edge.
 
 ## Use cases
 
