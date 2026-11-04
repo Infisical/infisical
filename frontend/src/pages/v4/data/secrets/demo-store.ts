@@ -35,7 +35,8 @@ const emptied = (fixtures: SecretsFixtures): SecretsFixtures => ({
   honeyTokens: [],
   proxiedServices: [],
   secretSyncs: [],
-  commits: []
+  commits: [],
+  folderAccess: { ...fixtures.folderAccess, grants: [] }
 });
 
 const stores = {

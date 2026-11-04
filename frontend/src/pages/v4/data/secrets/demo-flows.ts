@@ -5,6 +5,7 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { type SecretVersions, SecretType } from "@app/hooks/api/secrets/types";
 
 import type { SecretsFlowsAdapter } from "./contract-flows";
+import { secretsAccessDemo } from "./demo-access";
 import { recordDemoCommit, secretsCommitsDemo } from "./demo-commits";
 import { fakeLeaseData } from "./demo-leases";
 import { secretsManagedDemo } from "./demo-managed";
@@ -180,6 +181,7 @@ const dynamicAt =
 export const secretsFlowsDemo: SecretsFlowsAdapter = {
   ...secretsManagedDemo,
   ...secretsCommitsDemo,
+  ...secretsAccessDemo,
   useDynamicSecretDetails: ({ projectSlug, environmentSlug, path, name }) => {
     const entry = useStore()
       .use()

@@ -164,133 +164,6 @@ const byAdminThenName = (a: Actor, b: Actor) =>
 const toggle = <T,>(values: T[], value: T) =>
   values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value];
 
-const hoursFromNow = (hours: number) => new Date(Date.now() + hours * 3600000).toISOString();
-
-export const createAccessState = (): AccessState => ({
-  members: [
-    {
-      type: "user",
-      id: "avery",
-      name: "Avery Chen",
-      subtitle: "avery.chen@example.test",
-      isProjectAdmin: true,
-      roles: ["Admin"],
-      inProject: true
-    },
-    {
-      type: "user",
-      id: "jordan",
-      name: "Jordan Lee",
-      subtitle: "jordan.lee@example.test",
-      isProjectAdmin: false,
-      roles: ["Developer"],
-      inProject: true
-    },
-    {
-      type: "user",
-      id: "priya",
-      name: "Priya Natarajan",
-      subtitle: "priya.natarajan@example.test",
-      isProjectAdmin: false,
-      roles: ["Viewer"],
-      inProject: true
-    },
-    {
-      type: "user",
-      id: "sam",
-      name: "Sam Rivera",
-      subtitle: "sam.rivera@example.test",
-      isProjectAdmin: false,
-      roles: ["No Access"],
-      inProject: true
-    },
-    {
-      type: "user",
-      id: "noor",
-      name: "Noor Haddad",
-      subtitle: "noor.haddad@example.test",
-      isProjectAdmin: false,
-      roles: ["No Access"],
-      inProject: true
-    },
-    {
-      type: "identity",
-      id: "ci-deployer",
-      name: "ci-deployer",
-      subtitle: "Machine identity",
-      isProjectAdmin: false,
-      roles: ["Developer"],
-      inProject: true
-    },
-    {
-      type: "identity",
-      id: "backup-exporter",
-      name: "backup-exporter",
-      subtitle: "Machine identity",
-      isProjectAdmin: false,
-      roles: ["No Access"],
-      inProject: true
-    },
-    {
-      type: "identity",
-      id: "reporting-sync",
-      name: "reporting-sync",
-      subtitle: "Machine identity",
-      isProjectAdmin: false,
-      roles: ["No Access"],
-      inProject: true
-    },
-    {
-      type: "user",
-      id: "morgan",
-      name: "Morgan Diaz",
-      subtitle: "morgan.diaz@example.test",
-      isProjectAdmin: false,
-      roles: [],
-      inProject: false
-    },
-    {
-      type: "user",
-      id: "taylor",
-      name: "taylor.brooks@example.test",
-      subtitle: "Invite pending",
-      isProjectAdmin: false,
-      roles: [],
-      inProject: false
-    },
-    {
-      type: "identity",
-      id: "terraform-runner",
-      name: "terraform-runner",
-      subtitle: "Machine identity",
-      isProjectAdmin: false,
-      roles: [],
-      inProject: false
-    }
-  ],
-  grants: {
-    [grantKey("dev", "/api")]: {
-      "user:jordan": {
-        permission: SecretFolderRole.Edit,
-        isTemporary: false,
-        temporaryRange: null,
-        temporaryAccessEndTime: null
-      },
-      "user:sam": {
-        permission: SecretFolderRole.Read,
-        isTemporary: true,
-        temporaryRange: "4h",
-        temporaryAccessEndTime: hoursFromNow(4)
-      },
-      "identity:backup-exporter": {
-        permission: SecretFolderRole.List,
-        isTemporary: true,
-        temporaryRange: "1d",
-        temporaryAccessEndTime: hoursFromNow(-2)
-      }
-    }
-  }
-});
 
 function TierOptions({
   activeTier,
@@ -976,7 +849,7 @@ export function FolderAccessSheet({
             </div>
           </SheetBody>
           <SheetFooter className={styles.footerNote}>
-            <SmallText muted>Changes save automatically to local demo data</SmallText>
+            <SmallText muted>Changes save automatically</SmallText>
           </SheetFooter>
         </SheetContent>
       </Sheet>

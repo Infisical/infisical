@@ -37,12 +37,14 @@ import {
 import { useCreateSharedSecret } from "@app/hooks/api/secretSharing/mutations";
 
 import type { SecretsFlowsAdapter } from "./contract-flows";
+import { secretsAccessLive } from "./live-access";
 import { secretsCommitsLive } from "./live-commits";
 import { secretsManagedLive } from "./live-managed";
 
 export const secretsFlowsLive: SecretsFlowsAdapter = {
   ...secretsManagedLive,
   ...secretsCommitsLive,
+  ...secretsAccessLive,
   useDynamicSecretDetails: useGetDynamicSecretDetails,
   useCreateDynamicSecret,
   useUpdateDynamicSecret,
