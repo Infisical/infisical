@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useRouterState } from "@tanstack/react-router";
 
 import {
   type DashboardProjectSecretsOverview,
@@ -12,72 +11,23 @@ import {
   CommitType,
   type TSecretApprovalRequest
 } from "@app/hooks/api/secretApprovalRequest/types";
-import { type SecretV3RawSanitized, SecretType } from "@app/hooks/api/secrets/types";
+import { SecretType } from "@app/hooks/api/secrets/types";
 
-import { createFixtureStore } from "../fixture-store";
 import type { SecretsAdapter } from "./contract";
+import { secretsFlowsDemo } from "./demo-flows";
 import {
-  createSecretsFixtures,
-  DEMO_USER,
-  type DemoSecret,
-  type SecretsFixtures
-} from "./fixtures";
-
-const SCENARIOS = [
-  "overview",
-  "compare",
-  "permissions",
-  "loading",
-  "error",
-  "empty",
-  "no-environments",
-  "legacy",
-  "large"
-] as const;
-type Scenario = (typeof SCENARIOS)[number];
-
-const useScenario = (): Scenario => {
-  const value = useRouterState({
-    select: (state) => new URLSearchParams(state.location.searchStr).get("scenario")
-  });
-  return SCENARIOS.find((scenario) => scenario === value) ?? "overview";
-};
-
-const emptied = (fixtures: SecretsFixtures): SecretsFixtures => ({
-  ...fixtures,
-  secrets: [],
-  folders: [],
-  imports: [],
-  dynamicSecrets: [],
-  rotations: [],
-  honeyTokens: [],
-  proxiedServices: []
-});
-
-const stores = {
-  base: createFixtureStore(createSecretsFixtures(false)),
-  large: createFixtureStore(createSecretsFixtures(true)),
-  empty: createFixtureStore(emptied(createSecretsFixtures(false)))
-};
-const recovered = createFixtureStore(false);
-
-const storeOf = (scenario: Scenario) => {
-  if (scenario === "large") return stores.large;
-  if (scenario === "empty") return stores.empty;
-  return stores.base;
-};
-
-const useStore = () => storeOf(useScenario());
-
-const now = () => new Date().toISOString();
-const childPath = (path: string, name: string) => `${path === "/" ? "" : path}/${name}`;
-const within = (path: string, folder: string) => path === folder || path.startsWith(`${folder}/`);
-const sanitize = ({
-  value: _value,
-  valueOverride: _override,
-  projectId: _project,
-  ...secret
-}: DemoSecret): SecretV3RawSanitized => secret;
+  childPath,
+  now,
+  recordVersion,
+  recovered,
+  sanitize,
+  secretAt,
+  updateSecrets,
+  useScenario,
+  useStore,
+  within
+} from "./demo-store";
+import { DEMO_USER, type DemoSecret, type SecretsFixtures } from "./fixtures";
 
 const overviewOf = (
   state: SecretsFixtures,
@@ -255,31 +205,11 @@ const overviewOf = (
   };
 };
 
-const updateSecrets = (
-  store: ReturnType<typeof useStore>,
-  match: (secret: DemoSecret) => boolean,
-  change: (secret: DemoSecret) => DemoSecret | null
-) =>
-  store.update((state) => ({
-    ...state,
-    secrets: state.secrets.flatMap((secret) => {
-      if (!match(secret)) return [secret];
-      const next = change(secret);
-      return next ? [next] : [];
-    })
-  }));
-
-const secretAt =
-  (projectId: string, environment: string, path: string, key: string) => (secret: DemoSecret) =>
-    secret.projectId === projectId &&
-    secret.env === environment &&
-    secret.path === path &&
-    secret.key === key;
-
 const reviewed = (request: TSecretApprovalRequest, patch: Partial<TSecretApprovalRequest>) =>
   ({ ...request, ...patch, updatedAt: now() }) as TSecretApprovalRequest;
 
 export const secretsDemo: SecretsAdapter = {
+  ...secretsFlowsDemo,
   useProject: (projectId) => {
     const scenario = useScenario();
     const project = useStore()
@@ -388,6 +318,16 @@ export const secretsDemo: SecretsAdapter = {
       isPending: false,
       mutateAsync: async (dto) => {
         const { tags } = store.get();
+        const existing = store
+          .get()
+          .secrets.find(secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey));
+        if (
+          existing &&
+          dto.type !== SecretType.Personal &&
+          dto.secretValue !== undefined &&
+          dto.secretValue !== existing.value
+        )
+          recordVersion(store, existing);
         updateSecrets(
           store,
           secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey),

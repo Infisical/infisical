@@ -24,8 +24,10 @@ import {
 import { useGetWsTags } from "@app/hooks/api/tags/queries";
 
 import type { SecretsAdapter } from "./contract";
+import { secretsFlowsLive } from "./live-flows";
 
 export const secretsLive: SecretsAdapter = {
+  ...secretsFlowsLive,
   useProject: useGetWorkspaceById,
   useTags: useGetWsTags,
   useOverview: useGetProjectSecretsOverview,

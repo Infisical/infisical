@@ -4,6 +4,10 @@ import {
   DynamicSecretStatus,
   type TDynamicSecret
 } from "@app/hooks/api/dynamicSecret/types";
+import {
+  DynamicSecretLeaseStatus,
+  type TDynamicSecretLease
+} from "@app/hooks/api/dynamicSecretLease/types";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import type { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
@@ -25,15 +29,19 @@ import type { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { SecretRotation, SecretRotationStatus } from "@app/hooks/api/secretRotationsV2/enums";
 import type { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2/types";
 import type { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
+import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import type { WsTag } from "@app/hooks/api/tags/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
+import { type DemoFolderAccess, seedFolderAccess } from "./demo-access-seed";
+import { type DemoCommit, seedDemoCommits } from "./demo-commits-seed";
+import { seedSecretSyncs } from "./demo-syncs";
 
 type Scope = { projectId: string; environment: string; path: string };
 export type DemoSecret = SecretV3RawSanitized & { projectId: string; path: string };
 export type DemoFolder = TSecretFolder & Scope;
 export type DemoImport = TSecretImport & Scope;
-export type DemoDynamicSecret = TDynamicSecret & Scope;
+export type DemoDynamicSecret = TDynamicSecret & Scope & { inputs?: unknown };
 export type DemoProxiedService = TDashboardProxiedService & { projectId: string };
 export type SecretsFixtures = {
   projects: Project[];
@@ -46,6 +54,19 @@ export type SecretsFixtures = {
   honeyTokens: TDashboardHoneyToken[];
   proxiedServices: DemoProxiedService[];
   approvals: TSecretApprovalRequest[];
+  versionHistory: Record<string, DemoVersion[]>;
+  leases: Record<string, TDynamicSecretLease[]>;
+  secretSyncs: TSecretSync[];
+  commits: DemoCommit[];
+  folderAccess: DemoFolderAccess;
+};
+export type DemoVersion = {
+  version: number;
+  value: string;
+  createdAt: string;
+  actor: string;
+  actorType: string;
+  redacted?: boolean;
 };
 
 export const DEMO_USER = {
@@ -63,7 +84,8 @@ const environments: ProjectEnv[] = [
   { id: "env-prod", name: "Production", slug: "prod" }
 ];
 const all = environments.map((environment) => environment.slug);
-const envOf = (slug: string) => environments.find((environment) => environment.slug === slug)!;
+export const envOf = (slug: string) =>
+  environments.find((environment) => environment.slug === slug)!;
 
 const project = (id: string, description: string): Project => ({
   __v: 0,
@@ -201,6 +223,20 @@ const dynamicSecret = (
   id: id("payments-api", environment, path, "dynamic", name),
   name,
   type: DynamicSecretProviders.SqlDatabase,
+  inputs: {
+    client: "postgres",
+    host: "fake-db.payments.internal",
+    port: 5432,
+    database: "payments",
+    username: "fake-admin",
+    password: "fake-password",
+    creationStatement:
+      "CREATE USER \"{{username}}\" WITH ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';",
+    revocationStatement: 'DROP USER "{{username}}";',
+    renewStatement: "ALTER USER \"{{username}}\" VALID UNTIL '{{expiration}}';"
+  },
+  usernameTemplate: "{{randomUsername}}",
+  metadata: [],
   defaultTTL: "1h",
   maxTTL: "24h",
   createdAt: created,
@@ -370,6 +406,34 @@ const approval = (
   }))
 });
 
+const lease = (
+  dynamicSecretId: string,
+  index: number,
+  hours: number,
+  failed = false
+): TDynamicSecretLease => ({
+  id: `${dynamicSecretId}:lease-${index}`,
+  version: 1,
+  expireAt: new Date(Date.now() + hours * 3600000).toISOString(),
+  dynamicSecretId,
+  createdAt: created,
+  updatedAt: created,
+  ...(failed
+    ? {
+        status: DynamicSecretLeaseStatus.FailedDeletion,
+        statusDetails: "The provider refused to revoke this lease."
+      }
+    : {})
+});
+
+const seedLeases = (secrets: DemoDynamicSecret[]) =>
+  Object.fromEntries(
+    secrets.map((entry) => [
+      entry.id,
+      [lease(entry.id, 1, 0.75), lease(entry.id, 2, 20, Boolean(entry.status))]
+    ])
+  );
+
 export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
   const secrets: DemoSecret[] = [];
   secretsAt(
@@ -457,7 +521,43 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
     secrets
   );
 
+  const dynamicSecrets = [
+    dynamicSecret("/", "dev", "payments-db-readonly"),
+    dynamicSecret("/", "staging", "payments-db-readonly"),
+    dynamicSecret("/", "dev", "payments-db-reporting"),
+    dynamicSecret("/api", "dev", "ledger-db-readonly"),
+    dynamicSecret("/api", "prod", "ledger-db-readonly"),
+    dynamicSecret("/api", "dev", "refunds-db-writer", {
+      status: DynamicSecretStatus.FailedDeletion,
+      statusDetails: "The database refused to drop 2 active lease users."
+    })
+  ];
   return {
+    versionHistory: {
+      [id("payments-api", "dev", "/", "DATABASE_URL")]: [
+        {
+          version: 3,
+          value: referencingDatabaseUrl,
+          createdAt: "2026-10-22T12:06:00Z",
+          actor: "Avery Chen",
+          actorType: "user"
+        },
+        {
+          version: 2,
+          value: "postgres://fake-user:fake-password@db.dev.example.test:5432/payments",
+          createdAt: "2026-10-21T16:40:00Z",
+          actor: "ci-deployer",
+          actorType: "identity"
+        },
+        {
+          version: 1,
+          value: "postgres://fake-user:fake-password@localhost:5432/payments",
+          createdAt: "2026-10-20T09:00:00Z",
+          actor: "Jordan Lee",
+          actorType: "user"
+        }
+      ]
+    },
     projects: [
       project("payments-api", "Billing and checkout service"),
       project("web-dashboard", "Customer web application"),
@@ -489,17 +589,11 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
       secretImport("/api", "dev", { environment: "dev", path: "/workers" }),
       secretImport("/api", "prod", { environment: "staging", path: "/api/v1" })
     ],
-    dynamicSecrets: [
-      dynamicSecret("/", "dev", "payments-db-readonly"),
-      dynamicSecret("/", "staging", "payments-db-readonly"),
-      dynamicSecret("/", "dev", "payments-db-reporting"),
-      dynamicSecret("/api", "dev", "ledger-db-readonly"),
-      dynamicSecret("/api", "prod", "ledger-db-readonly"),
-      dynamicSecret("/api", "dev", "refunds-db-writer", {
-        status: DynamicSecretStatus.FailedDeletion,
-        statusDetails: "The database refused to drop 2 active lease users."
-      })
-    ],
+    dynamicSecrets,
+    leases: seedLeases(dynamicSecrets),
+    secretSyncs: seedSecretSyncs(envOf),
+    commits: seedDemoCommits(secrets),
+    folderAccess: seedFolderAccess(),
     rotations: [
       rotation("/", "dev", "payments-app-db-creds", "payments-postgres", [
         "APP_DB_USERNAME",
