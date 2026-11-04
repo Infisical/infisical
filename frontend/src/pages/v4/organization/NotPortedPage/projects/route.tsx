@@ -1,6 +1,6 @@
 import { createFileRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 
-import { NotPortedPage } from "./NotPortedPage";
+import { NotPortedPage } from "../NotPortedPage";
 
 export const Route = createFileRoute("/v4/organizations/$orgId/projects/$")({
   beforeLoad: ({ context, location }) => {
@@ -9,5 +9,5 @@ export const Route = createFileRoute("/v4/organizations/$orgId/projects/$")({
     }
   },
   component: NotPortedPage,
-  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader")
+  pendingComponent: lazyRouteComponent(() => import("../../../V4PageLoader"), "V4PageLoader")
 });
