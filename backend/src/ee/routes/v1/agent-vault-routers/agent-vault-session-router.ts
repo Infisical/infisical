@@ -28,8 +28,8 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext } from "./agent-vault-router-fns";
-import { AgentVaultSessionActorSchema } from "./agent-vault-schemas";
+import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import { AgentVaultProjectIdSchema, AgentVaultSessionActorSchema } from "./agent-vault-schemas";
 
 const SessionAccessBundleSchema = z.object({
   id: z.string().uuid().nullable(),
@@ -62,6 +62,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       description: "List Agent Vault sessions",
       tags: [ApiDocsTags.AgentVaultSessions],
       querystring: z.object({
+        projectId: AgentVaultProjectIdSchema,
         scope: z
           .nativeEnum(AgentVaultSessionScope)
           .default(AgentVaultSessionScope.Mine)
@@ -93,9 +94,10 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { status, ...query } = req.query;
+      const { projectId: requestedProjectId, status, ...query } = req.query;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
       return server.services.agentVaultSession.listSessions({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         statuses: status,
         ...query
@@ -118,12 +120,17 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultSession.getSessionById({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSession(
+        req.permission.orgId,
+        req.params.sessionId
+      );
+      return server.services.agentVaultSession.getSessionById({
+        projectId,
         sessionId: req.params.sessionId,
         ctx: actorContext(req)
-      })
+      });
+    }
   });
 
   server.route({
@@ -136,6 +143,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       description: "Create an Agent Vault session with an access bundle you can reach",
       tags: [ApiDocsTags.AgentVaultSessions],
       body: z.object({
+        projectId: AgentVaultProjectIdSchema,
         accessBundles: slugSchema({ max: 64, field: "Access bundle" })
           .array()
           .min(1)
@@ -174,6 +182,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         200: z.object({
           session: z.object({
             id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
+            projectId: z.string().uuid().describe(AGENT_VAULT.projectId),
             label: z.string().nullable().describe(AGENT_VAULT.SESSION.label),
             token: z.string().describe(AGENT_VAULT.SESSION.token),
             expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
@@ -185,6 +194,8 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { projectId: requestedProjectId, ...body } = req.body;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
       // Snapshotted from the request, the way PAM's session create does it, so a deleted actor still names
       // the session it held. Nothing extra is queried for it.
       let actorEmail: string | null = null;
@@ -199,15 +210,15 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       const { session, token } = await server.services.agentVaultSession.mintSession({
         actorName,
         actorEmail,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
-        ...req.body
+        ...body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_SESSION_MINT,
           metadata: {
@@ -229,7 +240,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         }
       });
 
-      return { session: { ...session, token } };
+      return { session: { ...session, projectId, token } };
     }
   });
 
@@ -250,8 +261,12 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSession(
+        req.permission.orgId,
+        req.params.sessionId
+      );
       const { session, previousLabel } = await server.services.agentVaultSession.updateSessionLabel({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         sessionId: req.params.sessionId,
         label: req.body.label
@@ -261,7 +276,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
-          projectId: req.internalAgentVaultProjectId,
+          projectId,
           event: {
             type: EventType.AGENT_VAULT_SESSION_UPDATE,
             metadata: {
@@ -292,8 +307,12 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromSession(
+        req.permission.orgId,
+        req.params.sessionId
+      );
       const { session, revokedNow } = await server.services.agentVaultSession.revokeSession({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         sessionId: req.params.sessionId
       });
@@ -303,7 +322,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
-          projectId: req.internalAgentVaultProjectId,
+          projectId,
           event: {
             type: EventType.AGENT_VAULT_SESSION_REVOKE,
             metadata: { sessionId: session.id, label: session.label, ...describeSessionForAudit(session) }

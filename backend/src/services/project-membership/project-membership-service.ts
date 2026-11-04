@@ -2,7 +2,20 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  ProjectMembershipRole,
+  ProjectType,
+  ProjectVersion,
+  RESOURCE_SCOPE,
+  ResourceType,
+  TableName
+} from "@app/db/schemas";
+import {
+  clearPersonalValuesAfterRevoke,
+  TClearPersonalValuesDeps
+} from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -82,6 +95,8 @@ type TProjectMembershipServiceFactoryDep = {
   >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  agentVaultPersonalValueDAL: TClearPersonalValuesDeps["agentVaultPersonalValueDAL"];
+  identityGroupMembershipDAL: TClearPersonalValuesDeps["identityGroupMembershipDAL"];
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -110,7 +125,9 @@ export const projectMembershipServiceFactory = ({
   membershipRoleDAL,
   applicationMembershipCleanupService,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  agentVaultPersonalValueDAL,
+  identityGroupMembershipDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
     userIds: string[],
@@ -672,7 +689,29 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
+      // Agent Vault's own removal clears these too, in this order: grants, then the membership, then personal values.
+      // Without it a user added back later would get their old bundle grants and saved values again.
+      if (project.type === ProjectType.AgentVault) {
+        await membershipUserDAL.delete(
+          {
+            scope: RESOURCE_SCOPE,
+            scopeProjectId: project.id,
+            scopeResourceType: ResourceType.AgentVaultAccessBundle,
+            actorUserId: actorId
+          },
+          tx
+        );
+      }
+
       const membership = await membershipUserDAL.deleteById(lockedMembership.id, tx);
+
+      if (project.type === ProjectType.AgentVault) {
+        await clearPersonalValuesAfterRevoke(
+          { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+          { projectId: project.id, userIds: [actorId], identityIds: [], groupIds: [] },
+          tx
+        );
+      }
 
       await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
         {

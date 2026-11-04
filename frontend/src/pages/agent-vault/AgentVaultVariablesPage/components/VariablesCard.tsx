@@ -47,6 +47,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import {
   MAX_PERSONAL_VARIABLES,
   MAX_VARIABLES,
@@ -210,6 +211,7 @@ type Props = {
 };
 
 export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props) => {
+  const { projectId } = useProject();
   const isPersonal = scope === AgentVaultVariableScope.Personal;
   const revealValue = useRevealAgentVaultVariableValue();
 
@@ -236,7 +238,7 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
     setPagedSearchTerm(searchTerm);
     setPage(1);
   }
-  const { data, isPending } = useListAgentVaultVariables({
+  const { data, isPending } = useListAgentVaultVariables(projectId, {
     scope,
     search: searchTerm || undefined,
     orderBy: sortColumn,
@@ -248,7 +250,7 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
   // A search narrows totalCount, so whether the cap is reached is read off an unfiltered count.
-  const { data: unfilteredData } = useListAgentVaultVariables({ scope, limit: 1 });
+  const { data: unfilteredData } = useListAgentVaultVariables(projectId, { scope, limit: 1 });
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
     setPage(1);
@@ -358,7 +360,7 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
               <TooltipContent className="max-w-xs">
                 {isPersonal
                   ? `You can keep at most ${maxVariables} personal variables. Delete an unused one first.`
-                  : `Agent Vault can hold at most ${maxVariables} global variables. Delete an unused one first.`}
+                  : `This project can hold at most ${maxVariables} global variables. Delete an unused one first.`}
               </TooltipContent>
             </Tooltip>
           ) : (

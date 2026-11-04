@@ -15,6 +15,7 @@ import {
   FieldDescription,
   FieldLabel
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { actorIdsPayload } from "@app/helpers/agentVaultMembers";
 import { useDebounce } from "@app/hooks";
 import {
@@ -40,7 +41,8 @@ type Props = {
 };
 
 export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Props) => {
-  const addMembers = useAddAgentVaultAccessBundleMembers();
+  const { projectId } = useProject();
+  const addMembers = useAddAgentVaultAccessBundleMembers(projectId);
 
   const [selected, setSelected] = useState<Option[]>([]);
   const [search, setSearch] = useState("");
@@ -54,6 +56,7 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
   }, [isOpen]);
 
   const { data, isFetching } = useListAvailableAgentVaultAccessBundleMembers(
+    projectId,
     accessBundleId,
     { search: debouncedSearch.trim() || undefined },
     isOpen
@@ -111,7 +114,7 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
           <DialogTitle>Grant Access</DialogTitle>
           <DialogDescription>
             Whoever has access to this bundle can create sessions with it. They must already be a
-            member of Agent Vault.
+            member of this project.
           </DialogDescription>
         </DialogHeader>
 
@@ -133,7 +136,7 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
               emptyMessage={(inputValue) =>
                 inputValue
                   ? "No matches who do not already have this bundle."
-                  : "Everyone in Agent Vault already has this bundle."
+                  : "Everyone in this project already has this bundle."
               }
               clearAriaLabel="Clear all grantees"
               modal

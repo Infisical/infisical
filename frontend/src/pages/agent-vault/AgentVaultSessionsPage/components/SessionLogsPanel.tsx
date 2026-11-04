@@ -33,7 +33,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission } from "@app/context";
+import { useOrganization, useProjectPermission, useProject } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
@@ -101,12 +101,13 @@ type Props = {
 };
 
 export const SessionLogsPanel = ({ session }: Props) => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   // Only admins can read the settings; they need the storage type to show the right upgrade.
-  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(isAdmin);
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(projectId, isAdmin);
   // A session holds one bundle (AGENT_VAULT_MAX_SESSION_BUNDLES). Raising that cap needs a bundle
   // picker here: the rows offering Add Service matched no service, so they name no bundle.
   const accessBundle = session.accessBundles[0];
@@ -122,11 +123,15 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
   const { range, applyRange, isActive, canTail, isLive, isPausedForBudget, pauseForBudget } =
     useSessionLogsLiveTail(session);
-  const { history, live, arrived, isLiveGapUnfilled } = useGetAgentVaultSessionLogs(session.id, {
-    isLive,
-    from: range?.startDate,
-    to: range?.endDate
-  });
+  const { history, live, arrived, isLiveGapUnfilled } = useGetAgentVaultSessionLogs(
+    projectId,
+    session.id,
+    {
+      isLive,
+      from: range?.startDate,
+      to: range?.endDate
+    }
+  );
   const retryLive = () => live.refetch().catch(() => {});
   const {
     data,
@@ -406,8 +411,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
           {isAdmin && !isDefaultStorage && (
             <Button variant="av" asChild>
               <Link
-                to="/organizations/$orgId/agent-vault/settings"
-                params={{ orgId: currentOrg.id }}
+                to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
+                params={{ orgId: currentOrg.id, projectId }}
               >
                 Go to Settings
               </Link>
@@ -429,7 +434,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
             <EmptyDescription>
               {isAdmin
                 ? "Upgrade to see recorded logs and record what your agents reach."
-                : "Ask an Agent Vault administrator about upgrading."}
+                : "Ask a project admin about upgrading."}
             </EmptyDescription>
           </EmptyHeader>
           {isAdmin && (
@@ -448,7 +453,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
     const offDescription = isAdmin
       ? "Turn them on in Settings to record what your agents do."
-      : "Ask an Agent Vault administrator to turn them on.";
+      : "Ask a project admin to turn them on.";
 
     return (
       <Empty className="border">
@@ -458,7 +463,10 @@ export const SessionLogsPanel = ({ session }: Props) => {
         </EmptyHeader>
         {isAdmin && isActive && (
           <Button variant="av" asChild>
-            <Link to="/organizations/$orgId/agent-vault/settings" params={{ orgId: currentOrg.id }}>
+            <Link
+              to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
+              params={{ orgId: currentOrg.id, projectId }}
+            >
               Go to Settings
             </Link>
           </Button>
@@ -568,9 +576,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                   bucket&apos;s CORS rule may not allow this origin, or this network may block the
                   bucket.
                 </p>
-                {!isAdmin && (
-                  <p>Ask an Agent Vault administrator to check the bucket&apos;s CORS rule.</p>
-                )}
+                {!isAdmin && <p>Ask a project admin to check the bucket&apos;s CORS rule.</p>}
               </div>
             )}
             <AlertAction className="flex gap-2">
@@ -578,8 +584,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
               {isAdmin && !isDefaultStorage && (
                 <Button variant="outline" size="sm" asChild>
                   <Link
-                    to="/organizations/$orgId/agent-vault/settings"
-                    params={{ orgId: currentOrg.id }}
+                    to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
+                    params={{ orgId: currentOrg.id, projectId }}
                   >
                     Go to Settings
                   </Link>

@@ -13,8 +13,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-import { actorContext } from "./agent-vault-router-fns";
-import { AgentVaultServerUrlSchema } from "./agent-vault-schemas";
+import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import { AgentVaultProjectIdSchema, AgentVaultServerUrlSchema } from "./agent-vault-schemas";
 
 const AuthorizationViewSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId),
@@ -44,6 +44,7 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
         "Start an OAuth authorization for an MCP service: discovers the server's authorization server, registers a client, and returns the URL to sign in at.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       body: z.object({
+        projectId: AgentVaultProjectIdSchema,
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.OAUTH.accessBundleId),
         serverUrl: AgentVaultServerUrlSchema.describe(AGENT_VAULT.OAUTH.serverUrl),
         serviceId: z.string().uuid().optional().describe(AGENT_VAULT.OAUTH.serviceId),
@@ -80,12 +81,15 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) =>
-      server.services.agentVaultOauth.createAuthorization({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const { projectId: requestedProjectId, ...body } = req.body;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId);
+      return server.services.agentVaultOauth.createAuthorization({
+        projectId,
         ctx: actorContext(req),
-        ...req.body
-      })
+        ...body
+      });
+    }
   });
 
   // An action sub-resource rather than a PATCH of the status: completing exchanges a one-time code with a third
@@ -113,13 +117,18 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
       response: { 200: z.object({ authorization: AuthorizationViewSchema.describe(AGENT_VAULT.OAUTH.authorization) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) =>
-      server.services.agentVaultOauth.completeAuthorization({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAuthorization(
+        req.permission.orgId,
+        req.params.authorizationId
+      );
+      return server.services.agentVaultOauth.completeAuthorization({
+        projectId,
         ctx: actorContext(req),
         authorizationId: req.params.authorizationId,
         ...req.body
-      })
+      });
+    }
   });
 
   server.route({
@@ -135,11 +144,16 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
       response: { 200: z.object({ authorization: AuthorizationViewSchema.describe(AGENT_VAULT.OAUTH.authorization) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) =>
-      server.services.agentVaultOauth.getAuthorization({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAuthorization(
+        req.permission.orgId,
+        req.params.authorizationId
+      );
+      return server.services.agentVaultOauth.getAuthorization({
+        projectId,
         ctx: actorContext(req),
         authorizationId: req.params.authorizationId
-      })
+      });
+    }
   });
 };

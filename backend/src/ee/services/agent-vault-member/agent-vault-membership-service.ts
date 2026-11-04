@@ -583,7 +583,7 @@ export const agentVaultMembershipServiceFactory = ({
         await assertWillRetainProjectAdmin({
           scopeProjectId: projectId,
           excludeMembershipIds: membershipIds,
-          productLabel: "Agent Vault",
+          productLabel: "This project",
           tx
         });
       }
@@ -665,7 +665,7 @@ export const agentVaultMembershipServiceFactory = ({
       await assertWillRetainProjectAdmin({
         scopeProjectId: projectId,
         excludeMembershipIds: membershipIds,
-        productLabel: "Agent Vault",
+        productLabel: "This project",
         tx
       });
 

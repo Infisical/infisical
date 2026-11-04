@@ -22,7 +22,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from "@app/components/v3";
-import { useProjectPermission, useSubscription } from "@app/context";
+import { useProjectPermission, useSubscription, useProject } from "@app/context";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogHealth,
@@ -35,15 +35,17 @@ import { ProjectNavList } from "./ProjectNavLink";
 import type { NavItem, Submenu } from "./types";
 
 export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => void }) => {
+  const { projectId } = useProject();
   const { hasProjectRole } = useProjectPermission();
   const { setOpen: setIsIntroOpen } = useAgentVaultIntro();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
-  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(isAdmin);
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(projectId, isAdmin);
   const sessionLogSettings = sessionLogState?.settings ?? null;
-  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
+  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(projectId, isAdmin);
   const { subscription } = useSubscription();
   // An admin can use any bundle, but the nav only nags about the ones granted to them.
-  const { data: grantedRequiringSetup } = useListGrantedAgentVaultAccessBundlesRequiringSetup();
+  const { data: grantedRequiringSetup } =
+    useListGrantedAgentVaultAccessBundlesRequiringSetup(projectId);
   const needsSetup = Boolean(grantedRequiringSetup?.totalCount);
   const setupProgress = useAgentVaultSetupProgress();
 

@@ -378,7 +378,7 @@ const pamRoutes = route("/organizations/$orgId/pam", [
   ])
 ]);
 
-const agentVaultRoutes = route("/organizations/$orgId/agent-vault", [
+const agentVaultRoutes = route("/organizations/$orgId/projects/agent-vault/$projectId", [
   layout("agent-vault-layout", "agent-vault/layout.tsx", [
     index("redirects/agent-vault-index-redirect.tsx"),
     route("/sessions", "agent-vault/AgentVaultSessionsPage/route.tsx"),

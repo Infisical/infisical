@@ -36,9 +36,15 @@ import {
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useLeaveProject, useUpdateProject } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 const CONFIRM_KEYWORD = "confirm";
+
+const DELETE_CONSEQUENCES: Partial<Record<ProjectType, string>> = {
+  [ProjectType.AgentVault]:
+    "Running agents and proxies stop working, and its session logs can no longer be viewed. Session log files in your own bucket stay there."
+};
 
 export const DeleteProjectSection = () => {
   const navigate = useNavigate();
@@ -246,6 +252,9 @@ export const DeleteProjectSection = () => {
                 <AlertContent>
                   Permanently delete {currentProject?.name} and all of its data. This action is not
                   reversible.
+                  {currentProject && DELETE_CONSEQUENCES[currentProject.type] && (
+                    <> {DELETE_CONSEQUENCES[currentProject.type]}</>
+                  )}
                 </AlertContent>
               </Alert>
             </AlertDialogDescription>

@@ -864,3 +864,5 @@ export const AgentVaultBundleSkillSchema = z.object({
   description: z.string().describe(AGENT_VAULT.SKILL.description),
   latestVersion: z.number().describe(AGENT_VAULT.SKILL.latestVersion)
 });
+
+export const AgentVaultProjectIdSchema = z.string().uuid().optional().describe(AGENT_VAULT.projectId);

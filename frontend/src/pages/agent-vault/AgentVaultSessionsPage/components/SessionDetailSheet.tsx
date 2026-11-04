@@ -21,7 +21,7 @@ import {
   SheetTitle,
   Spinner
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
@@ -43,6 +43,7 @@ export const SessionDetailSheet = ({
   onRevoke,
   onEditLabel
 }: Props) => {
+  const { projectId } = useProject();
   const { isOpen, closeSheet } = useAgentVaultSheetState();
   const { currentOrg } = useOrganization();
 
@@ -121,8 +122,12 @@ export const SessionDetailSheet = ({
                           bundle.id ? (
                             <Link
                               key={bundle.id}
-                              to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                              params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                              params={{
+                                orgId: currentOrg.id,
+                                projectId,
+                                accessBundleId: bundle.id
+                              }}
                               className="group flex min-w-0 items-center gap-2"
                             >
                               <PackageIcon className="size-4 shrink-0 text-muted" />

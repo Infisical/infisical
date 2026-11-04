@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   useCreateAgentVaultSession,
@@ -116,16 +116,20 @@ type Props = {
 };
 
 export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
   const [bundleSearch, setBundleSearch] = useState("");
   const [debouncedBundleSearch] = useDebounce(bundleSearch);
-  const { data: accessBundles, isFetching: isSearchingBundles } = useListAgentVaultAccessBundles({
-    search: debouncedBundleSearch.trim() || undefined,
-    orderBy: "name",
-    orderDirection: "asc",
-    limit: 50
-  });
-  const createSession = useCreateAgentVaultSession();
+  const { data: accessBundles, isFetching: isSearchingBundles } = useListAgentVaultAccessBundles(
+    projectId,
+    {
+      search: debouncedBundleSearch.trim() || undefined,
+      orderBy: "name",
+      orderDirection: "asc",
+      limit: 50
+    }
+  );
+  const createSession = useCreateAgentVaultSession(projectId);
 
   const {
     control,
@@ -137,7 +141,10 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   const selectedBundle = watch("accessBundle");
   const ttlPreset = watch("ttlPreset");
 
-  const { data: selectedBundleDetails } = useGetAgentVaultAccessBundle(selectedBundle?.id ?? "");
+  const { data: selectedBundleDetails } = useGetAgentVaultAccessBundle(
+    projectId,
+    selectedBundle?.id ?? ""
+  );
   const needsSetup =
     selectedBundle && selectedBundleDetails?.id === selectedBundle.id
       ? selectedBundleDetails.services.filter(
@@ -345,8 +352,12 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
                   {hiddenNeedsSetupCount > 0 && (
                     <li className="px-2.5 py-1.5 text-xs">
                       <Link
-                        to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                        params={{ orgId: currentOrg.id, accessBundleId: selectedBundle.id }}
+                        to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId,
+                          accessBundleId: selectedBundle.id
+                        }}
                         className="underline underline-offset-2 hover:text-foreground"
                       >
                         {hiddenNeedsSetupCount} more in {selectedBundle.name}

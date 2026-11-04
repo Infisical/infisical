@@ -213,8 +213,7 @@ const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
 const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
   [ProjectType.CertificateManager]: "Certificate Manager",
   [ProjectType.SecretScanning]: "Secret Scanning",
-  [ProjectType.PAM]: "Privileged Access Manager",
-  [ProjectType.AgentVault]: "Agent Vault"
+  [ProjectType.PAM]: "Privileged Access Manager"
 };
 
 export const projectServiceFactory = ({
@@ -271,10 +270,8 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager,
     hasDeleteProtection
   }: TCreateProjectDTO) => {
-    if (type === ProjectType.AgentVault) {
-      throw new BadRequestError({
-        message: "Agent Vault projects cannot be created directly. One is created for your organization automatically."
-      });
+    if (type === ProjectType.AgentVault && template !== InfisicalProjectTemplate.Default) {
+      throw new BadRequestError({ message: "Agent Vault projects don't use project templates" });
     }
 
     const organization = await orgDAL.findOne({ id: actorOrgId });
@@ -308,6 +305,23 @@ export const projectServiceFactory = ({
           throw new BadRequestError({
             message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
           });
+        }
+      }
+
+      if (type === ProjectType.AgentVault) {
+        // Plans resolve at the root org, so the limit covers the root and its sub-orgs together. The root's lock
+        // keeps two sub-orgs from both passing the count. Missing on a plan cached before the field existed.
+        const limit = plan.agentVaultProjectLimit === undefined ? 3 : plan.agentVaultProjectLimit;
+        if (typeof limit === "number") {
+          await tx.raw("SELECT pg_advisory_xact_lock(?)", [
+            PgSqlLock.CreateAgentVaultProject(organization.rootOrgId ?? organization.id)
+          ]);
+          const count = await projectDAL.countAgentVaultProjectsInOrgTree(organization.id, tx);
+          if (count >= limit) {
+            throw new BadRequestError({
+              message: `Your organization can have up to ${limit} Agent Vault projects. Delete one you no longer use, or contact us to raise the limit.`
+            });
+          }
         }
       }
 
@@ -680,7 +694,7 @@ export const projectServiceFactory = ({
             }
           }
         }
-      } else if (createDefaultEnvs) {
+      } else if (createDefaultEnvs && type !== ProjectType.AgentVault) {
         envs = await projectEnvDAL.insertMany(
           DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
           tx
@@ -813,12 +827,6 @@ export const projectServiceFactory = ({
     if (project.type === ProjectType.PAM) {
       throw new BadRequestError({
         message: "Privileged Access Manager projects cannot be deleted."
-      });
-    }
-
-    if (project.type === ProjectType.AgentVault) {
-      throw new BadRequestError({
-        message: "Agent Vault projects cannot be deleted."
       });
     }
 
@@ -1002,9 +1010,9 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
-    // The org-scoped products own one implicit project each, so its name, slug and delete protection are
-    // not the caller's to change. Create and delete are already guarded; this route was not.
-    if (project.type === ProjectType.AgentVault || project.type === ProjectType.PAM) {
+    // PAM owns one implicit project per org, so its name, slug and delete protection are not the caller's to
+    // change. Create and delete are already guarded; this route was not.
+    if (project.type === ProjectType.PAM) {
       throw new BadRequestError({
         message: `${PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type]} is managed for your organization and cannot be renamed or reconfigured here.`
       });
@@ -2305,8 +2313,7 @@ export const projectServiceFactory = ({
 
     const orgScopedProductPath: Partial<Record<ProjectType, string>> = {
       [ProjectType.CertificateManager]: "cert-manager",
-      [ProjectType.PAM]: "pam",
-      [ProjectType.AgentVault]: "agent-vault"
+      [ProjectType.PAM]: "pam"
     };
     const orgScopedPath = orgScopedProductPath[project.type as ProjectType];
 

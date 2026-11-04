@@ -206,7 +206,7 @@ export const AppConnectionRow = ({
                 ({
                   to:
                     project.type === ProjectType.AgentVault
-                      ? "/organizations/$orgId/agent-vault/settings"
+                      ? "/organizations/$orgId/projects/agent-vault/$projectId/settings"
                       : `${getProjectBaseURL(project.type)}/app-connections`,
                   params: {
                     orgId: currentOrg?.id || "",

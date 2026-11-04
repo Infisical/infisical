@@ -32,6 +32,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
 import {
   AgentVaultTrafficPolicy,
@@ -124,8 +125,9 @@ type Props = {
 };
 
 export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Props) => {
-  const createProxy = useCreateAgentVaultProxy();
-  const updateProxy = useUpdateAgentVaultProxy();
+  const { projectId } = useProject();
+  const createProxy = useCreateAgentVaultProxy(projectId);
+  const updateProxy = useUpdateAgentVaultProxy(projectId);
 
   const lastProxy = useRef(proxy);
   if (isOpen) lastProxy.current = proxy;

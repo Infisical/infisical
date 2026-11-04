@@ -39,6 +39,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { actorIdsPayload } from "@app/helpers/agentVaultMembers";
 import {
   getUserTablePreference,
@@ -61,6 +62,7 @@ type Props = {
 };
 
 export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
+  const { projectId } = useProject();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<TAgentVaultMember | null>(null);
 
@@ -77,12 +79,16 @@ export const ManageAccessSheet = ({ accessBundle, onOpenChange }: Props) => {
     setPage(1);
   }, [accessBundle?.id]);
 
-  const { data, isPending } = useListAgentVaultAccessBundleMembers(accessBundle?.id ?? "", {
-    search: debouncedSearch.trim() || undefined,
-    limit: perPage,
-    offset: (page - 1) * perPage
-  });
-  const revokeMembers = useRevokeAgentVaultAccessBundleMembers();
+  const { data, isPending } = useListAgentVaultAccessBundleMembers(
+    projectId,
+    accessBundle?.id ?? "",
+    {
+      search: debouncedSearch.trim() || undefined,
+      limit: perPage,
+      offset: (page - 1) * perPage
+    }
+  );
+  const revokeMembers = useRevokeAgentVaultAccessBundleMembers(projectId);
 
   const members = data?.members ?? [];
   const totalCount = data?.totalCount ?? 0;

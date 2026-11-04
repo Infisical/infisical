@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, linkOptions, useParams } from "@tanstack/react-router";
 import { Check, Plus, Star } from "lucide-react";
 
-import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
+import { UpgradeGate } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
@@ -22,8 +22,7 @@ import {
   OrgPermissionProjectActions,
   OrgPermissionSubjects,
   useOrganization,
-  useProject,
-  useSubscription
+  useProject
 } from "@app/context";
 import { getProjectHomePage, isOrgScopedProduct } from "@app/helpers/project";
 import { useImplicitProduct, usePopUp } from "@app/hooks";
@@ -31,6 +30,7 @@ import { useGetUserProjects } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import { useProjectCreationAllowance } from "@app/hooks/useProjectCreationAllowance";
 import {
   NavbarBlock,
   NavbarSwitcher,
@@ -45,8 +45,6 @@ const ProjectSelectInner = () => {
   const { currentOrg } = useOrganization();
   const { data: projects = [] } = useGetUserProjects();
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg.id);
-
-  const { subscription } = useSubscription();
 
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
@@ -64,9 +62,9 @@ const ProjectSelectInner = () => {
     });
   };
 
-  const isAddingProjectsAllowed = subscription?.workspaceLimit
-    ? subscription.workspacesUsed < subscription.workspaceLimit
-    : true;
+  const { isAddingProjectsAllowed, upgradeIntent } = useProjectCreationAllowance(
+    currentWorkspace.type
+  );
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addNewWs",
@@ -242,7 +240,7 @@ const ProjectSelectInner = () => {
         paywallKey="project.limit"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        intent={ProjectLimitUpgradeIntent}
+        intent={upgradeIntent}
       />
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}

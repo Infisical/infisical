@@ -48,7 +48,7 @@ import {
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
-import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
+import { describeSessionForAudit, hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
@@ -78,6 +78,7 @@ import {
   TBootstrapProxyDTO,
   TCreateProxyDTO,
   TGetSessionSkillsDTO,
+  TRevokeSessionByTokenDTO,
   THeartbeatDTO,
   TListProxiesDTO,
   TProxyByIdDTO,
@@ -90,7 +91,7 @@ import {
 } from "./agent-vault-proxy-types";
 import { TAgentVaultResolveDALFactory, TResolveServiceRow } from "./agent-vault-resolve-dal";
 
-export const AGENT_VAULT_MAX_PROXIES_PER_ORG = 10;
+export const AGENT_VAULT_MAX_PROXIES_PER_PROJECT = 10;
 
 // Health is derived from the last heartbeat and the poll interval, never stored.
 const HEARTBEAT_MISSES_BEFORE_UNHEALTHY = 3;
@@ -104,7 +105,10 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "findForResolve">;
-  agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
+  agentVaultSessionDAL: Pick<
+    TAgentVaultSessionDALFactory,
+    "findByTokenHash" | "findByTokenHashOnPrimary" | "revokeIfActive" | "findByIdOnPrimary" | "findForList"
+  >;
   agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
@@ -321,9 +325,9 @@ export const agentVaultProxyServiceFactory = ({
         // Serialised per project so two creates at once can't both slip under the cap.
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateAgentVaultProxy(projectId)]);
-        if ((await agentVaultProxyDAL.countByProjectId(projectId, tx)) >= AGENT_VAULT_MAX_PROXIES_PER_ORG) {
+        if ((await agentVaultProxyDAL.countByProjectId(projectId, tx)) >= AGENT_VAULT_MAX_PROXIES_PER_PROJECT) {
           throw new BadRequestError({
-            message: `Agent Vault allows up to ${AGENT_VAULT_MAX_PROXIES_PER_ORG} proxies per organization. Delete one you no longer use to add another.`
+            message: `Agent Vault allows up to ${AGENT_VAULT_MAX_PROXIES_PER_PROJECT} proxies per project. Delete one you no longer use to add another.`
           });
         }
 
@@ -1037,6 +1041,47 @@ export const agentVaultProxyServiceFactory = ({
     return { skills, session, ownerUser, orgId: project.orgId };
   };
 
+  const $describeSessionOwner = async (session: TAgentVaultSessions) => {
+    if (!session.userId) return null;
+    const user = await userDAL.findById(session.userId);
+    return user
+      ? { username: user.username, email: user.email ?? null }
+      : { username: session.actorEmail ?? session.actorName, email: session.actorEmail ?? null };
+  };
+
+  // Whoever holds the token can end its session, as with Vault's token revoke: it already lets them use it. Unlike
+  // resolve, nothing checks the owner can still reach the project, since ending a session is always allowed.
+  const revokeSessionByToken = async ({ sessionToken }: TRevokeSessionByTokenDTO) => {
+    const session = await agentVaultSessionDAL.findByTokenHashOnPrimary(hashSessionToken(sessionToken));
+    const project = session ? await projectDAL.findById(session.projectId) : undefined;
+    if (!session || !project) {
+      throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
+    }
+
+    // revokeIfActive skips a session whose owner was deleted, which already reads as revoked.
+    const revoked = session.revokedAt ? undefined : await agentVaultSessionDAL.revokeIfActive(session.id, new Date());
+    const current = revoked ?? (await agentVaultSessionDAL.findByIdOnPrimary(session.id, session.projectId)) ?? session;
+
+    const {
+      sessions: [view]
+    } = await agentVaultSessionDAL.findForList({
+      projectId: session.projectId,
+      sessionId: session.id,
+      limit: 1,
+      offset: 0
+    });
+
+    return {
+      session: current,
+      revokedNow: Boolean(revoked),
+      ownerUser: await $describeSessionOwner(session),
+      auditDescription: view
+        ? describeSessionForAudit(view)
+        : { sessionOwner: session.actorEmail ?? session.actorName, accessBundleName: null },
+      orgId: project.orgId
+    };
+  };
+
   return {
     getProxyForAuth,
     listProxies,
@@ -1050,6 +1095,7 @@ export const agentVaultProxyServiceFactory = ({
     resolveSession,
     refreshCredential,
     reportMissingScopes,
-    getSessionSkills
+    getSessionSkills,
+    revokeSessionByToken
   };
 };

@@ -67,7 +67,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
+import { useOrganization, useProjectPermission, useSubscription, useProject } from "@app/context";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   getUserTablePreference,
@@ -111,6 +111,7 @@ const STATUS_OPTIONS = [
 ];
 
 export const AgentVaultSessionsPage = () => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
@@ -139,16 +140,16 @@ export const AgentVaultSessionsPage = () => {
   const [isSampleOpen, setIsSampleOpen] = useState(false);
   const { id: openSessionId, openSheet } = useAgentVaultSheetState();
 
-  const { data, isPending } = useListAgentVaultSessions({
+  const { data, isPending } = useListAgentVaultSessions(projectId, {
     scope: isAdmin ? scope : AgentVaultSessionScope.Mine,
     statuses,
     search: debouncedSearch.trim() || undefined,
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  const { data: accessBundles } = useListAgentVaultAccessBundles({ limit: 1 });
-  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(isAdmin);
-  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
+  const { data: accessBundles } = useListAgentVaultAccessBundles(projectId, { limit: 1 });
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(projectId, isAdmin);
+  const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(projectId, isAdmin);
   const { subscription } = useSubscription();
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const sessionLogSettings = sessionLogState?.settings ?? null;
@@ -162,8 +163,10 @@ export const AgentVaultSessionsPage = () => {
   const totalCount = data?.totalCount ?? 0;
 
   const loadedOpenSession = sessions.find((session) => session.id === openSessionId);
-  const { data: fetchedOpenSession, isPending: isFetchingOpenSession } =
-    useGetAgentVaultSession(openSessionId);
+  const { data: fetchedOpenSession, isPending: isFetchingOpenSession } = useGetAgentVaultSession(
+    projectId,
+    openSessionId
+  );
   const openSession = fetchedOpenSession ?? loadedOpenSession;
   const isOpenSessionPending = Boolean(openSessionId) && !openSession && isFetchingOpenSession;
 
@@ -216,8 +219,8 @@ export const AgentVaultSessionsPage = () => {
         {!isFiltered && !hasReachableBundles && isAdmin && (
           <Button variant="av" asChild>
             <Link
-              to="/organizations/$orgId/agent-vault/access-bundles"
-              params={{ orgId: currentOrg.id }}
+              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
+              params={{ orgId: currentOrg.id, projectId }}
             >
               Go to Access Bundles
             </Link>
@@ -235,8 +238,8 @@ export const AgentVaultSessionsPage = () => {
         {!hasReachableBundles && isAdmin && (
           <Button variant="av" size="sm" asChild>
             <Link
-              to="/organizations/$orgId/agent-vault/access-bundles"
-              params={{ orgId: currentOrg.id }}
+              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
+              params={{ orgId: currentOrg.id, projectId }}
             >
               Go to Access Bundles
             </Link>
@@ -267,8 +270,8 @@ export const AgentVaultSessionsPage = () => {
                 <AlertAction>
                   <Button variant="outline" size="sm" asChild>
                     <Link
-                      to="/organizations/$orgId/agent-vault/settings"
-                      params={{ orgId: currentOrg.id }}
+                      to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
+                      params={{ orgId: currentOrg.id, projectId }}
                     >
                       Go to Settings
                     </Link>
@@ -307,8 +310,8 @@ export const AgentVaultSessionsPage = () => {
               <AlertAction>
                 <Button variant="outline" size="sm" asChild>
                   <Link
-                    to="/organizations/$orgId/agent-vault/settings"
-                    params={{ orgId: currentOrg.id }}
+                    to="/organizations/$orgId/projects/agent-vault/$projectId/settings"
+                    params={{ orgId: currentOrg.id, projectId }}
                   >
                     Go to Settings
                   </Link>
@@ -487,8 +490,12 @@ export const AgentVaultSessionsPage = () => {
                             getLinkProps={(bundle) =>
                               bundle.id
                                 ? linkOptions({
-                                    to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-                                    params: { orgId: currentOrg.id, accessBundleId: bundle.id }
+                                    to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
+                                    params: {
+                                      orgId: currentOrg.id,
+                                      projectId,
+                                      accessBundleId: bundle.id
+                                    }
                                   })
                                 : undefined
                             }

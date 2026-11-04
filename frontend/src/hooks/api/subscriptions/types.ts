@@ -121,6 +121,8 @@ export type SubscriptionPlan = {
   agentVaultManagedStorage: boolean;
   // null means 30 days.
   agentVaultSessionLogRetentionDays: number | null;
+  // Undefined on plans cached before the field existed, which means 3; null means unlimited.
+  agentVaultProjectLimit?: number | null;
   pam?: boolean | null;
   enterprisePamAccount?: boolean | null;
   maxPamAccounts?: number | null;

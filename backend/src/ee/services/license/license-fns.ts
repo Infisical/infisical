@@ -113,6 +113,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   // Cloud turns it on in withCloudPlanDefaults; self-hosted needs a license that includes it.
   agentVaultManagedStorage: false,
   agentVaultSessionLogRetentionDays: 30,
+  agentVaultProjectLimit: 3,
   secretSyncLimit: null,
   maxPamAccounts: null,
   // PKI / Cert Manager

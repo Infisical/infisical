@@ -128,8 +128,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           organization: sanitizedOrganizationSchema.extend({
-            pamProjectId: z.string().nullable(),
-            agentVaultProjectId: z.string().nullable()
+            pamProjectId: z.string().nullable()
           })
         })
       }
@@ -862,7 +861,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           agentVault: z.object({
             accessBundlesCount: z.number(),
             servicesCount: z.number(),
-            proxiesCount: z.number()
+            proxiesCount: z.number(),
+            projectsCount: z.number()
           })
         })
       }

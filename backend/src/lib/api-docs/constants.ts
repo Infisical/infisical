@@ -112,7 +112,6 @@ export enum ApiDocsTags {
   AgentVaultMembers = "Agent Vault Members",
   AgentVaultSessionLogs = "Agent Vault Session Logs",
   AgentVaultSettings = "Agent Vault Settings",
-  AgentVaultAppConnections = "Agent Vault App Connections",
   KmipServers = "KMIP Servers",
   Instance = "Instance"
 }
@@ -4587,6 +4586,7 @@ export const ENCRYPTION_KEY_ROTATION = {
 const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to Agent Vault's variables, written as \`{{KEY}}\`. A reference that repeats counts each time.`;
 
 export const AGENT_VAULT = {
+  projectId: "The ID of the Agent Vault project.",
   ACCESS_BUNDLE: {
     accessBundleId: "The ID of the access bundle.",
     name: "The name of the access bundle.",
@@ -4835,17 +4835,17 @@ export const AGENT_VAULT = {
   },
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member.",
-    isActive: "Whether the member can currently reach Agent Vault.",
-    addedAt: "When the member was added to Agent Vault.",
+    isActive: "Whether the member can currently reach the project.",
+    addedAt: "When the member was added to the project.",
     userIds: "The IDs of the users to act on.",
     machineIdentityIds: "The IDs of the machine identities to act on.",
     groupIds: "The IDs of the groups to act on.",
     emails: "The email addresses of the users to give access to. Each must already be in the organization.",
     identifier: "The ID or email address the request named, echoed back so a reply can be matched to it.",
-    addSkipped: "The requested members who already had access to Agent Vault and were left as they were.",
-    revokeSkipped: "The requested members who did not have access to Agent Vault, so nothing was removed.",
+    addSkipped: "The requested members who already had access to the project and were left as they were.",
+    revokeSkipped: "The requested members who did not have access to the project, so nothing was removed.",
     updateSkipped:
-      "The requested members who did not have access to Agent Vault or already had the role, so nothing was changed.",
+      "The requested members who did not have access to the project or already had the role, so nothing was changed.",
     actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",

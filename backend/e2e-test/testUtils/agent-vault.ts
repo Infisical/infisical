@@ -1,0 +1,75 @@
+import { ProjectType } from "@app/db/schemas";
+
+type TMethod = "GET" | "POST" | "PATCH" | "DELETE";
+
+// An org can hold only a few Agent Vault projects (agentVaultProjectLimit), counted across every spec that
+// runs against the seeded org, so delete each one a spec creates.
+export const createAgentVaultProject = async (dto: { authToken: string; name: string }) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: "/api/v1/projects",
+    headers: { authorization: `Bearer ${dto.authToken}` },
+    body: { projectName: dto.name, type: ProjectType.AgentVault }
+  });
+  expect(res.statusCode, res.payload).toBe(200);
+  return res.json().project.id as string;
+};
+
+export const deleteAgentVaultProject = async (dto: { authToken: string; projectId: string }) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/projects/${dto.projectId}`,
+    headers: { authorization: `Bearer ${dto.authToken}` }
+  });
+  expect(res.statusCode, res.payload).toBe(200);
+};
+
+// The routes that act on a whole project rather than on one row, so they name the project themselves.
+const PROJECT_LEVEL_PATHS = new Set([
+  "/api/v1/agent-vault/access-bundles",
+  "/api/v1/agent-vault/variables",
+  "/api/v1/agent-vault/skills",
+  "/api/v1/agent-vault/proxies",
+  "/api/v1/agent-vault/sessions",
+  "/api/v1/agent-vault/members",
+  "/api/v1/agent-vault/members/available",
+  "/api/v1/agent-vault/settings/session-logs",
+  "/api/v1/agent-vault/settings/session-logs/health",
+  "/api/v1/agent-vault/settings/session-logs/cors-probe",
+  "/api/v1/agent-vault/oauth/authorizations"
+]);
+
+// Session log settings take the project in the query string on every method, including PATCH.
+const QUERY_ON_EVERY_METHOD = "/api/v1/agent-vault/settings/session-logs";
+
+// Adds projectId to a project-level request that does not already carry one, in the query for reads and the
+// settings routes and in the body for other writes. By-id routes take the project from the row and pass through.
+export const scopeAgentVaultRequest = (
+  projectId: string,
+  method: TMethod,
+  url: string,
+  body?: Record<string, unknown>
+): { url: string; body?: Record<string, unknown> } => {
+  const [path, query] = url.split("?");
+  if (!PROJECT_LEVEL_PATHS.has(path)) return { url, body };
+
+  if (method === "GET" || path.startsWith(QUERY_ON_EVERY_METHOD)) {
+    if (query && new URLSearchParams(query).has("projectId")) return { url, body };
+    return { url: `${path}?projectId=${projectId}${query ? `&${query}` : ""}`, body };
+  }
+
+  if (body && "projectId" in body) return { url, body };
+  return { url, body: { projectId, ...(body ?? {}) } };
+};
+
+// A request helper bound to one bearer token and one Agent Vault project.
+export const agentVaultRequester =
+  (token: string, projectId: () => string) => (method: TMethod, url: string, body?: Record<string, unknown>) => {
+    const scoped = scopeAgentVaultRequest(projectId(), method, url, body);
+    return testServer.inject({
+      method,
+      url: scoped.url,
+      headers: { authorization: `Bearer ${token}` },
+      ...(scoped.body ? { body: scoped.body } : {})
+    });
+  };

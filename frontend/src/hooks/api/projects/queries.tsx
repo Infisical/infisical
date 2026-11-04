@@ -226,6 +226,10 @@ export const createWorkspace = (
   return apiRequest.post("/api/v1/projects", dto);
 };
 
+// Product stats count projects (the Agent Vault cap reads them), so creating or deleting one refreshes them.
+const isOrgProductStatsQuery = (query: { queryKey: readonly unknown[] }) =>
+  query.queryKey[1] === "organization-product-stats";
+
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
@@ -242,6 +246,7 @@ export const useCreateWorkspace = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getAllUserProjects()
       });
+      queryClient.invalidateQueries({ predicate: isOrgProductStatsQuery });
     }
   });
 };
@@ -315,6 +320,7 @@ export const useDeleteWorkspace = () => {
       queryClient.invalidateQueries({
         queryKey: ["org-admin-projects"]
       });
+      queryClient.invalidateQueries({ predicate: isOrgProductStatsQuery });
     }
   });
 };

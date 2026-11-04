@@ -1,5 +1,6 @@
 export type { CapabilityUpgradeIntent } from "./capability-upgrade-intents";
 export {
+  AgentVaultProjectLimitUpgradeIntent,
   AgentVaultSessionLogDefaultStorageUpgradeIntent,
   AgentVaultSessionLogsUpgradeIntent,
   AuditLogStreamsUpgradeIntent,

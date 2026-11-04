@@ -29,7 +29,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
   .object({
-    project: z.object({ name: z.string(), id: z.string() })
+    project: z.object({ name: z.string(), id: z.string(), type: z.string().optional() })
   })
   .required();
 
@@ -91,6 +91,7 @@ export const UserAddToProjectModal = ({ membershipId, popUp, handlePopUpToggle }
   const onFormSubmit = async ({ project }: FormData) => {
     await addUserToWorkspaceNonE2EE({
       projectId: project.id,
+      projectType: project.type,
       usernames: [popupData.username],
       orgId
     });

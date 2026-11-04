@@ -116,6 +116,8 @@ export type TFeatureSet = {
   agentVaultByoS3: false;
   agentVaultManagedStorage: boolean;
   agentVaultSessionLogRetentionDays: number | null;
+  // Agent Vault projects across the root org and its sub-orgs. null means unlimited.
+  agentVaultProjectLimit: number | null;
   secretSyncLimit: null;
   maxPamAccounts: null;
 

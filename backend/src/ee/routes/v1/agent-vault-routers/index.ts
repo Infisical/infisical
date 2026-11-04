@@ -1,8 +1,6 @@
 import { registerAgentVaultAccessBundleRouter } from "./agent-vault-access-bundle-router";
-import { registerAgentVaultAppConnectionRouter } from "./agent-vault-app-connection-router";
 import { registerAgentVaultMembershipRouter } from "./agent-vault-membership-router";
 import { registerAgentVaultOauthRouter } from "./agent-vault-oauth-router";
-import { registerAgentVaultProjectRouter } from "./agent-vault-project-router";
 import { registerAgentVaultProxyAgentRouter } from "./agent-vault-proxy-agent-router";
 import { registerAgentVaultProxyRouter } from "./agent-vault-proxy-router";
 import { registerAgentVaultSessionLogRouter } from "./agent-vault-session-log-router";
@@ -13,7 +11,6 @@ import { registerAgentVaultSkillRouter } from "./agent-vault-skill-router";
 import { registerAgentVaultVariableRouter } from "./agent-vault-variable-router";
 
 export const registerAgentVaultRouters = async (server: FastifyZodProvider) => {
-  await server.register(registerAgentVaultProjectRouter, { prefix: "/project" });
   await server.register(registerAgentVaultAccessBundleRouter, { prefix: "/access-bundles" });
   await server.register(registerAgentVaultVariableRouter, { prefix: "/variables" });
   await server.register(registerAgentVaultSkillRouter, { prefix: "/skills" });
@@ -26,10 +23,8 @@ export const registerAgentVaultRouters = async (server: FastifyZodProvider) => {
   );
   await server.register(registerAgentVaultSessionSkillRouter, { prefix: "/session" });
   await server.register(registerAgentVaultSettingsRouter, { prefix: "/settings" });
-  await server.register(registerAgentVaultAppConnectionRouter, { prefix: "/app-connections/aws" });
   await server.register(registerAgentVaultProxyRouter, { prefix: "/proxies" });
   await server.register(registerAgentVaultMembershipRouter, { prefix: "/members" });
   await server.register(registerAgentVaultOauthRouter, { prefix: "/oauth" });
-  // Separate prefix so the preValidation project hook still matches while these routes authenticate as the proxy.
   await server.register(registerAgentVaultProxyAgentRouter, { prefix: "/proxy" });
 };

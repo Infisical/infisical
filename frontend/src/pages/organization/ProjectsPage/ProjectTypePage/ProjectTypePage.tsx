@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
+import { UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -70,8 +70,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission,
-  useSubscription
+  useOrgPermission
 } from "@app/context";
 import {
   OrgPermissionAdminConsoleAction,
@@ -112,6 +111,7 @@ import {
 import { useGetSecretScanningProjectId } from "@app/hooks/api/secretScanningV2";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import { useProjectCreationAllowance } from "@app/hooks/useProjectCreationAllowance";
 import {
   ProjectListToggle,
   ProjectListView
@@ -294,17 +294,6 @@ export const ProjectTypePage = () => {
     }
   }, [projectType, orgId, navigate]);
 
-  // An org-scoped product has one implicit project, so listing it here would offer a project view we
-  // hide everywhere else, plus a create button the backend refuses.
-  useEffect(() => {
-    if (projectType === ProjectType.AgentVault) {
-      navigate({
-        to: "/organizations/$orgId/agent-vault",
-        params: { orgId }
-      });
-    }
-  }, [projectType, orgId, navigate]);
-
   if (projectType === ProjectType.CertificateManager) {
     return (
       <>
@@ -325,11 +314,7 @@ export const ProjectTypePage = () => {
     );
   }
 
-  if (
-    projectType === ProjectType.PAM ||
-    projectType === ProjectType.AgentVault ||
-    projectType === ProjectType.SecretScanning
-  ) {
+  if (projectType === ProjectType.PAM || projectType === ProjectType.SecretScanning) {
     return null;
   }
 
@@ -343,15 +328,12 @@ const ProjectTypeContent = ({
   projectType: ProjectType;
   orgId: string;
 }) => {
-  const { subscription } = useSubscription();
   const { permission } = useOrgPermission();
   const canRequestAccess = permission.can(
     OrgPermissionProjectActions.RequestAccess,
     OrgPermissionSubjects.Project
   );
-  const isAddingProjectsAllowed = subscription?.workspaceLimit
-    ? subscription.workspacesUsed < subscription.workspaceLimit
-    : true;
+  const { isAddingProjectsAllowed, upgradeIntent } = useProjectCreationAllowance(projectType);
 
   const [projectListView, setProjectListView] = useState<ProjectListView>(() => {
     const storedView = localStorage.getItem("projectListView");
@@ -423,7 +405,7 @@ const ProjectTypeContent = ({
         paywallKey="organization.project-type"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        intent={ProjectLimitUpgradeIntent}
+        intent={upgradeIntent}
       />
     </div>
   );
