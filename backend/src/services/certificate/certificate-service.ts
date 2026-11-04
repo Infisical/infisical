@@ -957,6 +957,7 @@ export const certificateServiceFactory = ({
     altNames?: string;
     keyUsages: CertKeyUsage[];
     extendedKeyUsages: CertExtendedKeyUsage[];
+    certificatePem: string;
     notBefore: Date;
     notAfter: Date;
     fields: ReturnType<typeof extractCertificateFields>;
@@ -971,10 +972,10 @@ export const certificateServiceFactory = ({
     }: {
       policyId: string;
       profileName: string;
-      verifyWithProvider?: (serialNumber: string) => Promise<Pick<TDigiCertExternalMetadata, "certificateId">>;
+      verifyWithProvider?: (certificatePem: string) => Promise<Pick<TDigiCertExternalMetadata, "certificateId">>;
     }) =>
     async (cert: TImportedCertificateFacts) => {
-      const providerMetadata = verifyWithProvider ? await verifyWithProvider(cert.serialNumber) : {};
+      const providerMetadata = verifyWithProvider ? await verifyWithProvider(cert.certificatePem) : {};
 
       const validation = await certificatePolicyService.validateCertificateRequest(policyId, {
         commonName: cert.commonName || undefined,
@@ -1149,8 +1150,8 @@ export const certificateServiceFactory = ({
         policyId: profile.certificatePolicyId,
         profileName: profile.slug,
         verifyWithProvider: verifyCertificate
-          ? (serialNumber: string) =>
-              verifyCertificate({ caId, externalMetadata: parsedMetadata, serialNumber }, { digicertFns })
+          ? (certificatePem: string) =>
+              verifyCertificate({ caId, externalMetadata: parsedMetadata, certificatePem }, { digicertFns })
           : undefined
       })
     };
@@ -1364,6 +1365,7 @@ export const certificateServiceFactory = ({
     const importedCustomExtensions = parseImportedCustomExtensions(certificateBuffer);
 
     const providerMetadata = await linkage?.verifyCertificate({
+      certificatePem,
       serialNumber,
       commonName,
       altNames,

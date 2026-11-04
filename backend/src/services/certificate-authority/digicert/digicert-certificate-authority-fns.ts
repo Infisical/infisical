@@ -66,7 +66,7 @@ type TDigiCertCertificateAuthorityFnsDeps = {
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById" | "findOne">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
     TKmsServiceFactory,
@@ -361,11 +361,26 @@ export const DigiCertCertificateAuthorityFns = ({
     return order;
   };
 
-  const $getCertificateSerialNumber = async (client: TDigiCertApiClient, digicertCertificateId: number) => {
+  const $getCertificateLeaf = async (client: TDigiCertApiClient, digicertCertificateId: number) => {
     const pem = await client.downloadCertificatePem(digicertCertificateId);
     const { leaf } = extractLeafAndChain(pem);
-    return new x509.X509Certificate(leaf).serialNumber.toLowerCase();
+    return new x509.X509Certificate(leaf);
   };
+
+  const $getStoredCertificate = async (certificate: { id: string; projectId: string }) => {
+    const certificateBody = await certificateBodyDAL.findOne({ certId: certificate.id });
+    if (!certificateBody) return null;
+    const kmsId = await getProjectKmsCertificateKeyId({ projectId: certificate.projectId, projectDAL, kmsService });
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId });
+    const decrypted = await kmsDecryptor({ cipherTextBlob: certificateBody.encryptedCertificate });
+    const decryptedText = decrypted.toString("utf8");
+    return new x509.X509Certificate(
+      decryptedText.includes("-----BEGIN CERTIFICATE-----") ? decryptedText : new Uint8Array(decrypted)
+    );
+  };
+
+  const $getCertificateSerialNumber = async (client: TDigiCertApiClient, digicertCertificateId: number) =>
+    (await $getCertificateLeaf(client, digicertCertificateId)).serialNumber.toLowerCase();
 
   const $buildCertificatePayload = async ({
     caId,
@@ -572,13 +587,20 @@ export const DigiCertCertificateAuthorityFns = ({
     }
     const originalMetadata = DigiCertExternalMetadataSchema.safeParse(originalCertificate.externalMetadata);
     const storedCertificateId = originalMetadata.success ? originalMetadata.data.certificateId : undefined;
-    const isCurrentOnOrder = storedCertificateId
-      ? storedCertificateId === previousCertificateId
-      : (await $getCertificateSerialNumber(client, previousCertificateId)) ===
-        originalCertificate.serialNumber.toLowerCase();
-    if (!isCurrentOnOrder) {
+    if (storedCertificateId && storedCertificateId !== previousCertificateId) {
       throw new BadRequestError({
         message: `This certificate is no longer the current one on DigiCert order ${orderId}, so it can't be reissued. Reissue the order's current certificate instead.`
+      });
+    }
+    const [currentOrderCertificate, storedCertificate] = await Promise.all([
+      $getCertificateLeaf(client, previousCertificateId),
+      $getStoredCertificate(originalCertificate)
+    ]);
+    if (!storedCertificate || !currentOrderCertificate.equal(storedCertificate)) {
+      throw new BadRequestError({
+        message: storedCertificateId
+          ? `This certificate doesn't match the one DigiCert issued on order ${orderId}, so it can't be reissued.`
+          : `This certificate is no longer the current one on DigiCert order ${orderId}, so it can't be reissued. Reissue the order's current certificate instead.`
       });
     }
     if (originalMetadata.success && !storedCertificateId) {
@@ -660,12 +682,28 @@ export const DigiCertCertificateAuthorityFns = ({
     const parsed = DigiCertCertificateRequestMetadataSchema.safeParse(parsedMetadata);
     if (!parsed.success || parsed.data.digicert.previousCertificateId === undefined) return;
 
-    const { orderId } = parsed.data.digicert;
-    if (!(await cancelReissue({ caId, orderId }))) {
+    const { orderId, previousCertificateId } = parsed.data.digicert;
+    const cancelFailedError = new BadRequestError({
+      message: `DigiCert didn't cancel the reissue on order ${orderId}, so the request is still open. Try again in a few minutes, or cancel the reissue in DigiCert CertCentral.`
+    });
+
+    let currentCertificateId: number | undefined;
+    try {
+      const { digicertCa, client } = await $getActiveDigiCertCa(caId);
+      currentCertificateId = (await $getOrderForCa(client, digicertCa.configuration, orderId)).certificate?.id;
+    } catch (error) {
+      logger.warn(
+        error,
+        `Failed to read DigiCert order before canceling its reissue [caId=${caId}] [orderId=${orderId}]`
+      );
+      throw cancelFailedError;
+    }
+    if (currentCertificateId !== previousCertificateId) {
       throw new BadRequestError({
-        message: `DigiCert didn't cancel the reissue on order ${orderId}, so the request is still open. Try again in a few minutes, or cancel the reissue in DigiCert CertCentral.`
+        message: `DigiCert already issued the reissue on order ${orderId}, so it can't be canceled. It's added to Infisical on the next check.`
       });
     }
+    if (!(await cancelReissue({ caId, orderId }))) throw cancelFailedError;
   };
 
   const fetchAndAttachIssuedCertificate = async ({
@@ -837,11 +875,11 @@ export const DigiCertCertificateAuthorityFns = ({
   const assertOrderMatchesCertificate = async ({
     caId,
     orderId,
-    serialNumber
+    certificatePem
   }: {
     caId: string;
     orderId: number;
-    serialNumber: string;
+    certificatePem: string;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
@@ -865,8 +903,8 @@ export const DigiCertCertificateAuthorityFns = ({
       });
     }
 
-    const orderSerialNumber = await $getCertificateSerialNumber(client, digicertCertificateId);
-    if (orderSerialNumber !== serialNumber.toLowerCase()) {
+    const currentOrderCertificate = await $getCertificateLeaf(client, digicertCertificateId);
+    if (!currentOrderCertificate.equal(new x509.X509Certificate(certificatePem))) {
       throw new BadRequestError({
         message: `DigiCert order ${orderId} was issued for a different certificate than the one being imported. Check the order number in DigiCert CertCentral.`
       });

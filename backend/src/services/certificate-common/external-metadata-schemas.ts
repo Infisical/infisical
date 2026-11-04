@@ -48,7 +48,7 @@ type TCertificateImportVerifierDeps = {
     assertOrderMatchesCertificate: (args: {
       caId: string;
       orderId: number;
-      serialNumber: string;
+      certificatePem: string;
     }) => Promise<Pick<TDigiCertExternalMetadata, "certificateId">>;
   };
 };
@@ -57,7 +57,7 @@ type TCertificateImportLinkage = {
   externalMetadataSchema: z.ZodTypeAny | null;
   referenceLabel?: string;
   verifyCertificate?: (
-    args: { caId: string; externalMetadata: TImportExternalMetadata; serialNumber: string },
+    args: { caId: string; externalMetadata: TImportExternalMetadata; certificatePem: string },
     deps: TCertificateImportVerifierDeps
   ) => Promise<Pick<TDigiCertExternalMetadata, "certificateId">>;
 };
@@ -67,8 +67,8 @@ export const CertificateImportLinkageMap: Partial<Record<CaType, TCertificateImp
   [CaType.DIGICERT]: {
     externalMetadataSchema: DigiCertImportExternalMetadataSchema,
     referenceLabel: "DigiCert order ID",
-    verifyCertificate: ({ caId, externalMetadata, serialNumber }, { digicertFns }) =>
-      digicertFns.assertOrderMatchesCertificate({ caId, orderId: externalMetadata.orderId, serialNumber })
+    verifyCertificate: ({ caId, externalMetadata, certificatePem }, { digicertFns }) =>
+      digicertFns.assertOrderMatchesCertificate({ caId, orderId: externalMetadata.orderId, certificatePem })
   }
 };
 
