@@ -46,7 +46,7 @@ When someone starts a Cloud Agent on your pool:
 4. Each command's requests go through the proxy, which attaches the credentials
 
 <Note>
-This guide uses its own manifests instead of Cursor's [Kubernetes Helm chart](https://github.com/anysphere/k8s-workers), because the chart's spawn hook can't create a session for each worker. If you run the chart for this pool, uninstall it before you deploy the controller in [Step 4](#step-4-deploy-the-worker-controller).
+This guide uses its own manifests instead of Cursor's [Kubernetes Helm chart](https://github.com/anysphere/k8s-workers), because the chart's spawn hook can't create a session for each worker. If you run the chart for this pool, uninstall it before you deploy the controller in [Step 5](#step-5-deploy-the-worker-controller).
 </Note>
 
 You create these files on your machine as you go through the guide:
@@ -63,9 +63,9 @@ You create these files on your machine as you go through the guide:
     <Tree.Folder name="controller" defaultOpen>
       <Tree.File name="Dockerfile" />
     </Tree.Folder>
+    <Tree.File name="cursor-workers-network.yaml" />
     <Tree.File name="cursor-controller.yaml" />
     <Tree.File name="spawn-worker.sh" />
-    <Tree.File name="cursor-workers-network.yaml" />
   </Tree.Folder>
 </Tree>
 
@@ -286,7 +286,7 @@ Save this script as `worker/agent-vault-env.sh`. The agent runs each command in 
 case "${0##*/}" in agent|cursor-agent) return 0 ;; esac
 
 SESSION_TOKEN=$(cat /var/run/worker/session-token)
-PROXY_URL="http://x-agent-vault:${SESSION_TOKEN}@agent-vault-proxy.agent-vault:17323"
+PROXY_URL="http://x-agent-vault:${SESSION_TOKEN}@agent-vault-proxy.agent-vault.svc.cluster.local:17323"
 export HTTPS_PROXY="$PROXY_URL" HTTP_PROXY="$PROXY_URL" https_proxy="$PROXY_URL" http_proxy="$PROXY_URL"
 export NODE_USE_ENV_PROXY=1
 unset SESSION_TOKEN PROXY_URL
@@ -372,11 +372,79 @@ ENV PATH="/root/.local/bin:${PATH}"
 
 Replace `<kubectl-version>` with your cluster's Kubernetes version, such as `v1.35.0`, because `kubectl` only supports clusters within one minor version of its own. If your nodes use Arm processors, replace `amd64` with `arm64`.
 
-## Step 4: Deploy the worker controller
+## Step 4: Limit the workers' network
+
+Each worker needs to reach only the proxy and Cursor's hosts, and to look up only their names. Cursor's hosts don't have fixed IP addresses, so a standard NetworkPolicy can't allow them, but a Cilium network policy can allow them by name. Any other DNS lookup could carry data out of the worker, so the policy refuses those too.
+
+Apply these rules before you deploy the controller in the next step, so that no worker can start without them. Save this manifest as `cursor-workers-network.yaml` and apply it to your cluster. It creates the `cursor-workers` namespace that workers run in, and limits its pods' network:
+
+```yaml expandable
+# cursor-workers-network.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cursor-workers
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: cursor-workers-egress
+  namespace: cursor-workers
+spec:
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchName: agent-vault-proxy.agent-vault.svc.cluster.local
+              - matchName: api2.cursor.sh
+              - matchName: api2direct.cursor.sh
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: agent-vault
+            app: agent-vault-proxy
+      toPorts:
+        - ports:
+            - port: "17323"
+              protocol: TCP
+    - toFQDNs:
+        - matchName: api2.cursor.sh
+        - matchName: api2direct.cursor.sh
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cursor-workers-no-ingress
+  namespace: cursor-workers
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+```
+
+<Warning>
+Don't allow Cursor's artifact hosts, `agent-stores.s3.us-east-1.amazonaws.com` and `cloud-agent-artifacts.s3.us-east-1.amazonaws.com`. Both are Amazon S3 hosts, so if you allow them by IP address, the agent can upload data to any S3 bucket.
+
+Without these hosts, artifacts such as screenshots won't appear in pull requests or the Cursor dashboard. However, all of the agent's tool calls will still work as expected.
+</Warning>
+
+## Step 5: Deploy the worker controller
 
 The controller runs in the `cursor` namespace, and it starts workers in the `cursor-workers` namespace. Workers can't reach the controller or read its credentials.
 
-### Create the namespaces and the controller
+### Create the namespace and the controller
 
 Save this manifest as `cursor-controller.yaml` and apply it to your cluster:
 
@@ -386,13 +454,6 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: cursor
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: cursor-workers
-  labels:
-    pod-security.kubernetes.io/enforce: restricted
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -606,70 +667,12 @@ kubectl -n cursor logs deploy/cursor-worker-controller
   Keep the client secret in the `cursor` namespace. The worker gets only the session token and its own Cursor token, never the client secret, the proxy token, or the team's API key.
 </Warning>
 
-When a worker exits, its pod stays in the `Succeeded` state, with its Secret, until you delete it. To delete finished workers, run this command, or run it on a schedule:
+When a worker exits, its pod stays in the `Succeeded` state (or `Failed` if the worker exited with an error) until you delete it. To delete finished workers, run these commands, or run them on a schedule:
 
 ```bash
 kubectl -n cursor-workers delete pods --field-selector=status.phase=Succeeded
+kubectl -n cursor-workers delete pods --field-selector=status.phase=Failed
 ```
-
-## Step 5: Limit the workers' network
-
-Each worker needs to reach only the proxy, Cursor's hosts, and DNS. Cursor's hosts don't have fixed IP addresses, so a standard NetworkPolicy can't allow them, but a Cilium network policy can allow them by name.
-
-Save this manifest as `cursor-workers-network.yaml` and apply it to your cluster:
-
-```yaml expandable
-# cursor-workers-network.yaml
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
-  name: cursor-workers-egress
-  namespace: cursor-workers
-spec:
-  endpointSelector: {}
-  egress:
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: kube-system
-            k8s-app: kube-dns
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
-          rules:
-            dns:
-              - matchPattern: "*"
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: agent-vault
-            app: agent-vault-proxy
-      toPorts:
-        - ports:
-            - port: "17323"
-              protocol: TCP
-    - toFQDNs:
-        - matchName: api2.cursor.sh
-        - matchName: api2direct.cursor.sh
-      toPorts:
-        - ports:
-            - port: "443"
-              protocol: TCP
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: cursor-workers-no-ingress
-  namespace: cursor-workers
-spec:
-  podSelector: {}
-  policyTypes: [Ingress]
-```
-
-<Warning>
-Don't allow Cursor's artifact hosts, `agent-stores.s3.us-east-1.amazonaws.com` and `cloud-agent-artifacts.s3.us-east-1.amazonaws.com`. Both are Amazon S3 hosts, so if you allow them by IP address, the agent can upload data to any S3 bucket.
-
-Without these hosts, artifacts such as screenshots won't appear in pull requests or the Cursor dashboard. However, all of the agent's tool calls will still work as expected.
-</Warning>
 
 ## Step 6: Verify it works
 
@@ -686,7 +689,7 @@ If the setup works, each command shows this:
 
 1. GitHub returns the account that the service's token belongs to, even though the worker has no GitHub token
 2. The proxy refuses the request with `403`, because no service covers `example.com`
-3. The request fails to connect, because the worker can't reach the internet without the proxy
+3. The request fails, because the worker can't look up or reach hosts without the proxy
 4. The environment has no API keys, and the only token is the session token in `HTTPS_PROXY`
 
 In Agent Vault, go to **Sessions** and find the run's session by its label, `cursor <pod-name>`, where `<pod-name>` is the name of the worker pod. [View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made. Requests that got a credential have the outcome **Brokered**.
@@ -714,7 +717,7 @@ Cursor doesn't tell the controller when a worker exits, so the session keeps wor
 
 ### Compromised workers
 
-If an agent takes control of its worker pod, it has the session token and the worker's Cursor token for that run. It can call the access bundle's services through the proxy and reach Cursor's hosts, but nothing else: the network policy blocks every other host, and the worker can't reach the controller or read its Secret in the `cursor` namespace.
+If an agent takes control of its worker pod, it has the session token and the worker's Cursor token for that run. It can call the access bundle's services through the proxy and reach Cursor's hosts, but nothing else: the network policy blocks every other host and DNS lookup, and the worker can't reach the controller or read its Secret in the `cursor` namespace.
 
 ## Troubleshooting
 
@@ -726,13 +729,16 @@ If an agent takes control of its worker pod, it has the session token and the wo
     The worker sent its connection to Cursor through the proxy, which doesn't support HTTP/2. The worker ignores `NO_PROXY`, so check that nothing sets `HTTPS_PROXY` in the worker's own environment, such as the entrypoint or the Pod's `env`, and that the first line of `agent-vault-env.sh` is unchanged.
   </Accordion>
   <Accordion title="The worker doesn't connect to Cursor">
-    Check that the Cilium network policy from [Step 5](#step-5-limit-the-workers’-network) allows `api2.cursor.sh` and `api2direct.cursor.sh` on port `443`, and that the worker's Secret has a `cursor-token` key.
+    Check that the Cilium network policy from [Step 4](#step-4-limit-the-workers’-network) allows `api2.cursor.sh` and `api2direct.cursor.sh` on port `443`, and that the worker's Secret has a `cursor-token` key.
   </Accordion>
   <Accordion title="A command or MCP server times out instead of reaching an API">
     The process didn't start from a bash shell, so it didn't run `agent-vault-env.sh` and has no proxy settings, and the network policy blocks its direct connection. For an MCP server that runs on the worker, start it through bash, such as with `bash -c '<command>'`.
   </Accordion>
   <Accordion title="The worker pod is rejected or stays in ContainerCreating">
     The `restricted` Pod Security Standard rejects pods without the `securityContext` settings in the spawn hook's Pod, such as `runAsNonRoot` and `allowPrivilegeEscalation: false`, so check that the Pod in your spawn hook still has them. If the pod stays in `ContainerCreating`, it's waiting for its Secret, so check the controller's logs for the error from the spawn hook.
+  </Accordion>
+  <Accordion title="The agent's commands fail with &quot;Could not resolve proxy&quot;">
+    The network policy only lets workers look up the proxy's full name, `agent-vault-proxy.agent-vault.svc.cluster.local`. Check that the proxy address in `agent-vault-env.sh` matches the name in the policy's DNS rule. If your cluster's domain isn't `cluster.local`, change it in both.
   </Accordion>
   <Accordion title="The agent's commands fail with a 407 from the proxy">
     The request reached the proxy without the session token. Check that the worker's Secret has a `session-token` key, and that the session was created.
