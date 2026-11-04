@@ -79,6 +79,7 @@ import { buildResources, valueKey } from "./bridge/view-model";
 import {
   readableValue,
   type Resource,
+  type ResourceApplyOptions,
   resourceKey,
   type ResourceKind,
   scopeMatches,
@@ -434,10 +435,14 @@ export const OverviewPage = () => {
   });
   const pushToast = (item: Omit<ToastItem, "id">) =>
     setToasts((current) => [...current, { ...item, id: crypto.randomUUID() }]);
-  const setResources = (update: (current: Resource[]) => Resource[], feedback?: FlowFeedback) => {
+  const setResources = (
+    update: (current: Resource[]) => Resource[],
+    feedback?: FlowFeedback,
+    options?: ResourceApplyOptions
+  ) => {
     const before = resourcesRef.current;
     const after = update([...before]);
-    runApply(before, after).then(
+    runApply(before, after, options).then(
       () => {
         if (feedback) pushToast({ tone: "ok", ...feedback });
       },
@@ -1843,8 +1848,12 @@ export const OverviewPage = () => {
               onClose: () => setRowAction(undefined),
               scope: { project, path, environments: projectEnvironments, visibleEnvironments },
               resources,
-              onApply: (update: (current: Resource[]) => Resource[], feedback: FlowFeedback) => {
-                setResources(update, feedback);
+              onApply: (
+                update: (current: Resource[]) => Resource[],
+                feedback: FlowFeedback,
+                options?: ResourceApplyOptions
+              ) => {
+                setResources(update, feedback, options);
                 setNotice("");
               },
               onToast: (tone: "ok" | "bad" | "neutral", feedback: FlowFeedback) =>

@@ -65,11 +65,25 @@ function VersionItem({
   const [confirm, setConfirm] = useState<"restore" | "redact">();
   const [wanted, setWanted] = useState(false);
   const copyRequested = useRef(false);
-  const { data: loaded } = useV4Adapter("secrets").useSecretVersionValue(
+  const restoreSubmitted = useRef(false);
+  const {
+    data: loaded,
+    isPending: valuePending,
+    error: valueError
+  } = useV4Adapter("secrets").useSecretVersionValue(
     { secretId, version: version.version },
     { enabled: canRead && !version.redacted && (wanted || visible || confirm === "restore") }
   );
   const value = loaded ?? "";
+  const canRestore =
+    canRead &&
+    !editBlock &&
+    !managed &&
+    !current &&
+    !version.redacted &&
+    !valuePending &&
+    !valueError &&
+    loaded !== undefined;
   useEffect(() => {
     if (!copyRequested.current || loaded === undefined) return;
     copyRequested.current = false;
@@ -119,12 +133,15 @@ function VersionItem({
                   />
                 </>
               )}
-              {!managed && !current && (
+              {!managed && !version.redacted && !current && (
                 <ActionButton
                   label="Restore version"
                   icon={RotateCcwIcon}
                   disabledReason={editBlock}
-                  onClick={() => setConfirm("restore")}
+                  onClick={() => {
+                    restoreSubmitted.current = false;
+                    setConfirm("restore");
+                  }}
                 />
               )}
               {!managed && !version.redacted && !current && (
@@ -180,11 +197,32 @@ function VersionItem({
                 : `Are you sure you want to restore this secret to version ${version.version}? This will overwrite the current value.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {confirm === "restore" && valuePending && <Loader label="Loading version value" />}
+          {confirm === "restore" && Boolean(valueError) && (
+            <p role="alert">Could not load this version. Close this dialog and try again.</p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant={confirm === "redact" ? "destructive" : "default"}
-              onClick={confirm === "redact" ? onRedact : () => onRestore(value)}
+              disabled={confirm === "restore" && !canRestore}
+              onClick={(event) => {
+                if (confirm === "redact") {
+                  onRedact();
+                  return;
+                }
+                if (
+                  confirm !== "restore" ||
+                  !canRestore ||
+                  loaded === undefined ||
+                  restoreSubmitted.current
+                ) {
+                  event.preventDefault();
+                  return;
+                }
+                restoreSubmitted.current = true;
+                onRestore(loaded);
+              }}
             >
               {confirm === "redact" ? "Redact" : "Restore"}
             </AlertDialogAction>
@@ -252,7 +290,7 @@ export function VersionHistorySheet({
           <ol className={styles.timeline}>
             {versions.map((version, index) => (
               <VersionItem
-                key={version.version}
+                key={`${secret.id}:${version.id}:${version.version}`}
                 secretId={secret.id}
                 version={version}
                 current={index === 0}

@@ -23,8 +23,16 @@ import type { Resource, Secret } from "../../secrets-model";
 import { childPath } from "../flows/shared";
 import type { EnvironmentOption, FlowFeedback } from "../flows/types";
 import type { OverlayHostProps } from "../row-actions/types";
+import {
+  isPathInsideFolder,
+  moveFolderResources,
+  planSecretMove,
+  relocate
+} from "./move-resources";
 
 import styles from "./bulk-dialogs.module.css";
+
+export { isPathInsideFolder, moveFolderResources } from "./move-resources";
 
 type Of<K extends Resource["kind"]> = Extract<Resource, { kind: K }>;
 type Folder = Of<"folder">;
@@ -69,9 +77,6 @@ const isValidFolderPath = (path: string) =>
   );
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 
-export const isPathInsideFolder = (destinationPath: string, folderPath: string) =>
-  destinationPath === folderPath || destinationPath.startsWith(`${folderPath}/`);
-
 const formatFolderMoveBlock = (blockingType: BlockingType, blockingPath: string) => {
   const at = ` at "${blockingPath}"`;
   switch (blockingType) {
@@ -85,36 +90,6 @@ const formatFolderMoveBlock = (blockingType: BlockingType, blockingPath: string)
     default:
       return `A secret import exists${at}. Remove the import to move this folder.`;
   }
-};
-
-const relocate = <R extends Resource>(resource: R, environment: string, path: string): R => ({
-  ...resource,
-  environment,
-  path,
-  id: `${resource.project}:${environment}:${path}:${resource.kind}:${resource.name}`,
-  updatedAt: new Date().toISOString()
-});
-
-export const moveFolderResources = (
-  current: Resource[],
-  folder: Pick<Folder, "project" | "path" | "name">,
-  moves: Pick<FolderMove, "environment" | "destinationEnvironment">[],
-  destinationPath: string
-) => {
-  const folderPath = childPath(folder.path, folder.name);
-  const target = childPath(destinationPath, folder.name);
-  return current.map((resource) => {
-    const move = moves.find((entry) => entry.environment === resource.environment);
-    if (!move || resource.project !== folder.project) return resource;
-    const isRoot =
-      resource.kind === "folder" && resource.path === folder.path && resource.name === folder.name;
-    if (!isRoot && !isPathInsideFolder(resource.path, folderPath)) return resource;
-    return relocate(
-      resource,
-      move.destinationEnvironment,
-      isRoot ? destinationPath : `${target}${resource.path.slice(folderPath.length)}`
-    );
-  });
 };
 
 function MoveLocationLayout({
@@ -343,51 +318,16 @@ function MoveSecretsDialogContent({
 
   const moveSecretsStep =
     (env: string, destination: string, names: string[]): Step =>
-    (current) => {
-      const sources = current.filter(
-        (resource): resource is Secret =>
-          resource.kind === "secret" &&
-          at(resource, env, sourcePath) &&
-          names.includes(resource.name)
-      );
-      const existing = new Map(
-        current
-          .filter(
-            (resource): resource is Secret =>
-              resource.kind === "secret" && at(resource, destination, selectedPath)
-          )
-          .map((secret) => [secret.name, secret])
-      );
-      const rotationKeys = sources.filter(({ name }) => existing.get(name)?.managedBy);
-      if (rotationKeys.length)
-        return {
-          error: `Cannot move secrets to '${selectedPath}' because the following keys are managed by a secret rotation at the destination: ${rotationKeys.map(({ name }) => name).join(", ")}`
-        };
-      const honeyKeys = sources.filter(({ name }) => existing.get(name)?.honeyToken);
-      if (honeyKeys.length)
-        return {
-          error: `Cannot move secrets to '${selectedPath}' because the following keys are managed by a honey token at the destination: ${honeyKeys.map(({ name }) => name).join(", ")}`
-        };
-      const created = sources.filter(({ name }) => !existing.has(name));
-      const updated = sources.filter(({ name, value }) => {
-        const match = existing.get(name);
-        return match && JSON.stringify(match.value) !== JSON.stringify(value);
+    (current) =>
+      planSecretMove(current, {
+        project,
+        sourceEnvironment: env,
+        sourcePath,
+        destinationEnvironment: destination,
+        destinationPath: selectedPath,
+        names,
+        shouldOverwrite
       });
-      if (updated.length && !shouldOverwrite)
-        return {
-          error: `Failed to move secrets. The following secrets already exist in the destination: ${updated.map(({ name }) => name).join(",")}`
-        };
-      if (created.length + updated.length === 0)
-        return { error: "Selected secrets already exist in the destination." };
-      const replaced = new Set(updated.map(({ name }) => existing.get(name)?.id));
-      const removed = new Set(sources.map(({ id }) => id));
-      return {
-        next: [
-          ...current.filter(({ id }) => !removed.has(id) && !replaced.has(id)),
-          ...[...created, ...updated].map((secret) => relocate(secret, destination, selectedPath))
-        ]
-      };
-    };
 
   const moveRotationStep =
     (rotation: Rotation, destination: string): Step =>
@@ -468,7 +408,8 @@ function MoveSecretsDialogContent({
           const outcome = step(state);
           return "next" in outcome ? outcome.next : state;
         }, current),
-      feedback
+      feedback,
+      { shouldOverwrite }
     );
   const folderMove = (folder: Folder, destination: string): FolderMove => ({
     environment: folder.environment,
