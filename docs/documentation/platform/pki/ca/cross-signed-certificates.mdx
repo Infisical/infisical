@@ -99,7 +99,9 @@ openssl x509 -req -in <ca-name>.csr \
 
 ## Certificate chains with a cross-signed certificate
 
-Certificates issued while the cross-signed certificate is valid carry a chain where the cross-signed certificate takes the place of the CA's own certificate, followed by the certificate chain you imported. This applies to every way a certificate is issued or renewed, such as the API and ACME. If the cross-signed certificate's validity period starts in the future, the CA adds it to chains only from that date.
+Certificates issued while the cross-signed certificate is valid carry a chain where the cross-signed certificate takes the place of the CA's own certificate, followed by the certificate chain you imported. This applies to certificates issued or renewed for applications, through the API, and through ACME, by the CA and its internal sub-CAs. If the cross-signed certificate's validity period starts in the future, the CA adds it to chains only from that date.
+
+Signing an external intermediate CA's CSR returns the CA's own chain, without the cross-signed certificate. Clients that only trust the old root reject certificates under that intermediate CA.
 
 <Warning>
   EST and SCEP return only the issued certificate. Devices that enroll through them build the chain from the CA certificates those protocols return, which don't include the cross-signed certificate, so clients that only trust the old root reject those devices' certificates.

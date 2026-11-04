@@ -172,13 +172,17 @@ export const useImportCaCrossSignedCert = () => {
 
 export const useDeleteCaCrossSignedCert = () => {
   const queryClient = useQueryClient();
-  return useMutation<TCaCrossSignedCertificate, object, TDeleteCaCrossSignedCertificateDTO>({
+  return useMutation<
+    Omit<TCaCrossSignedCertificate, "certificate" | "certificateChain">,
+    object,
+    TDeleteCaCrossSignedCertificateDTO
+  >({
     mutationFn: async ({ caId }) => {
       const {
         data: { crossSignedCertificate }
-      } = await apiRequest.delete<{ crossSignedCertificate: TCaCrossSignedCertificate }>(
-        `/api/v1/cert-manager/ca/internal/${caId}/cross-signed-certificate`
-      );
+      } = await apiRequest.delete<{
+        crossSignedCertificate: Omit<TCaCrossSignedCertificate, "certificate" | "certificateChain">;
+      }>(`/api/v1/cert-manager/ca/internal/${caId}/cross-signed-certificate`);
       return crossSignedCertificate;
     },
     onSuccess: (_, { caId }) => {

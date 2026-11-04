@@ -3,6 +3,10 @@ import { subject } from "@casl/ability";
 import { CircleXIcon } from "lucide-react";
 
 import {
+  CrossSignedCertificatesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
+import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -39,7 +43,8 @@ import { CaCrossSignedCertRemoveDialog } from "./CaCrossSignedCertRemoveDialog";
 import {
   ENTERPRISE_PLAN_TEXT,
   getServerErrorMessage,
-  summarizeCrossSignedCert
+  summarizeCrossSignedCert,
+  TCrossSignedCertPopUp
 } from "./crossSignedCertUtils";
 
 type Props = {
@@ -56,11 +61,23 @@ export const CaCrossSignedCertSection = ({ caId }: Props) => {
 
   const { data: crossSignedCert, isPending, error } = useGetCaCrossSignedCert(caId, Boolean(ca));
 
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "generateCrossSignCsr",
     "importCrossSignedCert",
     "removeCrossSignedCert"
   ] as const);
+
+  const handleOpen = (popUpName: TCrossSignedCertPopUp) => {
+    if (popUpName === "importCrossSignedCert" && !isEntitled) {
+      openUpgradeGate({
+        intent: CrossSignedCertificatesUpgradeIntent,
+        paywallKey: "cert-manager.cross-signed-certificates"
+      });
+      return;
+    }
+    handlePopUpOpen(popUpName);
+  };
 
   const summary = useMemo(
     () => (crossSignedCert ? summarizeCrossSignedCert(crossSignedCert) : null),
@@ -102,8 +119,7 @@ export const CaCrossSignedCertSection = ({ caId }: Props) => {
         <CaCrossSignedCertEmptyState
           canGenerateCsr={canGenerateCsr}
           canManageCrossSignedCert={canManageCrossSignedCert}
-          isEntitled={isEntitled}
-          onOpen={handlePopUpOpen}
+          onOpen={handleOpen}
         />
       );
     }
@@ -138,8 +154,7 @@ export const CaCrossSignedCertSection = ({ caId }: Props) => {
                 isCaActive={isCaActive}
                 canGenerateCsr={canGenerateCsr}
                 canManageCrossSignedCert={canManageCrossSignedCert}
-                isEntitled={isEntitled}
-                onOpen={handlePopUpOpen}
+                onOpen={handleOpen}
               />
             </CardAction>
           )}
@@ -156,6 +171,7 @@ export const CaCrossSignedCertSection = ({ caId }: Props) => {
         caId={ca.id}
         caName={ca.name}
         isReplace={Boolean(crossSignedCert)}
+        currentCertificateChain={crossSignedCert?.certificateChain}
         isOpen={popUp.importCrossSignedCert.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("importCrossSignedCert", isOpen)}
       />
@@ -166,6 +182,7 @@ export const CaCrossSignedCertSection = ({ caId }: Props) => {
         isOpen={popUp.removeCrossSignedCert.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("removeCrossSignedCert", isOpen)}
       />
+      {upgradeGate}
     </>
   );
 };

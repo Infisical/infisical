@@ -10,25 +10,25 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import {
+  expandInternalCa,
+  getCaCertChain,
+  getPublicKeyFingerprint
+} from "@app/services/certificate-authority/certificate-authority-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "./certificate-authority-cross-signed-cert-dal";
+import { validateCrossSignedCertificate } from "./certificate-authority-cross-signed-cert-fns";
 import {
   TDeleteCaCrossSignedCertDTO,
   TGetCaCrossSignedCertDTO,
   TImportCaCrossSignedCertDTO
 } from "./certificate-authority-cross-signed-cert-types";
-import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
-import { CaStatus } from "./certificate-authority-enums";
-import {
-  expandInternalCa,
-  getCaCertChain,
-  getPublicKeyFingerprint,
-  validateCrossSignedCertificate
-} from "./certificate-authority-fns";
 
 type TCertificateAuthorityCrossSignedCertServiceFactoryDep = {
   certificateAuthorityDAL: Pick<
@@ -59,6 +59,14 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
   permissionService,
   licenseService
 }: TCertificateAuthorityCrossSignedCertServiceFactoryDep) => {
+  const $toCrossSignedCertMetadata = (crossSignedCert: TCertificateAuthorityCrossSignedCerts) => ({
+    caId: crossSignedCert.caId,
+    issuer: crossSignedCert.issuer,
+    serialNumber: crossSignedCert.serialNumber,
+    notBefore: crossSignedCert.notBefore,
+    notAfter: crossSignedCert.notAfter
+  });
+
   const $decryptCaCrossSignedCert = async (
     projectId: string,
     crossSignedCert: TCertificateAuthorityCrossSignedCerts
@@ -76,13 +84,9 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
     const decryptedCertificateChain = await kmsDecryptor({ cipherTextBlob: crossSignedCert.encryptedCertificateChain });
 
     return {
-      caId: crossSignedCert.caId,
+      ...$toCrossSignedCertMetadata(crossSignedCert),
       certificate: new x509.X509Certificate(decryptedCertificate).toString("pem"),
-      certificateChain: decryptedCertificateChain.toString("utf-8"),
-      issuer: crossSignedCert.issuer,
-      serialNumber: crossSignedCert.serialNumber,
-      notBefore: crossSignedCert.notBefore,
-      notAfter: crossSignedCert.notAfter
+      certificateChain: decryptedCertificateChain.toString("utf-8")
     };
   };
 
@@ -150,7 +154,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
 
     const subCaDepth = await certificateAuthorityDAL.findMaxSubCaDepth(ca.id);
 
-    const { crossSignedCertObj, crossSignedCertChainPem, maxSubCaDepth } = await validateCrossSignedCertificate({
+    const { crossSignedCertObj, crossSignedCertChainPem, maxPathLength } = await validateCrossSignedCertificate({
       caCertificate: caCert,
       caCertificateChain: caCertChain,
       subCaDepth,
@@ -178,7 +182,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       async (tx) => {
         const existingCrossSignedCert = await certificateAuthorityCrossSignedCertDAL.findByCaIdForUpdate(ca.id, tx);
 
-        if (maxSubCaDepth !== null && (await certificateAuthorityDAL.findMaxSubCaDepth(ca.id, tx)) > maxSubCaDepth) {
+        if (maxPathLength !== null && (await certificateAuthorityDAL.findMaxSubCaDepth(ca.id, tx)) > maxPathLength) {
           throw new BadRequestError({
             message:
               "This certificate allows fewer CA levels below it than the CAs under this CA need. Have the old CA keep the path length from the CSR."
@@ -196,7 +200,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
               publicKeyFingerprint: getPublicKeyFingerprint(crossSignedCertObj),
               notBefore: crossSignedCertObj.notBefore,
               notAfter: crossSignedCertObj.notAfter,
-              maxSubCaDepth
+              maxPathLength
             }
           ],
           "caId",
@@ -213,7 +217,11 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
     return {
       ca: expandInternalCa(ca),
       replacedSerialNumber: replacedCrossSignedCert?.serialNumber,
-      crossSignedCertificate: await $decryptCaCrossSignedCert(ca.projectId, crossSignedCert)
+      crossSignedCertificate: {
+        ...$toCrossSignedCertMetadata(crossSignedCert),
+        certificate: crossSignedCertObj.toString("pem"),
+        certificateChain: crossSignedCertChainPem
+      }
     };
   };
 
@@ -275,11 +283,9 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
       throw new NotFoundError({ message: `CA '${ca.name}' has no cross-signed certificate` });
     }
 
-    const crossSignedCertificate = await $decryptCaCrossSignedCert(ca.projectId, deletedCrossSignedCert);
-
     return {
       ca: expandInternalCa(ca),
-      crossSignedCertificate
+      crossSignedCertificate: $toCrossSignedCertMetadata(deletedCrossSignedCert)
     };
   };
 

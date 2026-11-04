@@ -92,7 +92,7 @@ export const getCrossSignedCertStatus = (summary: TCrossSignedCertSummary) => {
       label: "Expired",
       alert: {
         title: `Expired on ${formatCertificateDate(summary.notAfter)}`,
-        body: `New certificates from this CA and the CAs under it no longer carry it, so clients that only trust ${trustedRootName} won't trust them. Import a new cross-signed certificate.`
+        body: `Clients that only trust ${trustedRootName} no longer trust certificates from this CA and the CAs under it, including ones already issued. Import a new cross-signed certificate.`
       }
     };
   }
@@ -117,7 +117,7 @@ export const getCrossSignedCertStatus = (summary: TCrossSignedCertSummary) => {
       label: formatExpiresIn(summary.daysLeft),
       alert: {
         title: "Replace before it expires",
-        body: `It expires on ${formatCertificateDate(summary.notAfter)}. After that, clients that only trust ${trustedRootName} won't trust new certificates from this CA and the CAs under it.`
+        body: `It expires on ${formatCertificateDate(summary.notAfter)}. After that, clients that only trust ${trustedRootName} stop trusting certificates from this CA and the CAs under it, including ones already issued.`
       }
     };
   }

@@ -4,8 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName, TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
-
-import { MAX_CA_HIERARCHY_DEPTH } from "./certificate-authority-dal";
+import { MAX_CA_HIERARCHY_DEPTH } from "@app/services/certificate-authority/certificate-authority-dal";
 
 export type TCertificateAuthorityCrossSignedCertDALFactory = ReturnType<
   typeof certificateAuthorityCrossSignedCertDALFactory

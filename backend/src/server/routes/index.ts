@@ -70,6 +70,8 @@ import { auditReportQueueServiceFactory } from "@app/ee/services/audit-report/au
 import { auditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
+import { certificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
+import { certificateAuthorityCrossSignedCertServiceFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-service";
 import { certificateAuthorityOcspServiceFactory } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-service";
 import { certificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
@@ -329,8 +331,6 @@ import { caKeySourceServiceFactory } from "@app/services/certificate-authority/c
 import { caSigningConfigDALFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-dal";
 import { caSigningConfigServiceFactory } from "@app/services/certificate-authority/ca-signing-config/ca-signing-config-service";
 import { certificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
-import { certificateAuthorityCrossSignedCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cross-signed-cert-dal";
-import { certificateAuthorityCrossSignedCertServiceFactory } from "@app/services/certificate-authority/certificate-authority-cross-signed-cert-service";
 import { certificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
@@ -3995,7 +3995,6 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     internalCertificateAuthorityDAL,
     certificateAuthorityCertDAL,
-    certificateAuthorityCrossSignedCertDAL,
     certificateAuthoritySecretDAL,
     certificateAuthorityCrlDAL,
     certificatePolicyDAL,

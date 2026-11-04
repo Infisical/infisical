@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { TCertificates } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { TProjectPermission } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -21,7 +22,6 @@ import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import type { TCaKeySourceServiceFactory } from "../ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
-import { TCertificateAuthorityCrossSignedCertDALFactory } from "../certificate-authority-cross-signed-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaRenewalType, CaStatus, CaType, InternalCaType } from "../certificate-authority-enums";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
@@ -379,17 +379,6 @@ export type TGetCaCertChainDTO = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
-};
-
-export type TAssertCrossSignedCertsAllowSubCaDTO = {
-  parentCaId: string;
-  attachedCaId: string;
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findMaxSubCaDepth">;
-  certificateAuthorityCrossSignedCertDAL: Pick<
-    TCertificateAuthorityCrossSignedCertDALFactory,
-    "lockCaHierarchyAndFindUnexpired"
-  >;
-  tx: Knex;
 };
 
 export type TBuildIssuedCertificateChainDTO = {

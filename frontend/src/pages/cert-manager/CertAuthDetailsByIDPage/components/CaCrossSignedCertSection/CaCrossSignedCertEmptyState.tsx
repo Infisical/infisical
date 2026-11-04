@@ -11,23 +11,17 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 
-import {
-  ENTERPRISE_PLAN_TEXT,
-  GENERATE_CSR_DENIED_TEXT,
-  TCrossSignedCertPopUp
-} from "./crossSignedCertUtils";
+import { GENERATE_CSR_DENIED_TEXT, TCrossSignedCertPopUp } from "./crossSignedCertUtils";
 
 type Props = {
   canGenerateCsr: boolean;
   canManageCrossSignedCert: boolean;
-  isEntitled: boolean;
   onOpen: (popUp: TCrossSignedCertPopUp) => void;
 };
 
 export const CaCrossSignedCertEmptyState = ({
   canGenerateCsr,
   canManageCrossSignedCert,
-  isEntitled,
   onOpen
 }: Props) => {
   const actions = [
@@ -44,10 +38,8 @@ export const CaCrossSignedCertEmptyState = ({
       variant: "project",
       Icon: UploadIcon,
       label: "Import Certificate",
-      isAllowed: canManageCrossSignedCert && isEntitled,
-      deniedText: isEntitled
-        ? "You don't have permission to import certificates for this CA"
-        : ENTERPRISE_PLAN_TEXT
+      isAllowed: canManageCrossSignedCert,
+      deniedText: "You don't have permission to import certificates for this CA"
     }
   ] as const;
 

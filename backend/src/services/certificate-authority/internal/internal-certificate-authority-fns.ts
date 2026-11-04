@@ -4,6 +4,7 @@ import RE2 from "re2";
 
 import { TCertificateTemplates, TPkiSubscribers } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { exportPqcKeyToPem, getPqcCrypto, isPqcAlgorithm, isPqcCryptoKey } from "@app/lib/crypto/pqc";
@@ -28,7 +29,6 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
-import { TCertificateAuthorityCrossSignedCertDALFactory } from "../certificate-authority-cross-signed-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus } from "../certificate-authority-enums";
 import {
