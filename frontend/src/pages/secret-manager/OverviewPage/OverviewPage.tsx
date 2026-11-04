@@ -1765,6 +1765,15 @@ const OverviewPageContent = () => {
     ]
   );
 
+  // an inherited grant is managed on the root folder, so the nested sheet hands off to the root one
+  const handleManageRootAccess = useCallback(() => {
+    setFolderAccessTarget(null);
+    setIsCurrentFolderAccessOpen(false);
+    navigate({ search: (prev) => ({ ...prev, secretPath: "/" }) }).then(() =>
+      setIsCurrentFolderAccessOpen(true)
+    );
+  }, [navigate]);
+
   const handleCurrentFolderAccessOpen = useCallback(() => {
     const openCurrentFolderAccess = () => {
       setIsCurrentFolderAccessOpen(true);
@@ -5428,6 +5437,7 @@ const OverviewPageContent = () => {
             userAvailableEnvs.find((env) => env.slug === folderAccessTarget.environmentSlug)
               ?.name ?? folderAccessTarget.environmentSlug
           }
+          onManageRootAccess={handleManageRootAccess}
         />
       )}
       {isCurrentFolderAccessOpen && (
@@ -5438,6 +5448,7 @@ const OverviewPageContent = () => {
           environmentSlug={singleEnvSlug}
           folderPath={secretPath}
           environmentName={singleEnvName}
+          onManageRootAccess={handleManageRootAccess}
         />
       )}
       <ConfirmationAlertDialog

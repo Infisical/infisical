@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
+import { FolderTreeIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -16,7 +17,8 @@ import {
   SheetContent,
   SheetFooter,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  Toggle
 } from "@app/components/v3";
 import {
   ProjectPermissionSecretFolderActions,
@@ -71,6 +73,7 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
   const [tier, setTier] = useState(SecretFolderRole.Read);
   const [isTemporary, setIsTemporary] = useState(false);
   const [range, setRange] = useState(DEFAULT_TEMPORARY_RANGE);
+  const [isRecursive, setIsRecursive] = useState(false);
 
   const createUserAccess = useCreateUserFolderAccess();
   const createIdentityAccess = useCreateIdentityFolderAccess();
@@ -134,7 +137,8 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
       environmentSlug,
       secretPath: normalizedPath,
       permission: tier,
-      type
+      type,
+      isPermissionRecursive: isRoot && isRecursive ? true : undefined
     };
 
     if (actor.type === "user") {
@@ -218,6 +222,24 @@ const GrantFolderAccessForm = ({ actor, existingAccess, onClose }: FormProps) =>
             onRemove={() => setIsTemporary(false)}
           />
         </div>
+
+        {isRoot && (
+          <Label
+            htmlFor="apply-to-subfolders"
+            className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-neutral/5 px-3 py-3 text-sm font-normal text-foreground"
+          >
+            <span className="flex items-center gap-2">
+              <FolderTreeIcon className="size-4 text-muted" />
+              Apply to subfolders
+            </span>
+            <Toggle
+              id="apply-to-subfolders"
+              variant="project"
+              checked={isRecursive}
+              onCheckedChange={setIsRecursive}
+            />
+          </Label>
+        )}
       </div>
 
       <SheetFooter className="border-t">

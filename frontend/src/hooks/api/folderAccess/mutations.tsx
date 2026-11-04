@@ -79,11 +79,18 @@ export const useCreateUserFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
-      type
+      type,
+      isPermissionRecursive
     }: TCreateUserFolderAccessDTO) => {
       const { data } = await apiRequest.post<{ folderAccess: TFolderAccess & { userId: string } }>(
         userFolderAccessUrl({ projectId, userId }),
-        { environmentSlug, secretPath, permission, ...(type ? { type } : {}) }
+        {
+          environmentSlug,
+          secretPath,
+          permission,
+          ...(type ? { type } : {}),
+          ...(isPermissionRecursive === undefined ? {} : { isPermissionRecursive })
+        }
       );
       return data.folderAccess;
     },
@@ -101,7 +108,8 @@ export const useUpdateUserFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
-      type
+      type,
+      isPermissionRecursive
     }: TUpdateUserFolderAccessDTO) => {
       const { data } = await apiRequest.patch<{ folderAccess: TFolderAccess & { userId: string } }>(
         userFolderAccessUrl({ projectId, userId }),
@@ -109,7 +117,8 @@ export const useUpdateUserFolderAccess = () => {
           environmentSlug,
           secretPath,
           ...(permission ? { permission } : {}),
-          ...(type ? { type } : {})
+          ...(type ? { type } : {}),
+          ...(isPermissionRecursive === undefined ? {} : { isPermissionRecursive })
         }
       );
       return data.folderAccess;
@@ -149,7 +158,8 @@ export const useCreateIdentityFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
-      type
+      type,
+      isPermissionRecursive
     }: TCreateIdentityFolderAccessDTO) => {
       const { data } = await apiRequest.post<{
         folderAccess: TFolderAccess & { identityId: string };
@@ -157,7 +167,8 @@ export const useCreateIdentityFolderAccess = () => {
         environmentSlug,
         secretPath,
         permission,
-        ...(type ? { type } : {})
+        ...(type ? { type } : {}),
+        ...(isPermissionRecursive === undefined ? {} : { isPermissionRecursive })
       });
       return data.folderAccess;
     },
@@ -175,7 +186,8 @@ export const useUpdateIdentityFolderAccess = () => {
       environmentSlug,
       secretPath,
       permission,
-      type
+      type,
+      isPermissionRecursive
     }: TUpdateIdentityFolderAccessDTO) => {
       const { data } = await apiRequest.patch<{
         folderAccess: TFolderAccess & { identityId: string };
@@ -183,7 +195,8 @@ export const useUpdateIdentityFolderAccess = () => {
         environmentSlug,
         secretPath,
         ...(permission ? { permission } : {}),
-        ...(type ? { type } : {})
+        ...(type ? { type } : {}),
+        ...(isPermissionRecursive === undefined ? {} : { isPermissionRecursive })
       });
       return data.folderAccess;
     },

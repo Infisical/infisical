@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderIcon } from "lucide-react";
+import { FolderIcon, FolderTreeIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -11,7 +11,8 @@ import {
   SheetContent,
   SheetFooter,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  Toggle
 } from "@app/components/v3";
 import {
   SecretFolderRole,
@@ -50,6 +51,7 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
   const [isTemporary, setIsTemporary] = useState(access.isTemporary);
   const [range, setRange] = useState(access.temporaryRange ?? DEFAULT_TEMPORARY_RANGE);
   const [rangeTouched, setRangeTouched] = useState(false);
+  const [isRecursive, setIsRecursive] = useState(access.isPermissionRecursive);
 
   const updateUserAccess = useUpdateUserFolderAccess();
   const updateIdentityAccess = useUpdateIdentityFolderAccess();
@@ -58,9 +60,13 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
   const isRangeValid = !isTemporary || isValidTemporaryRange(range);
   const tierChanged = tier !== access.permission;
   const temporalChanged = isTemporary !== access.isTemporary || (isTemporary && rangeTouched);
+  const isRoot = access.secretPath === "/";
+  const recursiveChanged = isRoot && isRecursive !== access.isPermissionRecursive;
   const isFullAccessTemporary = tier === SecretFolderRole.FullAccess && isTemporary;
   const isSaveDisabled =
-    (!tierChanged && !temporalChanged) || !isRangeValid || isFullAccessTemporary;
+    (!tierChanged && !temporalChanged && !recursiveChanged) ||
+    !isRangeValid ||
+    isFullAccessTemporary;
 
   let temporaryLabel = "No expiration";
   if (isTemporary) {
@@ -88,7 +94,8 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
       environmentSlug: access.environment,
       secretPath: access.secretPath,
       permission: tierChanged ? tier : undefined,
-      type
+      type,
+      isPermissionRecursive: recursiveChanged ? isRecursive : undefined
     };
 
     if (actor.type === "user") {
@@ -144,6 +151,24 @@ const EditFolderAccessForm = ({ access, actor, environmentName, onClose }: FormP
             onRemove={() => setIsTemporary(false)}
           />
         </div>
+
+        {isRoot && (
+          <Label
+            htmlFor="apply-to-subfolders"
+            className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-neutral/5 px-3 py-3 text-sm font-normal text-foreground"
+          >
+            <span className="flex items-center gap-2">
+              <FolderTreeIcon className="size-4 text-muted" />
+              Apply to subfolders
+            </span>
+            <Toggle
+              id="apply-to-subfolders"
+              variant="project"
+              checked={isRecursive}
+              onCheckedChange={setIsRecursive}
+            />
+          </Label>
+        )}
       </div>
 
       <SheetFooter className="justify-end border-t">

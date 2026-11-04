@@ -50,6 +50,7 @@ export const RemoveFolderAccessDialog = ({
   const expiry = endTime ? formatExpirationTime(endTime, Date.now()) : null;
   const isExpired = grantState === "expired";
   const isTemporary = grantState === "temporary";
+  const isRecursive = Boolean(actor?.access?.isPermissionRecursive);
   const noun = isOverride ? "Override" : "Access";
 
   const title = (() => {
@@ -107,6 +108,13 @@ export const RemoveFolderAccessDialog = ({
               permissions here, so removing it can change their access.
             </AlertDialogDescription>
           )}
+          {!isExpired && isRecursive && (
+            <AlertDialogDescription>
+              This access also applies to every subfolder of{" "}
+              <span className="font-mono text-foreground">{folderPath}</span>, so removing it
+              removes their access there too.
+            </AlertDialogDescription>
+          )}
           {isTemporary && expiry && (
             <AlertDialogDescription>
               It would otherwise expire in {expiry.value}, on {formatExpiryFull(expiry.expiresAt)}.
@@ -114,61 +122,7 @@ export const RemoveFolderAccessDialog = ({
           )}
         </AlertDialogHeader>
 
-        {/* <div className="overflow-hidden rounded-lg border border-danger/20 bg-danger/5">
-          <div className="flex items-center gap-2 border-b border-danger/15 bg-danger/[0.07] px-3.5 py-2.5">
-            <TriangleAlertIcon className="size-3.5 shrink-0 text-danger" />
-            <span className="text-xs font-semibold text-foreground">
-              Access affected after removal
-            </span>
-          </div>
 
-          {isAuditUnavailable && (
-            <Alert variant="warning" appearance="borderless" className="bg-transparent">
-              <AlertDescription>
-                Could not load {actor?.name}&apos;s project role permissions. Review their project
-                roles before removing this access.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {!isAuditUnavailable && audit.isLoading && (
-            <div className="space-y-2 p-3.5">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
-          )}
-
-          {!isAuditUnavailable && audit.data && (
-            <div className="max-h-72 thin-scrollbar overflow-y-auto [&_[data-slot=table-row]]:border-danger/10 [&_[data-slot=table-row]]:hover:bg-danger/5">
-              {resources.map((resource) => {
-                const visibleActions = resource.actions.filter(
-                  (action) => action.state !== "forbid"
-                );
-                return (
-                  <div key={resource.subject}>
-                    <p className="px-3.5 pt-2.5 pb-1.5 text-[11px] font-medium tracking-wider text-muted uppercase">
-                      {resource.label}
-                    </p>
-                    {visibleActions.length ? (
-                      <Table containerClassName="rounded-none! border-0 bg-transparent!">
-                        <TableBody>
-                          {visibleActions.map((action) => (
-                            <PermissionAuditRow key={action.action} audit={action} />
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <p className="px-3.5 pb-2.5 text-xs text-muted">
-                        No access from project roles.
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div> */}
 
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>

@@ -1,8 +1,17 @@
-import { CheckIcon, ClockIcon, ShieldIcon, Trash2Icon } from "lucide-react";
+import {
+  CheckIcon,
+  ClockIcon,
+  CornerLeftUpIcon,
+  FolderTreeIcon,
+  ShieldIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import {
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -13,10 +22,23 @@ import { SecretFolderRole } from "@app/hooks/api/folderAccess";
 
 import { FOLDER_ROLE_TIER_LABELS, FOLDER_ROLE_TIERS } from "./folder-access.const";
 
+export type TRecursiveControl = {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+};
+
+export type TInheritedAccess = {
+  tier: SecretFolderRole;
+  sourcePath: string;
+  onManage?: () => void;
+};
+
 type Props = {
   activeTier?: SecretFolderRole | null;
   footerNote?: string;
   temporaryLabel?: string | React.ReactNode;
+  recursive?: TRecursiveControl;
+  inherited?: TInheritedAccess;
   onSelectTier: (tier: SecretFolderRole) => void;
   onEditTemporaryAccess?: () => void;
   onRemove?: () => void;
@@ -39,27 +61,83 @@ const TierOptions = ({ activeTier, onSelectTier }: Pick<Props, "activeTier" | "o
     </DropdownMenuItem>
   ));
 
+// the menu stays open on toggle so a tier can still be picked afterwards, which means the check
+// state is flipped by hand instead of through the item's own select handling
+const RecursiveItem = ({ checked, onCheckedChange }: TRecursiveControl) => (
+  <DropdownMenuCheckboxItem
+    checked={checked}
+    onClick={(e) => {
+      e.preventDefault();
+      onCheckedChange(!checked);
+    }}
+  >
+    <FolderTreeIcon />
+    Apply to Subfolders
+  </DropdownMenuCheckboxItem>
+);
+
+const FooterNote = ({ note }: { note?: string }) =>
+  note ? (
+    <>
+      <DropdownMenuSeparator />
+      <p className="px-2 py-1.5 text-xs leading-4 text-muted">{note}</p>
+    </>
+  ) : null;
+
 export const TierDropdown = ({
   activeTier,
   footerNote,
   temporaryLabel,
+  recursive,
+  inherited,
   onSelectTier,
   onEditTemporaryAccess,
   onRemove,
   removeLabel = "Remove access",
   removeVariant = "danger"
 }: Props) => {
+  // an inherited grant is edited where it was made, so this menu only explains it and offers an
+  // exact grant on top
+  if (!activeTier && inherited) {
+    return (
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel>Inherited</DropdownMenuLabel>
+        <div className="flex items-center gap-1.5 px-2 py-1 text-sm">
+          <span className="font-medium">{FOLDER_ROLE_TIER_LABELS[inherited.tier]}</span>
+          <span className="text-muted">from</span>
+          <span className="rounded border border-border bg-neutral/10 px-1.5 font-mono text-xs">
+            {inherited.sourcePath}
+          </span>
+        </div>
+        <p className="px-2 pb-1.5 text-xs leading-4 text-muted">
+          This role was applied to {inherited.sourcePath} and all of its subfolders. To change or
+          remove it, edit it on {inherited.sourcePath}.
+        </p>
+        {inherited.onManage && (
+          <DropdownMenuItem onClick={inherited.onManage}>
+            <CornerLeftUpIcon />
+            Manage on {inherited.sourcePath}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Add a Role on This Folder</DropdownMenuLabel>
+        <TierOptions onSelectTier={onSelectTier} />
+      </DropdownMenuContent>
+    );
+  }
+
   // without a folder grant there is nothing else to act on, so the tiers are the whole menu
   if (!activeTier) {
     return (
       <DropdownMenuContent align="end" className="w-80">
         <TierOptions onSelectTier={onSelectTier} />
-        {footerNote && (
+        {recursive && (
           <>
             <DropdownMenuSeparator />
-            <p className="px-2 py-1.5 text-xs leading-4 text-muted">{footerNote}</p>
+            <RecursiveItem {...recursive} />
           </>
         )}
+        <FooterNote note={footerNote} />
       </DropdownMenuContent>
     );
   }
@@ -83,12 +161,14 @@ export const TierDropdown = ({
           {temporaryLabel}
         </DropdownMenuItem>
       )}
+      {recursive && <RecursiveItem {...recursive} />}
       {onRemove && (
         <DropdownMenuItem variant={removeVariant} onClick={onRemove}>
           <Trash2Icon />
           {removeLabel}
         </DropdownMenuItem>
       )}
+      <FooterNote note={footerNote} />
     </DropdownMenuContent>
   );
 };

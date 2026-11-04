@@ -6,6 +6,7 @@ import {
   ClockAlertIcon,
   ClockIcon,
   FolderIcon,
+  FolderTreeIcon,
   PlusIcon,
   RefreshCwIcon,
   Trash2Icon,
@@ -138,14 +139,16 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
         firstName: actor.firstName,
         lastName: actor.lastName,
         membership: { id: actor.membershipId, isProjectAdmin: false, roles: [] },
-        folderRBACAccess: deleteTarget
+        folderRBACAccess: deleteTarget,
+        inheritedFolderRBACAccess: null
       });
     }
     return toIdentityActor({
       identityId: actor.id,
       name: actor.name,
       membership: { id: null, isProjectAdmin: false, roles: [] },
-      folderRBACAccess: deleteTarget
+      folderRBACAccess: deleteTarget,
+      inheritedFolderRBACAccess: null
     });
   })();
 
@@ -258,7 +261,24 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
                           </div>
                         </TableCell>
                         <TableCell>{environmentNameOf(row.environment)}</TableCell>
-                        <TableCell>{FOLDER_ROLE_TIER_LABELS[row.permission]}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {FOLDER_ROLE_TIER_LABELS[row.permission]}
+                            {row.isPermissionRecursive && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="neutral" iconPosition="left">
+                                    <FolderTreeIcon />
+                                    Recursive
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Applies to {row.secretPath} and all of its subfolders
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {row.isTemporary ? (
                             <Tooltip>
