@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
@@ -49,11 +49,23 @@ type HoverCardProps = ListProps & {
   children: ReactNode;
 };
 
-export const InlineServicesHoverCard = ({ services, children }: HoverCardProps) => (
-  <HoverCard openDelay={150} closeDelay={100}>
-    <HoverCardTrigger asChild>{children}</HoverCardTrigger>
-    <HoverCardContent align="start" className="w-auto">
-      <InlineServicesList services={services} />
-    </HoverCardContent>
-  </HoverCard>
-);
+export const InlineServicesHoverCard = ({ services, children }: HoverCardProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <HoverCard open={isOpen} onOpenChange={setIsOpen} openDelay={150} closeDelay={100}>
+      {/* A hover card ignores touch, and its trigger cancels the tap's click, so a tap opens it on pointer down. */}
+      <HoverCardTrigger
+        asChild
+        onClick={() => setIsOpen(true)}
+        onPointerDown={(event) => {
+          if (event.pointerType !== "mouse") setIsOpen(true);
+        }}
+      >
+        {children}
+      </HoverCardTrigger>
+      <HoverCardContent align="start" className="w-auto">
+        <InlineServicesList services={services} />
+      </HoverCardContent>
+    </HoverCard>
+  );
+};

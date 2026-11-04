@@ -31,6 +31,41 @@ type TOverflowLayout = {
   lastBadgeWidth?: number;
 };
 
+// Opens on hover and focus like any hover card, and on a click or a tap too, since a hover card alone is out of reach
+// on a touch screen. Its trigger cancels a tap's click, so a tap opens it on pointer down.
+const BadgeHoverCard = ({
+  content,
+  children
+}: {
+  content: React.ReactNode;
+  children: React.ReactNode;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <HoverCard open={isOpen} onOpenChange={setIsOpen} openDelay={150} closeDelay={100}>
+      <HoverCardTrigger
+        asChild
+        onClick={(event) => {
+          event.stopPropagation();
+          setIsOpen(true);
+        }}
+        onPointerDown={(event) => {
+          if (event.pointerType !== "mouse") setIsOpen(true);
+        }}
+      >
+        {children}
+      </HoverCardTrigger>
+      <HoverCardContent
+        align="start"
+        className="w-auto"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {content}
+      </HoverCardContent>
+    </HoverCard>
+  );
+};
+
 export const OverflowBadgeList = <T,>({
   items,
   getKey,
@@ -192,16 +227,9 @@ export const OverflowBadgeList = <T,>({
 
     if (hoverCard) {
       return (
-        <HoverCard key={getKey(item)} openDelay={150} closeDelay={100}>
-          <HoverCardTrigger asChild>{badge}</HoverCardTrigger>
-          <HoverCardContent
-            align="start"
-            className="w-auto"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {hoverCard}
-          </HoverCardContent>
-        </HoverCard>
+        <BadgeHoverCard key={getKey(item)} content={hoverCard}>
+          {badge}
+        </BadgeHoverCard>
       );
     }
 
