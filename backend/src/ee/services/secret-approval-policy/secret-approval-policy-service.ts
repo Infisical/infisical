@@ -451,20 +451,18 @@ export const secretApprovalPolicyServiceFactory = ({
     }
 
     const updatedSap = await secretApprovalPolicyDAL.transaction(async (tx) => {
-      const doc = await secretApprovalPolicyDAL.updateById(
-        secretApprovalPolicy.id,
-        {
-          approvals,
-          secretPath,
-          name,
-          enforcementLevel,
-          allowedSelfApprovals,
-          bypassForMachineIdentities,
-          // an approvers-only update leaves every other column undefined, and knex rejects an empty update
-          updatedAt: new Date()
-        },
-        tx
-      );
+      const policyUpdate = {
+        approvals,
+        secretPath,
+        name,
+        enforcementLevel,
+        allowedSelfApprovals,
+        bypassForMachineIdentities
+      };
+      // an approvers-only update leaves every column undefined, and knex rejects an empty update
+      const doc = Object.values(policyUpdate).some((value) => value !== undefined)
+        ? await secretApprovalPolicyDAL.updateById(secretApprovalPolicy.id, policyUpdate, tx)
+        : await secretApprovalPolicyDAL.findOne({ id: secretApprovalPolicy.id }, tx);
 
       await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 

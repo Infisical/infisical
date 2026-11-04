@@ -534,21 +534,19 @@ export const accessApprovalPolicyServiceFactory = ({
 
     const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
     const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
-      const doc = await accessApprovalPolicyDAL.updateById(
-        accessApprovalPolicy.id,
-        {
-          approvals,
-          secretPath,
-          name,
-          enforcementLevel,
-          allowedSelfApprovals,
-          maxTimePeriod,
-          requestExpirationTime,
-          // an approvers-only update leaves every other column undefined, and knex rejects an empty update
-          updatedAt: new Date()
-        },
-        tx
-      );
+      const policyUpdate = {
+        approvals,
+        secretPath,
+        name,
+        enforcementLevel,
+        allowedSelfApprovals,
+        maxTimePeriod,
+        requestExpirationTime
+      };
+      // an approvers-only update leaves every column undefined, and knex rejects an empty update
+      const doc = Object.values(policyUpdate).some((value) => value !== undefined)
+        ? await accessApprovalPolicyDAL.updateById(accessApprovalPolicy.id, policyUpdate, tx)
+        : await accessApprovalPolicyDAL.findOne({ id: accessApprovalPolicy.id }, tx);
 
       await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
 
