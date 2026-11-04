@@ -29,8 +29,9 @@ import type {
 import type { UserWsTags } from "@app/hooks/api/tags/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
+import type { SecretsFlowsAdapter } from "./contract-flows";
 
-export type SecretsAdapter = {
+export type SecretsAdapter = SecretsFlowsAdapter & {
   useProject: (projectId: string) => V4QueryResult<Project>;
   useTags: (projectId: string) => V4QueryResult<UserWsTags>;
   useOverview: (

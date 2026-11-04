@@ -1,4 +1,4 @@
-import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { createFileRoute, lazyRouteComponent, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
@@ -22,5 +22,17 @@ export const Route = createFileRoute(
 )({
   component: OverviewPage,
   validateSearch: zodValidator(SecretOverviewPageQuerySchema),
+  search: {
+    middlewares: [
+      stripSearchParams({
+        secretPath: "/",
+        search: "",
+        clearSearch: undefined,
+        environments: [],
+        tags: undefined,
+        filterBy: undefined
+      })
+    ]
+  },
   pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader")
 });
