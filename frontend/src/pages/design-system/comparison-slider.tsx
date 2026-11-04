@@ -82,6 +82,8 @@ export const ComparisonSlider = ({ title, before, href, start = 50 }: Comparison
           src={frameSrc}
           title={`${title}, v4`}
           tabIndex={-1}
+          inert
+          aria-hidden
           className={styles.after}
           style={{ transform: `scale(${scale})` }}
         />
