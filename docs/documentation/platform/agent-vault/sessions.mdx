@@ -73,7 +73,7 @@ Anyone granted at least one access bundle in a project can create a session in t
     curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
       -H "Authorization: Bearer <access-token>" \
       -H "Content-Type: application/json" \
-      -d '{"projectId": "<project-id>", "accessBundles": ["<access-bundle-name>"], "ttl": "1h", "label": "nightly deploy"}'
+      -d '{"projectId": "<project-id>", "accessBundle": "<access-bundle-name>", "ttl": "1h", "label": "nightly deploy"}'
     ```
 
     The response includes the session token.

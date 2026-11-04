@@ -108,9 +108,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   // Only admins can read the settings; they need the storage type to show the right upgrade.
   const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(projectId, isAdmin);
-  // A session holds one bundle (AGENT_VAULT_MAX_SESSION_BUNDLES). Raising that cap needs a bundle
-  // picker here: the rows offering Add Service matched no service, so they name no bundle.
-  const accessBundle = session.accessBundles[0];
+  const { accessBundle } = session;
   const canAddService = isAdmin && Boolean(accessBundle?.id);
   // Not cleared on close: a prefilled host drops the sheet's template step, so clearing the host
   // while the sheet animates out would change the step on screen.
@@ -778,7 +776,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
         </p>
       )}
 
-      {canAddService && accessBundle.id && (
+      {canAddService && accessBundle?.id && (
         <ServiceSheet
           isOpen={isServiceSheetOpen}
           onOpenChange={setIsServiceSheetOpen}

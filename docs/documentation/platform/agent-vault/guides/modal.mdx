@@ -237,7 +237,7 @@ def run_agent(prompt: str) -> str:
     created = requests.post(
         f"{INFISICAL_URL}/api/v1/agent-vault/sessions",
         headers={"Authorization": f"Bearer {infisical.get_token()}"},
-        json={"projectId": PROJECT_ID, "accessBundles": [ACCESS_BUNDLE], "ttl": "20m"},
+        json={"projectId": PROJECT_ID, "accessBundle": ACCESS_BUNDLE, "ttl": "20m"},
         timeout=30,
     )
     created.raise_for_status()
@@ -356,7 +356,7 @@ export async function runAgent(prompt: string): Promise<string> {
   // the agent can't lose access mid-run.
   const { session } = await infisical("/api/v1/agent-vault/sessions", {
     token: accessToken,
-    body: { projectId: PROJECT_ID, accessBundles: [ACCESS_BUNDLE], ttl: "20m" },
+    body: { projectId: PROJECT_ID, accessBundle: ACCESS_BUNDLE, ttl: "20m" },
   });
 
   let sandbox: Sandbox | undefined;
@@ -512,9 +512,9 @@ func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *moda
 		} `json:"session"`
 	}
 	err = infisical(ctx, "/api/v1/agent-vault/sessions", login.AccessToken, map[string]any{
-		"projectId":     projectID,
-		"accessBundles": []string{accessBundle},
-		"ttl":           "20m",
+		"projectId":    projectID,
+		"accessBundle": accessBundle,
+		"ttl":          "20m",
 	}, &created)
 	if err != nil {
 		return "", err

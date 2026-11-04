@@ -16,7 +16,7 @@ export const HoneyTokensSchema = z.object({
   type: z.string(),
   status: z.string().default("active"),
   projectId: z.string(),
-  folderId: z.string().uuid(),
+  folderId: z.string().uuid().nullable().optional(),
   encryptedCredentials: zodBuffer,
   secretsMapping: z.unknown(),
   tokenIdentifier: z.string().nullable().optional(),

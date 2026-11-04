@@ -257,7 +257,7 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
     created = requests.post(
         f"{INFISICAL_URL}/api/v1/agent-vault/sessions",
         headers={"Authorization": f"Bearer {infisical.get_token()}"},
-        json={"projectId": PROJECT_ID, "accessBundles": [ACCESS_BUNDLE], "ttl": "20m"},
+        json={"projectId": PROJECT_ID, "accessBundle": ACCESS_BUNDLE, "ttl": "20m"},
         timeout=30,
     )
     created.raise_for_status()
@@ -391,7 +391,7 @@ export async function runAgent(daytona: Daytona, prompt: string): Promise<string
   // agent can't lose access mid-run.
   const { session } = await infisical("/api/v1/agent-vault/sessions", {
     token: accessToken,
-    body: { projectId: PROJECT_ID, accessBundles: [ACCESS_BUNDLE], ttl: "20m" },
+    body: { projectId: PROJECT_ID, accessBundle: ACCESS_BUNDLE, ttl: "20m" },
   });
 
   let proxySandbox: Sandbox | undefined;
@@ -564,9 +564,9 @@ func runAgent(ctx context.Context, client *daytona.Client, prompt string) (outpu
 		} `json:"session"`
 	}
 	err = infisical(ctx, "/api/v1/agent-vault/sessions", login.AccessToken, map[string]any{
-		"projectId":     projectID,
-		"accessBundles": []string{accessBundle},
-		"ttl":           "20m",
+		"projectId":    projectID,
+		"accessBundle": accessBundle,
+		"ttl":          "20m",
 	}, &created)
 	if err != nil {
 		return "", err
@@ -737,7 +737,7 @@ def run_agent(daytona, prompt)
   session = infisical(
     "/api/v1/agent-vault/sessions",
     token: access_token,
-    body: { projectId: PROJECT_ID, accessBundles: [ACCESS_BUNDLE], ttl: "20m" }
+    body: { projectId: PROJECT_ID, accessBundle: ACCESS_BUNDLE, ttl: "20m" }
   )["session"]
 
   proxy_sandbox = nil
@@ -910,7 +910,7 @@ public class RunAgent {
         // agent can't lose access mid-run.
         JsonNode session = infisical("/api/v1/agent-vault/sessions", accessToken, Map.of(
             "projectId", PROJECT_ID,
-            "accessBundles", List.of(ACCESS_BUNDLE),
+            "accessBundle", ACCESS_BUNDLE,
             "ttl", "20m")).get("session");
 
         Sandbox proxySandbox = null;

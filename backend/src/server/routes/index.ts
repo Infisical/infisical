@@ -103,6 +103,8 @@ import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identi
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { honeyTokenConfigDALFactory } from "@app/ee/services/honey-token-config/honey-token-config-dal";
 import { honeyTokenConfigServiceFactory } from "@app/ee/services/honey-token-config/honey-token-config-service";
+import { honeyTokenCleanupQueueFactory } from "@app/ee/services/honey-token/honey-token-cleanup-queue";
+import { honeyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { honeyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { honeyTokenEventDALFactory } from "@app/ee/services/honey-token/honey-token-event-dal";
 import { honeyTokenServiceFactory } from "@app/ee/services/honey-token/honey-token-service";
@@ -1114,6 +1116,19 @@ export const registerRoutes = async (
     envConfig
   });
 
+  const honeyTokenCleanupService = honeyTokenCleanupServiceFactory({
+    honeyTokenDAL,
+    honeyTokenConfigDAL,
+    appConnectionDAL,
+    kmsService
+  });
+
+  const honeyTokenCleanupQueue = honeyTokenCleanupQueueFactory({
+    honeyTokenDAL,
+    honeyTokenCleanupService,
+    queueService
+  });
+
   const encryptionKeyRotationService = encryptionKeyRotationServiceFactory({
     kmsService,
     kmsRootConfigDAL,
@@ -1793,7 +1808,8 @@ export const registerRoutes = async (
     usageMeteringService,
     pamSessionDAL,
     gatewayV2Service: deferredGatewayV2Service,
-    eventEmitter: eventOutboxService
+    eventEmitter: eventOutboxService,
+    honeyTokenCleanupService
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -2590,6 +2606,7 @@ export const registerRoutes = async (
     groupDAL,
     projectAccessRequestDAL,
     usageMeteringService,
+    honeyTokenCleanupService,
     dynamicSecretLeaseDAL,
     dynamicSecretQueueService,
     secretV2BridgeDAL,
@@ -3251,6 +3268,7 @@ export const registerRoutes = async (
     approvalRequestGrantsDAL,
     certificateRequestDAL,
     scepTransactionDAL,
+    honeyTokenCleanupQueue,
     agentVaultSessionInlineServiceDAL
   });
 
@@ -4913,6 +4931,7 @@ export const registerRoutes = async (
   dailyResourceCleanUp.init();
   projectEnvQueue.init();
   projectCleanupQueue.init();
+  honeyTokenCleanupQueue.init();
   usageEventQueue.init();
   healthAlert.init();
   secretReadActivityQueue.init();
