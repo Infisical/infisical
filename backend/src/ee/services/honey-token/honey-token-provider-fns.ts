@@ -6,8 +6,11 @@ import type {
 } from "../honey-token-config/honey-token-config-types";
 import { AWS_HONEY_TOKEN_PROVIDER_DEFINITION } from "./aws/honey-token-aws-provider-definition";
 import { HoneyTokenType } from "./honey-token-enums";
-import type { THoneyTokenServiceFactoryDep } from "./honey-token-service";
-import { THoneyTokenProviderDefinition, THoneyTokenProviderHooks } from "./honey-token-service-types";
+import {
+  THoneyTokenProviderDefinition,
+  THoneyTokenProviderHooks,
+  THoneyTokenProviderHooksDep
+} from "./honey-token-service-types";
 
 const HONEY_TOKEN_PROVIDER_DEFINITIONS: THoneyTokenProviderDefinition[] = [AWS_HONEY_TOKEN_PROVIDER_DEFINITION];
 
@@ -47,7 +50,7 @@ export const getHoneyTokenProviderDefinition = (type: string) => {
 };
 
 export const getHoneyTokenServiceHooksByType = (
-  deps: THoneyTokenServiceFactoryDep
+  deps: THoneyTokenProviderHooksDep
 ): Record<HoneyTokenType, THoneyTokenProviderHooks> =>
   HONEY_TOKEN_PROVIDER_DEFINITIONS.reduce(
     (acc, provider) => {

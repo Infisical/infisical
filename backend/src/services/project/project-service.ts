@@ -23,6 +23,7 @@ import {
   getRestoredLeaseRevocationJobId,
   TDynamicSecretLeaseQueueServiceFactory
 } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
+import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -213,6 +214,7 @@ type TProjectServiceFactoryDep = {
     "upsertPendingRequest" | "findPendingForRequesterInOrg"
   >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeProjectHoneyTokens">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findExpiredByProjectId">;
   dynamicSecretQueueService: Pick<
     TDynamicSecretLeaseQueueServiceFactory,
@@ -272,6 +274,7 @@ export const projectServiceFactory = ({
   groupDAL,
   projectAccessRequestDAL,
   usageMeteringService,
+  honeyTokenCleanupService,
   dynamicSecretLeaseDAL,
   dynamicSecretQueueService,
   secretV2BridgeDAL,
@@ -920,6 +923,10 @@ export const projectServiceFactory = ({
           message: `Project '${project.name}' can't be deleted while it shares secrets with other projects: ${remaining > 0 ? `${preview}, and ${remaining} more` : preview}. Revoke their access in Project Settings → Policies → Cross-Project Secret Sharing first, then retry.`
         });
       }
+
+      // Once soft-deleted the project's KMS key no longer resolves, so the honey token credentials can only
+      // be decrypted, and their provider users revoked, before this point.
+      await honeyTokenCleanupService.revokeProjectHoneyTokens(project.id);
 
       // This returns immediately (one UPDATE) and the project disappears from every read, but the
       // expensive cascade runs asynchronously in the hard-delete worker once deleteAfter passes. Only

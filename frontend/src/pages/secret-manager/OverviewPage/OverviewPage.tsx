@@ -4166,16 +4166,26 @@ const OverviewPageContent = () => {
                 </Tooltip>
               </>
             )}
-            {canManageCurrentFolderAccess && (
-              <Button
-                variant="ghost"
-                size="xs"
-                className="mr-1.5 shrink-0"
-                onClick={handleCurrentFolderAccessOpen}
-              >
-                <UsersIcon />
-                Manage Access
-              </Button>
+            {isSingleEnvView && (
+              <Tooltip open={canManageCurrentFolderAccess ? false : undefined}>
+                <TooltipTrigger asChild>
+                  <span
+                    tabIndex={canManageCurrentFolderAccess ? undefined : 0}
+                    className="mr-1.5 shrink-0"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      isDisabled={!canManageCurrentFolderAccess}
+                      onClick={handleCurrentFolderAccessOpen}
+                    >
+                      <UsersIcon />
+                      Manage Access
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Access Restricted</TooltipContent>
+              </Tooltip>
             )}
           </div>
           {tableView === "no-environments" && (
@@ -4741,7 +4751,9 @@ const OverviewPageContent = () => {
                               onToggleFolderDelete={(name: string) =>
                                 handlePopUpOpen("deleteFolder", { name })
                               }
-                              onToggleFolderAccess={handleFolderAccessOpen}
+                              onToggleFolderAccess={
+                                isSingleEnvView ? handleFolderAccessOpen : undefined
+                              }
                               canManageFolderAccess={canManageFolderAccessInRow(folderName)}
                               canEditFolder={canEditFolders}
                               canDeleteFolder={canDeleteFolders}
