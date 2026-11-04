@@ -1,4 +1,4 @@
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 
 import { Button } from "@app/components/v4/ui/button";
 import { Stack } from "@app/components/v4/ui/layout";
@@ -11,20 +11,21 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { AccessFrame } from "../../access/AccessFrame";
 import { accessLinks } from "../../access/links";
+import { useGo } from "../../access/navigation";
 import { useProjectPermission } from "../../access/permissions";
 import { ProjectGroupsTab } from "../../access/project/groups";
 import { ProjectIdentitiesTab } from "../../access/project/identities";
 import { ProjectMembersTab } from "../../access/project/members";
 import { ProjectRolesTab } from "../../access/project/roles";
+import { useProjectScope } from "../../access/project/scope";
 import { ServiceTokensTab } from "../../access/project/service-tokens";
 import { AccessRestricted } from "../../access/ui";
-
-const ROUTE = "/v4/organizations/$orgId/projects/secret-management/$projectId/access-management";
 
 const tabs = [
   {
@@ -60,9 +61,10 @@ const tabs = [
 ];
 
 export const AccessControlPage = () => {
-  const navigate = useNavigate({ from: ROUTE });
-  const { orgId, projectId } = useParams({ from: ROUTE });
-  const { selectedTab } = useSearch({ from: ROUTE });
+  const go = useGo();
+  const scope = useProjectScope();
+  const { orgId, projectId, projectType } = scope;
+  const { selectedTab } = useSearch({ strict: false });
   const { permission, isPending } = useProjectPermission(projectId);
   const readable: Record<ProjectAccessControlTabs, boolean> = {
     [ProjectAccessControlTabs.Member]: permission.can(
@@ -87,7 +89,12 @@ export const AccessControlPage = () => {
     )
   };
   if (isPending) return <Loader size="page" label="Loading access control" />;
-  const active = tabs.find((tab) => tab.value === selectedTab) ?? tabs[0];
+  const visible = tabs.filter(
+    (tab) =>
+      projectType === ProjectType.SecretManager ||
+      tab.value !== ProjectAccessControlTabs.ServiceTokens
+  );
+  const active = visible.find((tab) => tab.value === selectedTab) ?? visible[0];
   return (
     <AccessFrame>
       <Stack gap={24}>
@@ -106,9 +113,9 @@ export const AccessControlPage = () => {
               label="Project access control sections"
               value={active.value}
               onChange={(value) =>
-                navigate({ search: { selectedTab: value as ProjectAccessControlTabs } })
+                go(accessLinks.project(scope, value as ProjectAccessControlTabs))
               }
-              tabs={tabs.map((tab) => ({ value: tab.value, label: tab.label }))}
+              tabs={visible.map((tab) => ({ value: tab.value, label: tab.label }))}
             />
           }
         />

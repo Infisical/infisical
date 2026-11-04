@@ -75,7 +75,10 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
               link: {
                 to: `${base}${item.path}`,
                 search: item.search,
-                activeOptions: { exact: item.id === "home", includeSearch: Boolean(item.search) }
+                activeOptions: {
+                  exact: item.id === "home" || item.id === "projects",
+                  includeSearch: Boolean(item.search)
+                }
               } as LinkOptions
             })
       }))
@@ -111,7 +114,12 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       parent: "product",
       sections: toSidebar(at.level, at.sections)
     });
-  } else if (at.level === "pki" || at.level === "scanning") {
+  } else if (
+    at.level === "pki" ||
+    at.level === "scanning" ||
+    at.level === "pam" ||
+    at.level === "agent-vault"
+  ) {
     levels.push({
       id: at.level,
       label: product?.label ?? at.level,
@@ -164,13 +172,10 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
         value: option.slug,
         label: option.label,
         group: "Products",
-        media: <Icon name={option.icon} />
+        media: <Icon name={option.icon} />,
+        onSelect: () => go(`${base}${productHome(option)}`)
       })),
-      value: product.slug,
-      onChange: (slug: string) => {
-        const next = products.find((option) => option.slug === slug);
-        if (next) go(`${base}${productHome(next)}`);
-      }
+      value: product.slug
     }
   };
   const projectCrumb: BreadcrumbCrumb | undefined =

@@ -3,13 +3,16 @@ import {
   SecretScanningDataSource,
   SecretScanningFindingOrderBy,
   SecretScanningFindingSeverity,
-  SecretScanningFindingStatus
+  SecretScanningFindingStatus,
+  SecretScanningScanStatus
 } from "@app/hooks/api/secretScanningV2/enums";
 import type {
   TSecretScanningDataSource,
+  TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
   TSecretScanningResource
 } from "@app/hooks/api/secretScanningV2/types";
+import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import type { SecretScanningAdapter } from "./contract";
@@ -22,48 +25,105 @@ const uuid = (prefix: string, index: number) =>
 const loadedAt = Date.now();
 const ago = (minutes: number) => new Date(loadedAt - minutes * 60_000).toISOString();
 
-const sources = [
+const seeded: TSecretScanningDataSourceWithDetails[] = [
   {
+    id: uuid("d5", 1),
     name: "acme-corp",
-    repos: [
-      "acme-corp/payments-api",
-      "acme-corp/web-dashboard",
-      "acme-corp/platform-core",
-      "acme-corp/infra-terraform"
-    ]
+    description: "Production and platform repositories",
+    type: SecretScanningDataSource.GitHub,
+    config: {},
+    lastScannedAt: ago(12),
+    lastScanStatus: SecretScanningScanStatus.Completed,
+    lastScanStatusMessage: null,
+    isScanNewCommitsEnabled: true
   },
-  { name: "acme-labs", repos: ["acme-labs/ml-pipelines", "acme-labs/checkout-prototype"] },
-  { name: "acme-oss", repos: ["acme-oss/acme-cli", "acme-oss/helm-charts"] }
-];
+  {
+    id: uuid("d5", 2),
+    name: "acme-labs",
+    description: null,
+    type: SecretScanningDataSource.GitHub,
+    config: {},
+    lastScannedAt: ago(25),
+    lastScanStatus: SecretScanningScanStatus.Scanning,
+    lastScanStatusMessage: null,
+    isScanNewCommitsEnabled: true
+  },
+  {
+    id: uuid("d5", 3),
+    name: "acme-oss",
+    description: "Public open source projects",
+    type: SecretScanningDataSource.GitHub,
+    config: {},
+    lastScannedAt: ago(60 * 6),
+    lastScanStatus: SecretScanningScanStatus.Completed,
+    lastScanStatusMessage: null,
+    isScanNewCommitsEnabled: true
+  },
+  {
+    id: uuid("d5", 4),
+    name: "acme-platform",
+    description: "Self-managed GitLab group",
+    type: SecretScanningDataSource.GitLab,
+    config: { scope: GitLabDataSourceScope.Group, groupId: 4821, groupName: "acme-platform" },
+    lastScannedAt: ago(60 * 24 * 3),
+    lastScanStatus: SecretScanningScanStatus.Completed,
+    lastScanStatusMessage: null,
+    isScanNewCommitsEnabled: false
+  },
+  {
+    id: uuid("d5", 5),
+    name: "acme-legacy",
+    description: null,
+    type: SecretScanningDataSource.Bitbucket,
+    config: { workspaceSlug: "acme-legacy" },
+    lastScannedAt: ago(60 * 24 * 9),
+    lastScanStatus: SecretScanningScanStatus.Failed,
+    lastScanStatusMessage: "Bitbucket returned 401 Unauthorized: the app password was revoked",
+    isScanNewCommitsEnabled: true
+  }
+].map(
+  (source) =>
+    ({
+      ...source,
+      connectionId: null,
+      connection: null,
+      createdAt: ago(60 * 24 * 90),
+      updatedAt: ago(60 * 24 * 90),
+      projectId,
+      isAutoScanEnabled: true,
+      isHistoricalScanEnabled: true,
+      isDiscoveryEnabled: true,
+      isDisconnected: source.lastScanStatus === SecretScanningScanStatus.Failed,
+      unresolvedFindings: null,
+      resourceCount: 0
+    }) as TSecretScanningDataSourceWithDetails
+);
 
-const dataSources: TSecretScanningDataSource[] = sources.map((source, index) => ({
-  id: uuid("d5", index + 1),
-  name: source.name,
-  description: null,
-  connectionId: null,
-  connection: null,
-  createdAt: ago(60 * 24 * 90),
-  updatedAt: ago(60 * 24 * 90),
-  projectId,
-  isAutoScanEnabled: true,
-  isHistoricalScanEnabled: true,
-  isScanNewCommitsEnabled: true,
-  isDiscoveryEnabled: true,
-  isDisconnected: false,
-  type: SecretScanningDataSource.GitHub,
-  config: {}
-}));
+const repos: Record<string, string[]> = {
+  "acme-corp": [
+    "acme-corp/payments-api",
+    "acme-corp/web-dashboard",
+    "acme-corp/platform-core",
+    "acme-corp/infra-terraform"
+  ],
+  "acme-labs": ["acme-labs/ml-pipelines", "acme-labs/checkout-prototype"],
+  "acme-oss": ["acme-oss/acme-cli", "acme-oss/helm-charts"],
+  "acme-platform": ["acme-platform/billing-service", "acme-platform/edge-proxy"],
+  "acme-legacy": ["acme-legacy/monolith"]
+};
 
-const resources: TSecretScanningResource[] = sources.flatMap((source, sourceIndex) =>
-  source.repos.map((repo, repoIndex) => ({
+const resources: TSecretScanningResource[] = seeded.flatMap((source, sourceIndex) =>
+  (repos[source.name] ?? []).map((repo, repoIndex) => ({
     id: uuid("e5", sourceIndex * 10 + repoIndex + 1),
-    dataSourceId: dataSources[sourceIndex].id,
+    dataSourceId: source.id,
     externalId: String(4_100_000 + sourceIndex * 10 + repoIndex),
     name: repo,
     createdAt: ago(60 * 24 * 90),
     updatedAt: ago(60 * 24 * 90)
   }))
 );
+
+const dataSourceStore = createFixtureStore(seeded);
 
 type Seed = [
   repo: string,
@@ -249,8 +309,7 @@ const finding = (
   status: SecretScanningFindingStatus
 ): TSecretScanningFinding => {
   const resource = resources.find((entry) => entry.name === repo) ?? resources[0];
-  const dataSource =
-    dataSources.find((entry) => entry.id === resource.dataSourceId) ?? dataSources[0];
+  const dataSource = seeded.find((entry) => entry.id === resource.dataSourceId) ?? seeded[0];
   const fingerprint = `${commit}:${file}:${rule}:${line}`;
   return {
     id: uuid("f1", index + 1),
@@ -328,7 +387,45 @@ export const secretScanningDemo: SecretScanningAdapter = {
     isPending: false,
     error: null
   }),
-  useDataSources: () => ({ data: dataSources, isPending: false, error: null }),
+  useDataSources: () => ({ data: dataSourceStore.use(), isPending: false, error: null }),
+  useDashboardDataSources: () => {
+    const findings = store.use();
+    return {
+      data: dataSourceStore.use().map((source) => ({
+        ...source,
+        resourceCount: resources.filter((entry) => entry.dataSourceId === source.id).length,
+        unresolvedFindings: source.lastScannedAt
+          ? findings.filter(
+              (entry) =>
+                entry.dataSourceId === source.id &&
+                entry.status === SecretScanningFindingStatus.Unresolved
+            ).length
+          : null
+      })),
+      isPending: false,
+      error: null
+    };
+  },
+  useUpdateDataSource: fixtureMutation(({ dataSourceId, type, projectId: _, ...changes }) => {
+    dataSourceStore.update((entries) =>
+      entries.map((entry) =>
+        entry.id === dataSourceId
+          ? ({ ...entry, ...changes, updatedAt: new Date().toISOString() } as typeof entry)
+          : entry
+      )
+    );
+    return dataSourceStore
+      .get()
+      .find((entry) => entry.id === dataSourceId) as TSecretScanningDataSource;
+  }),
+  useDeleteDataSource: fixtureMutation(({ dataSourceId }) => {
+    const removed = dataSourceStore
+      .get()
+      .find((entry) => entry.id === dataSourceId) as TSecretScanningDataSource;
+    dataSourceStore.update((entries) => entries.filter((entry) => entry.id !== dataSourceId));
+    store.update((entries) => entries.filter((entry) => entry.dataSourceId !== dataSourceId));
+    return removed;
+  }),
   useResources: ({ dataSourceId }) => ({
     data: resources.filter((entry) => entry.dataSourceId === dataSourceId),
     isPending: false,
@@ -348,3 +445,10 @@ export const secretScanningDemo: SecretScanningAdapter = {
       .find((entry) => entry.id === updates[0]?.findingId) as TSecretScanningFinding;
   })
 };
+
+export const secretScanningDemoCounts = () => ({
+  dataSourcesCount: dataSourceStore.get().length,
+  resourcesCount: resources.length,
+  findingsCount: store.get().length,
+  projectsCount: 1
+});

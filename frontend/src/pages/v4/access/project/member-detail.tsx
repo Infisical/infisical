@@ -39,14 +39,12 @@ import { useProjectPermission } from "../permissions";
 import { formatDate } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Muted } from "../ui";
-import { personName, PROJECT_TYPE } from "./member-access";
+import { personName } from "./member-access";
 import { type AssumeTarget, AssumePrivilegesDialog, RemoveMemberDialog } from "./member-dialogs";
 import { MemberRolesSection } from "./member-roles";
+import { useProjectScope } from "./scope";
 
 import styles from "./project.module.css";
-
-const ROUTE =
-  "/v4/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId";
 
 const CopyValue = ({ value, what }: { value: string; what: string }) => {
   const [copied, setCopied] = useState(false);
@@ -74,16 +72,18 @@ const CopyValue = ({ value, what }: { value: string; what: string }) => {
 };
 
 export const ProjectMemberDetail = () => {
-  const { orgId, projectId, membershipId } = useParams({ from: ROUTE });
+  const scope = useProjectScope();
+  const { orgId, projectId } = scope;
+  const { membershipId = "" } = useParams({ strict: false });
   const access = useV4Adapter("access");
   const go = useGo();
   const session = useV4Session();
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
-  const query = access.useProjectUser(projectId, membershipId, PROJECT_TYPE);
+  const query = access.useProjectUser(projectId, membershipId, scope.projectType);
   const removeUsers = access.useRemoveProjectUsers();
   const [removing, setRemoving] = useState(false);
   const [assuming, setAssuming] = useState<AssumeTarget>();
-  const listHref = accessLinks.project(orgId, projectId, ProjectAccessControlTabs.Member);
+  const listHref = accessLinks.project(scope, ProjectAccessControlTabs.Member);
   const breadcrumb = [{ label: "Project users", href: listHref }];
 
   if (permissionPending || query.isPending) return <Loader size="page" label="Loading user" />;
@@ -111,7 +111,7 @@ export const ProjectMemberDetail = () => {
   const isSelf = user.email === session.user.email;
   const name = personName(user) ?? user.email;
   const canAssume =
-    supportsAssumePrivileges(PROJECT_TYPE) &&
+    supportsAssumePrivileges(scope.projectType) &&
     permission.can(
       ProjectPermissionMemberActions.AssumePrivileges,
       subject(ProjectPermissionSub.Member, { userEmail: user.email })
@@ -128,7 +128,7 @@ export const ProjectMemberDetail = () => {
         orgId,
         usernames: [user.username],
         projectId,
-        projectType: PROJECT_TYPE
+        projectType: scope.projectType
       });
       saved("Successfully removed user from project");
       go(listHref);
@@ -232,7 +232,7 @@ export const ProjectMemberDetail = () => {
           </Card>
         }
       >
-        <MemberRolesSection member={member} orgId={orgId} projectId={projectId} isSelf={isSelf} />
+        <MemberRolesSection member={member} projectId={projectId} isSelf={isSelf} />
       </DetailLayout>
       <RemoveMemberDialog
         name={removing ? name : undefined}

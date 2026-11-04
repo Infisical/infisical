@@ -58,10 +58,10 @@ import {
   identitySubject,
   isProjectManaged,
   ManagedByBadge,
-  PROJECT_IDENTITY_ROUTE,
   type ProjectIdentityMembership
 } from "./identity-common";
 import { IdentityRoleDetailsSection } from "./identity-roles";
+import { useProjectScope } from "./scope";
 
 import styles from "./identity.module.css";
 
@@ -401,7 +401,9 @@ const OrgManagedAuthCard = ({ identity }: { identity: Identity }) => {
 };
 
 export const ProjectIdentityDetail = () => {
-  const { orgId, projectId, identityId } = useParams({ from: PROJECT_IDENTITY_ROUTE });
+  const scope = useProjectScope();
+  const { orgId, projectId } = scope;
+  const { identityId = "" } = useParams({ strict: false });
   const go = useGo();
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
   const { data: membership, isPending } = useV4Adapter("access").useProjectIdentity(
@@ -411,7 +413,7 @@ export const ProjectIdentityDetail = () => {
   const [editing, setEditing] = useState(false);
   const [assuming, setAssuming] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const listHref = accessLinks.project(orgId, projectId, ProjectAccessControlTabs.Identities);
+  const listHref = accessLinks.project(scope, ProjectAccessControlTabs.Identities);
 
   const backLink = (
     <div>
@@ -506,7 +508,7 @@ export const ProjectIdentityDetail = () => {
           ) : (
             <OrgManagedAuthCard identity={identity} />
           )}
-          <IdentityRoleDetailsSection orgId={orgId} projectId={projectId} membership={membership} />
+          <IdentityRoleDetailsSection projectId={projectId} membership={membership} />
         </Stack>
       </DetailLayout>
       {editing && (

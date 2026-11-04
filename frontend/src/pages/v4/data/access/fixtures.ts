@@ -621,6 +621,7 @@ const projects: DemoProject[] = [
     environments: standardEnvironments("platform-core")
   },
   { id: "kms-keys", name: "kms-keys", type: ProjectType.KMS, environments: [] },
+  { id: "edge-signing", name: "edge-signing", type: ProjectType.KMS, environments: [] },
   {
     id: "internal-pki",
     name: "internal-pki",
@@ -932,6 +933,46 @@ const projectMemberships: DemoProjectMembership[] = [
     identityId: CI_DEPLOYER,
     roles: [grant("pi-5", "admin")],
     createdAt: day("2026-03-09")
+  },
+  {
+    kind: "user",
+    id: "kpm-sarah",
+    projectId: "kms-keys",
+    userId: "u-sarah",
+    roles: [grant("kpr-1", "admin")],
+    createdAt: day("2025-03-14")
+  },
+  {
+    kind: "user",
+    id: "kpm-marcus",
+    projectId: "kms-keys",
+    userId: "u-marcus",
+    roles: [grant("kpr-2", "member")],
+    createdAt: day("2025-06-02")
+  },
+  {
+    kind: "user",
+    id: "kpm-priya",
+    projectId: "kms-keys",
+    userId: "u-priya",
+    roles: [grant("kpr-3", "viewer")],
+    createdAt: day("2026-01-15")
+  },
+  {
+    kind: "group",
+    id: "kpg-security",
+    projectId: "kms-keys",
+    groupId: "g-security",
+    roles: [grant("kpg-1", "viewer")],
+    createdAt: day("2025-08-21")
+  },
+  {
+    kind: "user",
+    id: "kpm-sarah-edge",
+    projectId: "edge-signing",
+    userId: "u-sarah",
+    roles: [grant("kpr-4", "admin")],
+    createdAt: day("2026-04-22")
   }
 ];
 

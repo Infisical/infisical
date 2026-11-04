@@ -43,6 +43,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgPermission, useProjectPermission } from "../permissions";
+import { useProjectScope } from "../project/scope";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Gate, RESTRICTED } from "../ui";
 import {
@@ -474,15 +475,8 @@ const OrgRoleDetail = ({ orgId, roleId }: { orgId: string; roleId: string }) => 
   );
 };
 
-const ProjectRoleDetail = ({
-  orgId,
-  projectId,
-  roleSlug
-}: {
-  orgId: string;
-  projectId: string;
-  roleSlug: string;
-}) => {
+const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlug: string }) => {
+  const scope = useProjectScope();
   const access = useV4Adapter("access");
   const go = useGo();
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
@@ -499,7 +493,7 @@ const ProjectRoleDetail = ({
   const updateRole = access.useUpdateProjectRole();
   const createRole = access.useCreateProjectRole();
   const deleteRole = access.useDeleteProjectRole();
-  const backHref = accessLinks.project(orgId, projectId, ProjectAccessControlTabs.Roles);
+  const backHref = accessLinks.project(scope, ProjectAccessControlTabs.Roles);
 
   if (permissionPending) return <Loader size="page" label="Loading role" />;
   if (!permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role))
@@ -537,7 +531,7 @@ const ProjectRoleDetail = ({
         try {
           const next = await updateRole.mutateAsync({ projectId, id: role.id, ...draft });
           saved(`Project role "${next.name}" updated`);
-          if (next.slug !== roleSlug) go(accessLinks.projectRole(orgId, projectId, next.slug));
+          if (next.slug !== roleSlug) go(accessLinks.projectRole(scope, next.slug));
           return true;
         } catch (error) {
           failed("Failed to update project role", error);
@@ -552,7 +546,7 @@ const ProjectRoleDetail = ({
             permissions: sanitizeDuplicateRolePermissions(role.permissions)
           });
           saved(`Project role "${draft.name}" duplicated`);
-          go(accessLinks.projectRole(orgId, projectId, created.slug));
+          go(accessLinks.projectRole(scope, created.slug));
           return true;
         } catch (error) {
           failed("Failed to duplicate project role", error);
@@ -575,12 +569,6 @@ const ProjectRoleDetail = ({
 export const RoleDetail = () => {
   const params = useParams({ strict: false });
   if (params.projectId && params.roleSlug)
-    return (
-      <ProjectRoleDetail
-        orgId={params.orgId ?? ""}
-        projectId={params.projectId}
-        roleSlug={params.roleSlug}
-      />
-    );
+    return <ProjectRoleDetail projectId={params.projectId} roleSlug={params.roleSlug} />;
   return <OrgRoleDetail orgId={params.orgId ?? ""} roleId={params.roleId ?? ""} />;
 };

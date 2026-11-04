@@ -5,6 +5,17 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/projects", [
       index("v4/organization/ProjectsPage/route.tsx"),
       route("/kms/$projectId/overview", "v4/kms/OverviewPage/route.tsx"),
+      route("/kms/$projectId/access-management", "v4/project/AccessControlPage/kms/route.tsx"),
+      route(
+        "/kms/$projectId/members/$membershipId",
+        "v4/project/MemberDetailsByIDPage/kms/route.tsx"
+      ),
+      route(
+        "/kms/$projectId/identities/$identityId",
+        "v4/project/IdentityDetailsByIDPage/kms/route.tsx"
+      ),
+      route("/kms/$projectId/groups/$groupId", "v4/project/GroupDetailsByIDPage/kms/route.tsx"),
+      route("/kms/$projectId/roles/$roleSlug", "v4/project/RoleDetailsBySlugPage/kms/route.tsx"),
       route("/secret-management/$projectId/overview", "v4/secret-manager/OverviewPage/route.tsx"),
       route(
         "/secret-management/$projectId/secrets/$envSlug",
@@ -34,6 +45,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
         "/secret-management/$projectId/roles/$roleSlug",
         "v4/project/RoleDetailsBySlugPage/route.tsx"
       ),
+      route("/$type/", "v4/organization/ProjectsPage/ProjectTypePage/route.tsx"),
       route("/$", "v4/organization/NotPortedPage/projects/route.tsx")
     ]),
     route("/settings", "v4/organization/SettingsPage/route.tsx"),
@@ -44,12 +56,21 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/identities/$identityId", "v4/organization/IdentityDetailsByIDPage/route.tsx"),
     route("/groups/$groupId", "v4/organization/GroupDetailsByIDPage/route.tsx"),
     route("/roles/$roleId", "v4/organization/RoleByIDPage/route.tsx"),
+    route(
+      "/secret-scanning/data-sources",
+      "v4/secret-scanning/SecretScanningDataSourcesPage/route.tsx"
+    ),
     route("/secret-scanning/findings", "v4/secret-scanning/SecretScanningFindingsPage/route.tsx"),
+    route("/cert-manager/", "v4/cert-manager/IndexPage/route.tsx"),
+    route("/cert-manager/overview", "v4/cert-manager/DashboardPage/route.tsx"),
     route("/cert-manager/inventory", "v4/cert-manager/InventoryPage/route.tsx"),
     route(
       "/cert-manager/certificates/$certificateId",
       "v4/cert-manager/CertificateDetailsByIDPage/route.tsx"
     ),
+    route("/pam/access", "v4/redirects/PamAccessRedirect/route.tsx"),
+    route("/agent-vault/", "v4/redirects/AgentVaultIndexRedirect/route.tsx"),
+    route("/secret-scanning/", "v4/redirects/SecretScanningIndexRedirect/route.tsx"),
     route("/$", "v4/organization/NotPortedPage/route.tsx")
   ])
 ]);

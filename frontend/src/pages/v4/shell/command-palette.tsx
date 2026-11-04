@@ -14,8 +14,10 @@ import { useV4Session } from "../data/session/contract";
 import { V4_DEMO_ORG_ID } from "../mode";
 import { useClearThemeOverride } from "../useV4Theme";
 import {
+  agentVaultSections,
   kmsSections,
   orgSections,
+  pamSections,
   pkiSections,
   productHome,
   productOf,
@@ -77,6 +79,8 @@ export const CommandPalette = ({
     const productPages = (product: (typeof products)[number]) => {
       if (product.type === ProjectType.CertificateManager) return pkiSections;
       if (product.type === ProjectType.SecretScanning) return scanningSections;
+      if (product.type === ProjectType.PAM) return pamSections;
+      if (product.type === ProjectType.AgentVault) return agentVaultSections;
       if (product.type === ProjectType.SecretManager || product.type === ProjectType.KMS)
         return productSections(product);
       return [];

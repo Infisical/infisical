@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Card } from "@app/components/v4/ui/card";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Item } from "@app/components/v4/ui/item";
 import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
@@ -12,7 +13,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
-import { productHome, products } from "../../shell/navigation";
+import { productHome, productOf, products, projectBase } from "../../shell/navigation";
 
 const statsFor = (type: ProjectType, stats: TOrgProductStats): [number, string][] => {
   switch (type) {
@@ -59,14 +60,30 @@ const statsFor = (type: ProjectType, stats: TOrgProductStats): [number, string][
 
 export const ProjectsPage = () => {
   const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
-  const { organization } = useV4Session();
+  const { organization, projects } = useV4Session();
   const { data: stats } = useV4Adapter("org").useProductStats(organization.id);
+  const recent = projects.find((project) => project.type === ProjectType.SecretManager);
   return (
     <Stack gap={32}>
       <PageHeader
         title={`${organization.isSubOrganization ? "Sub-organization" : "Organization"} overview`}
         description="Your team's complete security toolkit, organized and ready when you need them."
       />
+      {recent && (
+        <Item
+          asChild
+          variant="outline"
+          icon={productOf(recent.type).icon}
+          title={recent.name}
+          mono
+          description={`Continue in ${productOf(recent.type).label}`}
+          actions={<Icon name="chev-right" size={16} />}
+        >
+          <a href={`/v4/organizations/${orgId}${projectBase(recent.type, recent.id)}/overview`}>
+            {recent.name}
+          </a>
+        </Item>
+      )}
       <Grid columns={2} gap={32}>
         {products.map((product) => (
           <Card
@@ -85,7 +102,8 @@ export const ProjectsPage = () => {
                 <Inline gap={24}>
                   {statsFor(product.type, stats).map(([value, label]) => (
                     <span key={label}>
-                      <strong>{value.toLocaleString()}</strong> {label}
+                      <strong>{value.toLocaleString()}</strong>{" "}
+                      {value === 1 ? label.replace(/s$/, "") : label}
                     </span>
                   ))}
                 </Inline>

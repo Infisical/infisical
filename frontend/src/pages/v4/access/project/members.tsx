@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { subject } from "@casl/ability";
-import { useParams } from "@tanstack/react-router";
 import { UserXIcon } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
@@ -28,19 +27,20 @@ import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { Gate, ListToolbar, Muted, RESTRICTED, RoleBadges, usePagedList } from "../ui";
-import { personName, PROJECT_TYPE, useMemberRoleAccess } from "./member-access";
+import { personName, useMemberRoleAccess } from "./member-access";
 import { AddMemberDialog } from "./member-add-dialog";
 import { type AssumeTarget, AssumePrivilegesDialog, RemoveMemberDialog } from "./member-dialogs";
+import { useProjectScope } from "./scope";
 
 import styles from "../access.module.css";
 
-const ROUTE = "/v4/organizations/$orgId/projects/secret-management/$projectId/access-management";
 const SELF_REASON = "You cannot modify your own membership";
 const ASSUME_DESCRIPTION =
   "Assume the privileges of this user, allowing you to replicate their access behavior.";
 
 export const ProjectMembersTab = () => {
-  const { orgId, projectId } = useParams({ from: ROUTE });
+  const scope = useProjectScope();
+  const { orgId, projectId } = scope;
   const access = useV4Adapter("access");
   const go = useGo();
   const session = useV4Session();
@@ -67,7 +67,7 @@ export const ProjectMembersTab = () => {
     ProjectPermissionSub.Member
   );
   const canAssume = (member: TWorkspaceUser) =>
-    supportsAssumePrivileges(PROJECT_TYPE) &&
+    supportsAssumePrivileges(scope.projectType) &&
     permission.can(
       ProjectPermissionMemberActions.AssumePrivileges,
       subject(ProjectPermissionSub.Member, { userEmail: member.user.email })
@@ -150,7 +150,7 @@ export const ProjectMembersTab = () => {
         orgId,
         usernames: [member.user.username],
         projectId,
-        projectType: PROJECT_TYPE
+        projectType: scope.projectType
       });
       saved("Successfully removed user from project");
     } catch (error) {
@@ -205,7 +205,7 @@ export const ProjectMembersTab = () => {
           loadingRows={10}
           sort={list.sort}
           onSortChange={list.setSort}
-          onRowActivate={(member) => go(accessLinks.projectMember(orgId, projectId, member.id))}
+          onRowActivate={(member) => go(accessLinks.projectMember(scope, member.id))}
           empty={
             searching ? (
               <EmptyState

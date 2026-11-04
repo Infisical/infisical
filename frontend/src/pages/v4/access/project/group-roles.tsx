@@ -19,7 +19,8 @@ import { useV4Adapter } from "../../data/adapters";
 import { grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RoleBadges } from "../ui";
-import { PROJECT_TYPE, type ProjectRoleOption, useGroupRoleAccess } from "./member-access";
+import { type ProjectRoleOption, useGroupRoleAccess } from "./member-access";
+import { useProjectScope } from "./scope";
 import {
   draftOf,
   durationOf,
@@ -110,6 +111,7 @@ const GroupRolesForm = ({
   catalog: readonly ProjectRoleOption[];
   onClose: () => void;
 }) => {
+  const scope = useProjectScope();
   const updateRoles = useV4Adapter("access").useUpdateProjectGroupRoles();
   const [initial] = useState(() => toDraft(roles, catalog));
   const [draft, setDraft] = useState(initial);
@@ -130,7 +132,7 @@ const GroupRolesForm = ({
     try {
       await updateRoles.mutateAsync({
         projectId,
-        projectType: PROJECT_TYPE,
+        projectType: scope.projectType,
         groupId,
         roles: toRolesDto([...kept, ...chosen])
       });

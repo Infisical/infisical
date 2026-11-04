@@ -24,6 +24,7 @@ import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { failed, saved, toast } from "../toast";
 import { Muted } from "../ui";
+import { useProjectScope } from "./scope";
 
 export type AddIdentityMode = "create" | "assign";
 
@@ -40,6 +41,7 @@ const AddIdentityForm = ({
   setPending: (pending: boolean) => void;
   onClose: () => void;
 }) => {
+  const scope = useProjectScope();
   const access = useV4Adapter("access");
   const go = useGo();
   const { data: roles } = access.useProjectRoles(projectId);
@@ -107,7 +109,7 @@ const AddIdentityForm = ({
         });
       }
       onClose();
-      go(accessLinks.projectIdentity(orgId, projectId, created.id));
+      go(accessLinks.projectIdentity(scope, created.id));
     } catch (error) {
       failed(
         currentMode === "assign"

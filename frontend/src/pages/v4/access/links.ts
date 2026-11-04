@@ -1,9 +1,12 @@
 import { OrgAccessControlTabSections } from "@app/types/org";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { projectBase } from "../shell/navigation";
+import type { ProjectScope } from "./project/scope";
+
 const org = (orgId: string) => `/v4/organizations/${orgId}`;
-const project = (orgId: string, projectId: string) =>
-  `${org(orgId)}/projects/secret-management/${projectId}`;
+const project = ({ orgId, projectId, projectType }: ProjectScope) =>
+  `${org(orgId)}${projectBase(projectType, projectId)}`;
 
 export const accessLinks = {
   org: (orgId: string, tab: OrgAccessControlTabSections = OrgAccessControlTabSections.Member) =>
@@ -12,17 +15,13 @@ export const accessLinks = {
   orgIdentity: (orgId: string, identityId: string) => `${org(orgId)}/identities/${identityId}`,
   orgGroup: (orgId: string, groupId: string) => `${org(orgId)}/groups/${groupId}`,
   orgRole: (orgId: string, roleId: string) => `${org(orgId)}/roles/${roleId}`,
-  project: (
-    orgId: string,
-    projectId: string,
-    tab: ProjectAccessControlTabs = ProjectAccessControlTabs.Member
-  ) => `${project(orgId, projectId)}/access-management?selectedTab=${tab}`,
-  projectMember: (orgId: string, projectId: string, membershipId: string) =>
-    `${project(orgId, projectId)}/members/${membershipId}`,
-  projectIdentity: (orgId: string, projectId: string, identityId: string) =>
-    `${project(orgId, projectId)}/identities/${identityId}`,
-  projectGroup: (orgId: string, projectId: string, groupId: string) =>
-    `${project(orgId, projectId)}/groups/${groupId}`,
-  projectRole: (orgId: string, projectId: string, roleSlug: string) =>
-    `${project(orgId, projectId)}/roles/${encodeURIComponent(roleSlug)}`
+  project: (scope: ProjectScope, tab: ProjectAccessControlTabs = ProjectAccessControlTabs.Member) =>
+    `${project(scope)}/access-management?selectedTab=${tab}`,
+  projectMember: (scope: ProjectScope, membershipId: string) =>
+    `${project(scope)}/members/${membershipId}`,
+  projectIdentity: (scope: ProjectScope, identityId: string) =>
+    `${project(scope)}/identities/${identityId}`,
+  projectGroup: (scope: ProjectScope, groupId: string) => `${project(scope)}/groups/${groupId}`,
+  projectRole: (scope: ProjectScope, roleSlug: string) =>
+    `${project(scope)}/roles/${encodeURIComponent(roleSlug)}`
 };

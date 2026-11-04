@@ -6,7 +6,6 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import type { TProjectRole } from "@app/hooks/api/roles/types";
 import {
   canModifyByGrantConditions,
@@ -18,8 +17,7 @@ import {
 import { useV4Adapter } from "../../data/adapters";
 import { useProjectPermission } from "../permissions";
 import { builtInProjectRoleName } from "../roles";
-
-export const PROJECT_TYPE = ProjectType.SecretManager;
+import { useProjectScope } from "./scope";
 
 export const personName = (user: { firstName?: string | null; lastName?: string | null }) =>
   [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined;
@@ -46,8 +44,9 @@ const withCurrent = (
       ];
 
 export const useMemberRoleAccess = (projectId: string, email?: string) => {
+  const scope = useProjectScope();
   const { permission } = useProjectPermission(projectId);
-  const roles = useV4Adapter("access").useProjectRoles(projectId, PROJECT_TYPE);
+  const roles = useV4Adapter("access").useProjectRoles(projectId, scope.projectType);
   const conditions = useMemo(() => getMemberAssignRoleConditions(permission), [permission]);
   const all = useMemo(() => roles.data ?? [], [roles.data]);
   const assignable = useMemo(
@@ -79,8 +78,9 @@ export const useMemberRoleAccess = (projectId: string, email?: string) => {
 };
 
 export const useGroupRoleAccess = (projectId: string, groupName: string) => {
+  const scope = useProjectScope();
   const { permission } = useProjectPermission(projectId);
-  const roles = useV4Adapter("access").useProjectRoles(projectId, PROJECT_TYPE);
+  const roles = useV4Adapter("access").useProjectRoles(projectId, scope.projectType);
   const conditions = useMemo(() => getGroupAssignRoleConditions(permission), [permission]);
   const all = useMemo(() => roles.data ?? [], [roles.data]);
   const assignable = useMemo(

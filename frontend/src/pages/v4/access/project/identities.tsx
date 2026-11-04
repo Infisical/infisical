@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useParams } from "@tanstack/react-router";
 
 import { Button } from "@app/components/v4/ui/button";
 import {
@@ -42,9 +41,9 @@ import {
   LockedBadge,
   lockoutText,
   ManagedByBadge,
-  PROJECT_LIST_ROUTE,
   type ProjectIdentityMembership
 } from "./identity-common";
+import { useProjectScope } from "./scope";
 
 import accessStyles from "../access.module.css";
 
@@ -58,7 +57,8 @@ const useDebounced = <T,>(value: T, delay = 300) => {
 };
 
 export const ProjectIdentitiesTab = () => {
-  const { orgId, projectId } = useParams({ from: PROJECT_LIST_ROUTE });
+  const scope = useProjectScope();
+  const { orgId, projectId } = scope;
   const access = useV4Adapter("access");
   const go = useGo();
   const { permission } = useProjectPermission(projectId);
@@ -248,9 +248,7 @@ export const ProjectIdentitiesTab = () => {
             setSort(next);
             setPage(1);
           }}
-          onRowActivate={(row) =>
-            go(accessLinks.projectIdentity(orgId, projectId, row.identity.id))
-          }
+          onRowActivate={(row) => go(accessLinks.projectIdentity(scope, row.identity.id))}
           empty={
             searching ? (
               <EmptyState

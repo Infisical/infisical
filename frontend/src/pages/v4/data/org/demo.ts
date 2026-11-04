@@ -6,9 +6,14 @@ import { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
 import type { IncidentContact } from "@app/hooks/api/incidentContacts/types";
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import type { Organization, TOrgProductStats } from "@app/hooks/api/organization/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
+import { certificatesDemoCounts } from "../certificates/demo";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
+import { kmsDemoKeyCount } from "../kms/demo";
+import { demoProjectCount } from "../projects/demo";
+import { secretScanningDemoCounts } from "../secret-scanning/demo";
 import type { OrgAdapter } from "./contract";
 
 const createdAt = "2024-03-14T09:00:00Z";
@@ -52,14 +57,22 @@ const roles = [
   { id: "role-no-access", name: "No access", slug: "no-access" }
 ];
 
-const productStats: TOrgProductStats = {
-  secretManager: { secretsCount: 52, environmentsCount: 9, projectsCount: 3 },
-  certificateManager: { certificatesCount: 0, certificateAuthoritiesCount: 0, signersCount: 0 },
-  kms: { keysCount: 7, clientsCount: 0, projectsCount: 1 },
-  secretScanning: { dataSourcesCount: 0, resourcesCount: 0, findingsCount: 0, projectsCount: 0 },
+const productStats = (): TOrgProductStats => ({
+  secretManager: {
+    secretsCount: 52,
+    environmentsCount: 9,
+    projectsCount: demoProjectCount(ProjectType.SecretManager)
+  },
+  certificateManager: certificatesDemoCounts(),
+  kms: {
+    keysCount: kmsDemoKeyCount(),
+    clientsCount: 0,
+    projectsCount: demoProjectCount(ProjectType.KMS)
+  },
+  secretScanning: secretScanningDemoCounts(),
   pam: { accountsCount: 0, accountTemplatesCount: 0, foldersCount: 0 },
   agentVault: { accessBundlesCount: 0, servicesCount: 0, proxiesCount: 0 }
-};
+});
 
 const contact = (id: string, email: string, at: string): IncidentContact => ({
   id,
@@ -236,7 +249,7 @@ const environmentOf = (log: AuditLog) =>
 
 export const orgDemo: OrgAdapter = {
   useOrganization: () => ({ data: organization.use(), isPending: false, error: null }),
-  useProductStats: () => ({ data: productStats, isPending: false, error: null }),
+  useProductStats: () => ({ data: productStats(), isPending: false, error: null }),
   useUpdateOrganization: fixtureMutation(({ name, slug, defaultMembershipRoleSlug }) => {
     organization.update((current) => ({
       ...current,
