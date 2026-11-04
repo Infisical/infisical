@@ -1,13 +1,19 @@
 import picomatch from "picomatch";
 
-export const doesFieldValueMatchJwtPolicy = (fieldValue: string | boolean | number, policyValue: string) => {
-  if (typeof fieldValue === "boolean") {
-    return fieldValue === (policyValue === "true");
-  }
+export const doesFieldValueMatchJwtPolicy = (fieldValue: unknown, policyValue: string) => {
+  const values: unknown[] = Array.isArray(fieldValue) ? fieldValue : [fieldValue];
 
-  if (typeof fieldValue === "number") {
-    return fieldValue === parseInt(policyValue, 10);
-  }
+  return values.some((value) => {
+    if (typeof value === "boolean") {
+      return value === (policyValue === "true");
+    }
 
-  return policyValue === fieldValue || picomatch.isMatch(fieldValue, policyValue, { bash: true });
+    if (typeof value === "number") {
+      return value === parseInt(policyValue, 10);
+    }
+
+    return (
+      typeof value === "string" && (policyValue === value || picomatch.isMatch(value, policyValue, { bash: true }))
+    );
+  });
 };
