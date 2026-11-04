@@ -30,6 +30,8 @@ const sleep = async () =>
     setTimeout(resolve, DELAY_MS);
   });
 
+// TODO(matheus): support Gateways. Every request here reaches the workspace directly, even when the connection has a Gateway or
+// Gateway pool; route them through databricksRequest with the gatewayV2Service and gatewayPoolService this factory receives
 export const databricksServicePrincipalSecretRotationFactory: TRotationFactory<
   TDatabricksServicePrincipalSecretRotationWithConnection,
   TDatabricksServicePrincipalSecretRotationGeneratedCredentials

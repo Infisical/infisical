@@ -48,6 +48,8 @@ const listDatabricksSecretScopes = async (
   return data.scopes ?? [];
 };
 
+// TODO(matheus): support Gateways along with the service principal secret rotation this list is for; it reaches the workspace
+// directly even when the connection has a Gateway or Gateway pool
 const listDatabricksServicePrincipals = async (
   appConnection: TDatabricksConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
