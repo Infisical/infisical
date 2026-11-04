@@ -89,11 +89,12 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 ## Sessions and resolve
 
 - The token is the lookup key, so it is stored as sha256 (not bcrypt) and returned exactly once.
-- V1 caps a session at one bundle: `AGENT_VAULT_MAX_SESSION_BUNDLES`, mirrored by the CLI's once-only check on
-  `--access-bundle` and the single-select Create Session sheet. The mint body stays a list, the junction table
-  keeps `position`, resolve orders by position then name, and the Go matcher breaks ties by slice order, so
-  lifting the cap is those three places plus the copy that says one (the api-docs string, the service's cap
-  message, the sheet and sessions page, the CLI help and the docs), not a migration. It also needs a
+- A session carries at most one bundle, and none when an admin sends only inline services. The session API
+  takes an optional `accessBundle` name and returns `accessBundle` as `{ id, name }` or null; the router still
+  accepts the old `accessBundles` list (at most one name, mapped in a preprocess so the API reference does not
+  show it) until 2027-01-04, the date in the router's comment. Storage was not narrowed: the junction
+  table keeps `position`, resolve orders by position then name, and the Go matcher breaks ties by slice order,
+  so allowing more than one bundle again would be an API change, not a migration. It would also need a
   decision `bestMatch` does not make: it picks by host specificity alone, so a restricted winner would 403
   a request the other bundle's unrestricted service would have served.
 - The bundle on a session is a ceiling fixed at mint and intersected with live reachability on every resolve.

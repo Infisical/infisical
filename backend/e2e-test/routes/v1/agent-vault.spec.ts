@@ -1047,7 +1047,7 @@ describe("Agent Vault V1 Router", async () => {
     describe("credential refresh", async () => {
       // A real enrolled proxy on the real route, so the session and proxy checks run as they do in production.
       const proxyFor = async (bundle: { name: string }, proxyName: string) => {
-        const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+        const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
         expect(mint.statusCode).toBe(200);
         const { session } = JSON.parse(mint.payload) as { session: { token: string } };
 
@@ -1324,7 +1324,7 @@ describe("Agent Vault V1 Router", async () => {
     // A real enrolled proxy on the real resolve route, unlike the stubbed resolvers elsewhere in this file,
     // so every value goes through the project's actual KMS key.
     const resolverFor = async (bundle: { name: string }, proxyName: string) => {
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
       expect(mint.statusCode).toBe(200);
       const { session } = JSON.parse(mint.payload) as { session: { token: string } };
 
@@ -2299,7 +2299,7 @@ describe("Agent Vault V1 Router", async () => {
       as: (method: "POST", url: string, body: Record<string, unknown>) => ReturnType<typeof inject>,
       accessBundleName: string
     ) => {
-      const mint = await as("POST", "/api/v1/agent-vault/sessions", { accessBundles: [accessBundleName], ttl: "1h" });
+      const mint = await as("POST", "/api/v1/agent-vault/sessions", { accessBundle: accessBundleName, ttl: "1h" });
       expect(mint.statusCode).toBe(200);
       return (JSON.parse(mint.payload) as { session: { token: string } }).session.token;
     };
@@ -4045,7 +4045,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a session reads by id, and one you may not see is indistinguishable from one that is not there", async () => {
       const bundle = await createAccessBundle(`session-by-id-${Date.now()}`);
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h"
       });
       expect(mint.statusCode).toBe(200);
@@ -4062,7 +4062,7 @@ describe("Agent Vault V1 Router", async () => {
           username: seedData1.username,
           email: seedData1.email
         }),
-        accessBundles: [expect.objectContaining({ name: bundle.name })]
+        accessBundle: { id: bundle.id, name: bundle.name }
       });
 
       const member = await createMemberIdentity(`session-by-id-member-${Date.now()}`);
@@ -4087,16 +4087,16 @@ describe("Agent Vault V1 Router", async () => {
       const notNamed = await createAccessBundle("session-not-named");
 
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [granted.name],
+        accessBundle: granted.name,
         ttl: "24h"
       });
       expect(mint.statusCode).toBe(200);
 
       const { session } = JSON.parse(mint.payload) as {
-        session: { id: string; token: string; accessBundles: { id: string; position: number }[] };
+        session: { id: string; token: string; accessBundle: { id: string; name: string } };
       };
       expect(session.token.startsWith("agv_")).toBe(true);
-      expect(session.accessBundles).toEqual([expect.objectContaining({ id: granted.id, position: 0 })]);
+      expect(session.accessBundle).toEqual({ id: granted.id, name: granted.name });
 
       const rows = (await testDb("agent_vault_session_access_bundles")
         .where({ sessionId: session.id })
@@ -4107,7 +4107,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("the token is stored only as a hash and is returned exactly once", async () => {
       const bundle = await createAccessBundle("session-token-hash");
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
 
       const row = await testDb("agent_vault_sessions").where({ id: session.id }).first();
@@ -4121,35 +4121,66 @@ describe("Agent Vault V1 Router", async () => {
 
     test("naming a bundle you cannot reach fails with that bundle named", async () => {
       const res = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: ["session-no-such-bundle"],
+        accessBundle: "session-no-such-bundle",
         ttl: "1h"
       });
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.payload).message).toContain("session-no-such-bundle");
     });
 
-    test("a second access bundle is rejected", async () => {
-      const res = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: ["session-cap-alpha", "session-cap-beta"],
-        ttl: "1h"
-      });
-      expect(res.statusCode).toBe(422);
-      const issues = JSON.parse(res.payload).message as { path: string[] }[];
-      expect(issues.some((issue) => issue.path.join(".") === "accessBundles")).toBe(true);
+    test("the legacy accessBundles list still mints, with at most one name and never next to accessBundle", async () => {
+      const bundle = await createAccessBundle(`session-legacy-${Date.now()}`);
+
+      const legacy = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      expect(legacy.statusCode, legacy.payload).toBe(200);
+      expect(legacy.json().session.accessBundle).toEqual({ id: bundle.id, name: bundle.name });
+      expect(legacy.json().session).not.toHaveProperty("accessBundles");
+
+      const rejected = [
+        { why: "both fields", body: { accessBundle: bundle.name, accessBundles: [bundle.name] } },
+        { why: "two names", body: { accessBundles: [bundle.name, "session-legacy-other"] } },
+        { why: "not a list", body: { accessBundles: bundle.name } }
+      ];
+      for await (const { why, body } of rejected) {
+        const res = await inject("POST", "/api/v1/agent-vault/sessions", { ...body, ttl: "1h" });
+        expect(res.statusCode, why).toBe(400);
+        expect(res.json().message, why).toContain("accessBundle");
+      }
+
+      // An empty list reads as leaving the bundle out, which needs services of the session's own.
+      const empty = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [], ttl: "1h" });
+      expect(empty.statusCode).toBe(400);
+      expect(empty.json().message).toContain("or send the services it should reach");
+    });
+
+    test("a session whose bundle was deleted keeps its name and loses its id", async () => {
+      const bundle = await createAccessBundle(`session-deleted-bundle-${Date.now()}`);
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
+      expect(mint.statusCode).toBe(200);
+      const { id } = (JSON.parse(mint.payload) as { session: { id: string } }).session;
+
+      expect((await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).statusCode).toBe(200);
+
+      const read = await inject("GET", `/api/v1/agent-vault/sessions/${id}`);
+      expect(read.json().session.accessBundle).toEqual({ id: null, name: bundle.name });
+
+      const list = await inject("GET", `/api/v1/agent-vault/sessions?search=${encodeURIComponent(bundle.name)}`);
+      const listed = (list.json() as { sessions: { id: string; accessBundle: unknown }[] }).sessions;
+      expect(listed.find((row) => row.id === id)?.accessBundle).toEqual({ id: null, name: bundle.name });
     });
 
     test("a label is optional, trimmed, returned on every read, and searchable", async () => {
       const bundle = await createAccessBundle(`session-label-${Date.now()}`);
 
       const unlabeled = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h"
       });
       expect(unlabeled.statusCode).toBe(200);
       expect(unlabeled.json().session.label).toBeNull();
 
       const labeled = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h",
         label: "  session-label nightly deploy  "
       });
@@ -4166,14 +4197,14 @@ describe("Agent Vault V1 Router", async () => {
       expect(found.sessions[0]).toMatchObject({ id: session.id, label: "session-label nightly deploy" });
 
       const tooLong = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h",
         label: "a".repeat(129)
       });
       expect(tooLong.statusCode).toBe(422);
 
       const withNewline = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h",
         label: "line one\nline two"
       });
@@ -4183,7 +4214,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a label that would read differently from what is stored is rejected", async () => {
       const bundle = await createAccessBundle(`session-label-chars-${Date.now()}`);
       const mint = (label: unknown) =>
-        inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h", label });
+        inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h", label });
 
       const rejected = {
         tab: "a\tb",
@@ -4217,7 +4248,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a label can be changed or removed later, only by someone who can see the session", async () => {
       const bundle = await createAccessBundle(`session-label-edit-${Date.now()}`);
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
       const { id } = mint.json().session as { id: string };
 
       const set = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "  first pass  " });
@@ -4264,7 +4295,7 @@ describe("Agent Vault V1 Router", async () => {
       const beta = await createAccessBundle("search-beta");
       for await (const bundle of [alpha, beta]) {
         const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           ttl: "1h"
         });
         expect(mint.statusCode).toBe(200);
@@ -4273,11 +4304,11 @@ describe("Agent Vault V1 Router", async () => {
       const byBundle = await inject("GET", "/api/v1/agent-vault/sessions?search=search-alpha");
       expect(byBundle.statusCode).toBe(200);
       const matched = JSON.parse(byBundle.payload) as {
-        sessions: { accessBundles: { name: string }[] }[];
+        sessions: { accessBundle: { name: string } }[];
         totalCount: number;
       };
       expect(matched.sessions).toHaveLength(1);
-      expect(matched.sessions[0].accessBundles[0].name).toBe("search-alpha");
+      expect(matched.sessions[0].accessBundle.name).toBe("search-alpha");
       // The count has to describe the filtered set, or the pager offers pages that do not exist.
       expect(matched.totalCount).toBe(1);
 
@@ -4302,7 +4333,7 @@ describe("Agent Vault V1 Router", async () => {
         const res = await inject("GET", `/api/v1/agent-vault/sessions?scope=all&${query}`);
         expect(res.statusCode).toBe(200);
         return JSON.parse(res.payload) as {
-          sessions: { id: string; actor: Record<string, unknown>; accessBundles: { name: string }[] }[];
+          sessions: { id: string; actor: Record<string, unknown>; accessBundle: { name: string } }[];
           totalCount: number;
         };
       };
@@ -4315,7 +4346,7 @@ describe("Agent Vault V1 Router", async () => {
         // Two sessions per bundle, so a match has to page rather than fit on one screen.
         for await (const attempt of [1, 2]) {
           const res = await inject("POST", "/api/v1/agent-vault/sessions", {
-            accessBundles: [bundle.name],
+            accessBundle: bundle.name,
             ttl: "1h"
           });
           expect(res.statusCode, `mint ${attempt} over ${bundle.name}`).toBe(200);
@@ -4332,7 +4363,7 @@ describe("Agent Vault V1 Router", async () => {
       // A deleted bundle: the junction keeps its snapshot name.
       const deletedBundle = await createAccessBundle("matrix-retired");
       const overRetired = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [deletedBundle.name],
+        accessBundle: deletedBundle.name,
         ttl: "1h"
       });
       expect(overRetired.statusCode).toBe(200);
@@ -4344,7 +4375,7 @@ describe("Agent Vault V1 Router", async () => {
           query: "search=matrix-stripe&limit=100",
           expect: (r) => {
             expect(r.totalCount).toBe(2);
-            expect(r.sessions.every((row) => row.accessBundles[0].name === "matrix-stripe")).toBe(true);
+            expect(r.sessions.every((row) => row.accessBundle.name === "matrix-stripe")).toBe(true);
           }
         },
         {
@@ -4468,7 +4499,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a bundle name that is not a slug is rejected before the lookup", async () => {
       const bundle = await createAccessBundle("session-uppercase");
       const res = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name.toUpperCase()],
+        accessBundle: bundle.name.toUpperCase(),
         ttl: "1h"
       });
       expect(res.statusCode).toBe(422);
@@ -4477,7 +4508,7 @@ describe("Agent Vault V1 Router", async () => {
     test("ttl is a free-form duration with a one minute floor", async () => {
       const bundle = await createAccessBundle("session-ttl-free");
       const before = Date.now();
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "90m" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "90m" });
       expect(mint.statusCode).toBe(200);
       const { session } = JSON.parse(mint.payload) as { session: { expiresAt: string } };
       const lifetimeMs = new Date(session.expiresAt).getTime() - before;
@@ -4485,12 +4516,12 @@ describe("Agent Vault V1 Router", async () => {
       expect(lifetimeMs).toBeLessThanOrEqual(90 * 60 * 1000 + 60_000);
 
       const tooShort = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "30s"
       });
       expect(tooShort.statusCode).toBe(422);
       const garbage = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "soon"
       });
       expect(garbage.statusCode).toBe(422);
@@ -4499,7 +4530,7 @@ describe("Agent Vault V1 Router", async () => {
     test("ttl never stores a null expiry, and revoke is idempotent", async () => {
       const bundle = await createAccessBundle("session-never");
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "never"
       });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; expiresAt: string | null } };
@@ -4569,7 +4600,7 @@ describe("Agent Vault V1 Router", async () => {
     };
 
     const mintFor = (bot: TMember, onBehalfOf: Record<string, string>, accessBundle: string, ttl?: string) =>
-      bot.as("POST", sessionsUrl, { accessBundles: [accessBundle], onBehalfOf, ...(ttl ? { ttl } : {}) });
+      bot.as("POST", sessionsUrl, { accessBundle, onBehalfOf, ...(ttl ? { ttl } : {}) });
 
     test("only an identity whose delegation covers the user can start a session on their behalf", async () => {
       const projectId = await getProjectId();
@@ -4585,7 +4616,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(undelegated.json().message).toContain("isn't allowed to start sessions on behalf of users");
 
         const asUser = await inject("POST", sessionsUrl, {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           onBehalfOf: { userId: alice.userId }
         });
         expect(asUser.statusCode).toBe(400);
@@ -4871,7 +4902,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(unending.json().session.expiresAt).toBeNull();
 
         // A session the identity starts for itself keeps the usual default.
-        const own = await bot.as("POST", sessionsUrl, { accessBundles: [bundle.name] });
+        const own = await bot.as("POST", sessionsUrl, { accessBundle: bundle.name });
         expect(own.statusCode).toBe(200);
         expect(hoursFromNow(own.json().session.expiresAt as string)).toBeCloseTo(7 * 24, 0);
       } finally {
@@ -5186,7 +5217,7 @@ describe("Agent Vault V1 Router", async () => {
           method: "POST",
           url: sessionsUrl,
           headers: { authorization: `Bearer ${aliceToken}` },
-          body: { accessBundles: [bundle.name] }
+          body: { accessBundle: bundle.name }
         });
         expect(ownSession.statusCode).toBe(200);
         const alicesOwn = ownSession.json().session.id as string;
@@ -5786,9 +5817,9 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(mint.statusCode).toBe(200);
       const { session } = mint.json() as {
-        session: { id: string; token: string; accessBundles: unknown[]; services: TInlineSummary[] };
+        session: { id: string; token: string; accessBundle: unknown; services: TInlineSummary[] };
       };
-      expect(session.accessBundles).toEqual([]);
+      expect(session.accessBundle).toBeNull();
       expect(session.services).toMatchObject([
         {
           name: "openai",
@@ -5923,7 +5954,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(service.statusCode).toBe(200);
 
       const clash = await inject("POST", sessionsUrl, {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h",
         services: [{ ...openai, hostPattern: "api.github.com" }]
       });
@@ -5934,13 +5965,13 @@ describe("Agent Vault V1 Router", async () => {
 
       // A wildcard beside the bundle's exact host is how an override is written, as within one bundle.
       const mint = await inject("POST", sessionsUrl, {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h",
         services: [openai, { ...openai, name: "github-other", hostPattern: "*.github.com" }]
       });
       expect(mint.statusCode).toBe(200);
-      const { session } = mint.json() as { session: { token: string; accessBundles: { id: string }[] } };
-      expect(session.accessBundles).toEqual([expect.objectContaining({ id: bundle.id })]);
+      const { session } = mint.json() as { session: { token: string; accessBundle: { id: string } } };
+      expect(session.accessBundle).toEqual(expect.objectContaining({ id: bundle.id }));
 
       const resolve = await createResolver(`inline-extend-${Date.now()}`);
       const resolved = (await resolve(session.token)).json().services as TResolvedService[];
@@ -5991,7 +6022,7 @@ describe("Agent Vault V1 Router", async () => {
           ).statusCode
         ).toBe(200);
         const mint = await owner.as("POST", sessionsUrl, {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           ttl: "1h",
           services: [openai]
         });
@@ -6039,7 +6070,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(read.json().session).toMatchObject({
           actor: { type: "machineIdentity", id: bot.id },
           onBehalfOf: expect.objectContaining({ id: seedData1.id }),
-          accessBundles: [],
+          accessBundle: null,
           services: [expect.objectContaining({ name: "openai" })]
         });
 
@@ -6177,7 +6208,7 @@ describe("Agent Vault V1 Router", async () => {
 
     const mintForResolve = async (name: string) => {
       const bundle = await createAccessBundle(name);
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
       expect(mint.statusCode).toBe(200);
       const { session } = JSON.parse(mint.payload) as { session: { token: string } };
       const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name });
@@ -6277,7 +6308,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(created.statusCode).toBe(200);
 
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h"
       });
       expect(mint.statusCode).toBe(200);
@@ -6342,7 +6373,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(service.statusCode).toBe(200);
 
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "never"
       });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
@@ -6387,7 +6418,7 @@ describe("Agent Vault V1 Router", async () => {
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
       });
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "never" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "never" });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
       const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "resolve-deleted-user" });
       const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
@@ -6419,7 +6450,7 @@ describe("Agent Vault V1 Router", async () => {
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
       });
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "never" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "never" });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
       const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "resolve-deleted-identity" });
       const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
@@ -6461,7 +6492,7 @@ describe("Agent Vault V1 Router", async () => {
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
       });
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "never" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "never" });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
       const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "resolve-temporary-role" });
       const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
@@ -8566,7 +8597,7 @@ describe("Agent Vault V1 Router", async () => {
         ).toBe(200);
 
         const mint = await agent.asIdentity("POST", "/api/v1/agent-vault/sessions", {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           ttl: "never"
         });
         expect(mint.statusCode).toBe(200);
@@ -8624,7 +8655,7 @@ describe("Agent Vault V1 Router", async () => {
         expect((await resolve()).services).toHaveLength(0);
 
         const remint = await agent.asIdentity("POST", "/api/v1/agent-vault/sessions", {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           ttl: "never"
         });
         expect(remint.statusCode).toBe(400);
@@ -8671,7 +8702,7 @@ describe("Agent Vault V1 Router", async () => {
         KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.IDENTITY, agent.id, ActionProjectType.AgentVault)
       ];
       const mint = () =>
-        agent.asIdentity("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "never" });
+        agent.asIdentity("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "never" });
 
       try {
         const live = await mint();
@@ -8756,7 +8787,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(accessBundles.find((row) => row.id === accessBundle.id)?.memberCount).toBe(0);
 
         const mint = await admin.asIdentity("POST", "/api/v1/agent-vault/sessions", {
-          accessBundles: [accessBundle.name],
+          accessBundle: accessBundle.name,
           ttl: "1h"
         });
         expect(mint.statusCode).toBe(200);

@@ -24,7 +24,8 @@ export type TAgentVaultSessionListRow = {
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
-  accessBundles: { id: string | null; name: string; position: number }[];
+  // Null for a session with services of its own only.
+  accessBundle: { id: string | null; name: string } | null;
 };
 
 // The on-behalf-of user's own alias, since the actor's user is joined under the table's name.
@@ -318,11 +319,9 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("lastName").withSchema(ON_BEHALF_OF_USER).as("onBehalfOfUserLiveLastName"),
           db.ref("accessBundleId").withSchema(TableName.AgentVaultSessionAccessBundle),
           db.ref("accessBundleName").withSchema(TableName.AgentVaultSessionAccessBundle),
-          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName"),
-          db.ref("position").withSchema(TableName.AgentVaultSessionAccessBundle)
+          db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("liveAccessBundleName")
         )
-        .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")
-        .orderBy(`${TableName.AgentVaultSessionAccessBundle}.position`, "asc")) as {
+        .orderBy(`${TableName.AgentVaultSession}.createdAt`, "desc")) as {
         id: string;
         userId: string | null;
         identityId: string | null;
@@ -348,50 +347,41 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         accessBundleId: string | null;
         accessBundleName: string | null;
         liveAccessBundleName: string | null;
-        position: number | null;
       }[];
 
-      const bySession = new Map<string, TAgentVaultSessionListRow>();
-      rows.forEach((row) => {
-        let session = bySession.get(row.id);
-        if (!session) {
-          session = {
-            id: row.id,
-            userId: row.userId,
-            identityId: row.identityId,
-            onBehalfOfUserId: row.onBehalfOfUserId,
-            onBehalfOfUserName: row.onBehalfOfUserName,
-            label: row.label,
-            actor: toSessionActor(row),
-            onBehalfOf:
-              row.onBehalfOfUserName !== null
-                ? toSessionUser(
-                    {
-                      id: row.onBehalfOfUserId,
-                      username: row.onBehalfOfUserLiveUsername,
-                      email: row.onBehalfOfUserLiveEmail,
-                      firstName: row.onBehalfOfUserLiveFirstName,
-                      lastName: row.onBehalfOfUserLiveLastName
-                    },
-                    { name: row.onBehalfOfUserName, email: row.onBehalfOfUserEmail }
-                  )
-                : null,
-            expiresAt: row.expiresAt,
-            revokedAt: row.revokedAt,
-            createdAt: row.createdAt,
-            accessBundles: []
-          };
-          bySession.set(row.id, session);
-        }
-        if (row.accessBundleName === null || row.position === null) return;
-        session.accessBundles.push({
-          id: row.accessBundleId,
-          name: row.liveAccessBundleName ?? row.accessBundleName,
-          position: row.position
-        });
+      const sessions: TAgentVaultSessionListRow[] = rows.map((row) => {
+        return {
+          id: row.id,
+          userId: row.userId,
+          identityId: row.identityId,
+          onBehalfOfUserId: row.onBehalfOfUserId,
+          onBehalfOfUserName: row.onBehalfOfUserName,
+          label: row.label,
+          actor: toSessionActor(row),
+          onBehalfOf:
+            row.onBehalfOfUserName !== null
+              ? toSessionUser(
+                  {
+                    id: row.onBehalfOfUserId,
+                    username: row.onBehalfOfUserLiveUsername,
+                    email: row.onBehalfOfUserLiveEmail,
+                    firstName: row.onBehalfOfUserLiveFirstName,
+                    lastName: row.onBehalfOfUserLiveLastName
+                  },
+                  { name: row.onBehalfOfUserName, email: row.onBehalfOfUserEmail }
+                )
+              : null,
+          expiresAt: row.expiresAt,
+          revokedAt: row.revokedAt,
+          createdAt: row.createdAt,
+          accessBundle:
+            row.accessBundleName === null
+              ? null
+              : { id: row.accessBundleId, name: row.liveAccessBundleName ?? row.accessBundleName }
+        };
       });
 
-      return { sessions: [...bySession.values()], totalCount };
+      return { sessions, totalCount };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault sessions" });
     }
