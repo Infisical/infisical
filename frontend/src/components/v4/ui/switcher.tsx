@@ -164,7 +164,7 @@ export const Switcher = ({
   emptyText = "No matches",
   label,
   width = 280,
-  maxHeight = 320,
+  maxHeight,
   align = "start",
   side = "bottom",
   open,
@@ -255,7 +255,11 @@ export const Switcher = ({
           <CommandEmpty>
             <p role="status">{emptyText}</p>
           </CommandEmpty>
-          <CommandList tabIndex={-1} label={label} style={{ maxHeight }}>
+          <CommandList
+            tabIndex={-1}
+            label={label}
+            style={maxHeight === undefined ? undefined : { maxHeight }}
+          >
             {groups.map((group) => (
               <CommandGroup key={group} heading={group || undefined}>
                 {options
