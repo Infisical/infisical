@@ -1,8 +1,11 @@
+import ms from "ms";
+
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { type SecretVersions, SecretType } from "@app/hooks/api/secrets/types";
 
 import type { SecretsFlowsAdapter } from "./contract-flows";
+import { fakeLeaseData } from "./demo-leases";
 import {
   childPath,
   demoMutation,
@@ -164,7 +167,143 @@ const removeEnvironment = (state: SecretsFixtures, projectId: string, slug: stri
   };
 };
 
+const dynamicAt =
+  (projectSlug: string, environmentSlug: string, path: string, name: string) =>
+  (entry: SecretsFixtures["dynamicSecrets"][number]) =>
+    entry.projectId === projectSlug &&
+    entry.environment === environmentSlug &&
+    entry.path === path &&
+    entry.name === name;
+
 export const secretsFlowsDemo: SecretsFlowsAdapter = {
+  useDynamicSecretDetails: ({ projectSlug, environmentSlug, path, name }) => {
+    const entry = useStore()
+      .use()
+      .dynamicSecrets.find(dynamicAt(projectSlug, environmentSlug, path, name));
+    return {
+      data: entry ? { ...entry, inputs: entry.inputs ?? {} } : undefined,
+      isPending: !entry,
+      error: null
+    };
+  },
+  useCreateDynamicSecret: demoMutation((store, dto) => {
+    const timestamp = now();
+    store.update((state) => ({
+      ...state,
+      dynamicSecrets: [
+        ...state.dynamicSecrets,
+        {
+          id: crypto.randomUUID(),
+          name: dto.name,
+          type: dto.provider.type,
+          defaultTTL: dto.defaultTTL,
+          maxTTL: dto.maxTTL,
+          usernameTemplate: dto.usernameTemplate,
+          metadata: dto.metadata,
+          tags: dto.tags,
+          inputs: dto.provider.inputs,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          projectId: dto.projectSlug,
+          environment: dto.environmentSlug,
+          path: dto.path
+        }
+      ]
+    }));
+    return {};
+  }),
+  useUpdateDynamicSecret: demoMutation((store, dto) => {
+    store.update((state) => ({
+      ...state,
+      dynamicSecrets: state.dynamicSecrets.map((entry) =>
+        dynamicAt(dto.projectSlug, dto.environmentSlug, dto.path, dto.name)(entry)
+          ? {
+              ...entry,
+              name: dto.data.newName ?? entry.name,
+              defaultTTL: dto.data.defaultTTL ?? entry.defaultTTL,
+              maxTTL: dto.data.maxTTL ?? undefined,
+              inputs: dto.data.inputs ?? entry.inputs,
+              usernameTemplate: dto.data.usernameTemplate ?? entry.usernameTemplate,
+              metadata: dto.data.metadata ?? entry.metadata,
+              updatedAt: now()
+            }
+          : entry
+      )
+    }));
+    return {};
+  }),
+  useDeleteDynamicSecret: demoMutation((store, dto) => {
+    store.update((state) => ({
+      ...state,
+      dynamicSecrets: state.dynamicSecrets.filter(
+        (entry) => !dynamicAt(dto.projectSlug, dto.environmentSlug, dto.path, dto.name)(entry)
+      )
+    }));
+    return {};
+  }),
+  useDynamicSecretLeases: ({ projectSlug, environmentSlug, path, dynamicSecretName, enabled }) => {
+    const state = useStore().use();
+    const entry = state.dynamicSecrets.find(
+      dynamicAt(projectSlug, environmentSlug, path, dynamicSecretName)
+    );
+    if (enabled === false || !entry) return { data: undefined, isPending: true, error: null };
+    return { data: state.leases[entry.id] ?? [], isPending: false, error: null };
+  },
+  useCreateDynamicSecretLease: demoMutation((store, dto) => {
+    const entry = store
+      .get()
+      .dynamicSecrets.find(
+        dynamicAt(dto.projectSlug, dto.environmentSlug, dto.path, dto.dynamicSecretName)
+      );
+    if (!entry) throw new Error("Dynamic secret not found");
+    const expireAt = new Date(Date.now() + (ms(dto.ttl ?? entry.defaultTTL) || 3600000)).toISOString();
+    const lease = {
+      id: crypto.randomUUID(),
+      version: 1,
+      expireAt,
+      dynamicSecretId: entry.id,
+      createdAt: now(),
+      updatedAt: now()
+    };
+    store.update((state) => ({
+      ...state,
+      leases: { ...state.leases, [entry.id]: [...(state.leases[entry.id] ?? []), lease] }
+    }));
+    return { lease, data: fakeLeaseData(dto.provider, entry.name, expireAt, dto.config) };
+  }),
+  useRenewDynamicSecretLease: demoMutation((store, dto) => {
+    store.update((state) => ({
+      ...state,
+      leases: Object.fromEntries(
+        Object.entries(state.leases).map(([key, leases]) => [
+          key,
+          leases.map((lease) =>
+            lease.id === dto.leaseId
+              ? {
+                  ...lease,
+                  expireAt: new Date(
+                    new Date(lease.expireAt).getTime() + (ms(dto.ttl ?? "1h") || 0)
+                  ).toISOString()
+                }
+              : lease
+          )
+        ])
+      )
+    }));
+    return {};
+  }),
+  useRevokeDynamicSecretLease: demoMutation((store, dto) => {
+    store.update((state) => ({
+      ...state,
+      leases: Object.fromEntries(
+        Object.entries(state.leases).map(([key, leases]) => [
+          key,
+          leases.filter((lease) => lease.id !== dto.leaseId)
+        ])
+      )
+    }));
+    return {};
+  }),
   useSecretVersions: ({ secretId }) => {
     const store = useStore();
     const state = store.use();

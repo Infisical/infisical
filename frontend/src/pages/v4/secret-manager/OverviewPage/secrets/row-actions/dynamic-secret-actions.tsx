@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import type { AxiosError } from "axios";
 
 import { getDynamicSecretProviderRuntimeMetadata } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/runtimeMetadata";
 import {
@@ -12,47 +13,21 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { DynamicSecretLeaseStatus } from "@app/hooks/api/dynamicSecretLease/types";
+
+import { useV4Adapter } from "../../../../data/adapters";
 
 import {
   dynamicSecretDefinitionFor,
   DynamicSecretEditSheet,
   type DynamicSecretResource
 } from "../flows/dynamic-secret-flow";
-import { environmentLabel, LOCAL_ONLY } from "../flows/shared";
-import {
-  DynamicSecretLeaseDialog,
-  fakeLeaseData,
-  type LeaseRequest
-} from "./dynamic-secret-lease-provision";
-import { type DynamicSecretLease, DynamicSecretLeasesDialog, toMs } from "./dynamic-secret-leases";
+import { environmentLabel } from "../flows/shared";
+import { DynamicSecretLeaseDialog, type LeaseRequest } from "./dynamic-secret-lease-provision";
+import { type DynamicSecretLease, DynamicSecretLeasesDialog } from "./dynamic-secret-leases";
 import type { RowActionHostProps } from "./types";
 
-const SEEDED_AT = Date.now();
-const HOUR = 60 * 60 * 1000;
-
-const fakeUuid = (seed: string, salt: number) => {
-  const hex = Array.from({ length: 32 }, (_, index) =>
-    ((seed.charCodeAt((index * 7 + salt) % seed.length) * (index + salt + 3)) % 16).toString(16)
-  ).join("");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20)}`;
-};
-
-const seedLeases = (entry: DynamicSecretResource): DynamicSecretLease[] =>
-  entry.config
-    ? []
-    : [
-        { id: fakeUuid(entry.id, 1), expireAt: new Date(SEEDED_AT + 0.75 * HOUR).toISOString() },
-        {
-          id: fakeUuid(entry.id, 2),
-          expireAt: new Date(SEEDED_AT + 20 * HOUR).toISOString(),
-          ...(entry.status === "failed-deletion"
-            ? {
-                status: "failed-deletion" as const,
-                statusDetails: "Simulated provider error while revoking this lease."
-              }
-            : {})
-        }
-      ];
+const errorText = (error: unknown) => (error instanceof Error ? error.message : undefined);
 
 const providerOf = (entry: DynamicSecretResource) =>
   dynamicSecretDefinitionFor(entry)?.provider ?? DynamicSecretProviders.SqlDatabase;
@@ -60,11 +35,12 @@ const providerOf = (entry: DynamicSecretResource) =>
 export function DynamicSecretActions({
   action,
   onClose,
+  scope,
   resources,
   onApply,
   onToast
 }: RowActionHostProps<"dynamic">) {
-  const [leases, setLeases] = useState<Record<string, DynamicSecretLease[]>>({});
+  const adapter = useV4Adapter("secrets");
   const [newLeaseFor, setNewLeaseFor] = useState<DynamicSecretResource>();
   const [session, setSession] = useState(0);
   const [previousAction, setPreviousAction] = useState(action);
@@ -73,7 +49,7 @@ export function DynamicSecretActions({
     if (action) setSession((value) => value + 1);
   }
 
-  const entry =
+  const listed =
     action &&
     (resources.find(
       (resource): resource is DynamicSecretResource =>
@@ -81,19 +57,55 @@ export function DynamicSecretActions({
     ) ??
       action.entry);
   const kind = action?.action;
+  const projectSlug = adapter.useProject(scope.project).data?.slug ?? scope.project;
+  const target = (item?: DynamicSecretResource) => ({
+    projectSlug,
+    environmentSlug: item?.environment ?? "",
+    path: item?.path ?? "",
+    name: item?.name ?? ""
+  });
+  const details = adapter.useDynamicSecretDetails(
+    target(kind === "edit" && !listed?.config ? listed : undefined)
+  ).data;
+  const entry: DynamicSecretResource | undefined =
+    listed && kind === "edit" && !listed.config && details
+      ? {
+          ...listed,
+          config: {
+            type: details.type,
+            inputs: details.inputs,
+            usernameTemplate: details.usernameTemplate,
+            metadata: details.metadata
+          }
+        }
+      : listed;
   const lastDeleted = useRef<{ entry: DynamicSecretResource; isForced: boolean }>(undefined);
   if (entry && (kind === "delete" || kind === "force-delete"))
     lastDeleted.current = { entry, isForced: kind === "force-delete" };
 
-  const leasesOf = (item: DynamicSecretResource) => leases[item.id] ?? seedLeases(item);
-  const updateLeases = (
-    item: DynamicSecretResource,
-    update: (current: DynamicSecretLease[]) => DynamicSecretLease[]
-  ) =>
-    setLeases((current) => ({
-      ...current,
-      [item.id]: update(current[item.id] ?? seedLeases(item))
-    }));
+  const { name: dynamicSecretName, ...leaseScope } = target(entry);
+  const leaseQuery = adapter.useDynamicSecretLeases({
+    ...leaseScope,
+    dynamicSecretName,
+    enabled: kind === "leases"
+  });
+  const leases: DynamicSecretLease[] = (leaseQuery.data ?? []).map((lease) => ({
+    id: lease.id,
+    expireAt: lease.expireAt,
+    ...(lease.status === DynamicSecretLeaseStatus.FailedDeletion
+      ? { status: "failed-deletion" as const, statusDetails: lease.statusDetails }
+      : {})
+  }));
+  const createLease = adapter.useCreateDynamicSecretLease();
+  const renewLease = adapter.useRenewDynamicSecretLease();
+  const revokeLease = adapter.useRevokeDynamicSecretLease();
+  const deleteDynamicSecret = adapter.useDeleteDynamicSecret();
+  const failed = (title: string) => (error: unknown) =>
+    onToast("bad", {
+      title,
+      description:
+        (error as AxiosError<{ message?: string }>)?.response?.data?.message ?? errorText(error)
+    });
 
   const leaseTarget = newLeaseFor ?? (kind === "lease" ? entry : undefined);
   const lastLeaseTarget = useRef(leaseTarget);
@@ -102,20 +114,28 @@ export function DynamicSecretActions({
     ? providerOf(lastLeaseTarget.current)
     : DynamicSecretProviders.SqlDatabase;
 
-  const provision = (request: LeaseRequest) => {
+  const provision = async (request: LeaseRequest) => {
     const item = leaseTarget ?? lastLeaseTarget.current;
-    const { fixedTtl, output } =
-      getDynamicSecretProviderRuntimeMetadata(leaseProvider).leaseCapabilities;
-    const expireAt = new Date(
-      Date.now() + (toMs(fixedTtl ?? request.ttl) ?? toMs("1h") ?? HOUR)
-    ).toISOString();
-    if (item && output.type !== "totp")
-      updateLeases(item, (current) => [...current, { id: crypto.randomUUID(), expireAt }]);
-    onToast("ok", { title: "Successfully leased dynamic secret", description: LOCAL_ONLY });
-    return {
-      expireAt,
-      data: fakeLeaseData(leaseProvider, item?.name ?? "lease", expireAt, request.config)
-    };
+    if (!item) return undefined;
+    const { fixedTtl } = getDynamicSecretProviderRuntimeMetadata(leaseProvider).leaseCapabilities;
+    const { name, ...rest } = target(item);
+    try {
+      const result = await createLease.mutateAsync({
+        ...rest,
+        dynamicSecretName: name,
+        provider: leaseProvider,
+        ttl: fixedTtl ?? request.ttl,
+        config: request.config
+      });
+      onToast("ok", { title: "Successfully leased dynamic secret" });
+      return {
+        expireAt: result.lease.expireAt,
+        data: (result.data ?? {}) as Record<string, unknown>
+      };
+    } catch (error) {
+      failed("Failed to lease dynamic secret")(error);
+      return undefined;
+    }
   };
 
   const deleted = lastDeleted.current;
@@ -124,7 +144,7 @@ export function DynamicSecretActions({
     <>
       <DynamicSecretLeasesDialog
         entry={kind === "leases" ? entry : undefined}
-        leases={entry ? leasesOf(entry) : []}
+        leases={leases}
         canRenew={
           entry
             ? getDynamicSecretProviderRuntimeMetadata(providerOf(entry)).leaseCapabilities
@@ -139,27 +159,23 @@ export function DynamicSecretActions({
         }}
         onRenew={(leaseId, ttl) => {
           if (!entry) return;
-          updateLeases(entry, (current) =>
-            current.map((lease) =>
-              lease.id === leaseId
-                ? {
-                    ...lease,
-                    expireAt: new Date(
-                      new Date(lease.expireAt).getTime() + (toMs(ttl) ?? 0)
-                    ).toISOString()
-                  }
-                : lease
-            )
-          );
-          onToast("ok", { title: "Successfully renewed lease", description: LOCAL_ONLY });
+          const { name, ...rest } = target(entry);
+          renewLease
+            .mutateAsync({ ...rest, dynamicSecretName: name, leaseId, ttl })
+            .then(
+              () => onToast("ok", { title: "Successfully renewed lease" }),
+              failed("Failed to renew lease")
+            );
         }}
         onRevoke={(leaseId, isForced) => {
           if (!entry) return;
-          updateLeases(entry, (current) => current.filter((lease) => lease.id !== leaseId));
-          onToast("ok", {
-            title: isForced ? "Lease deleted" : "Lease revoked",
-            description: LOCAL_ONLY
-          });
+          const { name, ...rest } = target(entry);
+          revokeLease
+            .mutateAsync({ ...rest, dynamicSecretName: name, leaseId, isForced })
+            .then(
+              () => onToast("ok", { title: isForced ? "Lease deleted" : "Lease revoked" }),
+              failed(isForced ? "Failed to delete lease" : "Failed to revoke lease")
+            );
         }}
       />
       <DynamicSecretLeaseDialog
@@ -192,7 +208,7 @@ export function DynamicSecretActions({
           onApply(
             (current) =>
               current.map((resource) => (resource.id === updated.id ? updated : resource)),
-            { title: successMessage, description: LOCAL_ONLY }
+            { title: successMessage }
           );
           return true;
         }}
@@ -219,12 +235,13 @@ export function DynamicSecretActions({
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (!entry) return;
-                onApply((current) => current.filter((resource) => resource.id !== entry.id), {
-                  title: "Dynamic secret deleted",
-                  description: LOCAL_ONLY
-                });
-                setLeases(({ [entry.id]: _removed, ...rest }) => rest);
+                if (!deleted) return;
+                deleteDynamicSecret
+                  .mutateAsync({ ...target(deleted.entry), isForced: deleted.isForced })
+                  .then(
+                    () => onToast("ok", { title: "Dynamic secret deleted" }),
+                    failed("Failed to delete dynamic secret")
+                  );
               }}
             >
               {deleted?.isForced ? "Force delete" : "Delete"}

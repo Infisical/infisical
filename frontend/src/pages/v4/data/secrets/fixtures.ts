@@ -4,6 +4,10 @@ import {
   DynamicSecretStatus,
   type TDynamicSecret
 } from "@app/hooks/api/dynamicSecret/types";
+import {
+  DynamicSecretLeaseStatus,
+  type TDynamicSecretLease
+} from "@app/hooks/api/dynamicSecretLease/types";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import type { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
@@ -33,7 +37,7 @@ type Scope = { projectId: string; environment: string; path: string };
 export type DemoSecret = SecretV3RawSanitized & { projectId: string; path: string };
 export type DemoFolder = TSecretFolder & Scope;
 export type DemoImport = TSecretImport & Scope;
-export type DemoDynamicSecret = TDynamicSecret & Scope;
+export type DemoDynamicSecret = TDynamicSecret & Scope & { inputs?: unknown };
 export type DemoProxiedService = TDashboardProxiedService & { projectId: string };
 export type SecretsFixtures = {
   projects: Project[];
@@ -47,6 +51,7 @@ export type SecretsFixtures = {
   proxiedServices: DemoProxiedService[];
   approvals: TSecretApprovalRequest[];
   versionHistory: Record<string, DemoVersion[]>;
+  leases: Record<string, TDynamicSecretLease[]>;
 };
 export type DemoVersion = {
   version: number;
@@ -210,6 +215,20 @@ const dynamicSecret = (
   id: id("payments-api", environment, path, "dynamic", name),
   name,
   type: DynamicSecretProviders.SqlDatabase,
+  inputs: {
+    client: "postgres",
+    host: "fake-db.payments.internal",
+    port: 5432,
+    database: "payments",
+    username: "fake-admin",
+    password: "fake-password",
+    creationStatement:
+      "CREATE USER \"{{username}}\" WITH ENCRYPTED PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';",
+    revocationStatement: "DROP USER \"{{username}}\";",
+    renewStatement: "ALTER USER \"{{username}}\" VALID UNTIL '{{expiration}}';"
+  },
+  usernameTemplate: "{{randomUsername}}",
+  metadata: [],
   defaultTTL: "1h",
   maxTTL: "24h",
   createdAt: created,
@@ -379,6 +398,34 @@ const approval = (
   }))
 });
 
+const lease = (
+  dynamicSecretId: string,
+  index: number,
+  hours: number,
+  failed = false
+): TDynamicSecretLease => ({
+  id: `${dynamicSecretId}:lease-${index}`,
+  version: 1,
+  expireAt: new Date(Date.now() + hours * 3600000).toISOString(),
+  dynamicSecretId,
+  createdAt: created,
+  updatedAt: created,
+  ...(failed
+    ? {
+        status: DynamicSecretLeaseStatus.FailedDeletion,
+        statusDetails: "The provider refused to revoke this lease."
+      }
+    : {})
+});
+
+const seedLeases = (secrets: DemoDynamicSecret[]) =>
+  Object.fromEntries(
+    secrets.map((entry) => [
+      entry.id,
+      [lease(entry.id, 1, 0.75), lease(entry.id, 2, 20, Boolean(entry.status))]
+    ])
+  );
+
 export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
   const secrets: DemoSecret[] = [];
   secretsAt(
@@ -466,6 +513,17 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
     secrets
   );
 
+  const dynamicSecrets = [
+    dynamicSecret("/", "dev", "payments-db-readonly"),
+    dynamicSecret("/", "staging", "payments-db-readonly"),
+    dynamicSecret("/", "dev", "payments-db-reporting"),
+    dynamicSecret("/api", "dev", "ledger-db-readonly"),
+    dynamicSecret("/api", "prod", "ledger-db-readonly"),
+    dynamicSecret("/api", "dev", "refunds-db-writer", {
+      status: DynamicSecretStatus.FailedDeletion,
+      statusDetails: "The database refused to drop 2 active lease users."
+    })
+  ];
   return {
     versionHistory: {
       [id("payments-api", "dev", "/", "DATABASE_URL")]: [
@@ -523,17 +581,8 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
       secretImport("/api", "dev", { environment: "dev", path: "/workers" }),
       secretImport("/api", "prod", { environment: "staging", path: "/api/v1" })
     ],
-    dynamicSecrets: [
-      dynamicSecret("/", "dev", "payments-db-readonly"),
-      dynamicSecret("/", "staging", "payments-db-readonly"),
-      dynamicSecret("/", "dev", "payments-db-reporting"),
-      dynamicSecret("/api", "dev", "ledger-db-readonly"),
-      dynamicSecret("/api", "prod", "ledger-db-readonly"),
-      dynamicSecret("/api", "dev", "refunds-db-writer", {
-        status: DynamicSecretStatus.FailedDeletion,
-        statusDetails: "The database refused to drop 2 active lease users."
-      })
-    ],
+    dynamicSecrets,
+    leases: seedLeases(dynamicSecrets),
     rotations: [
       rotation("/", "dev", "payments-app-db-creds", "payments-postgres", [
         "APP_DB_USERNAME",

@@ -55,6 +55,7 @@ import {
 import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
+import type { TCreateDynamicSecretDTO } from "@app/hooks/api/dynamicSecret/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 
@@ -299,10 +300,47 @@ export const OverviewPage = () => {
   });
   const resourcesRef = useRef(resources);
   resourcesRef.current = resources;
+  const projectSlug = projectQuery.data?.slug ?? projectId;
+  const createDynamicSecret = adapter.useCreateDynamicSecret();
+  const updateDynamicSecret = adapter.useUpdateDynamicSecret();
   const runApply = useResourceApply({
     projectId,
-    projectSlug: projectQuery.data?.slug ?? projectId,
-    tags: tagList
+    projectSlug,
+    tags: tagList,
+    handlers: {
+      dynamic: {
+        create: (entry) =>
+          createDynamicSecret.mutateAsync({
+            projectSlug,
+            environmentSlug: entry.environment,
+            path: entry.path,
+            name: entry.name,
+            defaultTTL: entry.defaultTTL,
+            maxTTL: entry.maxTTL,
+            provider: {
+              type: entry.config?.type,
+              inputs: entry.config?.inputs
+            } as TCreateDynamicSecretDTO["provider"],
+            usernameTemplate: entry.config?.usernameTemplate ?? undefined,
+            metadata: entry.config?.metadata
+          }),
+        update: (before, after) =>
+          updateDynamicSecret.mutateAsync({
+            projectSlug,
+            environmentSlug: before.environment,
+            path: before.path,
+            name: before.name,
+            data: {
+              ...(before.name !== after.name ? { newName: after.name } : {}),
+              defaultTTL: after.defaultTTL,
+              maxTTL: after.maxTTL ?? null,
+              inputs: after.config?.inputs,
+              usernameTemplate: after.config?.usernameTemplate,
+              metadata: after.config?.metadata
+            }
+          })
+      }
+    }
   });
   const pushToast = (item: Omit<ToastItem, "id">) =>
     setToasts((current) => [...current, { ...item, id: crypto.randomUUID() }]);

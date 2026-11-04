@@ -1,3 +1,15 @@
+import {
+  useCreateDynamicSecret,
+  useDeleteDynamicSecret,
+  useUpdateDynamicSecret
+} from "@app/hooks/api/dynamicSecret/mutation";
+import { useGetDynamicSecretDetails } from "@app/hooks/api/dynamicSecret/queries";
+import {
+  useCreateDynamicSecretLease,
+  useRenewDynamicSecretLease,
+  useRevokeDynamicSecretLease
+} from "@app/hooks/api/dynamicSecretLease/mutation";
+import { useGetDynamicSecretLeases } from "@app/hooks/api/dynamicSecretLease/queries";
 import { useDeleteWsEnvironment } from "@app/hooks/api/projects/queries";
 import { useCreateReminder, useDeleteReminder } from "@app/hooks/api/reminders/queries";
 import {
@@ -27,6 +39,14 @@ import { useCreateSharedSecret } from "@app/hooks/api/secretSharing/mutations";
 import type { SecretsFlowsAdapter } from "./contract-flows";
 
 export const secretsFlowsLive: SecretsFlowsAdapter = {
+  useDynamicSecretDetails: useGetDynamicSecretDetails,
+  useCreateDynamicSecret,
+  useUpdateDynamicSecret,
+  useDeleteDynamicSecret,
+  useDynamicSecretLeases: useGetDynamicSecretLeases,
+  useCreateDynamicSecretLease,
+  useRenewDynamicSecretLease,
+  useRevokeDynamicSecretLease,
   useSecretVersions: useGetSecretVersion,
   useSecretVersionValue: useGetSecretVersionValue,
   useRedactSecretVersion: useRedactSecretValue,

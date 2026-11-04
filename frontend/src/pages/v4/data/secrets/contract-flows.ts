@@ -1,3 +1,17 @@
+import type {
+  TCreateDynamicSecretDTO,
+  TDeleteDynamicSecretDTO,
+  TDetailsDynamicSecretDTO,
+  TDynamicSecret,
+  TUpdateDynamicSecretDTO
+} from "@app/hooks/api/dynamicSecret/types";
+import type {
+  TCreateDynamicSecretLeaseDTO,
+  TDynamicSecretLease,
+  TListDynamicSecretLeaseDTO,
+  TRenewDynamicSecretLeaseDTO,
+  TRevokeDynamicSecretLeaseDTO
+} from "@app/hooks/api/dynamicSecretLease/types";
 import type { DeleteEnvironmentDTO } from "@app/hooks/api/projects/types";
 import type {
   CreateReminderDTO,
@@ -55,6 +69,19 @@ type SecretScopedMutation<TVariables, TData> = (secretId: string) => {
 };
 
 export type SecretsFlowsAdapter = {
+  useDynamicSecretDetails: (
+    dto: TDetailsDynamicSecretDTO
+  ) => V4QueryResult<TDynamicSecret & { inputs: unknown }>;
+  useCreateDynamicSecret: V4Mutation<TCreateDynamicSecretDTO>;
+  useUpdateDynamicSecret: V4Mutation<TUpdateDynamicSecretDTO>;
+  useDeleteDynamicSecret: V4Mutation<TDeleteDynamicSecretDTO>;
+  useDynamicSecretLeases: (dto: TListDynamicSecretLeaseDTO) => V4QueryResult<TDynamicSecretLease[]>;
+  useCreateDynamicSecretLease: V4Mutation<
+    TCreateDynamicSecretLeaseDTO,
+    { lease: TDynamicSecretLease; data: unknown }
+  >;
+  useRenewDynamicSecretLease: V4Mutation<TRenewDynamicSecretLeaseDTO>;
+  useRevokeDynamicSecretLease: V4Mutation<TRevokeDynamicSecretLeaseDTO>;
   useSecretVersions: (dto: GetSecretVersionsDTO) => V4QueryResult<SecretVersions[]>;
   useSecretVersionValue: (
     dto: TGetSecretVersionValue,

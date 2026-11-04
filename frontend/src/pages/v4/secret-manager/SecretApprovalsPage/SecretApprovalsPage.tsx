@@ -397,7 +397,6 @@ const ChangeRequests = ({
       requests={requests}
       onApprove={approve}
       onView={onView}
-      onUndo={() => undefined}
       onRetry={approve}
     />
   );
