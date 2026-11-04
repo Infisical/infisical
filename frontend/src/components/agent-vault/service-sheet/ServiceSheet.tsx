@@ -66,6 +66,7 @@ import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
 import { McpCredentialFields } from "./McpCredentialFields";
 import { McpDetailsFields } from "./McpDetailsFields";
+import { McpToolsFields, TLoadedMcpTools } from "./McpToolsFields";
 import { ReviewFields } from "./ReviewFields";
 import { buildCreateServiceRequest, buildUpdateServiceRequest } from "./serviceRequest";
 import {
@@ -74,6 +75,7 @@ import {
   HTTP_METHODS,
   isOAuthAuthorizationMissing,
   MCP_SERVICE_STEP_FIELDS,
+  McpToolScope,
   SERVICE_STEP_FIELDS,
   SERVICE_TYPE_LABELS,
   ServiceStep,
@@ -97,6 +99,8 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   hosts: [],
   hostDraft: "",
   pathDraft: "",
+  toolScope: McpToolScope.All,
+  allowedTools: [],
   credentialType: AgentVaultCredentialType.Passthrough,
   headerName: "Authorization",
   headerPrefix: "Bearer",
@@ -403,6 +407,8 @@ export const ServiceSheet = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const [openItem, setOpenItem] = useState(ADVANCED_ITEM);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  // Held here rather than in the Tools step, so going to Review and back doesn't drop the list.
+  const [loadedTools, setLoadedTools] = useState<TLoadedMcpTools | null>(null);
   // The stand-in for formState.submitCount, which only counts handleSubmit and so never moves for a
   // wizard that gates its steps with trigger. Without it a second Continue reveals nothing, because
   // the errors it finds are the ones already there.
@@ -446,6 +452,7 @@ export const ServiceSheet = ({
 
     setStep(0);
     setTemplate(null);
+    setLoadedTools(null);
     setOpenItem(service?.type === AgentVaultServiceType.Mcp ? "" : ADVANCED_ITEM);
 
     if (service?.type === AgentVaultServiceType.Mcp) {
@@ -456,6 +463,8 @@ export const ServiceSheet = ({
         name: service.name,
         serverUrl: service.serverUrl,
         transport: service.transport,
+        toolScope: service.allowedTools ? McpToolScope.Selected : McpToolScope.All,
+        allowedTools: service.allowedTools ?? [],
         credentialType: isBearer ? AgentVaultCredentialType.Bearer : AgentVaultCredentialType.OAuth,
         headerName: isBearer ? credential.headerName : "Authorization",
         headerPrefix: isBearer ? credential.headerPrefix : "Bearer",
@@ -631,6 +640,7 @@ export const ServiceSheet = ({
           transport: ServiceStep.Details,
           allowedMethods: ServiceStep.Details,
           allowedPathPrefixes: ServiceStep.Details,
+          allowedTools: ServiceStep.Tools,
           credential: ServiceStep.Credential,
           customHeaders: ServiceStep.Credential,
           substitutions: ServiceStep.Credential
@@ -713,11 +723,18 @@ export const ServiceSheet = ({
   };
 
   const current = steps[step];
-  const [credentialType, serverUrl, oauthAuthorizationId, oauthAuthorizedUrl] = watch([
+  const [
+    credentialType,
+    serverUrl,
+    oauthAuthorizationId,
+    oauthAuthorizedUrl,
+    oauthAuthorizationRejection
+  ] = watch([
     "credentialType",
     "serverUrl",
     "oauthAuthorizationId",
-    "oauthAuthorizedUrl"
+    "oauthAuthorizedUrl",
+    "oauthAuthorizationRejection"
   ]);
 
   useEffect(() => {
@@ -736,18 +753,23 @@ export const ServiceSheet = ({
     return () => window.clearTimeout(timeout);
   }, [oauthAuthorizationId, getValues, setValue, setError]);
 
-  const isAwaitingAuthorization =
-    current.step === ServiceStep.Credential &&
-    isOAuthAuthorizationMissing(
-      {
-        serviceType: isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http,
-        credentialType,
-        serverUrl,
-        oauthAuthorizationId,
-        oauthAuthorizedUrl
-      },
-      service
-    );
+  const isAuthorizationMissing = isOAuthAuthorizationMissing(
+    {
+      serviceType: isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http,
+      credentialType,
+      serverUrl,
+      oauthAuthorizationId,
+      oauthAuthorizedUrl
+    },
+    service
+  );
+  const isAwaitingAuthorization = current.step === ServiceStep.Credential && isAuthorizationMissing;
+  // Set once a sign-in expired or was refused, even when a saved login could stand in for it; only authorizing
+  // again or keeping the current login on the Credential step clears it.
+  const isAuthorizationRejected =
+    isMcp &&
+    credentialType === AgentVaultCredentialType.OAuth &&
+    Boolean(oauthAuthorizationRejection);
   const isTemplateStep = current.step === ServiceStep.Template;
   const saveLabel = isUpdate ? "Save" : "Add Service";
 
@@ -812,6 +834,11 @@ export const ServiceSheet = ({
                           index={index}
                           title={meta.name}
                           description={stepDescription(meta)}
+                          status={
+                            meta.step === ServiceStep.Credential && isAuthorizationRejected
+                              ? "error"
+                              : undefined
+                          }
                         />
                       ))}
                     </StepperList>
@@ -859,6 +886,16 @@ export const ServiceSheet = ({
                         <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
                       </div>
                     </ServiceVariablesContext.Provider>
+                  )}
+                  {current.step === ServiceStep.Tools && (
+                    <McpToolsFields
+                      accessBundleId={accessBundleId}
+                      serviceId={service?.id}
+                      loaded={loadedTools}
+                      onLoaded={setLoadedTools}
+                      isAuthorizationExpired={isAuthorizationRejected}
+                      onGoToCredential={() => setStep(stepKeys.indexOf(ServiceStep.Credential))}
+                    />
                   )}
                   {current.step === ServiceStep.Review && (
                     <ReviewFields

@@ -9,7 +9,8 @@ import {
 export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TAgentVaultProxyConfig = {
-  trafficPolicy: AgentVaultTrafficPolicy;
+  // The name proxies understand; the admin API calls bundle-hosts service-hosts.
+  trafficPolicy: AgentVaultTrafficPolicy.AnyHost | AgentVaultTrafficPolicy.BundleHosts;
   allowedHosts: string | null;
   pollInterval: number;
 };
@@ -24,6 +25,7 @@ export type TListProxiesDTO = TAgentVaultProxyScoped & {
 
 export type TCreateProxyDTO = TAgentVaultProxyScoped & {
   name: string;
+  description?: string | null;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
@@ -32,6 +34,7 @@ export type TCreateProxyDTO = TAgentVaultProxyScoped & {
 export type TUpdateProxyDTO = TAgentVaultProxyScoped & {
   proxyId: string;
   name?: string;
+  description?: string | null;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
@@ -89,11 +92,13 @@ export type TReportMissingScopesDTO = TRefreshCredentialDTO & {
 export type TResolvedService = {
   id: string;
   name: string;
-  accessBundleName: string;
+  // Null for a service sent inline with the session, which belongs to no bundle.
+  accessBundleName: string | null;
   type: AgentVaultServiceType;
   hostPattern: string;
   allowedMethods: string[] | null;
   allowedPathPrefixes: string[] | null;
+  allowedTools: string[] | null;
   credential:
     | {
         type: AgentVaultCredentialType.Bearer;
@@ -108,7 +113,7 @@ export type TResolvedService = {
     | { type: AgentVaultCredentialType.Passthrough };
   customHeaders: { name: string; prefix: string; value: string }[];
   substitutions: { placeholder: string; surfaces: string[]; value: string }[];
-  // The service takes part of its credential from each member and the session's actor has not set their values,
-  // so the proxy refuses its requests rather than sending them without one.
+  // The service takes part of its credential from each member and the member whose values the session uses (its owner,
+  // or the user it acts for) hasn't set them, so the proxy refuses its requests rather than sending them without one.
   personalValuesMissing: boolean;
 };

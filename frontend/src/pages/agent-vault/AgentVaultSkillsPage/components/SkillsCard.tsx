@@ -14,7 +14,6 @@ import { CreateSkillSheet } from "@app/components/agent-vault/skills/CreateSkill
 import { DeleteSkillDialog } from "@app/components/agent-vault/skills/DeleteSkillDialog";
 import { downloadSkillVersion } from "@app/components/agent-vault/skills/downloadSkillVersion";
 import { SkillBundleBadges } from "@app/components/agent-vault/skills/SkillBundleBadges";
-import { SkillDescription } from "@app/components/agent-vault/skills/SkillDescription";
 import { SkillSheet } from "@app/components/agent-vault/skills/SkillSheet";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -227,14 +226,12 @@ export const SkillsCard = () => {
                       to="/organizations/$orgId/projects/agent-vault/$projectId/skills"
                       params={{ orgId: currentOrg.id, projectId }}
                       search={{ skillId: skill.id }}
-                      title={skill.name}
+                      title={skill.description}
                     >
                       {skill.name}
                     </RowLink>
                   </TableCell>
-                  <TableCell isTruncatable>
-                    <SkillDescription description={skill.description} />
-                  </TableCell>
+                  <TableCell isTruncatable>{skill.description}</TableCell>
                   <TableCell>
                     <SkillBundleBadges accessBundles={skill.accessBundles} />
                   </TableCell>

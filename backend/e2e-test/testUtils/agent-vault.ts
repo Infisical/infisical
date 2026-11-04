@@ -1,6 +1,6 @@
 import { ProjectType } from "@app/db/schemas";
 
-type TMethod = "GET" | "POST" | "PATCH" | "DELETE";
+type TMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 // An org can hold only a few Agent Vault projects (agentVaultProjectLimit), counted across every spec that
 // runs against the seeded org, so delete each one a spec creates.
@@ -39,8 +39,9 @@ const PROJECT_LEVEL_PATHS = new Set([
   "/api/v1/agent-vault/oauth/authorizations"
 ]);
 
-// Session log settings take the project in the query string on every method, including PATCH.
-const QUERY_ON_EVERY_METHOD = "/api/v1/agent-vault/settings/session-logs";
+// Session log settings and delegations take the project in the query string on every method. A delegation is
+// addressed by its machine identity, which can belong to several projects.
+const QUERY_ON_EVERY_METHOD = ["/api/v1/agent-vault/settings/session-logs", "/api/v1/agent-vault/delegations"];
 
 // Adds projectId to a project-level request that does not already carry one, in the query for reads and the
 // settings routes and in the body for other writes. By-id routes take the project from the row and pass through.
@@ -51,9 +52,10 @@ export const scopeAgentVaultRequest = (
   body?: Record<string, unknown>
 ): { url: string; body?: Record<string, unknown> } => {
   const [path, query] = url.split("?");
-  if (!PROJECT_LEVEL_PATHS.has(path)) return { url, body };
+  const isQueryOnEveryMethod = QUERY_ON_EVERY_METHOD.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+  if (!PROJECT_LEVEL_PATHS.has(path) && !isQueryOnEveryMethod) return { url, body };
 
-  if (method === "GET" || path.startsWith(QUERY_ON_EVERY_METHOD)) {
+  if (method === "GET" || isQueryOnEveryMethod) {
     if (query && new URLSearchParams(query).has("projectId")) return { url, body };
     return { url: `${path}?projectId=${projectId}${query ? `&${query}` : ""}`, body };
   }

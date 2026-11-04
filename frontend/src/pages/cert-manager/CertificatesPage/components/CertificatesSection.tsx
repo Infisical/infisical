@@ -28,6 +28,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 import { CertificateCertModal } from "./CertificateCertModal";
+import { CertificateDeletionSyncImpact } from "./CertificateDeletionSyncImpact";
 import { CertificateExportModal, ExportOptions } from "./CertificateExportModal";
 import { CertificateImportSheet } from "./CertificateImportSheet";
 import { CertificateManagePkiSyncsModal } from "./CertificateManagePkiSyncsModal";
@@ -35,7 +36,9 @@ import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
+import { getCertificateDeletionWarning } from "./CertificatesTable.utils";
 import type { FilterRule } from "./inventory-types";
+import { useCertificateHoldingSyncs } from "./useCertificateHoldingSyncs";
 
 type CertificatesSectionProps = {
   externalFilter?: {
@@ -136,6 +139,24 @@ export const CertificatesSection = ({
     }
   };
 
+  const deleteCertificateData = popUp?.deleteCertificate?.data as
+    | {
+        status: string;
+        notAfter: string;
+        hasPrivateKey?: boolean;
+        canRevoke?: boolean;
+        isRevocableAfterDeletion?: boolean;
+        certificateId?: string;
+        applicationId?: string | null;
+      }
+    | undefined;
+
+  const { holdingSyncs, isLoadingHoldingSyncs } = useCertificateHoldingSyncs({
+    certificateId: deleteCertificateData?.certificateId,
+    applicationId: deleteCertificateData?.applicationId ?? applicationId,
+    isEnabled: popUp.deleteCertificate.isOpen
+  });
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -214,11 +235,21 @@ export const CertificatesSection = ({
         />
         <ConfirmationAlertDialog
           isOpen={popUp.deleteCertificate.isOpen}
-          title={`Are you sure you want to remove the certificate ${
+          title={`Delete Certificate ${
             (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
           }?`}
-          description="This action cannot be undone."
+          description={
+            <>
+              {getCertificateDeletionWarning(
+                deleteCertificateData,
+                deleteCertificateData?.canRevoke,
+                deleteCertificateData?.isRevocableAfterDeletion
+              )}
+              <CertificateDeletionSyncImpact holdingSyncs={holdingSyncs} />
+            </>
+          }
           onOpenChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
+          isPending={isLoadingHoldingSyncs}
           confirmKey="confirm"
           onConfirm={() =>
             onRemoveCertificateSubmit(

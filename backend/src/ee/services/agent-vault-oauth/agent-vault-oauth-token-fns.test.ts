@@ -31,6 +31,8 @@ import {
 } from "./agent-vault-oauth-token-fns";
 import { AgentVaultOauthClientAuthMethod, AgentVaultOauthCompatibility } from "./agent-vault-oauth-types";
 
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ isCloud: false }) }));
+
 vi.mock("@app/lib/logger", async () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
   sanitizeUrlForLog: (
@@ -449,7 +451,7 @@ describe("token requests", () => {
     };
     const result = await requestToken({ http, ...tokenArgs });
     expect(!result.ok && result.message).toBe(
-      "Infisical can't reach the login server 'auth.example.com' because it's on a private network. Use a bearer token for this service instead."
+      "Infisical can't reach the login server 'auth.example.com' because it's on a private network. Use a bearer token for this service instead. If you're self-hosting Infisical, set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to allow it."
     );
   });
 

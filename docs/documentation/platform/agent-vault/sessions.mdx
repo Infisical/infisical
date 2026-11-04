@@ -3,9 +3,9 @@ title: "Sessions"
 description: "Time-bound grants that let AI agents access services without holding real credentials."
 ---
 
-A session is a time-bound grant scoped to one [access bundle](/documentation/platform/agent-vault/access-bundles) in an [Agent Vault project](/documentation/platform/agent-vault/projects). Infisical returns a session token that identifies the session, and the agent uses that token to authenticate to the [proxy](/documentation/platform/agent-vault/proxies) on every outbound request. The proxy then attaches the real credential from the matching [service](/documentation/platform/agent-vault/services) at the network boundary.
+A session is a time-bound grant in an [Agent Vault project](/documentation/platform/agent-vault/projects). It's scoped to one [access bundle](/documentation/platform/agent-vault/access-bundles), to [inline services](/documentation/platform/agent-vault/inline-services) that an admin sends with the session, or to both. Infisical returns a session token that identifies the session, and the agent uses that token to authenticate to the [proxy](/documentation/platform/agent-vault/proxies) on every outbound request. The proxy then attaches the real credential from the matching [service](/documentation/platform/agent-vault/services) at the network boundary.
 
-Every session is scoped to one access bundle and expires on a schedule you set. When the session expires (or [you revoke it](#revoke-a-session)), the proxy stops attaching credentials to the agent's requests within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+Every session expires on a schedule you set. When the session expires (or [you revoke it](#revoke-a-session)), the proxy stops attaching credentials to the agent's requests within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
 A session only works through a proxy in the same project as its access bundle.
 
@@ -14,7 +14,7 @@ A session only works through a proxy in the same project as its access bundle.
 Anyone granted at least one access bundle in a project can create a session in that project. Admins of the project can create one with any of its access bundles.
 
 <Tip>
-  If you want to create sessions programmatically, you can have a [machine identity](/documentation/platform/identities/machine-identities) create a new session for each run using [the CLI](/documentation/platform/agent-vault/sessions-cli), [the API](/documentation/platform/agent-vault/sessions-api), or [the Python SDK](/sdks/languages/python#agent_vault-sessions).
+  If you want to create sessions programmatically, you can have a [machine identity](/documentation/platform/identities/machine-identities) create a new session for each run using [the CLI](/documentation/platform/agent-vault/sessions-cli), [the API](/documentation/platform/agent-vault/sessions-api), or [the Python SDK](/sdks/languages/python#agent_vault-sessions). A machine identity can also create sessions [on behalf of users](/documentation/platform/agent-vault/sessions-on-behalf-of-users), so that each agent uses the personal values of the person it runs for and gets no more access than that person.
 </Tip>
 
 <Tabs>
@@ -113,17 +113,18 @@ The **Sessions** page shows each session as **Active**, **Revoked**, or **Expire
 
 ## Access changes
 
-The access bundle is chosen when you create the session and can't be changed afterwards. However, the proxy re-checks whether the agent still gets credentials once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). Here's how common access changes affect a session:
+The access bundle and any inline services are chosen when you create the session and can't be changed afterwards. However, the proxy re-checks whether the agent still gets credentials once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). Here's how common access changes affect a session:
 
 - If someone no longer has any grant on an access bundle, directly or through a group, their sessions for that bundle stop getting credentials
 - If someone still has another grant on the bundle, such as through a group, revoking one grant doesn't affect their sessions
 - If you delete an access bundle, every session scoped to it stops getting credentials (the session still lists the bundle's name, so you can see what it was)
 - If you remove someone from the project, the proxy refuses every request on their sessions
+- If the user or machine identity that created a session loses the **Admin** role in the project, the session stops getting credentials for its [inline services](/documentation/platform/agent-vault/inline-services)
 
 None of these changes removes the [skills](/documentation/platform/agent-vault/skills) that the CLI already installed on the agent's host. To stop agents from using those skills, [delete the installed copies](/documentation/platform/agent-vault/skills#remove-installed-skills).
 
 <Note>
-If a session stops getting credentials because of a lost grant or a deleted bundle, the proxy still forwards the agent's requests, without credentials. Whether those requests reach the upstream host depends on the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
+If a session stops getting credentials because of a lost grant, a deleted bundle, or a lost **Admin** role, the proxy still forwards the agent's requests, without credentials. Whether those requests reach the upstream host depends on the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
 </Note>
 
 ## Audit trail

@@ -999,6 +999,7 @@ Infisical emits hundreds of event types. Here are some of the most common ones y
   <Accordion title="Identities and authentication">
     | Event                                                                                 | When it fires                                                        |
     | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+    | `user-login`                                                                          | A user signed in through SAML, OIDC, or LDAP. Infisical doesn't record this event for password, Google, GitHub, or GitLab sign-ins, for failed sign-ins, or for a sign-in where the user still has to finish creating their account or verify their email. For SAML and OIDC, `idpMfa` in the metadata shows whether the identity provider reported MFA, as described in [MFA for SSO logins](/documentation/platform/mfa#mfa-for-sso-logins). |
     | `create-identity`, `update-identity`, `delete-identity`                               | A machine identity was added, edited, or removed.                    |
     | `login-identity-*` (for example, `login-identity-universal-auth`, `login-identity-kubernetes-auth`, `login-identity-oidc-auth`, `login-identity-gcp-auth`, `login-identity-aws-auth`) | A machine identity authenticated. |
     | `login-identity-*-failed`                                                             | A machine identity's authentication attempt failed.                  |
@@ -1011,6 +1012,7 @@ Infisical emits hundreds of event types. Here are some of the most common ones y
     | `create-project`, `update-project`, `delete-project`                                              | A project was created, edited, or deleted.                           |
     | `create-identity-project-membership`, `update-identity-project-membership`, `delete-identity-project-membership` | A machine identity joined, changed role in, or left a project. |
     | `update-user-org-membership`, `delete-user-org-membership`                                        | A user's role or membership in the organization changed.             |
+    | `invite-org-members`                                                                              | Users were invited to the organization, optionally with access to projects. |
   </Accordion>
   <Accordion title="Integrations and secret sync">
     | Event                                                                                 | When it fires                                                              |

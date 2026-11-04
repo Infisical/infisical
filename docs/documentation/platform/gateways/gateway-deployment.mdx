@@ -412,7 +412,7 @@ From the gateway's detail page (select the gateway row in the list):
 - **Generate deploy command**: Generates a fresh enrollment token (token method) or re-displays the start command for the AWS, GCP and Kubernetes methods. Selecting this on a token-method gateway doesn't disconnect the running gateway; the next login with the new token rotates credentials atomically.
 - **Edit auth method**: Switch between Token, AWS, GCP, and Kubernetes, or update the allowlists of the current method. Existing gateways keep their JWT until they restart and re-authenticate.
 - **Options → Revoke Access** — Disconnects the running gateway and invalidates outstanding enrollment tokens. The gateway must re-authenticate to reconnect. Gated by the dedicated `revoke-gateway-access` permission, separate from `edit-gateways`.
-- **Options → Delete Gateway** — Permanently removes the gateway.
+- **Options → Delete Gateway** — Permanently removes the gateway; Infisical refuses the delete while an app connection is assigned directly to it and names those connections. This guard doesn't cover connections using a gateway pool.
 
 To migrate a gateway to a different host with zero downtime: select **Generate deploy command** to generate a fresh token, run it on the new host, and the new login will rotate credentials away from the old host.
 

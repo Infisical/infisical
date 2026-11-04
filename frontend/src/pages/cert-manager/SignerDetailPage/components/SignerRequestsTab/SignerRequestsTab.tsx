@@ -243,9 +243,10 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
               <TableBody>
                 {requests.map((req: TSignerRequest) => {
                   const member = resolveMember(req);
+                  const accessStatus = req.accessStatus ?? req.status;
                   const isRevocable =
-                    req.status === SignerRequestStatus.Pending ||
-                    req.status === SignerRequestStatus.Approved;
+                    accessStatus === SignerRequestStatus.Pending ||
+                    accessStatus === SignerRequestStatus.Approved;
                   const created = new Date(req.createdAt);
                   return (
                     <TableRow
@@ -303,7 +304,9 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusVariant(req.status)}>{statusLabel(req.status)}</Badge>
+                        <Badge variant={statusVariant(accessStatus)}>
+                          {statusLabel(accessStatus)}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-accent">
                         <Tooltip>

@@ -78,7 +78,8 @@ name: z.string(),
 // Good: reuse the shared helpers in src/server/lib/schemas.ts
 name: GenericResourceNameSchema,
 slug: slugSchema({ max: 32, field: "Environment slug" }),
-projectId: z.string().uuid(),
+orgId: z.string().uuid(),
+projectId: z.string().trim().min(1).max(36),
 description: z.string().trim().max(500).optional(),
 port: z.number().int().min(1).max(65535),
 ```
@@ -90,6 +91,11 @@ port: z.number().int().min(1).max(65535),
 - **`.trim()` anything used as an identifier**, so `"prod "` and `"prod"` are not two rows.
 - **IDs are `.uuid()`; enums are `z.nativeEnum(...)` or `z.enum([...])`**, so the accepted
   values appear in the generated docs.
+- **Except `projectId`.** `projects.id` is `varchar(36)`, not `uuid`, and projects carried
+  over from MongoDB kept their 24-character ObjectId as their ID. Customers hardcode that ID
+  in `.infisical.json`, CI, and operator manifests, so it cannot be rewritten. `.uuid()`
+  rejects those projects, and no project created since the Postgres move will show it. Check the column in `src/db/schemas/`
+  before adding `.uuid()` to any other ID declared as `t.string("id", 36)`.
 - **`z.coerce.number().int()`** for querystring numbers, since everything arrives as a string.
 - **Never `.default(x).optional()`.** The `.optional()` wraps the default, so `undefined`
   stays `undefined` and the default never applies.

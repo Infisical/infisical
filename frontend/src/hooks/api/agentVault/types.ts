@@ -1,5 +1,6 @@
 import {
   AgentVaultCredentialType,
+  AgentVaultDelegationScope,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
   AgentVaultMemberType,
@@ -122,6 +123,8 @@ export type TAgentVaultService = TAgentVaultServiceConfig & {
   // null means unrestricted.
   allowedMethods: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes: string[] | null;
+  // Only an MCP service ever has a list.
+  allowedTools: string[] | null;
   credential: TAgentVaultCredentialSummary;
   customHeaders: TAgentVaultCustomHeaderSummary[];
   substitutions: TAgentVaultSubstitutionSummary[];
@@ -147,7 +150,12 @@ export type TAgentVaultActor =
 
 export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
 
-export type TAgentVaultMember = TAgentVaultActor & { grantedAt: string };
+export type TAgentVaultMember = (
+  | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
+      isOrgMembershipPending: boolean;
+    })
+  | Exclude<TAgentVaultActor, { type: AgentVaultMemberType.User }>
+) & { grantedAt: string };
 
 export type TAgentVaultProductActor =
   | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
@@ -251,6 +259,25 @@ export type TAgentVaultSessionAccessBundle = {
   position: number;
 };
 
+/** A service an admin sent with the session itself. Its secrets are never returned. */
+export type TAgentVaultSessionInlineService = {
+  id: string;
+  // The name it was sent with, or its first host when it was sent without one.
+  name: string;
+  type: AgentVaultServiceType;
+  serverUrl: string | null;
+  transport: AgentVaultMcpTransport | null;
+  hostPattern: string;
+  allowedMethods: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes: string[] | null;
+  credential:
+    | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
+    | { type: AgentVaultCredentialType.Basic }
+    | { type: AgentVaultCredentialType.Passthrough };
+  customHeaders: { name: string; prefix: string }[];
+  substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
+};
+
 export type TAgentVaultSessionActor =
   | (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "id"> & {
       id: string | null;
@@ -259,15 +286,63 @@ export type TAgentVaultSessionActor =
       id: string | null;
     });
 
+/** The user a machine identity started a session on behalf of. `id` is null once the user is deleted. */
+export type TAgentVaultSessionOnBehalfOf = Extract<
+  TAgentVaultSessionActor,
+  { type: AgentVaultMemberType.User }
+>;
+
 export type TAgentVaultSession = {
   id: string;
   label: string | null;
   actor: TAgentVaultSessionActor;
+  onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
   status: AgentVaultSessionStatus;
   expiresAt: string | null;
   revokedAt: string | null;
   createdAt: string;
   accessBundles: TAgentVaultSessionAccessBundle[];
+  services: TAgentVaultSessionInlineService[];
+};
+
+export type TAgentVaultDelegation = {
+  machineIdentity: { id: string; name: string };
+  scope: AgentVaultDelegationScope;
+  users: (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "type"> & {
+    addedAt: string;
+  })[];
+  groups: (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>, "type"> & {
+    addedAt: string;
+  })[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TAgentVaultMissingAccessBundle = { id: string; name: string };
+
+// Reading or writing one delegation also says which bundles its machine identity can't act on: the ones each user and
+// group can use and the identity can't.
+export type TAgentVaultDelegationDetail = Omit<TAgentVaultDelegation, "users" | "groups"> & {
+  users: (TAgentVaultDelegation["users"][number] & {
+    missingAccessBundles: TAgentVaultMissingAccessBundle[];
+  })[];
+  groups: (TAgentVaultDelegation["groups"][number] & {
+    missingAccessBundles: TAgentVaultMissingAccessBundle[];
+  })[];
+  missingAccessBundles: TAgentVaultMissingAccessBundle[];
+};
+
+export type TChangeAgentVaultDelegationSubjectsDTO = {
+  machineIdentityId: string;
+  userIds?: string[];
+  groupIds?: string[];
+};
+
+export type TSetAgentVaultDelegationDTO = {
+  machineIdentityId: string;
+  scope: AgentVaultDelegationScope;
+  userIds?: string[];
+  groupIds?: string[];
 };
 
 export type TAgentVaultMintedSession = {
@@ -278,11 +353,13 @@ export type TAgentVaultMintedSession = {
   createdAt: string;
   projectId: string;
   accessBundles: TAgentVaultSessionAccessBundle[];
+  services: TAgentVaultSessionInlineService[];
 };
 
 export type TAgentVaultProxy = {
   id: string;
   name: string;
+  description: string | null;
   heartbeat: string | null;
   isHealthy: boolean;
   rootCaFingerprint: string | null;
@@ -291,6 +368,12 @@ export type TAgentVaultProxy = {
   allowedHosts?: string | null;
   pollInterval?: number;
   createdAt?: string;
+};
+
+export type TAgentVaultProxyCa = {
+  certificate: string;
+  fingerprint: string;
+  expiresAt: string;
 };
 
 export type TAgentVaultProxyToken = {
@@ -338,6 +421,7 @@ export type TCreateAgentVaultServiceDTO =
       name: string;
       serverUrl: string;
       transport: AgentVaultMcpTransport;
+      allowedTools?: string[] | null;
       credential:
         | Extract<TAgentVaultCredentialInput, { type: AgentVaultCredentialType.Bearer }>
         | TAgentVaultOauthCredentialInput;
@@ -355,9 +439,25 @@ export type TUpdateAgentVaultServiceDTO = {
   allowedPathPrefixes?: string[] | null;
   serverUrl?: string;
   transport?: AgentVaultMcpTransport;
+  allowedTools?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
+};
+
+/** Credential and header values left out fall back to what the saved service stores, as on update. */
+export type TListAgentVaultMcpToolsDTO = {
+  accessBundleId: string;
+  serviceId?: string;
+  serverUrl: string;
+  transport: AgentVaultMcpTransport;
+  credential?: TAgentVaultCredentialUpdate;
+  customHeaders?: TAgentVaultCustomHeaderInput[];
+};
+
+export type TAgentVaultMcpTool = {
+  name: string;
+  description: string | null;
 };
 
 export type TAgentVaultOauthAuthorization = {
@@ -416,6 +516,15 @@ export type TAgentVaultProxySettingsDTO = {
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
+};
+
+export type TCreateAgentVaultProxyDTO = TAgentVaultProxySettingsDTO & {
+  description?: string;
+};
+
+export type TUpdateAgentVaultProxyDTO = Partial<TAgentVaultProxySettingsDTO> & {
+  proxyId: string;
+  description?: string | null;
 };
 
 export type TAgentVaultSessionLogExternalStorage = {

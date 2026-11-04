@@ -33,12 +33,14 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultBundleSkill,
   TAgentVaultDecryptedSessionLogPage,
+  TAgentVaultDelegationDetail,
   TAgentVaultMember,
   TAgentVaultOauthAuthorization,
   TAgentVaultProductActor,
   TAgentVaultProductMember,
   TAgentVaultProductMemberOf,
   TAgentVaultProxy,
+  TAgentVaultProxyCa,
   TAgentVaultSession,
   TAgentVaultSessionLogCorsProbe,
   TAgentVaultSessionLogHealth,
@@ -111,14 +113,14 @@ export const agentVaultKeys = {
     orgId: string,
     projectId: string,
     accessBundleId: string,
-    params?: Omit<TListAgentVaultMembersDTO, "actorType">
+    params?: TListAgentVaultMembersDTO
   ) => [...agentVaultKeys.accessBundleMembers(orgId, projectId, accessBundleId), params] as const,
   // Nested under accessBundleMembers() so a grant invalidates the candidate list too.
   availableAccessBundleMemberList: (
     orgId: string,
     projectId: string,
     accessBundleId: string,
-    params?: Omit<TListAgentVaultMembersDTO, "actorType">
+    params?: TListAgentVaultMembersDTO
   ) =>
     [
       ...agentVaultKeys.accessBundleMembers(orgId, projectId, accessBundleId),
@@ -159,6 +161,24 @@ export const agentVaultKeys = {
     [...agentVaultKeys.members(orgId, projectId), "available"] as const,
   availableMemberList: (orgId: string, projectId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.availableMembers(orgId, projectId), params] as const,
+  delegations: (orgId: string, projectId: string) =>
+    [...agentVaultKeys.all(orgId, projectId), "delegations"] as const,
+  delegation: (orgId: string, projectId: string, machineIdentityId: string) =>
+    [...agentVaultKeys.delegations(orgId, projectId), machineIdentityId] as const,
+  // Nested under delegation() so changing the delegation can invalidate the candidates alone: the
+  // delegation itself is written from each change's result.
+  availableDelegationSubjects: (orgId: string, projectId: string, machineIdentityId: string) =>
+    [...agentVaultKeys.delegation(orgId, projectId, machineIdentityId), "available"] as const,
+  availableDelegationSubjectList: (
+    orgId: string,
+    projectId: string,
+    machineIdentityId: string,
+    params?: TListAgentVaultMembersDTO
+  ) =>
+    [
+      ...agentVaultKeys.availableDelegationSubjects(orgId, projectId, machineIdentityId),
+      params
+    ] as const,
   sessionLogSettings: (orgId: string, projectId: string) =>
     [...agentVaultKeys.all(orgId, projectId), "settings", "session-logs"] as const,
   sessionLogHealth: (orgId: string, projectId: string) =>
@@ -235,6 +255,34 @@ export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentV
   });
 };
 
+// An identity with no delegation reads as null rather than an error. Admins only. Refetched on every visit, because the
+// bundles the identity can't act on change with grants and roles anywhere in Agent Vault.
+export const useGetAgentVaultDelegation = (
+  projectId: string,
+  machineIdentityId: string,
+  enabled = true
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.delegation(currentOrg.id, projectId, machineIdentityId),
+    queryFn: async () => {
+      try {
+        const { data } = await apiRequest.get<{ delegation: TAgentVaultDelegationDetail }>(
+          `/api/v1/agent-vault/delegations/${machineIdentityId}`,
+          { params: { projectId } }
+        );
+        return data.delegation;
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) return null;
+        throw error;
+      }
+    },
+    enabled,
+    staleTime: 0
+  });
+};
+
 // One page is enough for a picker: past it the admin searches. The default lives here so both add
 // dialogs page the same way.
 const AVAILABLE_MEMBER_LIMIT = 50;
@@ -242,7 +290,7 @@ const AVAILABLE_MEMBER_LIMIT = 50;
 export const useListAvailableAgentVaultAccessBundleMembers = (
   projectId: string,
   accessBundleId: string,
-  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: Omit<TListAgentVaultMembersDTO, "actorType"> = {},
+  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: TListAgentVaultMembersDTO = {},
   enabled = true
 ) => {
   const { currentOrg } = useOrganization();
@@ -263,6 +311,37 @@ export const useListAvailableAgentVaultAccessBundleMembers = (
       return data;
     },
     enabled: enabled && Boolean(accessBundleId),
+    placeholderData: keepPreviousInProject(projectId)
+  });
+};
+
+// The Agent Vault users and groups not yet in the machine identity's delegation. Admins only.
+export const useListAvailableAgentVaultDelegationSubjects = (
+  projectId: string,
+  machineIdentityId: string,
+  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: TListAgentVaultMembersDTO = {},
+  enabled = true
+) => {
+  const { currentOrg } = useOrganization();
+  const params = { ...rest, limit };
+
+  return useQuery({
+    queryKey: agentVaultKeys.availableDelegationSubjectList(
+      currentOrg.id,
+      projectId,
+      machineIdentityId,
+      params
+    ),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        members: TAgentVaultProductMember[];
+        totalCount: number;
+      }>(`/api/v1/agent-vault/delegations/${machineIdentityId}/subjects/available`, {
+        params: { ...params, projectId }
+      });
+      return data;
+    },
+    enabled: enabled && Boolean(machineIdentityId),
     placeholderData: keepPreviousInProject(projectId)
   });
 };
@@ -294,7 +373,7 @@ export const useListAvailableAgentVaultMembers = <
 export const useListAgentVaultAccessBundleMembers = (
   projectId: string,
   accessBundleId: string,
-  params: Omit<TListAgentVaultMembersDTO, "actorType"> = {}
+  params: TListAgentVaultMembersDTO = {}
 ) => {
   const { currentOrg } = useOrganization();
 
@@ -418,6 +497,13 @@ export const useListAgentVaultProxies = (
       return data;
     }
   });
+};
+
+export const fetchAgentVaultProxyCa = async (proxyId: string) => {
+  const { data } = await apiRequest.get<{ ca: TAgentVaultProxyCa }>(
+    `/api/v1/agent-vault/proxies/${proxyId}/ca`
+  );
+  return data.ca;
 };
 
 export const useGetAgentVaultSessionLogSettings = (projectId: string, enabled = true) => {
