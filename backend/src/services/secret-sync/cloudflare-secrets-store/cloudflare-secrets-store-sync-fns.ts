@@ -66,6 +66,7 @@ export const CloudflareSecretsStoreSyncFns = {
       throw new SecretSyncError({
         secretKey: invalidKeys[0],
         shouldRetry: false,
+        isConfigError: true,
         message: `${invalidKeys.length} secret ${
           invalidKeys.length === 1 ? "key is" : "keys are"
         } not a valid Cloudflare Secrets Store secret name: ${invalidKeys.join(", ")}. ${CLOUDFLARE_SECRETS_STORE_SECRET_NAME_RULE}`

@@ -87,7 +87,8 @@ const buildConflictError = (conflicts: TSecretSyncConflict[]) => {
     message: `This destination stores secrets in a single flat list, so each name can be used only once. These names are used in more than one folder: ${detail}${
       remainder > 0 ? `, and ${remainder} more` : ""
     }. Rename or move one secret in each pair, or point the sync at a narrower secret path.`,
-    shouldRetry: false
+    shouldRetry: false,
+    isConfigError: true
   });
 };
 

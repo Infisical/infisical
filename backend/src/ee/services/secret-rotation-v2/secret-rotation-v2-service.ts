@@ -70,12 +70,17 @@ import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { takeRowScanWindow } from "@app/lib/fn";
-import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
+import {
+  recordSecretRotationConnectionStatusChangeMetric,
+  recordSecretRotationOutcomeMetric
+} from "@app/lib/telemetry/metrics";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TAppConnectionHealthDALFactory } from "@app/services/app-connection/app-connection-health-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
+import { recordAppConnectionHealth } from "@app/services/app-connection/app-connection-health-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
 import { EventModificationType } from "@app/services/event-outbox/event-definition";
@@ -177,6 +182,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   queueService: Pick<TQueueServiceFactory, "queue">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "transaction">;
+  appConnectionHealthDAL: Pick<TAppConnectionHealthDALFactory, "transition" | "markWorkingIfUnknown">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -256,6 +262,7 @@ export const secretRotationV2ServiceFactory = ({
   folderCommitService,
   eventEmitter,
   appConnectionDAL,
+  appConnectionHealthDAL,
   gatewayV2Service,
   gatewayPoolService,
   telemetryService,
@@ -286,14 +293,24 @@ export const secretRotationV2ServiceFactory = ({
     return matched;
   };
 
-  const $markRotationSucceeded = async (rotationId: string, tx: Knex) =>
-    (
-      await secretRotationV2DAL.update(
-        { id: rotationId, rotationStatus: SecretRotationStatus.Failed },
-        { rotationStatus: SecretRotationStatus.Success },
-        tx
-      )
-    ).length > 0;
+  // Called after the rotation's own transaction commits, never inside it, so it doesn't hold a second connection.
+  const $recordConnectionRotationResult = async ({
+    connection,
+    type,
+    isSuccess
+  }: {
+    connection: { id: string; rotationFailing?: boolean | null };
+    type: string;
+    isSuccess: boolean;
+  }) =>
+    recordAppConnectionHealth({
+      appConnectionHealthDAL,
+      connectionId: connection.id,
+      column: "rotationFailing",
+      loaded: connection.rotationFailing,
+      isSuccess,
+      onStatusChange: (newStatus) => recordSecretRotationConnectionStatusChangeMetric({ type, newStatus })
+    });
 
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
     const appCfg = getConfig();
@@ -763,6 +780,8 @@ export const secretRotationV2ServiceFactory = ({
           return createdRotation;
         });
       }, temporaryParameters);
+
+      await $recordConnectionRotationResult({ connection, type: payload.type, isSuccess: true });
 
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
       await secretQueueService.syncSecrets({
@@ -1429,8 +1448,7 @@ export const secretRotationV2ServiceFactory = ({
           });
           const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: connection.orgId, kmsService });
 
-          let isRecovery = false;
-          const rotated = await secretRotationV2DAL.transaction(async (tx) => {
+          return secretRotationV2DAL.transaction(async (tx) => {
             const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
 
             // update mapped secrets with new credential values
@@ -1471,7 +1489,6 @@ export const secretRotationV2ServiceFactory = ({
 
             const currentTime = new Date();
 
-            isRecovery = await $markRotationSucceeded(secretRotation.id, tx);
             return secretRotationV2DAL.updateById(
               secretRotation.id,
               {
@@ -1493,12 +1510,11 @@ export const secretRotationV2ServiceFactory = ({
               tx
             );
           });
-
-          if (isRecovery) recordSecretRotationStatusChangeMetric({ type, newStatus: "healthy" });
-          return rotated;
         },
         activeCredentials
       );
+
+      await $recordConnectionRotationResult({ connection, type, isSuccess: true });
 
       await auditLogService.createAuditLog({
         ...(auditLogInfo ?? {
@@ -1557,31 +1573,15 @@ export const secretRotationV2ServiceFactory = ({
           plainText: Buffer.from(errorMessage)
         });
 
-        let isStatusChange = false;
-        const updatedRotation = await secretRotationV2DAL.transaction(async (tx) => {
-          isStatusChange =
-            (
-              await secretRotationV2DAL.update(
-                { id: secretRotation.id, rotationStatus: SecretRotationStatus.Success },
-                { rotationStatus: SecretRotationStatus.Failed },
-                tx
-              )
-            ).length > 0;
-
-          return secretRotationV2DAL.updateById(
-            secretRotation.id,
-            {
-              rotationStatus: SecretRotationStatus.Failed,
-              lastRotationJobId: jobId,
-              lastRotationAttemptedAt: new Date(),
-              encryptedLastRotationMessage: encryptedMessage,
-              nextRotationAt: getNextUtcRotationInterval(secretRotation.rotateAtUtc as TSecretRotationV2["rotateAtUtc"])
-            },
-            tx
-          );
+        const updatedRotation = await secretRotationV2DAL.updateById(secretRotation.id, {
+          rotationStatus: SecretRotationStatus.Failed,
+          lastRotationJobId: jobId,
+          lastRotationAttemptedAt: new Date(),
+          encryptedLastRotationMessage: encryptedMessage,
+          nextRotationAt: getNextUtcRotationInterval(secretRotation.rotateAtUtc as TSecretRotationV2["rotateAtUtc"])
         });
 
-        if (isStatusChange) recordSecretRotationStatusChangeMetric({ type, newStatus: "failed" });
+        await $recordConnectionRotationResult({ connection, type, isSuccess: false });
 
         if (shouldSendNotification) {
           await $queueSendSecretRotationStatusNotification(updatedRotation);
@@ -2185,8 +2185,7 @@ export const secretRotationV2ServiceFactory = ({
         });
         const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
 
-        let isRecovery = false;
-        const reconciled = await secretRotationV2DAL.transaction(async (tx) => {
+        return secretRotationV2DAL.transaction(async (tx) => {
           // Update the password secret with the new value
           const secretsMapping = secretRotation.secretsMapping as TLocalAccountRotation["secretsMapping"];
           const passwordBuffer = Buffer.from(localAccountCredentials.password);
@@ -2222,7 +2221,6 @@ export const secretRotationV2ServiceFactory = ({
             resourceMetadataDAL
           });
 
-          isRecovery = await $markRotationSucceeded(rotationId, tx);
           return secretRotationV2DAL.updateById(
             rotationId,
             {
@@ -2233,11 +2231,11 @@ export const secretRotationV2ServiceFactory = ({
             tx
           );
         });
-        if (isRecovery) recordSecretRotationStatusChangeMetric({ type, newStatus: "healthy" });
-        return reconciled;
       },
       { password: activeCredentials.password }
     );
+
+    await $recordConnectionRotationResult({ connection, type, isSuccess: true });
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     await secretQueueService.syncSecrets({

@@ -92,6 +92,9 @@ import {
   TAppConnectionCredentialRotations,
   TAppConnectionCredentialRotationsInsert,
   TAppConnectionCredentialRotationsUpdate,
+  TAppConnectionHealth,
+  TAppConnectionHealthInsert,
+  TAppConnectionHealthUpdate,
   TAppConnections,
   TAppConnectionsInsert,
   TAppConnectionsUpdate,
@@ -2103,6 +2106,11 @@ declare module "knex/types/tables" {
       TAppConnectionCredentialRotations,
       TAppConnectionCredentialRotationsInsert,
       TAppConnectionCredentialRotationsUpdate
+    >;
+    [TableName.AppConnectionHealth]: KnexOriginal.CompositeTableType<
+      TAppConnectionHealth,
+      TAppConnectionHealthInsert,
+      TAppConnectionHealthUpdate
     >;
     [TableName.CaSigningConfig]: KnexOriginal.CompositeTableType<
       TCaSigningConfigs,

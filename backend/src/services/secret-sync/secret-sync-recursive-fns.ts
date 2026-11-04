@@ -64,7 +64,8 @@ export const getSyncedFolders = async ({
   if (!paths.length) {
     throw new SecretSyncError({
       message: `Could not find the folder "${sourcePath}" in environment "${environment}". Update the sync's source environment and secret path.`,
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 

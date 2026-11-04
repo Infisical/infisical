@@ -193,7 +193,8 @@ const updateChefSecrets = async (
       throw new SecretSyncError({
         message:
           "Encryption is turned on for this sync, but its Chef connection has no data bag secret. Add the secret to the connection, or turn off encryption for this sync.",
-        shouldRetry: false
+        shouldRetry: false,
+        isConfigError: true
       });
     }
 
@@ -238,7 +239,8 @@ export const ChefSyncFns = {
         message:
           'Secret key "id" is reserved by Chef data bag items and cannot be synced. Rename the secret to sync it.',
         secretKey: "id",
-        shouldRetry: false
+        shouldRetry: false,
+        isConfigError: true
       });
     }
 

@@ -289,6 +289,7 @@ import { secretReminderAlertDALFactory } from "@app/services/alert/providers/sec
 import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { appConnectionHealthDALFactory } from "@app/services/app-connection/app-connection-health-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import {
   appConnectionCredentialRotationDALFactory,
@@ -791,6 +792,7 @@ export const registerRoutes = async (
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
+  const appConnectionHealthDAL = appConnectionHealthDALFactory(db);
   const hsmConnectorDAL = hsmConnectorDALFactory(db);
   const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
   const userNotificationDAL = userNotificationDALFactory(db);
@@ -2453,6 +2455,7 @@ export const registerRoutes = async (
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
     appConnectionDAL,
+    appConnectionHealthDAL,
     gitHubAppDAL,
     licenseService,
     gatewayV2Service,
@@ -3754,6 +3757,7 @@ export const registerRoutes = async (
     secretQueueService,
     queueService,
     appConnectionDAL,
+    appConnectionHealthDAL,
     gatewayV2Service,
     gatewayPoolService,
     telemetryService,

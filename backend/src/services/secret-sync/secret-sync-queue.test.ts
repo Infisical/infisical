@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { recordSecretSyncOutcomeMetric, recordSecretSyncStatusChangeMetric } from "@app/lib/telemetry/metrics";
+import { logger } from "@app/lib/logger";
+import {
+  recordSecretSyncConnectionStatusChangeMetric,
+  recordSecretSyncOutcomeMetric
+} from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName } from "@app/queue";
 
 import { SecretSync, SecretSyncInitialSyncBehavior } from "./secret-sync-enums";
@@ -20,7 +24,7 @@ vi.mock("@app/lib/logger", () => ({
 vi.mock("@app/lib/telemetry/metrics", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/telemetry/metrics")>()),
   recordSecretSyncOutcomeMetric: vi.fn(),
-  recordSecretSyncStatusChangeMetric: vi.fn()
+  recordSecretSyncConnectionStatusChangeMetric: vi.fn()
 }));
 
 vi.mock("@app/services/app-connection/app-connection-fns", async (importOriginal) => ({
@@ -45,14 +49,17 @@ vi.mock("@app/services/secret-sync/secret-sync-fns", async (importOriginal) => {
 const ATTEMPTS = 5;
 // Matches REQUEUE_LIMIT in the queue: at this count a lock failure stops requeueing and fails the sync.
 const REQUEUE_LIMIT = 120;
-const LAST_SYNCED_AT = new Date("2026-10-01T00:00:00.000Z");
 
-type TSyncState = { lastSyncedAt: Date | null; lastSyncMessage: string | null; lastSyncResult: string | null };
+type TConnectionState = { syncFailing: boolean | null };
 type THandler = (job: unknown) => Promise<void>;
 
-// staleLoad: every attempt loads the sync as it was before the test, standing in for a job that read the row
-// before another job for the same sync finished.
-const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = false } = {}) => {
+// connection: the app connection row the sync runs on. Pass one object to several harnesses to share it between syncs.
+// staleLoad: every attempt loads the connection as it was when the harness was created, standing in for a job that
+// read it before another job on the same connection finished.
+const createHarness = (
+  connection: TConnectionState = { syncFailing: false },
+  { lockFails = false, staleLoad = false } = {}
+) => {
   const handlers = new Map<string, THandler>();
   const queueService = {
     start: vi.fn((name: string, fn: THandler) => {
@@ -61,41 +68,72 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     queue: vi.fn(async () => undefined)
   };
 
-  const state = {
+  const state: Record<string, unknown> = {
     id: "sync-1",
     name: "sync",
     destination: SecretSync.Railway,
     projectId: "project-1",
     folderId: "folder-1",
     connectionId: "connection-1",
-    connection: { orgId: "org-1", encryptedCredentials: Buffer.from(""), projectId: "project-1" },
     environment: { slug: "dev", name: "Development" },
     folder: { path: "/" },
     syncOptions: { initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination },
     destinationConfig: {},
-    ...initial
+    lastSyncedAt: new Date("2026-10-01T00:00:00.000Z"),
+    lastSyncMessage: null
   };
-  const snapshot = { ...state };
+  const loadedAtStart = { ...connection };
+  const connectionRow = () => ({
+    orgId: "org-1",
+    encryptedCredentials: Buffer.from(""),
+    projectId: "project-1",
+    ...(staleLoad ? loadedAtStart : connection)
+  });
+
   const secretSyncDAL = {
     findConnectionId: vi.fn(async () => state.connectionId),
-    // Every attempt reloads the sync, as the real handler does.
-    findById: vi.fn(async () => (staleLoad ? { ...snapshot } : { ...state })),
-    // A conditional UPDATE: only a row still matching the filter is changed and returned.
-    update: vi.fn(async (filter: Partial<typeof state>, data: Partial<typeof state>) => {
-      const matches = Object.entries(filter).every(([key, value]) => state[key as keyof typeof state] === value);
-      return matches ? [Object.assign(state, data)] : [];
-    }),
-    updateById: vi.fn(async (_id: string, data: Partial<typeof state>) => {
+    // Every attempt reloads the sync and its connection, as the real handler does.
+    findById: vi.fn(async () => ({ ...state, connection: connectionRow() })),
+    updateById: vi.fn(async (_id: string, data: Record<string, unknown>) => {
       Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined) Object.assign(state, { [key]: value });
+        if (value !== undefined) state[key] = value;
       });
-      return { ...state };
+      return { ...state, connection: connectionRow() };
     })
   };
+
+  // Conditional writes, as in the database: a transition only changes a value that still holds `from`.
+  type TColumn = keyof TConnectionState;
+  const appConnectionHealthDAL = {
+    transition: vi.fn(
+      async ({
+        connectionId,
+        column,
+        from,
+        to
+      }: {
+        connectionId: string;
+        column: TColumn;
+        from: boolean;
+        to: boolean;
+      }) => {
+        if (connectionId !== state.connectionId || connection[column] !== from) return false;
+        Object.assign(connection, { [column]: to });
+        return true;
+      }
+    ),
+    markWorkingIfUnknown: vi.fn(async ({ connectionId, column }: { connectionId: string; column: TColumn }) => {
+      if (connectionId === state.connectionId && connection[column] === null)
+        Object.assign(connection, { [column]: false });
+    })
+  };
+  const healthWrites = () =>
+    appConnectionHealthDAL.transition.mock.calls.length + appConnectionHealthDAL.markWorkingIfUnknown.mock.calls.length;
 
   secretSyncQueueFactory({
     queueService,
     secretSyncDAL,
+    appConnectionHealthDAL,
     keyStore: {
       acquireLock: vi.fn(async () => {
         if (lockFails) throw new Error("locked");
@@ -119,172 +157,219 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
       opts: { attempts: ATTEMPTS }
     });
 
-  return { state, runSync, secretSyncDAL };
+  return { state, connection, runSync, secretSyncDAL, appConnectionHealthDAL, healthWrites };
 };
 
 const syncSecrets = vi.mocked(SecretSyncFns.syncSecrets);
-const statusChangeCalls = () => vi.mocked(recordSecretSyncStatusChangeMetric).mock.calls.map(([params]) => params);
+const connectionChangeCalls = () =>
+  vi.mocked(recordSecretSyncConnectionStatusChangeMetric).mock.calls.map(([params]) => params);
+const outcomeCalls = () => vi.mocked(recordSecretSyncOutcomeMetric).mock.calls.map(([params]) => params);
 
-const healthy: TSyncState = { lastSyncedAt: LAST_SYNCED_AT, lastSyncMessage: null, lastSyncResult: "succeeded" };
-const failed: TSyncState = {
-  lastSyncedAt: LAST_SYNCED_AT,
-  lastSyncMessage: "Railway disabled updates",
-  lastSyncResult: "failed"
-};
-const neverSucceeded: TSyncState = { lastSyncedAt: null, lastSyncMessage: "Invalid token", lastSyncResult: "failed" };
-const brandNew: TSyncState = { lastSyncedAt: null, lastSyncMessage: null, lastSyncResult: null };
+const failedChange = { destination: SecretSync.Railway, newStatus: "failed" };
+const healthyChange = { destination: SecretSync.Railway, newStatus: "healthy" };
 
-describe("secret sync status change", () => {
+const configError = () =>
+  new SecretSyncError({ message: "GitHub does not accept secret names", shouldRetry: false, isConfigError: true });
+const providerRejection = () => new SecretSyncError({ message: "Project not found.", shouldRetry: false });
+
+describe("secret sync connection status change", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  test("flips to failed when a previously healthy sync fails its final attempt", async () => {
+  test("flips a healthy connection to failed when a sync fails its final attempt", async () => {
     syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync } = createHarness(healthy);
+    const { runSync, connection } = createHarness();
 
     await expect(runSync(ATTEMPTS)).rejects.toThrow("upstream 500");
 
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
+    expect(connection.syncFailing).toBe(true);
+    expect(connectionChangeCalls()).toEqual([failedChange]);
   });
 
-  test("uses the result before the job, not the Running status, across retries", async () => {
+  test("leaves the connection alone on intermediate retries and flips it once on the last", async () => {
     syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync } = createHarness(healthy);
+    const { runSync, healthWrites } = createHarness();
 
     for (let attempt = 1; attempt < ATTEMPTS; attempt += 1) {
       // eslint-disable-next-line no-await-in-loop
       await expect(runSync(attempt)).rejects.toThrow();
     }
-    expect(statusChangeCalls()).toEqual([]);
+    expect(healthWrites()).toBe(0);
     expect(vi.mocked(recordSecretSyncOutcomeMetric)).toHaveBeenCalledTimes(ATTEMPTS - 1);
 
     await expect(runSync(ATTEMPTS)).rejects.toThrow();
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
+    expect(connectionChangeCalls()).toEqual([failedChange]);
   });
 
-  test("flips to failed when a non-retryable error ends a healthy sync early", async () => {
-    syncSecrets.mockRejectedValue(new SecretSyncError({ message: "Forbidden", shouldRetry: false }));
-    const { runSync } = createHarness(healthy);
+  test("labels a non-retryable provider error as other and flips the connection on the first attempt", async () => {
+    syncSecrets.mockRejectedValue(providerRejection());
+    const { runSync, connection } = createHarness();
 
     await runSync(1);
 
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
-  });
-
-  test("does not count a sync that has never succeeded", async () => {
-    syncSecrets.mockRejectedValue(new Error("invalid token"));
-
-    await expect(createHarness(neverSucceeded).runSync(ATTEMPTS)).rejects.toThrow();
-    await expect(createHarness(brandNew).runSync(ATTEMPTS)).rejects.toThrow();
-
-    expect(statusChangeCalls()).toEqual([]);
-  });
-
-  test("does not flip again when an already failing sync fails", async () => {
-    syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync } = createHarness(failed);
-
-    await expect(runSync(ATTEMPTS)).rejects.toThrow();
-
-    expect(statusChangeCalls()).toEqual([]);
-  });
-
-  test("flips to healthy when a failing sync succeeds, and only once", async () => {
-    syncSecrets.mockResolvedValue({} as never);
-    const { runSync } = createHarness(failed);
-
-    await runSync(1);
-    await runSync(1);
-
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "healthy" }]);
-  });
-
-  test("does not flip to healthy when a healthy sync succeeds", async () => {
-    syncSecrets.mockResolvedValue({} as never);
-
-    await createHarness(healthy).runSync(1);
-    await createHarness(brandNew).runSync(1);
-
-    expect(statusChangeCalls()).toEqual([]);
-  });
-
-  test("records no status change on lock contention, and does not let it mask a later breakage", async () => {
-    const contended = createHarness(healthy, { lockFails: true });
-
-    await contended.runSync(1, { failedToAcquireLockCount: REQUEUE_LIMIT });
-
-    expect(vi.mocked(recordSecretSyncOutcomeMetric)).toHaveBeenCalledWith({
-      destination: SecretSync.Railway,
-      operation: "sync",
-      outcome: "failure",
-      attemptsExhausted: true
-    });
-    expect(statusChangeCalls()).toEqual([]);
-
-    syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const afterContention = createHarness({
-      lastSyncedAt: contended.state.lastSyncedAt,
-      lastSyncMessage: contended.state.lastSyncMessage,
-      lastSyncResult: contended.state.lastSyncResult
-    });
-    await expect(afterContention.runSync(ATTEMPTS)).rejects.toThrow();
-
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
-  });
-
-  test("keeps a provider failure through later lock contention, so its recovery is still counted", async () => {
-    syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const broken = createHarness(healthy);
-    await expect(broken.runSync(ATTEMPTS)).rejects.toThrow();
-
-    const contended = createHarness(
-      { lastSyncedAt: broken.state.lastSyncedAt, lastSyncMessage: null, lastSyncResult: broken.state.lastSyncResult },
-      { lockFails: true }
-    );
-    await contended.runSync(1, { failedToAcquireLockCount: REQUEUE_LIMIT });
-    expect(contended.state.lastSyncResult).toBe("failed");
-
-    syncSecrets.mockResolvedValue({} as never);
-    const recovered = createHarness({
-      lastSyncedAt: contended.state.lastSyncedAt,
-      lastSyncMessage: contended.state.lastSyncMessage,
-      lastSyncResult: contended.state.lastSyncResult
-    });
-    await recovered.runSync(1);
-
-    expect(statusChangeCalls()).toEqual([
-      { destination: SecretSync.Railway, newStatus: "failed" },
-      { destination: SecretSync.Railway, newStatus: "healthy" }
+    expect(outcomeCalls()).toEqual([
+      expect.objectContaining({ outcome: "failure", attemptsExhausted: true, errorCategory: "other" })
     ]);
+    expect(connection.syncFailing).toBe(true);
+    expect(connectionChangeCalls()).toEqual([failedChange]);
   });
 
-  test("counts the change once the result commits, even if the rest of the finished-run write fails", async () => {
+  test("labels a config error and leaves the connection alone", async () => {
+    syncSecrets.mockRejectedValue(configError());
+    const { runSync, connection, healthWrites } = createHarness();
+
+    await runSync(1);
+
+    expect(outcomeCalls()).toEqual([
+      expect.objectContaining({ outcome: "failure", attemptsExhausted: true, errorCategory: "config" })
+    ]);
+    expect(connection.syncFailing).toBe(false);
+    expect(healthWrites()).toBe(0);
+    expect(connectionChangeCalls()).toEqual([]);
+  });
+
+  test("treats a config error that a destination wrapped as a config error", async () => {
+    syncSecrets.mockRejectedValue(new SecretSyncError({ error: configError(), shouldRetry: false }));
+    const { runSync, connection } = createHarness();
+
+    await runSync(1);
+
+    expect(outcomeCalls()).toEqual([expect.objectContaining({ errorCategory: "config" })]);
+    expect(connection.syncFailing).toBe(false);
+  });
+
+  test("does not count a failure on a connection that has never worked", async () => {
+    syncSecrets.mockRejectedValue(providerRejection());
+    const { runSync, connection } = createHarness({ syncFailing: null });
+
+    await runSync(1);
+
+    expect(connection.syncFailing).toBeNull();
+    expect(connectionChangeCalls()).toEqual([]);
+  });
+
+  test("marks a connection that has never worked healthy on its first success, without counting it", async () => {
+    syncSecrets.mockResolvedValue({} as never);
+    const { runSync, connection } = createHarness({ syncFailing: null });
+
+    await runSync(1);
+
+    expect(connection.syncFailing).toBe(false);
+    expect(connectionChangeCalls()).toEqual([]);
+  });
+
+  test("skips the write when an already failing connection fails again", async () => {
+    syncSecrets.mockRejectedValue(providerRejection());
+    const { runSync, healthWrites } = createHarness({ syncFailing: true });
+
+    await runSync(1);
+
+    expect(healthWrites()).toBe(0);
+    expect(connectionChangeCalls()).toEqual([]);
+  });
+
+  test("skips the write when a sync on a healthy connection succeeds", async () => {
+    syncSecrets.mockResolvedValue({} as never);
+    const { runSync, healthWrites } = createHarness();
+
+    await runSync(1);
+
+    expect(healthWrites()).toBe(0);
+  });
+
+  test("records one recovery when syncs on a failing connection succeed", async () => {
+    syncSecrets.mockResolvedValue({} as never);
+    const connection: TConnectionState = { syncFailing: true };
+
+    await createHarness(connection).runSync(1);
+    await createHarness(connection).runSync(1);
+
+    expect(connection.syncFailing).toBe(false);
+    expect(connectionChangeCalls()).toEqual([healthyChange]);
+  });
+
+  test("records one breakage when several syncs on one connection fail", async () => {
+    syncSecrets.mockRejectedValue(providerRejection());
+    const connection: TConnectionState = { syncFailing: false };
+
+    await createHarness(connection).runSync(1);
+    await createHarness(connection).runSync(1);
+
+    expect(connection.syncFailing).toBe(true);
+    expect(connectionChangeCalls()).toEqual([failedChange]);
+  });
+
+  test("records one breakage when two syncs loaded the connection as healthy", async () => {
+    syncSecrets.mockRejectedValue(providerRejection());
+    const connection: TConnectionState = { syncFailing: false };
+    const first = createHarness(connection, { staleLoad: true });
+    const second = createHarness(connection, { staleLoad: true });
+
+    await first.runSync(1);
+    await second.runSync(1);
+
+    expect(connectionChangeCalls()).toEqual([failedChange]);
+  });
+
+  test("counts a recovery even when the sync loaded the connection before it started failing", async () => {
+    syncSecrets.mockResolvedValue({} as never);
+    const connection: TConnectionState = { syncFailing: null };
+    const stale = createHarness(connection, { staleLoad: true });
+    connection.syncFailing = true;
+
+    await stale.runSync(1);
+
+    expect(connection.syncFailing).toBe(false);
+    expect(connectionChangeCalls()).toEqual([healthyChange]);
+  });
+
+  test("records lock contention as a failure without touching the connection", async () => {
+    const { runSync, connection, healthWrites } = createHarness({ syncFailing: false }, { lockFails: true });
+
+    await runSync(1, { failedToAcquireLockCount: REQUEUE_LIMIT });
+
+    expect(outcomeCalls()).toEqual([
+      {
+        destination: SecretSync.Railway,
+        operation: "sync",
+        outcome: "failure",
+        attemptsExhausted: true,
+        errorCategory: "other"
+      }
+    ]);
+    expect(healthWrites()).toBe(0);
+    expect(connection.syncFailing).toBe(false);
+  });
+
+  test("records the breakage even if the rest of the finished-run write fails", async () => {
     syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync, state, secretSyncDAL } = createHarness(healthy);
+    const { runSync, connection, secretSyncDAL } = createHarness();
     const writeRun = secretSyncDAL.updateById.getMockImplementation()!;
     secretSyncDAL.updateById.mockImplementation(async (id, data) => {
-      if (data.lastSyncResult !== undefined) throw new Error("connection reset");
+      if (data.lastSyncJobId !== undefined) throw new Error("connection reset");
       return writeRun(id, data);
     });
 
     await expect(runSync(ATTEMPTS)).rejects.toThrow();
-    expect(state.lastSyncResult).toBe("failed");
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
 
-    secretSyncDAL.updateById.mockImplementation(writeRun);
-    await expect(runSync(ATTEMPTS)).rejects.toThrow();
-    expect(statusChangeCalls()).toHaveLength(1);
+    expect(connection.syncFailing).toBe(true);
+    expect(connectionChangeCalls()).toEqual([failedChange]);
   });
 
-  test("reports a breakage once when two jobs loaded the same healthy sync", async () => {
-    syncSecrets.mockRejectedValue(new Error("upstream 500"));
-    const { runSync, state } = createHarness(healthy, { staleLoad: true });
+  test("logs and still finishes the sync when the connection write fails", async () => {
+    syncSecrets.mockRejectedValue(providerRejection());
+    const { runSync, state, appConnectionHealthDAL } = createHarness();
+    appConnectionHealthDAL.transition.mockRejectedValue(new Error("connection reset"));
 
-    await expect(runSync(ATTEMPTS)).rejects.toThrow();
-    await expect(runSync(ATTEMPTS)).rejects.toThrow();
+    await runSync(1);
 
-    expect(state.lastSyncResult).toBe("failed");
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
+    expect(vi.mocked(logger.warn)).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.stringContaining("Failed to record app connection health")
+    );
+    expect(state.syncStatus).toBe("failed");
+    expect(state.lastSyncJobId).toBe("job-1");
+    expect(connectionChangeCalls()).toEqual([]);
   });
 });

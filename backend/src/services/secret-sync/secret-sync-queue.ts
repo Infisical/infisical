@@ -13,14 +13,15 @@ import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import {
   highCardinalityMeter,
-  recordSecretSyncOutcomeMetric,
-  recordSecretSyncStatusChangeMetric
+  recordSecretSyncConnectionStatusChangeMetric,
+  recordSecretSyncOutcomeMetric
 } from "@app/lib/telemetry/metrics";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
+import { recordAppConnectionHealth } from "@app/services/app-connection/app-connection-health-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -43,7 +44,7 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/services/secret-sync/secret-sync-enums";
-import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { isSecretSyncConfigError, SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { enterpriseSyncCheck, parseSyncErrorMessage, SecretSyncFns } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_DAILY_RETRY_DESTINATIONS, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { buildSyncPayload, getAncestorPaths } from "@app/services/secret-sync/secret-sync-recursive-fns";
@@ -79,6 +80,7 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TAppConnectionHealthDALFactory } from "../app-connection/app-connection-health-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
 import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
@@ -99,6 +101,7 @@ type TSecretSyncQueueFactoryDep = {
   cronJob: TCronJobFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
+  appConnectionHealthDAL: Pick<TAppConnectionHealthDALFactory, "transition" | "markWorkingIfUnknown">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
   folderDAL: TSecretFolderDALFactory;
@@ -169,6 +172,7 @@ export const secretSyncQueueFactory = ({
   cronJob,
   kmsService,
   appConnectionDAL,
+  appConnectionHealthDAL,
   gitHubAppDAL,
   keyStore,
   folderDAL,
@@ -286,7 +290,8 @@ export const secretSyncQueueFactory = ({
       throw new SecretSyncError({
         message:
           "Invalid Secret Sync source configuration: folder no longer exists. Please update source environment and secret path.",
-        shouldRetry: false
+        shouldRetry: false,
+        isConfigError: true
       });
 
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
@@ -436,7 +441,8 @@ export const secretSyncQueueFactory = ({
     if (invalidNameCount > 0) {
       throw new SecretSyncError({
         message: `Found ${invalidNameCount} invalid secret name${invalidNameCount === 1 ? "" : "s"}. ${errorMessage}`,
-        shouldRetry: false
+        shouldRetry: false,
+        isConfigError: true
       });
     }
 
@@ -531,6 +537,7 @@ export const secretSyncQueueFactory = ({
     );
 
     let isSynced = false;
+    let isConfigError = false;
     let syncMessage: string | null = null;
     let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
     let syncResult: TSyncSecretsResult | undefined;
@@ -610,6 +617,7 @@ export const secretSyncQueueFactory = ({
       }
 
       syncMessage = parseSyncErrorMessage(err);
+      isConfigError = isSecretSyncConfigError(err);
 
       if (err instanceof SecretSyncError && !err.shouldRetry) {
         isFinalAttempt = true;
@@ -625,7 +633,8 @@ export const secretSyncQueueFactory = ({
         destination: secretSync.destination,
         operation: "sync",
         outcome: isSynced ? "success" : "failure",
-        attemptsExhausted: isFinalAttempt
+        attemptsExhausted: isFinalAttempt,
+        errorCategory: isConfigError ? "config" : "other"
       });
 
       await auditLogService.createAuditLog({
@@ -657,25 +666,17 @@ export const secretSyncQueueFactory = ({
       });
 
       if (isSynced || isFinalAttempt) {
-        // lastSyncResult is written only here, so lock and admission failures cannot overwrite the provider's result.
-        // The conditional update makes only the run that actually changes it report the change, whatever state this
-        // job loaded before taking the lock. A sync that never succeeded (null) failing is a new misconfiguration, not
-        // a breakage, so it is not counted.
-        const isStatusChange =
-          (
-            await secretSyncDAL.update(
-              {
-                id: secretSync.id,
-                lastSyncResult: isSynced ? SecretSyncStatus.Failed : SecretSyncStatus.Succeeded
-              },
-              { lastSyncResult: syncStatus }
-            )
-          ).length > 0;
-
-        if (isStatusChange) {
-          recordSecretSyncStatusChangeMetric({
-            destination: secretSync.destination,
-            newStatus: isSynced ? "healthy" : "failed"
+        // Recorded only here, so lock and admission failures never change it. A config error is the sync's own setup,
+        // so it says nothing about whether the connection works.
+        if (!isConfigError) {
+          await recordAppConnectionHealth({
+            appConnectionHealthDAL,
+            connectionId: secretSync.connectionId,
+            column: "syncFailing",
+            loaded: secretSync.connection.syncFailing,
+            isSuccess: isSynced,
+            onStatusChange: (newStatus) =>
+              recordSecretSyncConnectionStatusChangeMetric({ destination: secretSync.destination, newStatus })
           });
         }
 
@@ -685,8 +686,7 @@ export const secretSyncQueueFactory = ({
             syncStatus,
             lastSyncJobId: job.id,
             lastSyncMessage: syncMessage,
-            lastSyncedAt: isSynced ? ranAt : undefined,
-            lastSyncResult: syncStatus
+            lastSyncedAt: isSynced ? ranAt : undefined
           },
           { includeFolderPath: false }
         );
@@ -729,6 +729,7 @@ export const secretSyncQueueFactory = ({
     );
 
     let isSuccess = false;
+    let isConfigError = false;
     let importMessage: string | null = null;
     const isFinalAttempt = job.attemptsStarted === job.opts.attempts;
 
@@ -775,6 +776,7 @@ export const secretSyncQueueFactory = ({
       }
 
       importMessage = parseSyncErrorMessage(err);
+      isConfigError = isSecretSyncConfigError(err);
 
       // re-throw so job fails
       throw err;
@@ -786,7 +788,8 @@ export const secretSyncQueueFactory = ({
         destination: secretSync.destination,
         operation: "import",
         outcome: isSuccess ? "success" : "failure",
-        attemptsExhausted: isFinalAttempt
+        attemptsExhausted: isFinalAttempt,
+        errorCategory: isConfigError ? "config" : "other"
       });
 
       await auditLogService.createAuditLog({
@@ -865,6 +868,7 @@ export const secretSyncQueueFactory = ({
     );
 
     let isSuccess = false;
+    let isConfigError = false;
     let removeMessage: string | null = null;
     const isFinalAttempt = job.attemptsStarted === job.opts.attempts;
 
@@ -923,6 +927,7 @@ export const secretSyncQueueFactory = ({
       }
 
       removeMessage = parseSyncErrorMessage(err);
+      isConfigError = isSecretSyncConfigError(err);
 
       // re-throw so job fails
       throw err;
@@ -934,7 +939,8 @@ export const secretSyncQueueFactory = ({
         destination: secretSync.destination,
         operation: "remove",
         outcome: isSuccess ? "success" : "failure",
-        attemptsExhausted: isFinalAttempt
+        attemptsExhausted: isFinalAttempt,
+        errorCategory: isConfigError ? "config" : "other"
       });
 
       await auditLogService.createAuditLog({
@@ -1180,7 +1186,8 @@ export const secretSyncQueueFactory = ({
           destination: secretSync.destination,
           operation: "sync",
           outcome: "failure",
-          attemptsExhausted: true
+          attemptsExhausted: true,
+          errorCategory: "other"
         });
 
         await $queueSendSecretSyncFailedNotifications({
@@ -1204,7 +1211,8 @@ export const secretSyncQueueFactory = ({
           destination: secretSync.destination,
           operation: "import",
           outcome: "failure",
-          attemptsExhausted: true
+          attemptsExhausted: true,
+          errorCategory: "other"
         });
 
         await $queueSendSecretSyncFailedNotifications({
@@ -1227,7 +1235,8 @@ export const secretSyncQueueFactory = ({
           destination: secretSync.destination,
           operation: "remove",
           outcome: "failure",
-          attemptsExhausted: true
+          attemptsExhausted: true,
+          errorCategory: "other"
         });
 
         await $queueSendSecretSyncFailedNotifications({

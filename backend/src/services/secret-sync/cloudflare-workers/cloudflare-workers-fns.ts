@@ -146,7 +146,8 @@ const $syncVariableBindings = async (
   if (invalidJsonKeys.length > 0) {
     throw new SecretSyncError({
       message: `The following secrets are not valid JSON, so they cannot be synced as Cloudflare Workers JSON variables: ${invalidJsonKeys.join(", ")}. Fix their values in Infisical or change the sync's variable type.`,
-      shouldRetry: false
+      shouldRetry: false,
+      isConfigError: true
     });
   }
 

@@ -198,6 +198,7 @@ export enum TableName {
   ProjectSlackConfigs = "project_slack_configs",
   AppConnection = "app_connections",
   AppConnectionCredentialRotation = "app_connection_credential_rotations",
+  AppConnectionHealth = "app_connection_health",
   HsmConnector = "hsm_connectors",
   SecretSync = "secret_syncs",
   PkiSync = "pki_syncs",

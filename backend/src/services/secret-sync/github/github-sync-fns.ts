@@ -84,6 +84,7 @@ const assertGitHubSecretNames = (names: string[]) => {
   throw new SecretSyncError({
     secretKey: invalidNames[0],
     shouldRetry: false,
+    isConfigError: true,
     message: `${GITHUB_SECRET_NAME_RULE} Rename the secrets that failed this check: ${invalidNames
       .map((name) => `"${name}"`)
       .join(", ")}.`
@@ -110,14 +111,16 @@ export const getGitHubSecretsBasePath = (destinationConfig: TGitHubSyncDestinati
       if (secretType !== GitHubSyncSecretType.Actions) {
         throw new SecretSyncError({
           message: `GitHub ${name} secrets cannot be synced to a repository environment. Use the Repository or Organization scope instead.`,
-          shouldRetry: false
+          shouldRetry: false,
+          isConfigError: true
         });
       }
       return `/repos/${encodeURIComponent(destinationConfig.owner)}/${encodeURIComponent(destinationConfig.repo)}/environments/${encodeURIComponent(destinationConfig.env)}/secrets`;
     default:
       throw new SecretSyncError({
         message: `Unsupported GitHub Sync scope ${(destinationConfig as TGitHubSyncDestinationConfig).scope}`,
-        shouldRetry: false
+        shouldRetry: false,
+        isConfigError: true
       });
   }
 };
@@ -340,7 +343,11 @@ const resolveGitHubSyncConnection = async (
     getGitHubSyncSecretType(secretSync.destinationConfig) === GitHubSyncSecretType.Codespaces &&
     isGitHubServerConnection(rawConnection.credentials)
   ) {
-    throw new SecretSyncError({ message: CODESPACES_ON_GITHUB_SERVER_MESSAGE, shouldRetry: false });
+    throw new SecretSyncError({
+      message: CODESPACES_ON_GITHUB_SERVER_MESSAGE,
+      shouldRetry: false,
+      isConfigError: true
+    });
   }
 
   const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
@@ -409,7 +416,8 @@ export const GithubSyncFns = {
     if (Object.values(secretMap).length > limit[level]) {
       throw new SecretSyncError({
         message: `GitHub does not support storing more than ${limit[level].toLocaleString("en-US")} ${secretTypeName} secrets at the ${level} level.`,
-        shouldRetry: false
+        shouldRetry: false,
+        isConfigError: true
       });
     }
 
