@@ -145,6 +145,8 @@ describe("secret rotation alert provider", () => {
     const targets = await provider.findEventTargets(failedEvent());
     const payload = provider.buildPayload(alertContext, targets, "https://view");
 
+    // Channels render "<resourceKind> <eventLabel> Alert", so the label must not repeat "Rotation".
+    expect(`${payload.resourceKind} ${payload.eventLabel}`).toBe("Secret Rotation Failure");
     expect(payload.summary).toBe("PostgreSQL Credentials rotation 'prod-postgres-rotation' failed in Production");
     expect(payload.items[0].fields).toEqual([
       { label: "Provider", value: "PostgreSQL Credentials" },

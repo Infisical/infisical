@@ -124,7 +124,7 @@ export const secretRotationAlertProviderFactory = ({
         viewUrl
       },
       eventKey: SECRET_ROTATION_FAILED_EVENT,
-      eventLabel: "Rotation Failure",
+      eventLabel: "Failure",
       webhookType: "com.infisical.secret.rotation.failed",
       resourceKind: "Secret Rotation",
       resourceOwnerKind: "Secret Rotation",
