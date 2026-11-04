@@ -50,6 +50,8 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       "/cert-manager/certificates/$certificateId",
       "v4/cert-manager/CertificateDetailsByIDPage/route.tsx"
     ),
+    route("/pam/access", "v4/redirects/PamAccessRedirect/route.tsx"),
+    route("/agent-vault/", "v4/redirects/AgentVaultIndexRedirect/route.tsx"),
     route("/$", "v4/organization/NotPortedPage/route.tsx")
   ])
 ]);

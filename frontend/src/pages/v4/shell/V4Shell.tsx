@@ -111,7 +111,12 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       parent: "product",
       sections: toSidebar(at.level, at.sections)
     });
-  } else if (at.level === "pki" || at.level === "scanning") {
+  } else if (
+    at.level === "pki" ||
+    at.level === "scanning" ||
+    at.level === "pam" ||
+    at.level === "agent-vault"
+  ) {
     levels.push({
       id: at.level,
       label: product?.label ?? at.level,
