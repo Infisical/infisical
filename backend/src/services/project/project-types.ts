@@ -108,6 +108,11 @@ export type TDeleteProjectDTO = {
   actor: ActorType;
   actorId: string;
   actorOrgId: string | undefined;
+  hardDelete?: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TListDeletedProjectsDTO = {
+  type?: ProjectType;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListProjectsDTO = {
@@ -146,6 +151,7 @@ export type TListProjectCertsDTO = {
   forPkiSync?: boolean;
   search?: string;
   status?: string | string[];
+  includeDeleted?: boolean;
   profileIds?: string[];
   fromDate?: Date;
   toDate?: Date;
@@ -224,7 +230,9 @@ export type TDeleteProjectWorkflowIntegration = {
 } & TProjectPermission;
 
 export enum SearchProjectSortBy {
-  NAME = "name"
+  NAME = "name",
+  DESCRIPTION = "description",
+  CREATED_AT = "createdAt"
 }
 
 export type TSearchProjectsDTO = {

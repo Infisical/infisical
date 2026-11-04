@@ -2,6 +2,7 @@ import z from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PamFolderCallerAccess, PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -10,6 +11,8 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+import { FolderMemberResultSchema } from "./pam-membership-router";
 
 const SanitizedFolderSchema = PamFoldersSchema.pick({
   id: true,
@@ -37,13 +40,26 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         filterByAction: z
           .nativeEnum(ResourcePermissionPamResourceActions)
           .optional()
-          .describe("Filter folders to only those where the caller has this specific permission action")
+          .describe("Filter folders to only those where the caller has this specific permission action"),
+        includeNonMemberFolders: z
+          .enum(["true", "false"])
+          .optional()
+          .transform((v) => v === "true")
+          .describe(
+            "For users holding the organization Admin role, also return the folders they hold no membership on, so they can join one as admin. Ignored for everyone else and when filterByAction is set."
+          )
       }),
       response: {
         200: z.object({
           folders: z.array(
             SanitizedFolderSchema.extend({
-              accountCount: z.number()
+              accountCount: z.number(),
+              callerAccess: z
+                .nativeEnum(PamFolderCallerAccess)
+                .optional()
+                .describe(
+                  "The caller's own access to the folder. Returned only when an organization admin sets includeNonMemberFolders."
+                )
             })
           )
         })
@@ -57,12 +73,66 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         search: req.query.search,
         onlyAccessible: req.query.onlyAccessible,
         filterByAction: req.query.filterByAction,
+        includeNonMemberFolders: req.query.includeNonMemberFolders,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
       return { folders };
+    }
+  });
+
+  // RPC-shaped on purpose: an explicit action, not a membership resource, matching the org admin's
+  // grant-admin-access endpoint elsewhere in the product.
+  server.route({
+    method: "POST",
+    url: "/:folderId/grant-admin-access",
+    schema: {
+      operationId: "grantPamFolderAdminAccess",
+      description:
+        "Make the calling organization admin an admin of a PAM folder, replacing any role they already hold on it. Only users holding the organization Admin role can call this, and every call is recorded in the audit log.",
+      tags: [ApiDocsTags.PamFolders],
+      params: z.object({
+        folderId: z.string().uuid().describe("The ID of the folder")
+      }),
+      response: {
+        200: FolderMemberResultSchema
+      }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { folder, membership, previousRole } = await server.services.pamFolder.grantAdminAccess({
+        folderId: req.params.folderId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.ORG_ADMIN_ACCESS_PAM_FOLDER,
+          metadata: {
+            folderId: folder.id,
+            folderName: folder.name,
+            previousRole
+          }
+        }
+      });
+
+      return {
+        membershipId: membership.id,
+        folderId: folder.id,
+        userId: req.permission.id,
+        role: PamResourceRole.Admin,
+        createdAt: membership.createdAt
+      };
     }
   });
 

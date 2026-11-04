@@ -12,6 +12,7 @@ import {
   Button,
   DiscardChangesAlertDialog,
   DocumentationLinkBadge,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep
@@ -282,7 +283,7 @@ export const SecretRotationV2Form = ({
             </div>
             <div className="flex w-full max-w-3xl flex-col gap-y-2 px-4 py-6 md:px-8">
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
                 <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
               </div>
 
@@ -315,7 +316,7 @@ export const SecretRotationV2Form = ({
           </aside>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-4 py-4 md:px-6">
+        <SheetFooter className="shrink-0 items-center justify-between border-t">
           <span className="text-xs text-muted">{hasUnsavedChanges ? "Unsaved changes" : ""}</span>
           <div className="flex items-center gap-3">
             <span className="hidden text-xs text-muted sm:inline">
@@ -333,7 +334,7 @@ export const SecretRotationV2Form = ({
               {isFinalStep ? `${secretRotation ? "Update" : "Create"} secret rotation` : "Continue"}
             </Button>
           </div>
-        </div>
+        </SheetFooter>
       </form>
 
       <DiscardChangesAlertDialog

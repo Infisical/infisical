@@ -27,6 +27,8 @@ const LinuxServerSyncOptionsSchema = z.object({
     .nativeEnum(PemCertificateExtension)
     .default(PemCertificateExtension.Pem),
   combineCertificateChain: z.boolean().default(false),
+  keystoreAlias: z.string().optional(),
+  includeTruststore: z.boolean().optional(),
   includePrivateKey: z.boolean().default(true),
   fileMode: z
     .string()
@@ -111,7 +113,7 @@ export const LinuxServerPkiSyncDestinationSchema = BasePkiSyncSchema(
     }),
     credentials: z
       .object({
-        exportPassword: z.string().min(1).optional()
+        exportPassword: z.string().optional()
       })
       .optional()
   })

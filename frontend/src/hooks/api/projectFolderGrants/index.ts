@@ -1,5 +1,6 @@
 export { useCreateProjectFolderGrant, useDeleteProjectFolderGrant } from "./mutations";
 export {
+  useGetProjectFolderGrantsUsageTotal,
   useGetProjectFolderGrantUsage,
   useListProjectFolderGrants,
   useListProjectFolderGrantsReceived

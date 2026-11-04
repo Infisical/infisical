@@ -12,7 +12,6 @@ type AnimatedCollapseProps = React.ComponentPropsWithoutRef<"div"> & {
 
 const AnimatedCollapse = React.forwardRef<HTMLDivElement, AnimatedCollapseProps>(
   ({ children, className, contentClassName, isOpen, variant = "default", ...props }, ref) => {
-    const inertProps: { inert?: "" } = isOpen ? {} : { inert: "" };
     let contentStateClassName = "translate-y-8 scale-95 opacity-0 blur-[16px]";
 
     if (isOpen) {
@@ -31,7 +30,7 @@ const AnimatedCollapse = React.forwardRef<HTMLDivElement, AnimatedCollapseProps>
         data-state={isOpen ? "open" : "closed"}
         data-variant={variant}
         aria-hidden={!isOpen}
-        {...inertProps}
+        inert={!isOpen}
         className={cn(
           "grid transition-[grid-template-rows] duration-200 ease-in-out motion-reduce:transition-none",
           isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",

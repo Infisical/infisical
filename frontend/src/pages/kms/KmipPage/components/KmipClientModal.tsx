@@ -6,13 +6,19 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Checkbox,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalClose,
-  ModalContent,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   TextArea
-} from "@app/components/v2";
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useCreateKmipClient, useUpdateKmipClient } from "@app/hooks/api/kmip";
 import { KmipPermission, TKmipClient } from "@app/hooks/api/kmip/types";
@@ -30,7 +36,7 @@ const KMIP_PERMISSIONS_OPTIONS = [
 ] as const;
 
 const formSchema = z.object({
-  name: z.string().trim().min(1),
+  name: z.string().trim().min(1, "Name is required"),
   description: z.string().max(500).optional(),
   permissions: z.object({
     [KmipPermission.Check]: z.boolean().optional(),
@@ -107,79 +113,113 @@ const KmipClientForm = ({ onComplete, kmipClient }: FormProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(handleKmipClientSubmit)}>
-      <FormControl
-        errorText={errors.name?.message}
-        isError={Boolean(errors.name?.message)}
-        label="Name"
-      >
-        <Input autoFocus placeholder="My KMIP Client" {...register("name")} autoComplete="off" />
-      </FormControl>
-      <FormControl
-        label="Description (optional)"
-        errorText={errors.description?.message}
-        isError={Boolean(errors.description?.message)}
-      >
-        <TextArea
-          className="max-h-80 min-h-40 max-w-full min-w-full"
-          {...register("description")}
+    <form onSubmit={handleSubmit(handleKmipClientSubmit)} className="flex min-h-0 flex-1 flex-col">
+      <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
+        <Field data-invalid={Boolean(errors.name)}>
+          <FieldLabel htmlFor="kmip-client-name">
+            Name{" "}
+            <span aria-hidden className="text-danger">
+              *
+            </span>
+          </FieldLabel>
+          <Input
+            id="kmip-client-name"
+            autoFocus
+            placeholder="My KMIP Client"
+            {...register("name")}
+            autoComplete="off"
+            aria-required
+            isError={Boolean(errors.name)}
+          />
+          <FieldError>{errors.name?.message}</FieldError>
+        </Field>
+        <Field data-invalid={Boolean(errors.description)}>
+          <FieldLabel htmlFor="kmip-client-description">Description (optional)</FieldLabel>
+          <TextArea
+            id="kmip-client-description"
+            {...register("description")}
+            isError={Boolean(errors.description)}
+          />
+          <FieldError>{errors.description?.message}</FieldError>
+        </Field>
+        <Controller
+          control={control}
+          name="permissions"
+          render={({ field: { onChange, value }, fieldState: { error } }) => {
+            return (
+              <Field data-invalid={Boolean(error)}>
+                <span
+                  id="kmip-client-permissions-label"
+                  className="text-sm font-medium text-accent"
+                >
+                  Permissions
+                </span>
+                <div
+                  role="group"
+                  aria-labelledby="kmip-client-permissions-label"
+                  className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+                >
+                  {KMIP_PERMISSIONS_OPTIONS.map(({ label, value: optionValue }) => {
+                    return (
+                      <label
+                        htmlFor={`kmip-client-${optionValue}`}
+                        key={optionValue}
+                        className="flex items-center gap-2 text-sm text-foreground"
+                      >
+                        <Checkbox
+                          id={`kmip-client-${optionValue}`}
+                          variant="project"
+                          isChecked={value[optionValue]}
+                          onCheckedChange={(state) => {
+                            onChange({
+                              ...value,
+                              [optionValue]: state === true
+                            });
+                          }}
+                        />
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            );
+          }}
         />
-      </FormControl>
-      <Controller
-        control={control}
-        name="permissions"
-        render={({ field: { onChange, value }, fieldState: { error } }) => {
-          return (
-            <FormControl label="Permissions" errorText={error?.message} isError={Boolean(error)}>
-              <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
-                {KMIP_PERMISSIONS_OPTIONS.map(({ label, value: optionValue }) => {
-                  return (
-                    <Checkbox
-                      id={optionValue}
-                      key={optionValue}
-                      isChecked={value[optionValue]}
-                      onCheckedChange={(state) => {
-                        onChange({
-                          ...value,
-                          [optionValue]: state
-                        });
-                      }}
-                    >
-                      {label}
-                    </Checkbox>
-                  );
-                })}
-              </div>
-            </FormControl>
-          );
-        }}
-      />
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {isUpdate ? "Update" : "Add"} KMIP client
-        </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
+      </div>
+      <SheetFooter className="justify-end border-t">
+        <SheetClose asChild>
+          <Button variant="ghost" type="button">
             Cancel
           </Button>
-        </ModalClose>
-      </div>
+        </SheetClose>
+        <Button variant="project" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+          {isUpdate ? "Update" : "Add"} KMIP Client
+        </Button>
+      </SheetFooter>
     </form>
   );
 };
 
 export const KmipClientModal = ({ isOpen, onOpenChange, kmipClient }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title={`${kmipClient ? "Update" : "Add"} KMIP Client`}>
-        <KmipClientForm onComplete={() => onOpenChange(false)} kmipClient={kmipClient} />
-      </ModalContent>
-    </Modal>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>{kmipClient ? "Update" : "Add"} KMIP Client</SheetTitle>
+          <SheetDescription>
+            Set the client name and the KMIP operations it can perform.
+          </SheetDescription>
+        </SheetHeader>
+        {isOpen && (
+          <KmipClientForm
+            key={kmipClient?.id ?? "new"}
+            onComplete={() => onOpenChange(false)}
+            kmipClient={kmipClient}
+          />
+        )}
+      </SheetContent>
+    </Sheet>
   );
 };

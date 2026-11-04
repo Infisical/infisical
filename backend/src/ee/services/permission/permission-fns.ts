@@ -42,25 +42,17 @@ export function throwIfMissingSecretReadValueOrDescribePermission(
   >,
   subjectFields?: SecretSubjectFields
 ) {
-  try {
-    if (subjectFields) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.DescribeAndReadValue,
-        subject(ProjectPermissionSub.Secrets, subjectFields)
-      );
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.DescribeAndReadValue,
-        ProjectPermissionSub.Secrets
-      );
-    }
-  } catch {
-    if (subjectFields) {
-      ForbiddenError.from(permission).throwUnlessCan(action, subject(ProjectPermissionSub.Secrets, subjectFields));
-    } else {
-      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Secrets);
-    }
+  const secretSubject = subjectFields
+    ? subject(ProjectPermissionSub.Secrets, subjectFields)
+    : ProjectPermissionSub.Secrets;
+  // ForbiddenError captures a stack trace, so only build one when access is actually denied.
+  if (
+    permission.can(ProjectPermissionSecretActions.DescribeAndReadValue, secretSubject) ||
+    permission.can(action, secretSubject)
+  ) {
+    return;
   }
+  ForbiddenError.from(permission).throwUnlessCan(action, secretSubject);
 }
 
 export function hasSecretReadValueOrDescribePermission(
@@ -147,7 +139,7 @@ export function validateSecretMovePermissions(
   }
 }
 
-const OptionalArrayPermissionSchema = ProjectPermissionV2Schema.array().optional();
+export const OptionalArrayPermissionSchema = ProjectPermissionV2Schema.array().optional();
 export function checkForInvalidPermissionCombination(permissions: z.infer<typeof OptionalArrayPermissionSchema>) {
   if (!permissions) return;
 
@@ -268,17 +260,32 @@ function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
     AuthMethod.OKTA_SAML,
     AuthMethod.JUMPCLOUD_SAML,
     AuthMethod.GOOGLE_SAML,
-    AuthMethod.KEYCLOAK_SAML
+    AuthMethod.KEYCLOAK_SAML,
+    AuthMethod.AUTH0_SAML
   ].includes(actorAuthMethod);
 }
 
-function validateOrgSSO(
-  actorAuthMethod: ActorAuthMethod,
-  isOrgSsoEnforced: TOrganizations["authEnforced"],
-  isOrgGoogleSsoEnforced: TOrganizations["googleSsoAuthEnforced"],
-  isOrgSsoBypassEnabled: TOrganizations["bypassOrgAuthEnabled"],
-  isAdmin: boolean
-) {
+export const FOREIGN_SSO_SESSION_ERROR_NAME = "ForeignSsoSession";
+
+function validateOrgSSO({
+  actorAuthMethod,
+  isOrgSsoEnforced,
+  isOrgGoogleSsoEnforced,
+  isOrgSsoBypassEnabled,
+  isAdmin,
+  issuingRootOrgId,
+  rootOrgId
+}: {
+  actorAuthMethod: ActorAuthMethod;
+  isOrgSsoEnforced: TOrganizations["authEnforced"];
+  isOrgGoogleSsoEnforced: TOrganizations["googleSsoAuthEnforced"];
+  isOrgSsoBypassEnabled: TOrganizations["bypassOrgAuthEnabled"];
+  isAdmin: boolean;
+  // Root org whose IdP issued the session, when the session is the request's own; tokens issued
+  // before the claim existed carry none and are taken at their auth method.
+  issuingRootOrgId?: string;
+  rootOrgId: string;
+}) {
   if (actorAuthMethod === undefined) {
     throw new UnauthorizedError({ name: "No auth method defined" });
   }
@@ -305,6 +312,16 @@ function validateOrgSSO(
     throw new ForbiddenRequestError({
       message:
         "Organization authentication is enforced. Cannot access org-scoped resource. Login with SAML SSO to access this resource."
+    });
+  }
+
+  // A session another org's IdP minted would otherwise satisfy this org's enforcement without its
+  // IdP, MFA or deprovisioning ever seeing the login.
+  if (isOrgSsoEnforced && actorAuthMethod !== null && issuingRootOrgId && issuingRootOrgId !== rootOrgId) {
+    throw new ForbiddenRequestError({
+      name: FOREIGN_SSO_SESSION_ERROR_NAME,
+      message:
+        "This organization requires its own SSO. Your session was issued by another organization's identity provider; log in again through this organization's SSO."
     });
   }
 }
@@ -561,32 +578,31 @@ export const getProjectPermissionFingerprint = async (
   return `${membershipFingerprint}:${folderVersion}`;
 };
 
-export const fetchFolderScopedPrivileges = async (
+type TFolderScopedPrivilegeDeps = {
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findFolderScopedPrivileges">;
+  secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+};
+
+// A grant whose folder no longer exists, or that has no role, grants nothing and is left out.
+const $resolveFolderScopedPrivileges = async (
   projectId: string,
-  actor: ActorType.USER | ActorType.IDENTITY,
-  actorId: string,
-  {
-    additionalPrivilegeDAL,
-    secretFolderDAL
-  }: {
-    additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findFolderScopedPrivileges">;
-    secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
-  }
-): Promise<TCachedFolderScopedPrivileges> => {
-  const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges({ projectId, actorId, actorType: actor });
-  if (!rows.length) return { privileges: [] };
+  rows: Awaited<ReturnType<TAdditionalPrivilegeDALFactory["findFolderScopedPrivileges"]>>,
+  secretFolderDAL: TFolderScopedPrivilegeDeps["secretFolderDAL"]
+) => {
+  if (!rows.length) return [];
 
   const foldersWithPath = await secretFolderDAL.findSecretPathByFolderIds(
     projectId,
     rows.map((row) => row.folderId)
   );
 
-  return {
-    privileges: rows.flatMap((row, idx) => {
-      const folder = foldersWithPath[idx];
-      if (!folder || !row.role) return [];
-      return [
-        {
+  return rows.flatMap((row, idx) => {
+    const folder = foldersWithPath[idx];
+    if (!folder || !row.role) return [];
+    return [
+      {
+        actorId: row.actorUserId ?? row.actorIdentityId,
+        privilege: {
           id: row.id,
           folderId: row.folderId,
           role: row.role,
@@ -595,37 +611,34 @@ export const fetchFolderScopedPrivileges = async (
           isTemporary: row.isTemporary,
           temporaryAccessEndTime: row.temporaryAccessEndTime
         }
-      ];
-    })
-  };
+      }
+    ];
+  });
 };
 
-export const buildFolderScopedPrivilegeRules = (
-  privileges: TProjectFolderScopedPrivilege[]
-): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
-  const scopedGrants = privileges.map((privilege) => {
-    // make sure the role is valid
-    if (!Object.values(SecretFolderRole).includes(privilege.role as SecretFolderRole)) {
-      throw new NotFoundError({
-        name: "FolderRoleInvalid",
-        message: `Folder access role '${privilege.role}' on grant with ID '${privilege.id}' not found`
-      });
-    }
-    return {
-      role: privilege.role as SecretFolderRole,
-      conditions: { environment: privilege.environmentSlug, secretPath: privilege.secretPath }
-    };
+export const fetchFolderScopedPrivileges = async (
+  projectId: string,
+  actor: ActorType.USER | ActorType.IDENTITY,
+  actorId: string,
+  { additionalPrivilegeDAL, secretFolderDAL }: TFolderScopedPrivilegeDeps
+): Promise<TCachedFolderScopedPrivileges> => {
+  const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges({ projectId, actorId, actorType: actor });
+  const resolved = await $resolveFolderScopedPrivileges(projectId, rows, secretFolderDAL);
+  return { privileges: resolved.map(({ privilege }) => privilege) };
+};
+
+// Every user's and identity's folder grants in the project, keyed by the actor's id.
+export const fetchProjectFolderScopedPrivileges = async (
+  projectId: string,
+  { additionalPrivilegeDAL, secretFolderDAL }: TFolderScopedPrivilegeDeps
+) => {
+  const rows = await additionalPrivilegeDAL.findFolderScopedPrivileges({ projectId });
+  const privilegesByActorId = new Map<string, TCachedFolderScopedPrivileges["privileges"]>();
+  (await $resolveFolderScopedPrivileges(projectId, rows, secretFolderDAL)).forEach(({ actorId, privilege }) => {
+    if (!actorId) return;
+    privilegesByActorId.set(actorId, [...(privilegesByActorId.get(actorId) ?? []), privilege]);
   });
-
-  const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>
-    rules.map((rule) => ({ ...rule, conditions }) as RawRuleOf<MongoAbility<ProjectPermissionSet>>);
-
-  // first we deny all tthe defined paths, and later we just allow the ones that the role has access.
-  // on CASL, the last match rule wins, so this works as expected.
-  return [
-    ...scopedGrants.flatMap(({ conditions }) => withConditions(FOLDER_SCOPED_DENY_RULES, conditions)),
-    ...scopedGrants.flatMap(({ role, conditions }) => withConditions(SECRET_FOLDER_ROLE_PERMISSIONS[role], conditions))
-  ];
+  return privilegesByActorId;
 };
 
 export const filterOverriddenFolderScopedDenyRules = (
@@ -652,6 +665,44 @@ export const filterOverriddenFolderScopedDenyRules = (
   });
 };
 
+const FOLDER_SCOPED_DENY_RULES_BY_ROLE = Object.fromEntries(
+  Object.values(SecretFolderRole).map((role) => [
+    role,
+    filterOverriddenFolderScopedDenyRules([
+      ...FOLDER_SCOPED_DENY_RULES,
+      ...SECRET_FOLDER_ROLE_PERMISSIONS[role]
+    ]).filter((rule) => rule.inverted)
+  ])
+) as Record<SecretFolderRole, RawRuleOf<MongoAbility<ProjectPermissionSet>>[]>;
+
+export const buildFolderScopedPrivilegeRules = (
+  privileges: TProjectFolderScopedPrivilege[]
+): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
+  const scopedGrants = privileges.map((privilege) => {
+    // make sure the role is valid
+    if (!Object.values(SecretFolderRole).includes(privilege.role as SecretFolderRole)) {
+      throw new NotFoundError({
+        name: "FolderRoleInvalid",
+        message: `Folder access role '${privilege.role}' on grant with ID '${privilege.id}' not found`
+      });
+    }
+    return {
+      role: privilege.role as SecretFolderRole,
+      conditions: { environment: privilege.environmentSlug, secretPath: privilege.secretPath }
+    };
+  });
+
+  const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>
+    rules.map((rule) => ({ ...rule, conditions }) as RawRuleOf<MongoAbility<ProjectPermissionSet>>);
+
+  return [
+    ...scopedGrants.flatMap(({ role, conditions }) =>
+      withConditions(FOLDER_SCOPED_DENY_RULES_BY_ROLE[role], conditions)
+    ),
+    ...scopedGrants.flatMap(({ role, conditions }) => withConditions(SECRET_FOLDER_ROLE_PERMISSIONS[role], conditions))
+  ];
+};
+
 // Compiling a template is the most expensive step of building an ability, and almost no rule set needs
 // it: built-in roles carry no `{{ }}` at all, only custom roles with identity conditions do. A template
 // with no mustaches renders byte-identical to its input, so serializing once to look for one and
@@ -664,6 +715,24 @@ export const interpolatePermissionRules = <T>(rules: T[], identityContext: Recor
   const templatedRules = handlebarsClient.compile(serializedRules, { data: false });
 
   return JSON.parse(templatedRules(identityContext, { data: false })) as T[];
+};
+
+// `identity.auth.*` is read off the credential an identity authenticates with, so it is knowable only
+// for the actor of the live request. Rendered against a context that lacks it, the mustache collapses to
+// an empty string, and the condition it guarded turns into one nothing satisfies, which reads to a
+// privilege boundary as a grant anybody outranks. Rules that reference it keep their mustaches instead,
+// so they stay unsatisfiable on both sides of the comparison.
+const AUTH_TEMPLATE_PATH = "identity.auth";
+
+export const interpolateStoredIdentityRules = <T>(rules: T[], identityContext: Record<string, unknown>): T[] => {
+  const serializedRules = JSON.stringify(rules);
+
+  if (!serializedRules.includes("{{")) return rules;
+  if (!serializedRules.includes(AUTH_TEMPLATE_PATH)) return interpolatePermissionRules(rules, identityContext);
+
+  return rules.map((rule) =>
+    JSON.stringify(rule).includes(AUTH_TEMPLATE_PATH) ? rule : interpolatePermissionRules([rule], identityContext)[0]
+  );
 };
 
 export {

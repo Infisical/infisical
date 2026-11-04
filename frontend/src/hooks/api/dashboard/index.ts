@@ -1,5 +1,4 @@
 export {
-  useGetAccessibleSecrets,
   useGetFoldersMoveDestinationEligibility,
   useGetFoldersMoveEligibility,
   useGetProjectSecretsDetails,

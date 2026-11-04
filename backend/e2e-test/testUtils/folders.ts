@@ -33,6 +33,8 @@ export const deleteFolder = async (dto: {
   secretPath: string;
   id: string;
   authToken: string;
+  // A folder holding secrets, subfolders or dynamic secrets is refused without this.
+  forceDelete?: boolean;
 }) => {
   const res = await testServer.inject({
     method: "DELETE",
@@ -43,7 +45,8 @@ export const deleteFolder = async (dto: {
     body: {
       workspaceId: dto.workspaceId,
       environment: dto.environmentSlug,
-      path: dto.secretPath
+      path: dto.secretPath,
+      ...(dto.forceDelete === undefined ? {} : { forceDelete: dto.forceDelete })
     }
   });
   expect(res.statusCode).toBe(200);

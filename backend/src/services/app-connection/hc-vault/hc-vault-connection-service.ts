@@ -1,4 +1,3 @@
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { logger } from "@app/lib/logger";
@@ -17,7 +16,6 @@ type TGetAppConnectionFunc = (
 
 export const hcVaultConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
@@ -30,7 +28,7 @@ export const hcVaultConnectionService = (
     const resolvedConnection = { ...appConnection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
 
     try {
-      const mounts = await listHCVaultMounts(resolvedConnection, gatewayService, gatewayV2Service);
+      const mounts = await listHCVaultMounts(resolvedConnection, gatewayV2Service);
       // Filter for KV mounts (v1 and v2) and extract just the paths
       return mounts
         .filter((mount) => mount.type === "kv" && (mount.version === KvVersion.V2 || mount.version === KvVersion.V1))

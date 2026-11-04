@@ -24,15 +24,17 @@ export const certManagerInstanceKeys = {
   legacy: (orgId: string) => [...certManagerInstanceKeys.all, "legacy", { orgId }] as const
 };
 
+export const fetchCertManagerInstanceState = async () => {
+  const { data } = await apiRequest.get<TCertManagerInstanceState>(BASE_URL);
+  return data;
+};
+
 export const useCertManagerInstanceState = () => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg.id;
   return useQuery({
     queryKey: certManagerInstanceKeys.state(orgId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<TCertManagerInstanceState>(BASE_URL);
-      return data;
-    },
+    queryFn: fetchCertManagerInstanceState,
     enabled: Boolean(orgId)
   });
 };

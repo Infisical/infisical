@@ -33,11 +33,11 @@ let tracker: TGatewayLoadTracker | undefined;
 const REPORTED_LOAD_TTL_SECONDS = 60;
 const REPORTED_LOAD_MAX_AGE_MS = 35_000;
 
-const reportedKey = KeyStorePrefixes.GatewayReportedLoad;
-const reservationKey = KeyStorePrefixes.GatewayLoadReservation;
-const suspectKey = KeyStorePrefixes.GatewaySuspect;
-
 export const initGatewayLoadTracker = (keyStore: TKeyStoreFactory): TGatewayLoadTracker => {
+  const reportedKey = KeyStorePrefixes.GatewayReportedLoad;
+  const reservationKey = KeyStorePrefixes.GatewayLoadReservation;
+  const suspectKey = KeyStorePrefixes.GatewaySuspect;
+
   // Timestamps rather than a count, so channels opened since a gateway's last report can be added on top.
   const openChannels = new Map<string, number[]>();
   const reservationTimers = new Set<NodeJS.Timeout>();

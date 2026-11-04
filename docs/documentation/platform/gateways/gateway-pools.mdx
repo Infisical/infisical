@@ -57,6 +57,32 @@ Anywhere you configure a gateway, the gateway picker dropdown shows both individ
 
 When you select a pool, the platform validates connectivity through one of its healthy gateways before saving.
 
+## Requiring gateway pools
+
+If a resource connects through an individual gateway, the resource loses its connection whenever that gateway is redeployed or goes down. To prevent this, you can require every resource in your organization to connect through a gateway pool instead. You need permission to edit organization settings to change this setting.
+
+<Steps>
+  <Step>
+    Go to **Settings**, select **Networking**, then open the **Gateways** tab.
+  </Step>
+  <Step>
+    In the **Enforcement** section, turn on **Require Gateway Pools**.
+  </Step>
+</Steps>
+
+While the setting is on:
+
+- The gateway picker still lists individual gateways, but you can't select them
+- Infisical rejects any request that attaches an individual gateway to a resource, including requests made through the API
+- Resources that already use an individual gateway keep working, and you can edit their other settings without changing the gateway
+- Resources that connect without a gateway aren't affected
+
+Turning the setting off doesn't change any resource.
+
+<Note>
+  A gateway's own Kubernetes Auth can still use an individual gateway in **Gateway as Reviewer** mode, because a pool can't perform the review. If you select an individual gateway there while the setting is on, the review mode switches to **Gateway as Reviewer**.
+</Note>
+
 ## Gateway selection
 
 Each gateway reports how many connections it's currently handling. When a request is routed through a pool, the platform picks the healthy member handling the fewest, so a gateway holding several long-lived sessions stops attracting new work until the others catch up.

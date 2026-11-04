@@ -193,7 +193,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
         return server.services.certificateEstV3.simpleEnrollByProfile({
           csr: req.body,
           profileId: identifier,
-          sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+          sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string,
+          auditLogInfo: req.auditLogInfo
         });
       }
       return server.services.certificateEst.simpleEnroll({
@@ -230,7 +231,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
         return server.services.certificateEstV3.simpleReenrollByProfile({
           csr: req.body,
           profileId: identifier,
-          sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+          sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string,
+          auditLogInfo: req.auditLogInfo
         });
       }
       return server.services.certificateEst.simpleReenroll({
@@ -299,7 +301,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
         csr: req.body,
         profileId,
         applicationId,
-        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string,
+        auditLogInfo: req.auditLogInfo
       });
     }
   });
@@ -324,7 +327,8 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
         csr: req.body,
         profileId,
         applicationId,
-        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+        sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string,
+        auditLogInfo: req.auditLogInfo
       });
     }
   });

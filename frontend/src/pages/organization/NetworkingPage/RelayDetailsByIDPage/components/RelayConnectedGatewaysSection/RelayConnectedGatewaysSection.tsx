@@ -122,11 +122,11 @@ export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) 
                           >
                             <ItemContent>
                               <ItemTitle>{g.name}</ItemTitle>
-                              <ItemDescription className="text-mineshaft-400">
+                              <ItemDescription className="text-muted">
                                 {gatewaySubtitle(g)}
                               </ItemDescription>
                             </ItemContent>
-                            <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                            <ExternalLinkIcon className="size-3.5 text-muted" />
                           </Link>
                         </Item>
                       ))}

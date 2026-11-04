@@ -15,7 +15,6 @@ import {
   TOracleDBConnectionInput,
   TValidateOracleDBConnectionCredentialsSchema
 } from "@app/ee/services/app-connections/oracledb";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
@@ -263,11 +262,35 @@ import {
   TValidateHerokuConnectionCredentialsSchema
 } from "./heroku";
 import {
+  THpeIloConnection,
+  THpeIloConnectionConfig,
+  THpeIloConnectionInput,
+  TValidateHpeIloConnectionCredentialsSchema
+} from "./hpe-ilo";
+import {
   THumanitecConnection,
   THumanitecConnectionConfig,
   THumanitecConnectionInput,
   TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
+import {
+  TImpervaConnection,
+  TImpervaConnectionConfig,
+  TImpervaConnectionInput,
+  TValidateImpervaConnectionCredentialsSchema
+} from "./imperva";
+import {
+  TJiraConnection,
+  TJiraConnectionConfig,
+  TJiraConnectionInput,
+  TValidateJiraConnectionCredentialsSchema
+} from "./jira";
+import {
+  TKeeperConnection,
+  TKeeperConnectionConfig,
+  TKeeperConnectionInput,
+  TValidateKeeperConnectionCredentialsSchema
+} from "./keeper";
 import {
   TKempLoadMasterConnection,
   TKempLoadMasterConnectionConfig,
@@ -367,10 +390,28 @@ import {
   TValidateOvhConnectionCredentialsSchema
 } from "./ovh";
 import {
+  TPaloAltoNetworksConnection,
+  TPaloAltoNetworksConnectionConfig,
+  TPaloAltoNetworksConnectionInput,
+  TValidatePaloAltoNetworksConnectionCredentialsSchema
+} from "./palo-alto-networks";
+import {
+  TPortainerConnection,
+  TPortainerConnectionConfig,
+  TPortainerConnectionInput,
+  TValidatePortainerConnectionCredentialsSchema
+} from "./portainer";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
 } from "./postgres";
+import {
+  TPowerDnsConnection,
+  TPowerDnsConnectionConfig,
+  TPowerDnsConnectionInput,
+  TValidatePowerDnsConnectionCredentialsSchema
+} from "./powerdns";
 import {
   TQoveryConnection,
   TQoveryConnectionConfig,
@@ -402,11 +443,23 @@ import {
   TValidateRundeckConnectionCredentialsSchema
 } from "./rundeck";
 import {
+  TS3CompatibleConnection,
+  TS3CompatibleConnectionConfig,
+  TS3CompatibleConnectionInput,
+  TValidateS3CompatibleConnectionCredentialsSchema
+} from "./s3-compatible";
+import {
   TSalesforceConnection,
   TSalesforceConnectionConfig,
   TSalesforceConnectionInput,
   TValidateSalesforceConnectionCredentialsSchema
 } from "./salesforce";
+import {
+  TServiceNowConnection,
+  TServiceNowConnectionConfig,
+  TServiceNowConnectionInput,
+  TValidateServiceNowConnectionCredentialsSchema
+} from "./servicenow";
 import {
   TSmbConnection,
   TSmbConnectionConfig,
@@ -431,6 +484,12 @@ import {
   TSshConnectionInput,
   TValidateSshConnectionCredentialsSchema
 } from "./ssh";
+import {
+  TStripeConnection,
+  TStripeConnectionConfig,
+  TStripeConnectionInput,
+  TValidateStripeConnectionCredentialsSchema
+} from "./stripe";
 import {
   TSupabaseConnection,
   TSupabaseConnectionConfig,
@@ -461,6 +520,12 @@ import {
   TTriggerDevConnectionInput,
   TValidateTriggerDevConnectionCredentialsSchema
 } from "./trigger-dev";
+import {
+  TUltraDNSConnection,
+  TUltraDNSConnectionConfig,
+  TUltraDNSConnectionInput,
+  TValidateUltraDNSConnectionCredentialsSchema
+} from "./ultradns/ultradns-connection-types";
 import {
   TValidateVenafiConnectionCredentialsSchema,
   TVenafiConnection,
@@ -537,6 +602,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TCloudflareConnection
   | TBitbucketConnection
   | TDNSMadeEasyConnection
+  | TUltraDNSConnection
   | TAzureDnsConnection
   | TZabbixConnection
   | TRailwayConnection
@@ -564,7 +630,9 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TExternalInfisicalConnection
   | TDopplerConnection
   | TNetScalerConnection
+  | TPaloAltoNetworksConnection
   | TKempLoadMasterConnection
+  | TImpervaConnection
   | TAnthropicConnection
   | TOvhConnection
   | TDevinConnection
@@ -578,13 +646,21 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TF5BigIpConnection
   | TConvexConnection
   | TRundeckConnection
+  | TPortainerConnection
   | THasuraCloudConnection
   | TQoveryConnection
   | TLiteLLMConnection
   | TFireworksConnection
   | TNutanixPrismCentralConnection
+  | TPowerDnsConnection
   | TSpaceliftConnection
   | TDaytonaConnection
+  | TStripeConnection
+  | TKeeperConnection
+  | THpeIloConnection
+  | TServiceNowConnection
+  | TS3CompatibleConnection
+  | TJiraConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -632,6 +708,7 @@ export type TAppConnectionInput = { id: string } & (
   | TCloudflareConnectionInput
   | TBitbucketConnectionInput
   | TDNSMadeEasyConnectionInput
+  | TUltraDNSConnectionInput
   | TAzureDnsConnectionInput
   | TZabbixConnectionInput
   | TRailwayConnectionInput
@@ -659,7 +736,9 @@ export type TAppConnectionInput = { id: string } & (
   | TExternalInfisicalConnectionInput
   | TDopplerConnectionInput
   | TNetScalerConnectionInput
+  | TPaloAltoNetworksConnectionInput
   | TKempLoadMasterConnectionInput
+  | TImpervaConnectionInput
   | TAnthropicConnectionInput
   | TOvhConnectionInput
   | TDevinConnectionInput
@@ -673,13 +752,21 @@ export type TAppConnectionInput = { id: string } & (
   | TF5BigIpConnectionInput
   | TConvexConnectionInput
   | TRundeckConnectionInput
+  | TPortainerConnectionInput
   | THasuraCloudConnectionInput
   | TQoveryConnectionInput
   | TLiteLLMConnectionInput
   | TFireworksConnectionInput
   | TNutanixPrismCentralConnectionInput
+  | TPowerDnsConnectionInput
   | TSpaceliftConnectionInput
   | TDaytonaConnectionInput
+  | TStripeConnectionInput
+  | TKeeperConnectionInput
+  | THpeIloConnectionInput
+  | TServiceNowConnectionInput
+  | TS3CompatibleConnectionInput
+  | TJiraConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -725,6 +812,8 @@ export type TValidateAppConnectionUsageByIdDTO = {
   projectId: string;
 };
 
+export type TAppConnectionScope = { projectId: string };
+
 export type TAppConnectionConfig =
   | TAwsConnectionConfig
   | TGitHubConnectionConfig
@@ -759,6 +848,7 @@ export type TAppConnectionConfig =
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig
   | TDNSMadeEasyConnectionConfig
+  | TUltraDNSConnectionConfig
   | TAzureDnsConnectionConfig
   | TZabbixConnectionConfig
   | TRailwayConnectionConfig
@@ -786,7 +876,9 @@ export type TAppConnectionConfig =
   | TExternalInfisicalConnectionConfig
   | TDopplerConnectionConfig
   | TNetScalerConnectionConfig
+  | TPaloAltoNetworksConnectionConfig
   | TKempLoadMasterConnectionConfig
+  | TImpervaConnectionConfig
   | TAnthropicConnectionConfig
   | TOvhConnectionConfig
   | TDevinConnectionConfig
@@ -800,13 +892,21 @@ export type TAppConnectionConfig =
   | TF5BigIpConnectionConfig
   | TConvexConnectionConfig
   | TRundeckConnectionConfig
+  | TPortainerConnectionConfig
   | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig
   | TLiteLLMConnectionConfig
   | TFireworksConnectionConfig
   | TNutanixPrismCentralConnectionConfig
+  | TPowerDnsConnectionConfig
   | TSpaceliftConnectionConfig
-  | TDaytonaConnectionConfig;
+  | TDaytonaConnectionConfig
+  | TStripeConnectionConfig
+  | TKeeperConnectionConfig
+  | THpeIloConnectionConfig
+  | TServiceNowConnectionConfig
+  | TS3CompatibleConnectionConfig
+  | TJiraConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -845,6 +945,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCloudflareConnectionCredentialsSchema
   | TValidateBitbucketConnectionCredentialsSchema
   | TValidateDNSMadeEasyConnectionCredentialsSchema
+  | TValidateUltraDNSConnectionCredentialsSchema
   | TValidateAzureDnsConnectionCredentialsSchema
   | TValidateZabbixConnectionCredentialsSchema
   | TValidateRailwayConnectionCredentialsSchema
@@ -872,7 +973,9 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateExternalInfisicalConnectionCredentialsSchema
   | TValidateDopplerConnectionCredentialsSchema
   | TValidateNetScalerConnectionCredentialsSchema
+  | TValidatePaloAltoNetworksConnectionCredentialsSchema
   | TValidateKempLoadMasterConnectionCredentialsSchema
+  | TValidateImpervaConnectionCredentialsSchema
   | TValidateAnthropicConnectionCredentialsSchema
   | TValidateOvhConnectionCredentialsSchema
   | TValidateDevinConnectionCredentialsSchema
@@ -886,13 +989,21 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateF5BigIpConnectionCredentialsSchema
   | TValidateConvexConnectionCredentialsSchema
   | TValidateRundeckConnectionCredentialsSchema
+  | TValidatePortainerConnectionCredentialsSchema
   | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema
   | TValidateLiteLLMConnectionCredentialsSchema
   | TValidateFireworksConnectionCredentialsSchema
   | TValidateNutanixPrismCentralConnectionCredentialsSchema
+  | TValidatePowerDnsConnectionCredentialsSchema
   | TValidateSpaceliftConnectionCredentialsSchema
-  | TValidateDaytonaConnectionCredentialsSchema;
+  | TValidateDaytonaConnectionCredentialsSchema
+  | TValidateStripeConnectionCredentialsSchema
+  | TValidateKeeperConnectionCredentialsSchema
+  | TValidateHpeIloConnectionCredentialsSchema
+  | TValidateServiceNowConnectionCredentialsSchema
+  | TValidateS3CompatibleConnectionCredentialsSchema
+  | TValidateJiraConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
@@ -917,14 +1028,12 @@ export type TListAwsConnectionListeners = {
 
 export type TAppConnectionCredentialsValidator = (
   appConnection: TAppConnectionConfig,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => Promise<TAppConnection["credentials"]>;
 
 export type TAppConnectionTransitionCredentialsToPlatform = (
   appConnection: TAppConnectionConfig,
   callback: (credentials: TAppConnection["credentials"]) => Promise<TAppConnectionRaw>,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => Promise<TAppConnectionRaw>;
 

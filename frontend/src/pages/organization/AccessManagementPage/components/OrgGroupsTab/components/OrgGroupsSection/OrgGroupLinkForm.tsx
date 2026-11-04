@@ -5,16 +5,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
-import {
-  Button,
-  DialogFooter,
-  Field,
-  FieldError,
-  FieldLabel,
-  FilterableSelect
-} from "@app/components/v3";
+import { RoleOptionContent } from "@app/components/roles";
+import { Button, Combobox, DialogFooter, Field, FieldError, FieldLabel } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import { useGetOrgRoles } from "@app/hooks/api";
 import { useCreateOrgGroupMembership } from "@app/hooks/api/orgGroupMembership";
 import { orgGroupMembershipQuery } from "@app/hooks/api/orgGroupMembership/queries";
@@ -33,6 +27,7 @@ type Props = {
 };
 
 export const OrgGroupLinkForm = ({ onClose }: Props) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -83,11 +78,13 @@ export const OrgGroupLinkForm = ({ onClose }: Props) => {
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <Field>
             <FieldLabel htmlFor="group">Group</FieldLabel>
-            <FilterableSelect
-              inputId="group"
+            <Combobox
+              id="group"
               value={value}
-              onChange={onChange}
+              isClearable={false}
+              onValueChange={onChange}
               placeholder="Select group..."
+              searchAriaLabel="Search groups"
               autoFocus
               isError={Boolean(error)}
               options={rootOrgGroups ?? []}
@@ -105,16 +102,19 @@ export const OrgGroupLinkForm = ({ onClose }: Props) => {
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <Field>
             <FieldLabel htmlFor="role">Role</FieldLabel>
-            <FilterableSelect
-              inputId="role"
+            <Combobox
+              id="role"
               value={value}
-              onChange={onChange}
+              isClearable={false}
+              onValueChange={onChange}
               options={roles ?? []}
               placeholder="Select role..."
+              searchAriaLabel="Search roles"
               isError={Boolean(error)}
               getOptionValue={(option) => option.slug}
+              getOptionKeywords={(option) => [option.slug]}
               getOptionLabel={(option) => option.name}
-              components={{ Option: RoleOption }}
+              renderOption={(option) => <RoleOptionContent role={option} />}
             />
             <FieldError>{error?.message}</FieldError>
           </Field>
@@ -124,7 +124,12 @@ export const OrgGroupLinkForm = ({ onClose }: Props) => {
         <Button variant="ghost" type="button" onClick={() => onClose()}>
           Cancel
         </Button>
-        <Button variant="org" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          variant={scopeVariant}
+          type="submit"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           Link
         </Button>
       </DialogFooter>

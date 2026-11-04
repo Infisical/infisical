@@ -1,15 +1,16 @@
 import { Outlet } from "@tanstack/react-router";
 
-import { useProjectPermission } from "@app/context";
-
-import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
+import {
+  AgentVaultIntroModal,
+  useAgentVaultIntro
+} from "@app/components/agent-vault/AgentVaultIntro";
 
 export const AgentVaultLayout = () => {
-  const { assumedPrivilegeDetails } = useProjectPermission();
+  const { isOpen, setOpen } = useAgentVaultIntro();
 
   return (
     <>
-      {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
+      <AgentVaultIntroModal isOpen={isOpen} onOpenChange={setOpen} />
       <Outlet />
     </>
   );

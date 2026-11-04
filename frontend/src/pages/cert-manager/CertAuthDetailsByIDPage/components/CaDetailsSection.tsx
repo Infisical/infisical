@@ -17,19 +17,10 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Button as ButtonV2,
-  FormControl,
-  Input,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Switch as SwitchV2,
-  Tooltip as TooltipV2
-} from "@app/components/v2";
-import {
   Alert,
   AlertTitle,
   Badge,
+  Button,
   Card,
   CardAction,
   CardContent,
@@ -40,7 +31,19 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   IconButton,
+  Input,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -60,12 +63,17 @@ import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants"
 import { caKeys } from "@app/hooks/api/ca/queries";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
-import { useGetHsmConnectorById } from "@app/hooks/api/hsmConnectors";
 import { CertKeySource } from "@app/hooks/api/signers";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 type Props = {
   caId: string;
+};
+
+const KEY_SOURCE_LABELS: Record<CertKeySource, string> = {
+  [CertKeySource.Infisical]: "Infisical",
+  [CertKeySource.Hsm]: "HSM",
+  [CertKeySource.AwsKms]: "AWS KMS"
 };
 
 const getStatusVariant = (status: CaStatus) => {
@@ -95,6 +103,9 @@ export const CaDetailsSection = ({ caId }: Props) => {
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
+  const [, isCopyingKeyArn, setCopyTextKeyArn] = useTimedReset<string>({
+    initialState: "Copy ARN to clipboard"
+  });
   const { popUp, handlePopUpToggle } = usePopUp(["editAutoRenewal"] as const);
 
   const { data } = useGetCa({
@@ -115,9 +126,8 @@ export const CaDetailsSection = ({ caId }: Props) => {
   const parentCa = parentCaData as TInternalCertificateAuthority | undefined;
 
   const isHsmBacked = ca?.configuration?.keySource === CertKeySource.Hsm;
-  const { data: hsmConnector } = useGetHsmConnectorById(ca?.configuration?.hsmConnectorId, {
-    enabled: Boolean(isHsmBacked && ca?.configuration?.hsmConnectorId)
-  });
+
+  const isAwsKmsBacked = ca?.configuration?.keySource === CertKeySource.AwsKms;
 
   const { data: autoRenewal } = useGetCaAutoRenewal(caId, {
     enabled:
@@ -213,6 +223,7 @@ export const CaDetailsSection = ({ caId }: Props) => {
           {showAutoRenewal && (
             <CardAction>
               <IconButton
+                aria-label="Edit renewal settings"
                 variant="outline"
                 size="xs"
                 onClick={() => handlePopUpToggle("editAutoRenewal", true)}
@@ -259,10 +270,9 @@ export const CaDetailsSection = ({ caId }: Props) => {
                     {ca.configuration.parentCaId ? (
                       <Badge variant="neutral" asChild>
                         <Link
-                          to="/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId"
+                          to="/organizations/$orgId/cert-manager/ca/$caId"
                           params={{
                             orgId: currentOrg.id,
-                            projectId: currentProject.id,
                             caId: ca.configuration.parentCaId
                           }}
                         >
@@ -297,8 +307,8 @@ export const CaDetailsSection = ({ caId }: Props) => {
             <Detail>
               <DetailLabel>Key Source</DetailLabel>
               <DetailValue>
-                <Badge variant={isHsmBacked ? "info" : "neutral"}>
-                  {isHsmBacked ? "HSM" : "Infisical"}
+                <Badge variant={isHsmBacked || isAwsKmsBacked ? "info" : "neutral"}>
+                  {KEY_SOURCE_LABELS[ca.configuration.keySource ?? CertKeySource.Infisical]}
                 </Badge>
               </DetailValue>
             </Detail>
@@ -308,16 +318,65 @@ export const CaDetailsSection = ({ caId }: Props) => {
                 <Detail>
                   <DetailLabel>HSM Connector</DetailLabel>
                   <DetailValue className="break-all">
-                    {hsmConnector?.name ?? ca.configuration.hsmConnectorId ?? "-"}
+                    {ca.configuration.hsmConnectorName ?? ca.configuration.hsmConnectorId ?? "-"}
                   </DetailValue>
                 </Detail>
-                {ca.configuration.hsmKeyLabel && (
+                {ca.configuration.externalKeyId && (
                   <Detail>
                     <DetailLabel>HSM Key Label</DetailLabel>
                     <DetailValue className="font-mono text-xs break-all">
-                      {ca.configuration.hsmKeyLabel}
+                      {ca.configuration.externalKeyId}
                     </DetailValue>
                   </Detail>
+                )}
+              </>
+            )}
+
+            {isAwsKmsBacked && (
+              <>
+                <Detail>
+                  <DetailLabel>AWS Connection</DetailLabel>
+                  <DetailValue className="break-all">
+                    {ca.configuration.appConnectionName ?? ca.configuration.appConnectionId ?? "-"}
+                  </DetailValue>
+                </Detail>
+                {ca.configuration.externalKeyId && (
+                  <>
+                    <Detail>
+                      <DetailLabel>Region</DetailLabel>
+                      <DetailValue>{ca.configuration.region ?? "-"}</DetailValue>
+                    </Detail>
+                    <Detail>
+                      <DetailLabel>Key ARN</DetailLabel>
+                      <DetailValue className="flex items-center gap-x-1">
+                        <span className="break-all">{ca.configuration.externalKeyId}</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label="Copy key ARN"
+                              onClick={() => {
+                                navigator.clipboard.writeText(
+                                  ca.configuration.externalKeyId as string
+                                );
+                                setCopyTextKeyArn("Copied");
+                              }}
+                            >
+                              {isCopyingKeyArn ? (
+                                <CheckIcon />
+                              ) : (
+                                <ClipboardListIcon className="text-label" />
+                              )}
+                            </IconButton>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isCopyingKeyArn ? "Copied" : "Copy ARN to clipboard"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </DetailValue>
+                    </Detail>
+                  </>
                 )}
               </>
             )}
@@ -348,13 +407,14 @@ export const CaDetailsSection = ({ caId }: Props) => {
                     <DetailValue>
                       {autoRenewal.lastRenewalStatus === CaRenewalStatus.FAILED &&
                       autoRenewal.lastRenewalMessage ? (
-                        <TooltipV2
-                          position="right"
-                          content={autoRenewal.lastRenewalMessage}
-                          className="max-w-md break-words"
-                        >
-                          <Badge variant="danger">Failed</Badge>
-                        </TooltipV2>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="danger">Failed</Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-md break-words">
+                            {autoRenewal.lastRenewalMessage}
+                          </TooltipContent>
+                        </Tooltip>
                       ) : (
                         <Badge
                           variant={(() => {
@@ -411,30 +471,31 @@ export const CaDetailsSection = ({ caId }: Props) => {
         </CardContent>
       </Card>
 
-      <Modal
-        isOpen={popUp.editAutoRenewal.isOpen}
+      <Dialog
+        open={popUp.editAutoRenewal.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("editAutoRenewal", isOpen);
           if (!isOpen) reset();
         }}
       >
-        <ModalContent title="Edit Renewal Settings">
-          <form onSubmit={handleSubmit(onAutoRenewalSubmit)}>
+        <DialogContent isPending={isSubmitting}>
+          <DialogHeader>
+            <DialogTitle>Edit Renewal Settings</DialogTitle>
+          </DialogHeader>
+          <form className="flex flex-col gap-6" onSubmit={handleSubmit(onAutoRenewalSubmit)}>
             <Controller
               control={control}
               name="autoRenewalEnabled"
               render={({ field: { value, onChange } }) => (
-                <FormControl>
-                  <SwitchV2
+                <Field orientation="horizontal">
+                  <FieldLabel htmlFor="auto-renewal-enabled">Auto-Renewal</FieldLabel>
+                  <Toggle
                     id="auto-renewal-enabled"
-                    className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                    thumbClassName="bg-mineshaft-800"
-                    isChecked={value}
+                    variant="project"
+                    checked={value}
                     onCheckedChange={onChange}
-                  >
-                    Auto-Renewal
-                  </SwitchV2>
-                </FormControl>
+                  />
+                </Field>
               )}
             />
             {watchEnabled && (
@@ -442,35 +503,37 @@ export const CaDetailsSection = ({ caId }: Props) => {
                 control={control}
                 name="autoRenewalDaysBeforeExpiry"
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Days Before Expiry"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                    helperText="Number of days before certificate expiry to trigger auto-renewal"
-                  >
-                    <Input {...field} type="number" min={1} max={365} />
-                  </FormControl>
+                  <Field>
+                    <FieldLabel htmlFor="auto-renewal-days-before-expiry">
+                      Days Before Expiry
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="auto-renewal-days-before-expiry"
+                      type="number"
+                      min={1}
+                      max={365}
+                      isError={Boolean(error)}
+                    />
+                    <FieldDescription>
+                      Number of days before certificate expiry to trigger auto-renewal
+                    </FieldDescription>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
                 )}
               />
             )}
-            <div className="flex w-full justify-between gap-4 pt-4">
-              <ModalClose asChild>
-                <ButtonV2 colorSchema="secondary" variant="plain">
-                  Cancel
-                </ButtonV2>
-              </ModalClose>
-              <ButtonV2
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-                type="submit"
-                colorSchema="secondary"
-              >
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" variant="project" isPending={isSubmitting}>
                 Save
-              </ButtonV2>
-            </div>
+              </Button>
+            </DialogFooter>
           </form>
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

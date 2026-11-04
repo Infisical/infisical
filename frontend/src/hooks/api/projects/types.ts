@@ -44,6 +44,7 @@ export type Project = {
   showSnapshotsLegacy: boolean;
   secretDetectionIgnoreValues: string[];
   enforceEncryptedSecretManagerSecretMetadata: boolean;
+  secretBlindIndexEnabled: boolean;
   isLegacyAdditionalPrivilegesEnabled: boolean;
 };
 
@@ -117,7 +118,20 @@ export type UpdateAuditLogsRetentionDTO = { projectId: string; auditLogsRetentio
 export type ToggleAutoCapitalizationDTO = { projectID: string; state: boolean };
 export type ToggleDeleteProjectProtectionDTO = { projectID: string; state: boolean };
 
-export type DeleteWorkspaceDTO = { projectID: string };
+export type DeleteWorkspaceDTO = { projectID: string; hardDelete?: boolean };
+
+export type RestoreProjectDTO = { projectId: string };
+
+export type PermanentlyDeleteProjectDTO = { projectId: string };
+
+export type DeletedProject = {
+  id: string;
+  name: string;
+  type: ProjectType;
+  deleteAfter: string;
+  softDeletedAt: string;
+  deletedBy: ProjectDeletedEnvActor | null;
+};
 
 export type CreateEnvironmentDTO = {
   projectId: string;
@@ -197,6 +211,13 @@ export type TListProjectIdentitiesDTO = {
 export enum ProjectIdentityOrderBy {
   Name = "name"
 }
+
+export enum SearchProjectSortBy {
+  Name = "name",
+  Description = "description",
+  CreatedAt = "createdAt"
+}
+
 export type TSearchProjectsDTO = {
   name?: string;
   limit?: number;
@@ -204,7 +225,7 @@ export type TSearchProjectsDTO = {
   projectIds?: string[];
   type?: ProjectType;
   options?: { enabled?: boolean };
-  orderBy?: ProjectIdentityOrderBy;
+  orderBy?: SearchProjectSortBy;
   orderDirection?: OrderByDirection;
 };
 

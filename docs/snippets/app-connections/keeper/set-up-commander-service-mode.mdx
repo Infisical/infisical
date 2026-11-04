@@ -1,0 +1,67 @@
+<Steps>
+    <Step>
+        In the Keeper Admin Console, go to **Admin**, open the **Users** tab, and select **Add User**. Enter a **Full Name** and an **Email Address** for the Infisical user, such as `infisical-sync@company.com`, then select **Add**.
+
+        ![Add User](/images/app-connections/keeper/add-user.png)
+    </Step>
+    <Step>
+        Select the edit icon next to the new user to open the user's details, and check that **2FA** is **Off**. Two-factor authentication must stay off for the Infisical user.
+
+        ![User Details](/images/app-connections/keeper/user-2fa-off.png)
+
+        Keeper emails the user an invitation. Accept the invitation and set a master password for the user. The user can't be SSO-only, because Commander signs in with a master password.
+    </Step>
+    <Step>
+        On the host that will run Commander, install Commander and start its shell:
+
+        ```bash
+        pip install keepercommander
+        keeper shell
+        ```
+
+        In the Commander shell, sign in once as the Infisical user, approving the device when Keeper prompts you:
+
+        ```bash
+        login --config-file infisical-sync@company.com
+        this-device register
+        this-device persistent-login on
+        this-device timeout 30d
+        ```
+
+        Commander saves the session to `~/.keeper/config.json`. Without `--config-file`, newer Commander versions save the session to the operating system's keychain instead, and the container can't read the keychain. Before you continue, check that `config.json` contains `"config_storage": "file"` and a `device_token`.
+    </Step>
+    <Step>
+        Start Commander in Service Mode with Docker, mounting the `config.json` file from the previous step:
+
+        ```bash
+        docker run -d --name keeper-service --restart unless-stopped \
+          -p 8900:8900 \
+          -v $HOME/.keeper/config.json:/home/commander/.keeper/config.json \
+          keeper/commander:latest \
+          service-create -p 8900 -f json -q n \
+            -c 'whoami,list-sf,ls,get,record-add,record-update,rm,sync-down' \
+            -rl 120/minute -aip '<infisical-ip-addresses>'
+        ```
+
+        - `-q n` turns off Commander's request queue, so Commander serves the v1 API that Infisical calls
+        - `-c` lists the commands Commander accepts, which are exactly the seven commands Infisical runs
+        - `-rl` sets how many requests Commander accepts per minute
+        - `-aip` lists the IP addresses allowed to call Commander; set it to the IP addresses Infisical connects from
+
+        For other options, see Keeper's [Docker deployment guide](https://docs.keeper.io/keeperpam/commander-cli/service-mode-rest-api/docker-deployment).
+
+        <Note>
+            Infisical must be able to reach Commander at the URL you enter in the connection. Serve Commander over HTTPS with a certificate from a public certificate authority, for example through a reverse proxy in front of port `8900`. Infisical doesn't accept self-signed certificates, and it refuses `localhost` and private IP addresses. If you self-host Infisical and Commander runs on your private network, set [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) to `true` on your Infisical instance.
+        </Note>
+    </Step>
+    <Step>
+        Find the API key Commander generated in the container logs, on the line that starts with `Generated API key:`:
+
+        ```bash
+        docker logs keeper-service
+        ```
+
+        Copy the key. You need it to create the connection in Infisical.
+    </Step>
+
+</Steps>

@@ -1,11 +1,24 @@
-import { Helmet } from "react-helmet";
-import { KeyRound } from "lucide-react";
+import { useState } from "react";
+import { KeyRound, TriangleAlertIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
+  CrossProjectSecretSharingUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
+import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
+import { OrgPermissionCan } from "@app/components/permissions";
+import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Card,
   CardContent,
   CardDescription,
@@ -18,13 +31,13 @@ import {
   FieldTitle,
   Toggle
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
   useSubscription
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
 import { useUpdateOrg } from "@app/hooks/api/organization/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -35,7 +48,8 @@ export const ProductSettingsPage = () => {
   const { currentOrg } = useOrganization();
   const { mutateAsync: updateOrg, isPending } = useUpdateOrg();
   const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+  const [isDisableSharingConfirmOpen, setIsDisableSharingConfirmOpen] = useState(false);
 
   const handleToggle = async (state: boolean) => {
     if (!currentOrg?.id) return;
@@ -55,7 +69,10 @@ export const ProductSettingsPage = () => {
     if (!currentOrg?.id) return;
 
     if (state && !subscription?.crossProjectSecretSharing) {
-      handlePopUpOpen("upgradePlan");
+      openUpgradeGate({
+        intent: CrossProjectSecretSharingUpgradeIntent,
+        paywallKey: "organization.product-settings"
+      });
       return;
     }
 
@@ -72,12 +89,10 @@ export const ProductSettingsPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Product Settings | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
-      <div className="h-full">
-        <div className="mx-auto h-full w-full max-w-8xl text-white">
+      <PageTitle title="Product Settings" />
+      <link rel="icon" href="/infisical.ico" />
+      <div>
+        <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">
           <PageHeader
             scope={ProjectType.SecretManager}
             title="Product Settings"
@@ -136,7 +151,13 @@ export const ProductSettingsPage = () => {
                           id="allow-cross-project-secret-sharing"
                           variant="project"
                           checked={currentOrg?.allowCrossProjectSecretSharing ?? false}
-                          onCheckedChange={(value) => handleCrossProjectSharingToggle(value)}
+                          onCheckedChange={(value) => {
+                            if (!value) {
+                              setIsDisableSharingConfirmOpen(true);
+                              return;
+                            }
+                            handleCrossProjectSharingToggle(value);
+                          }}
                           disabled={!isAllowed || isPending}
                         />
                       )}
@@ -155,11 +176,33 @@ export const ProductSettingsPage = () => {
           </div>
         </div>
       </div>
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Cross-project secret sharing is not available on your plan. Upgrade to the Infisical Pro plan to enable this feature."
-      />
+      <AlertDialog open={isDisableSharingConfirmOpen} onOpenChange={setIsDisableSharingConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disable Cross-Project Secret Sharing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Projects in this organization will no longer be able to share secrets with each other.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              Existing secret imports and secret references that point to other projects will stop
+              resolving, which can break secret syncs and other integrations that depend on them.
+            </AlertDescription>
+          </Alert>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={() => handleCrossProjectSharingToggle(false)}
+            >
+              Disable
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {upgradeGate}
     </>
   );
 };

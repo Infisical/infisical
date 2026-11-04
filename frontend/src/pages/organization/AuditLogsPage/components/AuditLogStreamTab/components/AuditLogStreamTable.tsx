@@ -18,6 +18,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  ProviderIcon,
   Skeleton,
   Table,
   TableBody,
@@ -200,9 +201,9 @@ export const AuditLogStreamTable = () => {
                   >
                     <div className="flex items-center gap-2">
                       {providerDetails.image ? (
-                        <img
+                        <ProviderIcon
                           alt={providerDetails.name}
-                          src={`/images/integrations/${providerDetails.image}`}
+                          icon={providerDetails.image}
                           className="h-4 w-4"
                         />
                       ) : (
@@ -268,7 +269,6 @@ export const AuditLogStreamTable = () => {
               <TableBody>
                 {isPending &&
                   Array.from({ length: 5 }).map((_, i) => (
-                    // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={`log-stream-skeleton-${i + 1}`}>
                       <TableCell>
                         <Skeleton className="h-4 w-full" />

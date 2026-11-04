@@ -1,5 +1,6 @@
 ---
-title: "DigiCert (CertCentral Services API)"
+title: "DigiCert CA (CertCentral Services API)"
+sidebarTitle: "DigiCert (CertCentral API)"
 description: "Issue TLS or Code Signing certificates from DigiCert using the CertCentral Services API."
 ---
 
@@ -91,7 +92,7 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
 
 A CA configured for code signing is used from the **Code Signing** product, not the TLS issuance flow. For creating signers, reusing orders, HSM requirements, reissue, renewal, and deletion behavior, see the dedicated guide:
 
-<Card title="Code Signing with DigiCert" icon="signature" href="/documentation/platform/pki/guides/code-signing/digicert-code-signing">
+<Card title="Code Signing with DigiCert" icon="pen-tool" href="/documentation/platform/pki/guides/code-signing/digicert-code-signing">
   Issue code-signing certificates from this CA with an HSM-backed key.
 </Card>
 
@@ -114,9 +115,17 @@ When you request a certificate through a DigiCert CertCentral CA, the request mo
 <AccordionGroup>
   <Accordion title="What happens when I revoke a DigiCert-issued certificate in Infisical?">
     Revoking the certificate in Infisical immediately marks it `Revoked` in the local inventory
-    **and** submits a revocation request to DigiCert CertCentral against the underlying order.
+    **and** asks DigiCert CertCentral to revoke that certificate only, so other certificates on the
+    same order stay valid. If the certificate was issued before individual DigiCert certificates were
+    tracked and a newer certificate has since replaced it on the order, the revocation is refused, so
+    revoke it in DigiCert CertCentral instead.
     Depending on your CertCentral account's revocation policy, DigiCert may queue that request for
     administrator approval before the certificate is actually revoked on their side.
+  </Accordion>
+  <Accordion title="What happens when a certificate is revoked in DigiCert CertCentral?">
+    It's marked `Revoked` in the inventory within a day. That includes a certificate replaced by a
+    [reissue](/documentation/platform/pki/applications/certificate-renewal#reissuing-a-digicert-certificate),
+    which DigiCert revokes within 72 hours when the reissue removes or changes a name.
   </Accordion>
 </AccordionGroup>
 
@@ -125,13 +134,13 @@ When you request a certificate through a DigiCert CertCentral CA, the request mo
 Now that your DigiCert CA is configured, set up the infrastructure to issue certificates:
 
 <CardGroup cols={2}>
-  <Card title="Certificate Profiles" icon="file-certificate" href="/documentation/platform/pki/settings/profiles">
+  <Card title="Certificate Profiles" icon="file-badge" href="/documentation/platform/pki/settings/profiles">
     Create a profile that references your DigiCert CA.
   </Card>
-  <Card title="Applications" icon="grid-2" href="/documentation/platform/pki/applications/overview">
+  <Card title="Applications" icon="layout-grid" href="/documentation/platform/pki/applications/overview">
     Create an Application, attach a profile, and configure enrollment.
   </Card>
-  <Card title="Enrollment Methods" icon="arrow-right-to-arc" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+  <Card title="Enrollment Methods" icon="log-in" href="/documentation/platform/pki/applications/enrollment-methods/overview">
     Choose how certificates are requested — API, ACME, EST, or SCEP.
   </Card>
   <Card title="Quick Start" icon="rocket" href="/documentation/platform/pki/quick-starts/issue-first-certificate">

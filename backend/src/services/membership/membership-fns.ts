@@ -88,7 +88,8 @@ type TAssertWillRetainProjectAdminArg = {
 // Must run inside the same transaction as the membership mutation, like assertWillRetainOrgAdmin: the
 // advisory lock serializes admin mutations per project so two concurrent demotions cannot both pass the
 // count and leave none. Every actor kind counts, since a group or machine identity holding the admin role
-// can still administer the product, and a lapsed temporary role confers nothing so it is not counted.
+// can still administer the product, and a lapsed temporary role confers nothing so it is not counted. A
+// change that touches no live admin cannot lower the count, so it passes even in an already adminless project.
 export const assertWillRetainProjectAdmin = async ({
   scopeProjectId,
   excludeMembershipIds,
@@ -97,23 +98,32 @@ export const assertWillRetainProjectAdmin = async ({
 }: TAssertWillRetainProjectAdminArg) => {
   await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", scopeProjectId)]);
 
-  const query = tx(TableName.Membership)
-    .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
-    .where(`${TableName.Membership}.scope`, AccessScope.Project)
-    .where(`${TableName.Membership}.scopeProjectId`, scopeProjectId)
-    .where(`${TableName.Membership}.isActive`, true)
-    .where(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
-    .where((qb) => {
-      void qb
-        .where(`${TableName.MembershipRole}.isTemporary`, false)
-        .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
-    });
-  if (excludeMembershipIds.length) {
-    void query.whereNotIn(`${TableName.Membership}.id`, excludeMembershipIds);
-  }
+  const countLiveAdmins = async (filter: (qb: Knex.QueryBuilder) => void) => {
+    const query = tx(TableName.Membership)
+      .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+      .where(`${TableName.Membership}.scope`, AccessScope.Project)
+      .where(`${TableName.Membership}.scopeProjectId`, scopeProjectId)
+      .where(`${TableName.Membership}.isActive`, true)
+      .where(`${TableName.MembershipRole}.role`, ProjectMembershipRole.Admin)
+      .where((qb) => {
+        void qb
+          .where(`${TableName.MembershipRole}.isTemporary`, false)
+          .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
+      });
+    filter(query);
+    const result = await query.countDistinct<{ count: string }[]>(`${TableName.Membership}.id as count`).first();
+    return Number(result?.count ?? 0);
+  };
 
-  const result = await query.countDistinct<{ count: string }[]>(`${TableName.Membership}.id as count`).first();
-  if (Number(result?.count ?? 0) < 1) {
+  const remaining = await countLiveAdmins((qb) => {
+    if (excludeMembershipIds.length) void qb.whereNotIn(`${TableName.Membership}.id`, excludeMembershipIds);
+  });
+  if (remaining > 0) return;
+
+  const removing = await countLiveAdmins((qb) => {
+    void qb.whereIn(`${TableName.Membership}.id`, excludeMembershipIds);
+  });
+  if (removing > 0) {
     throw new BadRequestError({ message: `${productLabel} must keep at least one admin` });
   }
 };
@@ -129,7 +139,7 @@ export const assertProductWillRetainAdmin = async ({
   excludeMembershipIds: string[];
   tx: Knex;
 }) => {
-  if (project?.type !== ProjectType.AgentVault) return;
+  if (!project) return;
   const productLabel = getAdminMemberOnlyProductLabel(project.type);
   if (!productLabel) return;
   await assertWillRetainProjectAdmin({ scopeProjectId: project.id, excludeMembershipIds, productLabel, tx });

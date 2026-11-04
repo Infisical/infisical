@@ -1,4 +1,3 @@
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
@@ -125,7 +124,9 @@ export type DashboardProjectSecretsDetails = Omit<
 };
 
 export enum DashboardSecretsOrderBy {
-  Name = "name"
+  Name = "name",
+  CreatedAt = "createdAt",
+  UpdatedAt = "updatedAt"
 }
 
 export type TGetDashboardProjectSecretsOverviewDTO = {
@@ -135,6 +136,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   limit?: number;
   orderBy?: DashboardSecretsOrderBy;
   orderDirection?: OrderByDirection;
+  sortEnvironment?: string;
   search?: string;
   tags?: Record<string, boolean>;
   includeSecrets?: boolean;
@@ -149,9 +151,10 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
 
 export type TGetDashboardProjectSecretsDetailsDTO = Omit<
   TGetDashboardProjectSecretsOverviewDTO,
-  "environments"
+  "environments" | "orderBy" | "sortEnvironment"
 > & {
   environment: string;
+  orderBy?: DashboardSecretsOrderBy.Name;
   includeImports?: boolean;
   tags: Record<string, boolean>;
 };
@@ -211,6 +214,8 @@ export type TSecretMetadataSearchFilter = {
 
 export type TSearchSecretsByMetadataDTO = {
   projectId: string;
+  environments?: string[];
+  secretPath?: string;
   operator: SecretMetadataSearchLogicalOperator;
   filters: TSecretMetadataSearchFilter[];
   tags: Record<string, boolean>;
@@ -222,10 +227,20 @@ export type TMetadataMatchedSecret = {
   environment: string;
   secretPath: string;
   metadata: { key: string; value: string | null }[];
+  tags: { id: string; slug: string }[];
+  secretValueHidden: boolean;
 };
 
 export type TSearchSecretsByMetadataResponse = {
   secrets: TMetadataMatchedSecret[];
+  searchLimit: number;
+};
+
+export type TGetSecretKeyExistsDTO = {
+  projectId: string;
+  environments: string[];
+  secretPath: string;
+  secretKey: string;
 };
 
 export type TGetDashboardProjectSecretsByKeys = {
@@ -233,16 +248,8 @@ export type TGetDashboardProjectSecretsByKeys = {
   secretPath: string;
   environment: string;
   keys: string[];
-};
-
-export type TGetAccessibleSecretsDTO = {
-  projectId: string;
-  secretPath: string;
-  environment: string;
-  recursive?: boolean;
-  filterByAction:
-    | ProjectPermissionSecretActions.DescribeSecret
-    | ProjectPermissionSecretActions.ReadValue;
+  viewSecretValue?: boolean;
+  hideUnreadableValues?: boolean;
 };
 
 export type TGetSecretValueDTO = {

@@ -11,13 +11,14 @@ type TApplicationMembershipCleanupServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "delete">;
   approvalPolicyDAL: Pick<
     TApprovalPolicyDALFactory,
-    "deleteStepApproversBySubject" | "deleteUserStepApproversInProjects"
+    "deleteStepApproversBySubject" | "deleteUserStepApproversInProjects" | "deleteUserBypassersInProjects"
   >;
 };
 
 export type TApplicationMembershipCleanupServiceFactory = ReturnType<typeof applicationMembershipCleanupServiceFactory>;
 
-export const APPLICATION_APPROVAL_SCOPES = [ApprovalPolicyScope.PkiApplication, ApprovalPolicyScope.Signer];
+const APPLICATION_APPROVAL_SCOPES = [ApprovalPolicyScope.PkiApplication, ApprovalPolicyScope.Signer];
+const ORG_EXIT_APPROVAL_SCOPES = [...APPLICATION_APPROVAL_SCOPES, ApprovalPolicyScope.PamFolder];
 
 export const applicationMembershipCleanupServiceFactory = ({
   membershipDAL,
@@ -80,5 +81,42 @@ export const applicationMembershipCleanupServiceFactory = ({
     );
   };
 
-  return { cleanupActorApplicationMemberships, cleanupUsersApplicationMemberships };
+  // Returns the removed resource rows so callers can report them.
+  const cleanupActorsApplicationMembershipsInProjects = async (
+    { projectIds, userIds, identityIds }: { projectIds: string[]; userIds: string[]; identityIds: string[] },
+    tx: Knex
+  ) => {
+    if (!projectIds.length) return [];
+
+    if (userIds.length) {
+      await approvalPolicyDAL.deleteUserStepApproversInProjects(
+        { projectIds, userIds, scopeTypes: ORG_EXIT_APPROVAL_SCOPES },
+        tx
+      );
+      await approvalPolicyDAL.deleteUserBypassersInProjects(
+        { projectIds, userIds, scopeTypes: ORG_EXIT_APPROVAL_SCOPES },
+        tx
+      );
+    }
+
+    const userRows = userIds.length
+      ? await membershipDAL.delete(
+          { scope: RESOURCE_SCOPE, $in: { scopeProjectId: projectIds, actorUserId: userIds } },
+          tx
+        )
+      : [];
+    const identityRows = identityIds.length
+      ? await membershipDAL.delete(
+          { scope: RESOURCE_SCOPE, $in: { scopeProjectId: projectIds, actorIdentityId: identityIds } },
+          tx
+        )
+      : [];
+    return [...userRows, ...identityRows];
+  };
+
+  return {
+    cleanupActorApplicationMemberships,
+    cleanupUsersApplicationMemberships,
+    cleanupActorsApplicationMembershipsInProjects
+  };
 };

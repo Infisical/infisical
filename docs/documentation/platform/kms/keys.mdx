@@ -1,0 +1,114 @@
+---
+title: "Create and manage keys"
+description: "Create the keys that your applications use."
+---
+
+Every key in Infisical KMS belongs to a KMS project. To see a project's keys, open the project and go to **Overview**.
+
+## Prerequisites
+
+- A KMS project where you have the **Admin** or **Member** role (to create a project, go to **KMS** in your organization and select **New Project**)
+
+## Create a key
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In your KMS project, go to **Overview** and select **Add Key** > **Create Key**.
+      </Step>
+      <Step>
+        Fill in the fields:
+
+        - **Name**: A name made of lowercase letters, numbers, and hyphens, up to 32 characters
+        - **Key Usage**: The operations the key supports (see [Choosing an algorithm](#choosing-an-algorithm))
+        - **Algorithm**: The algorithm the key uses
+        - **Description (optional)**: What the key is for
+        - **Allow Export**: Whether members with the export permission can export the key material (you can't change this after you create the key)
+        - **Delete Protection**: Whether the key is protected from deletion
+      </Step>
+      <Step>
+        Select **Add Key**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Call [the create key endpoint](/api-reference/endpoints/kms/keys/create) with the project ID, a name, the key usage, and the algorithm:
+
+    ```bash
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/kms/keys \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "projectId": "<project-id>",
+        "name": "my-secret-key",
+        "keyUsage": "encrypt-decrypt",
+        "algorithm": "aes-256-gcm"
+      }'
+    ```
+
+    <Note>
+      If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the address of your instance.
+    </Note>
+
+    To create a key that can't be exported, add `"isExportable": false`. To protect the key from deletion, add `"hasDeleteProtection": true`.
+
+    The response includes the key's `id`, which you pass to every other KMS endpoint. To look up a key's ID from its name, call [the get key by name endpoint](/api-reference/endpoints/kms/keys/get-by-name).
+  </Tab>
+</Tabs>
+
+## Choosing an algorithm
+
+Each key usage supports the following algorithms:
+
+| Key usage | API value | Algorithms |
+| --- | --- | --- |
+| Encrypt/Decrypt | `encrypt-decrypt` | AES-256-GCM (default), AES-128-GCM |
+| Sign/Verify | `sign-verify` | RSA-4096 (default), ECC-NIST-P256, ECC-NIST-P384, ECC-NIST-P521, ED25519, ML-DSA-44, ML-DSA-65, ML-DSA-87 |
+| Generate/Verify MAC | `generate-verify-mac` | HMAC-SHA-256 (default), HMAC-SHA-384, HMAC-SHA-512, HMAC-SHA-1, HMAC-SHA-224 |
+
+- ECC-NIST-P384 and ECC-NIST-P521 are available only through the API
+- ML-DSA is a post-quantum signature algorithm, and is available under Infisical's [Enterprise](https://infisical.com/pricing) plan
+- HMAC-SHA-1 and HMAC-SHA-224 are marked **Legacy** in Infisical, so use them only if another system requires them
+
+## Who can use a key
+
+A project's roles decide what each member and machine identity can do with its keys:
+
+| Role | Can do |
+| --- | --- |
+| **Admin** | Everything, including exporting key material |
+| **Member** | Everything except exporting key material |
+| **Viewer** | See keys, but not use them |
+| **Cryptographic Operator** | Use keys for encryption, signing, and MACs through the API, but not see, create, or change them |
+
+Give an application's [machine identity](/documentation/platform/identities/machine-identities) the **Cryptographic Operator** role, so the application can use your keys but can't change them. To set up your own permissions, create a [custom role](/documentation/platform/access-controls/role-based-access-controls).
+
+## Edit a key
+
+To change a key's name, description, or **Delete Protection** setting, select the options menu on the key's row, then select **Edit Key**. You can't change a key's usage, algorithm, or **Allow Export** setting.
+
+## Disable a key
+
+If you disable a key, Infisical rejects every operation with the key, and you can't export the key until you enable it again. To disable a key, select the options menu on the key's row, then select **Disable Key**. To enable the key again, select **Enable Key**.
+
+## Delete a key
+
+<Warning>
+  If you delete a key, you can't decrypt data that was encrypted with it, or verify data that was signed with it. You can't recover a deleted key.
+</Warning>
+
+<Steps>
+  <Step>
+    If the key has **Delete Protection** turned on, select the options menu on the key's row, select **Edit Key**, turn off **Delete Protection**, and select **Update Key**.
+  </Step>
+  <Step>
+    Select the options menu on the key's row, then select **Delete Key**.
+  </Step>
+  <Step>
+    Type `confirm`, then select **Delete**.
+  </Step>
+</Steps>
+
+If you delete a KMS project, Infisical deletes every key in it, including keys with **Delete Protection** turned on.

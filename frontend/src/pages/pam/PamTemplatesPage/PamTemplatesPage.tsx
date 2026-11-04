@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { ClipboardList, Layers, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { PageHeader } from "@app/components/v2";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { PageTitle } from "@app/components/PageTitle";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Button,
   Card,
@@ -28,6 +26,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Select,
   SelectContent,
   SelectItem,
@@ -41,6 +40,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   TPamAccountTemplateWithCount,
   useDeletePamAccountTemplate,
@@ -52,6 +52,7 @@ import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AccountPlatformIcon } from "../components/AccountPlatformIcon";
+import { CopyIdMenuItem } from "../components/CopyIdMenuItem";
 import { PAM_TEMPLATE_TABS } from "../components/pamResourceTabs";
 import { PamDocsUrls } from "../pam-docs-urls";
 import { CreateTemplateModal } from "./components/CreateTemplateModal";
@@ -102,6 +103,7 @@ const TemplateRow = ({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={4} onClick={(e) => e.stopPropagation()}>
+            <CopyIdMenuItem id={template.id} />
             {PAM_TEMPLATE_TABS.map((tab) => (
               <DropdownMenuItem
                 key={tab.value}
@@ -133,8 +135,6 @@ const TemplateRow = ({
 };
 
 export const PamTemplatesPage = () => {
-  const { t } = useTranslation();
-
   const [searchInput, setSearchInput] = useState("");
   const [selectedType, setSelectedType] = useState<string>("");
 
@@ -177,9 +177,7 @@ export const PamTemplatesPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "Account Templates" })}</title>
-      </Helmet>
+      <PageTitle title="Account Templates" />
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.PAM}
@@ -232,8 +230,8 @@ export const PamTemplatesPage = () => {
                 <SelectItem value="all">All types</SelectItem>
                 {accountTypes.map((meta) => (
                   <SelectItem key={meta.type} value={meta.type}>
-                    <img
-                      src={`/images/integrations/${meta.icon}`}
+                    <ProviderIcon
+                      icon={meta.icon}
                       alt={meta.name}
                       className="mr-1.5 inline-block size-4 rounded-sm"
                     />

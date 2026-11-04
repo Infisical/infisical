@@ -8,6 +8,8 @@ import { TPermissionServiceFactory } from "../../ee/services/permission/permissi
 import { ProjectPermissionActions, ProjectPermissionSub } from "../../ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "../../ee/services/permission/resource-permission";
 import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "../certificate/certificate-dal";
+import { CertStatus } from "../certificate/certificate-types";
+import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { TCertificateInventoryViewDALFactory } from "./certificate-inventory-view-dal";
 import {
   TCreateInventoryViewDTO,
@@ -18,6 +20,7 @@ import {
 
 type TSystemViewFilters = {
   status?: string[];
+  includeDeleted?: boolean;
   notAfterTo?: string;
   keyAlgorithm?: string[];
 };
@@ -32,7 +35,15 @@ type TSystemView = {
 };
 
 const SYSTEM_VIEWS: TSystemView[] = [
-  { id: "system-all", name: "All Certificates", filters: {}, columns: null, isSystem: true, createdByUserId: null },
+  { id: "system-default", name: "Default", filters: {}, columns: null, isSystem: true, createdByUserId: null },
+  {
+    id: "system-all",
+    name: "All Certificates",
+    filters: { includeDeleted: true },
+    columns: null,
+    isSystem: true,
+    createdByUserId: null
+  },
   {
     id: "system-expiring-7d",
     name: "Expiring in 7 days",
@@ -74,6 +85,14 @@ const SYSTEM_VIEWS: TSystemView[] = [
     createdByUserId: null
   },
   {
+    id: "system-deleted",
+    name: "Deleted",
+    filters: { status: [CertStatus.DELETED] },
+    columns: null,
+    isSystem: true,
+    createdByUserId: null
+  },
+  {
     id: "system-pqc",
     name: "Post-Quantum (PQC)",
     filters: { keyAlgorithm: PQC_KEY_ALGORITHMS },
@@ -93,6 +112,7 @@ const SYSTEM_VIEWS: TSystemView[] = [
 
 type TCertificateInventoryViewServiceFactoryDep = {
   certificateInventoryViewDAL: TCertificateInventoryViewDALFactory;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
 };
 
@@ -100,6 +120,7 @@ export type TCertificateInventoryViewServiceFactory = ReturnType<typeof certific
 
 export const certificateInventoryViewServiceFactory = ({
   certificateInventoryViewDAL,
+  pkiApplicationDAL,
   permissionService
 }: TCertificateInventoryViewServiceFactoryDep) => {
   const assertCanActOnView = async (
@@ -166,6 +187,12 @@ export const certificateInventoryViewServiceFactory = ({
     };
   };
 
+  const $resolveApplicationName = async (applicationId?: string | null) => {
+    if (!applicationId) return null;
+    const application = await pkiApplicationDAL.findById(applicationId);
+    return application?.name ?? null;
+  };
+
   const createView = async ({
     projectId,
     applicationId,
@@ -200,7 +227,7 @@ export const certificateInventoryViewServiceFactory = ({
         isShared
       });
 
-      return view;
+      return { ...view, applicationName: await $resolveApplicationName(view.applicationId) };
     } catch (error) {
       if (error instanceof DatabaseError && (error.error as { code?: string })?.code === "23505") {
         throw new BadRequestError({
@@ -253,7 +280,7 @@ export const certificateInventoryViewServiceFactory = ({
         ...(isShared !== undefined && { isShared })
       });
 
-      return view;
+      return { ...view, applicationName: await $resolveApplicationName(view.applicationId) };
     } catch (error) {
       if (error instanceof DatabaseError && (error.error as { code?: string })?.code === "23505") {
         throw new BadRequestError({
@@ -290,7 +317,7 @@ export const certificateInventoryViewServiceFactory = ({
 
     await certificateInventoryViewDAL.deleteById(viewId);
 
-    return existing;
+    return { ...existing, applicationName: await $resolveApplicationName(existing.applicationId) };
   };
 
   return {

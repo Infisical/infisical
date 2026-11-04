@@ -10,7 +10,6 @@ import { Authenticator } from "@fastify/passport";
 import { requestContext } from "@fastify/request-context";
 import fastifySession from "@fastify/session";
 import RedisStore from "connect-redis";
-import { CronJob } from "cron";
 import { Strategy as GitLabStrategy } from "passport-gitlab2";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as OAuth2Strategy } from "passport-oauth2";
@@ -18,6 +17,7 @@ import { z } from "zod";
 
 import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
+import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -102,12 +102,13 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
           // @ts-expect-error this is because this is express type and not fastify
           const orgSlug = req.session.get("orgSlug");
 
+          // Errors thrown here escape the async verify callback and the request never answers, so
+          // they go to passport through the callback instead.
           const email = profile?.emails?.[0]?.value;
-          if (!email)
-            throw new NotFoundError({
-              message: "Email not found",
-              name: "OauthGoogleRegister"
-            });
+          if (!email) {
+            cb(new NotFoundError({ message: "Email not found", name: "OauthGoogleRegister" }), false);
+            return;
+          }
 
           // Google maps its email_verified claim onto emails[0].verified (a string "true"/"false"
           // per the userinfo response, occasionally a boolean); when verified we skip our own
@@ -208,9 +209,19 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         // eslint-disable-next-line
         async (req: any, accessToken: string, _refreshToken: string, _profile: any, done: Function) => {
           const authMetricStartTime = performance.now();
-          const ghEmails = await fetchGithubEmails(accessToken);
+          // Errors thrown here escape the async verify callback and the request never answers, so
+          // they go to passport through done instead.
+          let ghEmails;
+          try {
+            ghEmails = await fetchGithubEmails(accessToken);
+          } catch (err) {
+            logger.error(err, "Failed to fetch GitHub account emails");
+            return done(new BadRequestError({ message: "Failed to read the emails of the GitHub account" }), false);
+          }
           const selectedEmail = selectGithubLoginEmail(ghEmails);
-          if (!selectedEmail) throw new Error("No email found for GitHub account");
+          if (!selectedEmail) {
+            return done(new BadRequestError({ message: "No email found for GitHub account" }), false);
+          }
           const { email, isEmailVerifiedByProvider } = selectedEmail;
 
           try {
@@ -309,7 +320,11 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         },
         async (req: any, _accessToken: string, _refreshToken: string, profile: any, cb: any) => {
           const authMetricStartTime = performance.now();
-          const email = profile.emails[0].value;
+          const email = profile.emails?.[0]?.value;
+          if (!email) {
+            cb(new BadRequestError({ message: "No email found for GitLab account" }), false);
+            return;
+          }
           // GitLab's /user API exposes confirmed_at as a non-empty ISO timestamp when the email is
           // confirmed, or null otherwise (it is not a boolean). Treat a present, non-empty string as
           // verified rather than coercing with Boolean(), so no non-string truthy value can slip in.
@@ -408,12 +423,29 @@ export const refreshOauthConfig = () => {
 export const initializeOauthConfigSync = async () => {
   logger.info("Setting up background sync process for oauth configuration");
 
-  // sync every 5 minutes
-  const job = new CronJob("*/5 * * * *", refreshOauthConfig);
-  job.start();
-
-  return job;
+  return startLocalRefresh({
+    name: "oauth-config-sync",
+    intervalMs: 5 * 60 * 1000,
+    task: refreshOauthConfig
+  });
 };
+
+// passport-oauth2 raises a TokenError when the provider refuses to exchange the authorization code
+// (expired, already used, or a PKCE verifier that does not match). That is the browser's login
+// that failed, not the server, so it answers 400 instead of falling through to a 500.
+const withOAuthTokenErrorAsBadRequest =
+  (provider: string, authenticate: (req: any, res: any) => Promise<unknown>) => async (req: any, res: any) => {
+    try {
+      return await authenticate(req, res);
+    } catch (error) {
+      if ((error as { name?: string })?.name === "TokenError") {
+        throw new BadRequestError({
+          message: `${provider} did not accept the login's authorization code. Start the login again.`
+        });
+      }
+      throw error;
+    }
+  };
 
 export const registerSsoRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -560,8 +592,19 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/google",
     method: "GET",
+    schema: {
+      hide: true,
+      operationId: "googleLoginCallback",
+      querystring: z
+        .object({
+          code: z.string().trim().max(4096).optional(),
+          state: z.string().trim().max(4096).optional(),
+          error: z.string().trim().max(256).optional()
+        })
+        .passthrough()
+    },
     preValidation: [
-      async (req, res) => {
+      withOAuthTokenErrorAsBadRequest("Google", async (req: any, res: any) => {
         return (
           passport.authenticate("google", {
             session: false,
@@ -570,7 +613,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             authInfo: false
           } as any) as any
         )(req, res);
-      }
+      })
     ],
     handler: handleOAuthCallbackRedirect
   });
@@ -659,8 +702,19 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/github",
     method: "GET",
+    schema: {
+      hide: true,
+      operationId: "githubLoginCallback",
+      querystring: z
+        .object({
+          code: z.string().trim().max(4096).optional(),
+          state: z.string().trim().max(4096).optional(),
+          error: z.string().trim().max(256).optional()
+        })
+        .passthrough()
+    },
     preValidation: [
-      async (req: any, res: any) => {
+      withOAuthTokenErrorAsBadRequest("GitHub", async (req: any, res: any) => {
         return (
           passport.authenticate("github", {
             session: false,
@@ -669,7 +723,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             authInfo: false
           } as any) as any
         )(req, res);
-      }
+      })
     ],
     handler: async (req: any, res: any) => {
       if (req.passportUser.externalProviderAccessToken) {
@@ -731,8 +785,19 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/gitlab",
     method: "GET",
+    schema: {
+      hide: true,
+      operationId: "gitlabLoginCallback",
+      querystring: z
+        .object({
+          code: z.string().trim().max(4096).optional(),
+          state: z.string().trim().max(4096).optional(),
+          error: z.string().trim().max(256).optional()
+        })
+        .passthrough()
+    },
     preValidation: [
-      async (req: any, res: any) => {
+      withOAuthTokenErrorAsBadRequest("GitLab", async (req: any, res: any) => {
         return (
           passport.authenticate("gitlab", {
             session: false,
@@ -741,7 +806,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             authInfo: false
           } as any) as any
         )(req, res);
-      }
+      })
     ],
     handler: handleOAuthCallbackRedirect
   });

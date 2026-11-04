@@ -1,14 +1,21 @@
+import * as x509 from "@peculiar/x509";
+
 import {
   certKeyAlgorithms,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import { CertificateRenewalKeySource } from "@app/hooks/api/certificates/enums";
-import { TCertificate, TRenewCertificateAttributes } from "@app/hooks/api/certificates/types";
+import {
+  TCertificate,
+  TCertificateRenewalPreview,
+  TRenewCertificateAttributes
+} from "@app/hooks/api/certificates/types";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
-  CertSubjectAttributeType
+  CertSubjectAttributeType,
+  isIssuerGeneratedExtensionOid
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import type { RenewalFormData } from "./CertificateRenewalModal";
@@ -54,6 +61,11 @@ const deriveTtlFromCertificate = (cert: TCertificate): string => {
   const hours = Math.max(1, Math.floor(spanMs / (60 * 60 * 1000)));
   return `${hours}h`;
 };
+
+const SAN_TYPES = new Set<string>(Object.values(CertSubjectAlternativeNameType));
+
+const asSanType = (type: string | undefined): CertSubjectAlternativeNameType | undefined =>
+  type && SAN_TYPES.has(type) ? (type as CertSubjectAlternativeNameType) : undefined;
 
 const resolveSanType = (
   value: string,
@@ -105,30 +117,84 @@ export const unionUsageOptions = <T extends { value: string }>(
   return [...allowed, ...all.filter((o) => missing.includes(o.value))];
 };
 
+const pickKnown = (known: Set<string>, value?: string | null) =>
+  known.has(value ?? "") ? (value as string) : "";
+
+const buildSeedSubjectAttributes = (request: TCertificateRenewalPreview["request"]) => {
+  const attributes: { type: CertSubjectAttributeType; value: string }[] = [];
+
+  SUBJECT_ATTR_MAP.forEach(({ attrType, requestKey }) => {
+    const value = request[requestKey as keyof typeof request];
+    if (typeof value === "string" && value) attributes.push({ type: attrType, value });
+  });
+
+  request.domainComponents?.forEach((dc) => {
+    if (dc) attributes.push({ type: CertSubjectAttributeType.DOMAIN_COMPONENT, value: dc });
+  });
+
+  return attributes;
+};
+
 export const buildRenewalFormDefaults = (
   cert: TCertificate,
-  constraints: TemplateConstraints
+  constraints: TemplateConstraints,
+  renewalPreview?: TCertificateRenewalPreview
 ): RenewalFormData => ({
   keySource: CertificateRenewalKeySource.New,
+  reissue: false,
   csr: "",
   ttl: deriveTtlFromCertificate(cert),
-  subjectAttributes: buildSubjectAttributes(cert),
-  subjectAltNames: parseCertificateSans(cert, constraints.allowedSanTypes),
+  subjectAttributes: renewalPreview?.hasOriginatingRequest
+    ? buildSeedSubjectAttributes(renewalPreview.request)
+    : buildSubjectAttributes(cert),
+  subjectAltNames: renewalPreview?.hasOriginatingRequest
+    ? renewalPreview.request.altNames.map(({ type, value }) => ({
+        type: asSanType(type) ?? resolveSanType(value, constraints.allowedSanTypes),
+        value
+      }))
+    : parseCertificateSans(cert, constraints.allowedSanTypes),
   basicConstraints: {
     isCA: Boolean(cert.basicConstraints?.isCA),
     pathLength: cert.basicConstraints?.pathLength ?? null
   },
-  signatureAlgorithm: KNOWN_SIGNATURE_ALGORITHMS.has(cert.signatureAlgorithm ?? "")
-    ? (cert.signatureAlgorithm as string)
-    : "",
-  keyAlgorithm: KNOWN_KEY_ALGORITHMS.has(cert.keyAlgorithm ?? "")
-    ? (cert.keyAlgorithm as string)
-    : "",
-  keyUsages: toUsageFormKeys(cert.keyUsages, KEY_USAGE_BY_NAME),
-  extendedKeyUsages: toUsageFormKeys(cert.extendedKeyUsages, EXTENDED_KEY_USAGE_BY_NAME),
-  customExtensions: (cert.customExtensions ?? [])
-    .filter((extension) => extension.displayValue !== undefined)
-    .map((extension) => ({ oid: extension.oid, value: extension.displayValue as string }))
+  signatureAlgorithm: pickKnown(
+    KNOWN_SIGNATURE_ALGORITHMS,
+    renewalPreview?.hasOriginatingRequest
+      ? renewalPreview.request.signatureAlgorithm
+      : cert.signatureAlgorithm
+  ),
+  keyAlgorithm: pickKnown(
+    KNOWN_KEY_ALGORITHMS,
+    renewalPreview?.hasOriginatingRequest ? renewalPreview.request.keyAlgorithm : cert.keyAlgorithm
+  ),
+  keyUsages: toUsageFormKeys(
+    renewalPreview?.hasOriginatingRequest ? renewalPreview.request.keyUsages : cert.keyUsages,
+    KEY_USAGE_BY_NAME
+  ),
+  extendedKeyUsages: toUsageFormKeys(
+    renewalPreview?.hasOriginatingRequest
+      ? renewalPreview.request.extendedKeyUsages
+      : cert.extendedKeyUsages,
+    EXTENDED_KEY_USAGE_BY_NAME
+  ),
+  customExtensions: renewalPreview?.hasOriginatingRequest
+    ? renewalPreview.request.customExtensions.map(({ oid, value, critical }) => ({
+        oid,
+        value: value ?? "",
+        critical
+      }))
+    : (cert.customExtensions ?? [])
+        .filter(
+          (extension) =>
+            extension.displayValue !== undefined &&
+            !extension.issuerAdded &&
+            !isIssuerGeneratedExtensionOid(extension.oid)
+        )
+        .map((extension) => ({
+          oid: extension.oid,
+          value: extension.displayValue as string,
+          critical: extension.critical
+        }))
 });
 
 const buildBasicConstraints = (
@@ -142,6 +208,10 @@ const buildBasicConstraints = (
 
   return { isCA, ...(isCA && pathLength !== null && pathLength !== undefined && { pathLength }) };
 };
+
+// Required usages render as checked but are never written to the form, so they must be added here.
+const withRequiredUsages = (usages: Record<string, boolean>, required: string[] = []) =>
+  Array.from(new Set([...filterUsages(usages), ...required]));
 
 export const buildRenewalRequestAttributes = ({
   formData,
@@ -173,8 +243,14 @@ export const buildRenewalRequestAttributes = ({
       }
     : {
         ttl: formData.ttl,
-        keyUsages: filterUsages(formData.keyUsages as Record<string, boolean>),
-        extendedKeyUsages: filterUsages(formData.extendedKeyUsages as Record<string, boolean>),
+        keyUsages: withRequiredUsages(
+          formData.keyUsages as Record<string, boolean>,
+          constraints.requiredKeyUsages
+        ),
+        extendedKeyUsages: withRequiredUsages(
+          formData.extendedKeyUsages as Record<string, boolean>,
+          constraints.requiredExtendedKeyUsages
+        ),
         ...(formData.signatureAlgorithm && { signatureAlgorithm: formData.signatureAlgorithm }),
         ...(formData.keySource !== CertificateRenewalKeySource.Reuse &&
           formData.keyAlgorithm && { keyAlgorithm: formData.keyAlgorithm }),
@@ -199,4 +275,84 @@ export const buildRenewalRequestAttributes = ({
   }
 
   return attributes;
+};
+
+export const getRemovedCertificateNames = ({
+  certificate,
+  formData,
+  constraints
+}: {
+  certificate: Pick<TCertificate, "commonName" | "altNames">;
+  formData: Pick<RenewalFormData, "subjectAttributes" | "subjectAltNames">;
+  constraints: Pick<TemplateConstraints, "shouldShowSubjectSection" | "shouldShowSanSection">;
+}): string[] => {
+  const normalize = (names: (string | null | undefined)[]) =>
+    names.map((name) => name?.trim().toLowerCase()).filter((name): name is string => Boolean(name));
+  const originalAltNames = (certificate.altNames ?? "").split(",");
+  const requestedNames = new Set(
+    normalize([
+      constraints.shouldShowSubjectSection
+        ? getAttributeValue(formData.subjectAttributes, CertSubjectAttributeType.COMMON_NAME)
+        : certificate.commonName,
+      ...(constraints.shouldShowSanSection
+        ? (formData.subjectAltNames ?? []).map((san) => san.value)
+        : originalAltNames)
+    ])
+  );
+  return [...new Set(normalize([certificate.commonName, ...originalAltNames]))].filter(
+    (name) => !requestedNames.has(name)
+  );
+};
+
+export const capTtlToDays = (ttl: string, maxDays: number) => {
+  const days = /^(\d+)d$/.exec(ttl)?.[1];
+  return days && Number(days) > maxDays ? `${maxDays}d` : ttl;
+};
+
+const CSR_SAN_TYPES: Record<string, CertSubjectAlternativeNameType> = {
+  dns: CertSubjectAlternativeNameType.DNS_NAME,
+  ip: CertSubjectAlternativeNameType.IP_ADDRESS,
+  email: CertSubjectAlternativeNameType.EMAIL,
+  url: CertSubjectAlternativeNameType.URI,
+  upn: CertSubjectAlternativeNameType.UPN
+};
+
+const parseCsrNames = (csrPem: string) => {
+  try {
+    const csr = new x509.Pkcs10CertificateRequest(csrPem.trim());
+    const sanExtension = csr.extensions.find(
+      (extension): extension is x509.SubjectAlternativeNameExtension =>
+        extension instanceof x509.SubjectAlternativeNameExtension
+    );
+    return {
+      commonName: csr.subjectName.getField("CN")[0],
+      altNames: (sanExtension?.names.items ?? []).flatMap((name) =>
+        CSR_SAN_TYPES[name.type] ? [{ type: CSR_SAN_TYPES[name.type], value: name.value }] : []
+      )
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const getRemovedCertificateNamesFromCsr = ({
+  certificate,
+  csr
+}: {
+  certificate: Pick<TCertificate, "commonName" | "altNames">;
+  csr?: string;
+}): string[] => {
+  const csrNames = csr?.trim() ? parseCsrNames(csr) : null;
+  if (!csrNames) return [];
+
+  return getRemovedCertificateNames({
+    certificate,
+    formData: {
+      subjectAttributes: csrNames.commonName
+        ? [{ type: CertSubjectAttributeType.COMMON_NAME, value: csrNames.commonName }]
+        : [],
+      subjectAltNames: csrNames.altNames
+    },
+    constraints: { shouldShowSubjectSection: true, shouldShowSanSection: true }
+  });
 };

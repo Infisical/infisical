@@ -4,12 +4,13 @@ import {
   PagerDutyChannelConfigSchema,
   SlackChannelConfigSchema,
   TAlertChannelDefinition,
+  WEBHOOK_AUTH_SECRET_FIELD_BY_TYPE,
   WebhookChannelConfigSchema
 } from "../alert-channel-types";
 import { sendEmailNotification } from "./alert-channel-email-fns";
 import { PAGERDUTY_MAX_INCIDENTS_PER_RUN, sendPagerDutyNotification } from "./alert-channel-pagerduty-fns";
 import { sendSlackNotification } from "./alert-channel-slack-fns";
-import { sendWebhookNotification } from "./alert-channel-webhook-fns";
+import { assertWebhookUrlUnchangedForKeptCredentials, sendWebhookNotification } from "./alert-channel-webhook-fns";
 
 export const ALERT_CHANNEL_REGISTRY: Record<AlertChannelType, TAlertChannelDefinition> = {
   [AlertChannelType.EMAIL]: {
@@ -29,8 +30,9 @@ export const ALERT_CHANNEL_REGISTRY: Record<AlertChannelType, TAlertChannelDefin
   [AlertChannelType.WEBHOOK]: {
     type: AlertChannelType.WEBHOOK,
     directed: false,
-    secretFields: ["signingSecret"],
+    secretFields: ["signingSecret", ...Object.values(WEBHOOK_AUTH_SECRET_FIELD_BY_TYPE)],
     configSchema: WebhookChannelConfigSchema,
+    assertStoredSecretsReusable: assertWebhookUrlUnchangedForKeptCredentials,
     send: sendWebhookNotification
   },
   [AlertChannelType.PAGERDUTY]: {

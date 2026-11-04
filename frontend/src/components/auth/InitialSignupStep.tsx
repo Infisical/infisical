@@ -4,9 +4,9 @@ import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { Link } from "@tanstack/react-router";
-import { z } from "zod";
 
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   ButtonBadge,
@@ -20,6 +20,7 @@ import {
 } from "@app/components/v3";
 import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
+import { isValidEmail } from "@app/helpers/email";
 import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendVerificationEmail } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
@@ -32,6 +33,7 @@ interface InitialSignupStepProps {
   incrementStep: (email: string, cooldownSeconds: number) => void;
   pendingVerificationEmail?: string;
   onResumeVerification: () => void;
+  callbackPort?: number;
 }
 
 export default function InitialSignupStep({
@@ -39,17 +41,18 @@ export default function InitialSignupStep({
   setEmail,
   incrementStep,
   pendingVerificationEmail,
-  onResumeVerification
+  onResumeVerification,
+  callbackPort
 }: InitialSignupStepProps) {
   const { t } = useTranslation();
   const { config } = useServerConfig();
   const { mutateAsync, isPending } = useSendVerificationEmail();
-  const [emailError, setEmailError] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
-  const captchaRef = useRef<HCaptcha>(null);
-  const isEmailValid = z.string().email().safeParse(email).success;
-
   const requiresCaptcha = Boolean(envConfig.CAPTCHA_SITE_KEY);
+  const [emailError, setEmailError] = useState(false);
+  const [isCaptchaReady, setIsCaptchaReady] = useState(!requiresCaptcha);
+  const [isCaptchaPending, setIsCaptchaPending] = useState(false);
+  const captchaRef = useRef<HCaptcha>(null);
+  const isEmailValid = isValidEmail(email);
 
   const shouldDisplaySignupMethod = (method: LoginMethod) =>
     !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
@@ -60,9 +63,7 @@ export default function InitialSignupStep({
     shouldDisplaySignupMethod(LoginMethod.GITLAB);
 
   const handleEmailSignup = async () => {
-    const isValid = z.string().email().safeParse(email);
-
-    if (!isValid.success) {
+    if (!isEmailValid) {
       setEmailError(true);
       return;
     }
@@ -76,24 +77,45 @@ export default function InitialSignupStep({
       return;
     }
 
+    let captchaToken: string | undefined;
+
+    if (requiresCaptcha) {
+      setIsCaptchaPending(true);
+      try {
+        captchaToken = (await captchaRef.current?.execute({ async: true }))?.response;
+        if (!captchaToken) {
+          throw new Error("hCaptcha did not return a token");
+        }
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Captcha verification failed. Please try again."
+        });
+        captchaRef.current?.resetCaptcha();
+        return;
+      } finally {
+        setIsCaptchaPending(false);
+      }
+    }
+
     try {
       const { cooldownSeconds } = await mutateAsync({
         email: normalizedEmail,
-        captchaToken: requiresCaptcha ? captchaToken : undefined
+        captchaToken
       });
       incrementStep(normalizedEmail, cooldownSeconds);
     } finally {
       // hCaptcha tokens are single-use, so a retry with a stale one is rejected server-side.
       if (requiresCaptcha) {
         captchaRef.current?.resetCaptcha();
-        setCaptchaToken("");
       }
     }
   };
 
   const handleSocialSignup = (method: LoginMethod) => {
     preserveHubSpotUtk();
-    const popup = window.open(`/api/v1/sso/redirect/${method}`);
+    const query = callbackPort ? `?callback_port=${encodeURIComponent(callbackPort)}` : "";
+    const popup = window.open(`/api/v1/sso/redirect/${method}${query}`);
     if (popup) {
       window.close();
     }
@@ -103,7 +125,7 @@ export default function InitialSignupStep({
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
         <CardHeader className="mb-6 gap-2">
-          <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+          <CardTitle className="ml-0.5 bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
             Sign up
           </CardTitle>
           <CardDescription className="ml-0.5 text-base">
@@ -173,15 +195,13 @@ export default function InitialSignupStep({
                 isError={emailError}
               />
               {envConfig.CAPTCHA_SITE_KEY && (
-                <div className="flex justify-center [&>div]:!w-full">
-                  <HCaptcha
-                    theme="dark"
-                    sitekey={envConfig.CAPTCHA_SITE_KEY}
-                    onVerify={(token) => setCaptchaToken(token)}
-                    onExpire={() => setCaptchaToken("")}
-                    ref={captchaRef}
-                  />
-                </div>
+                <HCaptcha
+                  size="invisible"
+                  theme="dark"
+                  sitekey={envConfig.CAPTCHA_SITE_KEY}
+                  onLoad={() => setIsCaptchaReady(true)}
+                  ref={captchaRef}
+                />
               )}
               <Button
                 type="submit"
@@ -189,8 +209,8 @@ export default function InitialSignupStep({
                 variant="project"
                 size="lg"
                 isFullWidth
-                isDisabled={!isEmailValid || isPending || (requiresCaptcha && !captchaToken)}
-                isPending={isPending}
+                isDisabled={!isEmailValid || isPending || isCaptchaPending || !isCaptchaReady}
+                isPending={isPending || isCaptchaPending}
               >
                 Continue with Email
               </Button>
@@ -202,6 +222,7 @@ export default function InitialSignupStep({
         <span className="text-label">Already have an account?</span>
         <Link
           to="/login"
+          search={{ callback_port: callbackPort }}
           className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
         >
           Log in

@@ -6,10 +6,11 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
-import { PamAccountType, PamHeartbeatStatus, PamSshAuthMethod } from "../pam/pam-enums";
 import { PAM_ROTATION_FACTORY_MAP, TPamRotationHandler } from "../pam-account-rotation/pam-rotation-handlers";
+import { PamAccountType, PamHeartbeatStatus, PamSshAuthMethod } from "../pam/pam-enums";
 import { pamAccountHeartbeatServiceFactory } from "./pam-account-heartbeat-service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -17,9 +18,19 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 const gatewayTestConnection = vi.fn<(...args: unknown[]) => Promise<unknown>>();
+const gatewayBuiltTestConnection = vi.fn<(...args: unknown[]) => Promise<unknown>>();
 vi.mock("@app/ee/services/gateway-v2/gateway-v2-fns", () => ({
-  testConnectionWithGateway: (...args: unknown[]) => gatewayTestConnection(...args)
+  testConnectionWithGateway: (...args: unknown[]) => gatewayTestConnection(...args),
+  testBuiltConnectionWithGateway: (...args: unknown[]) => gatewayBuiltTestConnection(...args)
 }));
+
+const builtTest = (call = 0) =>
+  gatewayBuiltTestConnection.mock.calls[call][0] as {
+    host: string;
+    port: number;
+    request: Record<string, unknown>;
+    additionalPorts?: number[];
+  };
 
 const blobOf = (data: Record<string, unknown>) => Buffer.from(JSON.stringify(data));
 
@@ -48,6 +59,7 @@ const buildService = (
 ) => {
   const updateById = vi.fn(async () => undefined);
   const testCredential = opts.testCredential ?? vi.fn(async () => true);
+  const assertGatewayBindingInOrg = vi.fn<(input: unknown) => Promise<void>>(async () => undefined);
   const handler = { validateTarget: vi.fn(), applyPasswordChange: vi.fn(), testCredential } as TPamRotationHandler;
   const rotationHandlers = {
     [PamAccountType.Postgres]: handler,
@@ -70,9 +82,11 @@ const buildService = (
       ),
       updateById
     },
-    gatewayService: { fnGetGatewayClientTlsByGatewayId: vi.fn() },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
-    gatewayPoolService: { resolveEffectiveGatewayId: vi.fn(async () => "gw-1") },
+    gatewayPoolService: {
+      resolveEffectiveGatewayId: vi.fn(async () => "gw-1"),
+      assertGatewayBindingInOrg
+    },
     kmsService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
     permissionService: { getProjectPermission: vi.fn(), getResourcePermission: vi.fn() },
     projectDAL: { findById: vi.fn(async () => ({ id: "proj-1", orgId: "org-1" })) },
@@ -82,7 +96,7 @@ const buildService = (
   const service = pamAccountHeartbeatServiceFactory(
     deps as unknown as Parameters<typeof pamAccountHeartbeatServiceFactory>[0]
   );
-  return { service, updateById, testCredential, permissionService: deps.permissionService };
+  return { service, updateById, testCredential, assertGatewayBindingInOrg, permissionService: deps.permissionService };
 };
 
 describe("heartbeat: Windows", () => {
@@ -96,7 +110,7 @@ describe("heartbeat: Windows", () => {
     const result = await service.checkScheduledAccount("acc-win");
 
     expect(testCredential).toHaveBeenCalledTimes(1);
-    expect(gatewayTestConnection).not.toHaveBeenCalled();
+    expect(gatewayBuiltTestConnection).not.toHaveBeenCalled();
     expect(result?.status).toBe(PamHeartbeatStatus.Healthy);
     expect(updateById).toHaveBeenCalledWith(
       "acc-win",
@@ -190,8 +204,8 @@ describe("heartbeat: SSH certificate", () => {
   });
 
   test("mints a short-lived certificate and logs in with it", async () => {
-    gatewayTestConnection.mockReset();
-    gatewayTestConnection.mockResolvedValue({ ok: true });
+    gatewayBuiltTestConnection.mockReset();
+    gatewayBuiltTestConnection.mockResolvedValue({ ok: true });
 
     const { SshCertKeyAlgorithm, createSshKeyPair } = await import("@app/lib/ssh");
     const { publicKey, privateKey } = await createSshKeyPair(SshCertKeyAlgorithm.ED25519);
@@ -222,7 +236,7 @@ describe("heartbeat: SSH certificate", () => {
     const result = await service.checkScheduledAccount("acc-ssh");
 
     expect(result?.status).toBe(PamHeartbeatStatus.Healthy);
-    const [, , , , request] = gatewayTestConnection.mock.calls[0];
+    const { request } = builtTest();
     expect(request).toMatchObject({ mode: "ssh", authMethod: PamSshAuthMethod.Certificate, username: "ubuntu" });
     expect((request as { certificate?: string }).certificate).toBeTruthy();
   });
@@ -263,5 +277,67 @@ describe("heartbeat: manual check permissions", () => {
 
     await expect(service.checkAccount({ accountId: "acc-win", projectId: "proj-1" }, actor)).rejects.toThrow();
     expect(testCredential).not.toHaveBeenCalled();
+  });
+});
+
+describe("heartbeat: gateway binding check", () => {
+  beforeAll(async () => {
+    await crypto.initialize({} as never, {} as never, {} as never);
+  });
+
+  test.each([
+    [
+      "the account's own gateway",
+      { gatewayId: "gw-own", templateGatewayId: null },
+      { gatewayId: "gw-own", gatewayPoolId: null }
+    ],
+    [
+      "the account's own pool",
+      { gatewayPoolId: "pool-own", templateGatewayId: null },
+      { gatewayId: null, gatewayPoolId: "pool-own" }
+    ],
+    [
+      "a binding inherited from the template",
+      { templateGatewayId: "gw-template", templateGatewayPoolId: "pool-template" },
+      { gatewayId: "gw-template", gatewayPoolId: "pool-template" }
+    ]
+  ])("checks %s against the project's org", async (_label, overrides, binding) => {
+    const { service, assertGatewayBindingInOrg } = buildService(buildWindowsAccount(overrides));
+
+    await service.checkScheduledAccount("acc-win");
+
+    expect(assertGatewayBindingInOrg).toHaveBeenCalledWith({ ...binding, orgId: "org-1" });
+  });
+
+  test.each([
+    ["Windows", buildWindowsAccount()],
+    [
+      "Postgres",
+      buildWindowsAccount({
+        id: "acc-pg",
+        accountType: PamAccountType.Postgres,
+        encryptedCredentials: blobOf({ username: "app", password: "pw" }),
+        encryptedConnectionDetails: blobOf({
+          host: "db.internal",
+          port: 5432,
+          database: "app",
+          sslEnabled: false,
+          sslRejectUnauthorized: false
+        })
+      })
+    ]
+  ])("a %s account whose binding fails the check is never probed", async (_label, account) => {
+    gatewayBuiltTestConnection.mockReset();
+    const { service, testCredential, assertGatewayBindingInOrg } = buildService(account);
+    assertGatewayBindingInOrg.mockRejectedValueOnce(new NotFoundError({ message: "Gateway with ID 'gw-1' not found" }));
+
+    const result = await service.checkScheduledAccount(account.id);
+
+    expect(result).toMatchObject({
+      status: PamHeartbeatStatus.CannotCheck,
+      message: "Gateway with ID 'gw-1' not found"
+    });
+    expect(testCredential).not.toHaveBeenCalled();
+    expect(gatewayBuiltTestConnection).not.toHaveBeenCalled();
   });
 });

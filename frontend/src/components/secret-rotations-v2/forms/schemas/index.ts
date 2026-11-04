@@ -22,6 +22,7 @@ import { DatadogApiKeyRotationSchema } from "./datadog-api-key-rotation-schema";
 import { DatadogApplicationKeySecretRotationSchema } from "./datadog-application-key-secret-rotation-schema";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token-rotation-schema";
 import { FireworksApiKeyRotationSchema } from "./fireworks-api-key-rotation-schema";
+import { GcpServiceAccountKeyRotationSchema } from "./gcp-service-account-key-rotation-schema";
 import { HpIloRotationSchema } from "./hp-ilo-rotation-schema";
 import { LiteLLMApiKeyRotationSchema } from "./litellm-api-key-rotation-schema";
 import { OktaClientSecretRotationSchema } from "./okta-client-secret-rotation-schema";
@@ -31,6 +32,7 @@ import { OracleDBCredentialsRotationSchema } from "./oracledb-credentials-rotati
 import { RedisCredentialsRotationSchema } from "./redis-credentials-rotation-schema";
 import { SalesforceOauthCredentialsRotationSchema } from "./salesforce-oauth-credentials-rotation-schema";
 import { SnowflakeUserKeyPairRotationSchema } from "./snowflake-user-key-pair-rotation-schema";
+import { StripeApiKeyRotationSchema } from "./stripe-api-key-rotation-schema";
 import { SupabaseApiKeyRotationSchema } from "./supabase-api-key-rotation-schema";
 import { UnixLinuxLocalAccountRotationSchema } from "./unix-linux-local-account-rotation-schema";
 import { WindowsLocalAccountRotationSchema } from "./windows-local-account-rotation-schema";
@@ -66,7 +68,9 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         FireworksApiKeyRotationSchema,
         SnowflakeUserKeyPairRotationSchema,
         CloudflareApiTokenRotationSchema,
-        CloudflareR2AccessKeyRotationSchema
+        CloudflareR2AccessKeyRotationSchema,
+        StripeApiKeyRotationSchema,
+        GcpServiceAccountKeyRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )

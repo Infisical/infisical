@@ -10,7 +10,8 @@ export enum ConstraintKind {
   RegexPattern = "regex-pattern",
   RequiredPrefix = "required-prefix",
   RequiredSuffix = "required-suffix",
-  ReusePreviousVersions = "reuse-previous-versions"
+  ReusePreviousVersions = "reuse-previous-versions",
+  ReuseOtherSecretsInScope = "reuse-other-secrets-in-scope"
 }
 
 export enum ConstraintTarget {

@@ -143,7 +143,6 @@ export type TApproveApprovalRequestDTO = {
   policyType: ApprovalPolicyType;
   requestId: string;
   comment?: string;
-  bypassReason?: string;
 };
 
 export type TRejectApprovalRequestDTO = {

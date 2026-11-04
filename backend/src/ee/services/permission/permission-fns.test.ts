@@ -1,15 +1,19 @@
-import { createMongoAbility, MongoAbility, RawRuleOf, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { describe, expect, test } from "vitest";
 
 import { conditionsMatcher } from "@app/lib/casl";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ForbiddenRequestError } from "@app/lib/errors";
+import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import {
+  checkForInvalidPermissionCombination,
   expandLegacyForbidActions,
+  FOREIGN_SSO_SESSION_ERROR_NAME,
   getProjectPermissionFingerprint,
   handlebarsClient,
   interpolatePermissionRules,
-  throwIfMissingSecretReadValueOrDescribePermission
+  throwIfMissingSecretReadValueOrDescribePermission,
+  validateOrgSSO
 } from "./permission-fns";
 import {
   ProjectPermissionActions,
@@ -234,6 +238,21 @@ describe("throwIfMissingSecretReadValueOrDescribePermission", () => {
     ).toThrow();
   });
 
+  test("throws a ForbiddenError for the requested action, not the legacy one", () => {
+    const ability = buildAbility([]);
+    let thrown: unknown;
+    try {
+      throwIfMissingSecretReadValueOrDescribePermission(ability, ProjectPermissionSecretActions.ReadValue, {
+        environment: "prod",
+        secretPath: "/"
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(ForbiddenError);
+    expect((thrown as ForbiddenError<MongoAbility>).action).toBe(ProjectPermissionSecretActions.ReadValue);
+  });
+
   test("respects conditions on the DescribeSecret rule", () => {
     const ability = buildAbility([
       allow({
@@ -391,5 +410,117 @@ describe("interpolatePermissionRules", () => {
     );
 
     expect(rule.conditions).toEqual({ environment: "dev" });
+  });
+});
+
+describe("checkForInvalidPermissionCombination", () => {
+  test("accepts a userEmail condition on member assume-privileges", () => {
+    expect(() =>
+      checkForInvalidPermissionCombination([
+        {
+          subject: ProjectPermissionSub.Member,
+          action: [ProjectPermissionMemberActions.AssumePrivileges],
+          conditions: { userEmail: "admin@example.com" }
+        }
+      ] as never)
+    ).not.toThrow();
+  });
+
+  test("rejects conditions on member assume-privileges other than userEmail", () => {
+    expect(() =>
+      checkForInvalidPermissionCombination([
+        {
+          subject: ProjectPermissionSub.Member,
+          action: [ProjectPermissionMemberActions.AssumePrivileges],
+          conditions: { assignableRole: "admin" }
+        }
+      ] as never)
+    ).toThrow('Condition "assignableRole" is not allowed for action "assume-privileges" on subject "member"');
+  });
+
+  test("rejects conditions when assume-privileges shares a rule with an action that allows them", () => {
+    expect(() =>
+      checkForInvalidPermissionCombination([
+        {
+          subject: ProjectPermissionSub.Member,
+          action: [ProjectPermissionMemberActions.AssignRole, ProjectPermissionMemberActions.AssumePrivileges],
+          conditions: { userEmail: "admin@example.com", assignableRole: "admin" }
+        }
+      ] as never)
+    ).toThrow('Condition "assignableRole" is not allowed for action "assume-privileges" on subject "member"');
+  });
+
+  test("accepts member assume-privileges without conditions", () => {
+    expect(() =>
+      checkForInvalidPermissionCombination([
+        { subject: ProjectPermissionSub.Member, action: [ProjectPermissionMemberActions.AssumePrivileges] }
+      ] as never)
+    ).not.toThrow();
+  });
+});
+
+describe("validateOrgSSO session binding", () => {
+  const enforcedOrg = {
+    isOrgSsoEnforced: true,
+    isOrgGoogleSsoEnforced: false,
+    isOrgSsoBypassEnabled: false,
+    isAdmin: false,
+    rootOrgId: "org-a"
+  };
+
+  const refusal = (fn: () => void) => {
+    try {
+      fn();
+    } catch (error) {
+      return error;
+    }
+    return undefined;
+  };
+
+  test("admits an SSO session the org's own IdP issued", () => {
+    expect(() =>
+      validateOrgSSO({ ...enforcedOrg, actorAuthMethod: AuthMethod.OKTA_SAML, issuingRootOrgId: "org-a" })
+    ).not.toThrow();
+  });
+
+  test.each([AuthMethod.OKTA_SAML, AuthMethod.OIDC] as const)(
+    "refuses a %s session another org's IdP issued",
+    (actorAuthMethod) => {
+      const error = refusal(() => validateOrgSSO({ ...enforcedOrg, actorAuthMethod, issuingRootOrgId: "org-b" }));
+
+      expect(error).toBeInstanceOf(ForbiddenRequestError);
+      expect((error as ForbiddenRequestError).name).toBe(FOREIGN_SSO_SESSION_ERROR_NAME);
+    }
+  );
+
+  test("takes a token issued before the claim existed at its method", () => {
+    expect(() => validateOrgSSO({ ...enforcedOrg, actorAuthMethod: AuthMethod.OKTA_SAML })).not.toThrow();
+  });
+
+  test("admits a foreign session where the org does not enforce SSO", () => {
+    expect(() =>
+      validateOrgSSO({
+        ...enforcedOrg,
+        isOrgSsoEnforced: false,
+        actorAuthMethod: AuthMethod.OKTA_SAML,
+        issuingRootOrgId: "org-b"
+      })
+    ).not.toThrow();
+  });
+
+  test("lets a member who may bypass SSO through with a foreign session", () => {
+    expect(() =>
+      validateOrgSSO({
+        ...enforcedOrg,
+        isOrgSsoBypassEnabled: true,
+        isAdmin: true,
+        actorAuthMethod: AuthMethod.OKTA_SAML,
+        issuingRootOrgId: "org-b"
+      })
+    ).not.toThrow();
+  });
+
+  test("skips the check for a call made without an auth method", () => {
+    expect(() => validateOrgSSO({ ...enforcedOrg, actorAuthMethod: null, issuingRootOrgId: "org-b" })).not.toThrow();
   });
 });

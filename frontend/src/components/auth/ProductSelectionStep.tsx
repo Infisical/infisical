@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type JSX, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -102,7 +102,6 @@ export default function ProductSelectionStep({
     try {
       const projects = createdProjectsRef.current;
       // Projects are set up one at a time so a failure points at a specific product.
-      // eslint-disable-next-line no-restricted-syntax
       for (const type of orderedSelection) {
         if (!(type in projects)) {
           failedProduct = getSignupProduct(type)?.name;
@@ -156,7 +155,7 @@ export default function ProductSelectionStep({
     <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center">
       <AuthPagePanel className="gap-6">
         <CardHeader className="gap-2">
-          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+          <CardTitle className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
             What brings you to Infisical?
           </CardTitle>
           <CardDescription className="text-sm text-label">
@@ -187,7 +186,7 @@ export default function ProductSelectionStep({
                   )}
                 >
                   <Icon className={cn("size-4 shrink-0", product.iconClassName)} />
-                  <span className="font-alliance text-sm font-normal text-foreground">
+                  <span className="font-sans text-sm font-normal text-foreground">
                     {product.name}
                   </span>
                   <Checkbox

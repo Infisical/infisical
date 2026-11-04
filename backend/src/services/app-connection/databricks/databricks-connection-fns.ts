@@ -1,3 +1,5 @@
+import { AxiosError } from "axios";
+
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -25,13 +27,14 @@ export const getDatabricksConnectionListItem = () => {
 const authorizeDatabricksConnection = async ({
   clientId,
   clientSecret,
-  workspaceUrl
-}: Pick<TDatabricksConnection["credentials"], "workspaceUrl" | "clientId" | "clientSecret">) => {
+  workspaceUrl,
+  scopes
+}: Pick<TDatabricksConnection["credentials"], "workspaceUrl" | "clientId" | "clientSecret" | "scopes">) => {
   await blockLocalAndPrivateIpAddresses(workspaceUrl);
 
   const { data } = await request.post<TAuthorizeDatabricksConnection>(
     `${removeTrailingSlash(workspaceUrl)}/oidc/v1/token`,
-    "grant_type=client_credentials&scope=all-apis",
+    new URLSearchParams({ grant_type: "client_credentials", scope: scopes?.join(" ") || "all-apis" }),
     {
       auth: {
         username: clientId,
@@ -51,14 +54,14 @@ export const getDatabricksConnectionAccessToken = async (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
-  const { clientSecret, clientId, workspaceUrl, accessToken, expiresAt } = credentials;
+  const { accessToken, expiresAt } = credentials;
 
   // get new token if less than 10 minutes from expiry
   if (Date.now() < expiresAt - 10_000) {
     return accessToken;
   }
 
-  const authData = await authorizeDatabricksConnection({ clientId, clientSecret, workspaceUrl });
+  const authData = await authorizeDatabricksConnection(credentials);
 
   const updatedCredentials: TDatabricksConnection["credentials"] = {
     ...credentials,
@@ -90,7 +93,10 @@ export const validateDatabricksConnectionCredentials = async (appConnection: TDa
     };
   } catch (e: unknown) {
     throw new BadRequestError({
-      message: "Unable to validate connection: verify credentials"
+      message: `Unable to validate connection: ${
+        (e instanceof AxiosError && (e.response?.data as { error_description?: string })?.error_description) ||
+        "verify credentials"
+      }`
     });
   }
 };

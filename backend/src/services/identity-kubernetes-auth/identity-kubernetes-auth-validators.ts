@@ -320,7 +320,7 @@ export const validateTokenReviewerPermissions = async ({
     logger.error({ error, ...logContext }, "Failed to validate token reviewer permissions");
 
     if (err instanceof AxiosError) {
-      throw handleAxiosError(err, { kubernetesHost }, errorContext);
+      throw handleAxiosError(err, { kubernetesHost, credentials: [tokenReviewerJwt] }, errorContext);
     }
 
     throw new BadRequestError({

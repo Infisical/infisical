@@ -3,14 +3,13 @@ import {
   ChevronLeft,
   Cog,
   KeyRound,
-  LayoutTemplate,
   Lock,
   Network,
   ShieldUser,
   SlidersHorizontal
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { SubOrganizationsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SubOrgIcon } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -66,12 +65,6 @@ export const OrgSettingsSubmenuView = ({ onBack }: { onBack: () => void }) => {
       search: { selectedTab: "tab-org-encryption" }
     },
     {
-      label: "Project Templates",
-      icon: LayoutTemplate,
-      pathSuffix: "settings",
-      search: { selectedTab: "project-templates" }
-    },
-    {
       label: "Product Settings",
       icon: SlidersHorizontal,
       pathSuffix: "settings",
@@ -110,10 +103,14 @@ export const OrgSettingsSubmenuView = ({ onBack }: { onBack: () => void }) => {
             />
           ))}
       </SidebarMenu>
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="organization.sub-organizations"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You need to upgrade your plan to manage sub-organizations."
+        intent={{
+          ...SubOrganizationsUpgradeIntent,
+          isEnterpriseFeature: false
+        }}
       />
     </SidebarGroup>
   );

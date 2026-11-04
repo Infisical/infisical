@@ -1,10 +1,8 @@
 import { useMemo } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
-import { AccessRestrictedDialog, PageLoader } from "@app/components/v3";
+import { PageTitle } from "@app/components/PageTitle";
+import { AccessRestrictedDialog, PageHeader, PageLoader } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionCertificateActions,
@@ -17,11 +15,10 @@ import type { FilterRule } from "../CertificatesPage/components/inventory-types"
 import { CertificatesTab } from "../PoliciesPage/components/CertificatesTab";
 
 export const InventoryPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const searchParams = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/inventory"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/inventory"
   });
 
   const dashboardFilters = useMemo<FilterRule[]>(() => {
@@ -89,15 +86,18 @@ export const InventoryPage = () => {
   );
 
   if (!currentProject) {
-    return <PageLoader />;
+    return (
+      <>
+        <PageTitle title="Inventory" />
+        <PageLoader />
+      </>
+    );
   }
 
   return (
-    <div className="mx-auto flex h-full flex-col justify-between text-white">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Inventory" })}</title>
-      </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+    <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
+      <PageTitle title="Inventory" />
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Inventory"

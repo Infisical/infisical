@@ -1,0 +1,112 @@
+---
+title: "{The task the guide completes, in sentence case, starting with a verb}"
+sidebarTitle: "{A short noun phrase for the sidebar}"
+description: "{One sentence, starting with a verb, that states the result the reader ends up with}"
+---
+
+{/*
+NOTE: Template for a quickstart or task guide that takes a first-time reader from nothing to a
+working result. Read templates/README.md first for what each kind of markup means.
+Example pages:
+- documentation/platform/agent-vault/quickstart.mdx, a UI flow (the body is in snippets/agent-vault/QuickstartBody.mdx)
+- documentation/guides/local-development.mdx, a CLI flow
+- integrations/cicd/githubactions.mdx, one set of steps per auth method
+
+NOTE: Choose the shape of each stage from the kind of work in the stage:
+- Actions in the UI: a <Steps> block with no title prop
+- Commands: a sentence and a code block per sub-task, with no <Steps>
+- More than one way to do the whole setup, such as one per auth method: top-level <Tabs>,
+  with the `### Step N:` headings inside each tab and a <Check> at the end of each tab
+
+NOTE: Reuse these snippets for shared stages instead of rewriting them:
+- snippets/documentation/platform/secrets-mgmt/configure-project.mdx: create a project and add secrets
+- snippets/cli/install-cli.mdx: install the CLI
+- snippets/cli/local-development/log-in.mdx, link-project.mdx, start-application.mdx
+*/}
+
+This guide shows you how to {the task}. You'll {each thing the reader creates, in order, with the first mention of each concept linked}.
+
+## Prerequisites
+
+{/* NOTE: Noun phrases with no trailing period. Link each one. Ask for the least access that works. If a first-time reader won't have something yet, create it in the steps instead of listing it here. */}
+
+- An Infisical account on [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance](/self-hosting/overview)
+- {Each other requirement, linked to where the reader gets it}
+
+## Step 1: {The first stage, as an imperative}
+
+### {The first sub-task, as an imperative}
+
+First, {create the first thing, with the concept linked}, which {what the thing does}.
+
+<Steps>
+    <Step>
+        {The first action, starting with the verb}
+    </Step>
+    <Step>
+        {The next action, starting with the verb}
+    </Step>
+</Steps>
+
+{/* IF: the stage has more sub-tasks */}
+### {The next sub-task, as an imperative}
+
+Next, {create the next thing}, which {what the thing does}.
+
+<Steps>
+    <Step>
+        {The first action, starting with the verb}
+    </Step>
+</Steps>
+{/* END IF */}
+
+{/* IF: a later step needs a value from this stage */}
+Copy the {value}. You need the {value} in [Step 2](#step-2-{step-2-heading-slug}).
+{/* END IF */}
+
+## Step 2: {The next stage, as an imperative}
+
+{A sentence stating what the command does}
+
+```bash
+{The command}
+```
+
+## Step 3: Verify it works
+
+{How the reader confirms the result, with the command to run or the screen to check}
+
+```bash
+{The command}
+```
+
+<Check>
+    {What the reader now has working, in one or two sentences}
+</Check>
+
+{/* IF: readers commonly do more tasks after the main path */}
+## {A task readers do after the main path, as an imperative}
+
+{The task}
+{/* END IF */}
+
+{/* IF: readers commonly hit problems on the way */}
+## Troubleshooting
+
+<AccordionGroup>
+    <Accordion title="{The problem, described the way the reader would notice it}">
+        {The cause of the problem, and how to fix it}
+    </Accordion>
+</AccordionGroup>
+{/* END IF */}
+
+## Next steps
+
+<CardGroup cols={2}>
+    <Card title="{The linked page's sidebar label}" icon="{Lucide icon name}" href="{Path of the linked page}">
+        {What the reader can do on the linked page}
+    </Card>
+    <Card title="{The linked page's sidebar label}" icon="{Lucide icon name}" href="{Path of the linked page}">
+        {What the reader can do on the linked page}
+    </Card>
+</CardGroup>

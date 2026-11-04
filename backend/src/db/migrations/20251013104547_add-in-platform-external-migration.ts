@@ -3,9 +3,12 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
+// Dropped by the 20260910093000 migration, so it no longer has a TableName entry.
+const VAULT_EXTERNAL_MIGRATION_CONFIGS = "vault_external_migration_configs";
+
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.VaultExternalMigrationConfig))) {
-    await knex.schema.createTable(TableName.VaultExternalMigrationConfig, (t) => {
+  if (!(await knex.schema.hasTable(VAULT_EXTERNAL_MIGRATION_CONFIGS))) {
+    await knex.schema.createTable(VAULT_EXTERNAL_MIGRATION_CONFIGS, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
@@ -19,11 +22,11 @@ export async function up(knex: Knex): Promise<void> {
       t.unique(["orgId", "namespace"]);
     });
 
-    await createOnUpdateTrigger(knex, TableName.VaultExternalMigrationConfig);
+    await createOnUpdateTrigger(knex, VAULT_EXTERNAL_MIGRATION_CONFIGS);
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.VaultExternalMigrationConfig);
-  await dropOnUpdateTrigger(knex, TableName.VaultExternalMigrationConfig);
+  await knex.schema.dropTableIfExists(VAULT_EXTERNAL_MIGRATION_CONFIGS);
+  await dropOnUpdateTrigger(knex, VAULT_EXTERNAL_MIGRATION_CONFIGS);
 }

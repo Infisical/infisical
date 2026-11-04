@@ -7,6 +7,7 @@ import { RailwayPublicAPI } from "@app/services/app-connection/railway/railway-c
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
+import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TSecretMap } from "../secret-sync-types";
 import { TRailwaySyncWithCredentials } from "./railway-sync-types";
 
@@ -62,7 +63,8 @@ export const RailwaySyncFns = {
    * deletion is enabled, drift is removed explicitly via per-key deletes that skip sealed variables.
    * If there's a service, triggers a redeploy to pick up the changes.
    */
-  async syncSecrets(secretSync: TRailwaySyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(secretSync: TRailwaySyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     try {
       const {
         syncOptions: { disableSecretDeletion, keySchema }
@@ -160,7 +162,8 @@ export const RailwaySyncFns = {
     }
   },
 
-  async removeSecrets(secretSync: TRailwaySyncWithCredentials, secretMap: TSecretMap) {
+  async removeSecrets(secretSync: TRailwaySyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const config = secretSync.destinationConfig;
 
     try {

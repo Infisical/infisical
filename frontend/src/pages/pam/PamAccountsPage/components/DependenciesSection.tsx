@@ -121,7 +121,7 @@ export const DependenciesSection = ({ accountId }: { accountId: string }) => {
   return (
     <div className="rounded-lg border border-border bg-container p-4">
       <div className="flex items-center gap-2">
-        <h3 className="text-sm font-semibold text-foreground">Dependencies</h3>
+        <h3 className="text-sm font-normal text-foreground">Dependencies</h3>
         <Badge variant="pam">{deps.length}</Badge>
       </div>
       <p className="mb-3 text-xs text-muted">

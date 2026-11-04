@@ -213,13 +213,27 @@ export const secretFolderDALFactory = (db: TDbClient) => {
 
   // this is used to do an inverse query in folders
   // that is instances in which for a given folderid find the secret path
-  const findSecretPathByFolderIds = async (projectId: string, folderIds: string[], tx?: Knex) => {
+  const findSecretPathByFolderIds = async (
+    projectId: string,
+    folderIds: string[],
+    tx?: Knex,
+    {
+      readFromPrimary = false,
+      includePendingDeletion = false
+    }: { readFromPrimary?: boolean; includePendingDeletion?: boolean } = {}
+  ) => {
+    const conn = tx || (readFromPrimary ? db : db.replicaNode());
+    // Environments pending deletion are hidden from reads, but a caller still acting inside one (eg revoking
+    // a honey token during the grace period) needs the real location.
+    const excludePendingDeletion = (qb: Knex.QueryBuilder) => {
+      if (!includePendingDeletion) void qb.whereNull(`${TableName.Environment}.deleteAfter`);
+    };
     try {
-      const targetFolders = await (tx || db.replicaNode())(TableName.SecretFolder)
+      const targetFolders = await conn(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .whereIn(`${TableName.SecretFolder}.id`, folderIds)
         .where(`${TableName.Environment}.projectId`, projectId)
-        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .where(excludePendingDeletion)
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.ref("slug").withSchema(TableName.Environment).as("environmentSlug"),
@@ -230,14 +244,14 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         return folderIds.map(() => undefined);
       }
 
-      const allEnvFolders = await (tx || db.replicaNode())(TableName.SecretFolder).whereIn(
+      const allEnvFolders = await conn(TableName.SecretFolder).whereIn(
         "envId",
-        (tx || db.replicaNode())(TableName.SecretFolder)
+        conn(TableName.SecretFolder)
           .select("envId")
           .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
           .whereIn(`${TableName.SecretFolder}.id`, folderIds)
           .where(`${TableName.Environment}.projectId`, projectId)
-          .whereNull(`${TableName.Environment}.deleteAfter`)
+          .where(excludePendingDeletion)
       );
 
       const idMap = buildFolderIdMap(allEnvFolders);
@@ -304,11 +318,14 @@ export const secretFolderDALFactory = (db: TDbClient) => {
   };
 
   // special query for project migration
-  const findByProjectId = async (projectId: string, tx?: Knex) => {
+  //
+  // `includeSoftDeletedEnvs` exists for the secret value tracking backfill. An environment's
+  // soft-delete is reversible, so skipping its folders and then declaring the organization fully
+  // indexed leaves unindexed rows behind the moment it is restored.
+  const findByProjectId = async (projectId: string, tx?: Knex, includeSoftDeletedEnvs = false) => {
     try {
-      const folders = await (tx || db.replicaNode())(TableName.SecretFolder)
+      const query = (tx || db.replicaNode())(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
-        .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.SecretFolder))
         .where({ projectId })
@@ -319,7 +336,8 @@ export const secretFolderDALFactory = (db: TDbClient) => {
           db.ref("projectId").withSchema(TableName.Environment),
           db.ref("version").withSchema(TableName.Project).as("projectVersion")
         );
-      return folders;
+
+      return await (includeSoftDeletedEnvs ? query : query.whereNull(`${TableName.Environment}.deleteAfter`));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by id" });
     }

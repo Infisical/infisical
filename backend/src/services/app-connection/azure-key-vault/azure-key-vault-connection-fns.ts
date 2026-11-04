@@ -3,16 +3,17 @@ import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
-import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { getTlsServerNameOptions } from "@app/lib/tls";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import {
   decryptAppConnectionCredentials,
   encryptAppConnectionCredentials,
@@ -20,6 +21,9 @@ import {
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { getAppConnectionOidcSubject, getOidcIssuerUrl } from "@app/services/oidc-issuer/oidc-issuer-fns";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
+import { TSignOidcIssuerTokenDTO } from "@app/services/oidc-issuer/oidc-issuer-types";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
@@ -30,8 +34,51 @@ import {
   TAzureKeyVaultConnectionCertificateCredentials,
   TAzureKeyVaultConnectionClientSecretCredentials,
   TAzureKeyVaultConnectionConfig,
-  TAzureKeyVaultConnectionCredentials
+  TAzureKeyVaultConnectionCredentials,
+  TAzureKeyVaultConnectionManagedIdentityCredentials
 } from "./azure-key-vault-connection-types";
+
+// Entra only accepts federated tokens with this audience
+const AZURE_FEDERATED_TOKEN_AUDIENCE = "api://AzureADTokenExchange";
+
+// Not stored with the credentials, so the issuer follows SITE_URL if it changes. Without SITE_URL there is no issuer,
+// but reading the connection must still work.
+export const getAzureKeyVaultConnectionFederatedCredential = ({ id, orgId }: { id: string; orgId: string }) => {
+  const { SITE_URL } = getConfig();
+
+  return {
+    issuerUrl: SITE_URL ? getOidcIssuerUrl(SITE_URL, orgId) : null,
+    subjectIdentifier: getAppConnectionOidcSubject(id),
+    audience: AZURE_FEDERATED_TOKEN_AUDIENCE
+  };
+};
+
+const getManagedIdentityAccessToken = async (
+  {
+    appConnection,
+    tenantId,
+    clientId
+  }: { appConnection: TSignOidcIssuerTokenDTO["appConnection"]; tenantId: string; clientId: string },
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+) => {
+  const clientAssertion = await oidcIssuerService.signToken({
+    appConnection,
+    audience: AZURE_FEDERATED_TOKEN_AUDIENCE
+  });
+
+  const { data } = await request.post<ExchangeCodeAzureResponse>(
+    IntegrationUrls.AZURE_TOKEN_URL.replace("common", tenantId),
+    new URLSearchParams({
+      grant_type: "client_credentials",
+      scope: `https://vault.azure.net/.default`,
+      client_id: clientId,
+      client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+      client_assertion: clientAssertion
+    })
+  );
+
+  return { accessToken: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 };
+};
 
 /**
  * Proxies an Azure Key Vault data-plane request through a gateway when the connection has one
@@ -43,7 +90,6 @@ import {
  */
 export const requestWithAzureKeyVaultGateway = async <T>(
   connection: { gatewayId?: string | null; gatewayPoolId?: string | null },
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   requestConfig: AxiosRequestConfig,
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
@@ -66,7 +112,7 @@ export const requestWithAzureKeyVaultGateway = async <T>(
 
   // If gateway isn't set up, don't proxy the request
   if (!gatewayId) {
-    return request.request(requestConfig);
+    return safeRequest.request({ ...requestConfig, url: requestConfig.url as string });
   }
 
   const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
@@ -74,61 +120,18 @@ export const requestWithAzureKeyVaultGateway = async <T>(
   // eslint-disable-next-line no-nested-ternary
   const targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
 
-  // try gateway v2 first, then fall back to gateway v1
   const gatewayConnectionDetailsV2 = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
     targetHost,
     targetPort
   });
 
-  if (gatewayConnectionDetailsV2) {
-    return withGatewayV2Proxy(
-      async (proxyPort) => {
-        const isHttps = url.protocol === "https:";
-
-        url.host = `localhost:${proxyPort}`;
-
-        const finalRequestConfig: AxiosRequestConfig = {
-          ...requestConfig,
-          url: url.toString(),
-          headers: {
-            ...requestConfig.headers,
-            Host: targetHost
-          },
-          ...(isHttps && {
-            httpsAgent: new https.Agent({
-              servername: targetHost
-            })
-          })
-        };
-
-        try {
-          return await request.request(finalRequestConfig);
-        } catch (error) {
-          if (error instanceof AxiosError) {
-            logger.error(
-              {
-                error,
-                message: error.message,
-                data: (error.response as undefined | { data: unknown })?.data,
-                url: url.toString()
-              },
-              "Error during Azure Key Vault gateway v2 request:"
-            );
-          }
-          throw error;
-        }
-      },
-      {
-        protocol: GatewayProxyProtocol.Tcp,
-        ...gatewayConnectionDetailsV2
-      }
-    );
+  // Falling through here would silently bypass the gateway this connection is pinned to.
+  if (!gatewayConnectionDetailsV2) {
+    throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
   }
 
-  const gatewayConnectionDetailsV1 = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
-
-  return withGatewayProxy(
+  return withGatewayV2Proxy(
     async (proxyPort) => {
       const isHttps = url.protocol === "https:";
 
@@ -143,7 +146,7 @@ export const requestWithAzureKeyVaultGateway = async <T>(
         },
         ...(isHttps && {
           httpsAgent: new https.Agent({
-            servername: targetHost
+            ...getTlsServerNameOptions(targetHost)
           })
         })
       };
@@ -159,17 +162,15 @@ export const requestWithAzureKeyVaultGateway = async <T>(
               data: (error.response as undefined | { data: unknown })?.data,
               url: url.toString()
             },
-            "Error during Azure Key Vault gateway v1 request:"
+            "Error during Azure Key Vault gateway request:"
           );
         }
         throw error;
       }
     },
     {
-      relayDetails: gatewayConnectionDetailsV1,
       protocol: GatewayProxyProtocol.Tcp,
-      targetHost,
-      targetPort
+      ...gatewayConnectionDetailsV2
     }
   );
 };
@@ -177,7 +178,8 @@ export const requestWithAzureKeyVaultGateway = async <T>(
 export const getAzureConnectionAccessToken = async (
   connectionId: string,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const appConnection = await appConnectionDAL.findById(connectionId);
 
@@ -346,6 +348,44 @@ export const getAzureConnectionAccessToken = async (
 
       return { accessToken: certificateData.access_token };
 
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+      const managedIdentityCredentials = (await decryptAppConnectionCredentials({
+        orgId: appConnection.orgId,
+        kmsService,
+        encryptedCredentials: appConnection.encryptedCredentials,
+        projectId: appConnection.projectId
+      })) as TAzureKeyVaultConnectionManagedIdentityCredentials;
+
+      if (
+        managedIdentityCredentials.accessToken &&
+        managedIdentityCredentials.expiresAt &&
+        managedIdentityCredentials.expiresAt > currentTime + 300000
+      ) {
+        return { accessToken: managedIdentityCredentials.accessToken };
+      }
+
+      const managedIdentityToken = await getManagedIdentityAccessToken(
+        {
+          appConnection,
+          tenantId: managedIdentityCredentials.tenantId,
+          clientId: managedIdentityCredentials.clientId
+        },
+        oidcIssuerService
+      );
+
+      const encryptedManagedIdentityCredentials = await encryptAppConnectionCredentials({
+        credentials: { ...managedIdentityCredentials, ...managedIdentityToken },
+        orgId: appConnection.orgId,
+        kmsService,
+        projectId: appConnection.projectId
+      });
+
+      await appConnectionDAL.updateById(appConnection.id, {
+        encryptedCredentials: encryptedManagedIdentityCredentials
+      });
+
+      return { accessToken: managedIdentityToken.accessToken };
+
     default:
       throw new InternalServerError({
         message: `Unhandled Azure Key Vault connection method: ${appConnection.method as AzureKeyVaultConnectionMethod}`
@@ -362,14 +402,18 @@ export const getAzureKeyVaultConnectionListItem = () => {
     methods: Object.values(AzureKeyVaultConnectionMethod) as [
       AzureKeyVaultConnectionMethod.OAuth,
       AzureKeyVaultConnectionMethod.ClientSecret,
-      AzureKeyVaultConnectionMethod.Certificate
+      AzureKeyVaultConnectionMethod.Certificate,
+      AzureKeyVaultConnectionMethod.ManagedIdentity
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID
   };
 };
 
-export const validateAzureKeyVaultConnectionCredentials = async (config: TAzureKeyVaultConnectionConfig) => {
-  const { credentials: inputCredentials, method } = config;
+export const validateAzureKeyVaultConnectionCredentials = async (
+  config: TAzureKeyVaultConnectionConfig,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
+) => {
+  const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
   const { INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID, INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET, SITE_URL } =
     getConfig();
@@ -524,6 +568,38 @@ export const validateAzureKeyVaultConnectionCredentials = async (config: TAzureK
             message: "Failed to get access token"
           });
         }
+      }
+
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+      const { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId } = inputCredentials as {
+        tenantId: string;
+        clientId: string;
+      };
+
+      // A new connection has no ID yet, so Azure cannot trust its subject. Verifying it after create runs the
+      // exchange once the customer has added the federated credential.
+      if (!connection) return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId };
+
+      try {
+        const managedIdentityToken = await getManagedIdentityAccessToken(
+          {
+            appConnection: { ...connection, orgId, projectId },
+            tenantId: managedIdentityTenantId,
+            clientId: managedIdentityClientId
+          },
+          oidcIssuerService
+        );
+
+        return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId, ...managedIdentityToken };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to get access token: ${
+              (e?.response?.data as { error_description?: string })?.error_description || "Unknown error"
+            }`
+          });
+        }
+        throw e;
       }
 
     default:

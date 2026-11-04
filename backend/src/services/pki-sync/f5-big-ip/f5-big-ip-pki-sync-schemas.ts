@@ -7,7 +7,9 @@ import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import {
   BasePkiSyncOptionsSchema,
   buildDestinationCertificateNameSchema,
-  PkiSyncSchema
+  PkiSyncFiltersField,
+  PkiSyncSchema,
+  UpdatePkiSyncFiltersField
 } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { F5_BIG_IP_NAMING, F5BigIpProfileType } from "./f5-big-ip-pki-sync-constants";
@@ -81,7 +83,8 @@ export const CreateF5BigIpPkiSyncSchema = z.object({
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
   applicationId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).optional()
+  certificateIds: z.array(z.string().uuid()).optional(),
+  filters: PkiSyncFiltersField
 });
 
 export const UpdateF5BigIpPkiSyncSchema = z.object({
@@ -91,7 +94,8 @@ export const UpdateF5BigIpPkiSyncSchema = z.object({
   destinationConfig: F5BigIpPkiSyncConfigSchema.optional(),
   syncOptions: F5BigIpPkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const F5BigIpPkiSyncListItemSchema = z.object({

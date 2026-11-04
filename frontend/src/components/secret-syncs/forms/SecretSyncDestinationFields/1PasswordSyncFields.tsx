@@ -70,7 +70,7 @@ export const OnePassSyncFields = () => {
                 isLoading={isVaultsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={vaults?.find((v) => v.id === value) || null}
-                onValueChange={(option) => onChange(option.id ?? null)}
+                onValueChange={(option) => onChange(option?.id ?? null)}
                 options={vaults}
                 placeholder="Select a vault..."
                 getOptionLabel={(option) => option.name}

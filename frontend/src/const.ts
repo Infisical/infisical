@@ -25,6 +25,7 @@ export const publicPaths = [
   "/login/provider/error",
   "/admin/signup",
   "/shared/secret/[id]",
+  "/shared/new",
   "/secret-request/secret/[id]",
   "/share-secret"
 ];

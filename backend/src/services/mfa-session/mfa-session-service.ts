@@ -1,10 +1,12 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { isCliUserAgent } from "@app/lib/cli-version/cli-version-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { MfaMethod } from "@app/services/auth/auth-type";
-import { TMfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { isMfaProofAccepted } from "@app/services/auth/auth-fns";
+import { MfaMethod } from "@app/services/auth/auth-type";
+import { TMfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTotpServiceFactory } from "@app/services/totp/totp-service";
 
@@ -19,7 +21,10 @@ import {
 
 type TMfaSessionServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "setItemWithExpiryNX" | "deleteItem">;
-  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  tokenService: Pick<
+    TAuthTokenServiceFactory,
+    "createTokenForUser" | "validateTokenForUser" | "getUserTokenSessionById"
+  >;
   smtpService: Pick<TSmtpService, "sendMail">;
   totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
   mfaLockoutService: Pick<
@@ -59,12 +64,15 @@ export const mfaSessionServiceFactory = ({
   // re-implementing the checks, so a session minted for one resource (e.g. a
   // low-value PAM account) can never be replayed against another (e.g. recovery
   // codes). verifyMfaSession only flips PENDING -> ACTIVE; the resource binding
-  // is enforced here at the point of use.
+  // is enforced here at the point of use. `acceptedMfaMethods` narrows it further where
+  // the challenged factor varies per action, so a proof of a fallback factor can't be
+  // replayed on an action that would never have asked for it.
   const isMfaSessionActive = async ({
     mfaSessionId,
     userId,
     resourceId,
-    tokenVersionId
+    tokenVersionId,
+    acceptedMfaMethods
   }: TIsMfaSessionActiveDTO): Promise<boolean> => {
     const mfaSession = await getMfaSession(mfaSessionId);
     if (
@@ -80,7 +88,19 @@ export const mfaSessionServiceFactory = ({
       return false;
     }
 
+    if (acceptedMfaMethods && !isMfaProofAccepted(mfaSession.mfaMethod, acceptedMfaMethods)) {
+      return false;
+    }
+
     return true;
+  };
+
+  const canCompleteFromSession = async (mfaSession: TMfaSession, userId: string, tokenVersionId: string) => {
+    if (!mfaSession.initiatingTokenVersionId || mfaSession.initiatingTokenVersionId === tokenVersionId) return true;
+    if (!mfaSession.allowCliHandoff) return false;
+
+    const initiatingSession = await tokenService.getUserTokenSessionById(mfaSession.initiatingTokenVersionId, userId);
+    return isCliUserAgent(initiatingSession?.userAgent ?? undefined);
   };
 
   // Helper function to update MFA session in Redis
@@ -147,7 +167,7 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
-    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+    if (!(await canCompleteFromSession(mfaSession, userId, tokenVersionId))) {
       throw new ForbiddenRequestError({
         message: "MFA session does not belong to current session"
       });
@@ -197,7 +217,7 @@ export const mfaSessionServiceFactory = ({
     await updateMfaSession(mfaSession, KeyStoreTtls.MfaSessionInSeconds);
 
     if (mfaSession.resourceId === MfaStepUpResource.MfaManagement) {
-      await mfaLockoutService.recordRecentMfaAuth(userId, tokenVersionId);
+      await mfaLockoutService.recordRecentMfaAuth(userId, tokenVersionId, mfaMethod);
     }
 
     return {
@@ -221,7 +241,7 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
-    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+    if (!(await canCompleteFromSession(mfaSession, userId, tokenVersionId))) {
       throw new ForbiddenRequestError({
         message: "MFA session does not belong to current session"
       });
@@ -237,7 +257,8 @@ export const mfaSessionServiceFactory = ({
     userId: string,
     resourceId: string,
     mfaMethod: MfaMethod,
-    initiatingTokenVersionId?: string
+    initiatingTokenVersionId?: string,
+    allowCliHandoff?: boolean
   ): Promise<string> => {
     const mfaSessionId = crypto.randomBytes(32).toString("hex");
     const mfaSession: TMfaSession = {
@@ -246,7 +267,8 @@ export const mfaSessionServiceFactory = ({
       resourceId,
       status: MfaSessionStatus.PENDING,
       mfaMethod,
-      initiatingTokenVersionId
+      initiatingTokenVersionId,
+      allowCliHandoff
     };
 
     await keyStore.setItemWithExpiry(
@@ -269,11 +291,13 @@ export const mfaSessionServiceFactory = ({
     await mfaLockoutService.enforceStepUpMfaLockStatus(userId);
   };
 
-  // True when THIS session (tokenVersionId) completed a full MFA login or management
-  // step-up recently, so an MFA-management step-up can be skipped within the grace
-  // window (see recordRecentMfaAuth). Session-scoped, never user-scoped.
-  const hasRecentMfaAuth = async (userId: string, tokenVersionId: string): Promise<boolean> => {
-    return mfaLockoutService.hasRecentMfaAuth(userId, tokenVersionId);
+  // Session-scoped grace after a login or management step-up, see recordRecentMfaAuth.
+  const hasRecentMfaAuth = async (
+    userId: string,
+    tokenVersionId: string,
+    acceptedMfaMethods: MfaMethod[]
+  ): Promise<boolean> => {
+    return mfaLockoutService.hasRecentMfaAuth(userId, tokenVersionId, acceptedMfaMethods);
   };
 
   return {

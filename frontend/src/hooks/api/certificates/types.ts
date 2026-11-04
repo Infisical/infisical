@@ -1,4 +1,5 @@
 import type { TPkcs12Entry } from "@app/helpers/pkcs12";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CaType } from "@app/hooks/api/ca/enums";
 
 import {
@@ -33,6 +34,7 @@ export type TCertificateCustomExtension = {
   critical: boolean;
   value: string;
   displayValue?: string;
+  issuerAdded?: boolean;
 };
 
 export type TCertificate = {
@@ -47,6 +49,7 @@ export type TCertificate = {
   subjectAltNames: string;
   altNames?: string;
   serialNumber: string;
+  orderId?: string;
   notBefore: string;
   notAfter: string;
   keyUsages: CertKeyUsage[];
@@ -79,6 +82,10 @@ export type TCertificate = {
     [key: string]: unknown;
   } | null;
   metadata?: Array<{ key: string; value: string }>;
+  deletedAt?: string | null;
+  deletedByActorType?: ActorType | null;
+  deletedByActorId?: string | null;
+  deletedByActorName?: string | null;
 };
 
 export type TCertificateByIdResponse = {
@@ -107,7 +114,7 @@ export type TImportPkcs12EntriesResult = {
 };
 
 export type TCertificateExternalMetadata =
-  | { type: CaType.DIGICERT; orderId: number }
+  | { type: CaType.DIGICERT; orderId: number; certificateId?: number }
   | { type: CaType.GODADDY; certificateId: string }
   | { type: CaType.AWS_ACM_PUBLIC_CA; arn: string; region: string; validationMethod: string };
 
@@ -164,6 +171,9 @@ export type TRenewCertificateDTO = {
   renewalKeySource?: CertificateRenewalKeySource;
   csr?: string;
   attributes?: TRenewCertificateAttributes;
+  externalConfiguration?: {
+    reissue?: boolean;
+  };
 };
 
 export type TRenewCertificateResponse = {
@@ -376,4 +386,31 @@ export type TPqcTrendResponse = {
 export type TTriggerCertificateRequestValidationResponse = {
   status: CertificateRequestStatus;
   orderStatus?: string;
+};
+
+export type TIssuerModifiedField = {
+  field: string;
+  requested: string;
+  issued: string;
+};
+
+export type TCertificateRenewalPreview = {
+  hasOriginatingRequest: boolean;
+  hasOriginatingCsr: boolean;
+  request: {
+    commonName?: string;
+    organization?: string;
+    organizationalUnit?: string;
+    country?: string;
+    state?: string;
+    locality?: string;
+    domainComponents?: string[];
+    altNames: { type: string; value: string }[];
+    keyUsages: string[];
+    extendedKeyUsages: string[];
+    keyAlgorithm?: string;
+    signatureAlgorithm?: string;
+    customExtensions: { oid: string; value?: string; critical?: boolean }[];
+  };
+  issuerModifiedFields: TIssuerModifiedField[];
 };

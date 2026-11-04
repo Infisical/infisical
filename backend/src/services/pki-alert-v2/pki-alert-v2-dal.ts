@@ -34,6 +34,7 @@ export type TLastRunData = {
 };
 
 export type TAlertWithChannels = TPkiAlertsV2 & {
+  applicationName?: string | null;
   channels: TChannelResult[];
   lastRunData: TLastRunData | null;
 };
@@ -100,8 +101,10 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     try {
       const [alert] = (await (tx || db.replicaNode())
         .select(selectAllTableCols(TableName.PkiAlertsV2))
+        .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
         .from(TableName.PkiAlertsV2)
-        .where(`${TableName.PkiAlertsV2}.id`, alertId)) as TPkiAlertsV2[];
+        .leftJoin(TableName.PkiApplication, `${TableName.PkiAlertsV2}.applicationId`, `${TableName.PkiApplication}.id`)
+        .where(`${TableName.PkiAlertsV2}.id`, alertId)) as (TPkiAlertsV2 & { applicationName?: string | null })[];
 
       if (!alert) return null;
 
@@ -373,10 +376,12 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       alertId?: string;
       certificateId?: string;
       applicationId?: string;
+      readFromPrimary?: boolean;
     },
     tx?: Knex
   ): Promise<{ certificates: TCertificatePreview[]; total: number }> => {
     try {
+      const reader = tx || (options?.readFromPrimary ? db : db.replicaNode());
       const isApplicationScoped = Boolean(options?.applicationId);
       const includeCAs = shouldIncludeCAs(filters) && !isApplicationScoped;
       const needsProfileJoin = requiresProfileJoin(filters);
@@ -387,7 +392,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       let certTotalCount = 0;
 
       if (includeCAs) {
-        let caCountQuery = (tx || db.replicaNode())
+        let caCountQuery = reader
           .count("* as count")
           .from(TableName.CertificateAuthority)
           .innerJoin(
@@ -418,7 +423,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         caTotalCount = parseInt((caCountResult[0] as { count: string }).count, 10);
       }
 
-      let certCountQuery = (tx || db.replicaNode()).count("* as count").from(TableName.Certificate);
+      let certCountQuery = reader.count("* as count").from(TableName.Certificate);
 
       if (needsProfileJoin) {
         certCountQuery = certCountQuery.leftJoin(
@@ -461,11 +466,13 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         }
       }
 
-      certCountQuery = certCountQuery.whereNull(`${TableName.Certificate}.renewedByCertificateId`);
+      certCountQuery = certCountQuery
+        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
+        .whereNull(`${TableName.Certificate}.deletedAt`);
 
       if (options?.excludeAlerted && options?.alertId) {
         certCountQuery = certCountQuery.whereNotExists(
-          (tx || db.replicaNode())
+          reader
             .select("*")
             .from(TableName.PkiAlertHistory)
             .join(
@@ -501,7 +508,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
 
         selectColumns.push("profile.slug as profileName");
 
-        let certificateQuery = (tx || db.replicaNode())
+        let certificateQuery = reader
           .select(selectColumns)
           .from(TableName.Certificate)
           .leftJoin(
@@ -543,11 +550,13 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
           }
         }
 
-        certificateQuery = certificateQuery.whereNull(`${TableName.Certificate}.renewedByCertificateId`);
+        certificateQuery = certificateQuery
+          .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
+          .whereNull(`${TableName.Certificate}.deletedAt`);
 
         if (options?.excludeAlerted && options?.alertId) {
           certificateQuery = certificateQuery.whereNotExists(
-            (tx || db.replicaNode())
+            reader
               .select("*")
               .from(TableName.PkiAlertHistory)
               .join(
@@ -611,7 +620,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         const caLimit = Math.min(limit, caTotalCount - offset);
         const caOffset = offset;
 
-        let caQuery = (tx || db.replicaNode())
+        let caQuery = reader
           .select(
             `${TableName.CertificateAuthority}.id`,
             `ica.serialNumber`,

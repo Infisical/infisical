@@ -8,6 +8,7 @@ import {
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
+import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TSecretMap } from "../secret-sync-types";
 import { THasuraCloudSyncWithCredentials } from "./hasura-cloud-sync-types";
 
@@ -138,7 +139,8 @@ export const HasuraCloudSyncFns = {
     }
   },
 
-  async syncSecrets(secretSync: THasuraCloudSyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(secretSync: THasuraCloudSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       destinationConfig,
       connection,
@@ -185,7 +187,8 @@ export const HasuraCloudSyncFns = {
     }
   },
 
-  async removeSecrets(secretSync: THasuraCloudSyncWithCredentials, secretMap: TSecretMap) {
+  async removeSecrets(secretSync: THasuraCloudSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const { destinationConfig, connection } = secretSync;
     const { accessToken } = connection.credentials;
     const { projectId } = destinationConfig;

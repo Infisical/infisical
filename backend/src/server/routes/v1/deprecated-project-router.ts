@@ -8,6 +8,7 @@ import {
   SortDirection
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
+import { MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
@@ -267,7 +268,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         workspaceSlug: z.string().trim()
       }),
       body: z.object({
-        auditLogsRetentionDays: z.number().min(0)
+        auditLogsRetentionDays: z.number().int().min(0).max(MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS)
       }),
       response: {
         200: z.object({
@@ -296,8 +297,11 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         orgId: req.permission.orgId,
         projectId: workspace.id,
         event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "project",
+            auditLogsRetentionDays: req.body.auditLogsRetentionDays
+          }
         }
       });
 

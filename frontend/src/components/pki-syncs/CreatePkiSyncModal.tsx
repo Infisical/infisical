@@ -19,8 +19,8 @@ import {
 } from "@app/components/v3";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./forms/schemas/pki-sync-schema";
 import { CreatePkiSyncForm } from "./forms";
+import { TPkiSyncForm } from "./forms/schemas/pki-sync-schema";
 import { PkiSyncModalHeader } from "./PkiSyncModalHeader";
 import { PkiSyncSelect } from "./PkiSyncSelect";
 
@@ -66,7 +66,7 @@ export const CreatePkiSyncModal = ({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1500px]">
+        <SheetContent size="workspace" className="flex h-full max-h-full flex-col gap-y-0 p-0">
           <SheetHeader className="border-b">
             {selectedSync ? (
               <>
@@ -98,7 +98,7 @@ export const CreatePkiSyncModal = ({
               onComplete={closeSheet}
               onCancel={() => setSelectedSync(null)}
               destination={selectedSync}
-              initialData={initialData}
+              initialData={selectedSync === selectSync ? initialData : undefined}
               applicationId={applicationId}
             />
           ) : (

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { TUsers } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { mfaRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
@@ -19,8 +19,8 @@ const handleMfaVerification = async (
 ) => {
   const userAgent = req.headers["user-agent"];
   const mfaJwtToken = req.headers.authorization?.replace("Bearer ", "");
-  if (!userAgent) throw new Error("user agent header is required");
-  if (!mfaJwtToken) throw new Error("authorization header is required");
+  if (!userAgent) throw new BadRequestError({ message: "User agent header is required" });
+  if (!mfaJwtToken) throw new UnauthorizedError({ message: "Authorization header is required" });
   const appCfg = getConfig();
 
   const { user, token } = await server.services.login.verifyMfaToken({
@@ -69,10 +69,11 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
     }
 
     const decodedToken = crypto.jwt().verify(token, cfg.AUTH_SECRET) as AuthModeMfaJwtTokenPayload;
-    if (decodedToken.authTokenType !== AuthTokenType.MFA_TOKEN) throw new Error("Unauthorized access");
+    if (decodedToken.authTokenType !== AuthTokenType.MFA_TOKEN)
+      throw new UnauthorizedError({ message: "Unauthorized access" });
 
     const user = await server.store.user.findById(decodedToken.userId);
-    if (!user) throw new Error("User not found");
+    if (!user) throw new UnauthorizedError({ message: "Unauthorized access" });
     req.mfa = {
       userId: user.id,
       user,

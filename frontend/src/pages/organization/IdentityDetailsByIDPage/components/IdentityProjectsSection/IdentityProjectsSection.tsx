@@ -96,10 +96,10 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
         </CardContent>
       </Card>
       <AlertDialog
+        isPending={isRemoving}
         open={popUp.removeIdentityFromProject.isOpen}
         confirmationValue="confirm"
         onOpenChange={(isOpen) => {
-          if (!isOpen && isRemoving) return;
           handlePopUpToggle("removeIdentityFromProject", isOpen);
         }}
       >
@@ -119,14 +119,12 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogConfirmationField
-            inputProps={{ disabled: isRemoving }}
             onConfirm={() => onRemoveIdentitySubmit().catch(() => undefined)}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isRemoving}
               onClick={(event) => {
                 event.preventDefault();
                 onRemoveIdentitySubmit().catch(() => undefined);

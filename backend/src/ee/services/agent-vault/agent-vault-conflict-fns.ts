@@ -1,4 +1,4 @@
-import { intersectHostPatterns } from "./agent-vault-host-pattern";
+import { intersectHostPatterns } from "./agent-vault-host-pattern-fns";
 
 export type TConflictCandidate = {
   id: string;

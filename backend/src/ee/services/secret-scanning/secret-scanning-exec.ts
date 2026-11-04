@@ -18,6 +18,7 @@ export enum SecretScanningExecFailure {
 export enum SecretScanningExecPhase {
   Clone = "clone",
   Measure = "measure",
+  Enumerate = "enumerate",
   Scan = "scan"
 }
 
@@ -123,12 +124,18 @@ type TExecFileBoundedOptions = {
   env?: Record<string, string>;
   /** Exit codes treated as success. The scanner uses 77 to signal "findings were written". */
   successExitCodes?: number[];
+  /**
+   * Consumes stdout a line at a time instead of buffering it. `git rev-list` on a large repository
+   * emits far more than the capture ceiling below, and the caller only needs to fold over the
+   * lines, so with this set stdout is never accumulated and the resolved value is stderr only.
+   */
+  onStdoutLine?: (line: string) => void;
 };
 
 export const execFileBounded = (
   file: string,
   args: string[],
-  { phase, cwd, timeoutMs, env, successExitCodes = [0] }: TExecFileBoundedOptions
+  { phase, cwd, timeoutMs, env, successExitCodes = [0], onStdoutLine }: TExecFileBoundedOptions
 ): Promise<string> =>
   new Promise((resolve, reject) => {
     const child = spawn(file, args, {
@@ -149,7 +156,16 @@ export const execFileBounded = (
       output += decoders[stream].write(chunk);
     };
 
-    child.stdout.on("data", capture("stdout"));
+    // A line can straddle two chunks, so the tail is held back until the next one arrives.
+    const emitLine = onStdoutLine ?? (() => {});
+    let pendingLine = "";
+    const consumeLines = (chunk: Buffer) => {
+      const lines = (pendingLine + decoders.stdout.write(chunk)).split("\n");
+      pendingLine = lines.pop() ?? "";
+      for (const line of lines) emitLine(line);
+    };
+
+    child.stdout.on("data", onStdoutLine ? consumeLines : capture("stdout"));
     child.stderr.on("data", capture("stderr"));
 
     // Killing the process group can tear a pipe down mid-read. An `error` with no listener is an
@@ -168,7 +184,13 @@ export const execFileBounded = (
     const finalizeOutput = () => {
       if (finalized) return;
       finalized = true;
-      output += decoders.stdout.end();
+      if (onStdoutLine) {
+        pendingLine += decoders.stdout.end();
+        if (pendingLine) emitLine(pendingLine);
+        pendingLine = "";
+      } else {
+        output += decoders.stdout.end();
+      }
       output += decoders.stderr.end();
       if (stdioError) output += `\n[stdio error] ${stdioError.message}`;
     };

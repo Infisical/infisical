@@ -44,7 +44,7 @@ export const ForbiddenPage = ({ error }: Props = {}) => {
 
   return (
     <ErrorPageFrame
-      helmetTitle="Infisical | Access Denied"
+      pageTitle="Access Denied"
       badgeIcon={<LockIcon />}
       badgeText="403 · Access Denied"
       heading={

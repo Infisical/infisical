@@ -4,7 +4,12 @@ import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { HostCommandSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  HostCommandSchema,
+  PkiSyncFiltersField,
+  PkiSyncSchema,
+  UpdatePkiSyncFiltersField
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 export const AwsElasticLoadBalancerListenerSchema = z.object({
   listenerArn: z.string().min(1, "Listener ARN is required"),
@@ -47,7 +52,8 @@ export const CreateAwsElasticLoadBalancerPkiSyncSchema = z.object({
   connectionId: z.string(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
   applicationId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).optional()
+  certificateIds: z.array(z.string().uuid()).optional(),
+  filters: PkiSyncFiltersField
 });
 
 export const UpdateAwsElasticLoadBalancerPkiSyncSchema = z.object({
@@ -57,7 +63,8 @@ export const UpdateAwsElasticLoadBalancerPkiSyncSchema = z.object({
   destinationConfig: AwsElasticLoadBalancerPkiSyncConfigSchema.optional(),
   syncOptions: AwsElasticLoadBalancerPkiSyncOptionsSchema.optional(),
   subscriberId: z.string().nullish(),
-  connectionId: z.string().optional()
+  connectionId: z.string().optional(),
+  filters: UpdatePkiSyncFiltersField
 });
 
 export const AwsElasticLoadBalancerPkiSyncListItemSchema = z.object({

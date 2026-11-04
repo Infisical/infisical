@@ -80,6 +80,11 @@ const describeValidationError = (error: Error) => {
 };
 
 export const registerOAuthRouter = async (server: FastifyZodProvider) => {
+  // The token endpoint answers an empty JSON body with its RFC 6749 "body could not be read" invalid_request error,
+  // so this scope keeps Fastify's default JSON parser instead of the app-wide one that reads an empty body as {}.
+  server.removeContentTypeParser("application/json");
+  server.addContentTypeParser("application/json", { parseAs: "string" }, server.getDefaultJsonParser("error", "error"));
+
   server.route({
     method: "POST",
     url: "/clients",
@@ -419,8 +424,10 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
         scope: req.body.scope,
         userId: req.auth.userId,
         authMethod: req.auth.authMethod,
+        issuingRootOrgId: req.auth.token.issuingRootOrgId,
         isMfaVerified: req.auth.isMfaVerified,
         mfaMethod: req.auth.mfaMethod,
+        idpMfaOrgId: req.auth.idpMfaOrgId,
         ip: req.realIp
       });
 

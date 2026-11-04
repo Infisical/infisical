@@ -10,6 +10,28 @@ import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync } from "./pki-sync-enums";
 import { THostCommandResult } from "./pki-sync-host-command-fns";
 
+export type TPkiSyncFilters = {
+  profileIds?: string[];
+  certificateOrderIds?: string[];
+  metadata?: { key: string; value?: string }[];
+};
+
+export type TPkiSyncCertificateRef = {
+  id: string;
+  commonName: string;
+  altNames?: string | null;
+  serialNumber?: string;
+  notAfter?: Date;
+  orderId?: string;
+  profileName?: string | null;
+};
+
+export type TPkiSyncCertificateDiff = {
+  matched: TPkiSyncCertificateRef[];
+  toLink: TPkiSyncCertificateRef[];
+  toUnlink: TPkiSyncCertificateRef[];
+};
+
 export type TPkiSync = {
   id: string;
   name: string;
@@ -59,6 +81,7 @@ export type TPkiSync = {
     id: string;
     name: string;
   } | null;
+  filters?: TPkiSyncFilters | null;
 };
 
 export type THealthCheckTarget = {
@@ -104,6 +127,8 @@ export type TCertificateMap = Record<
     cert: string;
     privateKey: string;
     certificateChain?: string;
+    // The stored chain before includeRootCa is applied.
+    fullCertificateChain?: string;
     caCertificate?: string;
     alternativeNames?: string[];
     certificateId?: string;
@@ -140,6 +165,7 @@ export type TCreatePkiSyncDTO = {
   projectId: string;
   applicationId?: string;
   certificateIds?: string[];
+  filters?: TPkiSyncFilters | null;
   credentials?: { exportPassword?: string };
   auditLogInfo: AuditLogInfo;
   resourceInternalMetadata?: ResourceMetadataDTO;
@@ -156,7 +182,9 @@ export type TUpdatePkiSyncDTO = {
   syncOptions?: Record<string, unknown>;
   subscriberId?: string | null;
   connectionId?: string;
+  filters?: TPkiSyncFilters | null;
   credentials?: { exportPassword?: string };
+  removalOptions?: TPkiSyncRemovalOptions;
   auditLogInfo: AuditLogInfo;
   resourceInternalMetadata?: ResourceMetadataDTO;
 };
@@ -197,6 +225,36 @@ export type TTriggerPkiSyncRemoveCertificatesByIdDTO = {
   id: string;
   projectId?: string;
   auditLogInfo: AuditLogInfo;
+  removalOptions?: TPkiSyncRemovalOptions;
+};
+
+export type TPreviewPkiSyncFiltersDTO = {
+  applicationId?: string;
+  pkiSyncId?: string;
+  filters?: TPkiSyncFilters | null;
+  offset?: number;
+  limit?: number;
+  projectId?: string;
+};
+
+export type TSearchPkiSyncCertificateOrdersDTO = {
+  applicationId?: string;
+  pkiSyncId?: string;
+  certificateOrderIds: string[];
+};
+
+export type TPkiSyncCertificateOrder = {
+  certificateOrderId: string;
+  commonName: string;
+  altNames?: string | null;
+};
+
+export type TPkiSyncFilterPreview = {
+  matchedCount: number;
+  certificates: TPkiSyncCertificateRef[];
+  toUnlink: TPkiSyncCertificateRef[];
+  toUnlinkAtDestinationCount: number;
+  willRemoveFromDestination: boolean;
 };
 
 export type TAddCertificatesToPkiSyncDTO = {
@@ -242,6 +300,7 @@ export type TPkiSyncCertificate = {
   updatedAt: Date;
   certificateSerialNumber?: string;
   certificateCommonName?: string;
+  certificateOrderId?: string;
   certificateAltNames?: string;
   certificateStatus?: string;
   certificateNotBefore?: Date;
@@ -255,6 +314,15 @@ export type TPkiSyncCertificate = {
 };
 
 export type TPkiSyncRaw = NonNullable<Awaited<ReturnType<TPkiSyncDALFactory["findById"]>>>;
+
+export type TQueuePkiSyncLinkMatchingCertificatesDTO = {
+  certificateId: string;
+  applicationId: string;
+};
+
+export type TQueuePkiSyncReconcileFiltersDTO = {
+  syncId: string;
+};
 
 export type TQueuePkiSyncSyncCertificatesByIdDTO = {
   syncId: string;
@@ -271,11 +339,15 @@ export type TQueuePkiSyncRunHealthCheckByIdDTO = {
   syncId: string;
 };
 
+export type TPkiSyncRemovalOptions = Record<string, unknown>;
+
 export type TQueuePkiSyncRemoveCertificatesByIdDTO = {
   syncId: string;
   auditLogInfo?: AuditLogInfo;
   deleteSyncOnComplete?: boolean;
   certificateIds?: string[];
+  removalOptions?: TPkiSyncRemovalOptions;
+  failedToAcquireLockCount?: number;
 };
 
 export type TPkiSyncSyncCertificatesDTO = Job<

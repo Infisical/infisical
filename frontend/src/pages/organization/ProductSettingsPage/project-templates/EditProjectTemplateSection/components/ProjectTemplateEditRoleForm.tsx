@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import slugify from "@sindresorhus/slugify";
 import { ChevronLeftIcon, SaveIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -62,7 +63,9 @@ export const ProjectTemplateEditRoleForm = ({
     handleSubmit,
     control,
     formState: { isDirty, isSubmitting },
-    reset
+    reset,
+    setValue,
+    getFieldState
   } = formMethods;
 
   useEffect(() => {
@@ -153,7 +156,7 @@ export const ProjectTemplateEditRoleForm = ({
             {isDisabled ? (
               <div className="flex flex-col">
                 <span className="text-lg font-medium">{role?.name}</span>
-                <span className="text-mineshaft-400">{role?.slug}</span>
+                <span className="text-muted">{role?.slug}</span>
               </div>
             ) : (
               <div className="flex w-full gap-2">
@@ -165,6 +168,14 @@ export const ProjectTemplateEditRoleForm = ({
                       <FieldLabel>Name</FieldLabel>
                       <Input
                         {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          const slugState = getFieldState("slug");
+                          if (role || slugState.isDirty) return;
+                          setValue("slug", slugify(e.target.value, { lowercase: true }), {
+                            shouldValidate: Boolean(slugState.error)
+                          });
+                        }}
                         autoFocus
                         placeholder="Role name..."
                         autoComplete="off"

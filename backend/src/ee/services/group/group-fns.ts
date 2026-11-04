@@ -6,7 +6,10 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { lockMembershipsById } from "@app/services/membership/membership-dal";
+import { emitGroupMembershipRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 
+import { terminatePamSessionsLosingGroupAccess } from "../pam-session/pam-session-access-fns";
 import {
   TAddIdentitiesToGroup,
   TAddUsersToGroup,
@@ -85,7 +88,17 @@ const addAcceptedUsersToGroup = async ({
       continue;
     }
 
-    const usersToAddProjectKeyFor = users.filter((u) => !userKeysSet.has(`${projectId}-${u.id}`));
+    const usersMissingProjectKey = users.filter((u) => !userKeysSet.has(`${projectId}-${u.id}`));
+
+    // SSO-only users never get a key pair, and nothing shares the key later, so failing here would lock them
+    // out of the whole org (or roll back the login) over one legacy project they could not use anyway.
+    const usersToAddProjectKeyFor = usersMissingProjectKey.filter((u) => {
+      if (u.publicKey) return true;
+      logger.warn(
+        `Skipping legacy project key share for a user without a public key [userId=${u.id}] [projectId=${projectId}] [groupId=${group.id}]`
+      );
+      return false;
+    });
 
     if (usersToAddProjectKeyFor.length) {
       // there are users who need to be shared keys
@@ -140,16 +153,10 @@ const addAcceptedUsersToGroup = async ({
       });
 
       const projectKeysToAdd = usersToAddProjectKeyFor.map((user) => {
-        if (!user.publicKey) {
-          throw new NotFoundError({
-            message: `Failed to find user's public key in project with ID '${projectId}'`
-          });
-        }
-
         const { ciphertext: encryptedKey, nonce } = crypto
           .encryption()
           .asymmetric()
-          .encrypt(plaintextProjectKey, user.publicKey, botPrivateKey);
+          .encrypt(plaintextProjectKey, user.publicKey as string, botPrivateKey);
         return {
           encryptedKey,
           nonce,
@@ -266,6 +273,8 @@ export const addUsersToGroupByUserIds = async ({
         });
     });
 
+    await orgDAL.lockActorsForOrgAccess({ orgId: group.orgId, actorIds: foundMembers.map((member) => member.id) }, tx);
+
     const membersToAddToGroupNonPending: TUsers[] = [];
     const membersToAddToGroupPending: TUsers[] = [];
 
@@ -331,6 +340,7 @@ export const addIdentitiesToGroup = async ({
   identityDAL,
   identityGroupMembershipDAL,
   membershipDAL,
+  orgDAL,
   usageMeteringService
 }: TAddIdentitiesToGroup) => {
   const identityIdsSet = new Set(identityIds);
@@ -372,6 +382,8 @@ export const addIdentitiesToGroup = async ({
   }
 
   return identityDAL.transaction(async (tx) => {
+    await orgDAL.lockActorsForOrgAccess({ orgId: group.orgId, actorIds: identityIdsArray }, tx);
+
     await identityGroupMembershipDAL.insertMany(
       foundIdentitiesMemberships.map((membership) => ({
         identityId: membership.actorIdentityId as string,
@@ -392,25 +404,35 @@ export const addIdentitiesToGroup = async ({
  * Remove users with user ids [userIds] from group [group].
  * - Users may be part of the group (non-pending + pending);
  * this function will handle both cases.
+ * - Fire the returned sendPamCancellations once the transaction holding the removal commits.
  * @param {group} group - group to remove user(s) from
  * @param {string[]} userIds - id(s) of user(s) to remove from group
+ * Cleans up projects in every org the group reaches, not just its home org.
  */
 export const removeUsersFromGroupByUserIds = async ({
   group,
   userIds,
+  actorId,
   userDAL,
   userGroupMembershipDAL,
   projectKeyDAL,
   additionalPrivilegeDAL,
   tx: outerTx,
   membershipGroupDAL,
+  groupDAL,
   shouldFailOnMissingMembers = true,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  eventEmitter,
+  membershipDAL,
+  membershipRoleDAL,
+  pamAccountDAL,
+  pamSessionDAL,
+  gatewayV2Service
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
     if (userIds.length === 0) {
-      return [];
+      return { users: [], sendPamCancellations: () => {} };
     }
 
     const foundMembers = await userDAL.find(
@@ -457,7 +479,7 @@ export const removeUsersFromGroupByUserIds = async ({
       // filter out users not in group for idempotent operation
       const filteredFoundMembers = foundMembers.filter((m) => existingUserGroupMembershipsUserIdsSet.has(m.id));
       if (filteredFoundMembers.length === 0) {
-        return [];
+        return { users: [], sendPamCancellations: () => {} };
       }
       // continue with filtered list
       foundMembers.length = 0;
@@ -477,19 +499,22 @@ export const removeUsersFromGroupByUserIds = async ({
       }
     });
 
+    const groupProjectMemberships = await membershipGroupDAL.find(
+      {
+        scope: AccessScope.Project,
+        actorGroupId: group.id
+      },
+      { tx }
+    );
     const projectIds = Array.from(
-      new Set(
-        (
-          await membershipGroupDAL.find(
-            {
-              scope: AccessScope.Project,
-              actorGroupId: group.id,
-              scopeOrgId: group.orgId
-            },
-            { tx }
-          )
-        ).map((gp) => gp.scopeProjectId as string)
-      )
+      new Set(groupProjectMemberships.map((membership) => membership.scopeProjectId as string))
+    );
+    const lockedMemberships = await lockMembershipsById(
+      groupProjectMemberships.map((membership) => membership.id),
+      tx
+    );
+    const lockedProjectIds = new Set(
+      lockedMemberships.flatMap((membership) => (membership.scopeProjectId ? [membership.scopeProjectId] : []))
     );
 
     if (membersToRemoveFromGroupNonPending.length) {
@@ -518,16 +543,22 @@ export const removeUsersFromGroupByUserIds = async ({
 
           // additional privileges are keyed on actor + project, not membership, so leaving the
           // user's last route into these projects must reap them or they reactivate if the user
-          // is ever re-added
-          await additionalPrivilegeDAL.delete(
-            {
-              actorUserId: userId,
-              $in: {
-                projectId: projectsToDeleteKeyFor
-              }
-            },
-            tx
+          // is ever re-added. Skip a project whose group membership was not locked: that row is
+          // already gone, and deleting privileges for it would wipe a grant written after re-add.
+          const projectsToDeletePrivilegesFor = projectsToDeleteKeyFor.filter((projectId) =>
+            lockedProjectIds.has(projectId)
           );
+          if (projectsToDeletePrivilegesFor.length) {
+            await additionalPrivilegeDAL.delete(
+              {
+                actorUserId: userId,
+                $in: {
+                  projectId: projectsToDeletePrivilegesFor
+                }
+              },
+              tx
+            );
+          }
         }
 
         await userGroupMembershipDAL.delete(
@@ -553,12 +584,15 @@ export const removeUsersFromGroupByUserIds = async ({
         const reachable = stillReach.get(userId);
         const projectsToReapGrantsFor = projectIds.filter((projectId) => !reachable?.has(projectId));
 
-        if (projectsToReapGrantsFor.length) {
+        const projectsToReapPrivilegesFor = projectsToReapGrantsFor.filter((projectId) =>
+          lockedProjectIds.has(projectId)
+        );
+        if (projectsToReapPrivilegesFor.length) {
           await additionalPrivilegeDAL.delete(
             {
               actorUserId: userId,
               $in: {
-                projectId: projectsToReapGrantsFor
+                projectId: projectsToReapPrivilegesFor
               },
               $notNull: ["folderId"]
             },
@@ -580,11 +614,33 @@ export const removeUsersFromGroupByUserIds = async ({
 
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: foundMembers.map((m) => m.id) }, tx);
 
+    await emitGroupMembershipRemoved(
+      eventEmitter,
+      {
+        groupId: group.id,
+        orgIds: await groupDAL.findGroupOrgIds(group.id, tx),
+        actors: toOrgMembershipActors({ userIds: foundMembers.map((m) => m.id) })
+      },
+      tx
+    );
+
+    const sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
+      userIds: foundMembers.map((m) => m.id),
+      actorId,
+      membershipDAL,
+      membershipRoleDAL,
+      pamAccountDAL,
+      pamSessionDAL,
+      userDAL,
+      gatewayV2Service,
+      tx
+    });
+
     // These users may have left a secret-manager or PAM project they only reached through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     usageMeteringService?.emit(group.orgId, PamIdentities.key);
     usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
-    return membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending);
+    return { users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending), sendPamCancellations };
   };
 
   if (outerTx) {
@@ -604,11 +660,19 @@ export const removeUsersFromGroupByUserIds = async ({
 export const removeIdentitiesFromGroup = async ({
   group,
   identityIds,
+  actorId,
   identityDAL,
   membershipDAL,
+  groupDAL,
   identityGroupMembershipDAL,
   additionalPrivilegeDAL,
-  usageMeteringService
+  usageMeteringService,
+  eventEmitter,
+  membershipRoleDAL,
+  pamAccountDAL,
+  pamSessionDAL,
+  userDAL,
+  gatewayV2Service
 }: TRemoveIdentitiesFromGroup) => {
   const identityIdsSet = new Set(identityIds);
   const identityIdsArray = Array.from(identityIdsSet);
@@ -658,8 +722,7 @@ export const removeIdentitiesFromGroup = async ({
           await membershipDAL.find(
             {
               scope: AccessScope.Project,
-              actorGroupId: group.id,
-              scopeOrgId: group.orgId
+              actorGroupId: group.id
             },
             { tx }
           )
@@ -704,11 +767,34 @@ export const removeIdentitiesFromGroup = async ({
       tx
     );
 
+    await emitGroupMembershipRemoved(
+      eventEmitter,
+      {
+        groupId: group.id,
+        orgIds: await groupDAL.findGroupOrgIds(group.id, tx),
+        actors: toOrgMembershipActors({ identityIds: identityIdsArray })
+      },
+      tx
+    );
+
+    const sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
+      userIds: [],
+      identityIds: identityIdsArray,
+      actorId,
+      membershipDAL,
+      membershipRoleDAL,
+      pamAccountDAL,
+      pamSessionDAL,
+      userDAL,
+      gatewayV2Service,
+      tx
+    });
+
     // These identities may have left a secret-manager or PAM project they only reached through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     usageMeteringService?.emit(group.orgId, PamIdentities.key);
     usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
-    return identityIdsArray.map((identityId) => ({ id: identityId }));
+    return { identities: identityIdsArray.map((identityId) => ({ id: identityId })), sendPamCancellations };
   });
 };
 

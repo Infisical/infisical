@@ -584,6 +584,7 @@ export type IdentityTlsCertAuth = {
   allowedCommonNames: string;
   allowedSubjectAltNames: string[] | null;
   verifyClientCertificateChain: boolean;
+  bindAccessTokenToCertificate: boolean;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -598,6 +599,7 @@ export type AddIdentityTlsCertAuthDTO = {
   allowedCommonNames?: string;
   allowedSubjectAltNames?: string[];
   verifyClientCertificateChain?: boolean;
+  bindAccessTokenToCertificate?: boolean;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -614,6 +616,7 @@ export type UpdateIdentityTlsCertAuthDTO = {
   allowedCommonNames?: string | null;
   allowedSubjectAltNames?: string[] | null;
   verifyClientCertificateChain?: boolean;
+  bindAccessTokenToCertificate?: boolean;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

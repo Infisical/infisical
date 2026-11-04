@@ -16,7 +16,6 @@ describe("secret metadata API contract", () => {
   });
 
   test.each([
-    { projectId: "bad" },
     { environment: "a".repeat(65) },
     { secretPath: "relative" },
     { secretPath: "/bad\0" },

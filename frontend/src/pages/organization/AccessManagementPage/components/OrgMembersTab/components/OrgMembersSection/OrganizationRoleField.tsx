@@ -20,8 +20,8 @@ type OrganizationRoleOption = {
 type OrganizationRoleFieldProps<TOption extends OrganizationRoleOption> = {
   id: string;
   options: readonly TOption[];
-  value?: TOption;
-  onValueChange: (value: TOption) => void;
+  value?: TOption | null;
+  onValueChange: (value: TOption | null) => void;
   isLoading: boolean;
   isError: boolean;
   errorMessage?: ReactNode;

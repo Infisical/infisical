@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -10,6 +11,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PkiSync, PkiSyncStatus } from "@app/services/pki-sync/pki-sync-enums";
 import { PKI_SYNC_NAME_MAP } from "@app/services/pki-sync/pki-sync-maps";
 import { getPkiSyncTargetHost } from "@app/services/pki-sync/pki-sync-target-host-fns";
+import { TPkiSyncFilters } from "@app/services/pki-sync/pki-sync-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSyncPkiEndpoints = ({
@@ -20,6 +22,7 @@ export const registerSyncPkiEndpoints = ({
   responseSchema,
   syncOptions,
   healthCheckTestSchema,
+  removalOptionsSchema,
   enableOperationId = true
 }: {
   destination: PkiSync;
@@ -35,6 +38,7 @@ export const registerSyncPkiEndpoints = ({
     description?: string;
     isAutoSyncEnabled?: boolean;
     subscriberId?: string | null;
+    filters?: TPkiSyncFilters | null;
   }>;
   updateSchema: z.ZodType<{
     connectionId?: string;
@@ -44,12 +48,16 @@ export const registerSyncPkiEndpoints = ({
     description?: string;
     isAutoSyncEnabled?: boolean;
     subscriberId?: string | null;
+    filters?: TPkiSyncFilters | null;
+    removalOptions?: Record<string, unknown>;
   }>;
+  removalOptionsSchema?: z.AnyZodObject;
   healthCheckTestSchema?: z.ZodType<{
     connectionId: string;
     applicationId?: string;
     syncId?: string;
     certificateIds?: string[];
+    filters?: TPkiSyncFilters | null;
     destinationConfig: Record<string, unknown>;
     syncOptions: Record<string, unknown>;
   }>;
@@ -77,7 +85,7 @@ export const registerSyncPkiEndpoints = ({
       hide: false,
       ...(enableOperationId ? { operationId: `list${destinationNameForOpId}PkiSyncs` } : {}),
       tags: [ApiDocsTags.PkiSyncs],
-      description: `List the ${destinationName} PKI Syncs for the specified project.`,
+      description: `List the ${destinationName} PKI Syncs.`,
       querystring: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden())
       }),
@@ -141,7 +149,8 @@ export const registerSyncPkiEndpoints = ({
           metadata: {
             syncId: pkiSyncId,
             destination,
-            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
+            ...(pkiSync.applicationName && { applicationName: pkiSync.applicationName })
           }
         }
       });
@@ -160,7 +169,7 @@ export const registerSyncPkiEndpoints = ({
       hide: false,
       ...(enableOperationId ? { operationId: `create${destinationNameForOpId}PkiSync` } : {}),
       tags: [ApiDocsTags.PkiSyncs],
-      description: `Create a ${destinationName} PKI Sync for the specified project.`,
+      description: `Create a ${destinationName} PKI Sync.`,
       body: createSchema,
       response: {
         200: responseSchema
@@ -169,7 +178,12 @@ export const registerSyncPkiEndpoints = ({
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const pkiSync = await server.services.pkiSync.createPkiSync(
-        { ...req.body, projectId: req.body.projectId ?? req.internalCertManagerProjectId, destination },
+        {
+          ...req.body,
+          projectId: req.body.projectId ?? req.internalCertManagerProjectId,
+          destination,
+          auditLogInfo: req.auditLogInfo
+        },
         req.permission
       );
 
@@ -190,7 +204,9 @@ export const registerSyncPkiEndpoints = ({
             hasCredentials: Boolean(req.body.credentials?.exportPassword),
             hasPostSyncCommand: Boolean(req.body.syncOptions?.postSyncCommand),
             hasHealthCheckCommand: Boolean(req.body.syncOptions?.healthCheckCommand),
-            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
+            hasFilters: Boolean(req.body.filters),
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
+            ...(pkiSync.applicationName && { applicationName: pkiSync.applicationName })
           }
         }
       });
@@ -234,7 +250,10 @@ export const registerSyncPkiEndpoints = ({
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
-      const pkiSync = await server.services.pkiSync.updatePkiSync({ ...req.body, id: pkiSyncId }, req.permission);
+      const pkiSync = await server.services.pkiSync.updatePkiSync(
+        { ...req.body, id: pkiSyncId, auditLogInfo: req.auditLogInfo },
+        req.permission
+      );
 
       const targetHost = getPkiSyncTargetHost(pkiSync.destinationConfig);
 
@@ -247,12 +266,14 @@ export const registerSyncPkiEndpoints = ({
             pkiSyncId,
             name: pkiSync.name,
             ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
+            ...(pkiSync.applicationName && { applicationName: pkiSync.applicationName }),
             destination: pkiSync.destination,
             connectionId: pkiSync.connectionId,
             connectionName: pkiSync.appConnectionName,
             ...(targetHost && { targetHost }),
             hasPostSyncCommand: Boolean(pkiSync.syncOptions?.postSyncCommand),
-            hasHealthCheckCommand: Boolean(pkiSync.syncOptions?.healthCheckCommand)
+            hasHealthCheckCommand: Boolean(pkiSync.syncOptions?.healthCheckCommand),
+            hasFilters: Boolean(pkiSync.filters)
           }
         }
       });
@@ -306,7 +327,8 @@ export const registerSyncPkiEndpoints = ({
             pkiSyncId,
             name: pkiSync.name,
             destination: pkiSync.destination,
-            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId })
+            ...(pkiSync.applicationId && { applicationId: pkiSync.applicationId }),
+            ...(pkiSync.applicationName && { applicationName: pkiSync.applicationName })
           }
         }
       });
@@ -364,6 +386,7 @@ export const registerSyncPkiEndpoints = ({
             applicationId: req.body.applicationId,
             syncId: req.body.syncId,
             certificateIds: req.body.certificateIds,
+            filters: req.body.filters,
             destinationConfig: req.body.destinationConfig,
             syncOptions: req.body.syncOptions,
             projectId: req.internalCertManagerProjectId
@@ -492,6 +515,9 @@ export const registerSyncPkiEndpoints = ({
         params: z.object({
           pkiSyncId: z.string()
         }),
+        ...(removalOptionsSchema
+          ? { body: z.object({ removalOptions: removalOptionsSchema.optional() }).optional() }
+          : {}),
         response: {
           200: z.object({ message: z.string() })
         }
@@ -499,10 +525,15 @@ export const registerSyncPkiEndpoints = ({
       onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         const { pkiSyncId } = req.params;
+        const { removalOptions } = (req.body as { removalOptions?: Record<string, unknown> } | undefined) ?? {};
+        if (removalOptions && !removalOptionsSchema) {
+          throw new BadRequestError({ message: `${destinationName} PKI syncs don't accept removal options.` });
+        }
 
         const result = await server.services.pkiSync.triggerPkiSyncRemoveCertificatesById(
           {
-            id: pkiSyncId
+            id: pkiSyncId,
+            removalOptions
           },
           req.permission
         );

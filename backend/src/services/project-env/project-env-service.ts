@@ -9,6 +9,8 @@ import { TSecretApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/sec
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TApprovalPolicySecretEnvironmentDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
 import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -31,6 +33,7 @@ type TProjectEnvServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
   accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
   secretApprovalPolicyEnvironmentDAL: Pick<TSecretApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
+  approvalPolicySecretEnvironmentDAL: Pick<TApprovalPolicySecretEnvironmentDALFactory, "findPolicyByEnvId">;
 };
 
 export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFactory>;
@@ -42,7 +45,8 @@ export const projectEnvServiceFactory = ({
   keyStore,
   folderDAL,
   accessApprovalPolicyEnvironmentDAL,
-  secretApprovalPolicyEnvironmentDAL
+  secretApprovalPolicyEnvironmentDAL,
+  approvalPolicySecretEnvironmentDAL
 }: TProjectEnvServiceFactoryDep) => {
   const createEnvironment = async ({
     projectId,
@@ -281,6 +285,13 @@ export const projectEnvServiceFactory = ({
         if (accessApprovalPolicies.length > 0) {
           throw new BadRequestError({
             message: "Environment is in use by an access approval policy",
+            name: "DeleteEnvironment"
+          });
+        }
+        const approvalPolicy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvId(id, tx);
+        if (approvalPolicy) {
+          throw new BadRequestError({
+            message: `Environment is in use by ${approvalPolicy.policyType === ApprovalPolicyType.SecretAccess ? "an access approval policy" : "a secret approval policy"}`,
             name: "DeleteEnvironment"
           });
         }

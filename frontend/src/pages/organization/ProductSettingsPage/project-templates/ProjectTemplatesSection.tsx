@@ -1,6 +1,7 @@
+import { type LinkOptions, useNavigate } from "@tanstack/react-router";
 import { LayoutTemplate, PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { ProjectTemplatesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -21,10 +22,11 @@ import { ProjectTemplatesTable } from "./ProjectTemplatesTable";
 
 type Props = {
   projectType: ProjectType;
-  onTemplateSelect: (template: TProjectTemplate) => void;
+  getTemplateLink: (template: TProjectTemplate) => LinkOptions;
 };
 
-export const ProjectTemplatesSection = ({ projectType, onTemplateSelect }: Props) => {
+export const ProjectTemplatesSection = ({ projectType, getTemplateLink }: Props) => {
+  const navigate = useNavigate();
   const { subscription } = useSubscription();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -41,8 +43,9 @@ export const ProjectTemplatesSection = ({ projectType, onTemplateSelect }: Props
             Project Templates
           </CardTitle>
           <CardDescription>
-            Create and configure templates with predefined roles and environments to streamline
-            project setup.
+            Create and configure templates with predefined roles
+            {projectType === ProjectType.SecretManager && " and environments"} to streamline project
+            setup.
           </CardDescription>
           <CardAction>
             <OrgPermissionCan
@@ -72,20 +75,23 @@ export const ProjectTemplatesSection = ({ projectType, onTemplateSelect }: Props
           </CardAction>
         </CardHeader>
         <CardContent>
-          <ProjectTemplatesTable projectType={projectType} onEdit={onTemplateSelect} />
+          <ProjectTemplatesTable projectType={projectType} getTemplateLink={getTemplateLink} />
         </CardContent>
       </Card>
       <ProjectTemplateDetailsModal
         projectType={projectType}
-        onComplete={onTemplateSelect}
+        onComplete={(template) => navigate(getTemplateLink(template))}
         isOpen={popUp.addTemplate.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addTemplate", isOpen)}
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="organization.project-templates"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to project templates. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...ProjectTemplatesUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

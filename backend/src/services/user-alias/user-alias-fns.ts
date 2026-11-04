@@ -34,6 +34,19 @@ type TIsStaleSsoAliasDTO = {
   assertedEmail: string;
 };
 
+// Every one of these is multi-valued in the LDAP schema, so ldapjs hands back a string[] whenever
+// the entry carries more than one value, and an IdP can assert a JSON array just as well.
+type TAssertedName = string | string[] | null;
+
+type TResolveAssertedProfileNameDTO = {
+  // OIDC `given_name` / LDAP `givenName`.
+  givenName?: TAssertedName;
+  // OIDC `family_name` / LDAP `sn`.
+  familyName?: TAssertedName;
+  // The composite display name: OIDC `name` / LDAP `cn`.
+  displayName?: TAssertedName;
+};
+
 /**
  * The legacy SSO flow persisted aliases before email verification completed, so an as-yet-unverified
  * alias may point at a different user's account. Such an alias is "stale" when the email asserted by
@@ -54,6 +67,29 @@ export const isStaleSsoAlias = ({ user, userAlias, assertedEmail }: TIsStaleSsoA
   );
 
   return !normalizedAssertedEmail || !accountEmails.has(normalizedAssertedEmail);
+};
+
+export const resolveAssertedProfileName = ({
+  givenName,
+  familyName,
+  displayName
+}: TResolveAssertedProfileNameDTO): { firstName: string; lastName: string } | null => {
+  const firstValue = (value?: TAssertedName) =>
+    (Array.isArray(value) ? value.find((entry) => entry?.trim()) : value)?.trim();
+
+  const given = firstValue(givenName);
+  const family = firstValue(familyName);
+  const display = firstValue(displayName);
+
+  if (given) return { firstName: given, lastName: family || "" };
+  if (!display) return null;
+
+  if (family && display.endsWith(` ${family}`)) {
+    const remainder = display.slice(0, -(family.length + 1)).trim();
+    if (remainder) return { firstName: remainder, lastName: family };
+  }
+
+  return { firstName: display, lastName: "" };
 };
 
 /**
@@ -110,7 +146,8 @@ type TSyncSsoUserProfileDTO = {
   assertedFirstName?: string | null;
   assertedLastName?: string | null;
   orgId: string;
-  isAuthEnforced: boolean;
+  // The org enforces SSO and owns the asserted domain (isIdpAuthoritativeForDomain).
+  isIdpAuthoritative: boolean;
   userDAL: Pick<TUserDALFactory, "findOne" | "updateById" | "transaction">;
   userAliasDAL: Pick<TUserAliasDALFactory, "updateById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
@@ -121,8 +158,8 @@ type TSyncSsoUserProfileDTO = {
  * An IdP that keys people on a stable identifier (a UPN, say) lets them change mailbox and display
  * name without changing who they are, so our copy of both goes stale: notification mail is sent to
  * an address that no longer exists, and every audit entry written from then on records it. Where
- * the org enforces SSO it has already made the IdP authoritative for identity, so the assertion is
- * the better source and we take it.
+ * the org enforces SSO and owns the asserted domain it has made the IdP authoritative for identity,
+ * so the assertion is the better source and we take it.
  *
  * Requires a verified alias, which is our proof that the IdP controls this account. An unverified
  * alias asserting an unrecognized email is what isStaleSsoAlias exists to catch, and reading that
@@ -142,13 +179,13 @@ export const syncSsoUserProfile = async ({
   assertedFirstName,
   assertedLastName,
   orgId,
-  isAuthEnforced,
+  isIdpAuthoritative,
   userDAL,
   userAliasDAL,
   emailDomainDAL,
   auditLogService
 }: TSyncSsoUserProfileDTO): Promise<TUsers> => {
-  if (!isAuthEnforced || !userAlias.isEmailVerified) return user;
+  if (!isIdpAuthoritative || !userAlias.isEmailVerified) return user;
 
   const assertedUsername = sanitizeEmail(assertedEmail);
   const isEmailChanged = Boolean(assertedUsername) && assertedUsername !== user.username;

@@ -51,7 +51,7 @@ export const DuplicateDestinationConfirmationModal = ({
           {duplicateProjectId ? (
             <>
               Duplicate found in project ID:{" "}
-              <code className="rounded-sm bg-ring px-1 py-0.5 text-foreground/80">
+              <code className="rounded-sm bg-surface-active px-1 py-0.5 text-foreground-secondary">
                 {duplicateProjectId}
               </code>
             </>

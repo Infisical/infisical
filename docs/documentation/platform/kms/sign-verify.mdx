@@ -1,0 +1,153 @@
+---
+title: "Sign and verify data"
+sidebarTitle: "Sign and verify"
+description: "Sign data and verify signatures with a key in Infisical KMS."
+---
+
+To sign data, send it to Infisical with a Sign/Verify key, and Infisical signs it with the key's private key. To verify the signature, send it back to Infisical, or give the key's public key to whoever needs to verify it.
+
+## Prerequisites
+
+- A [Sign/Verify key](/documentation/platform/kms/keys#create-a-key)
+- The **Member** role to follow the UI steps, or the **Cryptographic Operator** role to follow the API steps (see [Who can use a key](/documentation/platform/kms/keys#who-can-use-a-key))
+
+## Signing algorithms
+
+When you sign or verify data, you choose a signing algorithm that matches the key's algorithm:
+
+| Key algorithm | Signing algorithms |
+| --- | --- |
+| RSA-4096 | `RSASSA_PSS_SHA_256`, `RSASSA_PSS_SHA_384`, `RSASSA_PSS_SHA_512`, `RSASSA_PKCS1_V1_5_SHA_256`, `RSASSA_PKCS1_V1_5_SHA_384`, `RSASSA_PKCS1_V1_5_SHA_512` |
+| ECC-NIST-P256, P384, and P521 | `ECDSA_SHA_256`, `ECDSA_SHA_384`, `ECDSA_SHA_512` |
+| ED25519 | `ED25519` |
+| ML-DSA-44, ML-DSA-65, and ML-DSA-87 | The same name as the key algorithm, such as `ML_DSA_65` |
+
+RSASSA-PSS and ECDSA produce a different signature each time you sign the same data. RSASSA-PKCS1-v1.5 and Ed25519 always produce the same signature for the same data.
+
+To list the signing algorithms for a key, call [the signing algorithms endpoint](/api-reference/endpoints/kms/signing/signing-algorithms).
+
+## Sign data
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In your KMS project, go to **Overview**, select the options menu on the key's row, then select **Sign Data**.
+      </Step>
+      <Step>
+        Enter your data in **Data to Sign**, and pick a **Signing Algorithm**. If your data is already Base64 encoded, turn on **Data is Base64 encoded**.
+      </Step>
+      <Step>
+        Select **Sign**, then copy the signature from **Data Signature**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Base64 encode your data, then call [the sign endpoint](/api-reference/endpoints/kms/signing/sign) with the key's ID and a signing algorithm:
+
+    ```bash
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/kms/keys/<key-id>/sign \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "data": "SGVsbG8sIFdvcmxkIQ==",
+        "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_512"
+      }'
+    ```
+
+    <Note>
+      If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the address of your instance.
+    </Note>
+
+    The response contains the Base64-encoded signature:
+
+    ```json
+    {
+      "signature": "<base64-encoded-signature>",
+      "keyId": "<key-id>",
+      "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_512"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Verify a signature
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In your KMS project, go to **Overview**, select the options menu on the row of the key that signed the data, then select **Verify Data**.
+      </Step>
+      <Step>
+        Enter the data in **Data to Verify** and the signature in **Signature of Data**, then pick the **Signing Algorithm** that the data was signed with. If your data is already Base64 encoded, turn on **Data is Base64 encoded**.
+      </Step>
+      <Step>
+        Select **Verify**. **Signature Status** shows **Valid** if the signature matches the data, and **Invalid** if it doesn't.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Call [the verify endpoint](/api-reference/endpoints/kms/signing/verify) with the ID of the key that signed the data:
+
+    ```bash
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/kms/keys/<key-id>/verify \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "data": "SGVsbG8sIFdvcmxkIQ==",
+        "signature": "<base64-encoded-signature>",
+        "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_512"
+      }'
+    ```
+
+    <Note>
+      If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the address of your instance.
+    </Note>
+
+    In the response, `signatureValid` is `true` if the signature matches the data:
+
+    ```json
+    {
+      "signatureValid": true,
+      "keyId": "<key-id>",
+      "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_512"
+    }
+    ```
+
+    To verify signatures without calling Infisical, get the key's public key from [the public key endpoint](/api-reference/endpoints/kms/keys/public-key).
+  </Tab>
+</Tabs>
+
+## Sign a digest
+
+If your data is large, or you don't want to send it to Infisical, you can hash the data yourself and sign the hash (the digest) instead. Digests work only with the `RSASSA_PKCS1_V1_5_*` and `ECDSA_*` signing algorithms.
+
+<Steps>
+  <Step>
+    Hash your data with the hash function in the signing algorithm's name, and Base64 encode the result. For example, for `RSASSA_PKCS1_V1_5_SHA_512`, create a SHA-512 digest:
+
+    ```bash
+    echo -n "Hello, World" | openssl dgst -sha512 -binary | openssl base64 -A
+    ```
+  </Step>
+  <Step>
+    Call [the sign endpoint](/api-reference/endpoints/kms/signing/sign) with the digest as `data`, and add `"isDigest": true`:
+
+    ```bash
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/kms/keys/<key-id>/sign \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "data": "<base64-encoded-digest>",
+        "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA_512",
+        "isDigest": true
+      }'
+    ```
+  </Step>
+</Steps>
+
+To verify a signature over a digest, send the digest and `"isDigest": true` to [the verify endpoint](/api-reference/endpoints/kms/signing/verify) in the same way.

@@ -58,6 +58,7 @@ yarn-error.log*
 .env.infisical
 
 # Infisical init
+.infisical.yaml
 .infisical.json
 
 .infisicalignore

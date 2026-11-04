@@ -95,6 +95,7 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
 
   return (
     <ErrorPageFrame
+      pageTitle="Page Error"
       badgeIcon={<TriangleAlertIcon />}
       badgeText={badgeText}
       heading={

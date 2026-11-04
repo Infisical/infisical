@@ -4,13 +4,14 @@ Things backend code should **at least** handle. This is a floor, not a standard:
 deliberately not exhaustive, and clearing everything here does not make a change correct.
 Expect it to grow as we find more worth checking.
 
-`backend/CLAUDE.md` still covers where code goes and which pattern to follow.
+`backend/AGENTS.md` still covers where code goes and which pattern to follow.
 
 - [Errors users can understand](#errors-users-can-understand)
 - [Validate every API input](#validate-every-api-input)
 - [Paginate external API calls](#paginate-external-api-calls)
 - [Do not create deadlock conditions](#do-not-create-deadlock-conditions)
 - [Intuitive API interfaces](#intuitive-api-interfaces)
+- [Audit log events admins can read](#audit-log-events-admins-can-read)
 - [License checks](#license-checks)
 
 ---
@@ -77,7 +78,8 @@ name: z.string(),
 // Good: reuse the shared helpers in src/server/lib/schemas.ts
 name: GenericResourceNameSchema,
 slug: slugSchema({ max: 32, field: "Environment slug" }),
-projectId: z.string().uuid(),
+orgId: z.string().uuid(),
+projectId: z.string().trim().min(1).max(36),
 description: z.string().trim().max(500).optional(),
 port: z.number().int().min(1).max(65535),
 ```
@@ -89,6 +91,11 @@ port: z.number().int().min(1).max(65535),
 - **`.trim()` anything used as an identifier**, so `"prod "` and `"prod"` are not two rows.
 - **IDs are `.uuid()`; enums are `z.nativeEnum(...)` or `z.enum([...])`**, so the accepted
   values appear in the generated docs.
+- **Except `projectId`.** `projects.id` is `varchar(36)`, not `uuid`, and projects carried
+  over from MongoDB kept their 24-character ObjectId as their ID. Customers hardcode that ID
+  in `.infisical.json`, CI, and operator manifests, so it cannot be rewritten. `.uuid()`
+  rejects those projects, and no project created since the Postgres move will show it. Check the column in `src/db/schemas/`
+  before adding `.uuid()` to any other ID declared as `t.string("id", 36)`.
 - **`z.coerce.number().int()`** for querystring numbers, since everything arrives as a string.
 - **Never `.default(x).optional()`.** The `.optional()` wraps the default, so `undefined`
   stays `undefined` and the default never applies.
@@ -260,6 +267,27 @@ alternative, and let the author confirm the deviation is intentional. An intenti
 deviation is fine and should be noted in a comment on the route so the next person does
 not read it as an accident. An unintentional one is much cheaper to catch now than after
 customers are calling it.
+
+---
+
+## Audit Log Events Admins Can Read
+
+An audit log event is read by an admin investigating an incident, in a UI that renders the
+`metadata` body as raw JSON, or in their own SIEM.
+
+**Name the field after what it identifies.** `requestId` on an event that carries an
+approval request's id sends the reader looking for a certificate request that does not
+match. Prefer `approvalRequestId`.
+
+**Record the outcome, not just the attempt.** A handler that logs the same event whether the
+operation succeeded, failed, or is awaiting approval produces a log that cannot answer
+"did this happen?". Where a service returns a status, put it in the metadata, and only emit
+result fields (a new id, a serial number) when the result actually exists.
+
+**Renaming, retyping, or removing a field on an existing event is a breaking change.** These
+bodies go to customer SIEMs unchanged, so a field that switches from string to number, or
+disappears, silently breaks rules built on it. Adding a field is safe; changing one needs a
+deliberate call.
 
 ---
 

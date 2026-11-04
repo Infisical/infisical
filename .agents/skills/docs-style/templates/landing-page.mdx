@@ -1,0 +1,53 @@
+---
+title: "{The section's name, in sentence case}"
+sidebarTitle: "{A shorter name for the sidebar, if the title is too long}"
+description: "{One sentence, starting with a verb, that states what readers can do with the section's content}"
+icon: "{Lucide icon name}"
+---
+
+{/*
+NOTE: Template for the overview page at the top of a docs section. Read templates/README.md
+first for what each kind of markup means. The rules for landing pages are in
+STYLE_GUIDE.md section 10.
+Example pages:
+- self-hosting/overview.mdx, a card per page, because readers choose one deployment platform
+- documentation/platform/secrets-mgmt/overview.mdx, one `##` heading per sidebar group
+- documentation/platform/agent-vault/overview.mdx
+
+NOTE: Organize the page the same way as the section's sidebar. For each sidebar group, use one
+card for the group when the group's pages are steps or reference material for one topic, and
+a card per page when the pages are alternatives the reader chooses between.
+
+NOTE: Use cols={3} for five or more cards with short descriptions, and cols={2} for two to four
+cards or for longer descriptions. If the section has only a few groups, use one <CardGroup>
+and no `##` headings.
+*/}
+
+{One or two sentences stating a definition of the topic/what readers will find in the section/}
+
+{/* IF: readers need reasons to choose this over an alternative */}
+<Accordion title="Why {the choice this section covers}?">
+    {The reasons, as a short list with a bold label on each}
+</Accordion>
+{/* END IF */}
+
+## {The first sidebar group's name}
+
+{One line introducing the group's cards, ending in a colon}
+
+<CardGroup cols={2}>
+    <Card title="{The linked page's sidebar label}" icon="{Lucide icon name}" href="{Path of the linked page}">
+        {What the linked page covers, as a short phrase}
+    </Card>
+    <Card title="{The linked page's sidebar label}" icon="{Lucide icon name}" href="{Path of the linked page}">
+        {What the linked page covers, as a short phrase}
+    </Card>
+</CardGroup>
+
+{/* NOTE: Repeat the heading, lead-in, and card group for each remaining sidebar group. */}
+
+{/* IF: the section needs more explanation than the opening sentences give */}
+## {A heading that names the topic of the explanation}
+
+{The explanation, after all the cards, so readers looking for a link don't have to scroll past it}
+{/* END IF */}

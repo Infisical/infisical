@@ -1,0 +1,43 @@
+---
+title: "Add an account"
+sidebarTitle: "Add an account"
+description: "Store the connection details and credentials for a database or server in PAM."
+---
+
+When you add an [account](/documentation/platform/pam/accounts/overview), you choose a [folder](/documentation/platform/pam/folders/overview) and an [account template](/documentation/platform/pam/templates/overview) for it. Everyone with a role on the folder gets access to the account, and the template sets the account type and the rules for its sessions. Then you enter the details Infisical needs to reach the database or server, and the credential it signs in with.
+
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the folder that the account goes in
+- An [account template](/documentation/platform/pam/templates/overview) for the account type
+- A [gateway](/documentation/platform/gateways/overview) that can reach the database or server (AWS IAM accounts don't need one)
+
+## Add the account
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
+  </Step>
+  <Step>
+    Select the **Folder** and the **Account Template**, then select **Next**. The template sets the account type.
+  </Step>
+  <Step>
+    Enter a **Name** and the connection details. If the template doesn't set a gateway, select a **Gateway**.
+
+    The page for each [account type](/documentation/platform/pam/accounts/account-types) describes its fields.
+  </Step>
+  <Step>
+    Enter the credentials, then select **Create**.
+  </Step>
+</Steps>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Connect to an account" icon="plug" href="/documentation/platform/pam/accounts/connect">
+    Open a session on an account from your browser or the Infisical CLI.
+  </Card>
+  <Card title="Manage an account" icon="sliders-horizontal" href="/documentation/platform/pam/accounts/manage">
+    Change an account's details, access, and settings after you add it.
+  </Card>
+</CardGroup>

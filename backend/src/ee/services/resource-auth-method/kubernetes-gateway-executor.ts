@@ -1,6 +1,6 @@
 import { request as httpRequest } from "@app/lib/config/request";
-import { GatewayHttpProxyActions, GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayHttpProxyActions, GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { getSharedHttpsAgent } from "@app/lib/validator/safe-request";
 
 import { TGatewayV2ConnectionDetails } from "../gateway-v2/gateway-v2-types";

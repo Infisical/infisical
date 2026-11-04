@@ -2,10 +2,13 @@ import { AxiosError } from "axios";
 
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
+import { redactCredentialsFromText } from "./identity-kubernetes-auth-fns";
+
 type ErrorContext = {
   host?: string;
   port?: number;
   kubernetesHost?: string;
+  credentials?: (string | undefined)[];
 };
 
 export enum KubernetesAuthErrorContext {
@@ -116,7 +119,8 @@ export const handleAxiosHttpError = (
     return null;
   }
 
-  let message = (err.response.data as { message?: string })?.message;
+  const statusMessage = (err.response.data as { message?: unknown } | undefined)?.message;
+  let message = typeof statusMessage === "string" ? statusMessage : undefined;
   const statusCode = err.response.status;
   const { errorNamePrefix: prefix, default401Message, default403Message } = ERROR_CONTEXT_CONFIGS[contextType];
 
@@ -186,15 +190,11 @@ export const handleAxiosError = (
   context: ErrorContext,
   contextType: KubernetesAuthErrorContext
 ): BadRequestError | UnauthorizedError => {
-  const networkError = handleAxiosNetworkError(err, context, contextType);
-  if (networkError) {
-    return networkError;
-  }
+  const error =
+    handleAxiosNetworkError(err, context, contextType) ??
+    handleAxiosHttpError(err, contextType) ??
+    handleAxiosGenericError(err, context, contextType);
 
-  const httpError = handleAxiosHttpError(err, contextType);
-  if (httpError) {
-    return httpError;
-  }
-
-  return handleAxiosGenericError(err, context, contextType);
+  error.message = redactCredentialsFromText(error.message, context.credentials);
+  return error;
 };

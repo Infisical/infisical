@@ -79,7 +79,7 @@ export const CertificateWizardSheet = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1100px]">
+      <SheetContent size="wide" className="flex h-full max-h-full flex-col gap-y-0 p-0">
         <SheetHeader className="border-b border-border">
           <div className="flex w-full items-start gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">
@@ -113,9 +113,7 @@ export const CertificateWizardSheet = ({
 
               <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
                 <div className="mb-6">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    {step.title ?? step.name}
-                  </h2>
+                  <h2 className="text-lg font-normal text-foreground">{step.title ?? step.name}</h2>
                   <p className="mt-1 text-sm text-muted">{step.subtitle}</p>
                 </div>
                 {children}

@@ -1,8 +1,8 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, PageLoader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -46,7 +46,7 @@ const Page = () => {
         to="/organizations/$orgId/networking"
         params={{ orgId }}
         search={{ selectedTab: "gateways" }}
-        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition hover:text-mineshaft-400/80"
+        className="mb-4 flex w-fit items-center gap-x-1 text-sm text-muted transition hover:text-muted/80"
       >
         <ChevronLeftIcon size={16} />
         Gateways
@@ -75,10 +75,8 @@ export const GatewayDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.gateway")} />
+      <link rel="icon" href="/infisical.ico" />
       <OrgPermissionCan
         passThrough={false}
         I={OrgGatewayPermissionActions.ListGateways}

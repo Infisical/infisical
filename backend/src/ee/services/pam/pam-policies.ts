@@ -5,6 +5,7 @@ import { PamAccountType } from "./pam-enums";
 
 export enum PamPolicyType {
   RequiresApproval = "requires-approval",
+  AllowAutoApproval = "allow-auto-approval",
   AllowBreakGlass = "allow-break-glass",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
@@ -71,6 +72,13 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
     appliesTo: "all",
     schema: z.boolean()
   },
+  [PamPolicyType.AllowAutoApproval]: {
+    label: "Allow Auto-Approval",
+    description:
+      "Requests are approved instantly when they pass one of the folder's auto-approval rules. Set the rules under the folder's Approvals tab.",
+    appliesTo: "all",
+    schema: z.boolean()
+  },
   [PamPolicyType.AllowBreakGlass]: {
     label: "Allow Break-Glass",
     description:
@@ -105,10 +113,13 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   [PamPolicyType.CommandBlocking]: {
     label: "Command Blocking",
     description: "Matching commands will be rejected (one regex per line).",
-    appliesTo: [PamAccountType.SSH, PamAccountType.Snowflake],
+    appliesTo: [PamAccountType.SSH, PamAccountType.Snowflake, PamAccountType.ClickHouse],
     schema: patternsStringSchema(),
     typeOverrides: {
       [PamAccountType.Snowflake]: {
+        description: "Matching SQL statements will be rejected (one regex per line)."
+      },
+      [PamAccountType.ClickHouse]: {
         description: "Matching SQL statements will be rejected (one regex per line)."
       }
     }
@@ -184,6 +195,7 @@ export const resolvePolicy = (policyMap: unknown, policy: PamPolicyType): unknow
 
 export type TPamAccessControls = {
   requiresApproval: boolean;
+  allowAutoApproval: boolean;
   allowBreakGlass: boolean;
   requireReason: boolean;
   requireMfa: boolean;
@@ -192,19 +204,57 @@ export type TPamAccessControls = {
 
 const PamPolicyRulePatternSchema = z.object({ patterns: z.array(z.string()) });
 
+const PamSessionLogMaskingRuleSchema = PamPolicyRulePatternSchema.extend({
+  builtInDetection: z.boolean()
+});
+
 export const PamPolicyRulesSchema = z
   .object({
     [PamPolicyType.CommandBlocking]: PamPolicyRulePatternSchema.optional(),
-    [PamSettingType.SessionLogMasking]: PamPolicyRulePatternSchema.optional()
+    [PamSettingType.SessionLogMasking]: PamSessionLogMaskingRuleSchema.optional()
   })
   .nullable()
   .optional();
+
+export type TPamPolicyRules = z.infer<typeof PamPolicyRulesSchema>;
+
+/**
+ * Assembles the rules the gateway enforces during a session.
+ *
+ * The masking arm is emitted whenever built-in detection is on, even with no custom patterns —
+ * an empty pattern list is no longer the same thing as "no masking".
+ */
+export const buildPamPolicyRules = ({
+  commandBlockingPatterns,
+  maskingPatterns,
+  maskingBuiltInDetection
+}: {
+  commandBlockingPatterns: string[];
+  maskingPatterns: string[];
+  maskingBuiltInDetection: boolean;
+}): TPamPolicyRules => {
+  const rules: Record<string, unknown> = {};
+
+  if (commandBlockingPatterns.length > 0) {
+    rules[PamPolicyType.CommandBlocking] = { patterns: commandBlockingPatterns };
+  }
+
+  if (maskingBuiltInDetection || maskingPatterns.length > 0) {
+    rules[PamSettingType.SessionLogMasking] = {
+      patterns: maskingPatterns,
+      builtInDetection: maskingBuiltInDetection
+    };
+  }
+
+  return Object.keys(rules).length > 0 ? (rules as TPamPolicyRules) : null;
+};
 
 export const resolveAccessControls = (policyMap: unknown): TPamAccessControls => {
   const duration = resolvePolicy(policyMap, PamPolicyType.MaxSessionDuration);
   const requiresApproval = resolvePolicy(policyMap, PamPolicyType.RequiresApproval) === true;
   return {
     requiresApproval,
+    allowAutoApproval: requiresApproval && resolvePolicy(policyMap, PamPolicyType.AllowAutoApproval) === true,
     allowBreakGlass: requiresApproval && resolvePolicy(policyMap, PamPolicyType.AllowBreakGlass) === true,
     requireReason: resolvePolicy(policyMap, PamPolicyType.RequireReason) === true,
     requireMfa: resolvePolicy(policyMap, PamPolicyType.RequireMfa) === true,

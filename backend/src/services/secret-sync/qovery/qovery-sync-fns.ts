@@ -8,6 +8,7 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { QoverySyncScope, QoveryVariableType } from "./qovery-sync-enums";
@@ -113,7 +114,8 @@ const deleteQoveryVariable = async (
 };
 
 export const QoverySyncFns = {
-  syncSecrets: async (secretSync: TQoverySyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TQoverySyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { connection, destinationConfig, environment, syncOptions } = secretSync;
     const { accessToken } = connection.credentials;
     const instanceUrl = QOVERY_DEFAULT_API_URL;
@@ -166,7 +168,8 @@ export const QoverySyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  removeSecrets: async (secretSync: TQoverySyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TQoverySyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const { connection, destinationConfig } = secretSync;
     const { accessToken } = connection.credentials;
     const instanceUrl = QOVERY_DEFAULT_API_URL;

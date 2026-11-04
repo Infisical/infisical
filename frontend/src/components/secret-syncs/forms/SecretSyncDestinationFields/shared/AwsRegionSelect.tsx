@@ -15,6 +15,7 @@ type Props = {
   value: string;
   onChange: (value: string | undefined) => void;
   isError?: boolean;
+  isDisabled?: boolean;
   "aria-describedby"?: string;
   "aria-labelledby"?: string;
 };
@@ -24,7 +25,7 @@ export const AwsRegionSelect = ({ id, value, onChange, isError, ...props }: Prop
     <Combobox
       id={id}
       value={AWS_REGIONS.find((region) => region.slug === value)}
-      onValueChange={(option) => onChange(option.slug)}
+      onValueChange={(option) => onChange(option?.slug ?? "")}
       options={AWS_REGIONS}
       isError={isError}
       placeholder="Select region..."

@@ -19,6 +19,7 @@ export type TMfaSession = {
   status: MfaSessionStatus;
   mfaMethod: MfaMethod;
   initiatingTokenVersionId?: string;
+  allowCliHandoff?: boolean;
 };
 
 export type TCreateMfaSessionDTO = {
@@ -46,4 +47,5 @@ export type TIsMfaSessionActiveDTO = {
   userId: string;
   resourceId: string;
   tokenVersionId: string;
+  acceptedMfaMethods?: MfaMethod[];
 };

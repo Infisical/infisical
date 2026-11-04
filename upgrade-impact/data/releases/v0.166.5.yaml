@@ -1,0 +1,66 @@
+version: v0.166.5
+releasedAt: 2026-10-12T17:01:41-03:00
+sourceTag: v0.166.5
+previousTag: v0.166.4
+impactLevel: high
+summary: Agent Vault session logs changed storage and APIs, requiring
+  coordinated rollout and newer CLI. Startup also applies database migrations
+  that drop old session-log tables.
+requiresDbMigration: true
+breakingChanges:
+  - title: Agent Vault session logs rollout
+    description: Agent Vault session logs now read from S3 and Redis instead of
+      Postgres. Older pods return 500s for Sessions list and detail after the
+      migration, and older CLI builds are refused for chunk uploads.
+    action: Roll out all Infisical pods together and upgrade any Agent Vault
+      CLI/proxy to the matching newer version before using session logs. If
+      startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#8497"
+        url: https://github.com/Infisical/infisical/pull/8497
+        description: Old pods return 500s after migration
+      - type: file
+        ref: backend/src/db/migrations/20261007120000_drop-agent-vault-session-log-chunks.ts
+        path: backend/src/db/migrations/20261007120000_drop-agent-vault-session-log-chunks.ts
+        description: Drops session log chunks table and column
+dbSchemaChanges:
+  - title: Agent Vault session logs schema
+    description: Startup drops the agent_vault_session_log_chunks table and removes
+      storedChunkCount from agent_vault_session_log_configs.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261007120000_drop-agent-vault-session-log-chunks.ts
+        path: backend/src/db/migrations/20261007120000_drop-agent-vault-session-log-chunks.ts
+        description: Migration drops table and storedChunkCount
+configChanges: []
+deploymentNotes:
+  - title: Agent Vault rollback path
+    description: Rolling back after the session-log migration leaves the previous
+      image bootable, but its Sessions list and detail still return 500s until
+      the dropped table is recreated.
+    action: Before rollback, run this migration's down() from the newer image to
+      recreate the empty table.
+    confidence: medium
+    evidence:
+      - type: pr
+        ref: "#8497"
+        url: https://github.com/Infisical/infisical/pull/8497
+        description: Rollback requires migration down()
+      - type: file
+        ref: backend/src/db/migrations/20261007120000_drop-agent-vault-session-log-chunks.ts
+        path: backend/src/db/migrations/20261007120000_drop-agent-vault-session-log-chunks.ts
+        description: down() recreates dropped table and column
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-10-12T21:01:50.928Z
+  sourceRange:
+    from: v0.166.4
+    to: v0.166.5

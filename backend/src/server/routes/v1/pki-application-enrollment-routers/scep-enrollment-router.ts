@@ -59,6 +59,7 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
           type: EventType.SET_PKI_APPLICATION_SCEP_ENROLLMENT,
           metadata: {
             applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
             profileId: req.params.profileId,
             challengeType: result.scep.challengeType,
             signRaWithCa: result.signRaWithCa,
@@ -112,7 +113,11 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
         projectId: req.internalCertManagerProjectId,
         event: {
           type: EventType.CLEAR_PKI_APPLICATION_SCEP_ENROLLMENT,
-          metadata: { applicationId: req.params.applicationId, profileId: req.params.profileId }
+          metadata: {
+            applicationId: req.params.applicationId,
+            applicationName: result.applicationName,
+            profileId: req.params.profileId
+          }
         }
       });
       await server.services.telemetry.sendPostHogEvents({

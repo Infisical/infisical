@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
@@ -29,9 +30,10 @@ type OrgNameFormData = z.infer<typeof formSchema>;
 
 interface OrgNameStepProps {
   onComplete: (orgId: string) => void;
+  callbackPort?: number;
 }
 
-export default function OrgNameStep({ onComplete }: OrgNameStepProps): JSX.Element {
+export default function OrgNameStep({ onComplete, callbackPort }: OrgNameStepProps): JSX.Element {
   const navigate = useNavigate();
   const { mutateAsync: createOrg, isPending: isCreating } = useCreateOrg({ invalidate: false });
   const { mutateAsync: selectOrganization, isPending: isSelecting } = useSelectOrganization();
@@ -52,7 +54,7 @@ export default function OrgNameStep({ onComplete }: OrgNameStepProps): JSX.Eleme
       if (isMfaEnabled) {
         navigate({
           to: "/login/select-organization",
-          search: { org_id: organization.id }
+          search: { org_id: organization.id, callback_port: callbackPort }
         });
         return;
       }
@@ -70,7 +72,7 @@ export default function OrgNameStep({ onComplete }: OrgNameStepProps): JSX.Eleme
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
         <CardHeader className="mb-4 gap-2">
-          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+          <CardTitle className="bg-linear-to-b from-foreground-inverse to-foreground-soft bg-clip-text font-alliance text-2xl font-normal text-transparent">
             Name your organization
           </CardTitle>
           <CardDescription className="text-sm text-label">

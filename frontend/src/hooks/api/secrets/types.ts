@@ -1,22 +1,14 @@
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { Reminder } from "@app/hooks/api/reminders/types";
 
-import { PendingAction } from "../secretFolders/types";
+import type { TSecretApprovalRequest } from "../secretApprovalRequest/types";
+import { PendingAction, TSecretFolder } from "../secretFolders/types";
 import type { WsTag } from "../tags/types";
 
 export enum SecretType {
   Shared = "shared",
   Personal = "personal"
 }
-
-export type SecretReminderRecipient = {
-  user: {
-    id: string;
-    username: string;
-    email: string;
-  };
-  id: string;
-};
 
 // both personal and shared secret stitched together for dashboard
 export type SecretV3RawSanitized = {
@@ -43,7 +35,6 @@ export type SecretV3RawSanitized = {
   isReminderEvent?: boolean;
   isRotatedSecret?: boolean;
   isHoneyTokenSecret?: boolean;
-  secretReminderRecipients?: SecretReminderRecipient[];
   rotationId?: string;
   isPending?: boolean;
   hasPendingValueChange?: boolean;
@@ -77,7 +68,6 @@ export type SecretV3Raw = {
   isRotatedSecret?: boolean;
   isHoneyTokenSecret?: boolean;
   rotationId?: string;
-  secretReminderRecipients?: SecretReminderRecipient[];
   reminder?: Reminder;
   isEmpty?: boolean;
   revokedProjectFolderGrant?: boolean;
@@ -169,6 +159,16 @@ export type TGetSecretAccessListDTO = {
   secretPath: string;
   secretKey: string;
   includeAllEntities?: boolean;
+};
+
+export type TCreateCommitResponse = {
+  commitId: string | null;
+  approval: Pick<
+    TSecretApprovalRequest,
+    "id" | "slug" | "folderId" | "status" | "hasMerged" | "createdAt" | "updatedAt"
+  > | null;
+  secrets: { created: SecretV3Raw[]; updated: SecretV3Raw[]; deleted: SecretV3Raw[] };
+  folders: { created: TSecretFolder[]; updated: TSecretFolder[]; deleted: TSecretFolder[] };
 };
 
 export type TCreateSecretsV3DTO = {

@@ -10,6 +10,7 @@ import {
 } from "@app/services/secret-sync/bitbucket/bitbucket-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
@@ -130,7 +131,8 @@ const deleteVariables = async ({
 };
 
 export const BitbucketSyncFns = {
-  syncSecrets: async (secretSync: TBitbucketSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TBitbucketSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       environment,
@@ -183,7 +185,8 @@ export const BitbucketSyncFns = {
     }
   },
 
-  removeSecrets: async (secretSync: TBitbucketSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TBitbucketSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       destinationConfig: { workspaceSlug, repositorySlug, environmentId }

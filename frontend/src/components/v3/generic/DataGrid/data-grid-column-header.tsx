@@ -36,11 +36,11 @@ export function DataGridColumnHeader<TData, TValue>({
         <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
           {/* eslint-disable-next-line no-nested-ternary */}
           {column.columnDef.meta?.columnIndicator?.type === "pk" ? (
-            <KeyRoundIcon size={12} className="shrink-0 text-yellow-500" />
+            <KeyRoundIcon size={12} className="shrink-0 text-warning" />
           ) : column.columnDef.meta?.columnIndicator?.type === "fk" ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link2Icon size={12} className="shrink-0 text-blue-400" />
+                <Link2Icon size={12} className="shrink-0 text-info" />
               </TooltipTrigger>
               {column.columnDef.meta.columnIndicator.tooltip && (
                 <TooltipContent side="bottom">
@@ -49,7 +49,7 @@ export function DataGridColumnHeader<TData, TValue>({
               )}
             </Tooltip>
           ) : null}
-          <span className="truncate text-mineshaft-200">{label}</span>
+          <span className="truncate text-foreground-secondary">{label}</span>
           {column.columnDef.meta?.typeLabel && (
             <span className="shrink-0 font-normal text-accent">
               {column.columnDef.meta.typeLabel}
@@ -60,8 +60,8 @@ export function DataGridColumnHeader<TData, TValue>({
               className={cn(
                 "shrink-0 rounded px-1 py-0.5 text-[10px] leading-none font-medium",
                 column.columnDef.meta.columnIndicator.type === "pk"
-                  ? "bg-yellow-500/15 text-yellow-500"
-                  : "bg-blue-400/15 text-blue-400"
+                  ? "bg-warning/15 text-warning"
+                  : "bg-info/15 text-info"
               )}
             >
               {column.columnDef.meta.columnIndicator.type === "pk" ? "PK" : "FK"}
@@ -113,7 +113,6 @@ function DataGridColumnResizerImpl<TData, TValue>({
   }, [header.column]);
 
   return (
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex
     <div
       role="separator"
       aria-orientation="vertical"
@@ -121,7 +120,7 @@ function DataGridColumnResizerImpl<TData, TValue>({
       aria-valuenow={header.column.getSize()}
       aria-valuemin={defaultColumnDef.minSize}
       aria-valuemax={defaultColumnDef.maxSize}
-      tabIndex={0} // eslint-disable-line jsx-a11y/no-noninteractive-tabindex
+      tabIndex={0}
       className={cn(
         "absolute -end-px top-0 z-50 h-full w-0.5 cursor-ew-resize touch-none bg-border transition-opacity select-none after:absolute after:inset-y-0 after:start-1/2 after:h-full after:w-[18px] after:-translate-x-1/2 after:content-[''] hover:bg-foreground focus:bg-foreground focus:outline-none",
         header.column.getIsResizing() ? "bg-foreground" : "opacity-0 hover:opacity-100"

@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck -- vendored Dice UI component, large file with complex generic types pending cleanup
-/* eslint-disable no-restricted-syntax, no-nested-ternary, no-continue, no-param-reassign, @typescript-eslint/no-shadow, jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/role-supports-aria-props */
+/* eslint-disable no-nested-ternary, no-continue, no-param-reassign, @typescript-eslint/no-shadow, jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/role-supports-aria-props */
 
 import * as React from "react";
 import { Check, Upload, X } from "lucide-react";
@@ -31,8 +31,6 @@ import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { TextArea as Textarea } from "@app/components/v3/generic/TextArea";
 import { cn } from "@app/components/v3/utils";
 
-import { useBadgeOverflow } from "./hooks/use-badge-overflow";
-import { useDebouncedCallback } from "./hooks/use-debounced-callback";
 import { DataGridCellWrapper } from "./data-grid-cell-wrapper";
 import type { DataGridCellProps, FileCellData } from "./data-grid-types";
 import {
@@ -45,6 +43,8 @@ import {
   getUrlHref,
   parseLocalDate
 } from "./data-grid-utils";
+import { useBadgeOverflow } from "./hooks/use-badge-overflow";
+import { useDebouncedCallback } from "./hooks/use-debounced-callback";
 
 export function ShortTextCell<TData>({
   cell,
@@ -171,7 +171,6 @@ export function ShortTextCell<TData>({
       }
     }
     // Only run on edit start — not on every value change (which moves cursor to end)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing]);
 
   const isNull = value === null || value === undefined;
@@ -694,7 +693,6 @@ export function UrlCell<TData>({
       }
     }
     // Only run on edit start — not on every value change (which moves cursor to end)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing]);
 
   const displayValue = !isEditing ? (value ?? "") : "";
@@ -726,7 +724,7 @@ export function UrlCell<TData>({
             href={urlHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="data-invalid:text-destructive data-invalid:decoration-destructive/50 data-invalid:hover:decoration-destructive/70 truncate text-primary underline decoration-primary/30 underline-offset-2 hover:decoration-primary/60 data-focused:text-foreground data-focused:decoration-foreground/50 data-focused:hover:decoration-foreground/70 data-invalid:cursor-not-allowed"
+            className="data-invalid:text-destructive data-invalid:decoration-destructive/50 data-invalid:hover:decoration-destructive/70 truncate text-project underline decoration-project/30 underline-offset-2 hover:decoration-project/60 data-focused:text-foreground data-focused:decoration-foreground/50 data-focused:hover:decoration-foreground/70 data-invalid:cursor-not-allowed"
             onClick={onLinkClick}
           >
             {displayValue}
@@ -848,7 +846,7 @@ export function CheckboxCell<TData>({
         checked={value}
         onCheckedChange={onCheckedChange}
         disabled={readOnly}
-        className="border-primary"
+        className="border-project"
         onClick={onCheckboxClick}
         onMouseDown={onCheckboxMouseDown}
         onDoubleClick={onCheckboxDoubleClick}
@@ -1207,9 +1205,9 @@ export function MultiSelectCell<TData>({
                       >
                         <div
                           className={cn(
-                            "flex size-4 items-center justify-center rounded-sm border border-primary",
+                            "flex size-4 items-center justify-center rounded-sm border border-project",
                             isSelected
-                              ? "text-primary-foreground bg-primary"
+                              ? "text-project-foreground bg-project"
                               : "opacity-50 [&_svg]:invisible"
                           )}
                         >
@@ -1855,7 +1853,7 @@ export function FileCell<TData>({
       isDirty={isDirty}
       readOnly={readOnly}
       className={cn({
-        "ring-1 ring-primary/80 ring-inset": isDraggingOver
+        "ring-1 ring-project/80 ring-inset": isDraggingOver
       })}
       onDragEnter={onCellDragEnter}
       onDragLeave={onCellDragLeave}
@@ -1890,7 +1888,7 @@ export function FileCell<TData>({
                 data-invalid={error ? "" : undefined}
                 data-disabled={isPending ? "" : undefined}
                 tabIndex={isDragging || isPending ? -1 : 0}
-                className="data-invalid:border-destructive data-invalid:ring-destructive/20 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-6 transition-colors outline-none hover:bg-accent/30 focus-visible:border-ring/50 data-disabled:pointer-events-none data-disabled:opacity-50 data-dragging:border-primary/30 data-dragging:bg-accent/30"
+                className="data-invalid:border-destructive data-invalid:ring-destructive/20 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-6 transition-colors outline-none hover:bg-accent/30 focus-visible:border-ring/50 data-disabled:pointer-events-none data-disabled:opacity-50 data-dragging:border-project/30 data-dragging:bg-accent/30"
                 ref={dropzoneRef}
                 onClick={onDropzoneClick}
                 onDragEnter={onDropzoneDragEnter}
@@ -1986,7 +1984,7 @@ export function FileCell<TData>({
         </Popover>
       ) : null}
       {isDraggingOver ? (
-        <div className="flex items-center justify-center gap-2 text-sm text-primary">
+        <div className="flex items-center justify-center gap-2 text-sm text-project">
           <Upload className="size-4" />
           <span>Drop files here</span>
         </div>

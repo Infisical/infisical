@@ -24,7 +24,7 @@ import {
   useGetOrgMembershipProjectMemberships,
   useGetUserProjects
 } from "@app/hooks/api";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
@@ -74,8 +74,12 @@ export const UserAddToProjectModal = ({ membershipId, popUp, handlePopUpToggle }
     });
 
     return (workspaces || []).filter(
-      ({ id, orgId: projectOrgId, version }) =>
-        !wsWorkspaceIds.has(id) && projectOrgId === currentOrg?.id && version !== ProjectVersion.V1
+      ({ id, orgId: projectOrgId, version, type }) =>
+        !wsWorkspaceIds.has(id) &&
+        projectOrgId === currentOrg?.id &&
+        version !== ProjectVersion.V1 &&
+        // Certificate Manager membership is managed inside Certificate Manager, not as a project.
+        type !== ProjectType.CertificateManager
     );
   }, [workspaces, projectMemberships]);
 

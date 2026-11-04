@@ -81,7 +81,7 @@ export const SnowflakeSyncFields = () => {
                 value={databases.find((db) => db.name === value) ?? null}
                 onValueChange={(option) => {
                   setValue("destinationConfig.schema", "");
-                  onChange(option.name ?? "");
+                  onChange(option?.name ?? "");
                 }}
                 options={databases}
                 placeholder="Select a database..."
@@ -124,7 +124,7 @@ export const SnowflakeSyncFields = () => {
                 isLoading={isSchemasPending && Boolean(connectionId) && Boolean(database)}
                 isDisabled={!connectionId || !database}
                 value={schemas.find((schema) => schema.name === value) ?? null}
-                onValueChange={(option) => onChange(option.name ?? "")}
+                onValueChange={(option) => onChange(option?.name ?? "")}
                 options={schemas}
                 placeholder="Select a schema..."
                 getOptionLabel={(option) => option.name}

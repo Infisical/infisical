@@ -1,4 +1,4 @@
-import { Plus, Siren } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { OrgPermissionCan, PermissionDeniedBanner } from "@app/components/permissions";
 import {
@@ -24,12 +24,9 @@ export const OrgIncidentContactsSection = () => {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <Siren className="size-4 text-accent" />
-            Incident Contacts
-          </CardTitle>
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle>Incident Contacts</CardTitle>
           <CardDescription>
             Contacts notified in the unlikely event of a severe incident.
           </CardDescription>
@@ -41,6 +38,7 @@ export const OrgIncidentContactsSection = () => {
               {(isAllowed) => (
                 <Button
                   variant="outline"
+                  size="sm"
                   isDisabled={!isAllowed}
                   onClick={() => handlePopUpOpen("addContact")}
                 >
@@ -51,7 +49,7 @@ export const OrgIncidentContactsSection = () => {
             </OrgPermissionCan>
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-6 pb-6">
           {permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount) ? (
             <OrgIncidentContactsTable />
           ) : (

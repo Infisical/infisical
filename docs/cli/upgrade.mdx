@@ -1,0 +1,55 @@
+---
+title: "Upgrade the CLI"
+sidebarTitle: "Upgrade"
+description: "Upgrade the Infisical CLI to the latest version with the package manager you installed it with."
+---
+
+Upgrade the CLI with the same package manager you [installed it](/cli/install) with:
+
+<CodeGroup>
+
+```bash macOS
+brew update && brew upgrade infisical
+```
+
+```bash Windows (winget)
+winget upgrade infisical
+```
+
+```bash Windows (Scoop)
+scoop update infisical
+```
+
+```bash npm
+npm update -g @infisical/cli
+```
+
+```bash Debian/Ubuntu
+sudo apt-get update && sudo apt-get install --only-upgrade -y infisical
+```
+
+```bash RedHat/CentOS/Amazon Linux
+sudo yum update infisical
+```
+
+```bash Alpine
+sudo apk update && sudo apk upgrade infisical
+```
+
+```bash Arch Linux
+yay -S infisical-bin
+```
+
+</CodeGroup>
+
+Check which version you have now:
+
+```bash
+infisical --version
+```
+
+The [CLI releases](https://github.com/Infisical/cli/releases) list what changed in each version.
+
+<Note>
+  If an upgrade on Linux fails because the package repository can't be reached, your machine may still point at the old Cloudsmith repository. See [Migrate off Cloudsmith](/cli/cloudsmith-migration).
+</Note>

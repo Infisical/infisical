@@ -1,12 +1,12 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { Button, PageLoader } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import { isCustomProjectRole } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 
@@ -28,6 +28,7 @@ type Props = {
 };
 
 export const IdentitySingleRoleModify = ({ identityProjectMembership, role, onSuccess }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { projectId, currentProject } = useProject();
   const { subscription } = useSubscription();
   const { isRolesLoading, assignableRoleSlugs, getRolesForSelect, isEditDisabled } =
@@ -93,18 +94,21 @@ export const IdentitySingleRoleModify = ({ identityProjectMembership, role, onSu
       <div className="mt-4 flex justify-end">
         <Button
           type="submit"
-          variant="project"
+          variant={scopeVariant}
           isDisabled={!roleForm.formState.isDirty || isEditDisabled}
           isPending={roleForm.formState.isSubmitting}
         >
           Save Role
         </Button>
       </div>
-      <UpgradePlanModal
+      <UpgradeGate
+        paywallKey="project.identity-single-role-modify"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
-        text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          isEnterpriseFeature: true
+        }}
       />
     </form>
   );

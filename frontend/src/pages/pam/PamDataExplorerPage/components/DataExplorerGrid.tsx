@@ -3,12 +3,12 @@ import type { CellContext, ColumnDef, HeaderContext } from "@tanstack/react-tabl
 import { EyeIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { ContentLoader } from "@app/components/v2";
 import { Alert, AlertDescription } from "@app/components/v3/generic/Alert";
 import { Checkbox } from "@app/components/v3/generic/Checkbox";
 import type { CellOpts } from "@app/components/v3/generic/DataGrid";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { PageLoader } from "@app/components/v3/platform/PageLoader";
 
 import type { ColumnInfo, FieldInfo, ForeignKeyInfo, TableDetail } from "../data-explorer-types";
 import { getColumnIndicator } from "../data-explorer-utils";
@@ -20,6 +20,7 @@ import {
   buildInsertQuery,
   buildSelectQuery,
   buildUpdateQuery,
+  supportsRowEditing,
   wrapInTransaction
 } from "../sql-generation";
 import { DataExplorerToolbar } from "./DataExplorerToolbar";
@@ -46,6 +47,14 @@ type DataExplorerGridProps = {
 };
 
 const ROW_KEY_PREFIX = "__new_";
+
+function readOnlyReason(dialect: SqlDialect, tableType?: string): string {
+  if (tableType === "view" || tableType === "materialized_view") return "This view is read-only.";
+  if (!supportsRowEditing(dialect)) {
+    return "This table is read-only. Edit it from the SQL editor.";
+  }
+  return "This table has no primary key. Browsing is read-only — editing requires a primary key.";
+}
 
 function cellValuesEqual(a: unknown, b: unknown): boolean {
   if (a === null && b === null) return true;
@@ -211,7 +220,7 @@ export const DataExplorerGrid = ({
   const primaryKeys = tableDetail?.primaryKeys ?? [];
   const foreignKeys = tableDetail?.foreignKeys ?? [];
   const tableColumns = tableDetail?.columns ?? [];
-  const hasPrimaryKey = primaryKeys.length > 0;
+  const canEditRows = primaryKeys.length > 0 && supportsRowEditing(dialect);
   const primaryKeysRef = useRef(primaryKeys);
   primaryKeysRef.current = primaryKeys;
 
@@ -224,10 +233,10 @@ export const DataExplorerGrid = ({
   // Build TanStack Table column definitions from PG metadata
   const columnDefs = useMemo(
     () =>
-      hasPrimaryKey
+      canEditRows
         ? [SELECT_COLUMN, ...buildColumnDefs(tableColumns, primaryKeys, foreignKeys)]
         : buildColumnDefs(tableColumns, primaryKeys, foreignKeys),
-    [hasPrimaryKey, tableColumns, primaryKeys, foreignKeys]
+    [canEditRows, tableColumns, primaryKeys, foreignKeys]
   );
 
   const fetchData = useCallback(
@@ -599,11 +608,11 @@ export const DataExplorerGrid = ({
     columns: columnDefs,
     onDataChange: handleDataChange,
     getRowId,
-    readOnly: !hasPrimaryKey,
+    readOnly: !canEditRows,
     rowHeight: "short",
     enableSearch: true,
-    enablePaste: hasPrimaryKey,
-    onRowsDelete: hasPrimaryKey ? handleRowsDelete : undefined,
+    enablePaste: canEditRows,
+    onRowsDelete: canEditRows ? handleRowsDelete : undefined,
     onRowSelectionChange: (rowSelection) => {
       const selectedIds = new Set(Object.keys(rowSelection).filter((k) => rowSelection[k]));
       setSelectedRowCount(selectedIds.size);
@@ -723,7 +732,7 @@ export const DataExplorerGrid = ({
         onOffsetChange={handleOffsetChange}
         onPageSizeChange={handlePageSizeChange}
         executionTimeMs={executionTimeMs}
-        hasPrimaryKey={hasPrimaryKey}
+        canEditRows={canEditRows}
         isDataLoading={isDataLoading}
         onRefresh={async () => {
           if (onRefresh) await onRefresh();
@@ -748,22 +757,18 @@ export const DataExplorerGrid = ({
         dialect={dialect}
       />
 
-      {!hasPrimaryKey && (
+      {!canEditRows && (
         <div className="shrink-0 px-3 py-3">
           <Alert variant="info" className="py-2">
             <EyeIcon />
-            <AlertDescription>
-              {tableType === "view" || tableType === "materialized_view"
-                ? "This view is read-only."
-                : "This table has no primary key. Browsing is read-only — editing requires a primary key."}
-            </AlertDescription>
+            <AlertDescription>{readOnlyReason(dialect, tableType)}</AlertDescription>
           </Alert>
         </div>
       )}
 
       {/* Dice UI DataGrid */}
       <div className="data-explorer-grid relative flex min-h-0 flex-1 flex-col overflow-hidden font-mono text-foreground [--color-gray-200:var(--color-border)] [&_[data-slot=grid-footer]]:hidden [&_[data-slot=grid-header]]:bg-container [&_[data-slot=grid]]:thin-scrollbar [&_[data-slot=grid]]:rounded-none [&_[data-slot=grid]]:border-0 [&_[data-slot=grid]]:bg-background">
-        {isDataLoading && !hasLoaded && <ContentLoader className="h-full" />}
+        {isDataLoading && !hasLoaded && <PageLoader />}
         <DataGrid
           {...gridProps}
           className={`min-h-0 flex-1 ${isDataLoading && !hasLoaded ? "hidden" : ""}`}
@@ -771,7 +776,7 @@ export const DataExplorerGrid = ({
         />
         {isDataLoading && hasLoaded && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60">
-            <ContentLoader className="h-auto" lottieClassName="h-24 w-24" />
+            <PageLoader />
           </div>
         )}
       </div>

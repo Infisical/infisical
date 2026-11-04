@@ -1,3 +1,4 @@
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 import {
   CERT_EXTENDED_KEY_USAGES,
@@ -16,7 +17,8 @@ export enum CertStatus {
   ACTIVE = "active",
   EXPIRED = "expired",
   REVOKED = "revoked",
-  RENEWED = "renewed"
+  RENEWED = "renewed",
+  DELETED = "deleted"
 }
 
 export enum CertKeyAlgorithm {
@@ -117,11 +119,13 @@ export enum CrlReason {
 export type TGetCertDTO = {
   id?: string;
   serialNumber?: string;
+  includeDeleted?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteCertDTO = {
   id?: string;
   serialNumber?: string;
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TRevokeCertDTO = {

@@ -1,11 +1,12 @@
 import ldapjs from "@infisical/ldapjs";
 
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { callPortSweep, callSshExec, SshExecCredentials } from "@app/lib/gateway-v2/ssh-rpc";
 import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { callWinRmEndpoint, WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -14,6 +15,13 @@ import { resolveDnsTcp } from "./active-directory/dns-over-dc";
 type TGatewayDep = Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 
 export const DEFAULT_WINRM_PORT = 5985;
+
+export const getCredentialAccountIds = (credentialAccountId: string, configuration: Record<string, unknown>) => {
+  const configIds = Array.isArray(configuration.credentialAccountIds)
+    ? (configuration.credentialAccountIds as string[])
+    : [];
+  return Array.from(new Set([credentialAccountId, ...configIds]));
+};
 
 const SWEEP_RESPONSE_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -140,7 +148,7 @@ export const ldapBindCheckViaGateway = async (
           ...(useLdaps && {
             tlsOptions: {
               rejectUnauthorized,
-              servername: tlsServerName || dcAddress,
+              ...getTlsServerNameOptions(tlsServerName || dcAddress),
               ...(caCert && { ca: [caCert] })
             }
           })

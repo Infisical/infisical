@@ -34,6 +34,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
@@ -257,7 +258,7 @@ export const AppConnectionsTab = () => {
                 aria-label="Filter Connections"
                 variant={isTableFiltered ? "project" : "outline"}
                 size="md"
-                className={twMerge(isTableFiltered && "text-primary")}
+                className={twMerge(isTableFiltered && "text-project")}
               >
                 <FilterIcon className="size-4" />
               </IconButton>
@@ -286,13 +287,13 @@ export const AppConnectionsTab = () => {
                         }}
                       >
                         <div className="flex w-full items-center gap-2">
-                          <img
+                          <ProviderIcon
                             alt={`${APP_CONNECTION_MAP[app].name} integration`}
-                            src={`/images/integrations/${APP_CONNECTION_MAP[app].image}`}
+                            icon={APP_CONNECTION_MAP[app].image}
                             className="h-4 w-4"
                           />
                           <span className="flex-1">{APP_CONNECTION_MAP[app].name}</span>
-                          {isSelected && <span className="text-primary">✓</span>}
+                          {isSelected && <span className="text-project">✓</span>}
                         </div>
                       </DropdownMenuItem>
                     );

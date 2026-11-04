@@ -1,6 +1,7 @@
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import {
@@ -153,7 +154,8 @@ const updateLaravelForgeSecrets = async (secretSync: TLaravelForgeSyncWithCreden
 };
 
 export const LaravelForgeSyncFns = {
-  async syncSecrets(secretSync: TLaravelForgeSyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(secretSync: TLaravelForgeSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
@@ -191,7 +193,8 @@ export const LaravelForgeSyncFns = {
     return Object.fromEntries(secrets.map((secret) => [secret.key, { value: secret.value }]));
   },
 
-  async removeSecrets(secretSync: TLaravelForgeSyncWithCredentials, secretMap: TSecretMap) {
+  async removeSecrets(secretSync: TLaravelForgeSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const existingSecrets = await getLaravelForgeSecrets(secretSync);
 
     const newSecrets = existingSecrets.filter((secret) => !Object.hasOwn(secretMap, secret.key));

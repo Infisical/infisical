@@ -4,6 +4,7 @@ import {
   FolderIcon,
   FolderInputIcon,
   InfoIcon,
+  SaveIcon,
   TrashIcon,
   Undo2Icon,
   UsersIcon
@@ -13,25 +14,34 @@ import { twMerge } from "tailwind-merge";
 import {
   Checkbox,
   IconButton,
+  RowLink,
   TableCell,
   TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+import {
+  TABLE_ROW_ACTION_BAR_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
+} from "../tableRowActionStyles";
 
 type Props = {
   folderName: string;
+  secretPath: string;
+  isNavigationDisabled: boolean;
   description?: string;
   environments: { name: string; slug: string }[];
   isFolderPresentInEnv: (name: string, env: string) => boolean;
   onClick: (path: string) => void;
   isSelected: boolean;
-  onToggleFolderSelect: (folderName: string) => void;
+  onToggleFolderSelect: (folderName: string, isShiftKey: boolean) => void;
   onToggleFolderEdit: (name: string) => void;
   onToggleFolderMove: (name: string) => void;
   onToggleFolderDelete: (name: string) => void;
@@ -41,11 +51,14 @@ type Props = {
   canDeleteFolder: boolean;
   pendingAction?: PendingAction;
   onBatchRevert?: (folderName: string) => void;
+  onPendingSave?: (folderName: string) => Promise<void>;
   isSelectionDisabled?: boolean;
 };
 
 export const FolderTableRow = ({
   folderName,
+  secretPath,
+  isNavigationDisabled,
   description,
   environments = [],
   isFolderPresentInEnv,
@@ -61,56 +74,58 @@ export const FolderTableRow = ({
   onClick,
   pendingAction,
   onBatchRevert,
+  onPendingSave,
   isSelectionDisabled
 }: Props) => {
-  const [isClicking, setIsClicking] = useState(false);
-  const handleClick = () => {
-    if (isClicking) return;
-
-    setIsClicking(true);
-    onClick(folderName);
-    setTimeout(() => setIsClicking(false), 1000);
-  };
+  const [isSavingPendingChange, setIsSavingPendingChange] = useState(false);
 
   const isSingleEnvView = environments.length === 1;
 
   return (
     <TableRow
-      className={twMerge("group hover:z-10", pendingActionRowClass(pendingAction))}
-      onClick={handleClick}
+      linked
+      className={twMerge(
+        "group hover:z-10",
+        isSelected && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+        pendingActionRowClass(pendingAction)
+      )}
     >
       <TableCell
         className={twMerge(
+          "w-10 max-w-10 min-w-10 p-0",
           isSingleEnvView
             ? ""
             : "sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover",
           pendingActionBorderClass(pendingAction)
         )}
+        onClick={isNavigationDisabled ? undefined : () => onClick(folderName)}
       >
-        <Checkbox
-          variant="project"
-          id={`checkbox-${folderName}`}
-          isChecked={isSelected}
-          onCheckedChange={() => {
-            onToggleFolderSelect(folderName);
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-          className={twMerge(
-            "hidden",
-            !isSelectionDisabled && "group-hover:flex",
-            isSelected && "flex"
-          )}
-        />
-        <FolderIcon
-          className={twMerge(
-            "block text-folder",
-            !isSelectionDisabled && "group-hover:!hidden",
-            isSelected && "!hidden"
-          )}
-        />
+        <div className="flex h-full items-center justify-center [&>svg]:size-4">
+          <Checkbox
+            variant="project"
+            id={`checkbox-${folderName}`}
+            isChecked={isSelected}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFolderSelect(folderName, e.shiftKey);
+            }}
+            className={twMerge(
+              "hidden",
+              !isSelectionDisabled && "group-hover:flex",
+              isSelected && "flex"
+            )}
+          />
+          <FolderIcon
+            className={twMerge(
+              "block text-folder",
+              !isSelectionDisabled && "group-hover:!hidden",
+              isSelected && "!hidden"
+            )}
+          />
+        </div>
       </TableCell>
+      {/* Safari ignores position: relative on <tr>, so this cell must be positioned (relative or
+          sticky) or the RowLink overlay spans the whole table and swallows clicks on other rows. */}
       <TableCell
         isTruncatable
         colSpan={isSingleEnvView ? 2 : undefined}
@@ -120,40 +135,63 @@ export const FolderTableRow = ({
             : "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover"
         }
       >
-        <span
-          className={twMerge(
-            pendingAction === PendingAction.Delete && "text-danger/75 line-through"
+        <div className="flex min-w-0 items-center">
+          <RowLink
+            disabled={isNavigationDisabled}
+            from={ROUTE_PATHS.SecretManager.OverviewPage.path}
+            to="."
+            search={(prev) => ({
+              ...prev,
+              secretPath: `${secretPath === "/" ? "" : secretPath}/${folderName}`,
+              environments: environments.map(({ slug }) => slug)
+            })}
+            onClick={(event) => {
+              if (
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return;
+              event.preventDefault();
+              onClick(folderName);
+            }}
+            title={folderName}
+            className={twMerge(
+              "min-w-0 truncate",
+              pendingAction === PendingAction.Delete && "text-danger/75 line-through"
+            )}
+          >
+            {folderName}
+          </RowLink>
+          {description && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="ml-1.5 !size-3 shrink-0 text-accent" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">{description}</TooltipContent>
+            </Tooltip>
           )}
-        >
-          {folderName}
-        </span>
-        {description && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <InfoIcon className="mb-0.5 ml-1.5 inline-block !size-3 text-accent" />
-            </TooltipTrigger>
-            <TooltipContent className="max-w-sm">{description}</TooltipContent>
-          </Tooltip>
-        )}
+        </div>
         <div
           className={twMerge(
             "absolute z-20",
             "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-            "pointer-events-none opacity-0 transition-all duration-300",
-            "group-hover:pointer-events-auto group-hover:gap-1 group-hover:opacity-100",
+            TABLE_ROW_ACTION_BAR_CLASS_NAME,
             isSingleEnvView
               ? "top-1/2 right-[2px] -translate-y-1/2"
               : "top-1/2 right-[3px] -translate-y-1/2"
           )}
         >
           {pendingAction !== PendingAction.Delete && (
-            <Tooltip disableHoverableContent>
+            <Tooltip>
               <TooltipTrigger>
                 <IconButton
                   aria-label="Move folder"
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                   isDisabled={!canEditFolder}
                   onClick={(e) => {
                     onToggleFolderMove(folderName);
@@ -167,13 +205,13 @@ export const FolderTableRow = ({
             </Tooltip>
           )}
           {pendingAction !== PendingAction.Delete && (
-            <Tooltip disableHoverableContent>
+            <Tooltip>
               <TooltipTrigger>
                 <IconButton
                   aria-label="Edit folder"
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                   isDisabled={!canEditFolder}
                   onClick={(e) => {
                     onToggleFolderEdit(folderName);
@@ -189,12 +227,13 @@ export const FolderTableRow = ({
           {onToggleFolderAccess &&
             canManageFolderAccess &&
             pendingAction !== PendingAction.Delete && (
-              <Tooltip disableHoverableContent>
+              <Tooltip>
                 <TooltipTrigger>
                   <IconButton
+                    aria-label="Manage folder access"
                     variant="ghost"
                     size="xs"
-                    className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
                     onClick={(e) => {
                       onToggleFolderAccess(folderName);
                       e.stopPropagation();
@@ -206,13 +245,42 @@ export const FolderTableRow = ({
                 <TooltipContent>Manage Access</TooltipContent>
               </Tooltip>
             )}
+          {pendingAction && onPendingSave && (
+            <Tooltip>
+              <TooltipTrigger>
+                <IconButton
+                  aria-label="Save pending folder changes"
+                  variant="ghost"
+                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-success")}
+                  size="xs"
+                  isDisabled={
+                    isSavingPendingChange ||
+                    (pendingAction === PendingAction.Delete && !canDeleteFolder) ||
+                    (pendingAction === PendingAction.Update && !canEditFolder)
+                  }
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setIsSavingPendingChange(true);
+                    try {
+                      await onPendingSave(folderName);
+                    } finally {
+                      setIsSavingPendingChange(false);
+                    }
+                  }}
+                >
+                  <SaveIcon />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>Save pending changes</TooltipContent>
+            </Tooltip>
+          )}
           {pendingAction ? (
-            <Tooltip disableHoverableContent>
+            <Tooltip>
               <TooltipTrigger>
                 <IconButton
                   aria-label="Discard pending folder changes"
                   variant="ghost"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
                   size="xs"
                   onClick={(e) => {
                     onBatchRevert?.(folderName);
@@ -225,13 +293,13 @@ export const FolderTableRow = ({
               <TooltipContent>Discard pending changes</TooltipContent>
             </Tooltip>
           ) : (
-            <Tooltip disableHoverableContent>
+            <Tooltip>
               <TooltipTrigger>
                 <IconButton
                   aria-label="Delete folder"
                   variant="ghost"
                   size="xs"
-                  className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7 hover:text-danger"
+                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-danger")}
                   isDisabled={!canDeleteFolder}
                   onClick={(e) => {
                     onToggleFolderDelete(folderName);

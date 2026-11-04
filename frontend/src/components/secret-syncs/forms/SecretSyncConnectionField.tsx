@@ -100,6 +100,11 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
               <Combobox
                 value={value}
                 onValueChange={(newValue) => {
+                  if (!newValue) {
+                    onChange(null);
+                    if (callback) callback();
+                    return;
+                  }
                   if (newValue.id === "_create") {
                     handlePopUpOpen("addConnection");
                     // store for oauth callback connections

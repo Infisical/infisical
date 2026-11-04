@@ -237,7 +237,8 @@ export enum ProjectPermissionSecretEventActions {
 }
 
 export enum ProjectPermissionAuditLogsActions {
-  Read = "read"
+  Read = "read",
+  Edit = "edit"
 }
 
 export enum ProjectPermissionInsightsActions {
@@ -305,9 +306,17 @@ export enum ProjectPermissionAgentVaultAccessBundleActions {
   ManageMembers = "manage-members"
 }
 
+export enum ProjectPermissionAgentVaultSkillActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum ProjectPermissionAgentVaultSessionActions {
   Read = "read",
   Create = "create",
+  Edit = "edit",
   Revoke = "revoke"
 }
 
@@ -476,6 +485,7 @@ export enum ProjectPermissionSub {
   AgentVaultAccessBundles = "agent-vault-access-bundles",
   AgentVaultSessions = "agent-vault-sessions",
   AgentVaultProxies = "agent-vault-proxies",
+  AgentVaultSkills = "agent-vault-skills",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
@@ -760,6 +770,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
   | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
+  | [ProjectPermissionAgentVaultSkillActions, ProjectPermissionSub.AgentVaultSkills]
   | [
       ProjectPermissionProjectFolderGrantActions,
       (

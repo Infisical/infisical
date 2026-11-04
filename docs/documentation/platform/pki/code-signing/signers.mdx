@@ -15,16 +15,16 @@ You'll typically have one Signer per real-world signing concern, such as `mobile
 ## What's in a signer?
 
 <CardGroup cols={2}>
-  <Card title="Certificate" icon="certificate">
+  <Card title="Certificate" icon="award">
     The X.509 code-signing certificate the Signer uses, backed by an internal or external CA.
   </Card>
   <Card title="Members" icon="users">
     Users, machine identities, and groups. Each member has an Administrator, Operator, or Auditor role on this Signer.
   </Card>
-  <Card title="Approval policy" icon="check-double">
+  <Card title="Approval policy" icon="check-check">
     Optional. Decides whether signing needs approval, who approves, and how each approval is bounded. See [Approvals](/documentation/platform/pki/code-signing/approvals).
   </Card>
-  <Card title="Activity" icon="clock-rotate-left">
+  <Card title="Activity" icon="history">
     Audit trail of every successful, failed, and denied signing operation.
   </Card>
 </CardGroup>
@@ -145,7 +145,7 @@ Open the Signer and choose **Options → Edit settings**. The edit sheet walks y
     Change which CA issues the certificate and its identity.
 
     - **Certificate Authority**: swap to another CA. Saving with a different CA reissues the certificate immediately from the new CA.
-    - **Reuse an existing order**: offered by some CAs (DigiCert code signing). Point the Signer at an existing order to reuse that order slot instead of placing a new one. Common Name and Validity are inherited from the order.
+    - **Existing order**: offered by some CAs (DigiCert code signing). Select an existing order, then choose whether to [use its existing key or reissue the certificate](/documentation/platform/pki/guides/code-signing/digicert-code-signing#use-an-existing-order). Common Name and Validity come from the order.
     - **Common Name** and **Validity (days)**: edit them to change the identity on the certificate. Saving reissues the certificate with the new values, and the signer switches to the new certificate.
     - **Renew before (days)**: edit any time, 1 to 30, must be less than Validity.
 
@@ -160,7 +160,7 @@ Open the Signer and choose **Options → Edit settings**. The edit sheet walks y
     - **Key algorithm**: pick a different algorithm. Changing it generates a new key and reissues the certificate.
 
     <Note>
-      Renewals always issue a new certificate from the same CA with a fresh key pair. Old artifacts remain valid under the old certificate. New sign operations use the new one.
+      Renewals issue a new certificate from the same CA. HSM-backed signers keep the same HSM key, and other signers get a new key pair. Old artifacts remain valid under the old certificate. New sign operations use the new one.
     </Note>
 
     Press **Save** to apply the changes.
@@ -204,16 +204,19 @@ To sign with a Signer, pick the integration that matches your tooling:
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Approvals" icon="check-double" href="/documentation/platform/pki/code-signing/approvals">
+  <Card title="DigiCert" icon="shield-check" href="/documentation/platform/pki/guides/code-signing/digicert-code-signing">
+    Issue a signer's certificate from DigiCert CertCentral with an HSM-backed key.
+  </Card>
+  <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/code-signing/approvals">
     Add approval steps and per-approval limits to a Signer.
   </Card>
-  <Card title="HSM Connectors" icon="shield-halved" href="/documentation/platform/pki/settings/hsm-connectors">
+  <Card title="HSM Connectors" icon="shield-half" href="/documentation/platform/pki/settings/hsm-connectors">
     Route the Signer's key operations to your own HSM.
   </Card>
   <Card title="PKCS#11 Module" icon="plug" href="/documentation/platform/pki/code-signing/pkcs11-module">
     Use jarsigner, cosign, osslsigncode, and friends with this Signer.
   </Card>
-  <Card title="Windows KSP" icon="windows" href="/documentation/platform/pki/code-signing/windows-ksp">
+  <Card title="Windows KSP" icon="windows" iconType="brands" href="/documentation/platform/pki/code-signing/windows-ksp">
     Sign with native `signtool` on Windows.
   </Card>
 </CardGroup>

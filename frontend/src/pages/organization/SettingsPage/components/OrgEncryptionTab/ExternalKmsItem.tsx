@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  ProviderIcon,
   TableCell,
   TableRow
 } from "@app/components/v3";
@@ -35,8 +36,8 @@ type Props = {
 export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) => {
   const providerIcon =
     kms.externalKms.provider === ExternalKmsProvider.Aws
-      ? "/images/integrations/Amazon Web Services.png"
-      : "/images/integrations/Google Cloud Platform.png";
+      ? "Amazon Web Services.png"
+      : "Google Cloud Platform.png";
 
   const handleEdit = (popUpName: "editExternalKmsDetails" | "editExternalKmsCredentials") => {
     if (subscription && !subscription.externalKms) {
@@ -57,7 +58,7 @@ export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) =
     <TableRow key={kms.id}>
       <TableCell>
         <div className="flex items-center gap-2">
-          <img src={providerIcon} alt="" className="size-5 object-contain" />
+          <ProviderIcon icon={providerIcon} alt="" className="size-5 object-contain" />
           <span className="font-medium text-foreground">
             {kms.externalKms.provider.toUpperCase()}
           </span>

@@ -16,10 +16,13 @@ function HoverCardContent({
   align = "center",
   sideOffset = 4,
   collisionPadding = 8,
+  container,
   ...props
-}: React.ComponentProps<typeof HoverCardPrimitive.Content>) {
+}: React.ComponentProps<typeof HoverCardPrimitive.Content> & {
+  container?: React.ComponentProps<typeof HoverCardPrimitive.Portal>["container"];
+}) {
   return (
-    <HoverCardPrimitive.Portal data-slot="hover-card-portal">
+    <HoverCardPrimitive.Portal data-slot="hover-card-portal" container={container}>
       <HoverCardPrimitive.Content
         data-slot="hover-card-content"
         align={align}

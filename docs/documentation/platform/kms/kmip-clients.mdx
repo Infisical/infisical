@@ -1,0 +1,94 @@
+---
+title: "Connect KMIP clients"
+description: "Connect a KMIP client to the keys in a KMS project."
+---
+
+Each KMIP client is registered in one KMS project, and can use only that project's keys. The client authenticates to the [KMIP server](/documentation/platform/kms/kmip-server) with a certificate that Infisical issues for it.
+
+## Prerequisites
+
+- A running [KMIP server](/documentation/platform/kms/kmip-server)
+- A KMS project where you have the **Admin** role
+- A KMIP client that supports KMIP 1.0 to 1.4, and can reach the KMIP server on port 5696
+
+## Step 1: Register the client
+
+<Steps>
+  <Step>
+    In your KMS project, go to **KMIP** and select **Add KMIP Client**.
+  </Step>
+  <Step>
+    Enter a **Name**, and select the **Permissions** for the KMIP operations the client can run, such as **Create**, **Get**, and **Locate**.
+  </Step>
+  <Step>
+    Select **Add KMIP Client**.
+  </Step>
+</Steps>
+
+## Step 2: Create the client's certificate
+
+<Steps>
+  <Step>
+    Select the options menu on the client's row, then select **Generate Certificate**.
+  </Step>
+  <Step>
+    Pick a **Request Method**:
+
+    - **Managed**: Infisical creates the client's private key and certificate. Enter a **Key Algorithm**
+    - **Certificate Signing Request (CSR)**: If the client creates its own private key, paste the client's CSR. The CSR's subject must use the **Client ID** as the common name (CN) and the **Project ID** as the organizational unit (OU), as shown under **Certificate Subject Values**
+  </Step>
+  <Step>
+    Enter a **TTL** for the certificate, such as `1y`, then select **Generate Certificate** or **Sign Certificate**.
+  </Step>
+  <Step>
+    Before you close the dialog, save the **Certificate Body**, the **Certificate Chain**, and, for a **Managed** certificate, the **Certificate Private Key**.
+  </Step>
+</Steps>
+
+## Step 3: Configure the client
+
+The settings differ between clients, but most clients need the following:
+
+- **Server address**: One of the hostnames or IP addresses you set on the KMIP server, with port `5696`, such as `kmip.example.com:5696`
+- **Client certificate**: The **Certificate Body**
+- **Client private key**: The **Certificate Private Key**
+- **CA certificate**: The **Certificate Chain**, which the client uses to check the KMIP server's certificate
+
+For example, a [PyKMIP](https://pykmip.readthedocs.io/) client configuration looks like this:
+
+```ini
+[client]
+host=kmip.example.com
+port=5696
+certfile=/path/to/client-cert.pem
+keyfile=/path/to/client-key.pem
+ca_certs=/path/to/cert-chain.pem
+```
+
+To check the connection, run a simple operation from the client, such as creating a test key.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The client can't connect to the KMIP server">
+    - Check that the client can reach the KMIP server on the port it’s listening on (5696 by default)
+    - Check that the KMIP server's `--listen-address` is an address the client can reach. If it’s bound to 127.0.0.1, only clients on the same machine can connect. Use the server’s network IP, or 0.0.0.0 to listen on all interfaces.
+    - Check that the server address the client uses is one of the hostnames or IP addresses set on the KMIP server
+    - Check that the client's certificate hasn't expired
+
+    To see the details of the TLS connection, run the following command from the client's machine:
+
+    ```bash
+    openssl s_client -connect kmip.example.com:5696 \
+      -cert client-cert.pem -key client-key.pem \
+      -CAfile cert-chain.pem -tls1_2 -showcerts
+    ```
+
+    If the connection works, the output includes the KMIP server's certificate chain.
+  </Accordion>
+  <Accordion title="The client connects, but an operation fails">
+    Check that the client has the permission for the operation. In your KMS project, go to **KMIP**, select the options menu on the client's row, and select **Edit KMIP Client**.
+
+    For more detail, check the KMIP server's logs.
+  </Accordion>
+</AccordionGroup>

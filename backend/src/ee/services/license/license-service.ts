@@ -1,9 +1,9 @@
-import { CronJob } from "cron";
 import { Knex } from "knex";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
+import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { verifyOfflineLicense } from "@app/lib/crypto";
 import { applyJitter } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -18,6 +18,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { withCloudPlanDefaults } from "./cloud-plan-defaults";
 import { TLicenseDALFactory } from "./license-dal";
 import { getDefaultOnPremFeatures, getLicenseKeyConfig } from "./license-fns";
 import {
@@ -29,6 +30,7 @@ import {
   TOrgPlanDTO,
   TOrgSeatUsage
 } from "./license-types";
+import { withSelfHostedLicenseBase } from "./self-hosted-license-base";
 
 type TLicenseServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "LICENSE_KEY" | "LICENSE_KEY_OFFLINE" | "LICENSE_SERVER_V2_SERVICE_KEY" | "isCloud">;
@@ -80,7 +82,7 @@ export const licenseServiceFactory = ({
       if (!entitlements) {
         throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
       }
-      const currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+      const currentPlan = projectV2ToFeatureSet(withSelfHostedLicenseBase(getDefaultOnPremFeatures()), entitlements);
 
       onPremFeatures = currentPlan;
       logger.info("Successfully synced self-hosted license features from License Server v2");
@@ -134,8 +136,16 @@ export const licenseServiceFactory = ({
           // instance, withdrawing features the license paid for.
           const features =
             contents.license.version === 2 && contents.license.entitlements
-              ? projectV2ToFeatureSet(getDefaultOnPremFeatures(), contents.license.entitlements)
-              : { ...getDefaultOnPremFeatures(), ...contents.license.features };
+              ? projectV2ToFeatureSet(
+                  withSelfHostedLicenseBase(getDefaultOnPremFeatures()),
+                  contents.license.entitlements
+                )
+              : { ...withSelfHostedLicenseBase(getDefaultOnPremFeatures()), ...contents.license.features };
+
+          // Keys issued before PAM alerts moved to the alert module grant them through the old Slack flag.
+          if ((contents.license.features as { pamSlackNotifications?: boolean } | undefined)?.pamSlackNotifications) {
+            features.pamEnterpriseAlerting = true;
+          }
 
           onPremFeatures = {
             ...features,
@@ -158,9 +168,11 @@ export const licenseServiceFactory = ({
   const initializeBackgroundSync = async () => {
     if (licenseKeyConfig?.isValid && licenseKeyConfig?.type === LicenseType.Online) {
       logger.info("Setting up background sync process to refresh onPremFeatures from License Server v2");
-      const job = new CronJob("*/10 * * * *", () => syncSelfHostedFeatures());
-      job.start();
-      return job;
+      return startLocalRefresh({
+        name: "self-hosted-license-sync",
+        intervalMs: 10 * 60 * 1000,
+        task: () => syncSelfHostedFeatures(true)
+      });
     }
   };
 
@@ -196,7 +208,10 @@ export const licenseServiceFactory = ({
     if (!entitlements) {
       throw new BadRequestError({ message: "License Server entitlements are unavailable" });
     }
-    const currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+    const currentPlan = withCloudPlanDefaults(
+      projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements),
+      entitlements
+    );
 
     currentPlan.workspacesUsed = await projectDAL.countOfBillableOrgProjects(rootOrgId);
 
@@ -205,6 +220,12 @@ export const licenseServiceFactory = ({
       jitteredLicenseCloudPlanTtl(),
       JSON.stringify(currentPlan)
     );
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.LicenseCloudPlanLastKnown(orgId),
+      KeyStoreTtls.LicenseCloudPlanLastKnownInSeconds,
+      JSON.stringify({ plan: currentPlan, fetchedAt: Date.now() })
+    );
+    await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlanFallback(orgId));
 
     return currentPlan;
   };
@@ -273,16 +294,33 @@ export const licenseServiceFactory = ({
         error,
         `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`
       );
+      const fallbackTtl = jitteredLicenseCloudPlanTtl();
+      const fallbackPlan = withCloudPlanDefaults(onPremFeatures, null);
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.LicenseCloudPlan(orgId),
-        jitteredLicenseCloudPlanTtl(),
-        JSON.stringify(onPremFeatures)
+        fallbackTtl,
+        JSON.stringify(fallbackPlan)
       );
-      return onPremFeatures;
+      await keyStore.setItemWithExpiry(KeyStorePrefixes.LicenseCloudPlanFallback(orgId), fallbackTtl, "1");
+      return fallbackPlan;
     } finally {
       logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]`);
     }
     return onPremFeatures;
+  };
+
+  // Whether the plan getPlan serves for this org is the fallback above rather than a real answer.
+  const isServingFallbackPlan = async (orgId: string) => {
+    // Only a failed cloud plan fetch writes the marker, so off cloud there's nothing to ask Redis.
+    if (instanceType !== InstanceType.Cloud) return false;
+    const [marker] = await keyStore.getItems([KeyStorePrefixes.LicenseCloudPlanFallback(orgId)]);
+    return Boolean(marker);
+  };
+
+  // The last plan the License Server actually returned for this org, and when.
+  const getLastKnownPlan = async (orgId: string) => {
+    const [raw] = await keyStore.getItems([KeyStorePrefixes.LicenseCloudPlanLastKnown(orgId)]);
+    return raw ? (JSON.parse(raw) as { plan: TFeatureSet; fetchedAt: number }) : null;
   };
 
   const refreshPlan = async (orgId: string) => {
@@ -380,6 +418,8 @@ export const licenseServiceFactory = ({
       return onPremFeatures;
     },
     getPlan,
+    isServingFallbackPlan,
+    getLastKnownPlan,
     getOrgSeatUsage,
     getCustomerId,
     getLicenseId,

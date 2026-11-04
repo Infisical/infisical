@@ -1,4 +1,4 @@
-import { FormLabel, Spinner } from "@app/components/v2";
+import { Detail, DetailLabel, Spinner } from "@app/components/v3";
 import { useGetIntegrationAuthOctopusDeployScopeValues } from "@app/hooks/api/integrationAuth/queries";
 import {
   OctopusDeployScope,
@@ -40,7 +40,7 @@ export const OctopusDeployScopeValues = ({ integration }: OctopusDeployScopeValu
   );
 
   if (!integration.metadata?.octopusDeployScopeValues)
-    return <span className="text-sm text-mineshaft-400">Not Configured</span>;
+    return <span className="text-sm text-muted">Not Configured</span>;
 
   if (isPending) return <Spinner size="sm" className="mt-2 ml-2" />;
 
@@ -72,17 +72,17 @@ export const OctopusDeployScopeValues = ({ integration }: OctopusDeployScopeValu
         };
 
         return (
-          <div className="mt-4" key={key}>
-            <FormLabel className="text-sm font-medium text-mineshaft-200" label={getLabel(key)} />
+          <Detail className="mt-4" key={key}>
+            <DetailLabel>{getLabel(key)}</DetailLabel>
 
-            <div className="text-sm text-mineshaft-300">
+            <div className="text-sm text-label">
               {values
                 .map((value) => scopeValuesMap.get(key)?.get(value))
                 .map((name) => (
                   <p key={name}>{name}</p>
                 ))}
             </div>
-          </div>
+          </Detail>
         );
       })}
     </>

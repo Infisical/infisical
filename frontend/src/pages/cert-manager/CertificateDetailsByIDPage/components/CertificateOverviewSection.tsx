@@ -4,8 +4,6 @@ import { format } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
 
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
-import { Tooltip } from "@app/components/v2";
-import { CopyButton } from "@app/components/v2/CopyButton";
 import {
   Badge,
   Card,
@@ -13,16 +11,21 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CopyButton,
   Detail,
   DetailGroup,
   DetailLabel,
-  DetailValue
+  DetailValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { CertSource, CertStatus, useGetCertificateById } from "@app/hooks/api";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { TCertificateExternalMetadata } from "@app/hooks/api/certificates/types";
 
 import {
+  getCertificateDeletedBySummary,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails
@@ -49,21 +52,31 @@ const getProviderReference = (metadata?: TCertificateExternalMetadata | null) =>
     case CaType.DIGICERT:
       return {
         provider: "DigiCert CertCentral",
-        label: "Order ID",
-        value: String(metadata.orderId)
+        references: [
+          { label: "Order ID", value: String(metadata.orderId) },
+          ...(metadata.certificateId !== undefined
+            ? [{ label: "DigiCert Certificate ID", value: String(metadata.certificateId) }]
+            : [])
+        ]
       };
     case CaType.GODADDY:
-      return { provider: "GoDaddy", label: "Certificate ID", value: metadata.certificateId };
+      return {
+        provider: "GoDaddy",
+        references: [{ label: "Certificate ID", value: metadata.certificateId }]
+      };
     case CaType.AWS_ACM_PUBLIC_CA:
-      return { provider: "AWS ACM Public CA", label: "Certificate ARN", value: metadata.arn };
+      return {
+        provider: "AWS ACM Public CA",
+        references: [{ label: "Certificate ARN", value: metadata.arn }]
+      };
     default:
       return null;
   }
 };
 
 export const CertificateOverviewSection = ({ certificateId }: Props) => {
-  const { orgId, projectId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificates/$certificateId"
+  const { orgId } = useParams({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/certificates/$certificateId"
   });
   const { data: certificateData, isLoading } = useGetCertificateById(certificateId);
   const certificate = certificateData?.certificate;
@@ -73,7 +86,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
       <div className="flex w-full flex-col gap-5 lg:max-w-[24rem]">
         <Card>
           <CardContent className="flex items-center justify-center py-8">
-            <p className="text-sm text-mineshaft-400">Loading...</p>
+            <p className="text-sm text-muted">Loading...</p>
           </CardContent>
         </Card>
       </div>
@@ -111,27 +124,56 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailLabel>Certificate ID</DetailLabel>
               <DetailValue className="flex items-center gap-2 font-mono text-xs">
                 {certificate.id}
-                <CopyButton value={certificate.id} size="xs" variant="plain" />
+                <CopyButton value={certificate.id} ariaLabel="Copy certificate ID" />
+              </DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Order ID</DetailLabel>
+              <DetailValue className="flex items-center gap-2 font-mono text-xs">
+                {certificate.orderId ? (
+                  <>
+                    {certificate.orderId}
+                    <CopyButton value={certificate.orderId} ariaLabel="Copy order ID" />
+                  </>
+                ) : (
+                  <span className="text-muted">—</span>
+                )}
               </DetailValue>
             </Detail>
             <Detail>
               <DetailLabel>Status</DetailLabel>
               <DetailValue>
-                {displayStatus.status === CertStatus.ACTIVE ? (
-                  <Badge variant={expiryVariant}>{expiryLabel}</Badge>
-                ) : (
-                  <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
-                )}
+                <div className="flex items-center gap-1">
+                  {displayStatus.status === CertStatus.ACTIVE ? (
+                    <Badge variant={expiryVariant}>{expiryLabel}</Badge>
+                  ) : (
+                    <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
+                  )}
+                  {certificate.deletedAt && certificate.status === CertStatus.REVOKED && (
+                    <Badge variant="danger">Revoked</Badge>
+                  )}
+                </div>
               </DetailValue>
             </Detail>
+            {certificate.deletedAt && (
+              <>
+                <Detail>
+                  <DetailLabel>Deleted By</DetailLabel>
+                  <DetailValue>{getCertificateDeletedBySummary(certificate)}</DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Deleted At</DetailLabel>
+                  <DetailValue>{formatDateUTC(certificate.deletedAt)}</DetailValue>
+                </Detail>
+              </>
+            )}
             <Detail>
               <DetailLabel>Serial Number</DetailLabel>
               <DetailValue className="flex items-center gap-2 font-mono text-xs">
                 {certificate.serialNumber.toUpperCase()}
                 <CopyButton
                   value={certificate.serialNumber.toUpperCase()}
-                  size="xs"
-                  variant="plain"
+                  ariaLabel="Copy serial number"
                 />
               </DetailValue>
             </Detail>
@@ -139,11 +181,13 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailLabel>Not Before</DetailLabel>
               <DetailValue>
                 {certificate.notBefore ? (
-                  <Tooltip
-                    content={`${formatDateLocal(certificate.notBefore)} (Local)`}
-                    position="right"
-                  >
-                    <span className="cursor-default">{formatDateUTC(certificate.notBefore)}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="cursor-default">
+                        {formatDateUTC(certificate.notBefore)}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{`${formatDateLocal(certificate.notBefore)} (Local)`}</TooltipContent>
                   </Tooltip>
                 ) : (
                   <span className="text-muted">—</span>
@@ -154,11 +198,13 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailLabel>Not After</DetailLabel>
               <DetailValue>
                 {certificate.notAfter ? (
-                  <Tooltip
-                    content={`${formatDateLocal(certificate.notAfter)} (Local)`}
-                    position="right"
-                  >
-                    <span className="cursor-default">{formatDateUTC(certificate.notAfter)}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="cursor-default">
+                        {formatDateUTC(certificate.notAfter)}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{`${formatDateLocal(certificate.notAfter)} (Local)`}</TooltipContent>
                   </Tooltip>
                 ) : (
                   <span className="text-muted">—</span>
@@ -181,12 +227,12 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailValue>
                 {showCaLink && (
                   <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId"
-                    params={{ orgId, projectId, caId: certificate.caId }}
+                    to="/organizations/$orgId/cert-manager/ca/$caId"
+                    params={{ orgId, caId: certificate.caId }}
                     className="inline-flex items-center gap-1 underline"
                   >
                     {certificate.caName}
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 )}
                 {!showCaLink &&
@@ -206,16 +252,15 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 <DetailLabel>Application</DetailLabel>
                 <DetailValue>
                   <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                    to="/organizations/$orgId/cert-manager/applications/$applicationName"
                     params={{
                       orgId,
-                      projectId,
                       applicationName: certificate.applicationName
                     }}
                     className="inline-flex items-center gap-1 underline"
                   >
                     {certificate.applicationName}
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>
@@ -232,10 +277,12 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                   <DetailLabel>Provider</DetailLabel>
                   <DetailValue>{providerReference.provider}</DetailValue>
                 </Detail>
-                <Detail>
-                  <DetailLabel>{providerReference.label}</DetailLabel>
-                  <DetailValue className="font-mono">{providerReference.value}</DetailValue>
-                </Detail>
+                {providerReference.references.map((reference) => (
+                  <Detail key={reference.label}>
+                    <DetailLabel>{reference.label}</DetailLabel>
+                    <DetailValue className="font-mono">{reference.value}</DetailValue>
+                  </Detail>
+                ))}
               </>
             )}
             <Detail>
@@ -259,10 +306,9 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 <DetailLabel>Renewed From</DetailLabel>
                 <DetailValue>
                   <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId"
+                    to="/organizations/$orgId/cert-manager/certificates/$certificateId"
                     params={{
                       orgId,
-                      projectId,
                       certificateId: certificate.renewedFromCertificateId
                     }}
                     className="inline-flex items-center gap-1 underline"
@@ -274,7 +320,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                         certificate.renewedFromCertificateId
                       ).displayName
                     }
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>
@@ -284,10 +330,9 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 <DetailLabel>Renewed By</DetailLabel>
                 <DetailValue>
                   <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId"
+                    to="/organizations/$orgId/cert-manager/certificates/$certificateId"
                     params={{
                       orgId,
-                      projectId,
                       certificateId: certificate.renewedByCertificateId
                     }}
                     className="inline-flex items-center gap-1 underline"
@@ -296,7 +341,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                       getCertificateDisplayName(certificate, 64, certificate.renewedByCertificateId)
                         .displayName
                     }
-                    <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+                    <ExternalLinkIcon className="size-3.5 text-muted" />
                   </Link>
                 </DetailValue>
               </Detail>

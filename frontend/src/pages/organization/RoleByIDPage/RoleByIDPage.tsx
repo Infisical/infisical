@@ -1,19 +1,20 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, CopyIcon, EllipsisIcon, PencilIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteOrgRole, useGetOrgRole } from "@app/hooks/api";
@@ -66,7 +67,7 @@ export const Page = () => {
   const isCustomRole = !["admin", "member", "no-access"].includes(data?.slug ?? "");
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {data && (
         <div className="mx-auto w-full max-w-8xl">
           <Link
@@ -180,12 +181,13 @@ export const Page = () => {
         </div>
       )}
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteOrgRole.isOpen}
         title={`Are you sure you want to delete the organization role ${data?.name ?? ""}?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteOrgRole", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() => onDeleteOrgRoleSubmit()}
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteOrgRole", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() => onDeleteOrgRoleSubmit()}
       />
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}
@@ -200,10 +202,8 @@ export const RoleByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.role")} />
+      <link rel="icon" href="/infisical.ico" />
       <OrgPermissionCan
         passThrough={false}
         renderGuardBanner

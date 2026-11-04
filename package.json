@@ -21,7 +21,6 @@
   },
   "devDependencies": {
     "@types/uuid": "^9.0.7",
-    "eslint": "^8.57.1",
     "husky": "^8.0.3"
   },
   "dependencies": {

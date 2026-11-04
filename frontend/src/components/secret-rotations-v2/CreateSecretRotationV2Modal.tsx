@@ -128,7 +128,10 @@ export const CreateSecretRotationV2Modal = ({ onOpenChange, isOpen, ...props }: 
   return (
     <>
       <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className="flex h-full max-h-full w-full flex-col gap-y-0 p-0 sm:w-3/4 sm:max-w-[1500px]">
+        <SheetContent
+          size="workspace"
+          className="flex h-full max-h-full w-full flex-col gap-y-0 p-0 sm:w-3/4"
+        >
           <SheetHeader>
             {selectedRotation ? (
               <>

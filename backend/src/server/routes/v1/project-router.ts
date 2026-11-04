@@ -14,9 +14,14 @@ import {
   SortDirection
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
+import { MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS } from "@app/ee/services/audit-log/audit-log-retention-fns";
+import {
+  AuditLogSettingsResponseSchema,
+  updateAuditLogSettingsBodySchema
+} from "@app/ee/services/audit-log/audit-log-settings-schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
-import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, AUDIT_LOG_SETTINGS, FOLDERS, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { JobState } from "@app/queue/queue-service";
@@ -25,9 +30,9 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
 import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
@@ -44,6 +49,24 @@ import {
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 import { ProjectAccessRequestCommentSchema } from "./project-access-request-schema";
 
+const deletedBySchema = z
+  .discriminatedUnion("type", [
+    z.object({
+      type: z.literal("user"),
+      id: z.string(),
+      email: z.string().nullable(),
+      username: z.string().nullable(),
+      firstName: z.string().nullable(),
+      lastName: z.string().nullable()
+    }),
+    z.object({
+      type: z.literal("identity"),
+      id: z.string(),
+      name: z.string()
+    })
+  ])
+  .nullable();
+
 const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
     _id: z.string(),
@@ -55,23 +78,7 @@ const projectWithEnv = SanitizedProjectSchema.merge(
         slug: z.string(),
         deleteAfter: z.date(),
         softDeletedAt: z.date(),
-        deletedBy: z
-          .discriminatedUnion("type", [
-            z.object({
-              type: z.literal("user"),
-              id: z.string(),
-              email: z.string().nullable(),
-              username: z.string().nullable(),
-              firstName: z.string().nullable(),
-              lastName: z.string().nullable()
-            }),
-            z.object({
-              type: z.literal("identity"),
-              id: z.string(),
-              name: z.string()
-            })
-          ])
-          .nullable()
+        deletedBy: deletedBySchema
       })
       .array()
   })
@@ -448,6 +455,15 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.DELETE.projectId)
       }),
+      // Deliberate deviation, matching environment deletion: by default a secret manager project stays
+      // restorable for a grace period, and hardDelete opts out of it.
+      querystring: z.object({
+        hardDelete: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+          .describe(PROJECTS.DELETE.hardDelete)
+      }),
       response: {
         200: z.object({
           project: SanitizedProjectSchema.optional()
@@ -466,7 +482,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         filter: {
           type: ProjectFilterType.ID,
           projectId: req.params.projectId
-        }
+        },
+        hardDelete: req.query.hardDelete
       });
 
       await server.services.auditLog.createAuditLog({
@@ -478,7 +495,164 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           metadata: {
             id: project.id,
             name: project.name,
-            softDelete: true
+            softDelete: true,
+            hardDelete: project.hardDelete,
+            deleteAfter: project.deleteAfter
+          }
+        }
+      });
+
+      return { project };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/deleted",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "listDeletedProjects",
+      tags: [ApiDocsTags.Projects],
+      description: "List soft-deleted projects that can still be restored",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        type: z.nativeEnum(ProjectType).optional().describe(PROJECTS.LIST_DELETED.type)
+      }),
+      response: {
+        200: z.object({
+          projects: z
+            .object({
+              id: z.string(),
+              name: z.string(),
+              type: z.string(),
+              deleteAfter: z.date(),
+              softDeletedAt: z.date(),
+              deletedBy: deletedBySchema
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const projects = await server.services.project.listDeletedProjects({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        type: req.query.type
+      });
+      return { projects };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/deleted/:projectId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "permanentlyDeleteProject",
+      tags: [ApiDocsTags.Projects],
+      description: "Permanently delete a soft-deleted project without waiting for its grace period to end",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().max(36).describe(PROJECTS.PERMANENTLY_DELETE.projectId)
+      }),
+      response: {
+        200: z.object({
+          project: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const project = await server.services.project.permanentlyDeleteProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectId: req.params.projectId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.DELETE_PROJECT,
+          metadata: {
+            id: project.id,
+            name: project.name,
+            softDelete: true,
+            hardDelete: true,
+            deleteAfter: project.deleteAfter
+          }
+        }
+      });
+
+      return { project };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:projectId/restore",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "restoreProject",
+      tags: [ApiDocsTags.Projects],
+      description: "Restore a soft-deleted project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().max(36).describe(PROJECTS.RESTORE.projectId)
+      }),
+      response: {
+        200: z.object({
+          project: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const project = await server.services.project.restoreProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectId: req.params.projectId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.RESTORE_PROJECT,
+          metadata: {
+            id: project.id,
+            name: project.name,
+            slug: project.slug
           }
         }
       });
@@ -542,7 +716,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues),
         pitVersionLimit: z.number().min(1).max(100).optional(),
-        auditLogsRetentionDays: z.number().min(1).max(365).optional().describe(PROJECTS.UPDATE.auditLogsRetentionDays)
+        auditLogsRetentionDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(365)
+          .optional()
+          .describe(PROJECTS.UPDATE.auditLogsRetentionDays)
       }),
       response: {
         200: z.object({
@@ -585,6 +765,21 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           metadata: req.body
         }
       });
+
+      if (req.body.auditLogsRetentionDays !== undefined) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId,
+          event: {
+            type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+            metadata: {
+              scope: "project",
+              auditLogsRetentionDays: req.body.auditLogsRetentionDays
+            }
+          }
+        });
+      }
 
       return {
         project
@@ -681,7 +876,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim()
       }),
       body: z.object({
-        auditLogsRetentionDays: z.number().min(0)
+        auditLogsRetentionDays: z.number().int().min(0).max(MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS)
       }),
       response: {
         200: z.object({
@@ -709,8 +904,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId,
         projectId: project.id,
         event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "project",
+            auditLogsRetentionDays: req.body.auditLogsRetentionDays
+          }
         }
       });
 
@@ -718,6 +916,84 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         message: "Successfully updated project's audit logs retention period",
         project
       };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/audit-log-settings",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getProjectAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Get which audit log event classes the project records",
+      params: z.object({
+        projectId: z.string().uuid().describe(AUDIT_LOG_SETTINGS.GET_PROJECT.projectId)
+      }),
+      response: {
+        200: AuditLogSettingsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.getProjectSettings({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId
+      });
+      return { auditLogSettings };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:projectId/audit-log-settings",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "updateProjectAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Update which audit log event classes the project records. Requires the project admin role.",
+      params: z.object({
+        projectId: z.string().uuid().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.projectId)
+      }),
+      body: updateAuditLogSettingsBodySchema(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.isEnabled),
+      response: {
+        200: AuditLogSettingsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.updateProjectSettings({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        eventClasses: req.body.eventClasses
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "project",
+            eventClasses: req.body.eventClasses
+          }
+        }
+      });
+
+      return { auditLogSettings };
     }
   });
 
@@ -1049,6 +1325,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         projectId: z.string().trim()
       }),
+      querystring: z.object({
+        environment: slugSchema({ field: "Environment slug" }).optional().describe(FOLDERS.LIST.environment)
+      }),
       response: {
         200: z.record(
           ProjectEnvironmentsSchema.extend({ folders: SecretFoldersSchema.extend({ path: z.string() }).array() })
@@ -1059,7 +1338,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const environmentsFolders = await server.services.folder.getProjectEnvironmentsFolders(
         req.params.projectId,
-        req.permission
+        req.permission,
+        req.query.environment
       );
 
       return environmentsFolders;
@@ -1345,6 +1625,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         forPkiSync: z.boolean().default(false).optional().describe(PROJECTS.SEARCH_CERTIFICATES.forPkiSync),
         search: z.string().trim().optional().describe(PROJECTS.SEARCH_CERTIFICATES.search),
         status: z.string().optional().describe(PROJECTS.SEARCH_CERTIFICATES.status),
+        includeDeleted: z.boolean().optional().describe(PROJECTS.SEARCH_CERTIFICATES.includeDeleted),
         profileIds: z.array(z.string().uuid()).optional().describe(PROJECTS.SEARCH_CERTIFICATES.profileIds),
         fromDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.fromDate),
         toDate: z.coerce.date().optional().describe(PROJECTS.SEARCH_CERTIFICATES.toDate),
@@ -1454,7 +1735,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           distributions: z.object({
             byEnrollmentMethod: z.array(z.object({ label: z.string(), count: z.number() })),
             byAlgorithm: z.array(z.object({ label: z.string(), count: z.number() })),
-            byCA: z.array(z.object({ id: z.string(), label: z.string(), count: z.number() })),
+            byCA: z.array(z.object({ id: z.string().optional(), label: z.string(), count: z.number() })),
             byStatus: z.array(z.object({ label: z.string(), count: z.number() }))
           }),
           expirationBuckets: z.array(z.object({ bucket: z.string(), count: z.number() })),

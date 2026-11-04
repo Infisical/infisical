@@ -6,8 +6,8 @@ export type VaultImportSelectionState<TSelection> = {
 };
 
 export type VaultImportSelectionAction<TSelection> =
-  | { type: "connection"; value: string }
-  | { type: "namespace"; value: string }
+  | { type: "connection"; value: string | null }
+  | { type: "namespace"; value: string | null }
   | { type: "mount"; value: string | null }
   | { type: "selection"; value: TSelection | null };
 

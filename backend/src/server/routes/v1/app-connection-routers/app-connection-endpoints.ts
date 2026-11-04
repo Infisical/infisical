@@ -1,3 +1,4 @@
+import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -9,45 +10,54 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
-import { TAppConnection, TAppConnectionInput } from "@app/services/app-connection/app-connection-types";
+import { TAppConnectionInput, TAppConnectionScope } from "@app/services/app-connection/app-connection-types";
 import { TCreateAppConnectionCredentialRotationSchema } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-export const registerAppConnectionEndpoints = <T extends TAppConnection, I extends TAppConnectionInput>({
+type TAppConnectionCreateSchema<I extends TAppConnectionInput> = z.ZodType<{
+  name: string;
+  method: I["method"];
+  credentials: I["credentials"];
+  description?: string | null;
+  isPlatformManagedCredentials?: boolean;
+  isAutoRotationEnabled?: boolean | null;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  projectId?: string;
+  rotation?: TCreateAppConnectionCredentialRotationSchema | null;
+  configuration?: Record<string, unknown>;
+}>;
+
+type TAppConnectionUpdateSchema<I extends TAppConnectionInput> = z.ZodType<{
+  name?: string;
+  credentials?: I["credentials"];
+  description?: string | null;
+  isPlatformManagedCredentials?: boolean;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  isAutoRotationEnabled?: boolean | null;
+  rotation?: Partial<TCreateAppConnectionCredentialRotationSchema> | null;
+  configuration?: Record<string, unknown>;
+}>;
+
+// For routes that belong to one project the caller never names, such as Agent Vault's: the server supplies it.
+type TResolveScope = (req: FastifyRequest) => TAppConnectionScope;
+
+type TAppConnectionRouteContext = ReturnType<typeof buildAppConnectionRouteContext>;
+
+export const buildAppConnectionRouteContext = ({
   server,
   app,
-  createSchema,
-  updateSchema,
-  sanitizedResponseSchema
+  sanitizedResponseSchema,
+  operationIdPrefix = "",
+  tags = [ApiDocsTags.AppConnections]
 }: {
-  app: AppConnection;
   server: FastifyZodProvider;
-  createSchema: z.ZodType<{
-    name: string;
-    method: I["method"];
-    credentials: I["credentials"];
-    description?: string | null;
-    isPlatformManagedCredentials?: boolean;
-    isAutoRotationEnabled?: boolean | null;
-    gatewayId?: string | null;
-    gatewayPoolId?: string | null;
-    projectId?: string;
-    rotation?: TCreateAppConnectionCredentialRotationSchema | null;
-    configuration?: Record<string, unknown>;
-  }>;
-  updateSchema: z.ZodType<{
-    name?: string;
-    credentials?: I["credentials"];
-    description?: string | null;
-    isPlatformManagedCredentials?: boolean;
-    gatewayId?: string | null;
-    gatewayPoolId?: string | null;
-    isAutoRotationEnabled?: boolean | null;
-    rotation?: Partial<TCreateAppConnectionCredentialRotationSchema> | null;
-    configuration?: Record<string, unknown>;
-  }>;
+  app: AppConnection;
   sanitizedResponseSchema: z.ZodTypeAny;
+  operationIdPrefix?: string;
+  tags?: ApiDocsTags[];
 }) => {
   const appName = APP_CONNECTION_NAME_MAP[app];
   const specialCases: Record<string, string> = {
@@ -59,15 +69,27 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     [AppConnection.MySql]: "MySql",
     [AppConnection.OracleDB]: "OracleDb",
     [AppConnection.MongoDB]: "MongoDb",
-    [AppConnection.TravisCI]: "TravisCI"
+    [AppConnection.TravisCI]: "TravisCI",
+    [AppConnection.ServiceNow]: "ServiceNow"
   };
   const appNameForOpId =
-    specialCases[app] ??
-    app
-      .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join("");
+    operationIdPrefix +
+    (specialCases[app] ??
+      app
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(""));
 
+  return { server, app, appName, appNameForOpId, sanitizedResponseSchema, tags };
+};
+
+export const buildListAppConnectionsRoute = (
+  { server, app, appName, appNameForOpId, sanitizedResponseSchema, tags }: TAppConnectionRouteContext,
+  {
+    description = `List the ${appName} Connections for the current organization or project.`,
+    resolveScope
+  }: { description?: string; resolveScope?: TResolveScope } = {}
+) => {
   server.route({
     method: "GET",
     url: `/`,
@@ -77,10 +99,12 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       hide: false,
       operationId: `list${appNameForOpId}AppConnections`,
-      tags: [ApiDocsTags.AppConnections],
-      description: `List the ${appName} Connections for the current organization or project.`,
-      querystring: z.object({
-        projectId: z.string().optional().describe(AppConnections.LIST(app).projectId)
+      tags,
+      description,
+      ...(!resolveScope && {
+        querystring: z.object({
+          projectId: z.string().optional().describe(AppConnections.LIST(app).projectId)
+        })
       }),
       response: {
         200: z.object({ appConnections: sanitizedResponseSchema.array() })
@@ -88,12 +112,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId } = req.query;
-      const appConnections = (await server.services.appConnection.listAppConnections(
-        req.permission,
-        app,
-        projectId
-      )) as T[];
+      const projectId = resolveScope ? resolveScope(req).projectId : (req.query as { projectId?: string }).projectId;
+      const appConnections = await server.services.appConnection.listAppConnections(req.permission, app, projectId);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -112,7 +132,14 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       return { appConnections };
     }
   });
+};
 
+export const buildListAvailableAppConnectionsRoute = (
+  { server, app, appName, appNameForOpId, tags }: TAppConnectionRouteContext,
+  {
+    description = `List the ${appName} Connections the current user has permission to establish connections within this project.`
+  }: { description?: string } = {}
+) => {
   server.route({
     method: "GET",
     url: "/available",
@@ -122,8 +149,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       hide: false,
       operationId: `list${appNameForOpId}AvailableAppConnections`,
-      tags: [ApiDocsTags.AppConnections],
-      description: `List the ${appName} Connections the current user has permission to establish connections within this project.`,
+      tags,
+      description,
       querystring: z.object({
         projectId: z.string().optional().describe(AppConnections.LIST(app).projectId)
       }),
@@ -135,7 +162,9 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
               name: z.string(),
               id: z.string().uuid(),
               projectId: z.string().nullish(),
-              orgId: z.string()
+              orgId: z.string(),
+              gatewayId: z.string().uuid().nullish(),
+              gatewayPoolId: z.string().uuid().nullish()
             })
             .array()
         })
@@ -167,7 +196,15 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       return { appConnections };
     }
   });
+};
 
+export const buildGetAppConnectionRoute = (
+  { server, app, appName, appNameForOpId, sanitizedResponseSchema, tags }: TAppConnectionRouteContext,
+  {
+    description = `Get the specified ${appName} Connection by ID.`,
+    resolveScope
+  }: { description?: string; resolveScope?: TResolveScope } = {}
+) => {
   server.route({
     method: "GET",
     url: "/:connectionId",
@@ -177,8 +214,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       hide: false,
       operationId: `get${appNameForOpId}AppConnection`,
-      tags: [ApiDocsTags.AppConnections],
-      description: `Get the specified ${appName} Connection by ID.`,
+      tags,
+      description,
       params: z.object({
         connectionId: z.string().uuid().describe(AppConnections.GET_BY_ID(app).connectionId)
       }),
@@ -190,11 +227,12 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const appConnection = (await server.services.appConnection.findAppConnectionById(
+      const appConnection = await server.services.appConnection.findAppConnectionById(
         app,
         connectionId,
-        req.permission
-      )) as T;
+        req.permission,
+        resolveScope?.(req)
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -211,7 +249,15 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       return { appConnection };
     }
   });
+};
 
+export const buildGetAppConnectionByNameRoute = (
+  { server, app, appName, appNameForOpId, sanitizedResponseSchema, tags }: TAppConnectionRouteContext,
+  {
+    description = `Get the specified ${appName} Connection by name.`,
+    resolveScope
+  }: { description?: string; resolveScope?: TResolveScope } = {}
+) => {
   server.route({
     method: "GET",
     url: `/connection-name/:connectionName`,
@@ -221,8 +267,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       hide: false,
       operationId: `get${appNameForOpId}AppConnectionByName`,
-      tags: [ApiDocsTags.AppConnections],
-      description: `Get the specified ${appName} Connection by name.`,
+      tags,
+      description,
       params: z.object({
         connectionName: z
           .string()
@@ -230,8 +276,10 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           .min(1, "Connection name required")
           .describe(AppConnections.GET_BY_NAME(app).connectionName)
       }),
-      querystring: z.object({
-        projectId: z.string().trim().optional().describe(AppConnections.GET_BY_NAME(app).projectId)
+      ...(!resolveScope && {
+        querystring: z.object({
+          projectId: z.string().trim().optional().describe(AppConnections.GET_BY_NAME(app).projectId)
+        })
       }),
       response: {
         200: z.object({ appConnection: sanitizedResponseSchema })
@@ -240,16 +288,16 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionName } = req.params;
-      const { projectId } = req.query;
+      const projectId = resolveScope ? resolveScope(req).projectId : (req.query as { projectId?: string }).projectId;
 
-      const appConnection = (await server.services.appConnection.findAppConnectionByName(
+      const appConnection = await server.services.appConnection.findAppConnectionByName(
         app,
         {
           connectionName,
           projectId
         },
         req.permission
-      )) as T;
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -266,7 +314,16 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       return { appConnection };
     }
   });
+};
 
+export const buildCreateAppConnectionRoute = <I extends TAppConnectionInput>(
+  { server, app, appName, appNameForOpId, sanitizedResponseSchema, tags }: TAppConnectionRouteContext,
+  {
+    createSchema,
+    description = `Create ${startsWithVowel(appName) ? "an" : "a"} ${appName} Connection.`,
+    resolveScope
+  }: { createSchema: TAppConnectionCreateSchema<I>; description?: string; resolveScope?: TResolveScope }
+) => {
   server.route({
     method: "POST",
     url: "/",
@@ -276,8 +333,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       hide: false,
       operationId: `create${appNameForOpId}AppConnection`,
-      tags: [ApiDocsTags.AppConnections],
-      description: `Create ${startsWithVowel(appName) ? "an" : "a"} ${appName} Connection.`,
+      tags,
+      description,
       body: createSchema,
       response: {
         200: z.object({ appConnection: sanitizedResponseSchema })
@@ -289,23 +346,23 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
         name,
         method,
         credentials,
-        description,
+        description: connectionDescription,
         isPlatformManagedCredentials,
         gatewayId,
         gatewayPoolId,
-        projectId,
         isAutoRotationEnabled,
         rotation,
         configuration
       } = req.body;
+      const projectId = resolveScope ? resolveScope(req).projectId : req.body.projectId;
 
-      const appConnection = (await server.services.appConnection.createAppConnection(
+      const appConnection = await server.services.appConnection.createAppConnection(
         {
           name,
           method,
           app,
           credentials,
-          description,
+          description: connectionDescription,
           isPlatformManagedCredentials,
           gatewayId,
           gatewayPoolId,
@@ -315,7 +372,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           configuration
         },
         req.permission
-      )) as T;
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -349,7 +406,17 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       return { appConnection };
     }
   });
+};
 
+export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
+  ctx: TAppConnectionRouteContext,
+  {
+    updateSchema,
+    description = `Update the specified ${ctx.appName} Connection.`,
+    resolveScope
+  }: { updateSchema: TAppConnectionUpdateSchema<I>; description?: string; resolveScope?: TResolveScope }
+) => {
+  const { server, app, appNameForOpId, sanitizedResponseSchema, tags } = ctx;
   server.route({
     method: "PATCH",
     url: "/:connectionId",
@@ -359,8 +426,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       hide: false,
       operationId: `update${appNameForOpId}AppConnection`,
-      tags: [ApiDocsTags.AppConnections],
-      description: `Update the specified ${appName} Connection.`,
+      tags,
+      description,
       params: z.object({
         connectionId: z.string().uuid().describe(AppConnections.UPDATE(app).connectionId)
       }),
@@ -374,7 +441,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       const {
         name,
         credentials,
-        description,
+        description: connectionDescription,
         isPlatformManagedCredentials,
         gatewayId,
         gatewayPoolId,
@@ -384,12 +451,13 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       } = req.body;
       const { connectionId } = req.params;
 
-      const appConnection = (await server.services.appConnection.updateAppConnection(
+      const appConnection = await server.services.appConnection.updateAppConnection(
+        app,
         {
           name,
           credentials,
           connectionId,
-          description,
+          description: connectionDescription,
           isPlatformManagedCredentials,
           gatewayId,
           gatewayPoolId,
@@ -397,8 +465,9 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           rotation: rotation ?? undefined,
           configuration
         },
-        req.permission
-      )) as T;
+        req.permission,
+        resolveScope?.(req)
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -408,7 +477,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           type: EventType.UPDATE_APP_CONNECTION,
           metadata: {
             name,
-            description,
+            description: connectionDescription,
             credentialsUpdated: Boolean(credentials),
             connectionId,
             isPlatformManagedCredentials
@@ -428,7 +497,16 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       return { appConnection };
     }
   });
+};
 
+export const buildDeleteAppConnectionRoute = (
+  ctx: TAppConnectionRouteContext,
+  {
+    description = `Delete the specified ${ctx.appName} Connection.`,
+    resolveScope
+  }: { description?: string; resolveScope?: TResolveScope } = {}
+) => {
+  const { server, app, appNameForOpId, sanitizedResponseSchema, tags } = ctx;
   server.route({
     method: "DELETE",
     url: `/:connectionId`,
@@ -438,8 +516,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       hide: false,
       operationId: `delete${appNameForOpId}AppConnection`,
-      tags: [ApiDocsTags.AppConnections],
-      description: `Delete the specified ${appName} Connection.`,
+      tags,
+      description,
       params: z.object({
         connectionId: z.string().uuid().describe(AppConnections.DELETE(app).connectionId)
       }),
@@ -451,11 +529,12 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const appConnection = (await server.services.appConnection.deleteAppConnection(
+      const appConnection = await server.services.appConnection.deleteAppConnection(
         app,
         connectionId,
-        req.permission
-      )) as T;
+        req.permission,
+        resolveScope?.(req)
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -484,7 +563,16 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       return { appConnection };
     }
   });
+};
 
+export const buildRotateAppConnectionCredentialsRoute = (
+  ctx: TAppConnectionRouteContext,
+  {
+    description = `Rotate the credentials for the specified ${ctx.appName} Connection.`,
+    resolveScope
+  }: { description?: string; resolveScope?: TResolveScope } = {}
+) => {
+  const { server, app, appNameForOpId, sanitizedResponseSchema, tags } = ctx;
   server.route({
     method: "POST",
     url: "/:connectionId/rotate-credentials",
@@ -494,8 +582,8 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       hide: false,
       operationId: `rotate${appNameForOpId}AppConnectionCredentials`,
-      tags: [ApiDocsTags.AppConnections],
-      description: `Rotate the credentials for the specified ${appName} Connection.`,
+      tags,
+      description,
       params: z.object({
         connectionId: z.string().uuid().describe(AppConnections.ROTATE_CREDENTIALS(app).connectionId)
       }),
@@ -507,13 +595,18 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      await server.services.appConnection.triggerCredentialRotation({ app, connectionId }, req.permission);
+      await server.services.appConnection.triggerCredentialRotation(
+        { app, connectionId },
+        req.permission,
+        resolveScope?.(req)
+      );
 
-      const appConnection = (await server.services.appConnection.findAppConnectionById(
+      const appConnection = await server.services.appConnection.findAppConnectionById(
         app,
         connectionId,
-        req.permission
-      )) as T;
+        req.permission,
+        resolveScope?.(req)
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -530,6 +623,31 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       return { appConnection };
     }
   });
+};
+
+export const registerAppConnectionEndpoints = <I extends TAppConnectionInput>({
+  server,
+  app,
+  createSchema,
+  updateSchema,
+  sanitizedResponseSchema
+}: {
+  app: AppConnection;
+  server: FastifyZodProvider;
+  createSchema: TAppConnectionCreateSchema<I>;
+  updateSchema: TAppConnectionUpdateSchema<I>;
+  sanitizedResponseSchema: z.ZodTypeAny;
+}) => {
+  const ctx = buildAppConnectionRouteContext({ server, app, sanitizedResponseSchema });
+
+  buildListAppConnectionsRoute(ctx);
+  buildListAvailableAppConnectionsRoute(ctx);
+  buildGetAppConnectionRoute(ctx);
+  buildGetAppConnectionByNameRoute(ctx);
+  buildCreateAppConnectionRoute(ctx, { createSchema });
+  buildUpdateAppConnectionRoute(ctx, { updateSchema });
+  buildDeleteAppConnectionRoute(ctx);
+  buildRotateAppConnectionCredentialsRoute(ctx);
 
   // scott: we will need this once we have individual app connection page and may want to expose to API
   // server.route({

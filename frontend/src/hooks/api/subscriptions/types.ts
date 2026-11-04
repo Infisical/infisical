@@ -10,17 +10,34 @@ export enum SubscriptionPlanTypes {
   OnPremEnterprise = "one-prem-enterprise"
 }
 
+export type SubscriptionPlanNotice = {
+  type: "trial_payment_failed";
+  productKey: string;
+  trialPlanKey: string | null;
+  accessEndsAt: string;
+  nextAttemptAt: string | null;
+  cause: string | null;
+};
+
 export type SubscriptionPlan = {
+  productPlans?: {
+    productKey: string;
+    planKey: string | null;
+    status: string | null;
+    trialPlanKey: string | null;
+    trialEndsAt: string | null;
+  }[];
+  notices?: SubscriptionPlanNotice[];
   id: string;
   memberLimit: number;
   identityLimit: number;
+  enforceIdentityLimit?: boolean;
   auditLogs: boolean;
   dynamicSecret: boolean;
-  auditLogsRetentionDays: number;
+  auditLogsRetentionDays: number | null;
   auditLogStreamLimit: number;
   auditLogStreams: boolean;
   customAlerts: boolean;
-  customRateLimits: boolean;
   pitRecovery: boolean;
   githubOrgSync: boolean;
   subOrganization?: boolean;
@@ -57,7 +74,7 @@ export type SubscriptionPlan = {
   instanceUserManagement: boolean;
   gateway: boolean;
   gatewayPool: boolean;
-  pamSlackNotifications: boolean;
+  pamEnterpriseAlerting: boolean;
   externalKms: boolean;
   // PKI / Cert Manager. The /plan route returns z.any(), so nothing enforces that this mirrors
   // the backend's TFeatureSet.
@@ -66,6 +83,8 @@ export type SubscriptionPlan = {
   pkiScep: boolean;
   pkiPqc: boolean;
   caCrl: boolean;
+  pkiOcsp: boolean;
+  pkiAwsKmsSigning: boolean;
   pkiEnterpriseCaIntegrations: boolean;
   pkiExternalIntermediateCa: boolean;
   pkiDiscovery: boolean;
@@ -98,7 +117,13 @@ export type SubscriptionPlan = {
   honeyTokens: boolean;
   honeyTokenLimit: number;
   secretsBrokering: boolean;
+  agentVaultByoS3: boolean;
+  agentVaultManagedStorage: boolean;
+  // null means 30 days.
+  agentVaultSessionLogRetentionDays: number | null;
   pam?: boolean | null;
+  enterprisePamAccount?: boolean | null;
+  maxPamAccounts?: number | null;
   certManager?: boolean | null;
   secretsFolderRbac: boolean;
   crossProjectSecretSharing: boolean;

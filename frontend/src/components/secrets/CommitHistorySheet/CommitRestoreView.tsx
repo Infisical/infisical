@@ -80,7 +80,7 @@ export const CommitRestoreView = ({
     isPlaceholderData,
     isError,
     refetch
-  } = useGetRollbackPreview(folderId, commitId, environment, projectId, isDeepRollback, secretPath);
+  } = useGetRollbackPreview(folderId, commitId, projectId, isDeepRollback);
 
   const { mutateAsync: rollback, isPending: isRollingBack } = useCommitRollback({
     projectId,

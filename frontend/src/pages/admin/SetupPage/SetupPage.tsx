@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Controller, type Resolver, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -8,6 +7,7 @@ import { z } from "zod";
 
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { OnboardingPageLayout } from "@app/components/auth/OnboardingPageLayout";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   AnimatedCollapse,
   Button,
@@ -350,7 +350,7 @@ export const SetupPage = () => {
             name="signUpMode"
             render={({ field }) => (
               <Field>
-                <h3 className="font-alliance text-base font-medium text-foreground">
+                <h3 className="font-alliance text-base font-normal text-foreground">
                   Who can create accounts?
                 </h3>
                 <RadioGroup
@@ -361,7 +361,7 @@ export const SetupPage = () => {
                   <FieldLabel htmlFor="signup-disabled">
                     <Field orientation="horizontal">
                       <FieldContent>
-                        <FieldTitle className="font-alliance text-base">Invite-only</FieldTitle>
+                        <FieldTitle className="font-sans text-base">Invite-only</FieldTitle>
                         <FieldDescription>Recommended for most instances.</FieldDescription>
                       </FieldContent>
                       <RadioGroupItem value={SignUpMode.Disabled} id="signup-disabled" />
@@ -370,9 +370,9 @@ export const SetupPage = () => {
                   <FieldLabel htmlFor="signup-anyone">
                     <Field orientation="horizontal">
                       <FieldContent>
-                        <FieldTitle className="gap-1 font-alliance text-base">
+                        <FieldTitle className="gap-1 font-sans text-base">
                           Anyone
-                          <span aria-hidden="true" className="font-inter text-xs text-danger">
+                          <span aria-hidden="true" className="font-sans text-xs text-danger">
                             *
                           </span>
                         </FieldTitle>
@@ -391,7 +391,7 @@ export const SetupPage = () => {
             render={({ field }) => (
               <Field>
                 <div className="flex items-center gap-3">
-                  <h3 className="shrink-0 font-alliance text-base font-medium text-foreground">
+                  <h3 className="shrink-0 font-alliance text-base font-normal text-foreground">
                     Allowed authentication methods
                   </h3>
                   <Separator className="flex-1" />
@@ -585,17 +585,15 @@ export const SetupPage = () => {
         </div>
       }
     >
-      <Helmet>
-        <title>Configure your instance | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Configure Your Instance" />
+      <link rel="icon" href="/infisical.ico" />
       <AuthPagePanel>
         <form id={setupFormId} onSubmit={onSubmit}>
           <CardHeader className="mb-8 gap-2">
             <CardTitle className="font-alliance text-3xl leading-tight font-normal">
               {stepContent[activeStep].title}
             </CardTitle>
-            <CardDescription className="font-alliance text-base leading-relaxed">
+            <CardDescription className="font-sans text-base leading-relaxed">
               {stepContent[activeStep].description}
             </CardDescription>
           </CardHeader>

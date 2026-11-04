@@ -80,7 +80,7 @@ export const RenderSyncFields = () => {
                       {Object.values(RENDER_SYNC_SCOPES).map(({ name, description }) => (
                         <li key={name}>
                           <p className="text-label">
-                            <span className="font-medium text-foreground">{name}</span>:{" "}
+                            <span className="font-medium text-foreground-soft">{name}</span>:{" "}
                             {description}
                           </p>
                         </li>
@@ -130,8 +130,8 @@ export const RenderSyncFields = () => {
                   isDisabled={!connectionId}
                   value={services?.find((service) => service.id === value) ?? null}
                   onValueChange={(option) => {
-                    onChange(option.id ?? null);
-                    setValue("destinationConfig.serviceName", option.name ?? "");
+                    onChange(option?.id ?? null);
+                    setValue("destinationConfig.serviceName", option?.name ?? "");
                   }}
                   options={services}
                   placeholder="Select a service..."
@@ -171,8 +171,8 @@ export const RenderSyncFields = () => {
                   isDisabled={!connectionId}
                   value={groups?.find((group) => group.id === value) ?? null}
                   onValueChange={(option) => {
-                    onChange(option.id ?? null);
-                    setValue("destinationConfig.environmentGroupName", option.name ?? "");
+                    onChange(option?.id ?? null);
+                    setValue("destinationConfig.environmentGroupName", option?.name ?? "");
                   }}
                   options={groups}
                   placeholder="Select an environment group..."

@@ -142,6 +142,7 @@ export const useUpdateOrg = () => {
       defaultMembershipRoleSlug,
       enforceMfa,
       selectedMfaMethod,
+      ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
       userTokenExpiration,
@@ -154,6 +155,7 @@ export const useUpdateOrg = () => {
       maxSharedSecretViewLimit,
       blockDuplicateSecretSyncDestinations,
       allowCrossProjectSecretSharing,
+      requireGatewayPools,
       secretShareBrandConfig
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
@@ -165,6 +167,7 @@ export const useUpdateOrg = () => {
         defaultMembershipRoleSlug,
         enforceMfa,
         selectedMfaMethod,
+        ssoMfaTrust,
         allowSecretSharingOutsideOrganization,
         bypassOrgAuthEnabled,
         userTokenExpiration,
@@ -177,6 +180,7 @@ export const useUpdateOrg = () => {
         maxSharedSecretViewLimit,
         blockDuplicateSecretSyncDestinations,
         allowCrossProjectSecretSharing,
+        requireGatewayPools,
         secretShareBrandConfig
       });
     },

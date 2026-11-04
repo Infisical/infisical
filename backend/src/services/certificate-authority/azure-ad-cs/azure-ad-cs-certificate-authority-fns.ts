@@ -15,9 +15,15 @@ import {
   createAdcsHttpClient,
   getAzureADCSConnectionCredentials
 } from "@app/services/app-connection/azure-adcs/azure-adcs-connection-fns";
+import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { linkRenewedCertificate, splitPemChain } from "@app/services/certificate/certificate-fns";
+import {
+  extractExternallyIssuedCertificateFields,
+  linkRenewedCertificate,
+  splitPemChain
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -26,8 +32,6 @@ import {
   CertStatus,
   TAltNameType
 } from "@app/services/certificate/certificate-types";
-import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
-import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSubscriberProperties } from "@app/services/pki-subscriber/pki-subscriber-types";
@@ -1046,21 +1050,21 @@ export const AzureAdCsCertificateAuthorityFns = ({
       plainText: Buffer.from(skLeaf)
     });
 
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj);
+
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           pkiSubscriberId: subscriber.id,
           status: CertStatus.ACTIVE,
-          friendlyName: subscriber.commonName,
-          commonName: subscriber.commonName,
-          altNames: subscriber.subjectAlternativeNames.join(","),
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
-          keyUsages: subscriber.keyUsages as CertKeyUsage[],
-          extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[],
-          projectId: ca.projectId
+          projectId: ca.projectId,
+          friendlyName: parsedFields.commonName ?? subscriber.commonName,
+          commonName: parsedFields.commonName ?? subscriber.commonName,
+          altNames: parsedFields.altNames ?? subscriber.subjectAlternativeNames.join(","),
+          keyUsages: parsedFields.keyUsages ?? (subscriber.keyUsages as CertKeyUsage[]),
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? (subscriber.extendedKeyUsages as CertExtendedKeyUsage[])
         },
         tx
       );
@@ -1414,23 +1418,23 @@ export const AzureAdCsCertificateAuthorityFns = ({
 
     let certificateId: string;
 
+    const parsedFields = extractExternallyIssuedCertificateFields(certObj);
+
     await certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
+          ...parsedFields,
           caId: ca.id,
           profileId,
           status: CertStatus.ACTIVE,
-          friendlyName: commonName,
-          commonName,
-          altNames: altNames.join(","),
-          serialNumber: certObj.serialNumber,
-          notBefore: certObj.notBefore,
-          notAfter: certObj.notAfter,
-          keyUsages,
-          extendedKeyUsages,
-          keyAlgorithm,
-          signatureAlgorithm,
           projectId: ca.projectId,
+          friendlyName: parsedFields.commonName ?? commonName,
+          commonName: parsedFields.commonName ?? commonName,
+          altNames: parsedFields.altNames ?? altNames.join(","),
+          keyUsages: parsedFields.keyUsages ?? keyUsages,
+          extendedKeyUsages: parsedFields.extendedKeyUsages ?? extendedKeyUsages,
+          keyAlgorithm: parsedFields.keyAlgorithm ?? keyAlgorithm,
+          signatureAlgorithm: parsedFields.signatureAlgorithm ?? signatureAlgorithm,
           renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
         },
         tx

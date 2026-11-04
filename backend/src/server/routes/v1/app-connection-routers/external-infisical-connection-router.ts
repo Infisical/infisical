@@ -73,7 +73,7 @@ export const registerExternalInfisicalConnectionRouter = async (server: FastifyZ
       operationId: "getExternalInfisicalEnvironmentFolderTree",
       params: z.object({
         connectionId: z.string().uuid(),
-        projectId: z.string().uuid()
+        projectId: z.string()
       }),
       response: {
         200: RemoteEnvironmentFolderTreeSchema

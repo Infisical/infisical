@@ -1,0 +1,21 @@
+import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx";
+
+### Create a proxy
+
+<Steps>
+  <Step>
+    In Agent Vault, go to **Proxies** and select **Create Proxy**.
+  </Step>
+  <Step>
+    Enter a **Name**, such as `sandboxes`.
+  </Step>
+  <Step>
+    Select **Create**, then copy the proxy token from the **Proxy Token** dialog. Infisical shows the token only once.
+  </Step>
+</Steps>
+
+### Create a machine identity for your code
+
+Your code creates a session for each run as a [machine identity](/documentation/platform/identities/machine-identities). Give the machine identity the **Member** role and access to only your access bundle, because an Agent Vault admin can create sessions for every access bundle.
+
+<MachineIdentitySetup />

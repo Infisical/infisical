@@ -1,74 +1,112 @@
+import { MouseEvent } from "react";
 import Markdown from "react-markdown";
-import { faCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
+import { Trash2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { IconButton, Tooltip } from "@app/components/v2";
+import {
+  DropdownMenuItem,
+  IconButton,
+  rowLinkClassName,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { isCriticalNotification, TUserNotification } from "@app/hooks/api/notifications/types";
 
 type Props = {
   notification: TUserNotification;
+  href?: string;
+  onOpen: (event: MouseEvent<HTMLElement>) => void;
+  onAuxOpen: () => void;
   onDelete: (notificationId: string) => void;
 };
 
-export const Notification = ({ notification, onDelete }: Props) => {
+export const Notification = ({ notification, href, onOpen, onAuxOpen, onDelete }: Props) => {
   const isCritical = isCriticalNotification(notification.type);
+  const titleClassName = twMerge(
+    rowLinkClassName,
+    "static min-w-0 rounded-none p-0 text-left text-sm leading-5 font-medium text-foreground focus:bg-transparent"
+  );
+  const titleWithTooltip = (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        <span className="relative z-10 block truncate">
+          <Markdown components={{ p: "span" }}>{notification.title}</Markdown>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="z-[var(--z-index-tooltip)]">
+        <Markdown>{notification.title}</Markdown>
+      </TooltipContent>
+    </Tooltip>
+  );
 
   return (
     <div
       className={twMerge(
-        "group relative flex cursor-pointer items-start border-b border-mineshaft-600 p-2 transition-colors",
-        notification.link ? "hover:bg-mineshaft-700" : "cursor-default",
-        !notification.isRead && "bg-mineshaft-800",
-        isCritical && !notification.isRead && "border-l-2 border-l-red-700"
+        "group relative flex cursor-pointer items-start border-b border-border p-2 transition-colors",
+        notification.link ? "hover:bg-container-hover" : "cursor-default",
+        !notification.isRead && "bg-container",
+        isCritical && !notification.isRead && "border-l-2 border-l-danger"
       )}
     >
       <div className="flex w-full min-w-0 flex-col p-1">
         <div className="flex items-start gap-2">
           {!notification.isRead && (
             <div className="flex h-5 items-center">
-              <FontAwesomeIcon
-                icon={faCircle}
+              <span
                 className={twMerge(
-                  "size-2 shrink-0",
-                  isCritical ? "text-red-700" : "text-yellow-400"
+                  "size-2 shrink-0 rounded-full",
+                  isCritical ? "bg-danger" : "bg-warning"
                 )}
               />
             </div>
           )}
-          <Tooltip
-            content={<Markdown>{notification.title}</Markdown>}
-            delayDuration={300}
-            className="z-1000"
+          <DropdownMenuItem
+            asChild
+            className={titleClassName}
+            onSelect={(event) => event.preventDefault()}
           >
-            <span className="overflow-hidden text-sm leading-5 font-medium text-ellipsis whitespace-nowrap text-mineshaft-100">
-              <Markdown components={{ p: "span" }}>{notification.title}</Markdown>
+            {href ? (
+              <a
+                href={href}
+                onClick={onOpen}
+                onAuxClick={(event) => {
+                  if (event.button === 1) onAuxOpen();
+                }}
+              >
+                {titleWithTooltip}
+              </a>
+            ) : (
+              <button type="button" onClick={onOpen}>
+                {titleWithTooltip}
+              </button>
+            )}
+          </DropdownMenuItem>
+          <div className="pointer-events-none relative ml-auto shrink-0 pl-7">
+            <span className="inline-block text-xs leading-5 whitespace-nowrap text-muted transition-transform group-focus-within:-translate-x-7 group-hover:-translate-x-7 [@media(hover:none)]:-translate-x-7">
+              {formatDistance(notification.createdAt, new Date())} ago
             </span>
-          </Tooltip>
-          <span className="mt-px ml-auto text-xs whitespace-nowrap text-mineshaft-400">
-            {formatDistance(notification.createdAt, new Date())} ago
-          </span>
+            <IconButton
+              aria-label="Delete notification"
+              variant="ghost-muted"
+              size="2xs"
+              className="pointer-events-auto absolute -top-0.5 right-0 z-10 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(notification.id);
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <Trash2 />
+            </IconButton>
+          </div>
         </div>
         {notification.body && (
-          <div className="w-full overflow-hidden text-xs break-words text-mineshaft-300">
+          <div className="w-full overflow-hidden text-xs break-words text-accent [&_a]:relative [&_a]:z-10">
             <Markdown>{notification.body}</Markdown>
           </div>
         )}
-      </div>
-      <div className="mt-0.5 flex w-0 shrink-0 justify-end opacity-0 transition-all group-hover:w-[24px] group-hover:opacity-100">
-        <IconButton
-          ariaLabel="delete"
-          variant="plain"
-          colorSchema="danger"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(notification.id);
-          }}
-        >
-          <FontAwesomeIcon icon={faTrash} />
-        </IconButton>
       </div>
     </div>
   );

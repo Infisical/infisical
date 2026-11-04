@@ -42,10 +42,15 @@ description: "Learn how to configure PingOne OIDC for Infisical SSO."
 
       1.6 Map the following attributes:
       - `email` -> `Email Address`
-      - `name` -> `Username`
+      - `given_name` -> `Given Name`
+      - `family_name` -> `Family Name`
       ![OIDC PingOne Edit Attribute Mappings](../../../images/sso/pingone-oidc/pingone-edit-application-attribute-mappings-2.png)
 
       Once done, press the "Save" button.
+
+      <Note>
+         Infisical takes a user's name from the `given_name` and `family_name` claims. If you map `name` in place of `given_name`, Infisical falls back to it and removes `family_name` from the end of it, so the surname isn't stored twice. See [General OIDC](/documentation/platform/sso/general-oidc/overview) for the exact fallback rules.
+      </Note>
 
    </Step>
    <Step title="Retrieve Identity Provider (IdP) Information from PingOne">

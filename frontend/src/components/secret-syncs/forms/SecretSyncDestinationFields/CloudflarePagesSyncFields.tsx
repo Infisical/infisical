@@ -73,7 +73,7 @@ export const CloudflarePagesSyncFields = () => {
                 isDisabled={!connectionId}
                 value={projects.find((project) => project.name === value) ?? null}
                 onValueChange={(option) => {
-                  onChange(option.name ?? null);
+                  onChange(option?.name ?? null);
                 }}
                 options={projects}
                 placeholder="Select a project..."

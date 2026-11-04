@@ -1,20 +1,24 @@
 import path from "node:path";
 
+import { Knex } from "knex";
 import RE2 from "re2";
 
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { ClientClosedRequestError, ForbiddenRequestError, throwIfClientDisconnected } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 
-// Supports standard refs like ${ENV.path.KEY} and cross-project refs like ${@project-slug.ENV.path.KEY}
-const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.@]+)}`;
+// Supports standard refs like ${ENV.path.KEY} and cross-project refs like ${@project-slug.ENV.path.KEY}.
+// Secret names may contain spaces, but environment slugs and folder names cannot, so spaces are only
+// accepted inside the final segment. Leading and trailing spaces are not, so `${ KEY }` stays literal as it
+// always has rather than starting to resolve once trimmed.
+const INTERPOLATION_PATTERN_STRING = String.raw`\${([a-zA-Z0-9-_.@]+(?: +[a-zA-Z0-9-_@]+)*)}`;
 const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
 
 export const containsSecretReference = (value: string) => INTERPOLATION_TEST_REGEX.test(value);
@@ -108,9 +112,20 @@ type TInterpolateSecretArg = {
   // same-project relative references; cross-project reads must stay raw so source
   // project imports are not resolved through the target project context.
   crossProjectSecretDAL?: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
+  // Called once a secret's references expand without error, with the ids of the secrets in this project they
+  // resolved to (a personal override included), so a caller can tell which secrets a read actually delivered.
+  onSecretExpanded?: (
+    secret: { environment: string; secretPath: string; secretKey: string },
+    referencedSecretIds: string[]
+  ) => void;
+  abortSignal?: AbortSignal;
+  tx?: Knex;
 };
 
-const MAX_SECRET_REFERENCE_DEPTH = 10;
+// A cross-project secret carries no id: only this project's secrets are reported to onSecretExpanded.
+type TCachedReferencedSecret = { id?: string; value: string; tags: string[]; exists: boolean };
+
+export const MAX_SECRET_REFERENCE_DEPTH = 10;
 export const expandSecretReferencesFactory = ({
   projectId,
   decryptSecretValue: decryptSecret,
@@ -123,9 +138,12 @@ export const expandSecretReferencesFactory = ({
   projectFolderGrantDAL,
   projectDAL,
   kmsService,
-  crossProjectSecretDAL
+  crossProjectSecretDAL,
+  onSecretExpanded,
+  abortSignal,
+  tx
 }: TInterpolateSecretArg) => {
-  const secretCache: Record<string, Record<string, { value: string; tags: string[]; exists: boolean }>> = {};
+  const secretCache: Record<string, Record<string, TCachedReferencedSecret>> = {};
   let crossProjectAllowedCache: boolean | undefined;
   const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
   const checkCrossProjectAllowed = async () => {
@@ -163,34 +181,36 @@ export const expandSecretReferencesFactory = ({
 
   const loadFolderSecrets = async (environment: string, secretPath: string, cacheKey: string) => {
     try {
-      const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+      const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath, tx);
       if (!folder) return;
+      throwIfClientDisconnected(abortSignal);
       // When userId is provided, findByFolderId returns both shared and personal secrets.
       // Personal overrides will take precedence over shared secrets in the reduce below.
-      const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId });
+      const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId, tx });
+      throwIfClientDisconnected(abortSignal);
 
-      const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[]; exists: boolean }>>(
-        (prev, secret) => {
-          // When userId is set, personal overrides (userId !== null) should take precedence
-          // over shared secrets for the same key. We skip overwriting if a personal override
-          // is already stored and the current secret is a shared one.
-          if (userId && prev[secret.key] && !secret.userId) {
-            return prev;
-          }
-
-          // eslint-disable-next-line no-param-reassign
-          prev[secret.key] = {
-            value: decryptSecret(secret.encryptedValue) || "",
-            tags: secret.tags?.map((el) => el.slug),
-            exists: true
-          };
+      const decryptedSecret = secrets.reduce<Record<string, TCachedReferencedSecret>>((prev, secret) => {
+        // When userId is set, personal overrides (userId !== null) should take precedence
+        // over shared secrets for the same key. We skip overwriting if a personal override
+        // is already stored and the current secret is a shared one.
+        if (userId && prev[secret.key] && !secret.userId) {
           return prev;
-        },
-        {}
-      );
+        }
+
+        // eslint-disable-next-line no-param-reassign
+        prev[secret.key] = {
+          id: secret.id,
+          value: decryptSecret(secret.encryptedValue) || "",
+          tags: secret.tags?.map((el) => el.slug),
+          exists: true
+        };
+        return prev;
+      }, {});
 
       secretCache[cacheKey] = decryptedSecret;
     } catch (error) {
+      // Rethrown so every expansion waiting on this shared load stops, rather than caching the folder as empty.
+      if (error instanceof ClientClosedRequestError) throw error;
       secretCache[cacheKey] = {};
     }
   };
@@ -199,7 +219,7 @@ export const expandSecretReferencesFactory = ({
     environment: string,
     secretPath: string,
     secretKey: string
-  ): Promise<{ value: string; tags: string[]; exists: boolean }> => {
+  ): Promise<TCachedReferencedSecret> => {
     const cacheKey = getCacheUniqueKey(environment, secretPath);
 
     if (!secretCache[cacheKey]) {
@@ -224,10 +244,13 @@ export const expandSecretReferencesFactory = ({
     environment: string;
     shouldStackTrace?: boolean;
     secretKey: string;
+    referencedSecretIds?: Set<string>;
   }) => {
     const stackTrace = { ...dto, key: "root", children: [] } as TSecretReferenceTraceNode;
 
     if (!dto.value) return { expandedValue: "", stackTrace };
+
+    throwIfClientDisconnected(abortSignal);
 
     // Track visited secrets to prevent circular references
     const createSecretId = (env: string, secretPath: string, key: string) => `${env}:${secretPath}:${key}`;
@@ -278,6 +301,8 @@ export const expandSecretReferencesFactory = ({
         }
 
         for (const interpolationSyntax of refs) {
+          throwIfClientDisconnected(abortSignal);
+
           const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
           const entities = interpolationKey.trim().split(".");
 
@@ -304,6 +329,7 @@ export const expandSecretReferencesFactory = ({
             const cacheKey = getCacheUniqueKey(environment, secretPath);
             if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
             secretCache[cacheKey][secretKey] = referredValue;
+            if (referredValue.id) dto.referencedSecretIds?.add(referredValue.id);
 
             referencedSecretValue = referredValue.value;
             referencedSecretExists = referredValue.exists;
@@ -342,7 +368,8 @@ export const expandSecretReferencesFactory = ({
             } else {
               try {
                 // eslint-disable-next-line no-await-in-loop
-                const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, crossProjEnv, crossProjPath);
+                const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, crossProjEnv, crossProjPath, tx);
+                throwIfClientDisconnected(abortSignal);
                 if (!sourceFolder) {
                   secretCache[crossProjCacheKey] = {};
                   crossProjSecretData = { value: "", tags: [], exists: false };
@@ -371,8 +398,10 @@ export const expandSecretReferencesFactory = ({
                     // with import-aware behavior.
                     // eslint-disable-next-line no-await-in-loop
                     const sourceSecrets = await (crossProjectSecretDAL || secretDAL).findByFolderId({
-                      folderId: sourceFolder.id
+                      folderId: sourceFolder.id,
+                      tx
                     });
+                    throwIfClientDisconnected(abortSignal);
 
                     const crossProjDecrypted = sourceSecrets.reduce<
                       Record<string, { value: string; tags: string[]; exists: boolean }>
@@ -394,6 +423,7 @@ export const expandSecretReferencesFactory = ({
                   }
                 }
               } catch (error) {
+                if (error instanceof ClientClosedRequestError) throw error;
                 logger.error(
                   { err: error, crossProjSlug, crossProjEnv, crossProjPath, crossProjKey },
                   `Failed to expand cross-project reference [slug=${crossProjSlug}] [env=${crossProjEnv}] [path=${crossProjPath}] [key=${crossProjKey}]`
@@ -424,6 +454,7 @@ export const expandSecretReferencesFactory = ({
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
             if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
             secretCache[cacheKey][secretReferenceKey] = referedValue;
+            if (referedValue.id) dto.referencedSecretIds?.add(referedValue.id);
 
             referencedSecretValue = referedValue.value;
             referencedSecretExists = referedValue.exists;
@@ -493,7 +524,12 @@ export const expandSecretReferencesFactory = ({
     const shouldExpand = INTERPOLATION_TEST_REGEX.test(inputSecret.value);
     if (!shouldExpand) return inputSecret.value;
 
-    const { expandedValue } = await recursivelyExpandSecret(inputSecret);
+    const referencedSecretIds = onSecretExpanded ? new Set<string>() : undefined;
+    const { expandedValue } = await recursivelyExpandSecret({ ...inputSecret, referencedSecretIds });
+    if (referencedSecretIds?.size) {
+      const { environment, secretPath, secretKey } = inputSecret;
+      onSecretExpanded?.({ environment, secretPath, secretKey }, [...referencedSecretIds]);
+    }
 
     return inputSecret.skipMultilineEncoding ? formatMultiValueEnv(expandedValue) : expandedValue;
   };

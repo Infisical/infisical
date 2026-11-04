@@ -29,6 +29,14 @@ import { useUpdateProject } from "@app/hooks/api";
 
 const baseFormSchema = z.object({
   name: z.string().min(1, "Required").max(64, "Too long, maximum length is 64 characters"),
+  slug: z
+    .string()
+    .min(1, "Required")
+    .max(64, "Too long, maximum length is 64 characters")
+    .regex(
+      /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/,
+      "Project slug can only contain lowercase letters and numbers, with optional single hyphens (-) or underscores (_) between words. Cannot start or end with a hyphen or underscore."
+    ),
   description: z
     .string()
     .trim()
@@ -37,11 +45,8 @@ const baseFormSchema = z.object({
 });
 
 type BaseFormData = z.infer<typeof baseFormSchema>;
-type Props = {
-  showSlugField?: boolean;
-};
 
-export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) => {
+export const ProjectOverviewChangeSection = () => {
   const { currentProject } = useProject();
   const { mutateAsync, isPending } = useUpdateProject();
   const {
@@ -55,6 +60,7 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
     if (currentProject) {
       reset({
         name: currentProject.name,
+        slug: currentProject.slug,
         description: currentProject.description ?? ""
       });
     }
@@ -66,7 +72,8 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
     await mutateAsync({
       projectId: currentProject.id,
       newProjectName: data.name,
-      newProjectDescription: data.description
+      newProjectDescription: data.description,
+      newSlug: data.slug
     });
 
     createNotification({
@@ -112,33 +119,55 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
                 />
               )}
             </ProjectPermissionCan>
-            {showSlugField && (
-              <Field>
-                <FieldLabel htmlFor="project-slug">Project slug</FieldLabel>
-                <InputGroup>
-                  <InputGroupInput id="project-slug" value={currentProject?.slug ?? ""} readOnly />
-                  <InputGroupAddon align="inline-end">
-                    <CopyButton value={currentProject?.slug ?? ""} ariaLabel="Copy project slug" />
-                  </InputGroupAddon>
-                </InputGroup>
-              </Field>
-            )}
-            {showSlugField && (
-              <Field>
-                <FieldLabel htmlFor="project-id">Project ID</FieldLabel>
-                <InputGroup>
-                  <InputGroupInput
-                    id="project-id"
-                    value={currentProject?.id ?? ""}
-                    readOnly
-                    className="font-mono text-muted"
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <CopyButton value={currentProject?.id ?? ""} ariaLabel="Copy project ID" />
-                  </InputGroupAddon>
-                </InputGroup>
-              </Field>
-            )}
+
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Edit}
+              a={ProjectPermissionSub.Project}
+            >
+              {(isAllowed) => (
+                <Controller
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="project-slug">Project slug</FieldLabel>
+                      <InputGroup>
+                        <InputGroupInput
+                          id="project-slug"
+                          placeholder="project-slug"
+                          {...field}
+                          disabled={!isAllowed || isPending}
+                          isError={Boolean(error)}
+                          autoComplete="off"
+                          name="project-slug"
+                        />
+                        <InputGroupAddon align="inline-end">
+                          <CopyButton value={field.value} ariaLabel="Copy project slug" />
+                        </InputGroupAddon>
+                      </InputGroup>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                  control={control}
+                  name="slug"
+                />
+              )}
+            </ProjectPermissionCan>
+
+            <Field>
+              <FieldLabel htmlFor="project-id">Project ID</FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  id="project-id"
+                  value={currentProject?.id ?? ""}
+                  readOnly
+                  className="font-mono text-muted"
+                />
+                <InputGroupAddon align="inline-end">
+                  <CopyButton value={currentProject?.id ?? ""} ariaLabel="Copy project ID" />
+                </InputGroupAddon>
+              </InputGroup>
+            </Field>
+
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
               a={ProjectPermissionSub.Project}

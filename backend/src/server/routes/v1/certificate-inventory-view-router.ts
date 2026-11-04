@@ -30,7 +30,8 @@ const InventoryViewFiltersSchema = z
         })
       )
       .max(20)
-      .optional()
+      .optional(),
+    includeDeleted: z.boolean().optional()
   })
   .strict();
 
@@ -62,7 +63,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       hide: true,
       operationId: "listCertificateInventoryViews",
       tags: [ApiDocsTags.PkiCertificates],
-      description: "List system and custom certificate inventory views for a project.",
+      description: "List system and custom certificate inventory views.",
       querystring: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden()),
         applicationId: z.string().uuid().optional()
@@ -75,6 +76,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
               name: z.string(),
               filters: z.object({
                 status: z.array(z.string()).optional(),
+                includeDeleted: z.boolean().optional(),
                 notAfterTo: z.string().optional()
               }),
               columns: z.null(),
@@ -149,6 +151,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -160,7 +163,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
             filters: req.body.filters,
             columns: req.body.columns,
             isShared: req.body.isShared,
-            ...(view.applicationId && { applicationId: view.applicationId })
+            ...(view.applicationId && { applicationId: view.applicationId }),
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });
@@ -209,6 +213,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -220,7 +225,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
             filters: req.body.filters,
             columns: req.body.columns,
             isShared: req.body.isShared,
-            ...(view.applicationId && { applicationId: view.applicationId })
+            ...(view.applicationId && { applicationId: view.applicationId }),
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });
@@ -258,6 +264,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type
       });
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: req.internalCertManagerProjectId,
@@ -266,7 +273,8 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
           metadata: {
             viewId: req.params.viewId,
             name: view.name,
-            ...(view.applicationId && { applicationId: view.applicationId })
+            ...(view.applicationId && { applicationId: view.applicationId }),
+            ...(view.applicationName && { applicationName: view.applicationName })
           }
         }
       });

@@ -3,6 +3,7 @@ import { parseEnvFile, serializeEnvFile } from "@app/lib/dotenv";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { safeRequest } from "@app/lib/validator";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SpaceliftConfigType, SpaceliftFileMountFormat } from "./spacelift-sync-constants";
@@ -319,7 +320,8 @@ const removeDotEnvFile = async (
 };
 
 export const SpaceliftSyncFns = {
-  syncSecrets: async (secretSync: TSpaceliftSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+  syncSecrets: async (secretSync: TSpaceliftSyncWithCredentials, payload: TSecretSyncPayload): Promise<void> => {
+    const secretMap = payload.flatten();
     const instanceUrl = removeTrailingSlash(secretSync.connection.credentials.apiUrl);
     const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
     const { contextId, configType, mountPath, fileMountFormat } = secretSync.destinationConfig;
@@ -398,7 +400,8 @@ export const SpaceliftSyncFns = {
     return secretMap;
   },
 
-  removeSecrets: async (secretSync: TSpaceliftSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+  removeSecrets: async (secretSync: TSpaceliftSyncWithCredentials, payload: TSecretSyncPayload): Promise<void> => {
+    const secretMap = payload.flatten();
     const instanceUrl = removeTrailingSlash(secretSync.connection.credentials.apiUrl);
     const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
     const { contextId, configType, mountPath, fileMountFormat } = secretSync.destinationConfig;

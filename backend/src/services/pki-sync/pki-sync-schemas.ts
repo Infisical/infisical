@@ -1,10 +1,13 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { PKI_SYNC_FILTERS } from "@app/lib/api-docs/constants";
 import { HOSTNAME_MAX_LENGTH, isValidHostname } from "@app/lib/validator/validate-hostname";
 
 import { buildCertificateNameSchemaTestName } from "./pki-sync-certificate-name-fns";
 import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
+import { EXPORT_PASSWORD_BLANK_MESSAGE } from "./pki-sync-export-fns";
+import { PKI_SYNC_MAX_FILTER_ORDERS } from "./pki-sync-filter-fns";
 import { HOST_COMMAND_MAX_LENGTH } from "./pki-sync-host-command-fns";
 
 export const HostCommandSchema = z
@@ -13,6 +16,34 @@ export const HostCommandSchema = z
   .max(HOST_COMMAND_MAX_LENGTH, `Command must be at most ${HOST_COMMAND_MAX_LENGTH} characters`)
   .nullable()
   .optional();
+
+const KEYSTORE_ALIAS = new RE2("^[a-zA-Z0-9._-]+$");
+
+export const KeystoreAliasSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .refine((v) => KEYSTORE_ALIAS.test(v), {
+    message: "Keystore alias may only contain letters, digits, dots (.), dashes (-), and underscores (_)"
+  })
+  .optional()
+  .describe(
+    "Alias of the private key entry in a PKCS#12 or JKS keystore. Defaults to the certificate's file base name. JKS stores aliases in lowercase."
+  );
+
+export const ExportPasswordSchema = z
+  .string()
+  .min(1)
+  .max(1024)
+  .refine((password) => password.trim().length > 0, { message: EXPORT_PASSWORD_BLANK_MESSAGE });
+
+export const IncludeTruststoreSchema = z
+  .boolean()
+  .optional()
+  .describe(
+    "Java KeyStore only: also deliver '<name>.truststore.jks' holding the chain and root CA as trusted certificates."
+  );
 
 export const PkiSyncTargetPortSchema = z.coerce
   .number()
@@ -105,6 +136,45 @@ export const PkiSyncDestinationConfigSchema = z.object({
   config: z.record(z.unknown())
 });
 
+const PkiSyncFiltersSchema = z
+  .object({
+    profileIds: z.string().uuid().array().max(20).optional().describe(PKI_SYNC_FILTERS.profileIds),
+    certificateOrderIds: z
+      .string()
+      .uuid()
+      .array()
+      .max(PKI_SYNC_MAX_FILTER_ORDERS)
+      .optional()
+      .describe(PKI_SYNC_FILTERS.certificateOrderIds),
+    metadata: z
+      .object({
+        key: z
+          .string()
+          .trim()
+          .min(1, "Metadata filter key cannot be empty")
+          .max(255)
+          .describe(PKI_SYNC_FILTERS.metadataKey),
+        value: z.string().trim().max(1020).optional().describe(PKI_SYNC_FILTERS.metadataValue)
+      })
+      .array()
+      .max(20)
+      .optional()
+      .describe(PKI_SYNC_FILTERS.metadata)
+  })
+  .strict();
+
+export const PkiSyncFiltersField = PkiSyncFiltersSchema.nullish().describe(PKI_SYNC_FILTERS.filters);
+
+export const UpdatePkiSyncFiltersField = PkiSyncFiltersSchema.nullish().describe(PKI_SYNC_FILTERS.updateFilters);
+
+const StoredPkiSyncFiltersSchema = z.object({
+  profileIds: z.string().uuid().array().optional(),
+  certificateOrderIds: z.string().uuid().array().optional(),
+  metadata: z.object({ key: z.string(), value: z.string().optional() }).array().optional()
+});
+
+export const PkiSyncStoredFiltersField = StoredPkiSyncFiltersSchema.nullish().describe(PKI_SYNC_FILTERS.filters);
+
 // Base PKI sync schema for API responses
 export const PkiSyncSchema = z.object({
   id: z.string().uuid(),
@@ -123,12 +193,14 @@ export const PkiSyncSchema = z.object({
   lastSyncedAt: z.date().nullable().optional(),
   lastHealthCheckRanAt: z.date().nullable().optional(),
   lastHealthCheckStatus: z.nativeEnum(PkiSyncStatus).nullable().optional(),
-  lastHealthCheckMessage: z.string().nullable().optional()
+  lastHealthCheckMessage: z.string().nullable().optional(),
+  filters: PkiSyncStoredFiltersField
 });
 
 export const BaseHealthCheckTestSchema = z.object({
   connectionId: z.string().uuid(),
   applicationId: z.string().uuid().optional(),
   syncId: z.string().uuid().optional(),
-  certificateIds: z.array(z.string().uuid()).max(100).optional()
+  certificateIds: z.array(z.string().uuid()).max(100).optional(),
+  filters: PkiSyncFiltersField
 });

@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
+import { useEnterAgentVault } from "@app/components/agent-vault/useEnterAgentVault";
 import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { CertManagerSelectInstanceModal } from "@app/components/projects/CertManagerSelectInstanceModal";
@@ -9,8 +11,9 @@ import { RequestProjectAccessModal } from "@app/components/projects/RequestProje
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
+  CardTitle,
+  RowLink,
   Skeleton,
   Tooltip,
   TooltipContent,
@@ -27,17 +30,23 @@ import {
   setCertManagerActiveProjectCookie
 } from "@app/helpers/certManagerActiveProject";
 import {
+  getInstancePinningLink,
   getProjectDescription,
   getProjectLucideIcon,
   getProjectTitle,
   projectTypeToUrlSlug
 } from "@app/helpers/project";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
-import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
+import {
+  fetchSecretScanningProjectId,
+  secretScanningV2Keys,
+  useGetSecretScanningInstanceState
+} from "@app/hooks/api/secretScanningV2/queries";
 
 type ActiveProducts = ProjectType;
 
@@ -117,6 +126,7 @@ const PRODUCT_TILE_COUNT = Object.keys(ProjectType).length;
 
 export const ProjectCategoryOverview = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
   const canRequestAccess = permission.can(
@@ -127,6 +137,7 @@ export const ProjectCategoryOverview = () => {
   const { data: certManagerInstance } = useCertManagerInstanceState();
   const { data: productStats } = useGetOrgProductStats(currentOrg?.id ?? "");
   const orgAdminAccessProject = useOrgAdminAccessProject();
+  const { enterAgentVault, agentVaultAccessRequest } = useEnterAgentVault();
 
   const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
@@ -136,8 +147,10 @@ export const ProjectCategoryOverview = () => {
   );
   const [isPamRequestAccessOpen, setIsPamRequestAccessOpen] = useState(false);
   const [pendingPamProjectId, setPendingPamProjectId] = useState<string | null>(null);
-  const [isAgentVaultRequestAccessOpen, setIsAgentVaultRequestAccessOpen] = useState(false);
-  const [pendingAgentVaultProjectId, setPendingAgentVaultProjectId] = useState<string | null>(null);
+  const [isSecretScanningRequestAccessOpen, setIsSecretScanningRequestAccessOpen] = useState(false);
+  const [pendingSecretScanningProjectId, setPendingSecretScanningProjectId] = useState<
+    string | null
+  >(null);
 
   const orgDefaultCertManagerProjectId = certManagerInstance?.activeProjectId ?? null;
   const cmInstances = useMemo(
@@ -160,7 +173,7 @@ export const ProjectCategoryOverview = () => {
     () =>
       Boolean(
         currentOrg?.pamProjectId &&
-          projects.some((project) => project.id === currentOrg.pamProjectId)
+        projects.some((project) => project.id === currentOrg.pamProjectId)
       ),
     [currentOrg?.pamProjectId, projects]
   );
@@ -171,7 +184,7 @@ export const ProjectCategoryOverview = () => {
     () =>
       Boolean(
         currentOrg?.agentVaultProjectId &&
-          projects.some((project) => project.id === currentOrg.agentVaultProjectId)
+        projects.some((project) => project.id === currentOrg.agentVaultProjectId)
       ),
     [currentOrg?.agentVaultProjectId, projects]
   );
@@ -180,6 +193,22 @@ export const ProjectCategoryOverview = () => {
     !isOrgAdmin &&
     !canRequestAccess &&
     !isAgentVaultMember;
+
+  const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg?.id ?? "");
+  const activeSecretScanningProjectId = secretScanningInstance?.activeProjectId ?? null;
+  const isSecretScanningMember = useMemo(
+    () =>
+      Boolean(
+        activeSecretScanningProjectId &&
+        projects.some((project) => project.id === activeSecretScanningProjectId)
+      ),
+    [activeSecretScanningProjectId, projects]
+  );
+  const isSecretScanningAccessBlocked =
+    Boolean(activeSecretScanningProjectId) &&
+    !isOrgAdmin &&
+    !canRequestAccess &&
+    !isSecretScanningMember;
 
   const certManagerActiveProjectId = useMemo(() => {
     const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
@@ -221,7 +250,7 @@ export const ProjectCategoryOverview = () => {
         return [
           { label: "data sources", value: productStats.secretScanning.dataSourcesCount },
           { label: "resources", value: productStats.secretScanning.resourcesCount },
-          { label: "projects", value: productStats.secretScanning.projectsCount }
+          { label: "findings", value: productStats.secretScanning.findingsCount }
         ];
       case ProjectType.PAM:
         return [
@@ -241,9 +270,10 @@ export const ProjectCategoryOverview = () => {
   };
 
   const navigateToCertManager = (projectId: string) => {
+    if (currentOrg?.id) setCertManagerActiveProjectCookie(currentOrg.id, projectId);
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-      params: { orgId: currentOrg?.id ?? "", projectId }
+      to: "/organizations/$orgId/cert-manager/overview",
+      params: { orgId: currentOrg?.id ?? "" }
     });
   };
 
@@ -335,55 +365,86 @@ export const ProjectCategoryOverview = () => {
     }
   };
 
-  const navigateToAgentVault = () => {
+  const navigateToSecretScanning = (projectId: string) => {
+    if (currentOrg?.id) setSecretScanningActiveProjectCookie(currentOrg.id, projectId);
     navigate({
-      to: "/organizations/$orgId/agent-vault/sessions",
+      to: "/organizations/$orgId/secret-scanning/data-sources",
       params: { orgId: currentOrg?.id ?? "" }
     });
   };
 
-  const enterAgentVaultProject = async () => {
-    let agentVaultProjectId: string;
+  const enterSecretScanningProject = async () => {
+    let secretScanningProjectId: string;
     try {
-      agentVaultProjectId = currentOrg?.agentVaultProjectId ?? (await fetchAgentVaultProjectId());
+      // Orgs from before projects were created at signup have none until this creates it.
+      secretScanningProjectId =
+        activeSecretScanningProjectId ??
+        (await queryClient.ensureQueryData({
+          queryKey: secretScanningV2Keys.activeProjectId(currentOrg?.id ?? ""),
+          queryFn: fetchSecretScanningProjectId
+        }));
     } catch (err) {
       createNotification({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to resolve the Agent Vault project."
+        text: err instanceof Error ? err.message : "Failed to resolve the Secret Scanning project."
       });
       return;
     }
 
-    const isMember = projects.some((p) => p.id === agentVaultProjectId);
+    const isMember = projects.some((p) => p.id === secretScanningProjectId);
     if (isMember) {
-      navigateToAgentVault();
+      navigateToSecretScanning(secretScanningProjectId);
       return;
     }
 
-    setPendingAgentVaultProjectId(agentVaultProjectId);
+    setPendingSecretScanningProjectId(secretScanningProjectId);
 
     if (isOrgAdmin) {
       try {
-        await orgAdminAccessProject.mutateAsync({ projectId: agentVaultProjectId });
-        navigateToAgentVault();
-      } catch (err) {
-        createNotification({
-          type: "error",
-          text: err instanceof Error ? err.message : "Failed to join the Agent Vault project."
-        });
+        await orgAdminAccessProject.mutateAsync({ projectId: secretScanningProjectId });
+        navigateToSecretScanning(secretScanningProjectId);
+      } catch {
+        // The global mutation error handler already reports the failure.
       }
-      return;
+    } else if (canRequestAccess) {
+      setIsSecretScanningRequestAccessOpen(true);
+    } else {
+      createNotification({
+        type: "error",
+        text: "You don't have access to Secret Scanning."
+      });
     }
+  };
 
-    if (canRequestAccess) {
-      setIsAgentVaultRequestAccessOpen(true);
-      return;
+  // Only a member with a resolved project gets a link; joining, requesting access, setup, the
+  // instance picker and lazy bootstrap stay actions on the tile.
+  const getMemberTileLink = (type: ProjectType) => {
+    const orgId = currentOrg?.id ?? "";
+    if (
+      type === ProjectType.CertificateManager &&
+      cmInstances.length === 1 &&
+      isCertManagerMember
+    ) {
+      return getInstancePinningLink(orgId, { id: cmInstances[0].id, type }, "overview");
     }
-
-    createNotification({
-      type: "error",
-      text: "You don't have access to Agent Vault. Ask an Agent Vault admin to add you."
-    });
+    if (
+      type === ProjectType.SecretScanning &&
+      activeSecretScanningProjectId &&
+      isSecretScanningMember
+    ) {
+      return getInstancePinningLink(
+        orgId,
+        { id: activeSecretScanningProjectId, type },
+        "data-sources"
+      );
+    }
+    if (type === ProjectType.PAM && isPamMember) {
+      return { to: "/organizations/$orgId/pam/accounts", params: { orgId } } as const;
+    }
+    if (type === ProjectType.AgentVault && isAgentVaultMember) {
+      return { to: "/organizations/$orgId/agent-vault", params: { orgId } } as const;
+    }
+    return null;
   };
 
   const handleTileClick = async (type: ProjectType) => {
@@ -409,7 +470,12 @@ export const ProjectCategoryOverview = () => {
     }
 
     if (type === ProjectType.AgentVault) {
-      await enterAgentVaultProject();
+      await enterAgentVault();
+      return;
+    }
+
+    if (type === ProjectType.SecretScanning) {
+      await enterSecretScanningProject();
       return;
     }
 
@@ -460,10 +526,10 @@ export const ProjectCategoryOverview = () => {
       } as Project)
     : undefined;
 
-  const agentVaultRequestAccessProject: Project | undefined = pendingAgentVaultProjectId
+  const secretScanningRequestAccessProject: Project | undefined = pendingSecretScanningProjectId
     ? ({
-        id: pendingAgentVaultProjectId,
-        name: "Agent Vault"
+        id: pendingSecretScanningProjectId,
+        name: "Secret Scanning"
       } as Project)
     : undefined;
 
@@ -475,6 +541,8 @@ export const ProjectCategoryOverview = () => {
           const { iconClassName, containerClassName, cardClassName, titleUnderlineClassName } =
             PRODUCT_STYLES[type];
           const Icon = getProjectLucideIcon(type);
+          const memberTileLink = getMemberTileLink(type);
+          const titleClassName = `underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`;
 
           const tileBody = (
             <>
@@ -486,14 +554,19 @@ export const ProjectCategoryOverview = () => {
                     <Icon className={iconClassName} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <CardDescription className="flex items-center gap-1.5 text-base font-semibold text-foreground">
-                      <span
-                        className={`underline decoration-[1.5px] underline-offset-4 ${titleUnderlineClassName}`}
-                      >
-                        {getProjectTitle(type)}
-                      </span>
+                    <CardTitle className="flex items-center gap-1.5 text-base text-foreground">
+                      {memberTileLink ? (
+                        <RowLink
+                          {...memberTileLink}
+                          className={`${titleClassName} after:rounded-md`}
+                        >
+                          {getProjectTitle(type)}
+                        </RowLink>
+                      ) : (
+                        <span className={titleClassName}>{getProjectTitle(type)}</span>
+                      )}
                       <PreviewBadge type={type} />
-                    </CardDescription>
+                    </CardTitle>
                     <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-accent">
                       {getProjectDescription(type)}
                     </p>
@@ -523,7 +596,8 @@ export const ProjectCategoryOverview = () => {
           const isAccessBlocked =
             (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
             (type === ProjectType.PAM && isPamAccessBlocked) ||
-            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked);
+            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked) ||
+            (type === ProjectType.SecretScanning && isSecretScanningAccessBlocked);
 
           if (isAccessBlocked) {
             return (
@@ -543,12 +617,21 @@ export const ProjectCategoryOverview = () => {
 
           const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
 
-          // Cert Manager and PAM resolve their destination asynchronously (instance picker,
-          // lazy project bootstrap, join-on-behalf), so they stay handler-driven.
+          if (memberTileLink) {
+            return (
+              <Card key={type} linked className={tileClassName}>
+                {tileBody}
+              </Card>
+            );
+          }
+
+          // Until the member's project is resolved, these resolve their destination asynchronously
+          // (instance picker, lazy project bootstrap, join-on-behalf), so they stay handler-driven.
           if (
             type === ProjectType.CertificateManager ||
             type === ProjectType.PAM ||
-            type === ProjectType.AgentVault
+            type === ProjectType.AgentVault ||
+            type === ProjectType.SecretScanning
           ) {
             return (
               <Card
@@ -597,14 +680,16 @@ export const ProjectCategoryOverview = () => {
       />
 
       <RequestProjectAccessModal
-        isOpen={isAgentVaultRequestAccessOpen}
+        isOpen={isSecretScanningRequestAccessOpen}
         onOpenChange={(isOpen) => {
-          setIsAgentVaultRequestAccessOpen(isOpen);
-          if (!isOpen) setPendingAgentVaultProjectId(null);
+          setIsSecretScanningRequestAccessOpen(isOpen);
+          if (!isOpen) setPendingSecretScanningProjectId(null);
         }}
-        project={agentVaultRequestAccessProject}
-        subTitle="Requesting access to Agent Vault. You may include an optional note for admins to review your request."
+        project={secretScanningRequestAccessProject}
+        subTitle="Requesting access to Secret Scanning. You may include an optional note for admins to review your request."
       />
+
+      {agentVaultAccessRequest}
 
       <CertManagerNotConfiguredModal
         isOpen={isCertManagerSetupOpen}

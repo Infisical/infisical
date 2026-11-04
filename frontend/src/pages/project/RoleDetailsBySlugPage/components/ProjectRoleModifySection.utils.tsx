@@ -16,6 +16,7 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificatePolicyActions,
@@ -59,6 +60,7 @@ import {
   TPermissionCondition,
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
 
@@ -70,7 +72,8 @@ const GeneralPolicyActionSchema = z.object({
 });
 
 const AuditLogsPolicyActionSchema = z.object({
-  [ProjectPermissionAuditLogsActions.Read]: z.boolean().optional()
+  [ProjectPermissionAuditLogsActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAuditLogsActions.Edit]: z.boolean().optional()
 });
 
 const InsightsPolicyActionSchema = z.object({
@@ -299,6 +302,7 @@ const AgentVaultAccessBundlePolicyActionSchema = z.object({
 const AgentVaultSessionPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSessionActions.Read]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.Edit]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.Revoke]: z.boolean().optional()
 });
 
@@ -309,6 +313,13 @@ const AgentVaultProxyPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultProxyActions.Delete]: z.boolean().optional(),
   [ProjectPermissionAgentVaultProxyActions.IssueToken]: z.boolean().optional(),
   [ProjectPermissionAgentVaultProxyActions.Revoke]: z.boolean().optional()
+});
+
+const AgentVaultSkillPolicyActionSchema = z.object({
+  [ProjectPermissionAgentVaultSkillActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSkillActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSkillActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSkillActions.Delete]: z.boolean().optional()
 });
 
 const ProjectFolderGrantPolicyActionSchema = z.object({
@@ -488,7 +499,7 @@ export const ACTION_ALLOWED_CONDITIONS: ActionAllowedConditionsType = {
     [ProjectPermissionMemberActions.Create]: [],
     [ProjectPermissionMemberActions.Edit]: [],
     [ProjectPermissionMemberActions.Delete]: [],
-    [ProjectPermissionMemberActions.AssumePrivileges]: [],
+    [ProjectPermissionMemberActions.AssumePrivileges]: ["userEmail"],
     [ProjectPermissionMemberActions.GrantPrivileges]: [
       "userEmail",
       "assignableRole",
@@ -854,6 +865,9 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.AgentVaultSessions]:
         AgentVaultSessionPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AgentVaultProxies]: AgentVaultProxyPolicyActionSchema.array().default(
+        []
+      ),
+      [ProjectPermissionSub.AgentVaultSkills]: AgentVaultSkillPolicyActionSchema.array().default(
         []
       ),
       [ProjectPermissionSub.ProjectFolderGrant]: ProjectFolderGrantPolicyActionSchema.extend({
@@ -2544,6 +2558,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         description: "Mint a session over access bundles you can reach"
       },
       {
+        label: "Edit",
+        value: ProjectPermissionAgentVaultSessionActions.Edit,
+        description: "Change a session's label"
+      },
+      {
         label: "Revoke",
         value: ProjectPermissionAgentVaultSessionActions.Revoke,
         description: "Revoke a session"
@@ -2583,6 +2602,32 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Revoke",
         value: ProjectPermissionAgentVaultProxyActions.Revoke,
         description: "Revoke a proxy's access token"
+      }
+    ]
+  },
+  [ProjectPermissionSub.AgentVaultSkills]: {
+    title: "Skills",
+    description: "Manage the skills access bundles deliver to agents",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAgentVaultSkillActions.Read,
+        description: "View skills, their versions and files"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionAgentVaultSkillActions.Create,
+        description: "Add skills"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionAgentVaultSkillActions.Edit,
+        description: "Publish and restore skill versions"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionAgentVaultSkillActions.Delete,
+        description: "Delete skills"
       }
     ]
   },
@@ -2678,12 +2723,19 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.AuditLogs]: {
     title: "Audit Logs",
-    description: "View project activity and audit trail",
+    description: "View project activity and audit trail, and choose which events are recorded",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionAuditLogsActions.Read,
         description: "View audit logs and security events"
+      },
+      {
+        label: "Edit",
+        value: ProjectPermissionAuditLogsActions.Edit,
+        description: isInfisicalCloud()
+          ? "Choose which audit log event classes the project records"
+          : "Choose which audit log event classes the project records and how long it keeps its audit logs"
       }
     ]
   },
@@ -2882,12 +2934,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Read",
         value: ProjectPermissionApplicationActions.Read,
         description:
-          "See all applications in the project. An application's details stay hidden unless you are a member of it"
+          "See all applications in Certificate Manager. An application's details stay hidden unless you are a member of it"
       },
       {
         label: "List",
         value: ProjectPermissionApplicationActions.List,
-        description: "List the applications in the project"
+        description: "List the applications in Certificate Manager"
       },
       {
         label: "Create",
@@ -3503,7 +3555,8 @@ const SecretScanningSubject = (enabled = false) => ({
 const AgentVaultPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.AgentVaultAccessBundles]: enabled,
   [ProjectPermissionSub.AgentVaultSessions]: enabled,
-  [ProjectPermissionSub.AgentVaultProxies]: enabled
+  [ProjectPermissionSub.AgentVaultProxies]: enabled,
+  [ProjectPermissionSub.AgentVaultSkills]: enabled
 });
 
 // scott: this structure ensures we don't forget to add project permissions to their relevant project type
@@ -3588,7 +3641,7 @@ const projectManagerTemplate = (
   permissions: [
     {
       subject: ProjectPermissionSub.AuditLogs,
-      actions: Object.values(ProjectPermissionAuditLogsActions)
+      actions: [ProjectPermissionAuditLogsActions.Read]
     },
     {
       subject: ProjectPermissionSub.Groups,

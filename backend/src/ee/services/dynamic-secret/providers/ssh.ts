@@ -2,29 +2,69 @@ import slugify from "@sindresorhus/slugify";
 import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
-import { createSshCert, createSshKeyPair, getSshPublicKey, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
+import { ms } from "@app/lib/ms";
+import { createSshCert, createSshKeyPair, getSshPublicKey, inferSshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 
 import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { DynamicSecretSshSchema, SshStoredSchema, TDynamicProviderFns } from "./models";
+import {
+  DynamicSecretSshSchema,
+  SshStoredSchema,
+  TDynamicProviderFns,
+  TDynamicProviderValidateMetadata
+} from "./models";
+
+const SSH_LEASE_MAX_TTL_MS = ms("7d");
+
+const assertSshTtlWithinLimit = (ttlMs: number, message: string) => {
+  if (ttlMs > SSH_LEASE_MAX_TTL_MS) {
+    throw new BadRequestError({ message });
+  }
+};
+
+const assertSshTtlStringWithinLimit = (ttl: string | null | undefined, fieldLabel: string) => {
+  if (!ttl) return;
+  assertSshTtlWithinLimit(ms(ttl), `SSH ${fieldLabel} must be 7 days or less`);
+};
 
 export const SshProvider = (): TDynamicProviderFns => {
-  const validateProviderInputs = async (inputs: object) => {
+  const validateProviderInputs = async (
+    inputs: object,
+    { previousInputs, defaultTTL, maxTTL }: TDynamicProviderValidateMetadata
+  ) => {
+    assertSshTtlStringWithinLimit(defaultTTL, "default TTL");
+    assertSshTtlStringWithinLimit(maxTTL, "max TTL");
+
     const parsed = DynamicSecretSshSchema.parse(inputs);
 
-    // Check if CA fields already exist (update case)
     const raw = inputs as Record<string, unknown>;
-    if (raw.caPrivateKey && raw.caPublicKey) {
-      return SshStoredSchema.parse(inputs);
+    const hasCa = Boolean(raw.caPrivateKey && raw.caPublicKey);
+
+    if (hasCa && typeof raw.caPublicKey === "string") {
+      inferSshCertKeyAlgorithm(raw.caPublicKey);
     }
 
-    // First creation: generate CA key pair (always ED25519 for the CA)
-    const caKeyPair = await createSshKeyPair(SshCertKeyAlgorithm.ED25519);
+    const storedCaKeyAlgorithm = previousInputs
+      ? DynamicSecretSshSchema.pick({ caKeyAlgorithm: true }).parse(previousInputs).caKeyAlgorithm
+      : parsed.caKeyAlgorithm;
+
+    if (hasCa && storedCaKeyAlgorithm === parsed.caKeyAlgorithm) {
+      return SshStoredSchema.parse({
+        caPrivateKey: raw.caPrivateKey,
+        caPublicKey: raw.caPublicKey,
+        principals: parsed.principals,
+        keyAlgorithm: parsed.keyAlgorithm,
+        caKeyAlgorithm: parsed.caKeyAlgorithm
+      });
+    }
+
+    const caKeyPair = await createSshKeyPair(parsed.caKeyAlgorithm);
 
     return {
       caPrivateKey: caKeyPair.privateKey,
       caPublicKey: caKeyPair.publicKey,
       principals: parsed.principals,
-      keyAlgorithm: parsed.keyAlgorithm
+      keyAlgorithm: parsed.keyAlgorithm,
+      caKeyAlgorithm: parsed.caKeyAlgorithm
     };
   };
 
@@ -66,6 +106,8 @@ export const SshProvider = (): TDynamicProviderFns => {
     identity: { name: string };
     config?: TDynamicSecretLeaseConfig;
   }) => {
+    assertSshTtlWithinLimit(expireAt - Date.now(), "SSH lease TTL must be 7 days or less");
+
     const parsed = SshStoredSchema.parse(inputs);
 
     // Validate principals from lease config

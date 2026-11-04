@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import {
   AlertTriangleIcon,
   ArrowRightIcon,
@@ -55,7 +55,6 @@ const overviewRoute =
 export const DuplicatedSecretsCard = () => {
   const { projectId } = useProject();
   const { orgId } = useParams({ strict: false });
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [migrationTriggered, setMigrationTriggered] = useState(false);
 
@@ -172,7 +171,7 @@ export const DuplicatedSecretsCard = () => {
         )}
         {!isPending && isMigrationRunning && (
           <div className="flex h-[200px] flex-col items-center justify-center gap-3">
-            <Loader2Icon className="size-6 animate-spin text-primary" />
+            <Loader2Icon className="size-6 animate-spin text-project" />
             <p className="text-sm text-muted">
               Indexing secrets for duplicate detection. This may take a moment...
             </p>
@@ -180,8 +179,8 @@ export const DuplicatedSecretsCard = () => {
         )}
         {!isPending && isMigrationFailed && (
           <div className="flex h-[200px] flex-col items-center justify-center gap-3">
-            <AlertTriangleIcon className="size-6 text-red-500" />
-            <p className="text-sm text-red-400">
+            <AlertTriangleIcon className="size-6 text-danger" />
+            <p className="text-sm text-danger">
               Failed to index secrets: {statusData?.message ?? "Unknown error"}
             </p>
             <Button variant="outline" onClick={handleRetryClick}>
@@ -265,25 +264,22 @@ export const DuplicatedSecretsCard = () => {
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <IconButton
+                                        asChild
                                         variant="ghost"
                                         size="sm"
-                                        aria-label="Go to secret"
-                                        className="opacity-0 transition-opacity group-hover/row:opacity-100"
-                                        onClick={() =>
-                                          navigate({
-                                            to: overviewRoute,
-                                            params: {
-                                              orgId: orgId as string,
-                                              projectId
-                                            },
-                                            search: {
-                                              secretPath: entry.secretPath,
-                                              environments: [entry.environment.slug]
-                                            }
-                                          })
-                                        }
+                                        className="opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
                                       >
-                                        <ArrowRightIcon className="size-3.5" />
+                                        <Link
+                                          to={overviewRoute}
+                                          params={{ orgId: orgId as string, projectId }}
+                                          search={{
+                                            secretPath: entry.secretPath,
+                                            environments: [entry.environment.slug]
+                                          }}
+                                          aria-label="Go to secret"
+                                        >
+                                          <ArrowRightIcon className="size-3.5" />
+                                        </Link>
                                       </IconButton>
                                     </TooltipTrigger>
                                     <TooltipContent>Go to secret folder</TooltipContent>

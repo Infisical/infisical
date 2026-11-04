@@ -23,7 +23,6 @@ import {
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { ActorType } from "../../auth/auth-type";
 import { TMembershipIdentityDALFactory } from "../membership-identity-dal";
 import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 
@@ -31,8 +30,8 @@ type TProjectMembershipIdentityScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
 
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "getIdentityById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
@@ -58,6 +57,17 @@ export const newProjectMembershipIdentityFactory = ({
   };
 
   const isCustomRole: TMembershipIdentityScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
+
+  // Same add rule as everywhere else (findActorsWithActiveOrgAccess). Reconcile revokes the row if the group
+  // path goes.
+  const assertOrgAccess = async (identityId: string, orgId: string) => {
+    const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({ orgId, userIds: [], identityIds: [identityId] });
+    if (!withOrgAccess.identityIds.has(identityId)) {
+      throw new BadRequestError({
+        message: `Machine identity '${identityId}' is not an active member of this organization`
+      });
+    }
+  };
 
   const onCreateMembershipIdentityGuard: TMembershipIdentityScopeFactory["onCreateMembershipIdentityGuard"] = async (
     dto
@@ -97,14 +107,7 @@ export const newProjectMembershipIdentityFactory = ({
       }
     }
 
-    const orgMembership = await orgDAL.findEffectiveOrgMembership({
-      actorType: ActorType.IDENTITY,
-      actorId: dto.data.identityId,
-      orgId: dto.permission.orgId
-    });
-
-    if (!orgMembership)
-      throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
+    await assertOrgAccess(dto.data.identityId, dto.permission.orgId);
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.data.identityId), () =>
       identityDAL.findById(dto.data.identityId)
@@ -190,6 +193,9 @@ export const newProjectMembershipIdentityFactory = ({
     );
     if (identityDetails.projectId && identityDetails.projectId !== scope.value) {
       throw new BadRequestError({ message: "Failed to update project membership for a project scoped identity" });
+    }
+    if (!identityDetails.projectId) {
+      await assertOrgAccess(dto.selector.identityId, dto.permission.orgId);
     }
 
     const { shouldUseNewPrivilegeSystem } = await requestMemoize(

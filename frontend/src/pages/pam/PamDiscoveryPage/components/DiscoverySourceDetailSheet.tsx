@@ -8,7 +8,7 @@ import { Play, Radar, Search, TriangleAlert } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Badge,
   Button,
@@ -30,6 +30,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -191,7 +192,6 @@ const ActiveDirectoryConfigForm = ({
 
   useEffect(() => {
     reset(defaults);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, reset]);
 
   const onSubmit = (data: z.infer<typeof activeDirectoryConfigSchema>) => {
@@ -281,7 +281,6 @@ const HostRangeConfigForm = ({
 
   useEffect(() => {
     reset(defaults);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, reset]);
 
   const onSubmit = (data: z.infer<typeof hostRangeConfigSchema>) => {
@@ -376,7 +375,9 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
   const { map: accountTypeMap } = usePamAccountTypeMap();
   const source = sources.find((s) => s.id === sourceId);
   const typeMeta = discoveryTypes.find((t) => t.type === source?.discoveryType);
-  const showDependencies = source?.discoveryType !== PamDiscoveryType.Postgres;
+  const showDependencies =
+    source?.discoveryType !== PamDiscoveryType.Postgres &&
+    source?.discoveryType !== PamDiscoveryType.MsSQL;
   const credentialAccount = adminAccounts.find((a) => a.id === source?.credentialAccountId);
   const credentialAccountLabel = (() => {
     if (!credentialAccount) return "View account";
@@ -548,8 +549,8 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {typeDetails && (
-                              <img
-                                src={`/images/integrations/${typeDetails.icon}`}
+                              <ProviderIcon
+                                icon={typeDetails.icon}
                                 alt={typeDetails.name}
                                 className="size-5 shrink-0 rounded-sm"
                               />
@@ -674,8 +675,8 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {typeDetails && (
-                              <img
-                                src={`/images/integrations/${typeDetails.icon}`}
+                              <ProviderIcon
+                                icon={typeDetails.icon}
                                 alt={typeDetails.name}
                                 className="size-5 shrink-0 rounded-sm"
                               />
@@ -849,8 +850,8 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
         icon={
           <div className="mb-4 flex size-16 items-center justify-center rounded-lg border border-border bg-container">
             {typeMeta?.icon ? (
-              <img
-                src={`/images/integrations/${typeMeta.icon}`}
+              <ProviderIcon
+                icon={typeMeta.icon}
                 alt={typeMeta.name}
                 className="size-10 rounded-sm"
               />
@@ -886,7 +887,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
               : "Never"
           }
         ]}
-        footer={
+        sidebarFooter={
           <Button
             variant="pam"
             size="xs"
@@ -910,8 +911,15 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
           isOpen={isImportOpen}
           onOpenChange={setIsImportOpen}
           sourceId={sourceId}
+          credentialAccountId={source?.credentialAccountId}
           accounts={selectedAccounts}
-          onImported={() => setSelected({})}
+          onImported={(discoveredAccountIds) =>
+            setSelected((prev) =>
+              Object.fromEntries(
+                Object.entries(prev).filter(([id]) => !discoveredAccountIds.includes(id))
+              )
+            )
+          }
         />
       )}
     </>

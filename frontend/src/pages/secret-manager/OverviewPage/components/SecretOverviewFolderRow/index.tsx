@@ -1,1 +1,0 @@
-export { SecretOverviewFolderRow } from "./SecretOverviewFolderRow";

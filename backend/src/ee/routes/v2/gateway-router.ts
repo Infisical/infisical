@@ -71,7 +71,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         actorType: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         directAddress: req.body.directAddress,
-        name: req.body.name
+        name: req.body.name,
+        tokenVersion: req.auth.authMode === AuthMode.GATEWAY_ACCESS_TOKEN ? req.auth.token.tokenVersion : undefined
       });
 
       await server.services.auditLog.createAuditLog({
@@ -136,7 +137,13 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         .object({
           capabilities: z
             .object({
-              pkcs11: z.boolean().optional()
+              pkcs11: z.boolean().optional(),
+              pkcs11MlDsa: z.boolean().optional(),
+              sessionLogMaskingBuiltInDetection: z.boolean().optional(),
+              clickhouseNativeProtocol: z.boolean().optional(),
+              certificateScan: z.boolean().optional(),
+              windowsCertificateScan: z.boolean().optional(),
+              supported_account_types: z.array(z.string().trim().max(64)).max(64).optional()
             })
             .optional()
         })
@@ -204,6 +211,16 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         orgPermission: req.permission,
         id: req.params.id
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.GATEWAY_DELETE,
+          metadata: { gatewayId: gateway.id, name: gateway.name }
+        }
+      });
+
       return gateway;
     }
   });
@@ -303,6 +320,21 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
               name: z.string(),
               projectId: z.string(),
               projectName: z.string()
+            })
+          ),
+          pamAccounts: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              accountType: z.string(),
+              folderName: z.string().nullable()
+            })
+          ),
+          pamAccountTemplates: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              type: z.string()
             })
           )
         })

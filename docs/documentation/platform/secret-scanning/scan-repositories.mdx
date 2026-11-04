@@ -1,0 +1,67 @@
+---
+title: "Scan repositories"
+sidebarTitle: "Overview"
+description: "Scan your GitHub, GitLab, and Bitbucket repositories for leaked secrets."
+---
+
+Infisical can scan your GitHub, GitLab, and Bitbucket repositories for leaked secrets. It scans each repository's full commit history, and can also scan each new push as it arrives.
+
+Infisical records every secret it finds as a [finding](/documentation/platform/secret-scanning/findings) that you can track until it's handled, and the [scanning configuration](/documentation/platform/secret-scanning/configuration) sets the rules it scans with.
+
+<Info>
+  Scanning repositories is available under Infisical's [Enterprise](https://infisical.com/pricing) plan. If you're self-hosting Infisical, contact sales@infisical.com to purchase an enterprise license.
+  
+  You don't need a license to [scan locally using the CLI](/documentation/platform/secret-scanning/scan-locally).
+</Info>
+
+## Data sources
+
+To scan repositories, connect them to Infisical with a data source. A data source covers the repositories in a GitHub organization, a GitLab project or group, or a Bitbucket workspace, and reaches them through an [app connection](/integrations/app-connections/overview). To create one, follow the guide for your provider:
+
+<CardGroup cols={3}>
+  <Card title="GitHub" icon="/images/platform/secret-scanning/icons/github.svg" href="/documentation/platform/secret-scanning/github">
+    Scan the repositories a GitHub Radar connection can access.
+  </Card>
+  <Card title="GitLab" icon="/images/platform/secret-scanning/icons/gitlab.svg" href="/documentation/platform/secret-scanning/gitlab">
+    Scan one GitLab project, or the projects in a group.
+  </Card>
+  <Card title="Bitbucket" icon="/images/platform/secret-scanning/icons/bitbucket.svg" href="/documentation/platform/secret-scanning/bitbucket">
+    Scan the repositories in a Bitbucket workspace.
+  </Card>
+</CardGroup>
+
+To see your data sources, go to **Secret Scanning** > **Data Sources**.
+
+![data sources](/images/platform/secret-scanning/secret-scanning-data-sources.png)
+
+### Resources
+
+A resource is one repository that a data source scans, such as a GitHub repository or a GitLab project. Infisical adds resources to a data source when it scans the data source, so a new repository that the data source covers appears after the next scan.
+
+To see a data source's resources and its **Scan History**, select the data source.
+
+![resources](/images/platform/secret-scanning/secret-scanning-resources.png)
+
+## Scans
+
+Infisical runs two types of scan:
+
+- **Historical scan**: Scans every commit in a repository, from the first to the latest
+- **Realtime scan**: Scans only the commits in a new push
+
+If **Auto-Scan** is enabled on a data source, Infisical runs a historical scan of every resource when you create the data source, and a realtime scan of every new push.
+
+To turn **Auto-Scan** on or off, select the options menu on the data source's row, then select **Enable Auto-Scan** or **Disable Auto-Scan**.
+
+### Run a historical scan
+
+You can run a historical scan at any time:
+
+- **Every resource in a data source**: Select the options menu on the data source's row, then select **Trigger Scan**
+- **One resource**: Select the data source, then select the options menu on the resource's row and select **Trigger Scan**
+
+### Scan history
+
+The **Scan History** on a data source's page shows each scan's type, its status, and whether it found any secrets.
+
+![scans](/images/platform/secret-scanning/secret-scanning-scans.png)

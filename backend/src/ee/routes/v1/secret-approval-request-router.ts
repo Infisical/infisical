@@ -9,6 +9,7 @@ import {
 } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedTagSchema, SanitizedUserSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
@@ -33,6 +34,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listSecretApprovalRequests",
       querystring: z.object({
         projectId: z.string().trim(),
         environment: z.string().trim().optional(),
@@ -47,7 +49,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       response: {
         200: z.object({
           approvals: SecretApprovalRequestsSchema.extend({
-            // secretPath: z.string(),
+            secretPath: z.string(),
+            policyId: z.string().uuid().nullable(),
             policy: z.object({
               id: z.string(),
               name: z.string(),
@@ -108,6 +111,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSecretApprovalRequestCount",
       querystring: z.object({
         projectId: z.string().trim(),
         policyId: z.string().trim().optional()
@@ -142,11 +146,18 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "mergeSecretApprovalRequest",
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       body: z.object({
-        bypassReason: z.string().max(1000).optional()
+        bypassReason: z.string().max(1000).optional(),
+        requireApprovals: z
+          .boolean()
+          .optional()
+          .describe(
+            "When true, the merge fails instead of bypassing a soft-enforced policy whose required approvals are not met."
+          )
       }),
       response: {
         200: z.object({
@@ -163,7 +174,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           approvalId: req.params.id,
-          bypassReason: req.body.bypassReason
+          bypassReason: req.body.bypassReason,
+          requireApprovals: req.body.requireApprovals
         });
 
       await server.services.auditLog.createAuditLog({
@@ -219,12 +231,13 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "reviewSecretApprovalRequest",
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       body: z.object({
         status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED]),
-        comment: z.string().optional()
+        comment: auditSafeText(z.string(), { allowMultiline: true }).optional()
       }),
       response: {
         200: z.object({
@@ -284,8 +297,9 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateSecretApprovalRequestStatus",
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       body: z.object({
         status: z.nativeEnum(RequestState)
@@ -349,13 +363,15 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSecretApprovalRequest",
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.object({
           approval: SecretApprovalRequestsSchema.merge(
             z.object({
+              policyId: z.string().uuid().nullable(),
               policy: z.object({
                 id: z.string(),
                 name: z.string(),

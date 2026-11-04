@@ -10,7 +10,7 @@ import {
   SearchIcon
 } from "lucide-react";
 
-import { HighlightText } from "@app/components/v2/HighlightText";
+import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Badge,
   Card,

@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info, TriangleAlert } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
@@ -9,7 +8,6 @@ import {
   AlertDescription,
   AlertTitle,
   Combobox,
-  CreatableSelect,
   Field,
   FieldContent,
   FieldDescription,
@@ -205,6 +203,11 @@ export const VercelSyncFields = () => {
                     isError={Boolean(error)}
                     value={value || null}
                     onValueChange={(id) => {
+                      if (!id) {
+                        onChange("");
+                        setValue("destinationConfig.teamName", "");
+                        return;
+                      }
                       const option = teams?.find((team) => team.id === id);
                       if (!option || id === value) return;
                       onChange(id);
@@ -366,6 +369,13 @@ export const VercelSyncFields = () => {
                     isDisabled={!connectionId}
                     value={value || null}
                     onValueChange={(id) => {
+                      if (!id) {
+                        onChange("");
+                        setValue("destinationConfig.appName", "");
+                        setValue("destinationConfig.env", "");
+                        setValue("destinationConfig.branch", "");
+                        return;
+                      }
                       const selected = availableApps.find((app) => app.id === id);
                       if (!selected || id === value) return;
                       onChange(id);
@@ -422,7 +432,7 @@ export const VercelSyncFields = () => {
                         : null
                     }
                     onValueChange={(option) => {
-                      const envKey = option.key;
+                      const envKey = option?.key ?? "";
                       onChange(envKey);
 
                       setValue("destinationConfig.branch", "");
@@ -450,11 +460,13 @@ export const VercelSyncFields = () => {
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel>Vercel Preview Branch (Optional)</FieldLabel>
+                  <FieldLabel htmlFor="secret-sync-vercel-branch">
+                    Vercel Preview Branch (Optional)
+                  </FieldLabel>
                   <FieldContent>
-                    <CreatableSelect
+                    <Combobox
+                      id="secret-sync-vercel-branch"
                       isError={Boolean(error)}
-                      className="w-full"
                       placeholder="Select a branch..."
                       isLoading={isTeamsLoading && Boolean(connectionId) && Boolean(currentApp)}
                       isDisabled={!connectionId || !currentApp}
@@ -467,20 +479,15 @@ export const VercelSyncFields = () => {
                             })
                           : null
                       }
-                      onChange={(option) =>
-                        onChange((option as SingleValue<{ id: string }>)?.id || "")
-                      }
-                      onCreateOption={onChange}
-                      getNewOptionData={(inputValue) => ({
-                        id: inputValue,
-                        name: `${inputValue} - press Enter`
-                      })}
+                      isClearable={false}
+                      onValueChange={(option) => onChange(option.id)}
+                      creation={{
+                        onCreate: onChange,
+                        formatLabel: (inputValue) => `${inputValue} - press Enter`,
+                        isDuplicate: (inputValue, option) => option.id === inputValue
+                      }}
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) => option.id}
-                      isValidNewOption={(inputValue) =>
-                        inputValue.trim().length > 0 &&
-                        !previewBranchOptions.some((branch) => branch.id === inputValue)
-                      }
                     />
                     <FieldError errors={[error]} />
                   </FieldContent>

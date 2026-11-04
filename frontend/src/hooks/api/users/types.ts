@@ -7,6 +7,7 @@ export const SAML_AUTH_METHODS = [
   "jumpcloud-saml",
   "keycloak-saml",
   "google-saml",
+  "auth0-saml",
   "saml"
 ] as const;
 
@@ -19,6 +20,7 @@ export enum AuthMethod {
   AZURE_SAML = "azure-saml",
   JUMPCLOUD_SAML = "jumpcloud-saml",
   KEYCLOAK_SAML = "keycloak-saml",
+  AUTH0_SAML = "auth0-saml",
   GOOGLE_SAML = "google-saml",
   LDAP = "ldap",
   OIDC = "oidc",
@@ -58,6 +60,15 @@ export type UserEnc = {
   tag?: string;
 };
 
+// Includes users who reach the project's org only through a group.
+export type TAvailableProjectUser = {
+  id: string;
+  username: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+};
+
 export type OrgUser = {
   id: string;
   metadata: { key: string; value: string; id: string }[];
@@ -81,6 +92,37 @@ export type OrgUser = {
   isActive: boolean;
   lastLoginAuthMethod?: AuthMethod;
   lastLoginTime?: string;
+};
+
+export type TOrgUserAccessGroupRole = {
+  role: string;
+  roleId: string | null;
+};
+
+export type TOrgUserAccessGroup = {
+  id: string;
+  name: string;
+  slug: string;
+  roles: TOrgUserAccessGroupRole[];
+};
+
+export type TOrgUserAccessMembership = Pick<
+  OrgUser,
+  "id" | "role" | "roleId" | "status" | "isActive" | "lastLoginAuthMethod" | "lastLoginTime"
+> & { inviteEmail?: string | null };
+
+export type TOrgUserAccessUser = Pick<
+  OrgUser["user"],
+  "id" | "username" | "email" | "firstName" | "lastName"
+> & {
+  publicKey?: string | null;
+  superAdmin?: boolean | null;
+};
+
+export type TOrgUserAccess = {
+  user: TOrgUserAccessUser;
+  membership: TOrgUserAccessMembership | null;
+  groups: TOrgUserAccessGroup[];
 };
 
 export type TUserMembership = {

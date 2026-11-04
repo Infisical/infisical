@@ -1,5 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { DeleteConfirmDialog } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3";
 import { useDeleteAgentVaultAccessBundle } from "@app/hooks/api/agentVault";
 import { TAgentVaultAccessBundle } from "@app/hooks/api/agentVault/types";
 
@@ -26,11 +26,11 @@ export const DeleteAccessBundleDialog = ({ accessBundle, onOpenChange, onDeleted
   };
 
   return (
-    <DeleteConfirmDialog
+    <ConfirmationAlertDialog
       isOpen={Boolean(accessBundle)}
       onOpenChange={onOpenChange}
       title={`Delete "${accessBundle?.name}"`}
-      description="Its services and every grant on it go with it. Any live session carrying it loses them at the next proxy poll. This cannot be undone."
+      description="Its services and access grants are deleted with it. Any active session associated with this bundle loses access at the next proxy poll. This cannot be undone."
       confirmKey={accessBundle?.name ?? ""}
       isPending={deleteAccessBundle.isPending}
       onConfirm={handleDelete}

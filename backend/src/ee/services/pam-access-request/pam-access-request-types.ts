@@ -1,4 +1,8 @@
 import { ApprovalRequestApprovalDecision, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  TAutoApprovalConfig,
+  TAutoApprovalInputValue
+} from "@app/services/approval-policy/auto-approval/auto-approval-types";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { PamAccessType, PamNotificationEvent } from "../pam/pam-enums";
@@ -24,6 +28,8 @@ export type TSetApprovalConfigurationDTO = {
   // undefined leaves existing configs unchanged so older clients that only manage steps can't wipe them
   notificationConfigs?: TPamNotificationConfigInput[];
   breakGlassUsers?: { type: ApproverType; id: string }[];
+  // undefined leaves the stored rules unchanged
+  autoApproval?: TAutoApprovalConfig;
 } & TActorContext;
 
 export type TBreakGlassAccessRequestDTO = {
@@ -40,6 +46,7 @@ export type TCreateAccessRequestDTO = {
   reason?: string;
   duration: string;
   accessType?: PamAccessType;
+  autoApprovalInputs?: TAutoApprovalInputValue[];
 } & TActorContext;
 
 export type TListAccessRequestsDTO = {
