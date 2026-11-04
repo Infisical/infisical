@@ -677,7 +677,7 @@ export const pitServiceFactory = ({
         // Check update operations
         ...(changes.secrets?.update
           ?.filter((sec) => sec.newSecretName && sec.newSecretName !== sec.newSecretName.toUpperCase())
-          .map((sec) => sec.secretKey) ?? [])
+          .map((sec) => sec.newSecretName as string) ?? [])
       ];
 
       if (caseViolatingSecretKeys.length) {

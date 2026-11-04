@@ -598,7 +598,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                   skipMultilineEncoding: z.boolean().optional(),
                   metadata: z.record(z.string()).optional(),
                   secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
-                  tagIds: z.string().array().optional()
+                  tagIds: z.string().uuid().array().optional()
                 })
               )
               .optional(),
@@ -618,7 +618,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                     .transform((val) => (val === null ? false : val)),
                   metadata: z.record(z.string()).optional(),
                   secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
-                  tagIds: z.string().array().optional()
+                  tagIds: z.string().uuid().array().optional()
                 })
               )
               .optional(),

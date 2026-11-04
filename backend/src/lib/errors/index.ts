@@ -127,21 +127,26 @@ export class BadRequestError extends Error {
 
   details?: unknown;
 
+  code?: string;
+
   constructor({
     name,
     error,
     message,
-    details
+    details,
+    code
   }: {
     message?: string;
     name?: string;
     error?: unknown;
     details?: unknown;
+    code?: string;
   }) {
     super(message ?? "The request is invalid");
     this.name = name || "BadRequest";
     this.error = error;
     this.details = details;
+    this.code = code;
   }
 }
 

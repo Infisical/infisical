@@ -20,14 +20,14 @@ const MAX_CAUSE_DEPTH = 5;
 const findPostgresError = (
   err: unknown,
   code: PostgresErrorCode | DatabaseErrorCode
-): { code: string; constraint?: unknown } | undefined => {
+): { code: string; constraint?: unknown; detail?: unknown } | undefined => {
   let current = err;
 
   for (let depth = 0; depth < MAX_CAUSE_DEPTH; depth += 1) {
     if (typeof current !== "object" || current === null) return undefined;
 
     if ("code" in current && (current as { code?: unknown }).code === code) {
-      return current as { code: string; constraint?: unknown };
+      return current as { code: string; constraint?: unknown; detail?: unknown };
     }
 
     const next =
@@ -44,9 +44,19 @@ const findPostgresError = (
 export const hasPostgresErrorCode = (err: unknown, code: PostgresErrorCode | DatabaseErrorCode): boolean =>
   Boolean(findPostgresError(err, code));
 
+/** The matching Postgres error, for a caller that also needs its `detail` to say which row conflicted. */
+export const findPostgresConstraintViolation = (
+  err: unknown,
+  code: PostgresErrorCode | DatabaseErrorCode,
+  constraint: string
+) => {
+  const pgError = findPostgresError(err, code);
+  return pgError?.constraint === constraint ? pgError : undefined;
+};
+
 /** For a transaction that can trip more than one constraint of a kind, where the code alone can't say which. */
 export const hasPostgresConstraintViolation = (
   err: unknown,
   code: PostgresErrorCode | DatabaseErrorCode,
   constraint: string
-): boolean => findPostgresError(err, code)?.constraint === constraint;
+): boolean => Boolean(findPostgresConstraintViolation(err, code, constraint));

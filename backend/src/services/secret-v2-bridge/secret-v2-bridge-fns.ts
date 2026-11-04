@@ -34,16 +34,14 @@ import { TReminderMove } from "../reminder/reminder-types";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
-import {
-  describeSecretValidationFailures,
-  SecretValidationError
-} from "../secret-validation-rule/secret-validation-rule-errors";
+import { SecretValidationError } from "../secret-validation-rule/secret-validation-rule-errors";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { createSecretBlindIndexer, TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { emitSecretsModified, secretModifiedEvents } from "./secret-events";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
+import { secretValidationFailedError } from "./secret-v2-bridge-errors";
 import {
   SecretOperations,
   TFnSecretBulkDelete,
@@ -1907,14 +1905,12 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
     // Which secret already holds a duplicated value is only named to a writer who may read there, so the
     // message is resolved against their permission rather than formatted inside validation.
-    throw new BadRequestError({
-      message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
-        permission.can(
-          ProjectPermissionSecretActions.DescribeSecret,
-          subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-        )
+    throw secretValidationFailedError(error.failures, destinationEnvironment, (environment, secretPath) =>
+      permission.can(
+        ProjectPermissionSecretActions.DescribeSecret,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
       )
-    });
+    );
   }
 
   const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(

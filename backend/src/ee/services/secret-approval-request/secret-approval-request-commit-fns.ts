@@ -12,12 +12,13 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
+import {
+  secretAlreadyExistsError,
+  secretValidationFailedError
+} from "@app/services/secret-v2-bridge/secret-v2-bridge-errors";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
-import {
-  describeSecretValidationFailures,
-  SecretValidationError
-} from "@app/services/secret-validation-rule/secret-validation-rule-errors";
+import { SecretValidationError } from "@app/services/secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TValidateSecretsDTO } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { SecretOperations } from "@app/services/secret/secret-types";
@@ -105,14 +106,12 @@ export const secretApprovalRequestCommitFnsFactory = ({
     } catch (error) {
       if (!(error instanceof SecretValidationError)) throw error;
 
-      throw new BadRequestError({
-        message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
-          permission.can(
-            ProjectPermissionSecretActions.DescribeSecret,
-            subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-          )
+      throw secretValidationFailedError(error.failures, dto.environment, (environment, secretPath) =>
+        permission.can(
+          ProjectPermissionSecretActions.DescribeSecret,
+          subject(ProjectPermissionSub.Secrets, { environment, secretPath })
         )
-      });
+      );
     }
   };
 
@@ -208,8 +207,10 @@ export const secretApprovalRequestCommitFnsFactory = ({
         providedTx
       );
       if (secrets.length)
-        throw new BadRequestError({
-          message: `Secret already exists: ${secrets.map((el) => `'${el.key}'`).join(", ")} in path '${secretPath}' of environment '${environment}'`
+        throw secretAlreadyExistsError({
+          conflicts: secrets.map((el) => ({ secretKey: el.key })),
+          environment,
+          secretPath
         });
 
       secretsToValidate.push(...createdSecrets.map((s) => ({ key: s.secretKey, value: s.secretValue })));
@@ -343,12 +344,19 @@ export const secretApprovalRequestCommitFnsFactory = ({
           })),
           providedTx
         );
-        if (existingSecretsWithNewName.length)
-          throw new BadRequestError({
+        if (existingSecretsWithNewName.length) {
+          const takenKeys = new Set(existingSecretsWithNewName.map((el) => el.key));
+          throw secretAlreadyExistsError({
+            conflicts: secretsWithNewName
+              .filter((el) => takenKeys.has(el.newSecretName as string))
+              .map((el) => ({ secretKey: el.secretKey, newSecretName: el.newSecretName as string })),
+            environment,
+            secretPath,
             message: `Secret with the new name already exists: ${existingSecretsWithNewName
               .map((el) => el.key)
               .join(", ")}`
           });
+        }
       }
 
       const updatingSecretsGroupByKey = groupBy(secretsToUpdateStoredInDB, (el) => el.key);

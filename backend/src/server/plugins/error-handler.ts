@@ -249,6 +249,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         statusCode: HttpStatusCodes.BadRequest,
         message: error.message,
         error: error.name,
+        code: error.code,
         details: error.details
       });
     } else if (error instanceof ClientClosedRequestError) {

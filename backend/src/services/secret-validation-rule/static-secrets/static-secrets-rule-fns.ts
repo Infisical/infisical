@@ -41,6 +41,7 @@ export const evaluateStaticSecretConstraints = (
   if (versionCount !== undefined && secret.previousValues?.slice(0, versionCount).includes(secret.value)) {
     violations.push({
       kind: ConstraintKind.ReusePreviousVersions,
+      target: ConstraintTarget.SecretValue,
       label: CONSTRAINT_LABELS[ConstraintKind.ReusePreviousVersions],
       message: `value cannot reuse any of the last ${versionCount} values`
     });
@@ -50,6 +51,7 @@ export const evaluateStaticSecretConstraints = (
   if (config.valueConstraints.uniqueWithinScope && duplicateOf) {
     violations.push({
       kind: ConstraintKind.ReuseOtherSecretsInScope,
+      target: ConstraintTarget.SecretValue,
       label: CONSTRAINT_LABELS[ConstraintKind.ReuseOtherSecretsInScope],
       message: "value is already used by another secret in this project",
       duplicateOf

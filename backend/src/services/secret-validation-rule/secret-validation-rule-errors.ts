@@ -10,8 +10,8 @@ export type TSecretValidationFailure = {
   violation: TConstraintViolation;
 };
 
-const describeFailure = (
-  { secretKey, ruleName, violation }: TSecretValidationFailure,
+export const describeSecretValidationViolation = (
+  { ruleName, violation }: TSecretValidationFailure,
   canDescribeLocation?: TCanDescribeLocation
 ) => {
   const duplicate = violation.duplicateOf;
@@ -20,14 +20,16 @@ const describeFailure = (
       ? `value is already used by secret "${duplicate.key}" in environment "${duplicate.environment}" at path "${duplicate.secretPath}"`
       : violation.message;
 
-  return `Secret "${secretKey}": ${message} (rule: "${ruleName}", constraint: ${violation.label})`;
+  return `${message} (rule: "${ruleName}", constraint: ${violation.label})`;
 };
 
 export const describeSecretValidationFailures = (
   failures: TSecretValidationFailure[],
   canDescribeLocation?: TCanDescribeLocation
 ) => {
-  const described = failures.map((failure) => describeFailure(failure, canDescribeLocation));
+  const described = failures.map(
+    (failure) => `Secret "${failure.secretKey}": ${describeSecretValidationViolation(failure, canDescribeLocation)}`
+  );
   return `Secret validation failed:\n${described.join("\n\n")}`;
 };
 

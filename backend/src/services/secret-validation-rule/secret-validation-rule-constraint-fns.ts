@@ -23,14 +23,16 @@ export type TDuplicateSecret = {
 
 export type TConstraintViolation = {
   kind: ConstraintKind;
+  target: ConstraintTarget;
   label: string;
   message: string;
   // Carried instead of written into the message, which never names a location. See secret-validation-rule-errors.
   duplicateOf?: TDuplicateSecret;
 };
 
-const violation = (kind: ConstraintKind, message: string): TConstraintViolation => ({
+const violation = (kind: ConstraintKind, target: ConstraintTarget, message: string): TConstraintViolation => ({
   kind,
+  target,
   label: CONSTRAINT_LABELS[kind],
   message
 });
@@ -50,26 +52,34 @@ export const evaluateConstraints = ({
 
   if (minLength !== undefined && value.length < minLength) {
     violations.push(
-      violation(ConstraintKind.MinLength, `${label} must be at least ${minLength} characters (got ${value.length})`)
+      violation(
+        ConstraintKind.MinLength,
+        target,
+        `${label} must be at least ${minLength} characters (got ${value.length})`
+      )
     );
   }
 
   if (maxLength !== undefined && value.length > maxLength) {
     violations.push(
-      violation(ConstraintKind.MaxLength, `${label} must be at most ${maxLength} characters (got ${value.length})`)
+      violation(
+        ConstraintKind.MaxLength,
+        target,
+        `${label} must be at most ${maxLength} characters (got ${value.length})`
+      )
     );
   }
 
   if (regexPattern !== undefined && !new RE2(regexPattern).test(value)) {
-    violations.push(violation(ConstraintKind.RegexPattern, `${label} must match pattern ${regexPattern}`));
+    violations.push(violation(ConstraintKind.RegexPattern, target, `${label} must match pattern ${regexPattern}`));
   }
 
   if (requiredPrefix !== undefined && !value.startsWith(requiredPrefix)) {
-    violations.push(violation(ConstraintKind.RequiredPrefix, `${label} must start with "${requiredPrefix}"`));
+    violations.push(violation(ConstraintKind.RequiredPrefix, target, `${label} must start with "${requiredPrefix}"`));
   }
 
   if (requiredSuffix !== undefined && !value.endsWith(requiredSuffix)) {
-    violations.push(violation(ConstraintKind.RequiredSuffix, `${label} must end with "${requiredSuffix}"`));
+    violations.push(violation(ConstraintKind.RequiredSuffix, target, `${label} must end with "${requiredSuffix}"`));
   }
 
   return violations;

@@ -230,7 +230,7 @@ export const secretImportServiceFactory = ({
     const [importEnv] = await projectEnvDAL.findBySlugs(sourceProjectId, [data.environment]);
     if (!importEnv) {
       throw new NotFoundError({
-        error: `Imported environment with slug '${data.environment}' in project with ID '${sourceProjectId}' not found`
+        message: `Imported environment with slug '${data.environment}' in project with ID '${sourceProjectId}' not found`
       });
     }
 
@@ -358,7 +358,7 @@ export const secretImportServiceFactory = ({
       : await projectEnvDAL.findById(secImpDoc.importEnv);
     if (!importedEnv) {
       throw new NotFoundError({
-        error: `Imported environment with slug '${data.environment}' in project with ID '${projectId}' not found`
+        message: `Imported environment with slug '${data.environment}' in project with ID '${projectId}' not found`
       });
     }
 
@@ -555,7 +555,7 @@ export const secretImportServiceFactory = ({
       const importEnv = await projectEnvDAL.findById(doc.importEnv);
       if (!importEnv) {
         throw new NotFoundError({
-          error: `Imported environment with ID '${doc.importEnv}' in project with ID '${projectId}' not found`
+          message: `Imported environment with ID '${doc.importEnv}' in project with ID '${projectId}' not found`
         });
       }
       return { ...doc, importEnv };

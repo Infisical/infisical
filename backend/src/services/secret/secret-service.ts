@@ -411,7 +411,7 @@ export const secretServiceFactory = ({
 
     if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
       throw new BadRequestError({
-        message: "Must be user to create personal secret"
+        message: "Must be user to update personal secret"
       });
     }
 
@@ -578,7 +578,7 @@ export const secretServiceFactory = ({
 
     if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
       throw new BadRequestError({
-        message: "Must be user to create personal secret"
+        message: "Must be user to delete personal secret"
       });
     }
 
@@ -3104,7 +3104,9 @@ export const secretServiceFactory = ({
 
     if (!project) {
       throw new NotFoundError({
-        message: `Project with slug '${projectSlug}' not found`
+        message: projectSlug
+          ? `Project with slug '${projectSlug}' not found`
+          : `Project with ID '${inputProjectId}' not found`
       });
     }
 

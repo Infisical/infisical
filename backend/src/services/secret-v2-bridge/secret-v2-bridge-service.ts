@@ -62,10 +62,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
-import {
-  describeSecretValidationFailures,
-  SecretValidationError
-} from "../secret-validation-rule/secret-validation-rule-errors";
+import { SecretValidationError } from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -85,6 +82,14 @@ import {
   SecretServiceCacheKeys,
   TSecretV2BridgeDALFactory
 } from "./secret-v2-bridge-dal";
+import {
+  describeMissingTags,
+  secretAlreadyExistsError,
+  secretReadOnlyError,
+  secretValidationFailedError,
+  SecretWriteErrorField,
+  toSecretKeyConflictError
+} from "./secret-v2-bridge-errors";
 import {
   createFetchFolderSecretsWithImports,
   createRelativeImportExpander,
@@ -233,14 +238,12 @@ export const secretV2BridgeServiceFactory = ({
     } catch (error) {
       if (!(error instanceof SecretValidationError)) throw error;
 
-      throw new BadRequestError({
-        message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
-          permission.can(
-            ProjectPermissionSecretActions.DescribeSecret,
-            subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-          )
+      throw secretValidationFailedError(error.failures, dto.environment, (environment, secretPath) =>
+        permission.can(
+          ProjectPermissionSecretActions.DescribeSecret,
+          subject(ProjectPermissionSub.Secrets, { environment, secretPath })
         )
-      });
+      );
     }
   };
 
@@ -399,7 +402,10 @@ export const secretV2BridgeServiceFactory = ({
       folderId
     });
     if (inputSecret.type === SecretType.Shared && doesSecretExist)
-      throw new BadRequestError({
+      throw secretAlreadyExistsError({
+        conflicts: [{ secretKey: inputSecret.secretName }],
+        environment,
+        secretPath,
         message: `Secret '${inputSecret.secretName}' already exists in path '${secretPath}' of environment '${environment}'`
       });
 
@@ -414,7 +420,7 @@ export const secretV2BridgeServiceFactory = ({
     // fetch all tags and if not same count throw error meaning one was invalid tags
     const tags = inputSecret.tagIds ? await secretTagDAL.find({ projectId, $in: { id: inputSecret.tagIds } }) : [];
     if ((inputSecret.tagIds || []).length !== tags.length)
-      throw new NotFoundError({ message: `Tag not found. Found ${tags.map((el) => el.slug).join(",")}` });
+      throw new NotFoundError({ message: describeMissingTags(inputSecret.tagIds ?? [], tags) });
 
     const { secretName, type, ...inputSecretData } = inputSecret;
 
@@ -521,6 +527,12 @@ export const secretV2BridgeServiceFactory = ({
           actorId
         },
         tx
+      }).catch((error) => {
+        throw toSecretKeyConflictError(error, {
+          candidates: type === SecretType.Shared ? [{ secretKey: secretName }] : [],
+          environment,
+          secretPath
+        });
       });
 
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
@@ -618,7 +630,7 @@ export const secretV2BridgeServiceFactory = ({
     const folderId = folder.id;
 
     if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
-      throw new BadRequestError({ message: "Must be user to create personal secret" });
+      throw new BadRequestError({ message: "Must be user to update personal secret" });
     }
 
     if (inputSecret.newSecretName && inputSecret.type === SecretType.Personal) {
@@ -662,7 +674,18 @@ export const secretV2BridgeServiceFactory = ({
         throw new NotFoundError({ message: `Secret with name ${inputSecret.secretName} not found` });
       if (sharedSecretToModify.isHoneyTokenSecret || sharedSecretToModify.isRotatedSecret) {
         if (inputSecret.newSecretName || inputSecret.secretValue) {
-          throw new BadRequestError({
+          throw secretReadOnlyError({
+            secrets: [
+              {
+                secretKey: inputSecret.secretName,
+                isHoneyTokenSecret: sharedSecretToModify.isHoneyTokenSecret,
+                fields: [
+                  ...(inputSecret.newSecretName ? [SecretWriteErrorField.SecretKey] : []),
+                  ...(inputSecret.secretValue ? [SecretWriteErrorField.SecretValue] : [])
+                ]
+              }
+            ],
+            environment,
             message: `Cannot update ${sharedSecretToModify.isHoneyTokenSecret ? "honey token" : "rotated"} secret name or value`
           });
         }
@@ -687,7 +710,7 @@ export const secretV2BridgeServiceFactory = ({
     // fetch all tags and if not same count throw error meaning one was invalid tags
     const newTags = inputSecret.tagIds ? await secretTagDAL.find({ projectId, $in: { id: inputSecret.tagIds } }) : [];
     if ((inputSecret.tagIds || []).length !== newTags.length)
-      throw new NotFoundError({ message: `Tag not found. Found ${newTags.map((el) => el.slug).join(",")}` });
+      throw new NotFoundError({ message: describeMissingTags(inputSecret.tagIds ?? [], newTags) });
 
     const tagsToCheck = inputSecret.tagIds ? newTags : secret.tags;
 
@@ -711,7 +734,13 @@ export const secretV2BridgeServiceFactory = ({
         type: SecretType.Shared,
         folderId
       });
-      if (doesNewNameSecretExist) throw new BadRequestError({ message: "Secret with the new name already exists" });
+      if (doesNewNameSecretExist)
+        throw secretAlreadyExistsError({
+          conflicts: [{ secretKey: inputSecret.secretName, newSecretName: inputSecret.newSecretName }],
+          environment,
+          secretPath,
+          message: `Secret with the new name '${inputSecret.newSecretName}' already exists in path '${secretPath}' of environment '${environment}'`
+        });
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Edit,
         subject(ProjectPermissionSub.Secrets, {
@@ -846,6 +875,14 @@ export const secretV2BridgeServiceFactory = ({
           actorId
         },
         tx
+      }).catch((error) => {
+        throw toSecretKeyConflictError(error, {
+          candidates: inputSecret.newSecretName
+            ? [{ secretKey: secretName, newSecretName: inputSecret.newSecretName }]
+            : [],
+          environment,
+          secretPath
+        });
       });
 
       if (inputSecret.newSecretName && inputSecret.type === SecretType.Shared) {
@@ -2294,8 +2331,10 @@ export const secretV2BridgeServiceFactory = ({
       { tx: providedTx }
     );
     if (secrets.length)
-      throw new BadRequestError({
-        message: `Secret already exists: ${secrets.map((el) => `'${el.key}'`).join(", ")} in path '${secretPath}' of environment '${environment}'`
+      throw secretAlreadyExistsError({
+        conflicts: secrets.map((el) => ({ secretKey: el.key })),
+        environment,
+        secretPath
       });
 
     // requestMemoize can hand back a value read outside a caller-supplied transaction, so it is bypassed here
@@ -2330,7 +2369,7 @@ export const secretV2BridgeServiceFactory = ({
       ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds, providedTx)
       : [];
     if (tags.length !== sanitizedTagIds.length)
-      throw new NotFoundError({ message: `Tag not found. Found ${tags.map((el) => el.slug).join(",")}` });
+      throw new NotFoundError({ message: describeMissingTags(sanitizedTagIds, tags) });
     const tagsGroupByID = groupBy(tags, (i) => i.id);
 
     deduplicatedSecrets.forEach((el) => {
@@ -2425,9 +2464,15 @@ export const secretV2BridgeServiceFactory = ({
       return modifiedSecretsInDB;
     };
 
-    const newSecrets = providedTx
-      ? await executeBulkInsert(providedTx)
-      : await secretDAL.transaction(executeBulkInsert);
+    const newSecrets = await (
+      providedTx ? executeBulkInsert(providedTx) : secretDAL.transaction(executeBulkInsert)
+    ).catch((error) => {
+      throw toSecretKeyConflictError(error, {
+        candidates: deduplicatedSecrets.map((el) => ({ secretKey: el.secretKey })),
+        environment,
+        secretPath
+      });
+    });
 
     if (!skipPostProcessing) {
       await dispatchSecretCreateSideEffects({
@@ -2598,33 +2643,26 @@ export const secretV2BridgeServiceFactory = ({
               secretTags: el.tags.map((i) => i.slug)
             })
           );
-
-          if (el.isHoneyTokenSecret) {
-            const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);
-
-            if (input) {
-              if (input.newSecretName) {
-                delete input.newSecretName;
-              }
-              if (input.secretValue !== undefined) {
-                delete input.secretValue;
-              }
-            }
-          }
-
-          if (el.isRotatedSecret) {
-            const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);
-
-            if (input) {
-              if (input.newSecretName) {
-                delete input.newSecretName;
-              }
-              if (input.secretValue !== undefined) {
-                delete input.secretValue;
-              }
-            }
-          }
         });
+
+        const readOnlySecretEdits = secretsToUpdateInDB.flatMap((el) => {
+          if (!el.isHoneyTokenSecret && !el.isRotatedSecret) return [];
+          const input = secretsToUpdate.find((i) => i.secretKey === el.key);
+          const fields = [
+            ...(input?.newSecretName ? [SecretWriteErrorField.SecretKey] : []),
+            ...(input?.secretValue !== undefined ? [SecretWriteErrorField.SecretValue] : [])
+          ];
+          return fields.length ? [{ secretKey: el.key, isHoneyTokenSecret: el.isHoneyTokenSecret, fields }] : [];
+        });
+        if (readOnlySecretEdits.length) {
+          throw secretReadOnlyError({
+            secrets: readOnlySecretEdits,
+            environment,
+            message: `Cannot update the name or value of rotated or honey token secrets: ${readOnlySecretEdits
+              .map((el) => `'${el.secretKey}'`)
+              .join(", ")} in path '${secretPath}' of environment '${environment}'`
+          });
+        }
 
         // get all tags
         // get all tags (include create + update in upsert)
@@ -2633,7 +2671,8 @@ export const secretV2BridgeServiceFactory = ({
         const sanitizedTagIds = [...new Set(allInputSecrets.flatMap(({ tagIds = [] }) => tagIds))];
 
         const tags = sanitizedTagIds.length ? await secretTagDAL.findManyTagsById(projectId, sanitizedTagIds, tx) : [];
-        if (tags.length !== sanitizedTagIds.length) throw new NotFoundError({ message: "Tag not found" });
+        if (tags.length !== sanitizedTagIds.length)
+          throw new NotFoundError({ message: describeMissingTags(sanitizedTagIds, tags) });
         const tagsGroupByID = groupBy(tags, (i) => i.id);
 
         // check create permission allowed in upsert mode
@@ -2678,12 +2717,18 @@ export const secretV2BridgeServiceFactory = ({
             },
             { tx }
           );
-          if (secrets.length)
-            throw new BadRequestError({
-              message: `Secret with new name already exists: ${secretsWithNewName
-                .map((el) => el.newSecretName)
-                .join(", ")}`
+          if (secrets.length) {
+            const takenKeys = new Set(secrets.map((el) => el.key));
+            const conflicts = secretsWithNewName.filter((el) => takenKeys.has(el.newSecretName as string));
+            throw secretAlreadyExistsError({
+              conflicts,
+              environment,
+              secretPath,
+              message: `Secret with new name already exists: ${conflicts
+                .map((el) => `'${el.newSecretName}'`)
+                .join(", ")} in path '${secretPath}' of environment '${environment}'`
             });
+          }
 
           secretsWithNewName.forEach((el) => {
             ForbiddenError.from(permission).throwUnlessCan(
@@ -2824,6 +2869,12 @@ export const secretV2BridgeServiceFactory = ({
             actorId
           },
           resourceMetadataDAL
+        }).catch((error) => {
+          throw toSecretKeyConflictError(error, {
+            candidates: secretsWithNewName.map((el) => ({ secretKey: el.secretKey, newSecretName: el.newSecretName })),
+            environment,
+            secretPath
+          });
         });
 
         if (secretKeyUpdates.length) {
@@ -2910,6 +2961,12 @@ export const secretV2BridgeServiceFactory = ({
               actorId
             },
             tx
+          }).catch((error) => {
+            throw toSecretKeyConflictError(error, {
+              candidates: secretsToCreate.map((el) => ({ secretKey: el.secretKey })),
+              environment,
+              secretPath
+            });
           });
 
           updatedSecrets.push(
