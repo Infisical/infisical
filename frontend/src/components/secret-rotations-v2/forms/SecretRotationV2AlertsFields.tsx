@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { BellIcon } from "lucide-react";
+import { BellIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
+  Alert,
+  AlertDescription,
   Item,
   ItemActions,
   ItemContent,
@@ -14,7 +16,7 @@ import {
 } from "@app/components/v3";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
-import { AlertResourceType } from "@app/hooks/api/alerts";
+import { AlertChannelType, AlertResourceType, TChannelForm } from "@app/hooks/api/alerts";
 import { ChannelsField } from "@app/views/Alerts";
 
 import { TSecretRotationV2Form } from "./schemas";
@@ -44,6 +46,18 @@ export const canManageFailureAlert = (
   );
 };
 
+// Recipient cleanup switches off a saved email channel once everyone on it has left.
+const isEmptiedChannel = (channel: TChannelForm) =>
+  Boolean(channel.id) &&
+  !channel.enabled &&
+  channel.channelType === AlertChannelType.Email &&
+  channel.recipients.length === 0;
+
+const describeEmptiedChannels = (names: string[]) =>
+  names.length === 1
+    ? `The "${names[0]}" channel has no recipients left, so it's switched off. Add a recipient or remove the channel.`
+    : `The ${names.map((name) => `"${name}"`).join(", ")} channels have no recipients left, so they're switched off. Add a recipient or remove them.`;
+
 type Props = {
   projectId: string;
   rotationId?: string;
@@ -57,10 +71,13 @@ export const SecretRotationV2AlertsFields = ({
 }: Props) => {
   const { control, clearErrors, setValue } = useFormContext<TSecretRotationV2Form>();
   const { permission } = useProjectPermission();
-  const [isFailureAlertEnabled, environment, secretPath, connection] = useWatch({
+  const [isFailureAlertEnabled, environment, secretPath, connection, channels] = useWatch({
     control,
-    name: ["isFailureAlertEnabled", "environment", "secretPath", "connection"]
+    name: ["isFailureAlertEnabled", "environment", "secretPath", "connection", "channels"]
   });
+  const emptiedChannelNames = (channels ?? [])
+    .filter(isEmptiedChannel)
+    .map((channel) => channel.name);
 
   const canManage = canManageFailureAlert(permission, {
     environment: environment?.slug,
@@ -124,6 +141,12 @@ export const SecretRotationV2AlertsFields = ({
           You can&apos;t set up a failure alert for this rotation. That needs permission to edit
           secret rotations in this environment and path. Ask a project admin to add one.
         </p>
+      )}
+      {canManage && isFailureAlertEnabled && emptiedChannelNames.length > 0 && (
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertDescription>{describeEmptiedChannels(emptiedChannelNames)}</AlertDescription>
+        </Alert>
       )}
       {canManage && isFailureAlertEnabled && (
         <ChannelsField

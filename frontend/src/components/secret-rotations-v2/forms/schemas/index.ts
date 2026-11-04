@@ -9,7 +9,7 @@ import { MongoDBCredentialsRotationSchema } from "@app/components/secret-rotatio
 import { MsSqlCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/mssql-credentials-rotation-schema";
 import { MySqlCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/mysql-credentials-rotation-schema";
 import { PostgresCredentialsRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/postgres-credentials-rotation-schema";
-import { channelFormSchema, TChannelForm } from "@app/hooks/api/alerts";
+import { channelFormSchema, TChannelForm, toChannelInput } from "@app/hooks/api/alerts";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { HpIloRotationMethod } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 import { LdapPasswordRotationMethod } from "@app/hooks/api/secretRotationsV2/types/ldap-password-rotation";
@@ -42,29 +42,48 @@ const FailureAlertChannelsSchema = z
   .array(channelFormSchema)
   .min(1, "At least one channel is required");
 
+export type TSavedFailureAlert = {
+  enabled: boolean;
+  channels: TChannelForm[];
+};
+
+export const serializeFailureAlertChannels = (channels: TChannelForm[]) =>
+  JSON.stringify(channels.map(toChannelInput));
+
 // Channels are only checked while the alert is on, so a hidden, half-filled channel can't block
-// saving the rotation.
-const FailureAlertSchema = z
-  .object({
-    isFailureAlertEnabled: z.boolean(),
-    channels: z.custom<TChannelForm[]>()
-  })
-  .superRefine(({ isFailureAlertEnabled, channels }, ctx) => {
-    if (!isFailureAlertEnabled) return;
+// saving the rotation. A saved alert the user left untouched isn't checked either: recipient cleanup
+// can leave it with an empty, disabled channel, and saving the rotation doesn't send the alert again.
+const buildFailureAlertSchema = (savedAlert?: TSavedFailureAlert) => {
+  const savedChannels = savedAlert ? serializeFailureAlertChannels(savedAlert.channels) : undefined;
 
-    const result = FailureAlertChannelsSchema.safeParse(channels);
-    if (result.success) return;
+  return z
+    .object({
+      isFailureAlertEnabled: z.boolean(),
+      channels: z.custom<TChannelForm[]>()
+    })
+    .superRefine(({ isFailureAlertEnabled, channels }, ctx) => {
+      if (!isFailureAlertEnabled) return;
+      if (savedAlert?.enabled && savedChannels === serializeFailureAlertChannels(channels)) {
+        return;
+      }
 
-    result.error.issues.forEach((issue) => {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: issue.message,
-        path: ["channels", ...issue.path]
+      const result = FailureAlertChannelsSchema.safeParse(channels);
+      if (result.success) return;
+
+      result.error.issues.forEach((issue) => {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: issue.message,
+          path: ["channels", ...issue.path]
+        });
       });
     });
-  });
+};
 
-export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
+export const SecretRotationV2FormSchema = (
+  isUpdate: boolean,
+  savedFailureAlert?: TSavedFailureAlert
+) =>
   z
     .intersection(
       z.discriminatedUnion("type", [
@@ -99,7 +118,7 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         StripeApiKeyRotationSchema,
         GcpServiceAccountKeyRotationSchema
       ]),
-      z.object({ id: z.string().optional() }).and(FailureAlertSchema)
+      z.object({ id: z.string().optional() }).and(buildFailureAlertSchema(savedFailureAlert))
     )
     .superRefine((val, ctx) => {
       if (isUpdate) return;

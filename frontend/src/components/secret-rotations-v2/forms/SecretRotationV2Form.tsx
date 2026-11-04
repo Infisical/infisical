@@ -50,7 +50,11 @@ import {
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { buildNextChannel, DEFAULT_ALERT_NAMES } from "@app/views/Alerts";
 
-import { SecretRotationV2FormSchema, TSecretRotationV2Form } from "./schemas";
+import {
+  SecretRotationV2FormSchema,
+  serializeFailureAlertChannels,
+  TSecretRotationV2Form
+} from "./schemas";
 
 type Props = {
   onComplete: (secretRotation: TSecretRotationV2) => void;
@@ -164,9 +168,6 @@ const buildProjectAdminsChannel = (projectId: string): TChannelForm => ({
   recipients: [{ principalType: AlertPrincipalType.ProjectAdmins, principalId: projectId }]
 });
 
-const serializeChannels = (channels: TChannelForm[]) =>
-  JSON.stringify(channels.map(toChannelInput));
-
 const SecretRotationV2FormContent = ({
   type,
   onComplete,
@@ -191,7 +192,14 @@ const SecretRotationV2FormContent = ({
   const { rotationOption } = useSecretRotationV2Option(type);
 
   const formMethods = useForm<TSecretRotationV2Form>({
-    resolver: zodResolver(SecretRotationV2FormSchema(Boolean(secretRotation))),
+    resolver: zodResolver(
+      SecretRotationV2FormSchema(
+        Boolean(secretRotation),
+        failureAlert
+          ? { enabled: failureAlert.enabled, channels: failureAlert.channels.map(toChannelForm) }
+          : undefined
+      )
+    ),
     defaultValues: (secretRotation
       ? {
           ...secretRotation,
@@ -246,8 +254,8 @@ const SecretRotationV2FormContent = ({
     if (failureAlert) {
       if (isFailureAlertEnabled) {
         const hasChannelChanges =
-          serializeChannels(channels) !==
-          serializeChannels(failureAlert.channels.map(toChannelForm));
+          serializeFailureAlertChannels(channels) !==
+          serializeFailureAlertChannels(failureAlert.channels.map(toChannelForm));
         if (failureAlert.enabled && !hasChannelChanges) return;
         await updateAlert.mutateAsync({
           alertId: failureAlert.id,
