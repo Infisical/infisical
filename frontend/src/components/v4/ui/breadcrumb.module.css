@@ -13,7 +13,6 @@
   letter-spacing: var(--v4-type-small-letter-spacing);
   display: flex;
   align-items: center;
-  gap: var(--v4-space-crumb-divider);
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -23,7 +22,6 @@
 .entry {
   display: inline-flex;
   align-items: center;
-  gap: var(--v4-space-crumb-divider);
   min-width: 0;
 }
 .link {
@@ -31,6 +29,7 @@
   align-items: center;
   gap: var(--v4-space-6);
   min-width: 0;
+  padding-inline: var(--crumb-inset);
   color: inherit;
   background: transparent;
   border: 0;
@@ -62,6 +61,7 @@
   flex: none;
   inline-size: var(--v4-size-crumb-divider-width);
   block-size: var(--v4-size-crumb-divider);
+  margin-inline: var(--band-divider-gap, var(--v4-space-crumb-divider));
   background: var(--v4-crumb-divider);
 }
 .static {
@@ -118,7 +118,9 @@
   transition-duration: var(--v4-duration-fast);
   transition-timing-function: var(--v4-ease-standard);
 }
-.segment[data-name-target="page"] > .name:first-child {
+.trail > .entry:first-child > .segment[data-name-target="page"] > .name:first-child,
+.trail > .entry:first-child > .segment[data-name-target="switcher"],
+.trail > .entry:first-child > .link {
   margin-inline-start: calc(-1 * var(--crumb-inset));
 }
 .segment[data-name-target="page"] > .name:hover {
@@ -129,7 +131,6 @@
 }
 .segment[data-name-target="switcher"] {
   min-height: var(--crumb-target);
-  margin-inline-start: calc(-1 * var(--crumb-inset));
   padding-inline-start: var(--crumb-inset);
   transition-property: background-color, color;
   transition-duration: var(--v4-duration-fast);
@@ -201,19 +202,6 @@
 .product .link {
   min-height: var(--crumb-target);
   border-radius: 0;
-  padding-inline: var(--crumb-inset);
-}
-.product .separator {
-  margin-inline: 0;
-}
-.product .entry:not([data-switcher]) > .separator {
-  margin-inline-end: calc(-1 * var(--crumb-inset));
-}
-.product .entry:not([data-switcher]) + .entry > .separator {
-  margin-inline-start: calc(-1 * var(--crumb-inset));
-}
-.product .entry[data-switcher] + .entry > .separator {
-  margin-inline-start: calc((var(--v4-size-icon-sm) - var(--v4-size-nested-sm)) / 2);
 }
 .product .link:not(.static):hover {
   background: var(--v4-segment-hover);
@@ -221,12 +209,13 @@
 .product .label {
   max-width: 240px;
 }
-.product > .entry:first-child > .link {
-  margin-inline-start: calc(-1 * var(--crumb-inset));
-}
 .product > .entry:first-child > .segment {
   min-inline-size: var(--v4-crumb-root-size, 0px);
   max-inline-size: var(--v4-crumb-root-max, none);
+}
+.root[data-org-zone] .product > .entry:first-child {
+  flex: none;
+  inline-size: var(--v4-crumb-root-max);
 }
 .root[data-org-zone] .product > .entry:first-child > .segment[data-name-target="switcher"],
 .root[data-org-zone] .product > .entry:first-child > .segment[data-name-target="page"] > .name {
@@ -238,9 +227,6 @@
 .root[data-org-zone] .product > .entry:first-child .media > svg {
   inline-size: var(--v4-size-sidebar-icon);
   block-size: var(--v4-size-sidebar-icon);
-}
-.root[data-org-zone] .product > .entry:first-child + .entry > .separator {
-  margin-inline-start: calc(var(--v4-space-8) - var(--v4-space-crumb-divider));
 }
 .product > .entry:first-child[data-switcher] .label {
   color: var(--v4-ink);
@@ -257,10 +243,7 @@
 
 @container (max-width: 420px) {
   .trail {
-    gap: var(--v4-space-4);
-  }
-  .entry {
-    gap: var(--v4-space-4);
+    --band-divider-gap: var(--v4-space-4);
   }
   .product .label {
     max-width: 100px;

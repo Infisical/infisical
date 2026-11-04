@@ -16,7 +16,6 @@ const pullRequest = "https://github.com/Infisical/infisical/pull/8753";
 
 const statusTone: Record<PortStatus, BadgeTone> = {
   "1:1 port": "soft",
-  "Reworked port": "outline",
   Redesign: "info"
 };
 
@@ -24,7 +23,7 @@ const entryPoints = [
   {
     section: "foundations",
     page: "colors",
-    summary: "Color, typography, spacing and shape, and motion tokens."
+    summary: "Color, typography, spacing and shape, motion, and the rules every page follows."
   },
   {
     section: "components",

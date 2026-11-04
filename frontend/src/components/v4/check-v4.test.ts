@@ -185,6 +185,17 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [example, "<span>matches any characters except <code>/</code></span>"],
       [example, 'const [path, setPath] = useState("/");']
     ]
+  },
+  "suspense-fallback": {
+    bad: [
+      [example, '<Suspense fallback={<Spinner label="Loading secrets" />}>'],
+      [example, '<Suspense fallback={<p role="status">Loading the v4 page</p>}>'],
+      [example, "<Suspense fallback={null}>"]
+    ],
+    good: [
+      [example, '<Suspense fallback={<Loader size="page" label="Loading secrets" />}>'],
+      [example, "<Suspense fallback={<Skeleton lines={3} />}>"]
+    ]
   }
 };
 

@@ -13,7 +13,8 @@ export const loaderDefinition = {
     "Loader composes Spinner with its label, description and delay; it adds the area that centers it and marks the region busy.",
     "With loading false it renders its children and nothing else.",
     "The default delay of 300ms keeps fast loads from flashing.",
-    "Loader is for content whose shape is unknown. When the loaded shape is known (rows, cards, a chart), show Skeleton shapes that match the loaded state instead, as the reload in the example does."
+    "Loader is for content whose shape is unknown. When the loaded shape is known (rows, cards, a chart), show Skeleton shapes that match the loaded state instead, as the reload in the example does.",
+    "Size page is the page loader: it fills a page body while the page or its lazy chunk loads, before any of the page is on screen."
   ],
   accessibility: [
     "Spinner's label carries one polite status announcement; the region sets aria-busy while loading."
@@ -50,11 +51,15 @@ export const loaderDefinition = {
   ],
   guidance: {
     use: [
-      "Use Loader around a card, panel, sheet or page body while its first data loads, with a label that names the object."
+      "Use the page loader (size page) as the Suspense fallback for a page or a lazy page chunk, and for a page whose first data has not arrived, labeled with the page it loads.",
+      "Use Loader at base size around a card, panel or sheet of unknown shape while its first data loads, with a label that names the object."
     ],
-    avoid: ["Nest a Loader inside a page Loader, or put one inside a button."],
+    avoid: [
+      "Nest a Loader inside a page Loader, or put one inside a button.",
+      "Cover a table that is already on screen with a Loader; use its loading rows."
+    ],
     decision:
-      "Choose Loader for a region whose wait you cannot measure. Use Spinner with a label for inline status, Progress for a known count and Skeleton for a known layout.",
+      "Page loader, Skeleton or the table's loading rows: while a whole page or its chunk loads and none of it is on screen, use the page loader. Once the page has rendered, show Skeleton shapes for a card, panel or chart of known shape, and the table's loading rows (DataTable loading with loadingRows) for rows inside a table that is on screen. Use Spinner with a label for inline status and Progress for a known count.",
     rules: [
       {
         id: "loader-label",
@@ -85,6 +90,23 @@ export const loaderDefinition = {
         detect: {
           by: "review",
           how: "For each Loader, check whether the loaded content has a known shape. If it does, replace the Loader with Skeleton shapes at the same size."
+        }
+      },
+      {
+        id: "loader-page-level",
+        when: "A whole page, or the lazy chunk that renders it, is loading and none of it is on screen yet.",
+        do: "Render the page loader, Loader size page, as the Suspense fallback or the page body, labeled with the page it loads.",
+        avoid:
+          "Show a Spinner, bare Loading text or a blank area, or put the page loader over a table or region inside a page that has already rendered.",
+        reason:
+          "One page-level treatment tells people the whole page is on its way; inside a rendered page, Skeleton and the table's loading rows keep the layout still.",
+        evidence: [
+          "src/components/v4/ui/loader.tsx",
+          "src/pages/design-system/examples/loader/default.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "Check each Suspense fallback and page-level loading branch renders Loader size page; the suspense-fallback lint check of rule/page-loading catches single-line fallbacks."
         }
       },
       {

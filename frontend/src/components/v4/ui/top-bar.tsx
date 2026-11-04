@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { cn } from "../lib/utils";
 import { Count } from "./badge";
-import { Breadcrumb, type BreadcrumbCrumb } from "./breadcrumb";
+import { BandDivider, Breadcrumb, type BreadcrumbCrumb } from "./breadcrumb";
 import { Button } from "./button";
 import {
   DropdownMenu,
@@ -590,7 +590,7 @@ export function TopBar({
           )}
           {!narrow && account && (
             <>
-              <span className={styles.divider} aria-hidden="true" />
+              <BandDivider />
               <AccountMenu account={account} />
             </>
           )}

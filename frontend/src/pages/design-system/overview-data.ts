@@ -2,7 +2,7 @@ import { type IconName } from "@app/components/v4/ui/icon";
 
 import { type ComparisonPage } from "./navigation";
 
-export type PortStatus = "1:1 port" | "Reworked port" | "Redesign";
+export type PortStatus = "1:1 port" | "Redesign";
 
 export const comparisonQuicklinks: {
   page: ComparisonPage;
@@ -49,8 +49,8 @@ export const comparisonQuicklinks: {
   {
     page: "compare-certificates",
     icon: "cert",
-    summary: "The inventory with FilterBar chips and a detail page with a sidecar.",
-    status: "Reworked port"
+    summary: "The same inventory and certificate detail page, filtered with FilterBar chips.",
+    status: "1:1 port"
   },
   {
     page: "compare-kms",
@@ -61,26 +61,26 @@ export const comparisonQuicklinks: {
   {
     page: "compare-connections",
     icon: "link",
-    summary: "Connections with a status column, and creation in a three-step Sheet.",
-    status: "Reworked port"
+    summary: "The same app connections, with New connection in a three-step Sheet.",
+    status: "1:1 port"
   },
   {
     page: "compare-identities",
     icon: "machine",
-    summary: "Identities with sign-in status, and a detail page with a sidecar.",
-    status: "Reworked port"
+    summary: "The same machine identities, each opening its details, auth methods and projects.",
+    status: "1:1 port"
   },
   {
     page: "compare-audit-logs",
     icon: "history",
-    summary: "A virtual DataTable with time ranges and FilterBar chips.",
-    status: "Reworked port"
+    summary: "The same organization events in a virtual DataTable with FilterBar chips.",
+    status: "1:1 port"
   },
   {
     page: "compare-secret-scanning",
     icon: "search",
-    summary: "Findings with author and commit, status and source filters.",
-    status: "Reworked port"
+    summary: "The same unresolved findings, with status and source filters and bulk triage.",
+    status: "1:1 port"
   }
 ];
 

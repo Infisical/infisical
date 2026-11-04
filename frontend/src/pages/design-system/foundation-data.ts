@@ -18,19 +18,6 @@ export const resolveColorToken = (name: string, mode: ColorMode): string => {
   return resolve(name);
 };
 
-export const resolveSpacingToken = (name: string): string => {
-  const seen = new Set<string>();
-  const resolve = (key: string): string => {
-    if (seen.has(key)) throw new Error(`Circular spacing token ${key}`);
-    seen.add(key);
-    const token = tokens.spacing.tokens.find((entry) => entry.name === key);
-    if (!token) throw new Error(`Unknown spacing token ${key}`);
-    const alias = token.value.match(/^\{([^}]+)\}$/)?.[1];
-    return alias ? resolve(alias) : token.value;
-  };
-  return resolve(name);
-};
-
 export const typographyStyles = tokens.type.groups.flatMap((group) =>
   group.styles.map((style) => ({ ...style, family: group.family }))
 );

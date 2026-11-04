@@ -9,7 +9,6 @@ import { DocDisclosure, DocSection, PageHeading, PreviewFrame } from "./doc-part
 import {
   type ColorMode,
   resolveColorToken,
-  resolveSpacingToken,
   tokens,
   typeSpecimenStyle,
   typographyStyles
@@ -343,7 +342,7 @@ export const SpacingShapePage = () => (
               <div
                 className="mb-2 h-3"
                 style={{
-                  width: resolveSpacingToken(space.name),
+                  width: `var(--v4-${space.name})`,
                   backgroundColor: "var(--v4-accent)"
                 }}
               />

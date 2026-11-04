@@ -30,7 +30,6 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { PageHeader } from "@app/components/v4/ui/page-header";
-import { Skeleton } from "@app/components/v4/ui/skeleton";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useAccess } from "../context";
@@ -326,25 +325,11 @@ const BackLink = () => {
 };
 
 export const ProjectGroupDetail = ({ id }: { id: string }) => {
-  const { data, loading, navigate, toast } = useAccess();
+  const { data, navigate, toast } = useAccess();
   const can = useCan("project");
   const [removing, setRemoving] = useState(false);
   const membership = data.projectGroups.find((item) => item.groupId === id);
   const group = data.orgGroups.find((item) => item.id === id);
-
-  if (loading)
-    return (
-      <Stack gap={24} role="status" aria-label="Loading group details" aria-busy>
-        <Skeleton width={144} height={16} />
-        <Stack gap={8}>
-          <Skeleton width={256} height={32} />
-          <Skeleton width={320} height={16} />
-        </Stack>
-        <DetailLayout asideLabel="Details" aside={<Skeleton width="100%" height={256} />}>
-          <Skeleton width="100%" height={256} />
-        </DetailLayout>
-      </Stack>
-    );
 
   if (!membership || !group)
     return (
