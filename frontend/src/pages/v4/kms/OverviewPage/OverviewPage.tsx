@@ -213,7 +213,7 @@ export const OverviewPage = () => {
           title="Keys"
           description={
             disabledCount
-              ? `${totalCount} keys, and ${disabledCount} is disabled and cannot encrypt or sign.`
+              ? `${totalCount} keys, and ${disabledCount} ${disabledCount === 1 ? "is" : "are"} disabled and cannot encrypt or sign.`
               : `${totalCount} keys, all active.`
           }
           actions={
