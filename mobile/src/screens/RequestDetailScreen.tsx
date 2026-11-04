@@ -48,7 +48,9 @@ export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => 
 
   const run = async (action: "approve" | "deny") => {
     if (action === "approve" && !(await confirmWithDevice(`Approve ${request.resource}`))) return;
-    if (await decide(request.id, action, comment.trim())) decisionHaptic(action);
+    if (!(await decide(request.id, action, comment.trim()))) return;
+    setComment("");
+    decisionHaptic(action);
   };
 
   return (
@@ -153,7 +155,7 @@ export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => 
             <View style={styles.footerButtons}>
               <Button
                 variant="secondary"
-                label={current.state === "denying" ? "Denying…" : "Deny"}
+                label={current.state === "denying" ? "Denying…" : failed?.action === "deny" ? "Retry" : "Deny"}
                 busy={current.state === "denying"}
                 disabled={current.state === "approving"}
                 onPress={() => run("deny")}
@@ -161,11 +163,11 @@ export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => 
               />
               <Button
                 variant="accent"
-                icon={failed ? "sync" : "check"}
-                label={current.state === "approving" ? "Approving…" : failed ? "Retry" : "Approve"}
+                icon={failed?.action === "approve" ? "sync" : "check"}
+                label={current.state === "approving" ? "Approving…" : failed?.action === "approve" ? "Retry" : "Approve"}
                 busy={current.state === "approving"}
                 disabled={current.state === "denying"}
-                onPress={() => run(failed?.action ?? "approve")}
+                onPress={() => run("approve")}
                 style={{ flex: 1 }}
               />
             </View>

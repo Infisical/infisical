@@ -121,7 +121,7 @@ export const AppShell = () => {
             }
           ]}
         >
-          <RequestDetailScreen id={shownId} onBack={() => setOpenId(null)} />
+          <RequestDetailScreen key={shownId} id={shownId} onBack={() => setOpenId(null)} />
         </Animated.View>
       )}
     </View>

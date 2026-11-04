@@ -70,7 +70,7 @@ export const RequestRow = ({ request, onOpen, showActions, isLast }: Props) => {
             <Button
               small
               variant="secondary"
-              label={current.state === "denying" ? "Denying…" : "Deny"}
+              label={current.state === "denying" ? "Denying…" : failed?.action === "deny" ? "Retry" : "Deny"}
               busy={current.state === "denying"}
               disabled={current.state === "approving"}
               onPress={() => run("deny")}
@@ -78,11 +78,11 @@ export const RequestRow = ({ request, onOpen, showActions, isLast }: Props) => {
             <Button
               small
               variant="accent"
-              icon={failed ? "sync" : "check"}
-              label={current.state === "approving" ? "Approving…" : failed ? "Retry" : "Approve"}
+              icon={failed?.action === "approve" ? "sync" : "check"}
+              label={current.state === "approving" ? "Approving…" : failed?.action === "approve" ? "Retry" : "Approve"}
               busy={current.state === "approving"}
               disabled={current.state === "denying"}
-              onPress={() => run(failed?.action ?? "approve")}
+              onPress={() => run("approve")}
             />
           </View>
         )}

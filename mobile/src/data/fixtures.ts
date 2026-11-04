@@ -107,7 +107,7 @@ export const buildFixtures = (now: number): ApprovalRequest[] => [
     createdAt: now - 30 * hour,
     expiresAt: now - 6 * hour,
     policyName: "Release signing",
-    steps: [{ name: "Release managers", approvers: ["Sam Lee", "You"], required: 1, status: "approved", decidedBy: "Sam Lee" }],
+    steps: [{ name: "Release managers", approvers: ["Sam Lee", "You"], required: 1, status: "rejected", decidedBy: "Sam Lee" }],
     decision: { by: "Sam Lee", at: now - 29 * hour, comment: "Nightlies are not signed with the release key." }
   },
   {

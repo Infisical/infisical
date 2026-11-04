@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { buildFixtures } from "./fixtures";
 import { Activity, ApprovalRequest } from "./types";
@@ -22,10 +22,36 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [activity, setActivity] = useState<Record<string, Activity>>({});
   const [resolvedThisSession, setResolved] = useState<Set<string>>(new Set());
   const attempts = useRef<Record<string, number>>({});
+  const latest = useRef(requests);
+  latest.current = requests;
+
+  useEffect(() => {
+    const expire = () =>
+      setRequests((prev) =>
+        prev.some((request) => request.status === "pending" && request.expiresAt <= Date.now())
+          ? prev.map((request) =>
+              request.status === "pending" && request.expiresAt <= Date.now()
+                ? { ...request, status: "expired", awaitingYou: false }
+                : request
+            )
+          : prev
+      );
+    expire();
+    const timer = setInterval(expire, 30 * 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const decide = useCallback(async (id: string, action: "approve" | "deny", comment?: string) => {
     setActivity((prev) => ({ ...prev, [id]: { state: action === "approve" ? "approving" : "denying" } }));
     await wait(900);
+    const target = latest.current.find((request) => request.id === id);
+    if (!target || target.status !== "pending" || target.expiresAt <= Date.now()) {
+      setActivity((prev) => ({
+        ...prev,
+        [id]: { state: "failed", action, error: "This request expired before your decision was recorded, so nothing changed." }
+      }));
+      return false;
+    }
     attempts.current[id] = (attempts.current[id] ?? 0) + 1;
     if (id === FLAKY_REQUEST_ID && attempts.current[id] === 1) {
       setActivity((prev) => ({

@@ -5,17 +5,15 @@ import { space } from "../theme/tokens";
 import { Eyebrow, Frame, Text } from "../ui/primitives";
 import { RequestRow } from "./RequestRow";
 
-const DAY = 24 * 60 * 60 * 1000;
-
 export const HistoryScreen = ({ onOpen }: { onOpen: (id: string) => void }) => {
   const { requests } = useStore();
   const decided = requests
     .filter((request) => request.status !== "pending")
     .sort((a, b) => (b.decision?.at ?? b.expiresAt) - (a.decision?.at ?? a.expiresAt));
-  const now = Date.now();
+  const startOfToday = new Date().setHours(0, 0, 0, 0);
   const groups = [
-    { label: "Today", items: decided.filter((r) => now - (r.decision?.at ?? r.expiresAt) < DAY) },
-    { label: "Earlier", items: decided.filter((r) => now - (r.decision?.at ?? r.expiresAt) >= DAY) }
+    { label: "Today", items: decided.filter((r) => (r.decision?.at ?? r.expiresAt) >= startOfToday) },
+    { label: "Earlier", items: decided.filter((r) => (r.decision?.at ?? r.expiresAt) < startOfToday) }
   ].filter((group) => group.items.length > 0);
 
   return (
