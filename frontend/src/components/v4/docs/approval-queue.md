@@ -67,6 +67,7 @@ Exports: ApprovalQueue. Source TypeScript defines the API.
 - A framed List titled Needs you with the waiting count as its action and a View history footer.
 - Actions sit in a second row under each request's text, so the age ends every title line in the same place.
 - New requests are unread. Pending shows the pressed action busy and disables its partner. Resolved rows stay with Undo. Failed rows take a bad icon tile, the error line and Retry.
+- onUndo is optional. Without it resolved rows stay in place with no action, for decisions the host cannot take back.
 
 ## Accessibility
 
@@ -82,7 +83,7 @@ Exports: ApprovalQueue. Source TypeScript defines the API.
 
 ## Limits
 
-- The host owns request state and the approve, undo and retry calls.
+- The host owns request state and the approve, undo and retry calls. Leave out onUndo only when the decision really cannot be reversed, and say so in the resolved row's description.
 
 ## Declared example coverage
 
@@ -235,6 +236,79 @@ export default function Example() {
       </div>
       <figcaption className="text-muted-foreground text-xs">
         {"New, pending, resolved with undo, failed with retry"}
+      </figcaption>
+    </figure>
+  );
+}
+```
+
+### Without undo
+
+Save this example at `src/pages/design-system/examples/approval-queue/without-undo.tsx`; its relative imports are generated for that exact path. States: default, success.
+
+Registry items used: @infisical/approval-queue. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { ApprovalQueue, type ApprovalRequest } from "../../../../components/v4/patterns/approval-queue";
+
+const initial: ApprovalRequest[] = [
+  {
+    id: "rotation",
+    object: "github_token",
+    title: (
+      <>
+        <code>github_token</code> rotation in production
+      </>
+    ),
+    description: "Dana Whitfield asked to rotate the token after the audit.",
+    age: "12m",
+    href: "#approval-queue",
+    state: "new"
+  },
+  {
+    id: "export",
+    object: "audit-export",
+    title: (
+      <>
+        <code>audit-export</code> access approved
+      </>
+    ),
+    description: "Read access to audit logs for 1 day, approved by you. Approvals here are final.",
+    age: "1h",
+    href: "#approval-queue",
+    state: "resolved"
+  }
+];
+
+export default function Example() {
+  const [requests, setRequests] = useState(initial);
+  const approve = (id: string) =>
+    setRequests((value) =>
+      value.map((request) =>
+        request.id === id
+          ? {
+              ...request,
+              state: "resolved",
+              error: undefined,
+              title: (
+                <>
+                  <code>{request.object}</code> change approved
+                </>
+              ),
+              description: "Approved by you just now."
+            }
+          : request
+      )
+    );
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <ApprovalQueue requests={requests} onApprove={approve} onRetry={approve} />
+      </div>
+      <figcaption className="text-muted-foreground text-xs">
+        {"Resolved rows without undo"}
       </figcaption>
     </figure>
   );

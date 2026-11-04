@@ -1,9 +1,11 @@
 import * as React from "react";
+import { createLink } from "@tanstack/react-router";
 
 import { cn } from "../lib/utils";
 
 import controlStyles from "./controls.module.css";
 import frameStyles from "./frame.module.css";
+import linkStyles from "./row-link.module.css";
 
 const FramedContext = React.createContext(false);
 
@@ -197,4 +199,52 @@ function CardFooter({
 }
 CardFooter.displayName = "CardFooter";
 
-export { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };
+function CardLinkAnchor({
+  className,
+  disabled,
+  title,
+  children,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"a"> & {
+  disabled?: boolean;
+  ref?: React.Ref<HTMLAnchorElement>;
+}) {
+  if (disabled)
+    return (
+      <span
+        role="link"
+        aria-disabled="true"
+        title={title}
+        data-slot="card-link"
+        data-disabled=""
+        className={cn(linkStyles.cardLink, className)}
+      >
+        {children}
+      </span>
+    );
+  return (
+    <a
+      ref={ref}
+      title={title}
+      data-slot="card-link"
+      className={cn(linkStyles.cardLink, linkStyles.stretched, className)}
+      {...props}
+    >
+      {children}
+    </a>
+  );
+}
+
+const CardLink = createLink(CardLinkAnchor);
+
+export {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardLink,
+  CardTitle
+};

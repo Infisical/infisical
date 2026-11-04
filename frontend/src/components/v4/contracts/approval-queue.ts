@@ -12,18 +12,27 @@ export const approvalQueueDefinition = {
   behavior: [
     "A framed List titled Needs you with the waiting count as its action and a View history footer.",
     "Actions sit in a second row under each request's text, so the age ends every title line in the same place.",
-    "New requests are unread. Pending shows the pressed action busy and disables its partner. Resolved rows stay with Undo. Failed rows take a bad icon tile, the error line and Retry."
+    "New requests are unread. Pending shows the pressed action busy and disables its partner. Resolved rows stay with Undo. Failed rows take a bad icon tile, the error line and Retry.",
+    "onUndo is optional. Without it resolved rows stay in place with no action, for decisions the host cannot take back."
   ],
   accessibility: [
     "Each request title links to the request and marks the open one as current. Errors are announced as alerts."
   ],
-  limitations: ["The host owns request state and the approve, undo and retry calls."],
+  limitations: [
+    "The host owns request state and the approve, undo and retry calls. Leave out onUndo only when the decision really cannot be reversed, and say so in the resolved row's description."
+  ],
   examples: [
     {
       id: "default",
       title: "Requests in every state",
       module: "./examples/approval-queue/default.tsx",
       states: ["default", "loading", "success", "error"]
+    },
+    {
+      id: "without-undo",
+      title: "Without undo",
+      module: "./examples/approval-queue/without-undo.tsx",
+      states: ["default", "success"]
     }
   ],
   coverage: [

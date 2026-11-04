@@ -92,6 +92,7 @@ function Button({
   onDragStart: _onDragStart,
   onDragEnd: _onDragEnd,
   onAnimationStart: _onAnimationStart,
+  type,
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<"button"> &
@@ -178,6 +179,7 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      type={asChild ? type : (type ?? "button")}
       {...props}
       data-v4-button=""
       data-v4-button-material={material ? "" : undefined}

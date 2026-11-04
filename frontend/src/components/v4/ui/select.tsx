@@ -12,6 +12,11 @@ import controlStyles from "./controls.module.css";
 import menu from "./menu.module.css";
 import picker from "./picker.module.css";
 
+const SelectNameContext = React.createContext<{
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
+}>({});
+
 export type SelectOption = {
   value: string;
   label: string;
@@ -32,6 +37,8 @@ function Select({
   children,
   id,
   "aria-describedby": describedBy,
+  "aria-label": ariaLabel,
+  "aria-labelledby": labelledBy,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root> & {
   options?: readonly SelectOption[];
@@ -44,6 +51,8 @@ function Select({
   onChange?: (value: string) => void;
   id?: string;
   "aria-describedby"?: string;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
 }) {
   const groups = [...new Set(options?.map((option) => option.group ?? ""))];
   return (
@@ -60,7 +69,8 @@ function Select({
           <SelectTrigger
             id={id}
             size={size ?? "default"}
-            aria-label={label}
+            aria-label={ariaLabel ?? label}
+            aria-labelledby={labelledBy}
             aria-describedby={describedBy}
             aria-invalid={invalid || undefined}
           >
@@ -94,7 +104,9 @@ function Select({
           </SelectContent>
         </>
       ) : (
-        children
+        <SelectNameContext value={{ "aria-label": ariaLabel, "aria-labelledby": labelledBy }}>
+          {children}
+        </SelectNameContext>
       )}
     </SelectPrimitive.Root>
   );
@@ -125,7 +137,11 @@ function SelectTrigger({
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
   size?: "sm" | "default" | "md" | "lg";
 } & { ref?: React.Ref<React.ComponentRef<typeof SelectPrimitive.Trigger>> }) {
-  const fieldAttributes = useFieldControlAttributes(props);
+  const name = React.useContext(SelectNameContext);
+  const fieldAttributes = useFieldControlAttributes({
+    ...props,
+    "aria-labelledby": props["aria-labelledby"] ?? name["aria-labelledby"]
+  });
   return (
     <SelectPrimitive.Trigger
       ref={ref}
@@ -139,6 +155,7 @@ function SelectTrigger({
         controlStyles.selectTrigger,
         className
       )}
+      aria-label={name["aria-label"]}
       {...props}
       {...fieldAttributes}
     >

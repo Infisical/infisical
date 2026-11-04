@@ -1294,7 +1294,8 @@ export const baselineForms = [
       "Each option is one 32px row: the label on the left, its description muted and right-aligned on the same row, and the check for the chosen option at the end. A long label or description truncates."
     ],
     accessibility: [
-      "Provide a persistent label. Connect invalid feedback with aria-describedby and preserve disabled semantics."
+      "Provide a persistent label. Connect invalid feedback with aria-describedby and preserve disabled semantics.",
+      "Select forwards aria-label and aria-labelledby to its trigger, in both the options form and the composed form, so a Select outside a Field still gets an accessible name. aria-label wins over label, and an aria-labelledby set on SelectTrigger itself wins over the one on Select."
     ],
     limitations: [
       "Options are local and string-valued; remote search, custom object identity and persisted changes belong to the host."
@@ -1323,6 +1324,12 @@ export const baselineForms = [
         title: "Placeholder, disabled and invalid",
         module: "./examples/select/states.tsx",
         states: ["empty", "disabled", "invalid"]
+      },
+      {
+        id: "accessible-name",
+        title: "Named without a Field",
+        module: "./examples/select/accessible-name.tsx",
+        states: ["default"]
       }
     ],
     coverage: [

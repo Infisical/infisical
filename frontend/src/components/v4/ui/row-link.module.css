@@ -12,6 +12,15 @@
   color: var(--v4-muted);
   cursor: not-allowed;
 }
+.cardLink {
+  color: inherit;
+  text-decoration: none;
+  outline: none;
+}
+.cardLink[data-disabled] {
+  color: var(--v4-muted);
+  cursor: not-allowed;
+}
 .stretched::after {
   content: "";
   position: absolute;
