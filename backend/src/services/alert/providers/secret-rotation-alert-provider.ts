@@ -15,7 +15,7 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-events";
 import { SECRET_ROTATION_NAME_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TAlertPayload } from "../alert-channel-types";
@@ -185,12 +185,33 @@ export const secretRotationAlertProviderFactory = ({
     });
 
     if (!input.resourceId) {
-      // Listing a project's rotation alerts, or a test send for a rotation that is still being created.
-      const action =
-        input.action === AlertPermissionAction.Read
-          ? ProjectPermissionSecretRotationActions.Read
-          : ProjectPermissionSecretRotationActions.Create;
-      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.SecretRotation);
+      if (input.action !== AlertPermissionAction.Read) {
+        // A test send for a rotation that is still being created. It reads nothing back.
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionSecretRotationActions.Create,
+          ProjectPermissionSub.SecretRotation
+        );
+        return;
+      }
+
+      // Listing without a rotation returns the alerts of every rotation in the project, so a read limited
+      // to some environments or paths, or narrowed by a deny rule, would expose the rest.
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretRotationActions.Read,
+        ProjectPermissionSub.SecretRotation
+      );
+      const readRules = permission.rulesFor(
+        ProjectPermissionSecretRotationActions.Read,
+        ProjectPermissionSub.SecretRotation
+      );
+      const canReadEveryRotation =
+        readRules.some((rule) => !rule.inverted && !rule.conditions) && !readRules.some((rule) => rule.inverted);
+      if (!canReadEveryRotation) {
+        throw new ForbiddenRequestError({
+          message:
+            "Listing secret rotation alerts for the whole project requires permission to read every secret rotation in it. Pass a rotation's ID to list its alerts."
+        });
+      }
       return;
     }
 

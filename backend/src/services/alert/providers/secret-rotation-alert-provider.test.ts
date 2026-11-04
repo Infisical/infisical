@@ -32,7 +32,7 @@ const ATTEMPTED_AT = new Date("2026-11-03T00:00:05.000Z");
 const buildProvider = (
   opts: {
     rotations?: TSecretRotationWithLocation[];
-    rules?: { action: string; subject: string; conditions?: Record<string, unknown> }[];
+    rules?: { action: string; subject: string; inverted?: boolean; conditions?: Record<string, unknown> }[];
     unresolvedPath?: boolean;
   } = {}
 ) => {
@@ -191,6 +191,42 @@ describe("secret rotation alert provider", () => {
         actor
       })
     ).rejects.toThrow();
+  });
+
+  describe("listing a project's rotation alerts without naming a rotation", () => {
+    const listInput = {
+      action: AlertPermissionAction.Read,
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceId: null,
+      actor
+    };
+
+    test("is refused when rotation read is limited to some environments", async () => {
+      const { provider } = buildProvider({
+        rules: [{ action: "read", subject: "secret-rotation", conditions: { environment: "staging" } }]
+      });
+      await expect(provider.assertPermission(listInput)).rejects.toThrow(
+        "requires permission to read every secret rotation"
+      );
+    });
+
+    test("is refused when a deny rule narrows an otherwise project-wide read", async () => {
+      const { provider } = buildProvider({
+        rules: [
+          { action: "read", subject: "secret-rotation" },
+          { action: "read", subject: "secret-rotation", inverted: true, conditions: { environment: "prod" } }
+        ]
+      });
+      await expect(provider.assertPermission(listInput)).rejects.toThrow(
+        "requires permission to read every secret rotation"
+      );
+    });
+
+    test("is allowed when the caller can read every rotation in the project", async () => {
+      const { provider } = buildProvider({ rules: [{ action: "read", subject: "secret-rotation" }] });
+      await expect(provider.assertPermission(listInput)).resolves.toBeUndefined();
+    });
   });
 
   test("a test send before the rotation exists needs permission to create rotations", async () => {
