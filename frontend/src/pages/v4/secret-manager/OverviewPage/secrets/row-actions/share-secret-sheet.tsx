@@ -28,7 +28,9 @@ import { Switch } from "@app/components/v4/ui/switch";
 import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { EMAIL_LIST_DELIMITER, isValidEmail } from "@app/helpers/email";
+import { SecretSharingAccessType } from "@app/hooks/api/secretSharing/types";
 
+import { useV4Adapter } from "../../../../data/adapters";
 import { DiscardDialog } from "../flows/shared";
 
 import flowStyles from "../flows/flows.module.css";
@@ -57,7 +59,7 @@ const blank = {
   allowExternalEmails: false,
   emails: ""
 };
-type Result = { expiresAt: string; views: string; recipients: number };
+type Result = { expiresAt: string; views: string; recipients: number; url?: string };
 
 export function ShareSecretSheet({
   open,
@@ -73,6 +75,8 @@ export function ShareSecretSheet({
   const [showPassword, setShowPassword] = useState(false);
   const [result, setResult] = useState<Result>();
   const [discard, setDiscard] = useState(false);
+  const [failure, setFailure] = useState("");
+  const createSharedSecret = useV4Adapter("secrets").useCreateSharedSecret();
   const dirty = JSON.stringify(form) !== JSON.stringify(blank);
   const patch = (next: Partial<typeof form>) => {
     setForm((current) => ({ ...current, ...next }));
@@ -94,7 +98,7 @@ export function ShareSecretSheet({
     form.orgOnly,
     !form.allowExternalEmails && recipients.length > 0
   ].filter(Boolean).length;
-  const submit = () => {
+  const submit = async () => {
     const issues: Record<string, string> = {};
     if (form.name.length > 50) issues.name = "Name must be 50 characters or fewer.";
     if (!value) issues.secret = "Enter the value you want to share.";
@@ -113,12 +117,30 @@ export function ShareSecretSheet({
       issues.password = "External recipients need a password to open the secret.";
     setErrors(issues);
     if (Object.keys(issues).length) return;
-    setResult({
-      expiresAt: formatExpiry(form.expiresIn),
-      views: form.shouldLimitView ? form.viewLimit : "Unlimited",
-      recipients: recipients.length
-    });
-    setForm(blank);
+    setFailure("");
+    try {
+      const { id } = await createSharedSecret.mutateAsync({
+        name: form.name || undefined,
+        password: form.password || undefined,
+        secretValue: value,
+        expiresIn: form.expiresIn,
+        maxViews: form.shouldLimitView ? Number(form.viewLimit) : undefined,
+        accessType: form.orgOnly
+          ? SecretSharingAccessType.Organization
+          : SecretSharingAccessType.Anyone,
+        authorizedEmails: recipients.length ? recipients : undefined,
+        allowExternalEmails: form.allowExternalEmails
+      });
+      setResult({
+        expiresAt: formatExpiry(form.expiresIn),
+        views: form.shouldLimitView ? form.viewLimit : "Unlimited",
+        recipients: recipients.length,
+        url: recipients.length ? undefined : `${window.location.origin}/shared/secret/${id}`
+      });
+      setForm(blank);
+    } catch (error) {
+      setFailure(error instanceof Error ? error.message : "Could not create the secret link.");
+    }
   };
   return (
     <>
@@ -141,16 +163,38 @@ export function ShareSecretSheet({
                 <span className={styles.resultMark}>
                   <Icon name="info" size={20} />
                 </span>
-                <div className={styles.resultTitle}>No link was created</div>
+                <div className={styles.resultTitle}>
+                  {result.url ? "Secret link created" : "Secret link sent"}
+                </div>
                 <SmallText muted className={styles.center}>
-                  {result.recipients
-                    ? `This preview stores data locally, so nothing was sent to the ${result.recipients} recipient${result.recipients === 1 ? "" : "s"}.`
-                    : "This preview stores data locally and cannot create a shared secret link."}
+                  {result.url
+                    ? "Anyone with this link can view the secret within its limits."
+                    : `Each of the ${result.recipients} recipient${result.recipients === 1 ? "" : "s"} gets their own link by email.`}
                 </SmallText>
+                {result.url && (
+                  <Input
+                    readOnly
+                    mono
+                    aria-label="Secret link"
+                    value={result.url}
+                    trailing={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        iconOnly
+                        icon="copy"
+                        onClick={() => navigator.clipboard.writeText(result.url ?? "")}
+                      >
+                        Copy link
+                      </Button>
+                    }
+                  />
+                )}
                 <div className={styles.resultSummary}>
                   <span>
                     <Icon name="calendar" size={12} />
-                    {`Would expire ${result.expiresAt}`}
+                    {`Expires ${result.expiresAt}`}
                   </span>
                   <span>
                     {result.views === "Unlimited"
@@ -190,6 +234,7 @@ export function ShareSecretSheet({
                 >
                   <SecretValue value={value} label="Secret value" copyable={false} />
                 </Field>
+                {failure && <SmallText className={styles.center}>{failure}</SmallText>}
                 <div className={styles.formLabel}>Expiration</div>
                 <Field
                   label="Expires in"
@@ -327,7 +372,11 @@ export function ShareSecretSheet({
                   <Button type="button" variant="ghost" onClick={requestClose}>
                     Cancel
                   </Button>
-                  <Button type="submit" form="share-secret-form">
+                  <Button
+                    type="submit"
+                    form="share-secret-form"
+                    loading={createSharedSecret.isPending}
+                  >
                     Create secret link
                   </Button>
                 </>

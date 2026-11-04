@@ -73,6 +73,28 @@ export const sanitize = ({
   ...secret
 }: DemoSecret): SecretV3RawSanitized => secret;
 
+export const recordVersion = (store: DemoStore, secret: DemoSecret) =>
+  store.update((state) => {
+    const history = state.versionHistory[secret.id] ?? [];
+    if (history.some((entry) => entry.version === secret.version)) return state;
+    return {
+      ...state,
+      versionHistory: {
+        ...state.versionHistory,
+        [secret.id]: [
+          {
+            version: secret.version,
+            value: secret.value ?? "",
+            createdAt: secret.updatedAt,
+            actor: "Sarah Lin",
+            actorType: "user"
+          },
+          ...history
+        ]
+      }
+    };
+  });
+
 export const updateSecrets = (
   store: DemoStore,
   match: (secret: DemoSecret) => boolean,

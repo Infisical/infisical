@@ -46,6 +46,15 @@ export type SecretsFixtures = {
   honeyTokens: TDashboardHoneyToken[];
   proxiedServices: DemoProxiedService[];
   approvals: TSecretApprovalRequest[];
+  versionHistory: Record<string, DemoVersion[]>;
+};
+export type DemoVersion = {
+  version: number;
+  value: string;
+  createdAt: string;
+  actor: string;
+  actorType: string;
+  redacted?: boolean;
 };
 
 export const DEMO_USER = {
@@ -458,6 +467,31 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
   );
 
   return {
+    versionHistory: {
+      [id("payments-api", "dev", "/", "DATABASE_URL")]: [
+        {
+          version: 3,
+          value: referencingDatabaseUrl,
+          createdAt: "2026-10-22T12:06:00Z",
+          actor: "Avery Chen",
+          actorType: "user"
+        },
+        {
+          version: 2,
+          value: "postgres://fake-user:fake-password@db.dev.example.test:5432/payments",
+          createdAt: "2026-10-21T16:40:00Z",
+          actor: "ci-deployer",
+          actorType: "identity"
+        },
+        {
+          version: 1,
+          value: "postgres://fake-user:fake-password@localhost:5432/payments",
+          createdAt: "2026-10-20T09:00:00Z",
+          actor: "Jordan Lee",
+          actorType: "user"
+        }
+      ]
+    },
     projects: [
       project("payments-api", "Billing and checkout service"),
       project("web-dashboard", "Customer web application"),

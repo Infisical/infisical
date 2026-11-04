@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { GitCommitIcon } from "lucide-react";
 
@@ -62,7 +62,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { useResourceApply } from "./bridge/apply";
 import { toPendingChanges } from "./bridge/commit";
-import { useScopeSecrets } from "./bridge/scopes";
+import { BreadthContext, useScopeSecrets } from "./bridge/scopes";
 import { useSecretValues } from "./bridge/values";
 import { buildResources, valueKey } from "./bridge/view-model";
 import {
@@ -252,8 +252,19 @@ export const OverviewPage = () => {
     offset: (page - 1) * perPage
   });
   const valueStore = useSecretValues(projectId);
+  const [breadthHolders, setBreadthHolders] = useState(0);
+  const holdBreadth = useCallback(
+    (delta: number) => setBreadthHolders((current) => current + delta),
+    []
+  );
   const wide = Boolean(
-    importRequest || copyInvocation || moving || flowOpen || rowAction || syncOpen
+    importRequest ||
+    copyInvocation ||
+    moving ||
+    flowOpen ||
+    rowAction ||
+    syncOpen ||
+    breadthHolders > 0
   );
   const breadthScopes = [
     ...(overview.data?.imports ?? [])
@@ -1165,644 +1176,661 @@ export const OverviewPage = () => {
     report: (message) => pushToast({ tone: "bad", title: message })
   };
   return valueStore.provider(
-    <ReferenceSourceProvider value={referenceSource}>
-      <div ref={root}>
-        <div>
+    <BreadthContext value={holdBreadth}>
+      <ReferenceSourceProvider value={referenceSource}>
+        <div ref={root}>
           <div>
-            <div className={styles.page}>
-              <PageHeader
-                size="md"
-                title={
-                  session.projects.find((entry) => entry.id === projectId)?.name ??
-                  projectQuery.data?.name ??
-                  projectId
-                }
-                mono
-              />
-              <div className={styles.toolbar}>
-                <div className={styles.envPicker}>
-                  <MultiSelect
-                    label="Environments"
-                    options={noEnvironments ? [] : projectEnvironments}
-                    value={noEnvironments ? [] : environmentIds}
-                    onChange={(value) => {
-                      setEnvironmentIds(value);
-                      setSort({ field: "name", direction: "asc" });
+            <div>
+              <div className={styles.page}>
+                <PageHeader
+                  size="md"
+                  title={
+                    session.projects.find((entry) => entry.id === projectId)?.name ??
+                    projectQuery.data?.name ??
+                    projectId
+                  }
+                  mono
+                />
+                <div className={styles.toolbar}>
+                  <div className={styles.envPicker}>
+                    <MultiSelect
+                      label="Environments"
+                      options={noEnvironments ? [] : projectEnvironments}
+                      value={noEnvironments ? [] : environmentIds}
+                      onChange={(value) => {
+                        setEnvironmentIds(value);
+                        setSort({ field: "name", direction: "asc" });
+                        resetView();
+                      }}
+                      placeholder="All environments"
+                      allLabel="All environments"
+                      searchable
+                      disabled={unavailable}
+                    />
+                  </div>
+                  <div className={styles.search}>
+                    <Input
+                      ref={searchInput}
+                      aria-label="Search resources"
+                      icon="search"
+                      placeholder="Search by secret or folder name..."
+                      kbd="/"
+                      value={query}
+                      disabled={unavailable}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
+                        setPage(1);
+                        setSelected([]);
+                      }}
+                    />
+                  </div>
+                  <ResourceFilterMenu
+                    types={types}
+                    onToggleType={(kind) => {
+                      setTypes(
+                        types.includes(kind)
+                          ? types.filter((entry) => entry !== kind)
+                          : [...types, kind]
+                      );
                       resetView();
                     }}
-                    placeholder="All environments"
-                    allLabel="All environments"
-                    searchable
-                    disabled={unavailable}
-                  />
-                </div>
-                <div className={styles.search}>
-                  <Input
-                    ref={searchInput}
-                    aria-label="Search resources"
-                    icon="search"
-                    placeholder="Search by secret or folder name..."
-                    kbd="/"
-                    value={query}
-                    disabled={unavailable}
-                    onChange={(event) => {
-                      setQuery(event.target.value);
-                      setPage(1);
-                      setSelected([]);
+                    tags={tagOptions}
+                    selectedTags={tags}
+                    onToggleTag={(tag) => {
+                      setTags(
+                        tags.includes(tag) ? tags.filter((entry) => entry !== tag) : [...tags, tag]
+                      );
+                      resetView();
+                    }}
+                    onClearTags={() => {
+                      setTags([]);
+                      resetView();
                     }}
                   />
-                </div>
-                <ResourceFilterMenu
-                  types={types}
-                  onToggleType={(kind) => {
-                    setTypes(
-                      types.includes(kind)
-                        ? types.filter((entry) => entry !== kind)
-                        : [...types, kind]
-                    );
-                    resetView();
-                  }}
-                  tags={tagOptions}
-                  selectedTags={tags}
-                  onToggleTag={(tag) => {
-                    setTags(
-                      tags.includes(tag) ? tags.filter((entry) => entry !== tag) : [...tags, tag]
-                    );
-                    resetView();
-                  }}
-                  onClearTags={() => {
-                    setTags([]);
-                    resetView();
-                  }}
-                />
-                <ExportMenu
-                  disabledReason={unavailable ? writeBlock : exportBlock}
-                  secretCount={single ? envSecrets(activeEnvironment).length : 0}
-                  onExport={(action) => exportEnv(activeEnvironment, action)}
-                />
-                <AddNewMenu
-                  writeBlock={writeBlock}
-                  single={single}
-                  available={Object.fromEntries(Object.keys(addFlows).map((kind) => [kind, true]))}
-                  copyBlock={
-                    pendingHere.length ? "Commit or discard pending changes first" : undefined
-                  }
-                  onAdd={(kind) => openFlow(kind)}
-                  onUpload={() => setImportRequest({ step: "upload" })}
-                  onCopySecrets={() =>
-                    setCopyInvocation({
-                      origin: "toolbar",
-                      sourcePath: path,
-                      sourceEnvironmentSlug: single ? activeEnvironment : ""
-                    })
-                  }
-                  onAddSync={() => setSyncOpen(true)}
-                />
-              </div>
-              <div className={styles.tableBlock}>
-                <div className={styles.tableFrame}>
-                  <FolderBreadcrumbBar
-                    path={path}
-                    single={single}
-                    onNavigate={navigate}
-                    report={report}
+                  <ExportMenu
+                    disabledReason={unavailable ? writeBlock : exportBlock}
+                    secretCount={single ? envSecrets(activeEnvironment).length : 0}
+                    onExport={(action) => exportEnv(activeEnvironment, action)}
                   />
-                  {unavailableState ?? (
-                    <Table
-                      className={styles.table}
-                      data-mode={single ? "single" : "multi"}
-                      aria-label={`Resources in ${project} at ${path}`}
-                    >
-                      <colgroup>
-                        <col className={styles.colIcon} />
-                        <col className={single ? styles.colName : styles.colNameMulti} />
-                        {single ? (
-                          <col />
-                        ) : (
-                          visibleEnvironments.map((environment) => <col key={environment.value} />)
-                        )}
-                      </colgroup>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className={styles.iconCell}>
-                            <span className={styles.iconSlot}>
-                              <Checkbox
-                                aria-label="Select all resources on this page"
-                                checked={allOnPage}
-                                indeterminate={someOnPage && !allOnPage}
-                                disabled={!selectableOnPage.length}
-                                onCheckedChange={() =>
-                                  setSelected(
-                                    allOnPage
-                                      ? selected.filter((key) => !selectableOnPage.includes(key))
-                                      : [...new Set([...selected, ...selectableOnPage])]
-                                  )
-                                }
-                              />
-                            </span>
-                          </TableHead>
-                          <TableHead>
-                            <div className={styles.headLine}>
-                              Name
-                              <span className={styles.push}>{sortMenu}</span>
-                            </div>
-                          </TableHead>
+                  <AddNewMenu
+                    writeBlock={writeBlock}
+                    single={single}
+                    available={Object.fromEntries(
+                      Object.keys(addFlows).map((kind) => [kind, true])
+                    )}
+                    copyBlock={
+                      pendingHere.length ? "Commit or discard pending changes first" : undefined
+                    }
+                    onAdd={(kind) => openFlow(kind)}
+                    onUpload={() => setImportRequest({ step: "upload" })}
+                    onCopySecrets={() =>
+                      setCopyInvocation({
+                        origin: "toolbar",
+                        sourcePath: path,
+                        sourceEnvironmentSlug: single ? activeEnvironment : ""
+                      })
+                    }
+                    onAddSync={() => setSyncOpen(true)}
+                  />
+                </div>
+                <div className={styles.tableBlock}>
+                  <div className={styles.tableFrame}>
+                    <FolderBreadcrumbBar
+                      path={path}
+                      single={single}
+                      onNavigate={navigate}
+                      report={report}
+                    />
+                    {unavailableState ?? (
+                      <Table
+                        className={styles.table}
+                        data-mode={single ? "single" : "multi"}
+                        aria-label={`Resources in ${project} at ${path}`}
+                      >
+                        <colgroup>
+                          <col className={styles.colIcon} />
+                          <col className={single ? styles.colName : styles.colNameMulti} />
                           {single ? (
-                            <TableHead>
-                              <div className={`${styles.headLine} ${styles.valueHead}`}>
-                                Value
-                                <span className={styles.push}>
-                                  <Button
-                                    variant="ghost"
-                                    size="xs"
-                                    icon="eye"
-                                    onClick={() => setRevealAll(!revealAll)}
-                                  >
-                                    {revealAll ? "Hide values" : "Reveal all"}
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="xs"
-                                    icon="git"
-                                    onClick={() => setCommitEnvironment(visibleEnvironments[0])}
-                                  >
-                                    <span className={styles.headLabel}>
-                                      {`${commitCount} commit${commitCount === 1 ? "" : "s"}`}
-                                    </span>
-                                  </Button>
-                                  <SecretSyncStatusBadge
-                                    syncs={syncs}
-                                    project={project}
-                                    environments={visibleEnvironments.map(
-                                      (environment) => environment.value
-                                    )}
-                                    path={path}
-                                  />
-                                </span>
-                              </div>
-                            </TableHead>
+                            <col />
                           ) : (
                             visibleEnvironments.map((environment) => (
-                              <TableHead key={environment.value} className={styles.envHead}>
-                                <div className={styles.headLine}>
-                                  {environmentMenu(environment)}
-                                </div>
-                              </TableHead>
+                              <col key={environment.value} />
                             ))
                           )}
-                          <TableActionsHead slots={ROW_ACTION_SLOTS} />
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {loading &&
-                          Array.from({ length: 8 }, (_, index) => (
-                            <TableRow key={`skeleton-${index + 1}`}>
-                              <TableCell className={styles.iconCell}>
-                                <Skeleton
-                                  width="var(--v4-size-icon)"
-                                  height="var(--v4-size-icon)"
+                        </colgroup>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className={styles.iconCell}>
+                              <span className={styles.iconSlot}>
+                                <Checkbox
+                                  aria-label="Select all resources on this page"
+                                  checked={allOnPage}
+                                  indeterminate={someOnPage && !allOnPage}
+                                  disabled={!selectableOnPage.length}
+                                  onCheckedChange={() =>
+                                    setSelected(
+                                      allOnPage
+                                        ? selected.filter((key) => !selectableOnPage.includes(key))
+                                        : [...new Set([...selected, ...selectableOnPage])]
+                                    )
+                                  }
                                 />
-                              </TableCell>
-                              <TableCell colSpan={colSpan - 1}>
-                                <Skeleton
-                                  width="var(--v4-size-text-min)"
-                                  height="var(--v4-size-icon)"
-                                />
+                              </span>
+                            </TableHead>
+                            <TableHead>
+                              <div className={styles.headLine}>
+                                Name
+                                <span className={styles.push}>{sortMenu}</span>
+                              </div>
+                            </TableHead>
+                            {single ? (
+                              <TableHead>
+                                <div className={`${styles.headLine} ${styles.valueHead}`}>
+                                  Value
+                                  <span className={styles.push}>
+                                    <Button
+                                      variant="ghost"
+                                      size="xs"
+                                      icon="eye"
+                                      onClick={() => setRevealAll(!revealAll)}
+                                    >
+                                      {revealAll ? "Hide values" : "Reveal all"}
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="xs"
+                                      icon="git"
+                                      onClick={() => setCommitEnvironment(visibleEnvironments[0])}
+                                    >
+                                      <span className={styles.headLabel}>
+                                        {`${commitCount} commit${commitCount === 1 ? "" : "s"}`}
+                                      </span>
+                                    </Button>
+                                    <SecretSyncStatusBadge
+                                      syncs={syncs}
+                                      project={project}
+                                      environments={visibleEnvironments.map(
+                                        (environment) => environment.value
+                                      )}
+                                      path={path}
+                                    />
+                                  </span>
+                                </div>
+                              </TableHead>
+                            ) : (
+                              visibleEnvironments.map((environment) => (
+                                <TableHead key={environment.value} className={styles.envHead}>
+                                  <div className={styles.headLine}>
+                                    {environmentMenu(environment)}
+                                  </div>
+                                </TableHead>
+                              ))
+                            )}
+                            <TableActionsHead slots={ROW_ACTION_SLOTS} />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {loading &&
+                            Array.from({ length: 8 }, (_, index) => (
+                              <TableRow key={`skeleton-${index + 1}`}>
+                                <TableCell className={styles.iconCell}>
+                                  <Skeleton
+                                    width="var(--v4-size-icon)"
+                                    height="var(--v4-size-icon)"
+                                  />
+                                </TableCell>
+                                <TableCell colSpan={colSpan - 1}>
+                                  <Skeleton
+                                    width="var(--v4-size-text-min)"
+                                    height="var(--v4-size-icon)"
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          {!loading && totalCount === 0 && (
+                            <TableRow>
+                              <TableCell
+                                colSpan={colSpan}
+                                className={styles.emptyCell}
+                                data-dropzone={!isFiltered || undefined}
+                              >
+                                {emptyState}
                               </TableCell>
                             </TableRow>
-                          ))}
-                        {!loading && totalCount === 0 && (
-                          <TableRow>
-                            <TableCell
-                              colSpan={colSpan}
-                              className={styles.emptyCell}
-                              data-dropzone={!isFiltered || undefined}
-                            >
-                              {emptyState}
-                            </TableCell>
-                          </TableRow>
-                        )}
-                        {!loading &&
-                          windowRows.map(([key, entries]) => {
-                            const first = entries[0];
-                            if (first.kind === "import")
+                          )}
+                          {!loading &&
+                            windowRows.map(([key, entries]) => {
+                              const first = entries[0];
+                              if (first.kind === "import")
+                                return (
+                                  <ImportRow
+                                    key={key}
+                                    rowKey={key}
+                                    entries={entries as Of<"import">[]}
+                                    ctx={ctx}
+                                    sourceSecrets={sourceSecrets}
+                                    projectName={project}
+                                  />
+                                );
+                              if (first.kind === "folder")
+                                return (
+                                  <FolderRow
+                                    key={key}
+                                    rowKey={key}
+                                    entries={entries as Of<"folder">[]}
+                                    ctx={ctx}
+                                    onOpen={() =>
+                                      navigate(`${path === "/" ? "" : path}/${first.name}`)
+                                    }
+                                    onEdit={setEditingFolder}
+                                    onDelete={setDeletingFolder}
+                                  />
+                                );
+                              if (first.kind === "secret")
+                                return (
+                                  <SecretRow
+                                    key={key}
+                                    rowKey={key}
+                                    entries={entries as Secret[]}
+                                    ctx={ctx}
+                                    revealAll={revealAll}
+                                    handlers={handlers}
+                                  />
+                                );
                               return (
-                                <ImportRow
+                                <KindRow
                                   key={key}
                                   rowKey={key}
-                                  entries={entries as Of<"import">[]}
+                                  kind={first.kind}
+                                  entries={entries}
                                   ctx={ctx}
-                                  sourceSecrets={sourceSecrets}
-                                  projectName={project}
                                 />
                               );
-                            if (first.kind === "folder")
-                              return (
-                                <FolderRow
-                                  key={key}
-                                  rowKey={key}
-                                  entries={entries as Of<"folder">[]}
-                                  ctx={ctx}
-                                  onOpen={() =>
-                                    navigate(`${path === "/" ? "" : path}/${first.name}`)
-                                  }
-                                  onEdit={setEditingFolder}
-                                  onDelete={setDeletingFolder}
-                                />
-                              );
-                            if (first.kind === "secret")
-                              return (
-                                <SecretRow
-                                  key={key}
-                                  rowKey={key}
-                                  entries={entries as Secret[]}
-                                  ctx={ctx}
-                                  revealAll={revealAll}
-                                  handlers={handlers}
-                                />
-                              );
-                            return (
-                              <KindRow
-                                key={key}
-                                rowKey={key}
-                                kind={first.kind}
-                                entries={entries}
-                                ctx={ctx}
-                              />
-                            );
-                          })}
-                        {canQuickAdd && (
-                          <QuickAddRow
-                            multiple={!single}
-                            colSpan={(single ? 1 : visibleEnvironments.length) + 1}
-                            existing={ordered
-                              .filter(([, entries]) => entries[0].kind === "secret")
-                              .map(([, entries]) => entries[0].name)}
-                            onCreate={(key, value) =>
-                              create(
-                                key,
-                                value,
-                                visibleEnvironments.map((environment) => environment.value)
-                              )
-                            }
-                            onQueue={
-                              single
-                                ? (key, value) => {
-                                    const timestamp = new Date().toISOString();
-                                    setPending((current) => [
-                                      ...current,
-                                      {
-                                        id: crypto.randomUUID(),
-                                        type: "create",
-                                        next: {
-                                          kind: "secret",
+                            })}
+                          {canQuickAdd && (
+                            <QuickAddRow
+                              multiple={!single}
+                              colSpan={(single ? 1 : visibleEnvironments.length) + 1}
+                              existing={ordered
+                                .filter(([, entries]) => entries[0].kind === "secret")
+                                .map(([, entries]) => entries[0].name)}
+                              onCreate={(key, value) =>
+                                create(
+                                  key,
+                                  value,
+                                  visibleEnvironments.map((environment) => environment.value)
+                                )
+                              }
+                              onQueue={
+                                single
+                                  ? (key, value) => {
+                                      const timestamp = new Date().toISOString();
+                                      setPending((current) => [
+                                        ...current,
+                                        {
                                           id: crypto.randomUUID(),
-                                          project,
-                                          environment: activeEnvironment,
-                                          path,
-                                          name: key,
-                                          value: { status: "present", value },
-                                          version: 1,
-                                          comment: "",
-                                          tags: [],
-                                          metadata: [],
-                                          createdAt: timestamp,
-                                          updatedAt: timestamp
+                                          type: "create",
+                                          next: {
+                                            kind: "secret",
+                                            id: crypto.randomUUID(),
+                                            project,
+                                            environment: activeEnvironment,
+                                            path,
+                                            name: key,
+                                            value: { status: "present", value },
+                                            version: 1,
+                                            comment: "",
+                                            tags: [],
+                                            metadata: [],
+                                            createdAt: timestamp,
+                                            updatedAt: timestamp
+                                          }
                                         }
-                                      }
-                                    ]);
-                                    setSelected([]);
-                                  }
-                                : undefined
-                            }
-                            onPasteSecrets={(parsed) => setImportRequest({ step: "paste", parsed })}
-                          />
-                        )}
-                      </TableBody>
-                    </Table>
-                  )}
-                </div>
-                {(totalCount > 0 || notice) && (
-                  <div className={styles.footer}>
-                    {notice ? (
-                      <p role="status" className={styles.notice}>
-                        {notice}
-                      </p>
-                    ) : (
-                      <ResourceCount counts={totals} />
-                    )}
-                    {!unavailableState && totalCount > 0 && (
-                      <div className={styles.pagination}>
-                        <Pagination
-                          page={currentPage}
-                          total={totalCount}
-                          pageSize={perPage}
-                          pageSizeOptions={[10, 20, 50, 100]}
-                          onPageChange={(value) => {
-                            setPage(value);
-                            setSelected([]);
-                          }}
-                          onPageSizeChange={(value) => {
-                            setPerPage(value);
-                            setPage(1);
-                            setSelected([]);
-                          }}
-                        />
-                      </div>
+                                      ]);
+                                      setSelected([]);
+                                    }
+                                  : undefined
+                              }
+                              onPasteSecrets={(parsed) =>
+                                setImportRequest({ step: "paste", parsed })
+                              }
+                            />
+                          )}
+                        </TableBody>
+                      </Table>
                     )}
                   </div>
-                )}
+                  {(totalCount > 0 || notice) && (
+                    <div className={styles.footer}>
+                      {notice ? (
+                        <p role="status" className={styles.notice}>
+                          {notice}
+                        </p>
+                      ) : (
+                        <ResourceCount counts={totals} />
+                      )}
+                      {!unavailableState && totalCount > 0 && (
+                        <div className={styles.pagination}>
+                          <Pagination
+                            page={currentPage}
+                            total={totalCount}
+                            pageSize={perPage}
+                            pageSizeOptions={[10, 20, 50, 100]}
+                            onPageChange={(value) => {
+                              setPage(value);
+                              setSelected([]);
+                            }}
+                            onPageSizeChange={(value) => {
+                              setPerPage(value);
+                              setPage(1);
+                              setSelected([]);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <div
-            className={styles.fabDock}
-            data-active={
-              selected.length > 0 || (pendingHere.length > 0 && !reviewOpen) || undefined
-            }
-          >
-            {pendingHere.length ? (
-              <FloatingActionBar
-                placement="contained"
-                label="Pending change actions"
-                count={reviewOpen ? 0 : pendingHere.length}
-                noun={pendingHere.length === 1 ? "pending change" : "pending changes"}
-                onClear={() =>
-                  setPending((current) => current.filter((change) => !pendingHere.includes(change)))
-                }
-                actions={[
-                  { label: "Review", icon: "eye", onClick: () => setReviewOpen(true) },
-                  {
-                    label: commitLabel(pendingHere.length),
-                    icon: "check",
-                    disabled: Boolean(writeBlock),
-                    onClick: () => commitChanges(pendingHere, "")
+            <div
+              className={styles.fabDock}
+              data-active={
+                selected.length > 0 || (pendingHere.length > 0 && !reviewOpen) || undefined
+              }
+            >
+              {pendingHere.length ? (
+                <FloatingActionBar
+                  placement="contained"
+                  label="Pending change actions"
+                  count={reviewOpen ? 0 : pendingHere.length}
+                  noun={pendingHere.length === 1 ? "pending change" : "pending changes"}
+                  onClear={() =>
+                    setPending((current) =>
+                      current.filter((change) => !pendingHere.includes(change))
+                    )
                   }
-                ]}
-              />
-            ) : (
-              <FloatingActionBar
-                placement="contained"
-                count={selected.length}
-                total={selectableOnPage.length}
-                onSelectAll={() => setSelected(selectableOnPage)}
-                onClear={() => setSelected([])}
-                noun="resources"
-                actions={[
-                  {
-                    label: "Add tags",
-                    icon: "plus",
-                    disabled: Boolean(writeBlock) || !selectedSecrets.length,
-                    onClick: () => setTagging(selectedSecrets)
-                  },
-                  {
-                    label: "Move",
-                    icon: "folder",
-                    disabled: Boolean(writeBlock || moveBlock),
-                    onClick: () => setMoving(selectedEntries)
-                  },
-                  {
-                    label: "Copy to clipboard",
-                    icon: "copy",
-                    disabled: Boolean(clipboardBlock),
-                    onClick: copySelectionToClipboard
-                  },
-                  {
-                    label: "Delete",
-                    icon: "trash",
-                    danger: true,
-                    disabled: Boolean(writeBlock) || !deletable.length || deleteBlocked,
-                    onClick: () => setDeleting(deletable)
-                  }
-                ]}
-                moreActions={[
-                  {
-                    label: "Copy to new source",
-                    icon: "copy",
-                    disabled: Boolean(bulkCopyBlock),
-                    onClick: () =>
-                      setCopyInvocation({
-                        origin: "bulk",
-                        sourcePath: path,
-                        selectedSecretCount: selectedSecretNames.length,
-                        sourceEnvironmentSlug: single ? activeEnvironment : undefined,
-                        secretsByEnvironment: groupByEnvironment(selectedSecrets, (secret) => ({
-                          id: secret.id,
-                          name: secret.name,
-                          path: secret.path,
-                          isRotated: Boolean(secret.managedBy),
-                          isHoneyToken: Boolean(secret.honeyToken)
-                        })),
-                        folderNames: [...new Set(selectedFolders.map((folder) => folder.name))],
-                        foldersByEnvironment: groupByEnvironment(selectedFolders, (folder) => ({
-                          path: childPath(path, folder.name)
-                        }))
-                      })
-                  }
-                ]}
-              />
-            )}
-          </div>
-        </div>
-        {editingFolder && (
-          <EditFolderDialog
-            name={editingFolder.name}
-            description={editingFolder.description}
-            showDescriptionOverwriteWarning={!single}
-            onClose={() => setEditingFolder(undefined)}
-            onSave={(name, description) => updateFolder(editingFolder, name, description)}
-          />
-        )}
-        <AlertDialog
-          open={Boolean(deletingFolder)}
-          onOpenChange={(open) => {
-            if (!open) setDeletingFolder(undefined);
-          }}
-        >
-          <AlertDialogContent tone="danger">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete folder</AlertDialogTitle>
-              <AlertDialogDescription>
-                This folder and all its contents will be removed. You can reverse this action by
-                rolling back to a previous commit.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                onClick={() => deletingFolder && deleteFolder(deletingFolder)}
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        <Dialog
-          open={Boolean(deleting)}
-          onOpenChange={(open) => {
-            if (!open) setDeleting(undefined);
-          }}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {deleting?.length === 1
-                  ? `Delete ${deleting[0].name}?`
-                  : `Delete ${deleting?.length} resources?`}
-              </DialogTitle>
-              <DialogDescription>
-                {`This removes the selected resources from ${path}. Folders are removed with everything inside them. This cannot be undone.`}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleting(undefined)}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={() => deleting && remove(deleting)}>
-                Delete
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        {(() => {
-          const host = {
-            onClose: () => setRowAction(undefined),
-            scope: { project, path, environments: projectEnvironments, visibleEnvironments },
-            resources,
-            onApply: (update: (current: Resource[]) => Resource[], feedback: FlowFeedback) => {
-              setResources(update, feedback);
-              setNotice("");
-            },
-            onToast: (tone: "ok" | "bad" | "neutral", feedback: FlowFeedback) =>
-              pushToast({ tone, ...feedback })
-          };
-          const pick = <K extends RowAction["kind"]>(kind: K) =>
-            rowAction?.kind === kind ? (rowAction as Extract<RowAction, { kind: K }>) : undefined;
-          return (
-            <>
-              <FolderActions action={pick("folder")} {...host} />
-              <ImportActions action={pick("import")} {...host} />
-              <DynamicSecretActions action={pick("dynamic")} {...host} />
-              <RotationActions action={pick("rotation")} {...host} />
-              <HoneyTokenActions action={pick("honey")} {...host} />
-              <ProxiedServiceActions action={pick("proxy")} {...host} />
-              <ImportSecretsSheet
-                {...host}
-                request={importRequest}
-                onClose={() => setImportRequest(undefined)}
-                onComplete={(targets) => {
-                  if (
-                    !environmentIds.length ||
-                    targets.every((entry) => environmentIds.includes(entry))
-                  )
-                    return;
-                  setEnvironmentIds([...new Set([...environmentIds, ...targets])]);
-                }}
-              />
-              <CopySecretsSheet
-                {...host}
-                invocation={copyInvocation}
-                onClose={() => setCopyInvocation(undefined)}
-                onCompleted={() => {
-                  if (copyInvocation?.origin === "bulk") setSelected([]);
-                }}
-              />
-              <BulkTagDialog
-                {...host}
-                targets={tagging}
-                onClose={() => setTagging(undefined)}
-                onCompleted={() => setSelected([])}
-              />
-              <MoveSecretsDialog
-                {...host}
-                targets={moving}
-                onClose={() => setMoving(undefined)}
-                onCompleted={() => setSelected([])}
-              />
-              <CommitHistorySheet
-                {...host}
-                environment={commitEnvironment}
-                commits={commits}
-                onClose={() => setCommitEnvironment(undefined)}
-                onRecordCommit={() => undefined}
-              />
-            </>
-          );
-        })()}
-        <CreateSecretSyncSheet
-          open={syncOpen}
-          onOpenChange={setSyncOpen}
-          scope={{ project, path, environments: projectEnvironments, visibleEnvironments }}
-          initial={single ? { environment: activeEnvironment, path } : undefined}
-          syncs={syncs}
-          resources={resources}
-          onCreate={(_sync, feedback) => {
-            setSyncOpen(false);
-            pushToast({ tone: "ok", ...feedback });
-          }}
-          onToast={(tone, feedback) => pushToast({ tone, ...feedback })}
-        />
-        <ReviewSheet
-          open={reviewOpen}
-          pending={pendingHere}
-          onOpenChange={setReviewOpen}
-          onDiscard={(change) =>
-            setPending((current) => current.filter((entry) => entry.id !== change.id))
-          }
-          onCommit={(message) => commitChanges(pendingHere, message)}
-        />
-        <AlertDialog
-          open={Boolean(deletingEnvironment)}
-          onOpenChange={(open) => {
-            if (!open) setDeletingEnvironment(undefined);
-          }}
-        >
-          <AlertDialogContent tone="danger" confirmText={deletingEnvironment?.label ?? ""}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete environment</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete the environment and all its secrets. This action cannot
-                be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                onClick={() => deletingEnvironment && deleteEnvironment(deletingEnvironment.value)}
-              >
-                Delete environment
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        {flow &&
-          (() => {
-            const Flow = addFlows[flow.kind];
-            return (
-              Flow && (
-                <Flow
-                  key={flow.session}
-                  open={flowOpen}
-                  onOpenChange={setFlowOpen}
-                  scope={{ project, path, environments: projectEnvironments, visibleEnvironments }}
-                  resources={resources}
-                  initial={flow.initial}
-                  onCreate={insert}
-                  onUploadSecrets={() => setImportRequest({ step: "upload" })}
-                  onError={(feedback) => pushToast({ tone: "bad", ...feedback })}
-                  onNotice={(feedback) => pushToast({ tone: "neutral", ...feedback })}
+                  actions={[
+                    { label: "Review", icon: "eye", onClick: () => setReviewOpen(true) },
+                    {
+                      label: commitLabel(pendingHere.length),
+                      icon: "check",
+                      disabled: Boolean(writeBlock),
+                      onClick: () => commitChanges(pendingHere, "")
+                    }
+                  ]}
                 />
-              )
+              ) : (
+                <FloatingActionBar
+                  placement="contained"
+                  count={selected.length}
+                  total={selectableOnPage.length}
+                  onSelectAll={() => setSelected(selectableOnPage)}
+                  onClear={() => setSelected([])}
+                  noun="resources"
+                  actions={[
+                    {
+                      label: "Add tags",
+                      icon: "plus",
+                      disabled: Boolean(writeBlock) || !selectedSecrets.length,
+                      onClick: () => setTagging(selectedSecrets)
+                    },
+                    {
+                      label: "Move",
+                      icon: "folder",
+                      disabled: Boolean(writeBlock || moveBlock),
+                      onClick: () => setMoving(selectedEntries)
+                    },
+                    {
+                      label: "Copy to clipboard",
+                      icon: "copy",
+                      disabled: Boolean(clipboardBlock),
+                      onClick: copySelectionToClipboard
+                    },
+                    {
+                      label: "Delete",
+                      icon: "trash",
+                      danger: true,
+                      disabled: Boolean(writeBlock) || !deletable.length || deleteBlocked,
+                      onClick: () => setDeleting(deletable)
+                    }
+                  ]}
+                  moreActions={[
+                    {
+                      label: "Copy to new source",
+                      icon: "copy",
+                      disabled: Boolean(bulkCopyBlock),
+                      onClick: () =>
+                        setCopyInvocation({
+                          origin: "bulk",
+                          sourcePath: path,
+                          selectedSecretCount: selectedSecretNames.length,
+                          sourceEnvironmentSlug: single ? activeEnvironment : undefined,
+                          secretsByEnvironment: groupByEnvironment(selectedSecrets, (secret) => ({
+                            id: secret.id,
+                            name: secret.name,
+                            path: secret.path,
+                            isRotated: Boolean(secret.managedBy),
+                            isHoneyToken: Boolean(secret.honeyToken)
+                          })),
+                          folderNames: [...new Set(selectedFolders.map((folder) => folder.name))],
+                          foldersByEnvironment: groupByEnvironment(selectedFolders, (folder) => ({
+                            path: childPath(path, folder.name)
+                          }))
+                        })
+                    }
+                  ]}
+                />
+              )}
+            </div>
+          </div>
+          {editingFolder && (
+            <EditFolderDialog
+              name={editingFolder.name}
+              description={editingFolder.description}
+              showDescriptionOverwriteWarning={!single}
+              onClose={() => setEditingFolder(undefined)}
+              onSave={(name, description) => updateFolder(editingFolder, name, description)}
+            />
+          )}
+          <AlertDialog
+            open={Boolean(deletingFolder)}
+            onOpenChange={(open) => {
+              if (!open) setDeletingFolder(undefined);
+            }}
+          >
+            <AlertDialogContent tone="danger">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete folder</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This folder and all its contents will be removed. You can reverse this action by
+                  rolling back to a previous commit.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => deletingFolder && deleteFolder(deletingFolder)}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Dialog
+            open={Boolean(deleting)}
+            onOpenChange={(open) => {
+              if (!open) setDeleting(undefined);
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {deleting?.length === 1
+                    ? `Delete ${deleting[0].name}?`
+                    : `Delete ${deleting?.length} resources?`}
+                </DialogTitle>
+                <DialogDescription>
+                  {`This removes the selected resources from ${path}. Folders are removed with everything inside them. This cannot be undone.`}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleting(undefined)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={() => deleting && remove(deleting)}>
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          {(() => {
+            const host = {
+              onClose: () => setRowAction(undefined),
+              scope: { project, path, environments: projectEnvironments, visibleEnvironments },
+              resources,
+              onApply: (update: (current: Resource[]) => Resource[], feedback: FlowFeedback) => {
+                setResources(update, feedback);
+                setNotice("");
+              },
+              onToast: (tone: "ok" | "bad" | "neutral", feedback: FlowFeedback) =>
+                pushToast({ tone, ...feedback })
+            };
+            const pick = <K extends RowAction["kind"]>(kind: K) =>
+              rowAction?.kind === kind ? (rowAction as Extract<RowAction, { kind: K }>) : undefined;
+            return (
+              <>
+                <FolderActions action={pick("folder")} {...host} />
+                <ImportActions action={pick("import")} {...host} />
+                <DynamicSecretActions action={pick("dynamic")} {...host} />
+                <RotationActions action={pick("rotation")} {...host} />
+                <HoneyTokenActions action={pick("honey")} {...host} />
+                <ProxiedServiceActions action={pick("proxy")} {...host} />
+                <ImportSecretsSheet
+                  {...host}
+                  request={importRequest}
+                  onClose={() => setImportRequest(undefined)}
+                  onComplete={(targets) => {
+                    if (
+                      !environmentIds.length ||
+                      targets.every((entry) => environmentIds.includes(entry))
+                    )
+                      return;
+                    setEnvironmentIds([...new Set([...environmentIds, ...targets])]);
+                  }}
+                />
+                <CopySecretsSheet
+                  {...host}
+                  invocation={copyInvocation}
+                  onClose={() => setCopyInvocation(undefined)}
+                  onCompleted={() => {
+                    if (copyInvocation?.origin === "bulk") setSelected([]);
+                  }}
+                />
+                <BulkTagDialog
+                  {...host}
+                  targets={tagging}
+                  onClose={() => setTagging(undefined)}
+                  onCompleted={() => setSelected([])}
+                />
+                <MoveSecretsDialog
+                  {...host}
+                  targets={moving}
+                  onClose={() => setMoving(undefined)}
+                  onCompleted={() => setSelected([])}
+                />
+                <CommitHistorySheet
+                  {...host}
+                  environment={commitEnvironment}
+                  commits={commits}
+                  onClose={() => setCommitEnvironment(undefined)}
+                  onRecordCommit={() => undefined}
+                />
+              </>
             );
           })()}
-        <FlowToasts
-          items={toasts}
-          onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))}
-        />
-        {breadth.fetchers}
-      </div>
-    </ReferenceSourceProvider>
+          <CreateSecretSyncSheet
+            open={syncOpen}
+            onOpenChange={setSyncOpen}
+            scope={{ project, path, environments: projectEnvironments, visibleEnvironments }}
+            initial={single ? { environment: activeEnvironment, path } : undefined}
+            syncs={syncs}
+            resources={resources}
+            onCreate={(_sync, feedback) => {
+              setSyncOpen(false);
+              pushToast({ tone: "ok", ...feedback });
+            }}
+            onToast={(tone, feedback) => pushToast({ tone, ...feedback })}
+          />
+          <ReviewSheet
+            open={reviewOpen}
+            pending={pendingHere}
+            onOpenChange={setReviewOpen}
+            onDiscard={(change) =>
+              setPending((current) => current.filter((entry) => entry.id !== change.id))
+            }
+            onCommit={(message) => commitChanges(pendingHere, message)}
+          />
+          <AlertDialog
+            open={Boolean(deletingEnvironment)}
+            onOpenChange={(open) => {
+              if (!open) setDeletingEnvironment(undefined);
+            }}
+          >
+            <AlertDialogContent tone="danger" confirmText={deletingEnvironment?.label ?? ""}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete environment</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the environment and all its secrets. This action
+                  cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() =>
+                    deletingEnvironment && deleteEnvironment(deletingEnvironment.value)
+                  }
+                >
+                  Delete environment
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {flow &&
+            (() => {
+              const Flow = addFlows[flow.kind];
+              return (
+                Flow && (
+                  <Flow
+                    key={flow.session}
+                    open={flowOpen}
+                    onOpenChange={setFlowOpen}
+                    scope={{
+                      project,
+                      path,
+                      environments: projectEnvironments,
+                      visibleEnvironments
+                    }}
+                    resources={resources}
+                    initial={flow.initial}
+                    onCreate={insert}
+                    onUploadSecrets={() => setImportRequest({ step: "upload" })}
+                    onError={(feedback) => pushToast({ tone: "bad", ...feedback })}
+                    onNotice={(feedback) => pushToast({ tone: "neutral", ...feedback })}
+                  />
+                )
+              );
+            })()}
+          <FlowToasts
+            items={toasts}
+            onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))}
+          />
+          {breadth.fetchers}
+        </div>
+      </ReferenceSourceProvider>
+    </BreadthContext>
   );
 };

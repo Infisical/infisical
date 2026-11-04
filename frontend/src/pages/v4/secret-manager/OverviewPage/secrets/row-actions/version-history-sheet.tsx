@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { EyeOffIcon, HardDriveIcon, RotateCcwIcon, ServerCogIcon } from "lucide-react";
 
@@ -14,6 +14,7 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Icon } from "@app/components/v4/ui/icon";
+import { Loader } from "@app/components/v4/ui/loader";
 import {
   Sheet,
   SheetBody,
@@ -25,7 +26,8 @@ import {
 } from "@app/components/v4/ui/sheet";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
-import { type Secret, type SecretVersion, versionsOf } from "../../secrets-model";
+import { useV4Adapter } from "../../../../data/adapters";
+import type { Secret, SecretVersion } from "../../secrets-model";
 import { ActionButton } from "../overview-cells";
 
 import flowStyles from "../flows/flows.module.css";
@@ -37,6 +39,7 @@ const actorName = (version: SecretVersion) =>
   version.actorType === "platform" ? "System" : version.actor;
 
 function VersionItem({
+  secretId,
   version,
   current,
   last,
@@ -47,6 +50,7 @@ function VersionItem({
   onRestore,
   onRedact
 }: {
+  secretId: string;
   version: SecretVersion;
   current: boolean;
   last: boolean;
@@ -54,11 +58,23 @@ function VersionItem({
   editBlock?: string;
   managed: boolean;
   onCopy: (value: string) => void;
-  onRestore: () => void;
+  onRestore: (value: string) => void;
   onRedact: () => void;
 }) {
   const [visible, setVisible] = useState(false);
   const [confirm, setConfirm] = useState<"restore" | "redact">();
+  const [wanted, setWanted] = useState(false);
+  const copyRequested = useRef(false);
+  const { data: loaded } = useV4Adapter("secrets").useSecretVersionValue(
+    { secretId, version: version.version },
+    { enabled: canRead && !version.redacted && (wanted || visible || confirm === "restore") }
+  );
+  const value = loaded ?? "";
+  useEffect(() => {
+    if (!copyRequested.current || loaded === undefined) return;
+    copyRequested.current = false;
+    onCopy(loaded);
+  }, [loaded]);
   return (
     <li className={styles.version} data-last={last || undefined}>
       <span className={styles.versionDot} data-current={current || undefined} aria-hidden />
@@ -87,7 +103,14 @@ function VersionItem({
                   <ActionButton
                     label="Copy value"
                     name="copy"
-                    onClick={() => onCopy(version.value)}
+                    onClick={() => {
+                      if (loaded !== undefined) {
+                        onCopy(loaded);
+                        return;
+                      }
+                      copyRequested.current = true;
+                      setWanted(true);
+                    }}
                   />
                   <ActionButton
                     label={visible ? "Hide value" : "Show value"}
@@ -123,7 +146,7 @@ function VersionItem({
         ) : (
           <Tooltip content={canRead ? undefined : "Access denied"}>
             <div className={styles.versionValue}>
-              {visible && (version.value || <span className={styles.muted}>EMPTY</span>)}
+              {visible && (value || <span className={styles.muted}>EMPTY</span>)}
               {!visible && mask}
             </div>
           </Tooltip>
@@ -161,7 +184,7 @@ function VersionItem({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant={confirm === "redact" ? "destructive" : "default"}
-              onClick={confirm === "redact" ? onRedact : onRestore}
+              onClick={confirm === "redact" ? onRedact : () => onRestore(value)}
             >
               {confirm === "redact" ? "Redact" : "Restore"}
             </AlertDialogAction>
@@ -190,10 +213,26 @@ export function VersionHistorySheet({
   editBlock?: string;
   onOpenChange: (open: boolean) => void;
   onCopy: (value: string) => void;
-  onRestore: (version: SecretVersion) => void;
+  onRestore: (version: SecretVersion, value: string) => void;
   onRedact: (version: SecretVersion) => void;
 }) {
-  const versions = versionsOf(secret);
+  const { data, isPending } = useV4Adapter("secrets").useSecretVersions({
+    secretId: open ? secret.id : "",
+    limit: 50,
+    offset: 0
+  });
+  const versions: SecretVersion[] = (data ?? []).map((entry) => {
+    const actorType = entry.actor?.actorType;
+    return {
+      id: entry.id,
+      version: entry.version,
+      value: "",
+      createdAt: entry.createdAt,
+      actor: entry.actor?.name ?? "Unknown actor",
+      actorType: actorType === "identity" || actorType === "platform" ? actorType : "user",
+      redacted: entry.isRedacted
+    };
+  });
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -209,10 +248,12 @@ export function VersionHistorySheet({
           <Badge tone="outline">{environmentLabel}</Badge>
         </SheetSubheader>
         <SheetBody>
+          {open && isPending && <Loader label="Loading versions" />}
           <ol className={styles.timeline}>
             {versions.map((version, index) => (
               <VersionItem
                 key={version.version}
+                secretId={secret.id}
                 version={version}
                 current={index === 0}
                 last={index === versions.length - 1}
@@ -220,7 +261,7 @@ export function VersionHistorySheet({
                 editBlock={editBlock}
                 managed={Boolean(secret.managedBy || secret.honeyToken)}
                 onCopy={onCopy}
-                onRestore={() => onRestore(version)}
+                onRestore={(value) => onRestore(version, value)}
                 onRedact={() => onRedact(version)}
               />
             ))}

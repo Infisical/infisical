@@ -71,6 +71,7 @@ const overrideOf = (secret: SecretV3RawSanitized, loaded: LoadedValues[string] |
 const reminderOf = (secret: SecretV3RawSanitized) => {
   if (!secret.reminder && !secret.reminderRepeatDays && !secret.reminderNote) return undefined;
   return {
+    id: secret.reminder?.id,
     repeatDays: secret.reminder?.repeatDays ?? secret.reminderRepeatDays ?? undefined,
     fromDate: isoOf(secret.reminder?.fromDate),
     nextReminderDate: isoOf(secret.reminder?.nextReminderDate),

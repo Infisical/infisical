@@ -1,5 +1,6 @@
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
-import { SecretType } from "@app/hooks/api/secrets/types";
+import { type SecretVersions, SecretType } from "@app/hooks/api/secrets/types";
 
 import type { SecretsFlowsAdapter } from "./contract-flows";
 import {
@@ -13,9 +14,53 @@ import {
   useStore,
   within
 } from "./demo-store";
-import type { DemoSecret, SecretsFixtures } from "./fixtures";
+import type { DemoSecret, DemoVersion, SecretsFixtures } from "./fixtures";
 
 type Scoped = { projectId: string; environment: string; path: string };
+
+const versionsOf = (store: DemoStore, secret: DemoSecret): SecretVersions[] => {
+  const history = store.get().versionHistory[secret.id] ?? [];
+  const current: DemoVersion = {
+    version: secret.version,
+    value: secret.value ?? "",
+    createdAt: secret.updatedAt,
+    actor: "Sarah Lin",
+    actorType: "user"
+  };
+  const entries = history.some((entry) => entry.version === secret.version)
+    ? history
+    : [current, ...history];
+  return entries.map((entry) => ({
+    id: `${secret.id}:v${entry.version}`,
+    secretId: secret.id,
+    version: entry.version,
+    project: secret.projectId,
+    type: SecretType.Shared,
+    isDeleted: false,
+    envId: secret.env,
+    secretKey: secret.key,
+    secretValueHidden: false,
+    tags: secret.tags ?? [],
+    __v: 0,
+    createdAt: entry.createdAt,
+    updatedAt: entry.createdAt,
+    actor: { actorType: entry.actorType, name: entry.actor },
+    isRedacted: Boolean(entry.redacted),
+    redactedByActor: entry.redacted
+      ? { username: "sarah@acme.dev", email: "sarah@acme.dev", projectMembershipId: null }
+      : null,
+    redactedAt: entry.redacted ? entry.createdAt : null,
+    redactedByUserId: entry.redacted ? "demo-user-sarah" : null
+  }));
+};
+
+const all = Object.values(ProjectPermissionSecretActions).filter(
+  (action) => action !== ProjectPermissionSecretActions.Subscribe
+);
+const reading = [
+  ProjectPermissionSecretActions.DescribeSecret,
+  ProjectPermissionSecretActions.ReadValue
+];
 
 const newSecret = (
   store: DemoStore,
@@ -120,6 +165,129 @@ const removeEnvironment = (state: SecretsFixtures, projectId: string, slug: stri
 };
 
 export const secretsFlowsDemo: SecretsFlowsAdapter = {
+  useSecretVersions: ({ secretId }) => {
+    const store = useStore();
+    const state = store.use();
+    const secret = state.secrets.find((entry) => entry.id === secretId);
+    return {
+      data: secret ? versionsOf(store, secret) : undefined,
+      isPending: !secret,
+      error: null
+    };
+  },
+  useSecretVersionValue: ({ secretId, version }, options) => {
+    const state = useStore().use();
+    if (options?.enabled === false) return { data: undefined, isPending: true, error: null };
+    const secret = state.secrets.find((entry) => entry.id === secretId);
+    const entry = state.versionHistory[secretId]?.find((item) => item.version === version);
+    let value = entry?.value;
+    if (entry?.redacted) value = "";
+    else if (value === undefined && secret?.version === version) value = secret.value;
+    return { data: value, isPending: false, error: null };
+  },
+  useRedactSecretVersion: demoMutation((store, { versionId, secretId }) => {
+    const version = Number(versionId.split(":v").at(-1));
+    const secret = store.get().secrets.find((entry) => entry.id === secretId);
+    if (!secret) return {};
+    store.update((state) => ({
+      ...state,
+      versionHistory: {
+        ...state.versionHistory,
+        [secretId]: versionsOf(store, secret).map((entry) => ({
+          version: entry.version,
+          value:
+            state.versionHistory[secretId]?.find((item) => item.version === entry.version)?.value ??
+            (entry.version === secret.version ? (secret.value ?? "") : ""),
+          createdAt: entry.createdAt,
+          actor: entry.actor?.name ?? "Sarah Lin",
+          actorType: entry.actor?.actorType ?? "user",
+          redacted: entry.isRedacted || entry.version === version
+        }))
+      }
+    }));
+    return {};
+  }),
+  useSecretAccessList: () => ({
+    data: {
+      users: [
+        {
+          id: "user-sarah",
+          membershipId: "membership-sarah",
+          name: "Sarah Lin",
+          allowedActions: all
+        },
+        {
+          id: "user-jordan",
+          membershipId: "membership-jordan",
+          name: "Jordan Lee",
+          allowedActions: [...reading, ProjectPermissionSecretActions.Edit]
+        }
+      ],
+      identities: [
+        {
+          id: "identity-ci",
+          membershipId: "membership-ci",
+          name: "ci-deployer",
+          allowedActions: reading
+        }
+      ],
+      groups: [
+        {
+          id: "group-platform",
+          membershipId: "membership-platform",
+          name: "Platform team",
+          allowedActions: [...reading, ProjectPermissionSecretActions.Create],
+          userIds: ["user-jordan"],
+          identityIds: []
+        }
+      ]
+    },
+    isPending: false,
+    error: null
+  }),
+  useCreateSharedSecret: demoMutation(() => ({ id: crypto.randomUUID() })),
+  useCreateReminder: (secretId) => {
+    const store = useStore();
+    return {
+      isPending: false,
+      mutateAsync: async (dto) => {
+        const reminder = {
+          id: crypto.randomUUID(),
+          secretId,
+          message: dto.message,
+          repeatDays: dto.repeatDays,
+          nextReminderDate: dto.nextReminderDate,
+          fromDate: dto.fromDate,
+          recipients: dto.recipients
+        };
+        updateSecrets(
+          store,
+          (secret) => secret.id === secretId,
+          (secret) => ({ ...secret, reminder })
+        );
+        return reminder;
+      }
+    };
+  },
+  useDeleteReminder: (secretId) => {
+    const store = useStore();
+    return {
+      isPending: false,
+      mutateAsync: async ({ reminderId }) => {
+        updateSecrets(
+          store,
+          (secret) => secret.id === secretId,
+          (secret) => ({
+            ...secret,
+            reminder: undefined,
+            reminderRepeatDays: undefined,
+            reminderNote: undefined
+          })
+        );
+        return { id: reminderId, secretId };
+      }
+    };
+  },
   useProjectFolders: (projectId) => {
     const state = useStore().use();
     const project = state.projects.find((entry) => entry.id === projectId);

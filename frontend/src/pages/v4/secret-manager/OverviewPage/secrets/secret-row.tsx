@@ -59,14 +59,11 @@ import {
 } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
+import { useV4Adapter } from "../../../data/adapters";
+import { useRequestBreadth } from "../bridge/scopes";
 import { useValueLoader } from "../bridge/values";
-import {
-  readableValue,
-  type Resource,
-  type Scope,
-  type Secret,
-  versionsOf
-} from "../secrets-model";
+import { valueKey } from "../bridge/view-model";
+import { readableValue, type Resource, type Scope, type Secret } from "../secrets-model";
 import { environmentLabel, LOCAL_ONLY } from "./flows/shared";
 import {
   ActionButton,
@@ -311,7 +308,26 @@ function SecretActions({
   const [open, setOpen] = useState<Overlay>();
   const pending = useRef<() => void>(undefined);
   const keepFocus = useRef(false);
+  const loader = useValueLoader();
+  const adapter = useV4Adapter("secrets");
+  const createReminder = adapter.useCreateReminder(secret.id);
+  const deleteReminder = adapter.useDeleteReminder(secret.id);
+  const redactVersion = adapter.useRedactSecretVersion();
+  useRequestBreadth(open === "references" || open === "edit");
   const value = readableValue(secret);
+  const unreadable = secret.value.status === "unreadable";
+  const withValue = (run: (loaded: string) => void) => {
+    if (value !== undefined) {
+      run(value);
+      return;
+    }
+    loader.ensure([secret]).then((values) => {
+      const loaded =
+        values[valueKey(secret.environment, secret.path, secret.name, false, secret.version)];
+      if (typeof loaded === "string") run(loaded);
+      else ctx.report(`Could not read ${secret.name}.`);
+    });
+  };
   const label = environmentLabel(secret.environment);
   const canEdit = !ctx.writeBlock;
   const update: SecretUpdate = (target, patch, feedback) => {
@@ -327,19 +343,24 @@ function SecretActions({
   if (secret.honeyToken) deleteBlock = "Cannot delete honey token secret";
   if (secret.managedBy) deleteBlock = "Cannot delete rotated secret";
   let copyBlock: string | undefined;
-  if (value === undefined) copyBlock = "Access denied";
+  if (unreadable) copyBlock = "Access denied";
   else if (value === "") copyBlock = "No secret value";
   let { copySecretBlock } = handlers;
   if (secret.honeyToken) copySecretBlock = "Cannot copy honey token secret";
   if (secret.managedBy) copySecretBlock = "Cannot copy rotated secret";
   let referencesBlock: string | undefined;
-  if (value === undefined) referencesBlock = "Access denied";
+  if (unreadable) referencesBlock = "Access denied";
   else if (value === "") referencesBlock = "Create secret to view references";
   const popover = open && popovers.includes(open) ? open : undefined;
   const later = (action: () => void) => () => {
     pending.current = action;
   };
-  const select = (overlay: Overlay) => later(() => setOpen(overlay));
+  const select = (overlay: Overlay) =>
+    later(() =>
+      overlay === "share" || overlay === "references"
+        ? withValue(() => setOpen(overlay))
+        : setOpen(overlay)
+    );
   const saved = (title: string) => ({ title, description: LOCAL_ONLY });
   return (
     <>
@@ -360,18 +381,20 @@ function SecretActions({
               label="Edit value"
               icon={EditIcon}
               disabledReason={editBlock}
-              onClick={() => (ctx.single ? setOpen("edit") : onInlineEdit())}
+              onClick={() => withValue(() => (ctx.single ? setOpen("edit") : onInlineEdit()))}
             />
             <ActionButton
               label="Copy secret"
               name="copy"
               disabledReason={copyBlock}
               onClick={() =>
-                copy(
-                  value ?? "",
-                  `Copied ${secret.name}.`,
-                  `Could not copy ${secret.name}. Check clipboard permissions.`,
-                  ctx.report
+                withValue((loaded) =>
+                  copy(
+                    loaded,
+                    `Copied ${secret.name}.`,
+                    `Could not copy ${secret.name}. Check clipboard permissions.`,
+                    ctx.report
+                  )
                 )
               }
             />
@@ -477,8 +500,8 @@ function SecretActions({
                   Add override
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  disabled={value === undefined}
-                  description={value === undefined ? "Access denied" : undefined}
+                  disabled={unreadable}
+                  description={unreadable ? "Access denied" : undefined}
                   onSelect={select("share")}
                 >
                   <Icon icon={ForwardIcon} />
@@ -562,24 +585,40 @@ function SecretActions({
           onOpenChange={(next) => {
             if (!next) setOpen(undefined);
           }}
-          onSave={(reminder) =>
-            update(
-              secret,
-              { reminder },
-              saved(
-                reminder
-                  ? `${secret.reminder ? "Updated" : "Created"} the reminder on ${secret.name}`
-                  : `Deleted the reminder on ${secret.name}`
-              )
-            )
-          }
+          onSave={(reminder) => {
+            const request = reminder
+              ? createReminder.mutateAsync({
+                  secretId: secret.id,
+                  message: reminder.message,
+                  repeatDays: reminder.repeatDays ?? null,
+                  fromDate: reminder.fromDate ? new Date(reminder.fromDate) : null,
+                  nextReminderDate: reminder.nextReminderDate
+                    ? new Date(reminder.nextReminderDate)
+                    : null,
+                  recipients: reminder.recipients
+                })
+              : deleteReminder.mutateAsync({
+                  secretId: secret.id,
+                  reminderId: secret.reminder?.id ?? ""
+                });
+            setOpen(undefined);
+            request.then(
+              () =>
+                ctx.report(
+                  reminder
+                    ? `${secret.reminder ? "Updated" : "Created"} the reminder on ${secret.name}.`
+                    : `Deleted the reminder on ${secret.name}.`
+                ),
+              () => ctx.report(`Could not save the reminder on ${secret.name}.`)
+            );
+          }}
         />
       )}
       <VersionHistorySheet
         open={open === "history"}
         secret={secret}
         environmentLabel={label}
-        canRead={value !== undefined}
+        canRead={!unreadable}
         editBlock={editBlock}
         onOpenChange={(next) => setOpen(next ? "history" : undefined)}
         onCopy={(version) =>
@@ -590,22 +629,17 @@ function SecretActions({
             ctx.report
           )
         }
-        onRestore={(version) =>
+        onRestore={(version, restored) =>
           handlers.onUpdate(
             secret,
-            { value: version.redacted ? "" : version.value },
+            { value: version.redacted ? "" : restored },
             saved(`Restored ${secret.name} to version ${version.version}`)
           )
         }
         onRedact={(version) =>
-          handlers.onUpdate(
-            secret,
-            {
-              versions: versionsOf(secret).map((entry) =>
-                entry.version === version.version ? { ...entry, redacted: true, value: "" } : entry
-              )
-            },
-            saved(`Redacted version ${version.version} of ${secret.name}`)
+          redactVersion.mutateAsync({ versionId: version.id ?? "", secretId: secret.id }).then(
+            () => ctx.report(`Redacted version ${version.version} of ${secret.name}.`),
+            () => ctx.report(`Could not redact version ${version.version}.`)
           )
         }
       />
@@ -647,8 +681,12 @@ function OverrideValue({
   onUpdate: SecretUpdate;
 }) {
   const [editing, setEditing] = useState(false);
+  const loader = useValueLoader();
   const saved = (title: string) => ({ title, description: LOCAL_ONLY });
   const value = secret.override ?? "";
+  useEffect(() => {
+    if (visible) loader.request([secret], true);
+  }, [visible, secret.id]);
   if (creating || editing)
     return (
       <InlineEditor
@@ -681,7 +719,9 @@ function OverrideValue({
         role="textbox"
         tabIndex={0}
         aria-label={`Personal override for ${secret.name}, focus to edit`}
-        onFocus={() => setEditing(true)}
+        onFocus={() => {
+          loader.ensure([secret], true).then(() => setEditing(true));
+        }}
       >
         {visible ? <ReferenceText value={value || " "} scope={secret} /> : mask}
       </span>
@@ -703,6 +743,7 @@ function OverrideActions({
   onUpdate: SecretUpdate;
 }) {
   const [removing, setRemoving] = useState(false);
+  const loader = useValueLoader();
   const saved = (title: string) => ({ title, description: LOCAL_ONLY });
   const block = creating ? "Create the override first" : undefined;
   return (
@@ -715,12 +756,15 @@ function OverrideActions({
             icon: "copy",
             disabledReason: block,
             onSelect: () =>
-              copy(
-                secret.override ?? "",
-                "Personal override copied to clipboard.",
-                "Could not copy the override. Check clipboard permissions.",
-                ctx.report
-              )
+              loader.ensure([secret], true).then((values) => {
+                const loaded = values[valueKey(secret.environment, secret.path, secret.name, true)];
+                return copy(
+                  typeof loaded === "string" ? loaded : (secret.override ?? ""),
+                  "Personal override copied to clipboard.",
+                  "Could not copy the override. Check clipboard permissions.",
+                  ctx.report
+                );
+              })
           },
           {
             label: "Remove override",

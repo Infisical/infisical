@@ -12,6 +12,7 @@ export type ValueState =
   | { status: "failed"; message: string };
 export type Scope = { project: string; environment: string; path: string };
 export type SecretReminder = {
+  id?: string;
   repeatDays?: number;
   fromDate?: string;
   nextReminderDate?: string;
@@ -19,6 +20,7 @@ export type SecretReminder = {
   recipients: string[];
 };
 export type SecretVersion = {
+  id?: string;
   version: number;
   value: string;
   createdAt: string;

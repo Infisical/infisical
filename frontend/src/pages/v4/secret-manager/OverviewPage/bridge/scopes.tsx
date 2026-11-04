@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 
 import type { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
@@ -6,6 +6,17 @@ import { useV4Adapter } from "../../../data/adapters";
 import type { ScopeSecrets } from "./view-model";
 
 type ScopeRef = { environment: string; path: string };
+
+export const BreadthContext = createContext<(delta: number) => void>(() => undefined);
+
+export const useRequestBreadth = (active: boolean) => {
+  const hold = useContext(BreadthContext);
+  useEffect(() => {
+    if (!active) return undefined;
+    hold(1);
+    return () => hold(-1);
+  }, [active, hold]);
+};
 const scopeKey = (scope: ScopeRef) => `${scope.environment}\u0000${scope.path}`;
 
 const ScopeFetcher = ({

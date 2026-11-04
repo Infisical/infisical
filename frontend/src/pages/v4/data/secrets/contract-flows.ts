@@ -1,5 +1,10 @@
 import type { DeleteEnvironmentDTO } from "@app/hooks/api/projects/types";
 import type {
+  CreateReminderDTO,
+  DeleteReminderDTO,
+  Reminder
+} from "@app/hooks/api/reminders/types";
+import type {
   TMoveFolderDTO,
   TMoveFolderResponse,
   TProjectEnvironmentsFolders
@@ -10,13 +15,23 @@ import type {
   TResyncSecretReplicationDTO
 } from "@app/hooks/api/secretImports/types";
 import type {
+  GetSecretVersionsDTO,
+  SecretAccessListEntry,
+  SecretAccessListGroupEntry,
   SecretV3RawSanitized,
+  SecretVersions,
+  TGetSecretAccessListDTO,
+  TGetSecretVersionValue,
   TCreateCommitResponse,
   TCreateSecretBatchDTO,
   TGetProjectSecretsDTO,
   TMoveSecretsDTO,
   TUpdateSecretBatchDTO
 } from "@app/hooks/api/secrets/types";
+import type {
+  TCreatedSharedSecret,
+  TCreateSharedSecretRequest
+} from "@app/hooks/api/secretSharing/types";
 import type { PendingChanges } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
@@ -29,7 +44,27 @@ export type TCreateCommitDTO = {
   message: string;
 };
 
+export type TSecretAccessList = {
+  groups: SecretAccessListGroupEntry[];
+  identities: SecretAccessListEntry[];
+  users: SecretAccessListEntry[];
+};
+type SecretScopedMutation<TVariables, TData> = (secretId: string) => {
+  mutateAsync: (variables: TVariables) => Promise<TData>;
+  isPending: boolean;
+};
+
 export type SecretsFlowsAdapter = {
+  useSecretVersions: (dto: GetSecretVersionsDTO) => V4QueryResult<SecretVersions[]>;
+  useSecretVersionValue: (
+    dto: TGetSecretVersionValue,
+    options?: { enabled?: boolean }
+  ) => V4QueryResult<string>;
+  useRedactSecretVersion: V4Mutation<{ versionId: string; secretId: string }>;
+  useSecretAccessList: (dto: TGetSecretAccessListDTO) => V4QueryResult<TSecretAccessList>;
+  useCreateSharedSecret: V4Mutation<TCreateSharedSecretRequest, TCreatedSharedSecret>;
+  useCreateReminder: SecretScopedMutation<CreateReminderDTO, Reminder>;
+  useDeleteReminder: SecretScopedMutation<DeleteReminderDTO, Reminder>;
   useProjectFolders: (projectId: string) => V4QueryResult<TProjectEnvironmentsFolders>;
   useSecretsAt: (
     dto: TGetProjectSecretsDTO & { options?: { enabled?: boolean } }

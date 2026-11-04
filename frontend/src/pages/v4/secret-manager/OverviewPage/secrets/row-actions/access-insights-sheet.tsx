@@ -14,6 +14,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { FieldLabel } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
+import { Loader } from "@app/components/v4/ui/loader";
 import {
   Sheet,
   SheetBody,
@@ -33,7 +34,10 @@ import {
   TableRow
 } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 
+import { useV4Adapter } from "../../../../data/adapters";
+import type { TSecretAccessList } from "../../../../data/secrets/contract-flows";
 import type { Secret } from "../../secrets-model";
 import { Gate } from "../flows/shared";
 import { NEXT_PHASE } from "../overview-cells";
@@ -65,38 +69,62 @@ const typeConfig: Record<RowType, { label: string; icon?: typeof UsersIcon; name
 };
 const typeOrder: RowType[] = ["user", "identity", "group"];
 
-const accessRows: AccessRow[] = [
-  {
-    id: "user-avery",
-    type: "user",
-    name: "Avery Chen",
-    actions: ["describe", "read", "create", "edit", "delete"]
-  },
-  {
-    id: "user-jordan",
-    type: "user",
-    name: "Jordan Lee",
-    actions: ["describe", "read", "edit"],
-    inherited: ["create"],
-    groups: ["Platform team"]
-  },
-  {
-    id: "identity-ci",
-    type: "identity",
-    name: "ci-deployer",
-    actions: ["describe", "read"]
-  },
-  {
-    id: "group-platform",
-    type: "group",
-    name: "Platform team",
-    actions: ["describe", "read", "create"]
-  }
-];
-const membersWithoutAccess: AccessRow[] = [
-  { id: "user-sam", type: "user", name: "Sam Rivera", actions: [] },
-  { id: "identity-backup", type: "identity", name: "backup-exporter", actions: [] }
-];
+const actionsOf = (allowed: ProjectPermissionSecretActions[]): Action[] => {
+  const has = (...actions: ProjectPermissionSecretActions[]) =>
+    actions.some((action) => allowed.includes(action));
+  const actions: Action[] = [];
+  if (
+    has(
+      ProjectPermissionSecretActions.DescribeSecret,
+      ProjectPermissionSecretActions.DescribeAndReadValue
+    )
+  )
+    actions.push("describe");
+  if (
+    has(
+      ProjectPermissionSecretActions.ReadValue,
+      ProjectPermissionSecretActions.DescribeAndReadValue
+    )
+  )
+    actions.push("read");
+  if (has(ProjectPermissionSecretActions.Create)) actions.push("create");
+  if (has(ProjectPermissionSecretActions.Edit)) actions.push("edit");
+  if (has(ProjectPermissionSecretActions.Delete)) actions.push("delete");
+  return actions;
+};
+
+const toRows = (list?: TSecretAccessList): AccessRow[] => {
+  if (!list) return [];
+  const groupsOf = (id: string, key: "userIds" | "identityIds") =>
+    list.groups.filter((group) => group[key].includes(id));
+  const member =
+    (type: "user" | "identity", key: "userIds" | "identityIds") =>
+    (entry: TSecretAccessList["users"][number]): AccessRow => {
+      const actions = actionsOf(entry.allowedActions);
+      const groups = groupsOf(entry.id, key);
+      const inherited = [
+        ...new Set(groups.flatMap((group) => actionsOf(group.allowedActions)))
+      ].filter((action) => !actions.includes(action));
+      return {
+        id: `${type}-${entry.id}`,
+        type,
+        name: entry.name,
+        actions,
+        inherited: inherited.length ? inherited : undefined,
+        groups: groups.length ? groups.map((group) => group.name) : undefined
+      };
+    };
+  return [
+    ...list.users.map(member("user", "userIds")),
+    ...list.identities.map(member("identity", "identityIds")),
+    ...list.groups.map((group) => ({
+      id: `group-${group.id}`,
+      type: "group" as const,
+      name: group.name,
+      actions: actionsOf(group.allowedActions)
+    }))
+  ];
+};
 
 export function AccessInsightsSheet({
   open,
@@ -112,8 +140,16 @@ export function AccessInsightsSheet({
   const [showAll, setShowAll] = useState(false);
   const [search, setSearch] = useState("");
   const [types, setTypes] = useState<RowType[]>([]);
-  const rows = [...accessRows, ...(showAll ? membersWithoutAccess : [])].filter(
+  const { data: accessList, isPending } = useV4Adapter("secrets").useSecretAccessList({
+    projectId: secret.project,
+    environment: secret.environment,
+    secretPath: secret.path,
+    secretKey: open ? secret.name : "",
+    includeAllEntities: showAll
+  });
+  const rows = toRows(accessList).filter(
     (row) =>
+      (showAll || row.actions.length > 0 || Boolean(row.inherited?.length)) &&
       (!types.length || types.includes(row.type)) &&
       row.name.toLowerCase().includes(search.trim().toLowerCase())
   );
@@ -188,13 +224,15 @@ export function AccessInsightsSheet({
                 </Button>
               </Gate>
             </div>
-            {rows.length === 0 ? (
+            {open && isPending && <Loader label="Loading access" />}
+            {!(open && isPending) && rows.length === 0 && (
               <EmptyState
                 icon="search"
                 title="No results found"
                 description="No users, groups, or identities match your search."
               />
-            ) : (
+            )}
+            {rows.length > 0 && (
               <Table>
                 <TableHeader>
                   <TableRow>

@@ -18,6 +18,7 @@ import { secretsFlowsDemo } from "./demo-flows";
 import {
   childPath,
   now,
+  recordVersion,
   recovered,
   sanitize,
   secretAt,
@@ -317,6 +318,16 @@ export const secretsDemo: SecretsAdapter = {
       isPending: false,
       mutateAsync: async (dto) => {
         const { tags } = store.get();
+        const existing = store
+          .get()
+          .secrets.find(secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey));
+        if (
+          existing &&
+          dto.type !== SecretType.Personal &&
+          dto.secretValue !== undefined &&
+          dto.secretValue !== existing.value
+        )
+          recordVersion(store, existing);
         updateSecrets(
           store,
           secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey),
