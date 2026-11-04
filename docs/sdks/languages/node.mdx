@@ -1199,7 +1199,10 @@ const accessBundle = await client.agentVault().accessBundles.delete("<access-bun
 List the users, machine identities, and groups that an access bundle is granted to.
 
 ```typescript
+import { AgentVaultMemberType } from "@infisical/sdk";
+
 const { members, totalCount } = await client.agentVault().accessBundles.listGrantees("<access-bundle-id>", {
+  actorType: AgentVaultMemberType.User, // Optional
   search: "jsmith", // Optional
   limit: 20, // Optional
   offset: 0 // Optional
@@ -1209,6 +1212,7 @@ const { members, totalCount } = await client.agentVault().accessBundles.listGran
 **Parameters:**
 - `accessBundleId` (string): the ID of the access bundle
 - `options` (object, optional):
+  - `actorType` (AgentVaultMemberType, optional): `AgentVaultMemberType.User` (`"user"`), `AgentVaultMemberType.MachineIdentity` (`"machineIdentity"`), or `AgentVaultMemberType.Group` (`"group"`), to list only that kind of grantee (defaults to listing all three)
   - `search` (string, optional): text to find in names, usernames, and email addresses
   - `limit` (number, optional): the maximum number of grantees to return, from 1 to 100 (defaults to `20`)
   - `offset` (number, optional): the number of grantees to skip (defaults to `0`)
@@ -1221,7 +1225,10 @@ const { members, totalCount } = await client.agentVault().accessBundles.listGran
 List the Agent Vault members that an access bundle isn't granted to yet.
 
 ```typescript
+import { AgentVaultMemberType } from "@infisical/sdk";
+
 const { members, totalCount } = await client.agentVault().accessBundles.listAvailableGrantees("<access-bundle-id>", {
+  actorType: AgentVaultMemberType.User, // Optional
   search: "jsmith", // Optional
   limit: 20, // Optional
   offset: 0 // Optional
@@ -1231,6 +1238,7 @@ const { members, totalCount } = await client.agentVault().accessBundles.listAvai
 **Parameters:**
 - `accessBundleId` (string): the ID of the access bundle
 - `options` (object, optional):
+  - `actorType` (AgentVaultMemberType, optional): `AgentVaultMemberType.User` (`"user"`), `AgentVaultMemberType.MachineIdentity` (`"machineIdentity"`), or `AgentVaultMemberType.Group` (`"group"`), to list only that kind of member (defaults to listing all three)
   - `search` (string, optional): text to find in names, usernames, and email addresses
   - `limit` (number, optional): the maximum number of members to return, from 1 to 100 (defaults to `20`)
   - `offset` (number, optional): the number of members to skip (defaults to `0`)
@@ -1318,7 +1326,7 @@ const { delegations, totalCount } = await client.agentVault().delegations.list({
 
 #### Get delegation
 
-Get which users a machine identity can create sessions on behalf of. If the machine identity has no delegation, `get` throws an `InfisicalSDKRequestError` whose message includes `[StatusCode=404]`.
+Get which users a machine identity can create sessions on behalf of. If the machine identity has no delegation, `get` throws an `InfisicalSDKRequestError` whose `statusCode` is `404`.
 
 ```typescript
 const delegation = await client.agentVault().delegations.get("<machine-identity-id>");
