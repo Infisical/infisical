@@ -1,11 +1,11 @@
 import { lookup as dnsLookup, LookupAddress } from "node:dns";
-import dns from "node:dns/promises";
 import http from "node:http";
 import https from "node:https";
 import { LookupFunction } from "node:net";
 
 import { AxiosRequestConfig } from "axios";
 import { isIP } from "net";
+import dns from "node:dns/promises";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { getConfig } from "@app/lib/config/env";

@@ -5,6 +5,7 @@ import * as asn1js from "asn1js";
 import * as pkijs from "pkijs";
 import { beforeAll, describe, expect, it } from "vitest";
 
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { TCaSigner } from "@app/services/certificate-authority/ca-signer";
 
 import {
@@ -101,7 +102,7 @@ beforeAll(async () => {
     createCrl: () => {
       throw new Error("not used");
     },
-    signTbs: (tbs: Buffer) => webcrypto.subtle.sign(RSA_ALG, caKeys.privateKey, tbs)
+    signTbs: (tbs: Buffer) => webcrypto.subtle.sign(RSA_ALG, caKeys.privateKey, asNonSharedBuffer(tbs))
   } as unknown as TCaSigner;
 });
 
@@ -227,7 +228,7 @@ describe("buildOcspErrorResponse", () => {
     [OcspResponseStatus.InternalError, 2],
     [OcspResponseStatus.Unauthorized, 6]
   ])("should encode %s with no responseBytes", (status, expected) => {
-    const parsed = pkijs.OCSPResponse.fromBER(buildOcspErrorResponse(status));
+    const parsed = pkijs.OCSPResponse.fromBER(asNonSharedBuffer(buildOcspErrorResponse(status)));
 
     expect(parsed.responseStatus.valueBlock.valueDec).toBe(expected);
     expect(parsed.responseBytes).toBeUndefined();
@@ -253,7 +254,7 @@ describe("buildSignedOcspResponse", () => {
   };
 
   const readBasic = (der: Buffer) => {
-    const response = pkijs.OCSPResponse.fromBER(der);
+    const response = pkijs.OCSPResponse.fromBER(asNonSharedBuffer(der));
     expect(response.responseStatus.valueBlock.valueDec).toBe(OcspResponseStatus.Successful);
     return new pkijs.BasicOCSPResponse({
       schema: asn1js.fromBER(response.responseBytes!.response.valueBlock.valueHexView).result

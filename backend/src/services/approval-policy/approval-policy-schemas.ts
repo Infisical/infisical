@@ -8,6 +8,7 @@ import {
   ApprovalRequestStepsSchema
 } from "@app/db/schemas";
 import { ms } from "@app/lib/ms";
+import { auditSafeText } from "@app/server/lib/schemas";
 
 import { ApprovalPolicyScope, ApproverType, EnforcementLevel } from "./approval-policy-enums";
 import {
@@ -104,7 +105,7 @@ export const BaseApprovalRequestSchema = ApprovalRequestsSchema.omit({ autoAppro
 export const BaseCreateApprovalRequestSchema = z.object({
   scope: z.nativeEnum(ApprovalPolicyScope),
   scopeId: z.string().uuid(),
-  justification: z.string().max(256).nullable().optional(),
+  justification: auditSafeText(z.string().max(256), { allowMultiline: true }).nullable().optional(),
   requestDuration: z
     .string()
     .refine(

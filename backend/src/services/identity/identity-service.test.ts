@@ -41,8 +41,9 @@ const createService = ({
   // Equal to actorOrgId means the identity lives here and the row itself is deleted. Different
   // means it was only invited in, so the delete just takes the membership away.
   identityOrgId = ORG_ID,
-  hasDeleteProtection = false
-}: { identityOrgId?: string; hasDeleteProtection?: boolean } = {}) => {
+  hasDeleteProtection = false,
+  identityName = "ident"
+}: { identityOrgId?: string; hasDeleteProtection?: boolean; identityName?: string } = {}) => {
   const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
   const deleteAlertsForDeletedResource = vi.fn().mockResolvedValue(0);
   const emit = vi.fn().mockResolvedValue(undefined);
@@ -50,7 +51,8 @@ const createService = ({
   const identityDAL = {
     transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
     deleteById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "ident" }),
-    findById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "ident" })
+    findById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: identityName, orgId: identityOrgId, projectId: null }),
+    updateById: vi.fn().mockResolvedValue({ id: IDENTITY_ID, name: "renamed", orgId: identityOrgId })
   };
 
   const membershipIdentityDAL = {
@@ -82,7 +84,7 @@ const createService = ({
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
-      findEffectiveOrgMembership: vi.fn()
+      findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: "membership-1", scopeOrgId: ORG_ID })
     } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
     usageMeteringService: { emit: vi.fn() } as never,
@@ -179,5 +181,52 @@ describe("deleteIdentity org access reconcile", () => {
     await service.deleteIdentity(buildDto());
 
     expect(emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateIdentity name check", () => {
+  const SOFT_HYPHEN = String.fromCharCode(0xad);
+  const LEGACY_NAME = `ci${SOFT_HYPHEN}bot`;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("an unchanged name is let through even if it predates the rule", async () => {
+    const { service, identityDAL } = createService({ identityName: LEGACY_NAME });
+
+    await service.updateIdentity({ ...buildDto(), name: LEGACY_NAME, hasDeleteProtection: true } as never);
+
+    expect(identityDAL.updateById).toHaveBeenCalledWith(
+      IDENTITY_ID,
+      { name: LEGACY_NAME, hasDeleteProtection: true },
+      TX
+    );
+  });
+
+  test("a rename to an unsafe name is refused", async () => {
+    const { service, identityDAL } = createService();
+
+    await expect(service.updateIdentity({ ...buildDto(), name: LEGACY_NAME } as never)).rejects.toThrow(
+      "Value cannot contain control, escape, bidirectional or zero-width characters"
+    );
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("an unchanged empty name is let through", async () => {
+    const { service, identityDAL } = createService({ identityName: "" });
+
+    await service.updateIdentity({ ...buildDto(), name: "", hasDeleteProtection: true } as never);
+
+    expect(identityDAL.updateById).toHaveBeenCalledWith(IDENTITY_ID, { name: "", hasDeleteProtection: true }, TX);
+  });
+
+  test("an empty name on its own is ignored, as before", async () => {
+    const { service, identityDAL } = createService();
+
+    await service.updateIdentity({ ...buildDto(), name: "" } as never);
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
   });
 });

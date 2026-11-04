@@ -22,6 +22,8 @@ export const OUTBOX_CLAIM_BATCH_SIZE = 100;
 
 export const MAX_OUTBOX_ATTEMPTS = 8;
 
+export const isFinalOutboxAttempt = (attemptsMade: number): boolean => attemptsMade + 1 >= MAX_OUTBOX_ATTEMPTS;
+
 export const OUTBOX_BACKOFF_BASE_MS = 30_000;
 
 export const computeBackoffMs = (attemptsAfterIncrement: number): number => {
@@ -60,7 +62,8 @@ export type TEventEmitter = {
   emit: (events: TEventInput[], tx?: Knex) => Promise<void>;
 };
 
-// What a consumer sees: the CloudEvents 1.0 envelope. Lock, attempt and status columns stay inside the outbox.
+// What a consumer sees: the CloudEvents 1.0 envelope, plus whether this is its last attempt. Lock and
+// status columns stay inside the outbox.
 export type TEvent<TData = unknown> = {
   specversion: "1.0";
   id: string;
@@ -68,6 +71,7 @@ export type TEvent<TData = unknown> = {
   type: string;
   time: string;
   data: TData;
+  isFinalAttempt: boolean;
 };
 
 export enum EventResultStatus {

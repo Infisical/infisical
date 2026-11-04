@@ -63,6 +63,11 @@ import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import {
+  CUSTOM_EXTENSION_CRITICALITY_LABELS,
+  CustomExtensionRuleDialog
+} from "./CustomExtensionRuleDialog";
+import { isValidDomainComponentSequence, PolicyFormData, policySchema } from "./shared";
+import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
   CertExtensionCriticality,
@@ -88,11 +93,6 @@ import {
   SUBJECT_ATTRIBUTE_TYPE_OPTIONS
 } from "./shared/certificate-constants";
 import { CERTIFICATE_POLICY_PRESETS } from "./shared/policy-presets";
-import {
-  CUSTOM_EXTENSION_CRITICALITY_LABELS,
-  CustomExtensionRuleDialog
-} from "./CustomExtensionRuleDialog";
-import { isValidDomainComponentSequence, PolicyFormData, policySchema } from "./shared";
 
 export type FormData = PolicyFormData;
 
@@ -711,7 +711,6 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         resetToggles();
       }
       setStep(0);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isEdit, policy, reset]);
 
     const watchedAttributes = watch("attributes") || [];
@@ -778,14 +777,14 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         setRestrictExtendedKeyUsages(
           Boolean(
             formData.extendedKeyUsages?.requiredUsages?.length ||
-              formData.extendedKeyUsages?.optionalUsages?.length
+            formData.extendedKeyUsages?.optionalUsages?.length
           )
         );
         setRestrictValidity(Boolean(formData.validity?.maxDuration));
         setConfigureBasicConstraints(
           Boolean(
             formData.basicConstraints?.isCA &&
-              formData.basicConstraints.isCA !== CertPolicyState.DENIED
+            formData.basicConstraints.isCA !== CertPolicyState.DENIED
           )
         );
 
@@ -1077,10 +1076,10 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
       markCustomPreset();
     };
 
-    const validateStep = (): boolean => {
+    const getStepErrors = (stepIndex: number): Record<string, string> => {
       const stepErrors: Record<string, string> = {};
 
-      if (step === 1) {
+      if (stepIndex === 1) {
         if (restrictSubject && watchedAttributes.some((a) => !a.value?.[0]?.trim())) {
           stepErrors.subject = "Every subject attribute needs a value (use * for any).";
         }
@@ -1089,7 +1088,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         }
       }
 
-      if (step === 4 && restrictCustomExtensions) {
+      if (stepIndex === 4 && restrictCustomExtensions) {
         if (watchedCustomExtensions.some((extension) => !extension.oid?.trim())) {
           stepErrors.customExtensions = "Every custom extension needs an OID.";
         } else if (watchedCustomExtensions.some((extension) => !extension.value?.trim())) {
@@ -1098,7 +1097,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         }
       }
 
-      if (step === 2) {
+      if (stepIndex === 2) {
         if (restrictSignature && !watchedSignatureAlgs.length) {
           stepErrors.signature =
             "Select at least one signature algorithm, or turn off the restriction.";
@@ -1109,8 +1108,33 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         }
       }
 
+      return stepErrors;
+    };
+
+    const validateStep = (): boolean => {
+      const stepErrors = getStepErrors(step);
       setErrors(stepErrors);
       return Object.keys(stepErrors).length === 0;
+    };
+
+    const submit = async () => {
+      const invalidStepIndex = STEPS.findIndex((_, i) => Object.keys(getStepErrors(i)).length > 0);
+      if (invalidStepIndex >= 0) {
+        setErrors(getStepErrors(invalidStepIndex));
+        setStep(invalidStepIndex);
+        createNotification({
+          text: "Please fix the highlighted errors before saving.",
+          type: "error"
+        });
+        return;
+      }
+      await handleSubmit(onFormSubmit, (formErrors) => {
+        if (formErrors.name) setStep(0);
+        createNotification({
+          text: "Please fix the highlighted errors before saving.",
+          type: "error"
+        });
+      })();
     };
 
     const goNext = async () => {
@@ -1196,7 +1220,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
 
     useImperativeHandle(ref, () => ({
       goNext,
-      submit: () => handleSubmit(onFormSubmit)()
+      submit
     }));
 
     return (
@@ -1922,8 +1946,9 @@ export const CreatePolicyModal = ({
                 activeStep={step}
                 orientation="vertical"
                 onStepChange={(i) => {
-                  if (i < step) setStep(i);
+                  if (isEdit || i < step) setStep(i);
                 }}
+                nonLinear={Boolean(isEdit)}
               >
                 <StepperList>
                   {STEPS.map((s, i) => (

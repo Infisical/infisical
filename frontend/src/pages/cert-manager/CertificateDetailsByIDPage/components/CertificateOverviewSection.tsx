@@ -25,6 +25,7 @@ import { CaType } from "@app/hooks/api/ca/enums";
 import { TCertificateExternalMetadata } from "@app/hooks/api/certificates/types";
 
 import {
+  getCertificateDeletedBySummary,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails
@@ -51,13 +52,23 @@ const getProviderReference = (metadata?: TCertificateExternalMetadata | null) =>
     case CaType.DIGICERT:
       return {
         provider: "DigiCert CertCentral",
-        label: "Order ID",
-        value: String(metadata.orderId)
+        references: [
+          { label: "Order ID", value: String(metadata.orderId) },
+          ...(metadata.certificateId !== undefined
+            ? [{ label: "DigiCert Certificate ID", value: String(metadata.certificateId) }]
+            : [])
+        ]
       };
     case CaType.GODADDY:
-      return { provider: "GoDaddy", label: "Certificate ID", value: metadata.certificateId };
+      return {
+        provider: "GoDaddy",
+        references: [{ label: "Certificate ID", value: metadata.certificateId }]
+      };
     case CaType.AWS_ACM_PUBLIC_CA:
-      return { provider: "AWS ACM Public CA", label: "Certificate ARN", value: metadata.arn };
+      return {
+        provider: "AWS ACM Public CA",
+        references: [{ label: "Certificate ARN", value: metadata.arn }]
+      };
     default:
       return null;
   }
@@ -132,13 +143,30 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
             <Detail>
               <DetailLabel>Status</DetailLabel>
               <DetailValue>
-                {displayStatus.status === CertStatus.ACTIVE ? (
-                  <Badge variant={expiryVariant}>{expiryLabel}</Badge>
-                ) : (
-                  <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
-                )}
+                <div className="flex items-center gap-1">
+                  {displayStatus.status === CertStatus.ACTIVE ? (
+                    <Badge variant={expiryVariant}>{expiryLabel}</Badge>
+                  ) : (
+                    <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
+                  )}
+                  {certificate.deletedAt && certificate.status === CertStatus.REVOKED && (
+                    <Badge variant="danger">Revoked</Badge>
+                  )}
+                </div>
               </DetailValue>
             </Detail>
+            {certificate.deletedAt && (
+              <>
+                <Detail>
+                  <DetailLabel>Deleted By</DetailLabel>
+                  <DetailValue>{getCertificateDeletedBySummary(certificate)}</DetailValue>
+                </Detail>
+                <Detail>
+                  <DetailLabel>Deleted At</DetailLabel>
+                  <DetailValue>{formatDateUTC(certificate.deletedAt)}</DetailValue>
+                </Detail>
+              </>
+            )}
             <Detail>
               <DetailLabel>Serial Number</DetailLabel>
               <DetailValue className="flex items-center gap-2 font-mono text-xs">
@@ -249,10 +277,12 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                   <DetailLabel>Provider</DetailLabel>
                   <DetailValue>{providerReference.provider}</DetailValue>
                 </Detail>
-                <Detail>
-                  <DetailLabel>{providerReference.label}</DetailLabel>
-                  <DetailValue className="font-mono">{providerReference.value}</DetailValue>
-                </Detail>
+                {providerReference.references.map((reference) => (
+                  <Detail key={reference.label}>
+                    <DetailLabel>{reference.label}</DetailLabel>
+                    <DetailValue className="font-mono">{reference.value}</DetailValue>
+                  </Detail>
+                ))}
               </>
             )}
             <Detail>

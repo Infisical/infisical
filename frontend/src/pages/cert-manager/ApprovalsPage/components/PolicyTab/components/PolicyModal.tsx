@@ -30,9 +30,9 @@ import {
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { PolicyFormSchema, TPolicyForm } from "./PolicySchema";
 import { PolicyDetailsStep } from "./PolicySteps/PolicyDetailsStep";
 import { PolicyReviewStep } from "./PolicySteps/PolicyReviewStep";
-import { PolicyFormSchema, TPolicyForm } from "./PolicySchema";
 
 type Props = {
   popUp: UsePopUpState<["policy"]>;

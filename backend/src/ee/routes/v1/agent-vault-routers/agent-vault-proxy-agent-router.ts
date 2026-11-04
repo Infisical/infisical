@@ -2,20 +2,20 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import {
+  MAX_OAUTH_SCOPE_LENGTH,
+  OAUTH_SCOPE_TOKEN_PATTERN
+} from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-discovery-fns";
+import {
+  AgentVaultSessionLogChunkCreateResponseSchema,
+  AgentVaultSessionLogChunkCreateSchema
+} from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
+import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
+import {
   AgentVaultCredentialType,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultTrafficPolicy
 } from "@app/ee/services/agent-vault/agent-vault-enums";
-import {
-  MAX_OAUTH_SCOPE_LENGTH,
-  OAUTH_SCOPE_TOKEN_PATTERN
-} from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-discovery-fns";
-import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
-import {
-  AgentVaultSessionLogChunkCreateResponseSchema,
-  AgentVaultSessionLogChunkCreateSchema
-} from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { UnauthorizedError } from "@app/lib/errors";
@@ -33,7 +33,10 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { AgentVaultHostPatternSchema } from "./agent-vault-schemas";
 
 const ProxyConfigSchema = z.object({
-  trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
+  // Proxies still get the old name: a released CLI lets every host through under a value it doesn't know.
+  trafficPolicy: z
+    .enum([AgentVaultTrafficPolicy.AnyHost, AgentVaultTrafficPolicy.BundleHosts])
+    .describe(AGENT_VAULT.PROXY.trafficPolicyProxy),
   allowedHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval)
 });
@@ -159,11 +162,12 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             .object({
               id: z.string().uuid(),
               name: z.string(),
-              accessBundleName: z.string(),
+              accessBundleName: z.string().nullable(),
               type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
               hostPattern: z.string(),
               allowedMethods: z.string().array().nullable(),
               allowedPathPrefixes: z.string().array().nullable(),
+              allowedTools: z.string().array().nullable(),
               credential: z.discriminatedUnion("type", [
                 ResolvedBearerCredentialSchema,
                 z

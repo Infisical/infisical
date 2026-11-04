@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import {
+  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
+  AGENT_VAULT_NO_CONTROL_CHARS_RE
+} from "@app/helpers/agentVaultControlChars";
 import { addHostIssues, hostError } from "@app/helpers/agentVaultHostPattern";
 import { addPathPrefixIssues, pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 import { variableReferenceError } from "@app/helpers/agentVaultVariables";
@@ -101,6 +105,28 @@ const AGENT_VAULT_MAX_HOST_PATTERN_LENGTH = 1024;
 
 const MAX_SERVER_URL_LENGTH = 2048;
 
+export enum McpToolScope {
+  All = "all",
+  Selected = "selected"
+}
+
+// Mirrors agent-vault-tool-name-schemas.ts on the backend: the MCP spec's recommended tool name characters, held as
+// a must. The proxy compares names exactly.
+export const MAX_ALLOWED_TOOLS = 500;
+const MAX_TOOL_NAME_LENGTH = 128;
+
+// Not trimmed: names are exact and case-sensitive, so a stray space is refused rather than quietly dropped.
+export const toolNameError = (name: string): string | null => {
+  if (!name) return "Enter a tool name.";
+  if (name.length > MAX_TOOL_NAME_LENGTH) {
+    return `A tool name can be at most ${MAX_TOOL_NAME_LENGTH} characters.`;
+  }
+  if (!/^[A-Za-z0-9_.-]+$/.test(name)) {
+    return "A tool name can only contain letters, numbers, underscores (_), hyphens (-), and dots (.).";
+  }
+  return null;
+};
+
 export const serverUrlError = (value: string): string | null => {
   const trimmed = value.trim();
   if (!trimmed) return "Enter the server URL.";
@@ -137,14 +163,6 @@ export const SURFACE_LABELS: Record<AgentVaultSubstitutionSurface, string> = {
   [AgentVaultSubstitutionSurface.Header]: "Headers",
   [AgentVaultSubstitutionSurface.Body]: "Body"
 };
-
-// Mirrors AGENT_VAULT_NO_CONTROL_CHARS_RE on the backend. A pasted key with a trailing newline is the
-// common case, and it saves fine but then makes Go refuse to send the header.
-// eslint-disable-next-line no-control-regex
-const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
-
-const CONTROL_CHARS_MESSAGE =
-  "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";
 
 // Double braces wrap a variable reference, and neither a prefix nor a placeholder takes one.
 // The client ID and secret go to the provider as typed, unlike the credential fields that take `{{KEY}}`.
@@ -192,6 +210,7 @@ export enum ServiceStep {
   Template = "template",
   Details = "details",
   Credential = "credential",
+  Tools = "tools",
   Review = "review"
 }
 
@@ -208,6 +227,7 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "customHeaders",
     "substitutions"
   ],
+  [ServiceStep.Tools]: [],
   [ServiceStep.Review]: []
 };
 
@@ -224,6 +244,7 @@ export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "oauthClientSecret",
     "customHeaders"
   ],
+  [ServiceStep.Tools]: ["toolScope", "allowedTools"],
   [ServiceStep.Review]: []
 };
 
@@ -291,6 +312,9 @@ export const buildServiceSchema = (
       // setError, so a refusal held outside the form would let the step advance.
       hostDraft: z.string(),
       pathDraft: z.string(),
+      // Kept while All is chosen, so switching back restores the picks. Only Selected sends them.
+      toolScope: z.nativeEnum(McpToolScope),
+      allowedTools: z.array(z.string()),
       credentialType: z.nativeEnum(AgentVaultCredentialType),
       // Checked in superRefine, only while Bearer is selected: switching away hides these fields but keeps them.
       headerName: z.string().trim().optional(),
@@ -388,6 +412,33 @@ export const buildServiceSchema = (
             }
           });
         }
+      }
+
+      if (isMcp && data.toolScope === McpToolScope.Selected) {
+        if (data.allowedTools.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["allowedTools"],
+            message: "Select at least one tool, or turn on All Tools."
+          });
+        } else if (data.allowedTools.length > MAX_ALLOWED_TOOLS) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["allowedTools"],
+            message: `You can select at most ${MAX_ALLOWED_TOOLS} tools.`
+          });
+        }
+        const seenTools = new Set<string>();
+        data.allowedTools.forEach((name) => {
+          const nameError = toolNameError(name);
+          let message: string | null = null;
+          if (nameError) message = name ? `"${name}": ${nameError}` : nameError;
+          else if (seenTools.has(name)) message = `"${name}" is listed twice.`;
+          seenTools.add(name);
+          if (message) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["allowedTools"], message });
+          }
+        });
       }
 
       if (!isMcp) addHostIssues(data.hosts, ctx, ["hosts"]);
@@ -520,10 +571,12 @@ export const buildServiceSchema = (
         seenHeaders.add(header.name.toLowerCase());
 
         if (!header.value) at("value", "Required");
-        else if (!NO_CONTROL_CHARS_RE.test(header.value)) at("value", CONTROL_CHARS_MESSAGE);
+        // A pasted key with a trailing newline saves fine but then makes Go refuse to send the header.
+        else if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(header.value))
+          at("value", AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
 
-        if (header.prefix && !NO_CONTROL_CHARS_RE.test(header.prefix)) {
-          at("prefix", CONTROL_CHARS_MESSAGE);
+        if (header.prefix && !AGENT_VAULT_NO_CONTROL_CHARS_RE.test(header.prefix)) {
+          at("prefix", AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
         } else if (header.prefix && hasDoubleBraces(header.prefix)) {
           at("prefix", PREFIX_BRACES_MESSAGE);
         }
@@ -540,8 +593,8 @@ export const buildServiceSchema = (
 
         if (!substitution.placeholder) {
           at("placeholder", "Required");
-        } else if (!NO_CONTROL_CHARS_RE.test(substitution.placeholder)) {
-          at("placeholder", CONTROL_CHARS_MESSAGE);
+        } else if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(substitution.placeholder)) {
+          at("placeholder", AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
         } else if (hasDoubleBraces(substitution.placeholder)) {
           at(
             "placeholder",
@@ -553,7 +606,8 @@ export const buildServiceSchema = (
         seenPlaceholders.add(substitution.placeholder);
 
         if (!substitution.value) at("value", "Required");
-        else if (!NO_CONTROL_CHARS_RE.test(substitution.value)) at("value", CONTROL_CHARS_MESSAGE);
+        else if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(substitution.value))
+          at("value", AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE);
         if (substitution.surfaces.length === 0) {
           at("surfaces", "Pick at least one place to look for the placeholder.");
         }

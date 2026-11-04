@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "tabWidth": 2,
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "none",
+  "sortPackageJson": false,
+  "sortImports": {
+    "internalPattern": ["e2e-test/"],
+    "customGroups": [
+      { "groupName": "node-protocol", "elementNamePattern": ["node:**"] },
+      { "groupName": "app", "elementNamePattern": ["@app/**", "@bdd_routes/**"] }
+    ],
+    "groups": [
+      "side_effect",
+      "node-protocol",
+      ["builtin", "external"],
+      "app",
+      ["internal", "unknown"],
+      ["parent", "sibling", "index"]
+    ]
+  }
+}

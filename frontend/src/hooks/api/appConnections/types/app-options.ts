@@ -293,6 +293,10 @@ export type TKempLoadMasterConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.KempLoadMaster;
 };
 
+export type TImpervaConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Imperva;
+};
+
 export type TAnthropicConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Anthropic;
 };
@@ -379,6 +383,10 @@ export type TDaytonaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Daytona;
 };
 
+export type TServiceNowConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.ServiceNow;
+};
+
 export type TS3CompatibleConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.S3Compatible;
 };
@@ -456,6 +464,7 @@ export type TAppConnectionOption =
   | TPaloAltoNetworksConnectionOption
   | TKeeperConnectionOption
   | TKempLoadMasterConnectionOption
+  | TImpervaConnectionOption
   | TAnthropicConnectionOption
   | TOvhConnectionOption
   | TDevinConnectionOption
@@ -479,6 +488,7 @@ export type TAppConnectionOption =
   | TNutanixPrismCentralConnectionOption
   | TSpaceliftConnectionOption
   | TDaytonaConnectionOption
+  | TServiceNowConnectionOption
   | TS3CompatibleConnectionOption
   | TJiraConnectionOption;
 
@@ -551,6 +561,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.PaloAltoNetworks]: TPaloAltoNetworksConnectionOption;
   [AppConnection.Keeper]: TKeeperConnectionOption;
   [AppConnection.KempLoadMaster]: TKempLoadMasterConnectionOption;
+  [AppConnection.Imperva]: TImpervaConnectionOption;
   [AppConnection.Anthropic]: TAnthropicConnectionOption;
   [AppConnection.OVH]: TOvhConnectionOption;
   [AppConnection.Devin]: TDevinConnectionOption;
@@ -574,6 +585,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.NutanixPrismCentral]: TNutanixPrismCentralConnectionOption;
   [AppConnection.Spacelift]: TSpaceliftConnectionOption;
   [AppConnection.Daytona]: TDaytonaConnectionOption;
+  [AppConnection.ServiceNow]: TServiceNowConnectionOption;
   [AppConnection.S3Compatible]: TS3CompatibleConnectionOption;
   [AppConnection.Jira]: TJiraConnectionOption;
 };

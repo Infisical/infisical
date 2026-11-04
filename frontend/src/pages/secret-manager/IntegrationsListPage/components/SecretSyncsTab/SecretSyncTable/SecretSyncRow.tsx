@@ -131,7 +131,6 @@ export const SecretSyncRow = ({
 
     const timer = setTimeout(() => setIsIdCopied.off(), 2000);
 
-    // eslint-disable-next-line consistent-return
     return () => clearTimeout(timer);
   }, [isIdCopied]);
 

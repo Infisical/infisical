@@ -42,7 +42,7 @@ func (service) New(events fakenet.Emitter) fakenet.Fake {
 	if err != nil {
 		panic(err)
 	}
-	p := &Provider{Codes: map[string]Person{}, key: key, keyID: randomString(8), events: events}
+	p := &Provider{Codes: map[string]Person{}, tokens: map[string]Person{}, key: key, keyID: randomString(8), events: events}
 	p.mux = p.routes()
 	return p
 }
@@ -57,6 +57,14 @@ type Provider struct {
 
 	// Codes are authorization codes not yet redeemed, each naming who logged in.
 	Codes map[string]Person `json:"codes"`
+
+	// Keys are public keys a test holds the private half of, published in the JWKS
+	// beside the provider's own. A test signs whatever token it needs with one, which
+	// is how machine identity OIDC and JWT auth get a credential with any claims.
+	Keys []JWK `json:"keys,omitempty"`
+
+	// tokens maps issued access tokens to who they were issued for, for userinfo.
+	tokens map[string]Person
 
 	mu     sync.Mutex
 	mux    *http.ServeMux
@@ -73,6 +81,26 @@ type Person struct {
 	EmailVerified bool   `json:"emailVerified"`
 	GivenName     string `json:"givenName"`
 	FamilyName    string `json:"familyName"`
+
+	// Groups is the groups claim, the IdP's group names.
+	Groups []string `json:"groups,omitempty"`
+	// Claims are extra ID token claims.
+	Claims map[string]any `json:"claims,omitempty"`
+}
+
+// JWK is a public key in JSON Web Key form.
+type JWK struct {
+	Kty string `json:"kty"`
+	Use string `json:"use,omitempty"`
+	Alg string `json:"alg,omitempty"`
+	Kid string `json:"kid"`
+	N   string `json:"n"`
+	E   string `json:"e"`
+}
+
+// PublicJWK describes an RSA public key for the provider to publish.
+func PublicJWK(kid string, pub *rsa.PublicKey) JWK {
+	return JWK{Kty: "RSA", Use: "sig", Alg: "RS256", Kid: kid, N: b64(pub.N.Bytes()), E: b64(big.NewInt(int64(pub.E)).Bytes())}
 }
 
 func (p *Provider) ServeHTTP(w http.ResponseWriter, r *http.Request) { p.mux.ServeHTTP(w, r) }
@@ -82,6 +110,8 @@ func (p *Provider) routes() *http.ServeMux {
 	mux.HandleFunc("GET /{tenant}/.well-known/openid-configuration", p.discovery)
 	mux.HandleFunc("GET /{tenant}/jwks", p.jwks)
 	mux.HandleFunc("POST /{tenant}/token", p.token)
+	mux.HandleFunc("GET /{tenant}/userinfo", p.userinfo)
+	mux.HandleFunc("GET /{tenant}/spiffe-bundle", p.spiffeBundle)
 	return mux
 }
 
@@ -106,15 +136,51 @@ func (p *Provider) discovery(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Provider) jwks(w http.ResponseWriter, _ *http.Request) {
-	pub := p.key.PublicKey
-	writeJSON(w, http.StatusOK, map[string]any{"keys": []map[string]string{{
-		"kty": "RSA",
-		"use": "sig",
-		"alg": "RS256",
-		"kid": p.keyID,
-		"n":   b64(pub.N.Bytes()),
-		"e":   b64(big.NewInt(int64(pub.E)).Bytes()),
-	}}})
+	p.mu.Lock()
+	keys := append([]JWK{PublicJWK(p.keyID, &p.key.PublicKey)}, p.Keys...)
+	p.mu.Unlock()
+	writeJSON(w, http.StatusOK, map[string]any{"keys": keys})
+}
+
+// spiffeBundle serves the test's keys as a SPIFFE trust bundle for JWT-SVIDs.
+func (p *Provider) spiffeBundle(w http.ResponseWriter, _ *http.Request) {
+	p.mu.Lock()
+	keys := make([]JWK, 0, len(p.Keys))
+	for _, k := range p.Keys {
+		k.Use = "jwt-svid"
+		keys = append(keys, k)
+	}
+	p.mu.Unlock()
+	writeJSON(w, http.StatusOK, map[string]any{"keys": keys, "spiffe_sequence": 1, "spiffe_refresh_hint": 300})
+}
+
+func (p *Provider) userinfo(w http.ResponseWriter, r *http.Request) {
+	token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	p.mu.Lock()
+	person, ok := p.tokens[token]
+	p.mu.Unlock()
+	if !ok {
+		writeOAuthErr(w, http.StatusUnauthorized, "invalid_token")
+		return
+	}
+	writeJSON(w, http.StatusOK, person.claims())
+}
+
+func (person Person) claims() map[string]any {
+	out := map[string]any{
+		"sub":            person.Subject,
+		"email":          person.Email,
+		"email_verified": person.EmailVerified,
+		"given_name":     person.GivenName,
+		"family_name":    person.FamilyName,
+	}
+	if len(person.Groups) > 0 {
+		out["groups"] = person.Groups
+	}
+	for k, v := range person.Claims {
+		out[k] = v
+	}
+	return out
 }
 
 func (p *Provider) token(w http.ResponseWriter, r *http.Request) {
@@ -148,24 +214,23 @@ func (p *Provider) token(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	idToken, err := p.sign(map[string]any{
-		"iss":            issuer(r),
-		"aud":            clientID,
-		"sub":            person.Subject,
-		"iat":            now.Unix(),
-		"exp":            now.Add(5 * time.Minute).Unix(),
-		"email":          person.Email,
-		"email_verified": person.EmailVerified,
-		"given_name":     person.GivenName,
-		"family_name":    person.FamilyName,
-	})
+	claims := person.claims()
+	claims["iss"] = issuer(r)
+	claims["aud"] = clientID
+	claims["iat"] = now.Unix()
+	claims["exp"] = now.Add(5 * time.Minute).Unix()
+	idToken, err := p.sign(claims)
 	if err != nil {
 		writeOAuthErr(w, http.StatusInternalServerError, "server_error")
 		return
 	}
 	p.events.Publish(TokenIssued{Subject: person.Subject, Email: person.Email})
+	accessToken := randomString(24)
+	p.mu.Lock()
+	p.tokens[accessToken] = person
+	p.mu.Unlock()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"access_token": randomString(24),
+		"access_token": accessToken,
 		"token_type":   "Bearer",
 		"expires_in":   300,
 		"id_token":     idToken,
@@ -198,7 +263,8 @@ func (p *Provider) Snapshot() ([]byte, error) {
 		ClientID     string            `json:"clientId"`
 		ClientSecret string            `json:"clientSecret"`
 		Codes        map[string]Person `json:"codes"`
-	}{p.ClientID, p.ClientSecret, p.Codes})
+		Keys         []JWK             `json:"keys,omitempty"`
+	}{p.ClientID, p.ClientSecret, p.Codes, p.Keys})
 }
 
 // Seed merges a partial provider in, so a test names only what it cares about.
@@ -218,6 +284,7 @@ func (p *Provider) Seed(raw []byte) error {
 	for code, person := range in.Codes {
 		p.Codes[code] = person
 	}
+	p.Keys = append(p.Keys, in.Keys...)
 	return nil
 }
 

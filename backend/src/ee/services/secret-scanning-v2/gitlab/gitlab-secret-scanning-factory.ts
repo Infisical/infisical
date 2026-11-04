@@ -2,8 +2,6 @@ import { Camelize, GitbeakerRequestError, GroupHookSchema, ProjectHookSchema } f
 import pLimit from "p-limit";
 import { join } from "path";
 
-import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
-import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { SecretScanningFindingSeverity } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   assertProviderRepositorySizeWithinLimit,
@@ -26,6 +24,8 @@ import {
   TSecretScanningFactoryUpdateWebhook,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
+import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -399,10 +399,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
         if (commitDiff.deletedFile) continue;
 
         // eslint-disable-next-line no-await-in-loop
-        const findings = await scanContentAndGetFindings(
-          replaceNonChangesWithNewlines(`\n${commitDiff.diff}`),
-          configPath
-        );
+        const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(commitDiff.diff), configPath);
 
         const adjustedFindings = findings.map((finding) => {
           const startLine = convertPatchLineToFileLineNumber(commitDiff.diff, finding.StartLine);
@@ -439,12 +436,14 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
       }
     }
 
-    return allFindings.map((finding) => ({
-      details: toFindingDetails(finding),
-      fingerprint: finding.Fingerprint,
-      severity: SecretScanningFindingSeverity.High,
-      rule: finding.RuleID
-    }));
+    return {
+      findings: allFindings.map((finding) => ({
+        details: toFindingDetails(finding),
+        fingerprint: finding.Fingerprint,
+        severity: SecretScanningFindingSeverity.High,
+        rule: finding.RuleID
+      }))
+    };
   };
 
   const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<

@@ -78,3 +78,24 @@ describe("self-hosted license CA cap", () => {
     expect(plan.maxCas).toBe(1);
   });
 });
+
+describe("self-hosted session log default storage", () => {
+  test("an unlicensed instance doesn't get it", async () => {
+    const plan = await loadPlan({ licenseKey: "" });
+    expect(plan.agentVaultManagedStorage).toBe(false);
+  });
+
+  test("a license gets it only when its entitlements turn it on", async () => {
+    const off = await loadPlan({
+      licenseKey: "online-license-key",
+      onlineEntitlements: entitlements({ agent_vault_managed_storage: { value: false, source: "default" } })
+    });
+    expect(off.agentVaultManagedStorage).toBe(false);
+
+    const on = await loadPlan({
+      licenseKey: "online-license-key",
+      onlineEntitlements: entitlements({ agent_vault_managed_storage: { value: true, source: "plan" } })
+    });
+    expect(on.agentVaultManagedStorage).toBe(true);
+  });
+});

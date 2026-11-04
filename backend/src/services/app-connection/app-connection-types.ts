@@ -274,6 +274,12 @@ import {
   TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
 import {
+  TImpervaConnection,
+  TImpervaConnectionConfig,
+  TImpervaConnectionInput,
+  TValidateImpervaConnectionCredentialsSchema
+} from "./imperva";
+import {
   TJiraConnection,
   TJiraConnectionConfig,
   TJiraConnectionInput,
@@ -449,6 +455,12 @@ import {
   TValidateSalesforceConnectionCredentialsSchema
 } from "./salesforce";
 import {
+  TServiceNowConnection,
+  TServiceNowConnectionConfig,
+  TServiceNowConnectionInput,
+  TValidateServiceNowConnectionCredentialsSchema
+} from "./servicenow";
+import {
   TSmbConnection,
   TSmbConnectionConfig,
   TSmbConnectionInput,
@@ -620,6 +632,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TNetScalerConnection
   | TPaloAltoNetworksConnection
   | TKempLoadMasterConnection
+  | TImpervaConnection
   | TAnthropicConnection
   | TOvhConnection
   | TDevinConnection
@@ -645,6 +658,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TStripeConnection
   | TKeeperConnection
   | THpeIloConnection
+  | TServiceNowConnection
   | TS3CompatibleConnection
   | TJiraConnection
 );
@@ -724,6 +738,7 @@ export type TAppConnectionInput = { id: string } & (
   | TNetScalerConnectionInput
   | TPaloAltoNetworksConnectionInput
   | TKempLoadMasterConnectionInput
+  | TImpervaConnectionInput
   | TAnthropicConnectionInput
   | TOvhConnectionInput
   | TDevinConnectionInput
@@ -749,6 +764,7 @@ export type TAppConnectionInput = { id: string } & (
   | TStripeConnectionInput
   | TKeeperConnectionInput
   | THpeIloConnectionInput
+  | TServiceNowConnectionInput
   | TS3CompatibleConnectionInput
   | TJiraConnectionInput
 );
@@ -862,6 +878,7 @@ export type TAppConnectionConfig =
   | TNetScalerConnectionConfig
   | TPaloAltoNetworksConnectionConfig
   | TKempLoadMasterConnectionConfig
+  | TImpervaConnectionConfig
   | TAnthropicConnectionConfig
   | TOvhConnectionConfig
   | TDevinConnectionConfig
@@ -887,6 +904,7 @@ export type TAppConnectionConfig =
   | TStripeConnectionConfig
   | TKeeperConnectionConfig
   | THpeIloConnectionConfig
+  | TServiceNowConnectionConfig
   | TS3CompatibleConnectionConfig
   | TJiraConnectionConfig;
 
@@ -957,6 +975,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateNetScalerConnectionCredentialsSchema
   | TValidatePaloAltoNetworksConnectionCredentialsSchema
   | TValidateKempLoadMasterConnectionCredentialsSchema
+  | TValidateImpervaConnectionCredentialsSchema
   | TValidateAnthropicConnectionCredentialsSchema
   | TValidateOvhConnectionCredentialsSchema
   | TValidateDevinConnectionCredentialsSchema
@@ -982,6 +1001,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateStripeConnectionCredentialsSchema
   | TValidateKeeperConnectionCredentialsSchema
   | TValidateHpeIloConnectionCredentialsSchema
+  | TValidateServiceNowConnectionCredentialsSchema
   | TValidateS3CompatibleConnectionCredentialsSchema
   | TValidateJiraConnectionCredentialsSchema;
 

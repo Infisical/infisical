@@ -11,6 +11,7 @@ import {
   RotateCwIcon
 } from "lucide-react";
 
+import { useConnectionCreation } from "@app/components/app-connections/useConnectionCreation";
 import {
   CertificateEnrollmentUpgradeIntent,
   useUpgradeGate
@@ -102,7 +103,6 @@ import {
   useSetPkiApplicationScepEnrollment
 } from "@app/hooks/api/pkiApplications/mutations";
 import { ScepChallengeType, TPkiApplicationProfile } from "@app/hooks/api/pkiApplications/types";
-import { useConnectionCreation } from "@app/pages/cert-manager/CertificateAuthoritiesPage/components/CaInstallCertModal/useConnectionCreation";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 
@@ -224,6 +224,7 @@ const DisableEnrollmentButton = ({
                   await onConfirmed();
                   setIsOpen(false);
                 } catch {
+                  // oxlint-disable-next-line no-useless-return
                   return;
                 } finally {
                   setIsConfirming(false);

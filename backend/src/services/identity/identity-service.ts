@@ -14,6 +14,7 @@ import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
@@ -24,9 +25,9 @@ import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/addition
 import { ActorType } from "../auth/auth-type";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
-import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { emitOrgMembershipRemoved, toOrgMembershipActors } from "../org/org-membership-events";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -292,6 +293,10 @@ export const identityServiceFactory = ({
 
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: `Identity is managed by project` });
+    }
+
+    if (name && name !== identityDetails.name && containsLogUnsafeCharacters(name)) {
+      throw new BadRequestError({ message: LOG_UNSAFE_TEXT_MESSAGE });
     }
 
     const identity = await identityDAL.transaction(async (tx) => {

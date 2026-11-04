@@ -1,20 +1,21 @@
 import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { TAgentVaultSessionInlineServices } from "@app/db/schemas";
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { ConflictError } from "@app/lib/errors";
+import { ConflictError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
+import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
+import { TRefreshServiceTokenDTO } from "../agent-vault-oauth/agent-vault-oauth-types";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthStatus,
   AgentVaultServiceType
 } from "../agent-vault/agent-vault-enums";
-import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
-import { TRefreshServiceTokenDTO } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { agentVaultProxyServiceFactory } from "./agent-vault-proxy-service";
 import { TResolveServiceRow } from "./agent-vault-resolve-dal";
 
@@ -45,6 +46,7 @@ const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServic
   encryptedCredential: Buffer.from(JSON.stringify({ accessToken: "snapshot-access" })),
   allowedMethods: null,
   allowedPathPrefixes: null,
+  allowedTools: null,
   memberProvidedFields: null,
   position: 0,
   ...overrides
@@ -62,15 +64,23 @@ const sessionLogConfig = {
 const setup = (
   refresh: (dto: TRefreshServiceTokenDTO) => Promise<unknown>,
   rows = [serviceRow()],
-  variables: { id: string; encryptedValue: Buffer }[] = []
+  variables: { id: string; encryptedValue: Buffer }[] = [],
+  {
+    inlineRows = [],
+    isOwnerAdmin = true
+  }: { inlineRows?: TAgentVaultSessionInlineServices[]; isOwnerAdmin?: boolean } = {}
 ) => {
   const refreshServiceToken = vi.fn(refresh);
   const reportMissingScopes = vi.fn(async () => {});
+  const findInlineServices = vi.fn(async () => inlineRows);
+  const createCipherPairWithDataKey = vi.fn(
+    async () => ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
+  );
   const service = agentVaultProxyServiceFactory({
     agentVaultProxyDAL: {
       findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 })
     } as never,
-    agentVaultResolveDAL: { findResolvableServices: async () => rows },
+    agentVaultResolveDAL: { findResolvableServices: async () => rows, findSessionSkills: async () => [] },
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
     agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
     agentVaultVariableDAL: { findValuesForResolve: async () => variables },
@@ -79,12 +89,16 @@ const setup = (
       findByTokenHash: async () =>
         ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt: null, expiresAt: null }) as never
     },
+    agentVaultSessionInlineServiceDAL: { findBySessionId: findInlineServices },
+    agentVaultDelegationDAL: { identityCoversUser: async () => false },
     agentVaultSessionLogConfigDAL: {
       findOne: async () => sessionLogConfig,
       findByProjectIdFromPrimary: async () => sessionLogConfig
     },
     membershipDAL: { findResourceMembershipsForActor: async () => [] },
     orgDAL: { findEffectiveOrgMembership: async () => ({ isActive: true }) as never },
+    projectDAL: { findById: async () => ({ id: PROJECT_ID, orgId: "org-1" }) as never },
+    userDAL: { findById: async () => undefined as never },
     permissionService: {
       getProjectPermission: async () =>
         ({
@@ -94,14 +108,11 @@ const setup = (
               subject: ProjectPermissionSub.AgentVaultSessions
             }
           ]),
-          hasRole: () => true,
+          hasRole: () => isOwnerAdmin,
           memberships: []
         }) as never
     },
-    kmsService: {
-      createCipherPairWithDataKey: async () =>
-        ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
-    },
+    kmsService: { createCipherPairWithDataKey },
     licenseService: {} as never,
     resourceAuthMethodService: {} as never,
     agentVaultOauthService: {
@@ -109,7 +120,7 @@ const setup = (
       reportMissingScopes: reportMissingScopes as never
     }
   });
-  return { service, refreshServiceToken, reportMissingScopes };
+  return { service, refreshServiceToken, reportMissingScopes, findInlineServices, createCipherPairWithDataKey };
 };
 
 const refreshed = {
@@ -267,6 +278,18 @@ describe("resolve's lazy refresh", () => {
     expect(services[1].credential).toMatchObject({ value: "bearer-expanded" });
   });
 
+  test("sends each service's allowed tools, and null for one that allows every tool", async () => {
+    const { service } = setup(
+      async () => refreshed,
+      [
+        serviceRow({ allowedTools: ["read_file", "search"] }),
+        serviceRow({ id: "55555555-5555-4555-8555-555555555555", allowedTools: null })
+      ]
+    );
+    const { services } = await resolve(service);
+    expect(services.map((resolved) => resolved.allowedTools)).toEqual([["read_file", "search"], null]);
+  });
+
   test("an OAuth token is always sent as Authorization: Bearer, whatever its config holds", async () => {
     const { service } = setup(
       async () => refreshed,
@@ -290,5 +313,260 @@ describe("resolve's lazy refresh", () => {
       source: "oauth",
       expiresAt: null
     });
+  });
+});
+
+describe("resolve for a session on a user's behalf", () => {
+  const USER_ID = "user-1";
+  const IDENTITY_ID = "identity-1";
+  type TActorSetup = {
+    isAdmin?: boolean;
+    grants?: string[];
+    isActive?: boolean;
+    canRead?: boolean;
+    isMember?: boolean;
+  };
+
+  // Each actor gets its own org status, role and bundle grants, and resolve's reach is read off the bundles it asks for.
+  const setupOnBehalfOf = ({
+    user = {},
+    identity = {},
+    delegationCoversUser = true,
+    isUserDeleted = false,
+    rows = []
+  }: {
+    user?: TActorSetup;
+    identity?: TActorSetup;
+    delegationCoversUser?: boolean;
+    isUserDeleted?: boolean;
+    rows?: TResolveServiceRow[];
+  }) => {
+    const actor = (actorId: string) => (actorId === IDENTITY_ID ? identity : user);
+    const findResolvableServices = vi.fn(async () => rows);
+    const findPersonalValues = vi.fn(async () => []);
+    const service = agentVaultProxyServiceFactory({
+      agentVaultProxyDAL: {
+        findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 })
+      } as never,
+      agentVaultResolveDAL: { findResolvableServices, findSessionSkills: async () => [] },
+      agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
+      agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
+      agentVaultVariableDAL: { findValuesForResolve: async () => [] },
+      agentVaultPersonalValueDAL: { findForResolve: findPersonalValues },
+      agentVaultSessionDAL: {
+        findByTokenHash: async () =>
+          ({
+            id: "session-1",
+            projectId: PROJECT_ID,
+            userId: null,
+            identityId: IDENTITY_ID,
+            onBehalfOfUserId: isUserDeleted ? null : USER_ID,
+            onBehalfOfUserName: "Alice Nguyen",
+            revokedAt: null,
+            expiresAt: null
+          }) as never
+      },
+      agentVaultSessionInlineServiceDAL: { findBySessionId: async () => [] },
+      agentVaultDelegationDAL: { identityCoversUser: async () => delegationCoversUser },
+      agentVaultSessionLogConfigDAL: {
+        findOne: async () => sessionLogConfig,
+        findByProjectIdFromPrimary: async () => sessionLogConfig
+      },
+      membershipDAL: {
+        findResourceMembershipsForActor: async ({ actorId }: { actorId: string }) =>
+          (actor(actorId).grants ?? []).map((scopeResourceId) => ({
+            isActive: true,
+            actorGroupId: null,
+            scopeResourceId
+          }))
+      } as never,
+      orgDAL: {
+        findEffectiveOrgMembership: async ({ actorId }: { actorId: string }) =>
+          ({ isActive: actor(actorId).isActive ?? true }) as never
+      },
+      permissionService: {
+        getProjectPermission: async ({ actorId }: { actorId: string }) => {
+          if (actor(actorId).isMember === false) {
+            throw new ForbiddenRequestError({
+              name: "ProjectMembershipNotFound",
+              message: "Not a member of the project"
+            });
+          }
+          const read = {
+            action: ProjectPermissionAgentVaultSessionActions.Read,
+            subject: ProjectPermissionSub.AgentVaultSessions
+          };
+          return {
+            permission: createMongoAbility(actor(actorId).canRead === false ? [] : [read]),
+            hasRole: () => Boolean(actor(actorId).isAdmin),
+            memberships: []
+          } as never;
+        }
+      },
+      kmsService: {
+        createCipherPairWithDataKey: async () =>
+          ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
+      },
+      licenseService: {} as never,
+      resourceAuthMethodService: {} as never,
+      agentVaultOauthService: {
+        refreshServiceToken: vi.fn() as never,
+        reportMissingScopes: vi.fn() as never
+      },
+      projectDAL: { findById: async () => ({ id: PROJECT_ID, orgId: "org-1" }) as never },
+      userDAL: { findById: async () => undefined as never }
+    });
+    const resolve = () =>
+      service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
+    const reachedBundles = () =>
+      (findResolvableServices.mock.calls[0] as unknown as [{ accessBundleIds: string[] | null }])[0].accessBundleIds;
+    return { resolve, reachedBundles, findPersonalValues };
+  };
+
+  test("a non-admin user's reach is narrowed to the bundles the identity reaches too", async () => {
+    const { resolve, reachedBundles } = setupOnBehalfOf({
+      user: { grants: ["bundle-a", "bundle-b"] },
+      identity: { grants: ["bundle-b", "bundle-c"] }
+    });
+    await resolve();
+    expect(reachedBundles()).toEqual(["bundle-b"]);
+  });
+
+  test("an admin on either side leaves the other side's reach", async () => {
+    const adminIdentity = setupOnBehalfOf({ user: { grants: ["bundle-a"] }, identity: { isAdmin: true } });
+    await adminIdentity.resolve();
+    expect(adminIdentity.reachedBundles()).toEqual(["bundle-a"]);
+
+    const adminUser = setupOnBehalfOf({ user: { isAdmin: true }, identity: { grants: ["bundle-c"] } });
+    await adminUser.resolve();
+    expect(adminUser.reachedBundles()).toEqual(["bundle-c"]);
+  });
+
+  test("a delegation that no longer covers the user is a 401", async () => {
+    const { resolve } = setupOnBehalfOf({ user: { grants: ["bundle-a"] }, delegationCoversUser: false });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  test("an identity deactivated in the org is a 401", async () => {
+    const { resolve } = setupOnBehalfOf({ user: { grants: ["bundle-a"] }, identity: { isActive: false } });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  test("a user deactivated in the org is a 401", async () => {
+    const { resolve } = setupOnBehalfOf({ user: { grants: ["bundle-a"], isActive: false } });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  // The name is left behind, so the session must not fall back to resolving as the identity's own.
+  test("a session whose user was deleted is a 401, not the identity's own session", async () => {
+    const { resolve } = setupOnBehalfOf({ identity: { isAdmin: true }, isUserDeleted: true });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  test("a user without Read on sessions is a 401", async () => {
+    const { resolve } = setupOnBehalfOf({ user: { grants: ["bundle-a"], canRead: false } });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  // A 403 reads to the proxy as "Infisical is unreachable", which would keep the agent running through its grace window.
+  test("a user no longer in Agent Vault is a 401, not a 403", async () => {
+    const { resolve } = setupOnBehalfOf({ user: { isMember: false } });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  test("personal values are looked up for the user, never the identity", async () => {
+    const { resolve, findPersonalValues } = setupOnBehalfOf({
+      user: { isAdmin: true },
+      identity: { isAdmin: true },
+      rows: [
+        serviceRow({
+          type: AgentVaultServiceType.Http,
+          hostPattern: "api.example.com",
+          credentialType: AgentVaultCredentialType.Bearer,
+          credentialConfig: { headerName: "Authorization", headerPrefix: "Bearer" },
+          encryptedCredential: Buffer.from(JSON.stringify({ value: "" })),
+          memberProvidedFields: ["credential-value"]
+        })
+      ]
+    });
+    await resolve();
+    expect(findPersonalValues).toHaveBeenCalledWith({ serviceIds: [SERVICE_ID], owner: { userId: USER_ID } });
+  });
+});
+
+describe("resolve with inline services", () => {
+  const resolve = (service: ReturnType<typeof setup>["service"]) =>
+    service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
+  const noRefresh = async () => {
+    throw new Error("nothing here needs a refresh");
+  };
+
+  const passthroughBundleRow = serviceRow({
+    name: "bundle-api",
+    type: AgentVaultServiceType.Http,
+    hostPattern: "api.example.com",
+    config: {},
+    credentialType: AgentVaultCredentialType.Passthrough,
+    credentialConfig: {},
+    encryptedCredential: null
+  });
+
+  const inlineRow = (overrides: Partial<TAgentVaultSessionInlineServices> = {}): TAgentVaultSessionInlineServices => ({
+    id: "inline-1",
+    sessionId: "session-1",
+    position: 0,
+    name: "inline-api",
+    type: AgentVaultServiceType.Http,
+    config: {},
+    hostPattern: "api.example.com",
+    allowedMethods: null,
+    allowedPathPrefixes: null,
+    credentialType: AgentVaultCredentialType.Bearer,
+    credentialConfig: { type: AgentVaultCredentialType.Bearer, headerName: "Authorization", headerPrefix: "Bearer" },
+    customHeaders: [],
+    substitutions: [],
+    // The test's decryptor hands the blob back as it is.
+    encryptedSecrets: Buffer.from(
+      JSON.stringify({ credential: { value: "inline-token" }, customHeaders: [], substitutions: [] })
+    ),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides
+  });
+
+  // The proxy picks the first of two equally specific matches, so the bundle's service wins a host both cover.
+  test("sends the inline services after the access bundle's", async () => {
+    const { service } = setup(noRefresh, [passthroughBundleRow], [], { inlineRows: [inlineRow()] });
+    const { services } = await resolve(service);
+    expect(services.map((resolved) => resolved.name)).toEqual(["bundle-api", "inline-api"]);
+    expect(services[1]).toMatchObject({ accessBundleName: null, credential: { value: "inline-token" } });
+  });
+
+  test("leaves the inline services out once the session's owner isn't an admin", async () => {
+    const { service, findInlineServices } = setup(noRefresh, [passthroughBundleRow], [], {
+      inlineRows: [inlineRow()],
+      isOwnerAdmin: false
+    });
+    const { services } = await resolve(service);
+    expect(services.map((resolved) => resolved.name)).toEqual(["bundle-api"]);
+    expect(findInlineServices).not.toHaveBeenCalled();
+  });
+
+  test("derives the data key only when an inline service has something sealed", async () => {
+    const unsealed = setup(noRefresh, [passthroughBundleRow], [], {
+      inlineRows: [
+        inlineRow({
+          credentialType: AgentVaultCredentialType.Passthrough,
+          credentialConfig: { type: AgentVaultCredentialType.Passthrough },
+          encryptedSecrets: null
+        })
+      ]
+    });
+    expect((await resolve(unsealed.service)).services).toHaveLength(2);
+    expect(unsealed.createCipherPairWithDataKey).not.toHaveBeenCalled();
+
+    const sealed = setup(noRefresh, [passthroughBundleRow], [], { inlineRows: [inlineRow()] });
+    await resolve(sealed.service);
+    expect(sealed.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
   });
 });

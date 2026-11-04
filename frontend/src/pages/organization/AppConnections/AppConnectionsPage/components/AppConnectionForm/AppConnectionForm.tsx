@@ -11,6 +11,7 @@ import {
   useUpdateAppConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { DiscriminativePick } from "@app/types";
 
@@ -58,6 +59,7 @@ import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HpeIloConnectionForm } from "./HpeIloConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
+import { ImpervaConnectionForm } from "./ImpervaConnectionForm";
 import { JiraConnectionForm } from "./JiraConnectionForm";
 import { KeeperConnectionForm } from "./KeeperConnectionForm";
 import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
@@ -91,6 +93,7 @@ import { RenderConnectionForm } from "./RenderConnectionForm";
 import { RundeckConnectionForm } from "./RundeckConnectionForm";
 import { S3CompatibleConnectionForm } from "./S3CompatibleConnectionForm";
 import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
+import { ServiceNowConnectionForm } from "./ServiceNowConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
 import { SpaceliftConnectionForm } from "./SpaceliftConnectionForm";
@@ -171,6 +174,13 @@ type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
 } & ({ appConnection: TAppConnection } | { app: AppConnection });
 
+// Created before it can be verified, so creating it is a step of the form rather than the end of it
+const isAzureManagedIdentityConnection = ({
+  app,
+  method
+}: Pick<TAppConnection, "app" | "method">) =>
+  app === AppConnection.AzureKeyVault && method === AzureKeyVaultConnectionMethod.ManagedIdentity;
+
 type CreateFormProps = FormProps & {
   app: AppConnection;
   projectId?: string;
@@ -194,10 +204,12 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         ...formData,
         projectId
       });
-      createNotification({
-        text: `Successfully added ${appName} Connection`,
-        type: "success"
-      });
+      if (!isAzureManagedIdentityConnection(connection)) {
+        createNotification({
+          text: `Successfully added ${appName} Connection`,
+          type: "success"
+        });
+      }
       onComplete(connection);
     } finally {
       onPendingChange?.(false);
@@ -344,6 +356,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <DevinConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Daytona:
         return <DaytonaConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.ServiceNow:
+        return <ServiceNowConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Cloud66:
@@ -368,6 +382,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <KeeperConnectionForm onSubmit={onSubmit} />;
       case AppConnection.KempLoadMaster:
         return <KempLoadMasterConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Imperva:
+        return <ImpervaConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OVH:
         return <OVHConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Ona:
@@ -443,6 +459,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
   const { layout, onPendingChange } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
+  const isManagedIdentity = isAzureManagedIdentityConnection(appConnection);
   const updateAppConnection = useUpdateAppConnection();
   const { name: appName } = APP_CONNECTION_MAP[appConnection.app];
 
@@ -454,7 +471,9 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         ...formData
       });
       createNotification({
-        text: `Successfully updated ${appName} Connection`,
+        text: isManagedIdentity
+          ? `Connection ${connection.name} verified`
+          : `Successfully updated ${appName} Connection`,
         type: "success"
       });
       onComplete(connection);
@@ -660,6 +679,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DevinConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Daytona:
         return <DaytonaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.ServiceNow:
+        return <ServiceNowConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Cloud66:
@@ -678,6 +699,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <KeeperConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.KempLoadMaster:
         return <KempLoadMasterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Imperva:
+        return <ImpervaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OVH:
         return <OVHConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Ona:
@@ -764,6 +787,7 @@ type Props = {
   onDirtyChange?: (isDirty: boolean) => void;
   onPendingChange?: (isPending: boolean) => void;
   layout?: "sheet" | "dialog";
+  isNewConnection?: boolean;
   projectId?: string;
   projectType?: ProjectType;
 } & Pick<FormProps, "onComplete"> &
@@ -776,6 +800,7 @@ export const AppConnectionForm = ({
   onDirtyChange,
   onPendingChange,
   layout = "sheet",
+  isNewConnection,
   projectId,
   projectType,
   ...props
@@ -783,8 +808,8 @@ export const AppConnectionForm = ({
   const { app, appConnection } = props;
 
   const contextValue = useMemo(
-    () => ({ onCancel, onDirtyChange, onPendingChange, layout }),
-    [onCancel, onDirtyChange, onPendingChange, layout]
+    () => ({ onCancel, onDirtyChange, onPendingChange, layout, isNewConnection }),
+    [onCancel, onDirtyChange, onPendingChange, layout, isNewConnection]
   );
 
   return (

@@ -46,7 +46,8 @@ export const OrganizationsSchema = z.object({
   allowCrossProjectSecretSharing: z.boolean().default(false),
   createdByUserId: z.string().uuid().nullable().optional(),
   orgWideSecretValueTrackingEnabled: z.boolean().default(false),
-  requireGatewayPools: z.boolean().default(false)
+  requireGatewayPools: z.boolean().default(false),
+  ssoMfaTrust: z.string().default("none")
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

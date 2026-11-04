@@ -1,6 +1,6 @@
 import { BadRequestError } from "@app/lib/errors";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 const GODADDY_ALLOWED_KEY_ALGORITHMS = new Set<string>([
   CertKeyAlgorithm.RSA_2048,

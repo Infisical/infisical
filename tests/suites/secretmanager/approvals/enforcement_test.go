@@ -225,7 +225,7 @@ func TestSecretApprovalRequest_MachineIdentityBypass(t *testing.T) {
 
 		// Action
 		review, err := identity.API.ReviewSecretApprovalRequestWithResponse(t.Context(), held.ID,
-			api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.Approved})
+			api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.ReviewSecretApprovalRequestJSONBodyStatusApproved})
 		require.NoError(t, err)
 		merged, err := identity.API.MergeSecretApprovalRequestWithResponse(t.Context(), held.ID,
 			api.MergeSecretApprovalRequestJSONRequestBody{})
