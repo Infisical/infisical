@@ -11,8 +11,9 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { PamAccountType, PamHeartbeatStatus, PamSshAuthMethod } from "../pam/pam-enums";
-import { checkAccountAccess, TActorContext } from "../pam/pam-permission";
+import { isWindowsRotatableType, redactRotationError, TRotatableType } from "../pam-account-rotation/pam-rotation-fns";
+import { PAM_ROTATION_FACTORY_MAP, winrmConnectUsername } from "../pam-account-rotation/pam-rotation-handlers";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import {
   buildGatewayConnectionTest,
   CLOUD_CONNECTION_VALIDATORS,
@@ -27,9 +28,8 @@ import {
   validateConnectionDetails,
   validateCredentials
 } from "../pam-account/pam-account-schemas";
-import { isWindowsRotatableType, redactRotationError, TRotatableType } from "../pam-account-rotation/pam-rotation-fns";
-import { PAM_ROTATION_FACTORY_MAP, winrmConnectUsername } from "../pam-account-rotation/pam-rotation-handlers";
-import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { PamAccountType, PamHeartbeatStatus, PamSshAuthMethod } from "../pam/pam-enums";
+import { checkAccountAccess, TActorContext } from "../pam/pam-permission";
 import { TCheckAccountHeartbeatDTO, TPamHeartbeatResult } from "./pam-account-heartbeat-types";
 import {
   classifyCloudProbeError,
@@ -47,7 +47,7 @@ import {
 type TPamAccountHeartbeatServiceFactoryDep = {
   pamAccountDAL: TPamAccountDALFactory;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   permissionService: TPermissionServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -159,6 +159,12 @@ export const pamAccountHeartbeatServiceFactory = ({
         return { status, message: err instanceof Error ? err.message : "Unable to validate credentials" };
       }
     }
+
+    await gatewayPoolService.assertGatewayBindingInOrg({
+      gatewayId: account.gatewayId ?? account.templateGatewayId,
+      gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+      orgId
+    });
 
     // The shared connection test only reaches these over TCP; the rotation handlers hold the real probe.
     if (isWindowsRotatableType(accountType)) {

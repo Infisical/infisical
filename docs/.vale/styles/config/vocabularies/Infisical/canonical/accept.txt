@@ -112,6 +112,10 @@ SecretProviderClass
 CustomResourceDefinition
 Kubebuilder
 Kyverno
+gVisor
+Kata
+containerd
+RuntimeClass
 minikube
 Traefik
 Bitnami
@@ -252,6 +256,7 @@ Devin
 Mintlify
 Ona
 Daytona
+E2B
 DBT
 Ab Initio
 Initio
@@ -308,6 +313,7 @@ Tomcat
 HAProxy
 JBoss
 WildFly
+Imperva
 Kemp
 LoadMaster
 NetScaler
@@ -331,6 +337,7 @@ Patroni
 # --- Databases ---
 PostgreSQL
 MySQL
+CockroachDB
 MongoDB
 MongoDB Atlas
 Redis
@@ -370,6 +377,8 @@ OpenClaw
 OpenCode
 Perplexity
 xAI
+# The MCP transport, always written "Streamable HTTP"
+Streamable
 
 # --- Communication and messaging ---
 Discord
@@ -551,6 +560,7 @@ VPC(?:s)?
 VPN(?:s)?
 vCPU(?:s)?
 
+booleans
 walkthrough
 walkthroughs
 
@@ -675,6 +685,7 @@ dce
 dcr
 als
 ua
+amr
 iss
 
 # --- Surfaced by the code-signing pages ---
@@ -687,3 +698,9 @@ snowsql
 
 # --- Surfaced by the Stripe API key rotation pages ---
 Stripe
+
+# --- Surfaced by the Agent Vault Docker guide ---
+gVisor
+
+# --- Surfaced by the Agent Vault E2B guide ---
+SOCKS5

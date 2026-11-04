@@ -733,7 +733,7 @@ func (s *Service) findProjectByID(ctx context.Context, projectID string) (*proje
 	query := `
 		SELECT id, name, slug, "orgId", type, "enforceEncryptedSecretManagerSecretMetadata"
 		FROM projects
-		WHERE id = @projectID
+		WHERE id = @projectID AND "deleteAfter" IS NULL
 	`
 	args := pgx.NamedArgs{"projectID": projectID}
 

@@ -93,6 +93,17 @@ export const SendsPreview = () => {
     });
   }
 
+  if (credentialType === AgentVaultCredentialType.OAuth) {
+    lines.push({
+      id: "credential",
+      content: (
+        <>
+          Authorization: Bearer <span className="text-muted">&lt;access token&gt;</span>
+        </>
+      )
+    });
+  }
+
   if (credentialType === AgentVaultCredentialType.Basic) {
     lines.push({
       id: "credential",

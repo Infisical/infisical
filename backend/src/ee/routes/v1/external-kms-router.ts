@@ -61,6 +61,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createExternalKms",
       body: z.object({
         name: z.string().min(1).trim().toLowerCase(),
         description: z.string().trim().optional(),
@@ -109,6 +110,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateExternalKms",
       params: z.object({
         id: z.string().trim().min(1)
       }),
@@ -161,6 +163,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteExternalKms",
       params: z.object({
         id: z.string().trim().min(1)
       }),
@@ -203,6 +206,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getExternalKmsById",
       params: z.object({
         id: z.string().trim().min(1)
       }),
@@ -245,6 +249,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listExternalKms",
       response: {
         200: z.object({
           externalKmsList: sanitizedExternalSchemaForGetAll
@@ -270,6 +275,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getExternalKmsByName",
       params: z.object({
         name: z.string().trim().min(1)
       }),

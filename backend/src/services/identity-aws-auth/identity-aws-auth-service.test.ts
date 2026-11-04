@@ -149,6 +149,40 @@ describe("awsAuthService.login without a trust binding", () => {
 
     await expect(result).rejects.toMatchObject({ detail: { reasonCode: "account_id_not_allowed" } });
   });
+
+  test("replays only a POST to the regional STS endpoint with the signature headers", async () => {
+    const { result } = login({ allowedAccountIds: ACCOUNT_ID });
+
+    await expect(result).resolves.toMatchObject({ accessToken: ACCESS_TOKEN });
+    expect(request).toHaveBeenCalledWith({
+      method: "POST",
+      url: "https://sts.us-east-1.amazonaws.com",
+      headers: {
+        authorization: "AWS4-HMAC-SHA256 Credential=AKIA/20260101/us-east-1/sts/aws4_request, SignedHeaders=host"
+      },
+      data: "Action=GetCallerIdentity&Version=2011-06-15"
+    });
+  });
+
+  test("refuses a crafted request before contacting AWS", async () => {
+    const { service } = makeService({ allowedAccountIds: ACCOUNT_ID });
+    const headers = {
+      Authorization: "AWS4-HMAC-SHA256 Credential=x/x/s3/x/aws4_request",
+      authorization: null,
+      Host: "attacker-bucket.s3.amazonaws.com",
+      "Content-Length": "0"
+    };
+
+    await expect(
+      service.login({
+        identityId: IDENTITY_ID,
+        iamHttpRequestMethod: "GET",
+        iamRequestBody: Buffer.from("GET /caller.json HTTP/1.1\r\nX-Swallow: ").toString("base64"),
+        iamRequestHeaders: Buffer.from(JSON.stringify(headers)).toString("base64")
+      } as never)
+    ).rejects.toThrow("Signed STS request must be a POST of Action=GetCallerIdentity");
+    expect(request).not.toHaveBeenCalled();
+  });
 });
 
 // Attach and update are the only places a binding can be saved. The permission service is an empty object, so a

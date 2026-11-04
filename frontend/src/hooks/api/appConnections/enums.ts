@@ -64,6 +64,7 @@ export enum AppConnection {
   NetScaler = "netscaler",
   PaloAltoNetworks = "palo-alto-networks",
   KempLoadMaster = "kemp-loadmaster",
+  Imperva = "imperva",
   Anthropic = "anthropic",
   OVH = "ovh",
   Devin = "devin",
@@ -90,6 +91,7 @@ export enum AppConnection {
   Stripe = "stripe",
   Keeper = "keeper",
   HpeIloRedFish = "hpe-ilo",
+  ServiceNow = "servicenow",
   S3Compatible = "s3-compatible",
   Jira = "jira"
 }

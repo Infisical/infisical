@@ -7,10 +7,12 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -286,6 +288,42 @@ func TestSecretApprovalRequest_Merge(t *testing.T) {
 		require.NotEmpty(t, merged.Conflicts, "the merge skipped the create without recording why")
 		require.Equal(t, "written-meanwhile", secretmanager.GetSecret(t, p.proj, "dev", "API_KEY").Value)
 	})
+
+	t.Run("should refuse a merge that breaks a validation rule added after the request opened", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p := newProtectedProject(t)
+		held := heldRequest(t, p.proj, createSecret(t, p.committer, p.proj, "API_KEY", "short").Body)
+		approve(t, p.reviewer, held.ID)
+		rule := api.CreateStaticSecretsValidationRuleJSONRequestBody{
+			ProjectId: p.proj.ID, Name: "long-values", Environment: new("dev"), SecretPath: "/",
+		}
+		rule.ValueConstraints = &struct {
+			MaxLength                *int    `json:"maxLength,omitempty"`
+			MinLength                *int    `json:"minLength,omitempty"`
+			RegexPattern             *string `json:"regexPattern,omitempty"`
+			RequiredPrefix           *string `json:"requiredPrefix,omitempty"`
+			RequiredSuffix           *string `json:"requiredSuffix,omitempty"`
+			UniqueAcrossLastVersions *int    `json:"uniqueAcrossLastVersions,omitempty"`
+			UniqueWithinScope        *bool   `json:"uniqueWithinScope,omitempty"`
+		}{MinLength: new(20)}
+		created, err := p.tn.Admin.API.CreateStaticSecretsValidationRuleWithResponse(t.Context(), rule)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, created.StatusCode(), "creating the rule returned %s", created.Body)
+
+		// Action
+		res, err := p.committer.API.MergeSecretApprovalRequestWithResponse(t.Context(), held.ID,
+			api.MergeSecretApprovalRequestJSONRequestBody{})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Contains(t, res.JSON400.Message, "Secret validation failed:")
+		require.Contains(t, res.JSON400.Message, "must be at least 20 characters")
+		require.False(t, getRequest(t, p.proj, held.ID).HasMerged)
+		require.Empty(t, secretmanager.ListSecrets(t, p.proj, "dev"))
+	})
 }
 
 func TestSecretApprovalRequest_Notify(t *testing.T) {
@@ -354,7 +392,7 @@ func TestSecretApprovalRequest_Review(t *testing.T) {
 		// Setup
 		p := newProtectedProject(t)
 		held := heldRequest(t, p.proj, createSecret(t, p.committer, p.proj, "API_KEY", "value").Body)
-		require.Equal(t, http.StatusOK, reviewAs(t, p.reviewer, held.ID, api.Rejected).StatusCode())
+		require.Equal(t, http.StatusOK, reviewAs(t, p.reviewer, held.ID, api.ReviewSecretApprovalRequestJSONBodyStatusRejected).StatusCode())
 
 		// Action
 		res := mergeAs(t, p.committer, held.ID)
@@ -374,7 +412,7 @@ func TestSecretApprovalRequest_Review(t *testing.T) {
 		held := heldRequest(t, p.proj, createSecret(t, p.committer, p.proj, "API_KEY", "value").Body)
 
 		// Action
-		res := reviewAs(t, bystander, held.ID, api.Approved)
+		res := reviewAs(t, bystander, held.ID, api.ReviewSecretApprovalRequestJSONBodyStatusApproved)
 
 		// Assert
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
@@ -399,7 +437,7 @@ func TestSecretApprovalRequest_Review(t *testing.T) {
 		held := heldRequest(t, proj, createSecret(t, committer, proj, "API_KEY", "value").Body)
 
 		// Action
-		res := reviewAs(t, committer, held.ID, api.Approved)
+		res := reviewAs(t, committer, held.ID, api.ReviewSecretApprovalRequestJSONBodyStatusApproved)
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
@@ -532,6 +570,76 @@ func TestSecretApprovalRequest_Review(t *testing.T) {
 			"one person's approval satisfied a two-approval policy: %s", refused.Body)
 		require.Equalf(t, http.StatusOK, merged.StatusCode(), "merging after a second approver returned %s", merged.Body)
 	})
+
+	t.Run("should keep one review per reviewer and count only their latest decision", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p := newProtectedProject(t)
+		held := heldRequest(t, p.proj, createSecret(t, p.committer, p.proj, "API_KEY", "value").Body)
+		approve(t, p.reviewer, held.ID)
+
+		// Action
+		res := reviewAs(t, p.reviewer, held.ID, api.ReviewSecretApprovalRequestJSONBodyStatusRejected)
+
+		// Assert
+		require.Equal(t, http.StatusOK, res.StatusCode())
+		details, err := p.tn.Admin.API.GetSecretApprovalRequestWithResponse(t.Context(), held.ID)
+		require.NoError(t, err)
+		require.NotNil(t, details.JSON200)
+		reviewers := details.JSON200.Approval.Reviewers
+		require.Len(t, reviewers, 1)
+		require.Equal(t, "rejected", reviewers[0].Status)
+		refused := mergeAs(t, p.committer, held.ID)
+		require.Equal(t, http.StatusBadRequest, refused.StatusCode(), "the replaced approval still counted")
+		require.Empty(t, secretmanager.ListSecrets(t, p.proj, "dev"))
+	})
+}
+
+func TestSecretApprovalRequest_Read(t *testing.T) {
+	t.Parallel()
+
+	read := func(t *testing.T, actor *harness.Principal, id uuid.UUID) *api.GetSecretApprovalRequestResponse {
+		t.Helper()
+		res, err := actor.API.GetSecretApprovalRequestWithResponse(t.Context(), id)
+		require.NoError(t, err)
+		return res
+	}
+
+	t.Run("should refuse a project member who is neither committer nor approver reading a request", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p := newProtectedProject(t)
+		bystander := p.proj.NewUser(t, fixture.WithPrincipalName("bystander"))
+		held := heldRequest(t, p.proj, createSecret(t, p.committer, p.proj, "API_KEY", "value").Body)
+
+		// Action
+		res := read(t, bystander, held.ID)
+
+		// Assert
+		require.Equal(t, http.StatusForbidden, res.StatusCode())
+		require.Equal(t, "User has insufficient privileges", res.JSON403.Message)
+	})
+
+	t.Run("should let a member read a request when their role grants reading change requests", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p := newProtectedProject(t)
+		p.proj.NewRole(t, "request-reader",
+			fixture.Permission{Subject: "secret-approval-request", Action: []string{"read"}},
+			fixture.Permission{Subject: "secrets", Action: []string{"read"}})
+		reader := p.proj.NewUser(t, fixture.WithPrincipalName("reader"), fixture.WithRoles("request-reader"))
+		held := heldRequest(t, p.proj, createSecret(t, p.committer, p.proj, "API_KEY", "value").Body)
+
+		// Action
+		res := read(t, reader, held.ID)
+
+		// Assert
+		require.NotNilf(t, res.JSON200, "reading returned %d: %s", res.StatusCode(), res.Body)
+		require.Equal(t, held.ID, res.JSON200.Approval.Id)
+	})
 }
 
 func TestSecretApprovalRequest_Status(t *testing.T) {
@@ -555,7 +663,7 @@ func TestSecretApprovalRequest_Status(t *testing.T) {
 
 		// Action
 		review, err := p.reviewer.API.ReviewSecretApprovalRequestWithResponse(t.Context(), held.ID,
-			api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.Approved})
+			api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.ReviewSecretApprovalRequestJSONBodyStatusApproved})
 		require.NoError(t, err)
 		mergeClosed, err := p.committer.API.MergeSecretApprovalRequestWithResponse(t.Context(), held.ID,
 			api.MergeSecretApprovalRequestJSONRequestBody{})
@@ -633,6 +741,28 @@ func TestSecretApprovalRequest_Status(t *testing.T) {
 		require.Equal(t, "The policy associated with this secret approval request has been deleted.", res.JSON400.Message)
 		require.Equal(t, "close", getRequest(t, p.proj, held.ID).Status)
 	})
+
+	t.Run("should refuse reopening a closed request when the plan does not include approvals, and keep it closed", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `[LICENSE] Reopening is gated on the secretApproval entitlement today, although it only
+			restores a request that already exists. A later license clean-up changes this claim.`)
+
+		// Setup
+		p := newProtectedProject(t)
+		held := heldRequest(t, p.proj, createSecret(t, p.committer, p.proj, "API_KEY", "value").Body)
+		closeRequest(t, p.committer, held.ID)
+		p.tn.SetPlan(t, license.Enterprise().Without(license.SecretApproval))
+
+		// Action
+		res := setStatus(t, p.committer, held.ID, api.UpdateSecretApprovalRequestStatusJSONBodyStatusOpen)
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t,
+			"Failed to update secret approval request due to plan restriction. Upgrade plan to update secret approval request.",
+			res.JSON400.Message)
+		require.Equal(t, "close", getRequest(t, p.proj, held.ID).Status)
+	})
 }
 
 func TestSecretApprovalRequest_Propose(t *testing.T) {
@@ -652,5 +782,21 @@ func TestSecretApprovalRequest_Propose(t *testing.T) {
 		require.Equal(t, "Secret already exists: 'API_KEY' in path '/' of environment 'dev'", res.JSON400.Message)
 		require.Zero(t, openRequestCount(t, p.proj))
 		require.Equal(t, "original", secretmanager.GetSecret(t, p.proj, "dev", "API_KEY").Value)
+	})
+
+	t.Run("should refuse a committer without write access at the path and open no request", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p := newProtectedProject(t)
+		viewer := p.proj.NewUser(t, fixture.WithPrincipalName("viewer"), fixture.WithRoles("viewer"))
+
+		// Action
+		res := createSecret(t, viewer, p.proj, "API_KEY", "value")
+
+		// Assert
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "a viewer's write returned %s", res.Body)
+		require.Zero(t, openRequestCount(t, p.proj))
+		require.Empty(t, secretmanager.ListSecrets(t, p.proj, "dev"))
 	})
 }

@@ -27,17 +27,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  RowLink,
   TableCell,
   TableRow
 } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization } from "@app/context";
 import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   canAddSecretScanningResources,
   RESOURCE_DESCRIPTION_HELPER
 } from "@app/helpers/secretScanningV2";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   SecretScanningScanStatus,
   TSecretScanningDataSource,
@@ -46,15 +51,31 @@ import {
   useTriggerSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
 
+import { DataSourceTab } from "../data-source-tabs";
+
 type Props = {
   resource: TSecretScanningResourceWithDetails;
   dataSource: TSecretScanningDataSource;
-  onViewFindings: (resourceId: string) => void;
 };
 
-export const SecretScanningResourceRow = ({ resource, dataSource, onViewFindings }: Props) => {
+export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
   const { id, name, lastScannedAt, lastScanStatus, unresolvedFindings, lastScanStatusMessage } =
     resource;
+  const { currentOrg } = useOrganization();
+
+  const findingsSearch = { selectedTab: DataSourceTab.Findings, resourceId: id };
+  const pinnedLink = getInstancePinningLink(
+    currentOrg.id,
+    { id: dataSource.projectId, type: ProjectType.SecretScanning },
+    `data-sources/${dataSource.type}/${dataSource.id}`
+  );
+  const findingsLink = pinnedLink
+    ? { ...pinnedLink, search: findingsSearch as never }
+    : ({
+        to: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path,
+        params: { orgId: currentOrg.id, type: dataSource.type, dataSourceId: dataSource.id },
+        search: findingsSearch
+      } as const);
 
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
 
@@ -130,9 +151,9 @@ export const SecretScanningResourceRow = ({ resource, dataSource, onViewFindings
   };
 
   return (
-    <TableRow onClick={() => onViewFindings(id)}>
+    <TableRow linked>
       <TableCell isTruncatable>
-        <p className="truncate">{name}</p>
+        <RowLink {...findingsLink}>{name}</RowLink>
       </TableCell>
       <TableCell>{renderStatus()}</TableCell>
       <TableCell>
@@ -142,7 +163,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource, onViewFindings
           <span className="text-muted">Never</span>
         )}
       </TableCell>
-      <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
+      <TableCell variant="action">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton

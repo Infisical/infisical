@@ -40,6 +40,7 @@
   },
   "common": {
     "head-title": "{{title}} | Infisical",
+    "head-title-scoped": "{{title}} · {{scope}} | Infisical",
     "error_project-already-exists": "Já exite um projeto com este nome.",
     "email": "Email",
     "password": "Senha",

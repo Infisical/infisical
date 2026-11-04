@@ -306,12 +306,9 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                         onRemoveLastRule={
                           !isDisabled
                             ? () =>
-                                form.setValue(
-                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                  `permissions.${subject}` as any,
-                                  [],
-                                  { shouldDirty: true }
-                                )
+                                form.setValue(`permissions.${subject}` as any, [], {
+                                  shouldDirty: true
+                                })
                             : undefined
                         }
                         onShowAccessTree={

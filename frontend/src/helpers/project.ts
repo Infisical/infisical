@@ -227,7 +227,7 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
     case ProjectType.PAM:
       return "/organizations/$orgId/pam/access" as const;
     case ProjectType.AgentVault:
-      return "/organizations/$orgId/agent-vault/sessions" as const;
+      return "/organizations/$orgId/agent-vault" as const;
     default:
       return `/organizations/$orgId/projects/${type}/$projectId/overview` as const;
   }

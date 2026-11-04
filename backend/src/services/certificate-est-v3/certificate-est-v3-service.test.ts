@@ -9,9 +9,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 import { certificateEstV3ServiceFactory, TCertificateEstV3ServiceFactory } from "./certificate-est-v3-service";
@@ -515,6 +515,25 @@ describe("CertificateEstV3Service", () => {
           sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
         })
       ).rejects.toThrow(UnauthorizedError);
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
+    });
+
+    it("should reject re-enrollment when the client certificate was deleted", async () => {
+      mockCertificateDAL.findOne.mockResolvedValue({
+        status: CertStatus.ACTIVE,
+        deletedAt: new Date(),
+        commonName: "device.example.com",
+        serialNumber: "01"
+      });
+
+      await expect(
+        service.simpleReenrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
+        })
+      ).rejects.toThrow("was deleted and can no longer be re-enrolled");
 
       expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
     });

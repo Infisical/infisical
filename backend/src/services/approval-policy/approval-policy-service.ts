@@ -136,6 +136,11 @@ type TApprovalPolicyServiceFactoryDep = {
 
 export type TApprovalPolicyServiceFactory = ReturnType<typeof approvalPolicyServiceFactory>;
 
+export const isApprovalRequestExpired = (
+  request: { expiresAt?: Date | string | null },
+  now: Date = new Date()
+): boolean => Boolean(request.expiresAt && new Date(request.expiresAt) < now);
+
 export const approvalPolicyServiceFactory = ({
   approvalPolicyDAL,
   approvalPolicyStepsDAL,
@@ -495,7 +500,7 @@ export const approvalPolicyServiceFactory = ({
         throw new BadRequestError({ message: "Request is not pending" });
       }
 
-      if (locked.expiresAt && new Date(locked.expiresAt) < new Date()) {
+      if (isApprovalRequestExpired(locked)) {
         await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired }, tx);
         throw new BadRequestError({ message: "Request has expired" });
       }
@@ -1547,7 +1552,7 @@ export const approvalPolicyServiceFactory = ({
       });
     }
 
-    if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
+    if (isApprovalRequestExpired(request)) {
       await approvalRequestDAL.update(
         { id: requestId, status: ApprovalRequestStatus.Pending },
         { status: ApprovalRequestStatus.Expired }
@@ -1773,7 +1778,7 @@ export const approvalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Request is not pending" });
     }
 
-    if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
+    if (isApprovalRequestExpired(request)) {
       await approvalRequestDAL.update(
         { id: requestId, status: ApprovalRequestStatus.Pending },
         { status: ApprovalRequestStatus.Expired }

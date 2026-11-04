@@ -23,8 +23,6 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { EventModificationType } from "@app/services/event-outbox/event-definition";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
-import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import {
   assertFolderMoveAllowed,
   buildFolderPath,
@@ -35,6 +33,8 @@ import {
   TFolderMoveAccessScope
 } from "@app/services/secret-folder/secret-folder-fns";
 import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
+import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
+import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 import {
   ChangeType,
@@ -42,8 +42,8 @@ import {
   TCommitResourceChangeDTO,
   TFolderCommitServiceFactory
 } from "../folder-commit/folder-commit-service";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";

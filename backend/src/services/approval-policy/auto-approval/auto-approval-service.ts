@@ -452,14 +452,14 @@ export const autoApprovalServiceFactory = ({
           const stableId = parsedInput ? (definition.getStableId?.(facts) ?? parsedInput.id) : null;
           const previouslyUsed = Boolean(
             parsedInput &&
-              stableId &&
-              target.constraintIds.has(AUTO_APPROVAL_UNUSED_CONSTRAINT) &&
-              (await isRecordUsed({
-                connectionId: target.connectionId,
-                subject: target.subject,
-                stableId,
-                recordId: parsedInput.id
-              }))
+            stableId &&
+            target.constraintIds.has(AUTO_APPROVAL_UNUSED_CONSTRAINT) &&
+            (await isRecordUsed({
+              connectionId: target.connectionId,
+              subject: target.subject,
+              stableId,
+              recordId: parsedInput.id
+            }))
           );
           return [
             key,

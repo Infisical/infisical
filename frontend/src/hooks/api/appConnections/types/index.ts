@@ -43,6 +43,7 @@ import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THpeIloConnection } from "./hpe-ilo-connection";
 import { THumanitecConnection } from "./humanitec-connection";
+import { TImpervaConnection } from "./imperva-connection";
 import { TJiraConnection } from "./jira-connection";
 import { TKeeperConnection } from "./keeper-connection";
 import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
@@ -76,6 +77,7 @@ import { TRenderConnection } from "./render-connection";
 import { TRundeckConnection } from "./rundeck-connection";
 import { TS3CompatibleConnection } from "./s3-compatible-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
+import { TServiceNowConnection } from "./servicenow-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
 import { TSpaceliftConnection } from "./spacelift-connection";
@@ -134,6 +136,7 @@ export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./hpe-ilo-connection";
 export * from "./humanitec-connection";
+export * from "./imperva-connection";
 export * from "./jira-connection";
 export * from "./keeper-connection";
 export * from "./kemp-loadmaster-connection";
@@ -167,6 +170,7 @@ export * from "./render-connection";
 export * from "./rundeck-connection";
 export * from "./s3-compatible-connection";
 export * from "./salesforce-connection";
+export * from "./servicenow-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
 export * from "./spacelift-connection";
@@ -251,6 +255,7 @@ export type TAppConnection =
   | TNetScalerConnection
   | TPaloAltoNetworksConnection
   | TKempLoadMasterConnection
+  | TImpervaConnection
   | TDopplerConnection
   | TOvhConnection
   | TDevinConnection
@@ -277,6 +282,7 @@ export type TAppConnection =
   | TStripeConnection
   | TKeeperConnection
   | THpeIloConnection
+  | TServiceNowConnection
   | TS3CompatibleConnection
   | TJiraConnection;
 

@@ -18,6 +18,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { withCloudPlanDefaults } from "./cloud-plan-defaults";
 import { TLicenseDALFactory } from "./license-dal";
 import { getDefaultOnPremFeatures, getLicenseKeyConfig } from "./license-fns";
 import {
@@ -207,7 +208,10 @@ export const licenseServiceFactory = ({
     if (!entitlements) {
       throw new BadRequestError({ message: "License Server entitlements are unavailable" });
     }
-    const currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+    const currentPlan = withCloudPlanDefaults(
+      projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements),
+      entitlements
+    );
 
     currentPlan.workspacesUsed = await projectDAL.countOfBillableOrgProjects(rootOrgId);
 
@@ -291,13 +295,14 @@ export const licenseServiceFactory = ({
         `getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error]`
       );
       const fallbackTtl = jitteredLicenseCloudPlanTtl();
+      const fallbackPlan = withCloudPlanDefaults(onPremFeatures, null);
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.LicenseCloudPlan(orgId),
         fallbackTtl,
-        JSON.stringify(onPremFeatures)
+        JSON.stringify(fallbackPlan)
       );
       await keyStore.setItemWithExpiry(KeyStorePrefixes.LicenseCloudPlanFallback(orgId), fallbackTtl, "1");
-      return onPremFeatures;
+      return fallbackPlan;
     } finally {
       logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]`);
     }

@@ -4,6 +4,7 @@ sidebarTitle: "Webhook"
 description: "Send certificate alert notifications to a webhook URL."
 ---
 
+import AlertApiFields from "/snippets/documentation/platform/pki/applications/alerting/alert-api-fields.mdx";
 import StartAlert from "/snippets/documentation/platform/pki/applications/alerting/start-alert.mdx";
 
 A webhook channel on a certificate [alert](/documentation/platform/pki/applications/alerting/overview) sends an HTTP POST request to your endpoint whenever the alert fires. Use a webhook to connect certificate alerts to your own systems or to services Infisical doesn't support directly.
@@ -14,35 +15,107 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
 
 ## Prerequisites
 
-- The Certificate Management **Admin** role to create a Certificate Management alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
+- The Certificate Management **Admin** role to create an organization-wide alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
 - An HTTPS endpoint that accepts POST requests
 
-## Step 1: Start an alert
+## Create the alert
 
-<StartAlert />
+<Tabs>
+  <Tab title="Infisical UI">
+    <StartAlert />
 
-## Step 2: Add the webhook channel
+    On the **Channels** step, add the webhook channel:
 
-<Steps>
-  <Step>
-    Select **Add Channel** > **Webhook** and enter your endpoint's **URL**. The URL must use HTTPS.
-  </Step>
-  <Step>
-    If your endpoint requires authentication, under **Authentication**, select **Bearer Token**, **Basic Auth**, or **API Key**, and enter the [credentials](#authentication) it expects.
-  </Step>
-  <Step>
-    Optionally, select **Add Signing Secret** and enter a secret, so your endpoint can [verify the signature](#verify-the-signature) of each request.
-  </Step>
-  <Step>
-    Optionally, select **Add Header** to send [custom headers](#custom-headers) with each request.
-  </Step>
-  <Step>
-    Optionally, select **Send test** to send a test request to your endpoint.
-  </Step>
-  <Step>
-    Select **Continue**, check the **Review** step, and select **Create Alert**.
-  </Step>
-</Steps>
+    <Steps>
+      <Step>
+        Select **Add Channel** > **Webhook** and enter your endpoint's **URL**. The URL must use HTTPS.
+      </Step>
+      <Step>
+        If your endpoint requires authentication, under **Authentication**, select **Bearer Token**, **Basic Auth**, or **API Key**, and enter the [credentials](#authentication) it expects.
+      </Step>
+      <Step>
+        Optionally, select **Add Signing Secret** and enter a secret, so your endpoint can [verify the signature](#verify-the-signature) of each request.
+      </Step>
+      <Step>
+        Optionally, select **Add Header** to send [custom headers](#custom-headers) with each request.
+      </Step>
+      <Step>
+        Optionally, select **Send test** to send a test request to your endpoint.
+      </Step>
+      <Step>
+        Select **Continue**, check the **Review** step, and select **Create Alert**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Send a request to the create alert endpoint with an [access token](/api-reference/overview/authentication) and a `webhook` channel.
+
+    <AlertApiFields />
+
+    The channel's `config` takes these fields:
+
+    | Field | Value |
+    | --- | --- |
+    | `url` (required) | Your endpoint's HTTPS URL |
+    | `authType` | `bearer` (**Bearer Token**), `basic` (**Basic Auth**), or `header` (**API Key**), for [authentication](#authentication) |
+    | `authCredentials` | The token, if `authType` is `bearer` |
+    | `basicUsername`, `basicPassword` | The username and password, if `authType` is `basic` |
+    | `authHeaderName`, `authHeaderValue` | The header name and the API key, if `authType` is `header` |
+    | `signingSecret` | A secret to [sign each request](#verify-the-signature) with |
+    | `headers` | [Custom headers](#custom-headers), as an array of `{ "key": "<name>", "value": "<value>" }` objects |
+
+    <CodeGroup>
+    ```bash Organization-wide
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/alerts \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "imported-certificates-expiring",
+        "resourceType": "cert-manager",
+        "eventType": "cert-manager.certificate.expiry",
+        "condition": { "alertBefore": "30d", "sources": ["imported"] },
+        "channels": [
+          {
+            "name": "certificate-inventory",
+            "channelType": "webhook",
+            "config": {
+              "url": "https://alerts.example.com/infisical",
+              "authType": "bearer",
+              "authCredentials": "<token>",
+              "signingSecret": "<signing-secret>"
+            }
+          }
+        ]
+      }'
+    ```
+
+    ```bash Application
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/alerts \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "payments-api-renewals",
+        "resourceType": "cert-manager.application",
+        "resourceId": "<application-id>",
+        "eventType": "cert-manager.application.certificate.renewal",
+        "channels": [
+          {
+            "name": "payments-deploy-hook",
+            "channelType": "webhook",
+            "config": {
+              "url": "https://deploy.example.com/hooks/certificate-renewed",
+              "signingSecret": "<signing-secret>",
+              "headers": [{ "key": "X-Env", "value": "production" }]
+            }
+          }
+        ]
+      }'
+    ```
+    </CodeGroup>
+  </Tab>
+</Tabs>
 
 <Check>
   Your alert is set up. Infisical sends a POST request to your endpoint whenever the alert fires.
@@ -72,9 +145,9 @@ Infisical sends custom headers with each request, such as an `X-Env` header your
 
 ## Webhook event types
 
-Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type` field names the event, and application alerts and Certificate Management alerts use different values:
+Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type` field names the event, and application alerts and organization-wide alerts use different values:
 
-| Event | Application alert `type` | Certificate Management alert `type` |
+| Event | Application alert `type` | Organization-wide alert `type` |
 |-------|--------------------------|----------------------------------|
 | Expiration | `com.infisical.cert-manager.application.certificate.expiry` | `com.infisical.cert-manager.certificate.expiry` |
 | Issuance | `com.infisical.cert-manager.application.certificate.issuance` | `com.infisical.cert-manager.certificate.issuance` |
@@ -91,7 +164,7 @@ The `subject` field is the same value without the `com.infisical.` prefix.
 To find out which kind of alert sent a request, read `data.alert.resourceType`:
 
 - `cert-manager.application`: an application alert, with the application's ID in `data.alert.resourceId`
-- `cert-manager`: a Certificate Management alert
+- `cert-manager`: an organization-wide alert
 - `cert-manager.signer`: a signer certificate expiration alert, whose items list the signers in `resource.signerIds` and `resource.signerNames` (only the selected signers, if the alert has a **Signers** filter)
 
 <Note>
@@ -210,8 +283,8 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
     }
     ```
   </Tab>
-  <Tab title="Certificate Management alert">
-    A Certificate Management alert sends the same payload as an application alert, with `resourceType` set to `cert-manager`. This example shows a revocation:
+  <Tab title="Organization-wide alert">
+    An organization-wide alert sends the same payload as an application alert, with `resourceType` set to `cert-manager`. This example shows a revocation:
 
     ```json expandable
     {

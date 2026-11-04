@@ -6,10 +6,10 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { TGetSecretMetadataDTO } from "@app/services/secret/secret-types";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TGetSecretMetadataDTO } from "@app/services/secret/secret-types";
 
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { recursivelyGetSecretPaths } from "./secret-v2-bridge-fns";

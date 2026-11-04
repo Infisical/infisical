@@ -330,7 +330,6 @@ export const SelectOrgPage = () => {
   }, [autoSelectErrorMessage]);
 
   // MFA challenge handed off by beforeLoad's auto-select
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const rootOrg = orgs?.find((o) => o.id === orgId);
     const subOrgParent = rootOrg

@@ -30,8 +30,8 @@ const build = (orphans: { actorUserId: string | null; actorIdentityId: string | 
     cronJob: { register } as never,
     orgDAL: { findOrphanedProjectActors },
     eventEmitter: {
-      emit: async (event) => {
-        emitted.push(event);
+      emit: async (events) => {
+        emitted.push(...events);
       }
     }
   });
@@ -54,12 +54,14 @@ describe("orgAccessSweepQueue", () => {
     });
     expect(emitted).toEqual([
       {
-        eventType: ORG_MEMBERSHIP_REMOVED_EVENT,
-        payload: { orgId: ORG_A, actorType: ActorType.USER, actorId: uuid(10) }
+        id: expect.any(String) as string,
+        type: ORG_MEMBERSHIP_REMOVED_EVENT,
+        data: { orgId: ORG_A, actorType: ActorType.USER, actorId: uuid(10) }
       },
       {
-        eventType: ORG_MEMBERSHIP_REMOVED_EVENT,
-        payload: { orgId: ORG_B, actorType: ActorType.IDENTITY, actorId: uuid(20) }
+        id: expect.any(String) as string,
+        type: ORG_MEMBERSHIP_REMOVED_EVENT,
+        data: { orgId: ORG_B, actorType: ActorType.IDENTITY, actorId: uuid(20) }
       }
     ]);
     expect(loggerWarn).not.toHaveBeenCalled();

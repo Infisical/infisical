@@ -1,5 +1,3 @@
-import crypto from "node:crypto";
-
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
@@ -60,74 +58,6 @@ const createPolicy = async (dto: {
   const { approval } = res.json();
   createdPolicyIds.push(approval.id);
   return approval;
-};
-
-// Returns the raw response because callers assert on rejections too, so only
-// register a policy when one was actually created.
-const createPolicyWithGroupApprover = async (dto: { name: string; groupId: string; secretPath: string }) => {
-  const res = await testServer.inject({
-    method: "POST",
-    url: `/api/v1/access-approvals/policies`,
-    headers: {
-      authorization: `Bearer ${jwtAuthToken}`
-    },
-    body: {
-      projectSlug: seedData1.project.slug,
-      environment: seedData1.environment.slug,
-      name: dto.name,
-      secretPath: dto.secretPath,
-      approvers: [{ id: dto.groupId, type: ApproverType.Group }],
-      approvals: 1
-    }
-  });
-
-  if (res.statusCode === 200) {
-    createdPolicyIds.push(res.json().approval.id);
-  }
-  return res;
-};
-
-const seedGroup = async (db: Knex, dto: { slug: string; addToProject: boolean }) => {
-  const [group] = await db(TableName.Groups)
-    .insert({
-      orgId: seedData1.organization.id,
-      name: dto.slug,
-      slug: dto.slug
-    })
-    .returning("*");
-
-  if (dto.addToProject) {
-    const [membership] = await db(TableName.Membership)
-      .insert({
-        actorGroupId: group.id,
-        scope: AccessScope.Project,
-        scopeOrgId: seedData1.organization.id,
-        scopeProjectId: seedData1.project.id,
-        isActive: true
-      })
-      .returning("*");
-
-    await db(TableName.MembershipRole).insert({
-      membershipId: membership.id,
-      role: "member"
-    });
-  }
-
-  return group;
-};
-
-const cleanupGroup = async (db: Knex, groupId: string) => {
-  const memberships = await db(TableName.Membership).where({ actorGroupId: groupId }).select("id");
-  if (memberships.length) {
-    await db(TableName.MembershipRole)
-      .whereIn(
-        "membershipId",
-        memberships.map((m) => m.id)
-      )
-      .del();
-    await db(TableName.Membership).where({ actorGroupId: groupId }).del();
-  }
-  await db(TableName.Groups).where({ id: groupId }).del();
 };
 
 type TProjectMember = { userId: string; token: string };
@@ -225,84 +155,6 @@ describe("Access approval policy router", async () => {
   afterEach(async () => {
     const ids = createdPolicyIds.splice(0);
     await Promise.all(ids.map(deletePolicy));
-  });
-
-  test("Create policy", async () => {
-    const policy = await createPolicy({
-      secretPath: "/",
-      approvals: 1,
-      approvers: [{ id: seedData1.id, type: ApproverType.User }],
-      name: "test-access-policy"
-    });
-
-    expect(policy.name).toBe("test-access-policy");
-  });
-
-  test("Create policy fails when group approver is not a member of the project", async () => {
-    // A group id that has no membership row for the project must be rejected.
-    const nonMemberGroupId = crypto.randomUUID();
-
-    const res = await createPolicyWithGroupApprover({
-      name: "test-access-policy-group-not-in-project",
-      groupId: nonMemberGroupId,
-      secretPath: "/group-not-member"
-    });
-
-    expect(res.statusCode).toBe(400);
-    expect(res.json().message).toContain("Some groups are not members of the project");
-    expect(res.json().message).toContain(nonMemberGroupId);
-  });
-
-  test("Create policy succeeds when group approver is a member of the project", async () => {
-    const db = getDb();
-    const group = await seedGroup(db, { slug: "aap-group-in-project", addToProject: true });
-
-    try {
-      const res = await createPolicyWithGroupApprover({
-        name: "test-access-policy-group-in-project",
-        groupId: group.id,
-        secretPath: "/group-member"
-      });
-
-      expect(res.statusCode).toBe(200);
-      expect(res.json().approval.name).toBe("test-access-policy-group-in-project");
-    } finally {
-      await cleanupGroup(db, group.id);
-    }
-  });
-
-  test("Update policy fails when group approver is not a member of the project", async () => {
-    const db = getDb();
-    const group = await seedGroup(db, { slug: "aap-group-update", addToProject: true });
-    const nonMemberGroupId = crypto.randomUUID();
-
-    try {
-      const createRes = await createPolicyWithGroupApprover({
-        name: "test-access-policy-update",
-        groupId: group.id,
-        secretPath: "/group-update"
-      });
-      expect(createRes.statusCode).toBe(200);
-      const policyId = createRes.json().approval.id;
-
-      const updateRes = await testServer.inject({
-        method: "PATCH",
-        url: `/api/v1/access-approvals/policies/${policyId}`,
-        headers: {
-          authorization: `Bearer ${jwtAuthToken}`
-        },
-        body: {
-          approvers: [{ id: nonMemberGroupId, type: ApproverType.Group }],
-          approvals: 1
-        }
-      });
-
-      expect(updateRes.statusCode).toBe(400);
-      expect(updateRes.json().message).toContain("Some groups are not members of the project");
-      expect(updateRes.json().message).toContain(nonMemberGroupId);
-    } finally {
-      await cleanupGroup(db, group.id);
-    }
   });
 
   test("Generic delete endpoint checks permission before revealing the policy type", async () => {

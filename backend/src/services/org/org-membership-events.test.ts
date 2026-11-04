@@ -27,8 +27,8 @@ const buildEmitter = () => {
   return {
     emitted,
     eventEmitter: {
-      emit: async (event: TEventInput, tx?: unknown) => {
-        emitted.push({ event, tx });
+      emit: async (events: TEventInput[], tx?: unknown) => {
+        emitted.push(...events.map((event) => ({ event, tx })));
       }
     }
   };
@@ -58,8 +58,9 @@ describe("org membership events", () => {
     expect(emitted).toEqual([
       {
         event: {
-          eventType: GROUP_MEMBERSHIP_REMOVED_EVENT,
-          payload: {
+          id: expect.any(String) as string,
+          type: GROUP_MEMBERSHIP_REMOVED_EVENT,
+          data: {
             groupId: GROUP,
             orgIds: [ORG],
             members: [
@@ -85,15 +86,22 @@ describe("org membership events", () => {
     expect(emitted).toHaveLength(2);
     for (const { event, tx } of emitted) {
       expect(tx).toBe(TX);
-      expect(event.eventType).toBe(GROUP_LINK_REMOVED_EVENT);
-      expect(event.payload).toMatchObject({ orgId: ORG, groupId: GROUP });
-      expect((event.payload as { members: unknown[] }).members.length).toBeLessThanOrEqual(100);
+      expect(event.type).toBe(GROUP_LINK_REMOVED_EVENT);
+      expect(event.data).toMatchObject({ orgId: ORG, groupId: GROUP });
+      expect((event.data as { members: unknown[] }).members.length).toBeLessThanOrEqual(100);
     }
 
     const { emitted: empty, eventEmitter: emptyEmitter } = buildEmitter();
     await emitGroupLinkRemoved(emptyEmitter, { orgId: ORG, groupId: GROUP, members: [] }, TX);
     expect(empty).toEqual([
-      { event: { eventType: GROUP_LINK_REMOVED_EVENT, payload: { orgId: ORG, groupId: GROUP, members: [] } }, tx: TX }
+      {
+        event: {
+          id: expect.any(String) as string,
+          type: GROUP_LINK_REMOVED_EVENT,
+          data: { orgId: ORG, groupId: GROUP, members: [] }
+        },
+        tx: TX
+      }
     ]);
   });
 
@@ -102,7 +110,11 @@ describe("org membership events", () => {
     await emitGroupRemoved(eventEmitter, { groupId: GROUP, orgIds: [ORG], members: [] });
     expect(emitted).toEqual([
       {
-        event: { eventType: GROUP_REMOVED_EVENT, payload: { groupId: GROUP, orgIds: [ORG], members: [] } },
+        event: {
+          id: expect.any(String) as string,
+          type: GROUP_REMOVED_EVENT,
+          data: { groupId: GROUP, orgIds: [ORG], members: [] }
+        },
         tx: undefined
       }
     ]);
@@ -127,9 +139,9 @@ describe("org membership events", () => {
       const covered = new Set<string>();
       for (const { event, tx } of emitted) {
         expect(tx).toBe(TX);
-        expect(event.eventType).toBe(eventType);
-        expect(Buffer.byteLength(JSON.stringify(event.payload), "utf8")).toBeLessThan(MAX_OUTBOX_PAYLOAD_BYTES);
-        const payload = schema.parse(event.payload);
+        expect(event.type).toBe(eventType);
+        expect(Buffer.byteLength(JSON.stringify(event.data), "utf8")).toBeLessThan(MAX_OUTBOX_PAYLOAD_BYTES);
+        const payload = schema.parse(event.data);
         for (const orgId of payload.orgIds) {
           for (const member of payload.members) covered.add(`${orgId}:${member.actorId}`);
         }
@@ -143,8 +155,9 @@ describe("org membership events", () => {
     await emitOrgMembershipRemoved(eventEmitter, { orgId: ORG, actors: toOrgMembershipActors({ userIds: [USER] }) });
     expect(emitted).toHaveLength(1);
     expect(emitted[0].event).toEqual({
-      eventType: ORG_MEMBERSHIP_REMOVED_EVENT,
-      payload: { orgId: ORG, actorType: ActorType.USER, actorId: USER }
+      id: expect.any(String) as string,
+      type: ORG_MEMBERSHIP_REMOVED_EVENT,
+      data: { orgId: ORG, actorType: ActorType.USER, actorId: USER }
     });
   });
 });
