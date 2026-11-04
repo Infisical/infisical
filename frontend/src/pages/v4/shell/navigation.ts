@@ -87,7 +87,7 @@ export const orgSections: readonly ShellNavSection[] = [
       access(""),
       { id: "billing", label: "Usage & billing", icon: "file", path: "/billing" },
       audit(""),
-      { ...settings(""), drillIn: true }
+      { ...settings(""), drillIn: true, search: { selectedTab: "tab-org-general" } }
     ]
   }
 ];

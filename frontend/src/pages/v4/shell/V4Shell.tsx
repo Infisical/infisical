@@ -3,7 +3,7 @@ import { useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 
 import type { BreadcrumbCrumb } from "@app/components/v4/ui/breadcrumb";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Sidebar, type SidebarProps } from "@app/components/v4/ui/sidebar";
+import { Sidebar, type SidebarSection } from "@app/components/v4/ui/sidebar";
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 
 import { useV4Session } from "../data/session/contract";
@@ -55,7 +55,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
   const go = (href: string) => navigate({ href });
   const href = (item: Pick<ShellNavItem, "path" | "search">) =>
     `${base}${item.path}${item.search ? `?${new URLSearchParams(item.search)}` : ""}`;
-  const toSidebar = (sections: readonly ShellNavSection[]): SidebarProps["sections"] =>
+  const toSidebar = (sections: readonly ShellNavSection[]): readonly SidebarSection[] =>
     sections.map((section) => ({
       label: section.label,
       items: section.items.map((item) => ({
