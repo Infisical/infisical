@@ -2,7 +2,7 @@ import { isIPv6 } from "node:net";
 import { Readable } from "node:stream";
 import { gunzipSync } from "node:zlib";
 
-import { ClickHouseClient, createClient, parseError } from "@clickhouse/client";
+import { ClickHouseClient, createClient } from "@clickhouse/client";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -58,7 +58,8 @@ export const executeClickHouseStatement = async (client: ClickHouseClient, query
   } catch {
     throw new Error("ClickHouse returned an error response Infisical couldn't read");
   }
-  throw parseError(errorText);
+  // not the client's parseError: its regex backtracks for seconds on a crafted error body
+  throw new Error(errorText);
 };
 
 const buildUrl = (sslEnabled: boolean, host: string, port: number) =>
