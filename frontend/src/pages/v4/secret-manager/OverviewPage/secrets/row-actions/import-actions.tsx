@@ -11,7 +11,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 
-import { environmentLabel, LOCAL_ONLY } from "../flows/shared";
+import { environmentLabel } from "../flows/shared";
 import type { RowActionHostProps } from "./types";
 
 export function ImportActions({ action, onClose, onApply }: RowActionHostProps<"import">) {
@@ -26,7 +26,7 @@ export function ImportActions({ action, onClose, onApply }: RowActionHostProps<"
             ? { ...resource, replicationStatus: "succeeded", lastReplicated: timestamp }
             : resource
         ),
-      { title: "Resynced replicated secrets in local demo data", description: LOCAL_ONLY }
+      { title: "Resynced replicated secrets in local demo data" }
     );
     onClose();
   }, [resync]);
@@ -52,8 +52,7 @@ export function ImportActions({ action, onClose, onApply }: RowActionHostProps<"
             onClick={() => {
               if (!removing) return;
               onApply((current) => current.filter((resource) => resource.id !== removing.id), {
-                title: "Successfully removed secret link",
-                description: LOCAL_ONLY
+                title: "Successfully removed secret link"
               });
               onClose();
             }}

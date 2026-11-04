@@ -54,7 +54,7 @@ import {
   RotationField as SyncField,
   TextField
 } from "../flows/secret-rotation/fields";
-import { DiscardDialog, Gate, LOCAL_ONLY } from "../flows/shared";
+import { DiscardDialog, Gate } from "../flows/shared";
 import { ProviderLogo, WizardSheet } from "../flows/wizard-sheet";
 import { NEXT_PHASE } from "../overview-cells";
 import type { RowActionTone } from "../row-actions/types";
@@ -1094,8 +1094,7 @@ export function CreateSecretSyncSheet({
         syncOptions: data.syncOptions
       },
       {
-        title: `Successfully added ${destinationName} sync`,
-        description: LOCAL_ONLY
+        title: `Successfully added ${destinationName} sync`
       }
     );
     close();

@@ -18,7 +18,6 @@ import { environments, type Resource, type Secret } from "../../secrets-model";
 
 import styles from "./flows.module.css";
 
-export const LOCAL_ONLY: string | undefined = undefined;
 
 export const environmentLabel = (value: string) =>
   environments.find((environment) => environment.value === value)?.label ?? value;

@@ -6,6 +6,7 @@ import { type SecretVersions, SecretType } from "@app/hooks/api/secrets/types";
 
 import type { SecretsFlowsAdapter } from "./contract-flows";
 import { fakeLeaseData } from "./demo-leases";
+import { secretsManagedDemo } from "./demo-managed";
 import {
   childPath,
   demoMutation,
@@ -176,6 +177,7 @@ const dynamicAt =
     entry.name === name;
 
 export const secretsFlowsDemo: SecretsFlowsAdapter = {
+  ...secretsManagedDemo,
   useDynamicSecretDetails: ({ projectSlug, environmentSlug, path, name }) => {
     const entry = useStore()
       .use()

@@ -14,7 +14,6 @@ import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
 import { Textarea } from "@app/components/v4/ui/textarea";
 
-import { LOCAL_ONLY } from "./shared";
 import type { AddFlowProps } from "./types";
 
 import styles from "./flows.module.css";
@@ -70,7 +69,7 @@ export function CreateFolderFlow({
         name: folderName,
         description: description.trim() ? description : ""
       })),
-      { title: "Successfully created folder", description: LOCAL_ONLY }
+      { title: "Successfully created folder" }
     );
   };
 

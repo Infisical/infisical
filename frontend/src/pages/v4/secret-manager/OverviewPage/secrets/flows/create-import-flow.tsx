@@ -15,7 +15,7 @@ import { Input } from "@app/components/v4/ui/input";
 import { Select } from "@app/components/v4/ui/select";
 import { SmallText } from "@app/components/v4/ui/text";
 
-import { environmentLabel, folderExists, LOCAL_ONLY } from "./shared";
+import { environmentLabel, folderExists } from "./shared";
 import type { AddFlowProps } from "./types";
 
 import styles from "./flows.module.css";
@@ -61,7 +61,7 @@ export function CreateImportFlow({
     ) {
       onError({
         title: "Import was not created",
-        description: `No folder exists at ${sourcePath || "an empty path"} in ${environmentLabel(environment)} in local demo data.`
+        description: `No folder exists at ${sourcePath || "an empty path"} in ${environmentLabel(environment)}.`
       });
       return;
     }
@@ -95,7 +95,7 @@ export function CreateImportFlow({
           replicated: replication
         }
       ],
-      { title: "Successfully linked.", description: LOCAL_ONLY }
+      { title: "Successfully linked." }
     );
     onOpenChange(false);
   };

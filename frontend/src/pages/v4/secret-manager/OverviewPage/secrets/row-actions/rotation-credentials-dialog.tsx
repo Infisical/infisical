@@ -13,8 +13,9 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { SecretValue } from "@app/components/v4/ui/sensitive-editor";
 import { Snippet } from "@app/components/v4/ui/snippet";
 import { SmallText, Text } from "@app/components/v4/ui/text";
+import type { SecretRotation as ApiSecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 
-import type { Resource } from "../../secrets-model";
+import { useV4Adapter } from "../../../../data/adapters";
 import {
   appConnectionName,
   rotationConnectionOf,
@@ -25,7 +26,7 @@ import {
   IS_ROTATION_DUAL_CREDENTIALS,
   SECRET_ROTATION_MAP
 } from "../flows/secret-rotation/schemas";
-import { CREDENTIAL_FIELDS, type CredentialField, credentialsOf } from "./rotation-credentials";
+import { CREDENTIAL_FIELDS, type CredentialField } from "./rotation-credentials";
 
 import styles from "./rotation-actions.module.css";
 
@@ -78,19 +79,24 @@ function CredentialSet({
 export function RotationCredentialsDialog({
   open,
   rotation,
-  resources,
   onOpenChange
 }: {
   open: boolean;
   rotation: RotationResource;
-  resources: readonly Resource[];
   onOpenChange: (open: boolean) => void;
 }) {
   const type = rotationTypeOf(rotation);
   const rotationType = SECRET_ROTATION_MAP[type].name;
   const appName = appConnectionName(rotationConnectionOf(rotation).app);
   const fields = CREDENTIAL_FIELDS[type];
-  const { active, retired } = credentialsOf(rotation, resources);
+  const { data } = useV4Adapter("secrets").useSecretRotationCredentials(
+    { rotationId: rotation.id, type: type as unknown as ApiSecretRotation },
+    { enabled: open }
+  );
+  const credentials = (data?.generatedCredentials ?? []) as (Record<string, string> | undefined)[];
+  const activeIndex = data?.activeIndex ?? 0;
+  const active = credentials[activeIndex] ?? {};
+  const retired = credentials[activeIndex === 0 ? 1 : 0];
   const next = rotation.nextRotationAt ? new Date(rotation.nextRotationAt) : undefined;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

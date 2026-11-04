@@ -16,7 +16,7 @@ import { Textarea } from "@app/components/v4/ui/textarea";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
-import { DiscardDialog, LOCAL_ONLY, secretsAt } from "./shared";
+import { DiscardDialog, secretsAt } from "./shared";
 import type { AddFlowProps } from "./types";
 import { ProviderLogo, WizardSheet } from "./wizard-sheet";
 
@@ -285,8 +285,7 @@ export function CreateHoneyTokenFlow({
         }))
       ],
       {
-        title: "Successfully created AWS Honey Token",
-        description: LOCAL_ONLY
+        title: "Successfully created AWS Honey Token"
       }
     );
     onOpenChange(false);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { AxiosError } from "axios";
 
 import {
   AlertDialog,
@@ -23,17 +24,13 @@ import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
 import { Switch } from "@app/components/v4/ui/switch";
 import { Text } from "@app/components/v4/ui/text";
+import type { SecretRotation as ApiSecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
+import type { TReconcileLocalAccountRotationDTO } from "@app/hooks/api/secretRotationsV2/types";
 
-import { type Resource, type Secret, versionsOf } from "../../secrets-model";
+import { useV4Adapter } from "../../../../data/adapters";
+import type { Resource } from "../../secrets-model";
 import { SecretRotationFlow } from "../flows/secret-rotation-flow";
-import {
-  nextRotationFrom,
-  rotationParameters,
-  type RotationResource,
-  rotationSecrets,
-  rotationSecretsMapping,
-  rotationTypeOf
-} from "../flows/secret-rotation/model";
+import { type RotationResource, rotationTypeOf } from "../flows/secret-rotation/model";
 import {
   HpIloRotationMethod,
   SECRET_ROTATION_MAP,
@@ -41,8 +38,6 @@ import {
   UnixLinuxLocalAccountRotationMethod,
   WindowsLocalAccountRotationMethod
 } from "../flows/secret-rotation/schemas";
-import { LOCAL_ONLY } from "../flows/shared";
-import { credentialsOf, rotatedCredentials } from "./rotation-credentials";
 import { RotationCredentialsDialog } from "./rotation-credentials-dialog";
 import type { RowAction, RowActionHostProps } from "./types";
 
@@ -67,11 +62,6 @@ const reconcileTypeName = (type: SecretRotation) => {
   if (type === SecretRotation.WindowsLocalAccount) return "Windows Local Account";
   return "HP iLO Local Account";
 };
-
-const sameScope = (secret: Secret, rotation: RotationResource) =>
-  secret.project === rotation.project &&
-  secret.environment === rotation.environment &&
-  secret.path === rotation.path;
 
 function RotateDialog({
   open,
@@ -214,37 +204,47 @@ export function RotationActions({
   onApply,
   onToast
 }: RowActionHostProps<"rotation">) {
+  const adapter = useV4Adapter("secrets");
+  const rotateRotation = adapter.useRotateSecretRotation();
+  const deleteRotation = adapter.useDeleteSecretRotation();
+  const reconcileRotation = adapter.useReconcileSecretRotation();
+  const checkCredentials = adapter.useCheckSecretRotationCredentials();
   const [last, setLast] = useState<Action | undefined>(action);
   const [session, setSession] = useState(0);
   if (action && action !== last) {
     setLast(action);
     setSession(session + 1);
   }
+  const failed = (title: string) => (error: unknown) =>
+    onToast("bad", {
+      title,
+      description:
+        (error as AxiosError<{ message?: string }>)?.response?.data?.message ??
+        (error instanceof Error ? error.message : undefined)
+    });
+  const target = (rotation: RotationResource) => ({
+    rotationId: rotation.id,
+    type: rotationTypeOf(rotation) as unknown as ApiSecretRotation,
+    projectId: scope.project,
+    secretPath: rotation.path
+  });
 
+  const validating = action?.action === "validate" ? action.entry : undefined;
   useEffect(() => {
-    if (action?.action !== "validate") return;
-    const rotation = action.entry;
-    const rotationType = SECRET_ROTATION_MAP[rotationTypeOf(rotation)].name;
-    const secrets = rotationSecrets(rotation, resources);
-    const keys = Object.values(rotationSecretsMapping(rotation));
-    const missing = keys.filter(
-      (key) =>
-        !Object.values(secrets).some(
-          (secret) => secret.name === key && secret.value.status === "present" && secret.value.value
-        )
-    );
-    if (missing.length)
-      onToast("bad", {
-        title: "Credentials not found",
-        description: `${missing.join(", ")} has no current value in local demo data. No request was sent to ${rotationType}.`
-      });
-    else
-      onToast("ok", {
-        title: "Credentials checked locally",
-        description: `The current rotated credentials for ${rotation.name} are present in local demo data. No request was sent, so nothing authenticated to ${rotationType}.`
-      });
+    if (!validating) return;
+    const rotationType = SECRET_ROTATION_MAP[rotationTypeOf(validating)].name;
+    checkCredentials
+      .mutateAsync(target(validating))
+      .then(
+        () =>
+          onToast("ok", {
+            title: "Credentials are valid",
+            description: `The current rotated credentials for ${validating.name} authenticated to ${rotationType}.`
+          }),
+        failed("Credentials check failed")
+      );
     onClose();
-  }, [action, resources, onToast, onClose]);
+  }, [validating]);
 
   if (!last) return null;
   const rotation =
@@ -260,94 +260,35 @@ export function RotationActions({
   };
 
   const rotate = () => {
-    const { active } = credentialsOf(rotation, resources);
-    const next = rotatedCredentials(rotation, resources, active);
-    const mapping = rotationSecretsMapping(rotation);
-    const now = new Date();
-    const timestamp = now.toISOString();
-    const changed = Object.entries(mapping)
-      .filter(([field]) => next[field] !== active[field])
-      .map(([, key]) => key);
-    onApply(
-      (current) =>
-        current.map((resource): Resource => {
-          if (resource.id === rotation.id && resource.kind === "rotation")
-            return {
-              ...resource,
-              parameters: rotationParameters(resource, current),
-              generatedCredentials: [active, next],
-              activeIndex: 1,
-              status: "success",
-              lastRotatedAt: timestamp,
-              updatedAt: timestamp,
-              nextRotationAt: resource.autoRotation
-                ? nextRotationFrom(
-                    now,
-                    resource.rotationInterval ?? 30,
-                    resource.rotateAtUtc ?? { hours: 0, minutes: 0 }
-                  )
-                : undefined
-            };
-          if (resource.kind !== "secret" || !sameScope(resource, rotation)) return resource;
-          const field = Object.keys(mapping).find((entry) => mapping[entry] === resource.name);
-          if (!field || !changed.includes(resource.name)) return resource;
-          const version = resource.version + 1;
-          const value = next[field];
-          return {
-            ...resource,
-            value: { status: "present", value },
-            version,
-            updatedAt: timestamp,
-            versions: [
-              {
-                version,
-                value,
-                createdAt: timestamp,
-                actor: rotation.name,
-                actorType: "platform"
-              },
-              ...versionsOf(resource)
-            ]
-          };
-        }),
-      {
-        title: `Rotated ${rotationType} secrets locally`,
-        description: `New fake values for ${changed.join(", ")} in local demo data. No provider request was sent.`
-      }
-    );
+    rotateRotation
+      .mutateAsync(target(rotation))
+      .then(
+        () => onToast("ok", { title: `Successfully rotated ${rotationType} secrets` }),
+        failed(`Failed to rotate ${rotationType} secrets`)
+      );
     onClose();
   };
 
   const reconcile = () => {
-    onToast("neutral", {
-      title: `${reconcileTypeName(type)} rotation not reconciled`,
-      description:
-        "This preview has no server to compare against, so the stored password was left unchanged. No request was sent."
-    });
+    reconcileRotation
+      .mutateAsync(target(rotation) as TReconcileLocalAccountRotationDTO)
+      .then(
+        (result) =>
+          onToast(result.reconciled ? "ok" : "neutral", {
+            title: result.reconciled
+              ? `${reconcileTypeName(type)} rotation reconciled`
+              : `${reconcileTypeName(type)} rotation not reconciled`,
+            description: result.message
+          }),
+        failed(`Failed to reconcile ${reconcileTypeName(type)} rotation`)
+      );
     onClose();
   };
 
   const update = (updated: RotationResource) => {
-    const previous = rotationSecretsMapping(rotation);
-    const renames = Object.fromEntries(
-      Object.entries(previous).map(([field, key]) => [key, updated.secretsMapping?.[field] ?? key])
-    );
-    onApply(
-      (current) =>
-        current.map((resource): Resource => {
-          if (resource.id === rotation.id) return updated;
-          if (resource.kind !== "secret" || !sameScope(resource, rotation)) return resource;
-          if (!(resource.name in renames)) return resource;
-          const name = renames[resource.name];
-          return {
-            ...resource,
-            name,
-            id: `${resource.project}:${resource.environment}:${resource.path}:secret:${name}`,
-            managedBy: updated.name
-          };
-        }),
-      { title: `Updated ${rotationType} rotation locally`, description: LOCAL_ONLY }
-    );
+    onApply((current) => current.map((resource) => (resource.id === rotation.id ? updated : resource)), {
+      title: `Successfully updated ${rotationType} rotation`
+    });
   };
 
   const remove = ({
@@ -357,31 +298,12 @@ export function RotationActions({
     revokeGeneratedCredentials: boolean;
     deleteSecrets: boolean;
   }) => {
-    const keys = Object.values(rotationSecretsMapping(rotation));
-    const managed = (resource: Resource) =>
-      resource.kind === "secret" && sameScope(resource, rotation) && keys.includes(resource.name);
-    onApply(
-      (current) =>
-        current
-          .filter(
-            (resource) => resource.id !== rotation.id && !(deleteSecrets && managed(resource))
-          )
-          .map((resource): Resource => {
-            if (resource.kind !== "secret" || !managed(resource)) return resource;
-            return { ...resource, managedBy: undefined };
-          }),
-      {
-        title: `Deleted ${rotationType} Rotation locally`,
-        description: [
-          deleteSecrets
-            ? `Removed ${keys.join(", ")} from local demo data.`
-            : `Kept ${keys.join(", ")} as regular secrets.`,
-          revokeGeneratedCredentials
-            ? "No credentials were revoked because no request was sent."
-            : "No request was sent."
-        ].join(" ")
-      }
-    );
+    deleteRotation
+      .mutateAsync({ ...target(rotation), revokeGeneratedCredentials, deleteSecrets })
+      .then(
+        () => onToast("ok", { title: `Successfully deleted ${rotationType} rotation` }),
+        failed(`Failed to delete ${rotationType} rotation`)
+      );
     onClose();
   };
 
@@ -391,7 +313,6 @@ export function RotationActions({
         <RotationCredentialsDialog
           open={isOpen("credentials")}
           rotation={rotation}
-          resources={resources}
           onOpenChange={onOpenChange}
         />
       )}

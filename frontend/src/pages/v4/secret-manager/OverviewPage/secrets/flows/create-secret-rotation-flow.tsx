@@ -44,8 +44,7 @@ export function CreateSecretRotationFlow({
       managedBy: rotation.name
     }));
     onCreate([rotation, ...secrets], {
-      title: `Created ${rotation.name} locally`,
-      description: `Local values for ${rotation.managedKeys.join(", ")}. No credentials were issued.`
+      title: `Successfully created ${rotation.name}`
     });
   };
   return (

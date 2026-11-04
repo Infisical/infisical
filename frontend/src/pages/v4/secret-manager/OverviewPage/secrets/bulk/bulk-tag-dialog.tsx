@@ -25,7 +25,6 @@ import {
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 import type { Secret } from "../../secrets-model";
-import { LOCAL_ONLY } from "../flows/shared";
 import { KindIcon } from "../overview-cells";
 import type { OverlayHostProps } from "../row-actions/types";
 
@@ -92,7 +91,7 @@ function BulkTagDialogContent({
             updatedAt: new Date().toISOString()
           };
         }),
-      { title: "Successfully updated tags on selected secrets", description: LOCAL_ONLY }
+      { title: "Successfully updated tags on selected secrets" }
     );
     onClose();
     onCompleted?.();

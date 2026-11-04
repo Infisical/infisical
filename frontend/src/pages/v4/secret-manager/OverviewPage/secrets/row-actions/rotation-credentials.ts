@@ -1,10 +1,3 @@
-import type { Resource } from "../../secrets-model";
-import {
-  rotationParameters,
-  type RotationResource,
-  rotationSecrets,
-  rotationTypeOf
-} from "../flows/secret-rotation/model";
 import { SecretRotation } from "../flows/secret-rotation/schemas";
 
 export type CredentialField = {
@@ -87,56 +80,4 @@ export const CREDENTIAL_FIELDS: Record<SecretRotation, CredentialField[]> = {
     { field: "keyId", label: "Key ID" },
     { field: "apiKey", label: "API Key", sensitive: true }
   ]
-};
-
-const kebab = (value: string) => value.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
-
-const fakeValue = (field: string) => `fake-${kebab(field)}-${crypto.randomUUID().slice(0, 8)}`;
-
-export type GeneratedCredentials = {
-  active: Record<string, string>;
-  retired?: Record<string, string>;
-};
-
-export const credentialsOf = (
-  rotation: RotationResource,
-  resources: readonly Resource[]
-): GeneratedCredentials => {
-  if (rotation.generatedCredentials?.length) {
-    const activeIndex = rotation.activeIndex ?? 0;
-    return {
-      active: rotation.generatedCredentials[activeIndex] ?? {},
-      retired: rotation.generatedCredentials[activeIndex === 0 ? 1 : 0]
-    };
-  }
-  const secrets = rotationSecrets(rotation, resources);
-  return {
-    active: Object.fromEntries(
-      CREDENTIAL_FIELDS[rotationTypeOf(rotation)].map(({ field }) => {
-        const value = secrets[field]?.value;
-        return [
-          field,
-          value?.status === "present" ? value.value : `fake-${kebab(field)}-${rotation.name}`
-        ];
-      })
-    )
-  };
-};
-
-export const rotatedCredentials = (
-  rotation: RotationResource,
-  resources: readonly Resource[],
-  current: Record<string, string>
-) => {
-  const { username1, username2 } = rotationParameters(rotation, resources);
-  const alternates =
-    typeof username1 === "string" && typeof username2 === "string" ? [username1, username2] : null;
-  return Object.fromEntries(
-    CREDENTIAL_FIELDS[rotationTypeOf(rotation)].map(({ field, stable }) => {
-      if (field === "username" && alternates)
-        return [field, current.username === alternates[0] ? alternates[1] : alternates[0]];
-      if (stable && current[field]) return [field, current[field]];
-      return [field, fakeValue(field)];
-    })
-  );
 };

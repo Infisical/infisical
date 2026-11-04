@@ -42,7 +42,7 @@ import {
 } from "@app/components/v4/ui/sheet";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
-import { environmentLabel, Gate, LOCAL_ONLY } from "../flows/shared";
+import { environmentLabel, Gate } from "../flows/shared";
 import { ActionButton } from "../overview-cells";
 import type { OverlayHostProps } from "../row-actions/types";
 import {
@@ -297,12 +297,11 @@ export function CommitHistorySheet({
     }
     const { changes } = revertState(resources, target);
     if (!changes.length) {
-      onToast("neutral", { title: "No changes to revert", description: LOCAL_ONLY });
+      onToast("neutral", { title: "No changes to revert" });
       return;
     }
     onApply((current) => revertState(current, target).resources, {
-      title: "Changes reverted successfully",
-      description: LOCAL_ONLY
+      title: "Changes reverted successfully"
     });
     record(changes, `Reverted changes from commit ${target.id}`);
     backToHistory();
@@ -312,8 +311,7 @@ export function CommitHistorySheet({
     setConfirmOpen(false);
     const preview = rollbackState(allCommits, target, resources, deep);
     onApply((current) => rollbackState(allCommits, target, current, deep).resources, {
-      title: "Restore completed successfully",
-      description: LOCAL_ONLY
+      title: "Restore completed successfully"
     });
     preview.folders
       .filter((item) => item.changes.length)

@@ -64,7 +64,7 @@ import { useRequestBreadth } from "../bridge/scopes";
 import { useValueLoader } from "../bridge/values";
 import { valueKey } from "../bridge/view-model";
 import { readableValue, type Resource, type Scope, type Secret } from "../secrets-model";
-import { environmentLabel, LOCAL_ONLY } from "./flows/shared";
+import { environmentLabel } from "./flows/shared";
 import {
   ActionButton,
   type EnvironmentStatus,
@@ -361,7 +361,7 @@ function SecretActions({
         ? withValue(() => setOpen(overlay))
         : setOpen(overlay)
     );
-  const saved = (title: string) => ({ title, description: LOCAL_ONLY });
+  const saved = (title: string) => ({ title });
   return (
     <>
       <Popover
@@ -682,7 +682,7 @@ function OverrideValue({
 }) {
   const [editing, setEditing] = useState(false);
   const loader = useValueLoader();
-  const saved = (title: string) => ({ title, description: LOCAL_ONLY });
+  const saved = (title: string) => ({ title });
   const value = secret.override ?? "";
   useEffect(() => {
     if (visible) loader.request([secret], true);
@@ -744,7 +744,7 @@ function OverrideActions({
 }) {
   const [removing, setRemoving] = useState(false);
   const loader = useValueLoader();
-  const saved = (title: string) => ({ title, description: LOCAL_ONLY });
+  const saved = (title: string) => ({ title });
   const block = creating ? "Create the override first" : undefined;
   return (
     <>
@@ -832,8 +832,7 @@ export function SecretRow({
       secret,
       { value },
       {
-        title: `Updated ${secret.name} in ${environmentLabel(secret.environment)}`,
-        description: LOCAL_ONLY
+        title: `Updated ${secret.name} in ${environmentLabel(secret.environment)}`
       }
     );
     setEditing(undefined);

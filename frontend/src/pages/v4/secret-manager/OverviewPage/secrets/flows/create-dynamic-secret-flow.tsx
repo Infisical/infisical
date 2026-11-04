@@ -1,5 +1,5 @@
 import { DynamicSecretFlow, type DynamicSecretResource } from "./dynamic-secret-flow";
-import { environmentLabel, LOCAL_ONLY } from "./shared";
+import { environmentLabel } from "./shared";
 import type { AddFlowProps } from "./types";
 
 export function CreateDynamicSecretFlow({
@@ -29,8 +29,7 @@ export function CreateDynamicSecretFlow({
           title:
             created.length === 1
               ? `Created ${created[0].name}`
-              : `Created ${created.length} dynamic secrets`,
-          description: LOCAL_ONLY
+              : `Created ${created.length} dynamic secrets`
         }
       );
     if (!duplicates.length) return true;

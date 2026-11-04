@@ -77,7 +77,7 @@ const environments: ProjectEnv[] = [
   { id: "env-prod", name: "Production", slug: "prod" }
 ];
 const all = environments.map((environment) => environment.slug);
-const envOf = (slug: string) => environments.find((environment) => environment.slug === slug)!;
+export const envOf = (slug: string) => environments.find((environment) => environment.slug === slug)!;
 
 const project = (id: string, description: string): Project => ({
   __v: 0,

@@ -165,6 +165,7 @@ export const buildResources = ({
       revoked: Boolean(entry.isAccessRevoked),
       replicated: Boolean(entry.isReplication),
       replicationStatus: replicationOf(entry.isReplication, entry.isReplicationSuccess),
+      replicationDetails: entry.replicationStatus,
       lastReplicated: entry.lastReplicated,
       createdAt: entry.createdAt,
       updatedAt: entry.updatedAt
@@ -202,6 +203,7 @@ export const buildResources = ({
       defaultTTL: entry.defaultTTL,
       maxTTL: entry.maxTTL,
       status: dynamicStatusOf(entry.status),
+      statusDetails: entry.statusDetails ?? undefined,
       createdAt: entry.createdAt,
       updatedAt: entry.updatedAt
     })
@@ -216,6 +218,7 @@ export const buildResources = ({
       connection: entry.connection.name,
       connectionId: entry.connection.id,
       status: entry.rotationStatus === SecretRotationStatus.Failed ? "failed" : "success",
+      statusDetails: entry.lastRotationMessage ?? undefined,
       autoRotation: entry.isAutoRotationEnabled,
       description: entry.description ?? undefined,
       lastRotatedAt: entry.lastRotatedAt,

@@ -52,6 +52,7 @@ export type Resource =
       revoked: boolean;
       replicated: boolean;
       replicationStatus?: "succeeded" | "failed";
+      replicationDetails?: string;
       lastReplicated?: string;
     })
   | (ResourceBase & {
@@ -60,6 +61,7 @@ export type Resource =
       defaultTTL: string;
       maxTTL?: string;
       status?: "failed-deletion" | "deleting";
+      statusDetails?: string;
       config?: {
         type: string;
         inputs: unknown;
@@ -73,6 +75,7 @@ export type Resource =
       connection: string;
       connectionId?: string;
       status: "success" | "failed";
+      statusDetails?: string;
       autoRotation: boolean;
       description?: string;
       lastRotatedAt: string;

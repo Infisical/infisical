@@ -20,7 +20,7 @@ import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import type { Resource, Secret } from "../../secrets-model";
-import { childPath, LOCAL_ONLY } from "../flows/shared";
+import { childPath } from "../flows/shared";
 import type { EnvironmentOption, FlowFeedback } from "../flows/types";
 import type { OverlayHostProps } from "../row-actions/types";
 
@@ -332,8 +332,7 @@ function MoveSecretsDialogContent({
     onApply((current) => [...current, ...created], {
       title: `Created ${candidatePath} in ${missing
         .map(({ environment }) => environment.label)
-        .join(", ")}`,
-      description: LOCAL_ONLY
+        .join(", ")}`
     });
     setCreateError(undefined);
     setSelectedPath(candidatePath);
@@ -501,7 +500,7 @@ function MoveSecretsDialogContent({
         }
         onToast("bad", { title: `Failed to move selected secrets: ${outcome.error}` });
       } else {
-        apply([step], { title: "Successfully moved selected secrets", description: LOCAL_ONLY });
+        apply([step], { title: "Successfully moved selected secrets" });
       }
     }
     const rotationSteps: Step[] = [];
@@ -513,8 +512,7 @@ function MoveSecretsDialogContent({
     });
     if (rotationSteps.length)
       apply(rotationSteps, {
-        title: `Successfully moved ${plural(rotationSteps.length, "secret rotation")}`,
-        description: LOCAL_ONLY
+        title: `Successfully moved ${plural(rotationSteps.length, "secret rotation")}`
       });
     if (rotationFailures.length)
       onToast("bad", {
@@ -535,8 +533,7 @@ function MoveSecretsDialogContent({
     });
     if (folderSteps.length) {
       apply(folderSteps, {
-        title: `Successfully moved ${plural(folderSteps.length, "folder")}`,
-        description: LOCAL_ONLY
+        title: `Successfully moved ${plural(folderSteps.length, "folder")}`
       });
       onFoldersMoved?.(moved);
     }
@@ -631,8 +628,7 @@ function MoveSecretsDialogContent({
     });
     if (steps.length) {
       apply(steps, {
-        title: `Moved selected ${noun} in ${plural(changed.size, "environment")}`,
-        description: LOCAL_ONLY
+        title: `Moved selected ${noun} in ${plural(changed.size, "environment")}`
       });
       if (moved.length) onFoldersMoved?.(moved);
     }

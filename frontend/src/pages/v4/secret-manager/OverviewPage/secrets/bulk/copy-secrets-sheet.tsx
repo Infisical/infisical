@@ -51,7 +51,7 @@ import {
 } from "@app/pages/secret-manager/OverviewPage/components/CopySecretsSheet/copySecrets.utils";
 
 import { readableValue, type Resource, type Secret } from "../../secrets-model";
-import { childPath, folderExists, Gate, LOCAL_ONLY } from "../flows/shared";
+import { childPath, folderExists, Gate } from "../flows/shared";
 import type { OverlayHostProps } from "../row-actions/types";
 import { CopySecretsProperties } from "./copy-secrets-properties";
 import { CopySecretsTree, type PreviewFilter } from "./copy-secrets-tree";
@@ -426,8 +426,7 @@ function CopySecretsSession({
     if (result.error) {
       if (result.changed)
         onApply((current) => run(current).next, {
-          title: "Some items were copied before the copy stopped",
-          description: LOCAL_ONLY
+          title: "Some items were copied before the copy stopped"
         });
       onToast("bad", { title: result.error, description: "No further items were copied." });
       return;
@@ -450,10 +449,9 @@ function CopySecretsSession({
     }
     if (result.changed)
       onApply((current) => run(current).next, {
-        title: notificationText,
-        description: LOCAL_ONLY
+        title: notificationText
       });
-    else onToast("neutral", { title: notificationText, description: "Nothing changed locally." });
+    else onToast("neutral", { title: notificationText });
     onCompleted?.();
     onClose();
   };

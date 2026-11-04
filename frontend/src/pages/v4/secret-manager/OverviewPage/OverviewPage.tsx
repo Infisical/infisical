@@ -56,6 +56,13 @@ import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import type { TCreateDynamicSecretDTO } from "@app/hooks/api/dynamicSecret/types";
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import type { TProxiedServiceCredentialInput } from "@app/hooks/api/proxiedServices/types";
+import type { SecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
+import type {
+  TCreateSecretRotationV2DTO,
+  TUpdateSecretRotationV2DTO
+} from "@app/hooks/api/secretRotationsV2/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 
@@ -303,6 +310,15 @@ export const OverviewPage = () => {
   const projectSlug = projectQuery.data?.slug ?? projectId;
   const createDynamicSecret = adapter.useCreateDynamicSecret();
   const updateDynamicSecret = adapter.useUpdateDynamicSecret();
+  const createRotation = adapter.useCreateSecretRotation();
+  const updateRotation = adapter.useUpdateSecretRotation();
+  const createHoneyToken = adapter.useCreateHoneyToken();
+  const updateHoneyToken = adapter.useUpdateHoneyToken();
+  const resetHoneyToken = adapter.useResetHoneyToken();
+  const revokeHoneyToken = adapter.useRevokeHoneyToken();
+  const updateProxiedService = adapter.useUpdateProxiedService();
+  const deleteProxiedService = adapter.useDeleteProxiedService();
+  const honeyMapping = (keys: string[]) => ({ accessKeyId: keys[0], secretAccessKey: keys[1] });
   const runApply = useResourceApply({
     projectId,
     projectSlug,
@@ -339,6 +355,78 @@ export const OverviewPage = () => {
               metadata: after.config?.metadata
             }
           })
+      },
+      rotation: {
+        create: (entry) =>
+          createRotation.mutateAsync({
+            type: entry.type as SecretRotation,
+            name: entry.name,
+            description: entry.description,
+            connectionId: entry.connectionId ?? "",
+            parameters: entry.parameters ?? {},
+            secretsMapping: entry.secretsMapping ?? {},
+            isAutoRotationEnabled: entry.autoRotation,
+            rotationInterval: entry.rotationInterval ?? 30,
+            rotateAtUtc: entry.rotateAtUtc ?? { hours: 0, minutes: 0 },
+            environment: entry.environment,
+            secretPath: entry.path,
+            projectId
+          } as TCreateSecretRotationV2DTO),
+        update: (before, after) =>
+          updateRotation.mutateAsync({
+            type: before.type as SecretRotation,
+            rotationId: before.id,
+            projectId,
+            secretPath: before.path,
+            name: after.name,
+            description: after.description,
+            connectionId: after.connectionId,
+            parameters: after.parameters,
+            secretsMapping: after.secretsMapping,
+            isAutoRotationEnabled: after.autoRotation,
+            rotationInterval: after.rotationInterval,
+            rotateAtUtc: after.rotateAtUtc
+          } as TUpdateSecretRotationV2DTO)
+      },
+      honey: {
+        create: (entry) =>
+          createHoneyToken.mutateAsync({
+            projectId,
+            type: HoneyTokenType.AWS,
+            name: entry.name,
+            description: entry.description || null,
+            secretsMapping: honeyMapping(entry.mappedKeys),
+            environment: entry.environment,
+            secretPath: entry.path
+          }),
+        update: async (before, after) => {
+          const token = { honeyTokenId: before.id, projectId };
+          if (before.status !== after.status && after.status === "revoked")
+            return revokeHoneyToken.mutateAsync(token);
+          if (before.status !== after.status && after.status === "active")
+            return resetHoneyToken.mutateAsync(token);
+          return updateHoneyToken.mutateAsync({
+            ...token,
+            name: after.name,
+            description: after.description || null,
+            secretsMapping: honeyMapping(after.mappedKeys)
+          });
+        }
+      },
+      proxy: {
+        create: () =>
+          Promise.reject(
+            new Error("Proxied services are now created in Agent Vault, not in a project.")
+          ),
+        update: (_before, after) =>
+          updateProxiedService.mutateAsync({
+            serviceId: after.id,
+            name: after.name,
+            hostPattern: after.host,
+            isEnabled: after.enabled,
+            credentials: after.credentials as TProxiedServiceCredentialInput[] | undefined
+          }),
+        remove: (entry) => deleteProxiedService.mutateAsync({ serviceId: entry.id })
       }
     }
   });

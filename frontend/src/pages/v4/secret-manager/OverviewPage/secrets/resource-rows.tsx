@@ -77,7 +77,7 @@ function InfoHint({ text }: { text: string }) {
 function RotationStatus({ rotation }: { rotation: Of<"rotation"> }) {
   if (rotation.status === "failed")
     return (
-      <Tooltip content="Failure reason: simulated provider error in this preview.">
+      <Tooltip content={`Failure reason: ${rotation.statusDetails ?? "unknown"}`}>
         <Badge tone="bad">
           <Icon icon={XIcon} />
           Rotation failed
@@ -117,7 +117,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
         <>
           <Badge tone="outline">{item.provider}</Badge>
           {item.status && (
-            <Tooltip content="Simulated provider error while deleting leases.">
+            <Tooltip content={item.statusDetails ?? "The provider returned an error while revoking leases."}>
               <Badge tone={item.status === "deleting" ? "warn" : "bad"}>
                 <Icon icon={TriangleAlertIcon} />
                 {item.status === "deleting" ? "Revoking" : "Deletion failed"}
@@ -622,7 +622,7 @@ export function ImportRow({
     entry.replicated &&
     entry.lastReplicated && (
       <Tooltip
-        content={`Last replication ${new Date(entry.lastReplicated).toLocaleString("en-US")}${entry.replicationStatus === "failed" ? ". Fail reason: simulated replication error." : ""}`}
+        content={`Last replication ${new Date(entry.lastReplicated).toLocaleString("en-US")}${entry.replicationStatus === "failed" ? `. Fail reason: ${entry.replicationDetails ?? "unknown"}` : ""}`}
       >
         <span
           className={styles.hint}

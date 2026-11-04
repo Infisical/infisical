@@ -251,7 +251,8 @@ export const useResourceApply = ({
     );
 
     const secretChanges = changed.filter(
-      (pair): pair is readonly [Secret, Secret] => pair[0].kind === "secret"
+      (pair): pair is readonly [Secret, Secret] =>
+        pair[0].kind === "secret" && !pair[0].managedBy && !pair[0].honeyToken
     );
     await Promise.all(
       secretChanges.map(async ([from, to]) => {

@@ -49,7 +49,6 @@ import {
   SubstitutionDiagram,
   SubstitutionFields
 } from "../flows/proxied-service-fields";
-import { LOCAL_ONLY } from "../flows/shared";
 import type { RowActionHostProps } from "./types";
 
 import flowStyles from "../flows/flows.module.css";
@@ -336,8 +335,7 @@ export function ProxiedServiceActions({
         onOpenChange={onOpenChange}
         onDelete={() => {
           onApply((current) => current.filter((resource) => resource.id !== service.id), {
-            title: `Successfully deleted proxied service "${service.name}"`,
-            description: LOCAL_ONLY
+            title: `Successfully deleted proxied service "${service.name}"`
           });
           onClose();
         }}
@@ -385,7 +383,7 @@ export function ProxiedServiceActions({
               version: 1
             }
           ],
-          { title: "Successfully created secret", description: LOCAL_ONLY }
+          { title: "Successfully created secret" }
         )
       }
       onSave={(form) => {
@@ -404,8 +402,7 @@ export function ProxiedServiceActions({
                 : resource
             ),
           {
-            title: "Successfully updated proxied service",
-            description: LOCAL_ONLY
+            title: "Successfully updated proxied service"
           }
         );
         onClose();

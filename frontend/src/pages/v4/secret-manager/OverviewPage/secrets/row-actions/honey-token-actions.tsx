@@ -40,6 +40,7 @@ import {
 import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
+import { useV4Adapter } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
 import {
   DEFAULT_MAPPING,
@@ -50,7 +51,7 @@ import {
   HoneyTokenMappingFields,
   honeyTokenSchema
 } from "../flows/create-honey-token-flow";
-import { environmentLabel, LOCAL_ONLY } from "../flows/shared";
+import { environmentLabel } from "../flows/shared";
 import { ProviderLogo, WizardSheet } from "../flows/wizard-sheet";
 import type { RowActionHostProps } from "./types";
 
@@ -477,6 +478,7 @@ function HoneyTokenDetailsSheet({
 export function HoneyTokenActions({
   action,
   onClose,
+  scope,
   resources,
   onApply
 }: RowActionHostProps<"honey">) {
@@ -486,6 +488,11 @@ export function HoneyTokenActions({
     setShown(action);
     setSession(session + 1);
   }
+  const { data: loadedCredentials } = useV4Adapter("secrets").useHoneyTokenCredentials({
+    honeyTokenId: shown?.entry.id ?? "",
+    projectId: scope.project,
+    enabled: action?.action === "details"
+  });
   if (!shown) return null;
   const open = Boolean(action);
   const token =
@@ -507,8 +514,7 @@ export function HoneyTokenActions({
               : resource
           ),
       {
-        title: `Successfully revoked honey token "${token.name}"`,
-        description: LOCAL_ONLY
+        title: `Successfully revoked honey token "${token.name}"`
       }
     );
 
@@ -532,7 +538,7 @@ export function HoneyTokenActions({
                   return { ...resource, name: renamed.get(resource.name) ?? resource.name };
                 return resource;
               }),
-            { title: "Successfully updated AWS Honey Token", description: LOCAL_ONLY }
+            { title: "Successfully updated AWS Honey Token" }
           );
           onClose();
         }}
@@ -553,17 +559,7 @@ export function HoneyTokenActions({
     );
 
   const credentials = Object.fromEntries(
-    CREDENTIAL_FIELDS.map(({ key }, index) => {
-      const secret = resources.find(
-        (resource) => isDecoyOf(token)(resource) && resource.name === token.mappedKeys[index]
-      );
-      return [
-        key,
-        secret?.kind === "secret" && secret.value.status === "present"
-          ? secret.value.value
-          : undefined
-      ];
-    })
+    CREDENTIAL_FIELDS.map(({ key }) => [key, loadedCredentials?.[key]])
   );
   return (
     <HoneyTokenDetailsSheet
@@ -581,7 +577,7 @@ export function HoneyTokenActions({
                 ? { ...resource, status: "active" as const, events: [] }
                 : resource
             ),
-          { title: `Honey token "${token.name}" has been reset`, description: LOCAL_ONLY }
+          { title: `Honey token "${token.name}" has been reset` }
         )
       }
     />

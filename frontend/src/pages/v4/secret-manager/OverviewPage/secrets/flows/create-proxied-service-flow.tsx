@@ -30,7 +30,7 @@ import {
   SubstitutionFields,
   TemplatePicker
 } from "./proxied-service-fields";
-import { DiscardDialog, LOCAL_ONLY } from "./shared";
+import { DiscardDialog } from "./shared";
 import type { AddFlowProps } from "./types";
 import { ProviderLogo, WizardSheet } from "./wizard-sheet";
 
@@ -184,8 +184,7 @@ export function CreateProxiedServiceFlow({
         }
       ],
       {
-        title: "Successfully created proxied service",
-        description: LOCAL_ONLY
+        title: "Successfully created proxied service"
       }
     );
     onOpenChange(false);
@@ -378,7 +377,7 @@ export function CreateProxiedServiceFlow({
                   version: 1
                 }
               ],
-              { title: "Successfully created secret", description: LOCAL_ONLY }
+              { title: "Successfully created secret" }
             );
             secretDraft.apply(key);
             setSecretDraft(undefined);

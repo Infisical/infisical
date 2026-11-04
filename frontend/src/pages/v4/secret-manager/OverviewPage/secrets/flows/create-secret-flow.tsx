@@ -37,7 +37,6 @@ import {
   environmentLabel,
   folderExists,
   Gate,
-  LOCAL_ONLY,
   secretsAt
 } from "./shared";
 import type { AddFlowProps, NewResource } from "./types";
@@ -468,13 +467,13 @@ export function CreateSecretFlow({
       if (taken.length) {
         onError({
           title: "Secrets were not created",
-          description: `${taken.join(", ")} already ${taken.length > 1 ? "exist" : "exists"} in ${environmentLabel(environment)}. No secrets were created in local demo data.`
+          description: `${taken.join(", ")} already ${taken.length > 1 ? "exist" : "exists"} in ${environmentLabel(environment)}. No secrets were created.`
         });
         return;
       }
       onCreate(
         [...folderFor(environment), ...entries.map((entry) => toSecret(entry, environment))],
-        { title: `${entries.length} secrets created`, description: LOCAL_ONLY }
+        { title: `${entries.length} secrets created` }
       );
       onOpenChange(false);
       return;
@@ -498,8 +497,7 @@ export function CreateSecretFlow({
     });
     if (updated.size)
       onCreate(created, {
-        title: `Secrets created in ${updated.size > 1 ? "environments" : "environment"}: ${[...updated].join(", ")}`,
-        description: LOCAL_ONLY
+        title: `Secrets created in ${updated.size > 1 ? "environments" : "environment"}: ${[...updated].join(", ")}`
       });
     if (failed.length) {
       onError({ title: "Some secrets were not created", description: failed.join(" ") });

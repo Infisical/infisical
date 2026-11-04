@@ -5,7 +5,7 @@ import {
   isPathInsideFolder,
   MoveSecretsDialog
 } from "../bulk/move-secrets-dialog";
-import { childPath, LOCAL_ONLY } from "../flows/shared";
+import { childPath } from "../flows/shared";
 import { createAccessState, FolderAccessSheet, grantKey } from "./folder-access-sheet";
 import type { RowActionHostProps } from "./types";
 
@@ -86,7 +86,7 @@ export function FolderActions({
         if (!next) onClose();
       }}
       onChange={setAccess}
-      onSuccess={(title) => onToast("ok", { title, description: LOCAL_ONLY })}
+      onSuccess={(title) => onToast("ok", { title })}
     />
   );
 }
