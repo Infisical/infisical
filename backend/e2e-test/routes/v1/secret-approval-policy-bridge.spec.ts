@@ -446,5 +446,14 @@ describe("Secret approval policy bridge routing", () => {
       allowedSelfApprovals: false,
       enforcementLevel: EnforcementLevel.Soft
     });
+
+    const approversOnlyRes = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v2/secret-approvals/${legacyId}`,
+      headers: authHeaders(),
+      body: { approvers }
+    });
+    expect(approversOnlyRes.statusCode).toBe(200);
+    expect(await legacyRow(legacyId)).toMatchObject({ name: "keep-fields-renamed", allowedSelfApprovals: false });
   });
 });

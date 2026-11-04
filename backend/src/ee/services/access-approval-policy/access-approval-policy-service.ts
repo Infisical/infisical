@@ -543,7 +543,9 @@ export const accessApprovalPolicyServiceFactory = ({
           enforcementLevel,
           allowedSelfApprovals,
           maxTimePeriod,
-          requestExpirationTime
+          requestExpirationTime,
+          // an approvers-only update leaves every other column undefined, and knex rejects an empty update
+          updatedAt: new Date()
         },
         tx
       );

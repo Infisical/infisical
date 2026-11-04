@@ -437,5 +437,17 @@ describe("Access approval policy required approvals per step", () => {
       allowedSelfApprovals: false,
       enforcementLevel: EnforcementLevel.Soft
     });
+
+    const approversOnlyRes = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v1/access-approvals/policies/${legacyPolicy.id}`,
+      headers: authHeaders(),
+      body: { approvers: [{ type: ApproverType.User, id: seedData1.id }] }
+    });
+    expect(approversOnlyRes.statusCode).toBe(200);
+    expect(await db(TableName.AccessApprovalPolicy).where({ id: legacyPolicy.id }).first()).toMatchObject({
+      allowedSelfApprovals: false,
+      enforcementLevel: EnforcementLevel.Soft
+    });
   });
 });
