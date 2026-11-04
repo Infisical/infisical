@@ -12,7 +12,7 @@ never in anything the agent holds.
 | --- | --- |
 | **Access bundle** | A named set of services. The unit you grant |
 | **Service** | One host pattern set plus its credential |
-| **Session** | A minted token naming one actor, one of their bundles, and an expiry. The token *is* the session |
+| **Session** | A minted token naming one actor, one of their bundles, services of its own, or both, and an expiry. The token *is* the session |
 | **Proxy** | One egress identity and its CA. Any number of processes can run it from its proxy token |
 
 ```
@@ -45,9 +45,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   by link, and that route is where the `agent_vault_identities` meter moves for them. Only org creation seeds
   the creator.
 - The traffic policy defaults to any-host (formerly Allow), in the DB default, the service and the dialog.
-  Deliberate: the product brokers credentials, it is not an egress firewall, and under bundle-hosts the
+  Deliberate: the product brokers credentials, it is not an egress firewall, and under service-hosts the
   quickstart's agent could reach neither Anthropic nor npm until a bypass list exists. Settled with the
-  product owner; bundle-hosts is documented as the hardening step.
+  product owner; service-hosts is documented as the hardening step.
 - Wherever code branches on `ProjectType.PAM`, add the Agent Vault arm: `AgentVaultIdentities` metering emits,
   the admin-or-member predefined roles filter, `AuditLogStreamProduct`, `grantAgentVaultAccess` on the org
   invite. See the root `AGENTS.md`.
@@ -199,6 +199,49 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
 - **Delegation routes take no `AuthMode.OAUTH`.** The admin check reads the role, which a delegated token's scopes
   don't narrow, and a delegation lets an identity act as other users.
 
+## Inline services
+
+An Agent Vault admin can send services with a session itself, without an access bundle or alongside one, for a caller
+that holds its own credentials and needs a host for one session only. The API calls them the session's `services` (on
+mint, on session reads and in the mint audit event); the code and the Sessions page say inline services, which is what
+tells them apart from a bundle's. They are rows of `agent_vault_session_inline_services` and belong to that session
+alone: nothing edits them, no bundle or other session reads them, and only resolve opens their secrets.
+
+- **Admin only, at mint and on every resolve.** Whoever starts the session decides which hosts it reaches and with
+  which credentials, an admin's call for a bundle's services too. It also keeps `service-hosts` meaningful: a proxy lets
+  through any host a session's services cover, so a member's inline service would open any host they chose. Resolve
+  sends inline services only while the session's owner (the identity, on an on-behalf-of session) is a live admin, so a
+  demotion keeps the bundle and drops the inline services until they are an admin again, the way a lost grant drops a
+  bundle.
+- **No value may wrap text in double braces, and resolve never expands one.** Whoever starts the session names its
+  hosts, so a variable reference would let them send any variable's value to a host of their choosing, and the stored
+  `{{<uuid>}}` form is refused by the same rule (`acceptsNoVariableReferences` on every value field). Resolve adds
+  inline services after `$expandVariableReferences` and `$applyPersonalValues`, so the rule doesn't rest on the refusal
+  alone.
+- **No member-provided fields and no OAuth.** Every value arrives with the mint, and an OAuth service needs a sign-in in
+  the UI and a refresh that writes the service row. The schema accepts both, hidden, so `prepareInlineServices` refuses
+  them by name, as a bundle service's create refuses fields its type doesn't take.
+- **No tool filtering.** An inline MCP server takes no `allowedTools`, and resolve sends it `allowedTools: null`, so
+  the proxy lets the agent call every tool on it, as it does for a bundle service with no list set.
+- **The name is optional.** An unnamed service goes by its first host (`inlineServiceDisplayName`), worked out on the
+  server only: resolve (so the proxy's messages and session logs), the audit log and the session responses all send
+  that name, so `name` is never null on the wire and the frontend shows it as is. Mint refuses a name, given or
+  fallen back to, that another inline service or a service in the session's bundle already goes by, so a name in a
+  session log always points at one service. Resolve sends `accessBundleName: null` for an inline service.
+- **The host rule of one bundle's services applies across the session**: two inline services covering the same pattern
+  are refused, and so is one covering a pattern the session's bundle covers. Mint checks it without the bundle lock, so
+  a later bundle edit can still create the overlap; resolve puts the bundle's services first, and the Go matcher breaks
+  a tie by slice order, so the bundle's service gets the host.
+- **Secrets go when the session ends; the rest stays.** The credential, custom header values and substitution values are
+  sealed together in `encryptedSecrets`, so deleting them is one write. The row keeps the name, type, hosts, rules,
+  credential type, header names and placeholders, since sessions are never deleted and the Sessions page shows what an
+  ended session could reach. Revoke deletes the secrets in its transaction, and the hourly `FrequentResourceCleanup`
+  (`deleteSecretsOfEndedSessions`) catches sessions that expired or lost their owner, matching `deriveSessionStatus`.
+  Neither writes the session row, so an ownerless session's `updatedAt` never moves. `ttl: never` is allowed, so such a
+  session keeps its secrets until it is revoked or its owner is deleted.
+- **A NULL `encryptedSecrets` means nothing to send only for a pass-through service with no custom headers or
+  substitutions.** On any other service it means the session ended, and resolve leaves the service out.
+
 ## Proxies
 
 - There is no enrollment. Create and rotate return a proxy token (the non-expiring access JWT) and every proxy
@@ -228,6 +271,12 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
   saved one would report a live proxy as unreachable until then. Gateway v2 does the same.
 - The proxy token is non-expiring and revoked by bumping `tokenVersion`, which the auth plugin checks on every
   proxy request. Revoke Access goes through the shared resource-auth revoke; rotating brings a revoked proxy back.
+- The traffic policy that only lets through hosts a session's services cover is `service-hosts` in the admin API
+  and the UI, and its old name `bundle-hosts` is still accepted as input. The row still stores `bundle-hosts`, and
+  bootstrap and heartbeat still send it: a released CLI blocks only under that exact value and lets every host
+  through under one it doesn't know, and an older pod reading a stored `service-hosts` would pass it straight on.
+  `toStoredTrafficPolicy` and `toTrafficPolicyView` do the mapping. Retiring the old name takes a CLI release that
+  accepts both, time for older CLIs to age out, then a migration of the rows and a switch of what proxies are sent.
 - Resolve is not audited: once per poll per session would swamp the audit table. Bootstrap is not audited
   either, since a proxy run as a sidecar starts once per agent run.
 
