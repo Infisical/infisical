@@ -98,6 +98,10 @@ To permanently deactivate a honey token, select **Revoke**. This will:
 - Remove the decoy secrets from the project
 - Mark the honey token as **Revoked**
 
-Revocation is irreversible.
+Revocation is irreversible. If AWS rejects deleting the IAM user or access key, for example because the connection no longer has `iam:DeleteUser`, Infisical shows the error and leaves the honey token active so you can retry.
 
 ![Honey Token Events](/images/platform/honey-tokens/honey-token-revoke.png)
+
+<Note>
+  When you delete the folder, environment, project, or organization that contains a honey token, Infisical also attempts to delete the token's IAM user and access key from AWS.
+</Note>
