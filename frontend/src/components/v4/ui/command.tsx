@@ -103,15 +103,22 @@ function CommandList({
   className,
   children,
   ref,
+  style,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  const { maxHeight, ...listStyle } = style ?? {};
   return (
-    <ScrollAreaPrimitive.Root data-slot="command-scroll" className={menu.scroll}>
+    <ScrollAreaPrimitive.Root
+      data-slot="command-scroll"
+      className={menu.scroll}
+      style={maxHeight === undefined ? undefined : { maxHeight }}
+    >
       <ScrollAreaPrimitive.Viewport data-scroll-fade="y" className={menu.viewport}>
         <CommandPrimitive.List
           ref={ref}
           data-slot="command-list"
           className={cn(menu.inset, className)}
+          style={style ? listStyle : undefined}
           {...props}
         >
           {children}
@@ -188,12 +195,16 @@ function CommandItem({
       className={cn(menu.row, className)}
       {...props}
     >
-      {checkable && (
-        <span className={menu.indicator} data-command="">
-          <Icon name="check" />
-        </span>
+      {checkable ? (
+        <>
+          <span className={menu.indicator} data-command="">
+            <Icon name="check" />
+          </span>
+          {children}
+        </>
+      ) : (
+        children
       )}
-      {children}
     </CommandPrimitive.Item>
   );
 }

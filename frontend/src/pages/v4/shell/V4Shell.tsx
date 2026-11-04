@@ -157,7 +157,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
         {
           label: "Design system",
           icon: "apps",
-          onSelect: () => navigate({ to: "/design-system" })
+          link: { to: "/design-system" }
         }
       ]
     }
