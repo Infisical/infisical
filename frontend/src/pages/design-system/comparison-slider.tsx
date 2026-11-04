@@ -54,7 +54,7 @@ export const ComparisonSlider = ({ title, before, href, start = 50 }: Comparison
     <div data-slot="comparison-slider">
       <div className={styles.toolbar}>
         <Button asChild variant="outline" size="sm">
-          <a href={href}>Live, full width</a>
+          <a href={frameSrc}>Live, full width</a>
         </Button>
         <Button variant="ghost" size="sm" onClick={() => setPosition(start)}>
           Reset
