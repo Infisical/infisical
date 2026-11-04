@@ -48,13 +48,19 @@ export enum DynamicSecretProviders {
   Tailscale = "tailscale",
   OAuth2 = "oauth2",
   Kafka = "kafka",
-  OpenRouter = "openrouter"
+  OpenRouter = "openrouter",
+  Neon = "neon"
 }
 
 export enum OpenRouterLimitReset {
   Daily = "daily",
   Weekly = "weekly",
   Monthly = "monthly"
+}
+
+export enum NeonLeaseType {
+  Role = "role",
+  Branch = "branch"
 }
 
 export enum KafkaSaslMechanism {
@@ -673,6 +679,20 @@ export type TDynamicSecretProvider =
         sslEnabled?: boolean;
         ca?: string;
         sslRejectUnauthorized?: boolean;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Neon;
+      inputs: {
+        apiKey: string;
+        projectId: string;
+        leaseType: NeonLeaseType;
+        branchId?: string;
+        databaseName: string;
+        roleName?: string;
+        pooled?: boolean;
+        resetRolePassword?: boolean;
+        setBranchExpiration?: boolean;
       };
     };
 
