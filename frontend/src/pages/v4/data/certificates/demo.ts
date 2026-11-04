@@ -1,3 +1,10 @@
+import { createMongoAbility } from "@casl/ability";
+
+import {
+  ProjectPermissionCertificateActions,
+  type ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { CaStatus, CaType, InternalCaType } from "@app/hooks/api/ca/enums";
 import type { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import {
@@ -5,6 +12,7 @@ import {
   IssuerType,
   type TCertificateProfile
 } from "@app/hooks/api/certificateProfiles/types";
+import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 import {
   CertExtendedKeyUsage,
   CertKeyAlgorithm,
@@ -12,12 +20,21 @@ import {
   CertSource,
   CertStatus
 } from "@app/hooks/api/certificates/enums";
-import type { TCertificate } from "@app/hooks/api/certificates/types";
+import type { TCertificate, TDashboardDistribution } from "@app/hooks/api/certificates/types";
+import { SigningAlgorithm } from "@app/hooks/api/cmeks/types";
 import {
   PkiInstallationLocationType,
   PkiInstallationType,
   type TPkiInstallation
 } from "@app/hooks/api/pkiDiscovery/types";
+import {
+  SignerKeyAlgorithm,
+  SignerStatus,
+  SigningActorType,
+  SigningOperationStatus,
+  type TSigner,
+  type TSigningOperation
+} from "@app/hooks/api/signers/types";
 
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import type { CertificatesAdapter } from "./contract";
@@ -267,6 +284,17 @@ const store = createFixtureStore<TCertificate[]>([
     { ...tlsServer, enrollmentType: EnrollmentType.ACME },
     CertKeyAlgorithm.ECDSA_P256,
     { status: CertStatus.EXPIRED }
+  ),
+  certificate(
+    "8e4a1c07-2b9d-4f63-a5e0-6d3c9f1b7a42",
+    "pq-gateway.acme.dev",
+    ["pq-gateway.acme.dev"],
+    "A4:2D:91:6F:0C:B8:E3:57",
+    20,
+    25,
+    tlsServer,
+    CertKeyAlgorithm.ML_DSA_65,
+    { applicationName: "platform-core", renewBeforeDays: 10 }
   )
 ]);
 
@@ -317,6 +345,117 @@ const asList = (value?: string | string[]) =>
 const within = (value: string, from?: Date, to?: Date) =>
   (!from || new Date(value) >= from) && (!to || new Date(value) <= to);
 const result = <T>(data: T) => ({ data, isPending: false, error: null });
+
+const distribution = (
+  certs: TCertificate[],
+  key: (cert: TCertificate) => { id?: string; label: string }
+): TDashboardDistribution[] =>
+  Object.values(
+    certs.reduce<Record<string, TDashboardDistribution>>((groups, cert) => {
+      const { id, label } = key(cert);
+      const group = groups[label] ?? { id, label, count: 0 };
+      return { ...groups, [label]: { ...group, count: group.count + 1 } };
+    }, {})
+  );
+
+const bucketCounts = (labels: string[], values: string[]) =>
+  labels.map((bucket) => ({ bucket, count: values.filter((value) => value === bucket).length }));
+
+const expirationBucket = (cert: TCertificate) => {
+  const days = (new Date(cert.notAfter).getTime() - Date.now()) / 864e5;
+  if (days < 0) return "expired";
+  if (days <= 7) return "0-7d";
+  if (days <= 30) return "8-30d";
+  if (days <= 60) return "31-60d";
+  if (days <= 90) return "61-90d";
+  return "90d+";
+};
+
+const validityBucket = (cert: TCertificate) => {
+  const days = (new Date(cert.notAfter).getTime() - new Date(cert.notBefore).getTime()) / 864e5;
+  if (days >= 200) return ">=200d";
+  if (days >= 100) return "100-199d";
+  if (days >= 48) return "48-99d";
+  return "<=47d";
+};
+
+const periodKeys = (range = "30d") => {
+  const days = { "7d": 7, "30d": 30, "6m": 180 }[range] ?? 30;
+  const monthly = days > 30;
+  const now = new Date();
+  const cursor = new Date();
+  cursor.setDate(cursor.getDate() - days);
+  if (monthly) cursor.setDate(1);
+  const keys: string[] = [];
+  while (cursor <= now) {
+    keys.push(cursor.toISOString().slice(0, monthly ? 7 : 10));
+    if (monthly) cursor.setMonth(cursor.getMonth() + 1);
+    else cursor.setDate(cursor.getDate() + 1);
+  }
+  return { keys, scale: monthly ? 24 : 1 };
+};
+
+const wave = (index: number, seed: number, peak: number) =>
+  Math.round(((Math.sin(index * 0.6 + seed) + 1) / 2) * peak);
+
+const signers: TSigner[] = [
+  {
+    id: "5b1f7c3a-8e2d-4a69-b0c4-9d6e3f2a1b85",
+    projectId,
+    name: "release-signer",
+    description: "Signs production release artifacts",
+    status: SignerStatus.Active,
+    certificateId: "c56e2a18-7d9f-4b03-8e61-4a0b5c3d9f72",
+    keyAlgorithm: SignerKeyAlgorithm.ECDSA_P384,
+    lastSignedAt: day(-1),
+    createdAt: day(-226),
+    updatedAt: day(-1)
+  },
+  {
+    id: "c3a8e041-6d7b-4f12-9e5c-2b4f8a0d6e93",
+    projectId,
+    name: "firmware-signer",
+    description: "Signs device firmware images",
+    status: SignerStatus.Active,
+    keyAlgorithm: SignerKeyAlgorithm.RSA_4096,
+    lastSignedAt: day(-2),
+    createdAt: day(-180),
+    updatedAt: day(-2)
+  }
+];
+
+const signingOperations: TSigningOperation[] = signers.flatMap((signer, signerIndex) =>
+  Array.from({ length: 90 }, (_, daysAgo) =>
+    Array.from({ length: wave(daysAgo, signerIndex * 2, 3) }, (__, index) => ({
+      id: `${signer.id.slice(0, 8)}-${daysAgo}-${index}`,
+      signerId: signer.id,
+      projectId,
+      status:
+        (daysAgo + index + signerIndex) % 9 === 0
+          ? SigningOperationStatus.Failed
+          : SigningOperationStatus.Success,
+      signingAlgorithm:
+        signer.keyAlgorithm === SignerKeyAlgorithm.RSA_4096
+          ? SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_256
+          : SigningAlgorithm.ECDSA_SHA_384,
+      dataHash: `sha256:${(daysAgo * 7919 + index).toString(16).padStart(8, "0")}`,
+      actorType: SigningActorType.Identity,
+      actorId: "ci-release-bot",
+      actorName: "ci-release-bot",
+      createdAt: new Date(Date.now() - (daysAgo * 24 + index * 3) * 36e5).toISOString()
+    }))
+  ).flat()
+);
+
+const projectPermission = {
+  permission: createMongoAbility<ProjectPermissionSet>([
+    {
+      action: ProjectPermissionCertificateActions.Read,
+      subject: ProjectPermissionSub.Certificates
+    }
+  ]),
+  memberships: [{ roles: [{ role: "admin" }] }]
+};
 
 const change = (id: string, patch: Partial<TCertificate>) => {
   store.update((certs) => certs.map((cert) => (cert.id === id ? { ...cert, ...patch } : cert)));
@@ -392,14 +531,69 @@ export const certificatesDemo: CertificatesAdapter = {
       expiringSoonNoAutoRenewal: expiringSoon.filter((cert) => !cert.renewBeforeDays).length,
       expiredNotRenewed: count(CertStatus.EXPIRED),
       distributions: {
-        byEnrollmentMethod: [],
-        byAlgorithm: [],
-        byCA: [],
-        byStatus: []
+        byEnrollmentMethod: distribution(certs, (cert) => ({
+          label: cert.enrollmentType ?? "Other"
+        })),
+        byAlgorithm: distribution(certs, (cert) => ({ label: cert.keyAlgorithm ?? "Unknown" })),
+        byCA: distribution(certs, (cert) => ({ id: cert.caId, label: cert.caName ?? "Unknown" })),
+        byStatus: distribution(certs, (cert) => ({ label: cert.status }))
       },
-      expirationBuckets: []
+      expirationBuckets: bucketCounts(
+        ["expired", "0-7d", "8-30d", "31-60d", "61-90d", "90d+"],
+        certs.filter((cert) => cert.status === CertStatus.ACTIVE).map(expirationBucket)
+      ),
+      validityBuckets: bucketCounts(
+        [">=200d", "100-199d", "48-99d", "<=47d"],
+        certs
+          .filter(
+            (cert) =>
+              cert.status === CertStatus.ACTIVE &&
+              cert.extendedKeyUsages?.includes(CertExtendedKeyUsage.SERVER_AUTH)
+          )
+          .map(validityBucket)
+      )
     });
   },
+  useActivityTrend: (_projectId, range) => {
+    const { keys, scale } = periodKeys(range);
+    return result({
+      periods: keys.map((period, index) => ({
+        period,
+        issued: (1 + wave(index, 1, 4)) * scale,
+        expired: wave(index, 4, 1) * scale,
+        revoked: index % 9 === 4 ? scale : 0,
+        renewed: wave(index, 2.5, 3) * scale
+      }))
+    });
+  },
+  usePqcTrend: (_projectId, range) => {
+    const { keys, scale } = periodKeys(range);
+    const pqcShare = store.use().filter((cert) => isPqcAlgorithm(cert.keyAlgorithm ?? "")).length;
+    return result({
+      periods: keys.map((period, index) => ({
+        period,
+        pqc: index > keys.length / 2 ? wave(index, 3, pqcShare + 1) * scale : 0,
+        nonPqc: (1 + wave(index, 1, 3)) * scale
+      }))
+    });
+  },
+  useSigners: ({ offset = 0, limit = 25, search }) => {
+    const matched = signers.filter((signer) => !search || signer.name.includes(search));
+    return result({ signers: matched.slice(offset, offset + limit), totalCount: matched.length });
+  },
+  useSigningOperations: ({ signerId, offset = 0, limit = 25, status }) => {
+    const matched = signingOperations.filter(
+      (operation) => operation.signerId === signerId && (!status || operation.status === status)
+    );
+    return {
+      data: signerId
+        ? { operations: matched.slice(offset, offset + limit), totalCount: matched.length }
+        : undefined,
+      isPending: false,
+      error: null
+    };
+  },
+  useProjectPermission: () => result(projectPermission),
   useCertificate: (certificateId) => {
     const found = store.use().find((cert) => cert.id === certificateId);
     return {
