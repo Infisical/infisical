@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, Pressable, StyleSheet, View } from "react-native";
+import { Animated, BackHandler, Dimensions, Pressable, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -46,6 +46,15 @@ export const AppShell = () => {
       if (finished && !openId) setShownId(null);
     });
   }, [openId, slide]);
+
+  useEffect(() => {
+    if (!openId) return undefined;
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      setOpenId(null);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [openId]);
 
   const tabs: { id: Tab; label: string; icon: IconName; count?: number }[] = [
     { id: "inbox", label: "Needs you", icon: "inbox", count: waiting },

@@ -4,7 +4,6 @@ const minute = 60 * 1000;
 const hour = 60 * minute;
 
 export const ORGANIZATION = "Acme Corp";
-export const CURRENT_USER = "Andrew Hu";
 
 export const buildFixtures = (now: number): ApprovalRequest[] => [
   {

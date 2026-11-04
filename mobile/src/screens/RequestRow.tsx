@@ -28,8 +28,7 @@ export const RequestRow = ({ request, onOpen, showActions, isLast }: Props) => {
 
   const run = async (action: "approve" | "deny") => {
     if (action === "approve" && !(await confirmWithDevice(`Approve ${request.resource}`))) return;
-    await decide(request.id, action);
-    decisionHaptic(action);
+    if (await decide(request.id, action)) decisionHaptic(action);
   };
 
   return (

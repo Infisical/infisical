@@ -1,12 +1,12 @@
 import { createContext, ReactNode, useCallback, useContext, useMemo, useRef, useState } from "react";
 
-import { buildFixtures, CURRENT_USER } from "./fixtures";
+import { buildFixtures } from "./fixtures";
 import { Activity, ApprovalRequest } from "./types";
 
 type Store = {
   requests: ApprovalRequest[];
   activity: Record<string, Activity>;
-  decide: (id: string, action: "approve" | "deny", comment?: string) => Promise<void>;
+  decide: (id: string, action: "approve" | "deny", comment?: string) => Promise<boolean>;
   undo: (id: string) => void;
   resolvedThisSession: Set<string>;
 };
@@ -36,7 +36,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
           error: "Infisical couldn't reach Acme Intermediate CA, so the request is still open. Try again in a moment."
         }
       }));
-      return;
+      return false;
     }
     setRequests((prev) =>
       prev.map((request) =>
@@ -47,7 +47,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
               awaitingYou: false,
               decision: { by: "You", at: Date.now(), comment: comment || undefined },
               steps: request.steps.map((step) =>
-                step.status === "current" ? { ...step, status: "approved", decidedBy: CURRENT_USER } : step
+                step.status === "current"
+                  ? { ...step, status: action === "approve" ? "approved" : "rejected", decidedBy: "You" }
+                  : step
               )
             }
           : request
@@ -55,6 +57,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     );
     setResolved((prev) => new Set(prev).add(id));
     setActivity((prev) => ({ ...prev, [id]: { state: "idle" } }));
+    return true;
   }, []);
 
   const undo = useCallback((id: string) => {
@@ -67,7 +70,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
               awaitingYou: true,
               decision: undefined,
               steps: request.steps.map((step) =>
-                step.decidedBy === CURRENT_USER ? { ...step, status: "current", decidedBy: undefined } : step
+                step.decidedBy === "You" ? { ...step, status: "current", decidedBy: undefined } : step
               )
             }
           : request

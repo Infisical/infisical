@@ -2,7 +2,7 @@ export type RequestType = "pam-access" | "secret-access" | "cert-request" | "cer
 
 export type RequestStatus = "pending" | "approved" | "rejected" | "expired" | "cancelled";
 
-export type StepStatus = "approved" | "current" | "waiting";
+export type StepStatus = "approved" | "rejected" | "current" | "waiting";
 
 export type ApprovalStep = {
   name: string;

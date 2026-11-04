@@ -27,6 +27,7 @@ const Fact = ({ label, value, mono, isLast }: { label: string; value: string; mo
 
 const stepStatus = (step: ApprovalStep) => {
   if (step.status === "approved") return { icon: "check-c" as const, label: `Approved by ${step.decidedBy}`, tone: "ok" as const };
+  if (step.status === "rejected") return { icon: "x" as const, label: `Denied by ${step.decidedBy}`, tone: "bad" as const };
   if (step.status === "current")
     return { icon: "clock" as const, label: `Needs ${step.required} of ${step.approvers.length}`, tone: "warn" as const };
   return { icon: "clock" as const, label: "Not reached", tone: "neutral" as const };
@@ -35,7 +36,7 @@ const stepStatus = (step: ApprovalStep) => {
 export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => void }) => {
   const palette = usePalette();
   const insets = useSafeAreaInsets();
-  const { requests, activity, decide, undo } = useStore();
+  const { requests, activity, decide, undo, resolvedThisSession } = useStore();
   const [comment, setComment] = useState("");
   const request = requests.find((candidate) => candidate.id === id);
   if (!request) return null;
@@ -47,8 +48,7 @@ export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => 
 
   const run = async (action: "approve" | "deny") => {
     if (action === "approve" && !(await confirmWithDevice(`Approve ${request.resource}`))) return;
-    await decide(request.id, action, comment.trim());
-    decisionHaptic(action);
+    if (await decide(request.id, action, comment.trim())) decisionHaptic(action);
   };
 
   return (
@@ -173,7 +173,7 @@ export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => 
         ) : (
           <View style={styles.resolved}>
             <StatusText {...statusMeta(request)} />
-            {request.decision?.by === "You" && <Button small variant="ghost" label="Undo" onPress={() => undo(request.id)} />}
+            {request.decision?.by === "You" && resolvedThisSession.has(request.id) && <Button small variant="ghost" label="Undo" onPress={() => undo(request.id)} />}
           </View>
         )}
       </View>
