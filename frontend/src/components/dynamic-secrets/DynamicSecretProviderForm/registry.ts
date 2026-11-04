@@ -53,7 +53,8 @@ export const DYNAMIC_SECRET_PROVIDER_PICKER_ORDER = [
   DynamicSecretProviders.IbmApiConnect,
   DynamicSecretProviders.Tailscale,
   DynamicSecretProviders.OAuth2,
-  DynamicSecretProviders.Kafka
+  DynamicSecretProviders.Kafka,
+  DynamicSecretProviders.Neon
 ] as const satisfies readonly DynamicSecretProviders[];
 
 type TProvidersMissingFromPickerOrder = Exclude<

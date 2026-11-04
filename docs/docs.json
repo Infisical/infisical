@@ -210,6 +210,7 @@
                       "documentation/platform/dynamic-secrets/mongo-atlas",
                       "documentation/platform/dynamic-secrets/mssql",
                       "documentation/platform/dynamic-secrets/mysql",
+                      "documentation/platform/dynamic-secrets/neon",
                       "documentation/platform/dynamic-secrets/oauth2",
                       "documentation/platform/dynamic-secrets/oracle",
                       "documentation/platform/dynamic-secrets/postgresql",
