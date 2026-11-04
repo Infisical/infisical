@@ -94,7 +94,8 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     schema: {
       hide: false,
       operationId: "addAgentVaultMembers",
-      description: "Give users, groups and machine identities access to an Agent Vault project, by id, email or username",
+      description:
+        "Give users, groups and machine identities access to an Agent Vault project, by id, email or username",
       tags: [ApiDocsTags.AgentVaultMembers],
       body: AgentVaultProductMemberAddSchema.and(z.object({ projectId: AgentVaultProjectIdSchema })),
       response: {
