@@ -22,7 +22,7 @@ export const RequestRow = ({ request, onOpen, showActions, isLast }: Props) => {
   const palette = usePalette();
   const { activity, decide, undo } = useStore();
   const current = activity[request.id] ?? { state: "idle" };
-  const failed = current.state === "failed" ? current : null;
+  const failed = current.state === "failed" && request.status === "pending" ? current : null;
   const resolved = request.status !== "pending";
   const unread = !resolved && Date.now() - request.createdAt < 10 * 60 * 1000;
 
