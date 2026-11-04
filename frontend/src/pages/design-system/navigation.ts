@@ -1,22 +1,19 @@
+import { linkOptions, type LinkOptions } from "@tanstack/react-router";
+
 import { componentCatalog } from "@app/components/v4/catalog";
 import { type ComponentGroup } from "@app/components/v4/contracts/types";
 import required from "@app/components/v4/required-capabilities.json";
 import guidance from "@app/components/v4/skills/infisical-ui/rules.json";
+import { type IconName } from "@app/components/v4/ui/icon";
 
 export const foundationPages = [
-  { id: "overview", title: "Overview" },
-  { id: "colors", title: "Color" },
-  { id: "typography", title: "Typography" },
-  { id: "spacing-shape", title: "Spacing and shape" },
-  { id: "motion", title: "Motion" },
-  { id: "rules", title: "Rules" }
+  { id: "colors", slug: "color", title: "Color" },
+  { id: "typography", slug: "typography", title: "Typography" },
+  { id: "spacing-shape", slug: "spacing-shape", title: "Spacing and shape" },
+  { id: "motion", slug: "motion", title: "Motion" },
+  { id: "rules", slug: "rules", title: "Rules" }
 ] as const;
 
-export const componentPages = componentCatalog.map(({ id, title, group }) => ({
-  id,
-  title,
-  group
-}));
 export const comparisonPages = [
   {
     id: "compare-shell",
@@ -111,9 +108,6 @@ export const comparisonPages = [
   }
 ] as const;
 export type ComparisonPage = (typeof comparisonPages)[number]["id"];
-export const documentationPages = [...foundationPages, ...componentPages, ...comparisonPages];
-export type DocumentationPage = (typeof documentationPages)[number]["id"];
-export type ComponentPage = (typeof componentPages)[number]["id"];
 
 export const componentGroupOrder: readonly ComponentGroup[] = [
   "Actions",
@@ -128,44 +122,134 @@ export const componentGroupOrder: readonly ComponentGroup[] = [
   "Utilities"
 ];
 
-export type WorkbenchSection = {
-  id: string;
-  title: string;
-  icon: "apps" | "folder" | "sync" | "eye";
-  pages: { id: string; title: string; group?: string }[];
-};
-export const workbenchSections: WorkbenchSection[] = [
-  { id: "foundations", title: "Foundations", icon: "apps", pages: [...foundationPages] },
-  {
-    id: "components",
-    title: "Components",
-    icon: "folder",
-    pages: componentGroupOrder
-      .filter((group) => group !== "Patterns")
-      .flatMap((group) => componentPages.filter((page) => page.group === group))
-  },
-  {
-    id: "patterns",
-    title: "Patterns",
-    icon: "sync",
-    pages: componentPages
-      .filter((page) => page.group === "Patterns")
-      .map(({ id, title }) => ({ id, title }))
-  },
-  { id: "comparisons", title: "Comparisons", icon: "eye", pages: [...comparisonPages] }
+export type WorkbenchCategory =
+  | "overview"
+  | "foundations"
+  | "components"
+  | "patterns"
+  | "comparisons";
+
+export const workbenchCategories: { id: WorkbenchCategory; title: string; icon: IconName }[] = [
+  { id: "overview", title: "Overview", icon: "home" },
+  { id: "foundations", title: "Foundations", icon: "apps" },
+  { id: "components", title: "Components", icon: "folder" },
+  { id: "patterns", title: "Patterns", icon: "sync" },
+  { id: "comparisons", title: "Comparisons", icon: "eye" }
 ];
 
-export const resolveDocumentationPage = (fullHash: string): DocumentationPage => {
-  const hash = fullHash.split("/")[0];
-  if (hash === "#button-directions") return "button";
-  const alias = Object.entries(required.aliases).find(([name]) => `#${name}` === hash)?.[1];
-  if (alias) return alias;
-  if (guidance.rules.some((rule) => `#rule-${rule.id}` === hash)) return "rules";
-  const ruleOwner = componentCatalog.find((entry) =>
-    entry.guidance.rules.some((rule) => `#rule-${rule.id}` === hash)
+export const groupIcons: Record<ComponentGroup, IconName> = {
+  Actions: "plus",
+  Forms: "file",
+  Navigation: "menu",
+  "Data display": "inbox",
+  Feedback: "bell",
+  Overlays: "folder-open",
+  Composites: "building",
+  Patterns: "sync",
+  Code: "terminal",
+  Utilities: "settings"
+};
+
+export type WorkbenchPage = {
+  id: string;
+  title: string;
+  slug: string;
+  category: WorkbenchCategory;
+  group?: ComponentGroup;
+  link: LinkOptions;
+};
+
+export const groupSlug = (group: string) => group.toLowerCase().replaceAll(" ", "-");
+
+const catalogPages = (category: "components" | "patterns") =>
+  componentGroupOrder
+    .filter((group) => (group === "Patterns") === (category === "patterns"))
+    .flatMap((group) => componentCatalog.filter((entry) => entry.group === group))
+    .map((entry): WorkbenchPage => ({
+      id: entry.id,
+      title: entry.title,
+      slug: entry.id,
+      category,
+      group: category === "components" ? entry.group : undefined,
+      link:
+        category === "components"
+          ? linkOptions({
+              to: "/design-system/components/$group/$component",
+              params: { group: groupSlug(entry.group), component: entry.id }
+            })
+          : linkOptions({ to: "/design-system/patterns/$pattern", params: { pattern: entry.id } })
+    }));
+
+export const workbenchPages: readonly WorkbenchPage[] = [
+  {
+    id: "overview",
+    title: "Overview",
+    slug: "",
+    category: "overview",
+    link: linkOptions({ to: "/design-system", activeOptions: { exact: true } })
+  },
+  ...foundationPages.map((page): WorkbenchPage => ({
+    ...page,
+    category: "foundations",
+    link: linkOptions({ to: "/design-system/foundations/$page", params: { page: page.slug } })
+  })),
+  ...catalogPages("components"),
+  ...catalogPages("patterns"),
+  ...comparisonPages.map((page): WorkbenchPage => ({
+    id: page.id,
+    title: page.title,
+    slug: page.screen,
+    category: "comparisons",
+    link: linkOptions({
+      to: "/design-system/comparisons/$comparison",
+      params: { comparison: page.screen }
+    })
+  }))
+];
+
+export const pagesIn = (category: WorkbenchCategory, group?: string) =>
+  workbenchPages.filter(
+    (page) => page.category === category && (!group || groupSlug(page.group ?? "") === group)
   );
-  if (ruleOwner) return ruleOwner.id;
-  return documentationPages.find((page) => `#${page.id}` === hash)?.id ?? "overview";
+
+export const workbenchPage = (id: string | undefined) =>
+  workbenchPages.find((page) => page.id === id) ?? workbenchPages[0];
+
+export const findWorkbenchPage = (category: WorkbenchCategory, slug: string, group?: string) =>
+  pagesIn(category, group).find((page) => page.slug === slug);
+
+export const fallbackLink = (splat: string) => {
+  const [category, group] = splat.split("/");
+  const pages = workbenchCategories.some((entry) => entry.id === category)
+    ? pagesIn(category as WorkbenchCategory, group)
+    : [];
+  return (pages[0] ?? pagesIn(category as WorkbenchCategory)[0] ?? workbenchPages[0]).link;
+};
+
+export const routePage = (routeId: string, routeParams: object) => {
+  if (routeId === "/design-system/") return workbenchPages[0];
+  const params = routeParams as Record<string, string | undefined>;
+  const category = routeId.split("/")[2] as WorkbenchCategory;
+  const slug = params.page ?? params.component ?? params.pattern ?? params.comparison;
+  return slug ? findWorkbenchPage(category, slug, params.group) : undefined;
+};
+
+export const legacyHashLink = (fullHash: string): LinkOptions | undefined => {
+  const [name, example] = fullHash.replace(/^#/, "").split("/");
+  if (!name) return undefined;
+  const pageLink = (id: string, hash?: string) => {
+    const page = workbenchPages.find((entry) => entry.id === id);
+    return page && { ...page.link, hash };
+  };
+  if (name === "button-directions") return pageLink("button");
+  const alias = Object.entries(required.aliases).find(([entry]) => entry === name)?.[1];
+  if (alias) return pageLink(alias);
+  if (guidance.rules.some((rule) => `rule-${rule.id}` === name)) return pageLink("rules", name);
+  const ruleOwner = componentCatalog.find((entry) =>
+    entry.guidance.rules.some((rule) => `rule-${rule.id}` === name)
+  );
+  if (ruleOwner) return pageLink(ruleOwner.id, name);
+  return pageLink(name, example);
 };
 
 export const hasComponentPreview = (name: string) =>

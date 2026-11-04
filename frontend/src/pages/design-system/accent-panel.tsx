@@ -1,4 +1,5 @@
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { useRouterState } from "@tanstack/react-router";
 
 import { Button } from "@app/components/v4/ui/button";
 import { Input } from "@app/components/v4/ui/input";
@@ -138,7 +139,7 @@ const persist = (choice: AccentChoice | null) => {
   }
   if (choice && !isCanonical(choice)) url.searchParams.set("accent", choice.light.slice(1));
   else url.searchParams.delete("accent");
-  window.history.replaceState(window.history.state, "", url);
+  if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url);
 };
 
 const AccentPanelContext = createContext<{
@@ -205,9 +206,11 @@ export const AccentPanelProvider = ({ children }: { children: ReactNode }) => {
   const [choice, setChoice] = useState<AccentChoice>(() => readInitial() ?? reset);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const pathname = useRouterState({ select: (state) => state.resolvedLocation?.pathname });
+  // Route links carry no search, so each navigation drops the accent query until it is written back.
   useEffect(() => {
     persist(isCanonical(choice) ? null : choice);
-  }, [choice]);
+  }, [choice, pathname]);
   const css = isCanonical(choice) ? "" : overrideCss(choice);
   const custom = normalizeHex(draft);
   const value = useMemo(() => ({ open: () => setOpen(true), select: setChoice, choice }), [choice]);

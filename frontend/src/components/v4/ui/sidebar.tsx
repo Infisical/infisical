@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createLink, type LinkOptions, useMatchRoute, useRouter } from "@tanstack/react-router";
 import { CircleHelp } from "lucide-react";
 
 import { ListHighlight } from "../lib/list-highlight";
@@ -38,6 +39,8 @@ export interface SidebarLink {
   external?: boolean;
   disabled?: boolean;
   drillIn?: boolean;
+  link?: LinkOptions;
+  level?: string;
 }
 export interface SidebarItem extends SidebarLink {
   children?: readonly SidebarLink[];
@@ -59,6 +62,12 @@ export interface SidebarScope {
   back: SidebarLink;
   sections: readonly SidebarSection[];
 }
+export interface SidebarLevel {
+  id: string;
+  label: string;
+  parent?: string;
+  sections: readonly SidebarSection[];
+}
 export interface SidebarHelp {
   status?: { label: string; href: string; state?: "ok" | "warn" | "bad" };
   whatsNew?: { onSelect: () => void; unread?: number; latest?: string; label?: string };
@@ -73,6 +82,7 @@ export interface SidebarAnnouncements {
 }
 export interface SidebarProps {
   sections?: readonly SidebarSection[];
+  levels?: readonly SidebarLevel[];
   scope?: SidebarScope;
   spaces?: readonly SidebarSpace[];
   space?: string;
@@ -111,6 +121,20 @@ const holds = (sections: readonly SidebarSection[], id?: string) =>
       (item) => item.id === id || item.children?.some((childItem) => childItem.id === id)
     )
   );
+
+function SidebarAnchor({
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"a"> & {
+  ref?: React.Ref<HTMLAnchorElement>;
+  "data-current"?: boolean;
+}) {
+  return <a ref={ref} {...props} aria-current={props["data-current"] ? "page" : undefined} />;
+}
+
+const SidebarLinkAnchor = createLink(SidebarAnchor);
+
+const LevelTrail = React.createContext<readonly string[]>([]);
 
 const RowContent = ({
   item,
@@ -156,12 +180,14 @@ const SidebarRow = ({
 }) => {
   const isCurrent = !back && item.id === current;
   const name = back ? `Back to ${item.label}` : item.label;
-  const drillIn = !back && item.drillIn;
+  const drillIn = !back && (item.drillIn || item.level !== undefined);
+  const holdsCurrent = React.useContext(LevelTrail).includes(item.level ?? "") && !back;
   const shared = {
     className: cn(styles.row, back && styles.back),
     "data-sidebar-back": back || undefined,
     "data-sidebar-target": "",
     "data-current": isCurrent || undefined,
+    "data-holds-current": (holdsCurrent && !isCurrent) || undefined,
     "data-child": child || undefined,
     "aria-current": isCurrent ? ("page" as const) : undefined,
     "aria-label": rail || back ? name : undefined,
@@ -175,31 +201,34 @@ const SidebarRow = ({
       onNavigate?.(item);
     }
   };
-  const row = item.href ? (
-    <a
-      {...shared}
-      href={item.disabled ? undefined : item.href}
-      aria-disabled={item.disabled || undefined}
-      target={item.external ? "_blank" : undefined}
-      rel={item.external ? "noreferrer" : undefined}
-    >
-      <RowContent
-        item={item}
-        count={item.count}
-        child={child}
-        trailing={drillIn && !rail ? drill : undefined}
-      />
-    </a>
-  ) : (
-    <button {...shared} type="button" disabled={item.disabled}>
-      <RowContent
-        item={item}
-        count={item.count}
-        child={child}
-        trailing={drillIn && !rail ? drill : undefined}
-      />
-    </button>
+  const content = (
+    <RowContent
+      item={item}
+      count={item.count}
+      child={child}
+      trailing={drillIn && !rail ? drill : undefined}
+    />
   );
+  const row =
+    item.link && !item.disabled ? (
+      <SidebarLinkAnchor {...item.link} {...shared} activeProps={{}}>
+        {content}
+      </SidebarLinkAnchor>
+    ) : item.href || item.link ? (
+      <a
+        {...shared}
+        href={item.disabled ? undefined : item.href}
+        aria-disabled={item.disabled || undefined}
+        target={item.external ? "_blank" : undefined}
+        rel={item.external ? "noreferrer" : undefined}
+      >
+        {content}
+      </a>
+    ) : (
+      <button {...shared} type="button" disabled={item.disabled}>
+        {content}
+      </button>
+    );
   return rail ? (
     <Tooltip content={drillIn ? `${name}, opens section` : name} side="right">
       {row}
@@ -260,9 +289,18 @@ const SidebarGroup = ({
                 childItem.onClick?.();
                 onNavigate?.(childItem);
               }}
-              asChild={Boolean(childItem.href)}
+              asChild={Boolean(childItem.href || childItem.link)}
             >
-              {childItem.href ? (
+              {childItem.link ? (
+                <SidebarLinkAnchor
+                  {...childItem.link}
+                  activeProps={{}}
+                  data-current={childItem.id === current || undefined}
+                >
+                  {childItem.label}
+                  {childItem.count ? <Count>{childItem.count}</Count> : null}
+                </SidebarLinkAnchor>
+              ) : childItem.href ? (
                 <a
                   href={childItem.href}
                   target={childItem.external ? "_blank" : undefined}
@@ -473,9 +511,10 @@ const HelpSheet = ({
   );
 };
 
-export const Sidebar = ({
+const SidebarView = ({
   sections,
-  scope,
+  levels,
+  scope: scopeProp,
   spaces,
   space,
   defaultSpace,
@@ -513,7 +552,31 @@ export const Sidebar = ({
     if (currentSpace) setSpaceId(currentSpace);
   }, [current, currentSpace, setSpaceId]);
   const activeSpace = spaces?.find((entry) => entry.id === spaceId) ?? spaces?.[0];
-  const shownSections = scope?.sections ?? activeSpace?.sections ?? sections ?? [];
+  const levelOf = (id?: string) => levels?.find((entry) => entry.id === id);
+  const currentLevel =
+    levels?.find((entry) => holds(entry.sections, current)) ??
+    levels?.find((entry) => !entry.parent);
+  const [levelId, setLevelId] = React.useState(currentLevel?.id);
+  const lastLevelCurrent = React.useRef(current);
+  React.useEffect(() => {
+    if (current === lastLevelCurrent.current) return;
+    lastLevelCurrent.current = current;
+    setLevelId(currentLevel?.id);
+  }, [current, currentLevel?.id]);
+  const shownLevel = levelOf(levelId) ?? currentLevel;
+  const parentLevel = levelOf(shownLevel?.parent);
+  const scope: SidebarScope | undefined =
+    shownLevel && parentLevel
+      ? {
+          id: shownLevel.id,
+          back: { id: parentLevel.id, label: parentLevel.label, level: parentLevel.id },
+          sections: shownLevel.sections
+        }
+      : scopeProp;
+  const trail: string[] = [];
+  for (let entry = currentLevel; entry; entry = levelOf(entry.parent)) trail.push(entry.id);
+  const shownSections =
+    scope?.sections ?? shownLevel?.sections ?? activeSpace?.sections ?? sections ?? [];
   const shell = useAppShell();
   const mode = shell?.mode ?? "wide";
   const narrow = mode === "narrow";
@@ -561,12 +624,19 @@ export const Sidebar = ({
   }, [setSlot]);
   const [helpSheetOpen, setHelpSheetOpen] = React.useState(false);
   const toggleRef = React.useRef<HTMLButtonElement>(null);
-  const navigate = onNavigate;
   const railed = mode === "rail" || (!narrow && collapsible && isCollapsed);
   const view = scope?.id ?? activeSpace?.id ?? "root";
   const navRef = React.useRef<HTMLDivElement>(null);
   const backRef = React.useRef<HTMLElement | null>(null);
   const refocus = React.useRef(false);
+  const keyed = React.useRef(false);
+  const navigate = (item: SidebarLink) => {
+    if (item.level) {
+      refocus.current = keyed.current;
+      setLevelId(item.level);
+    }
+    onNavigate?.(item);
+  };
   const lastScope = React.useRef(scope);
   const [enter, setEnter] = React.useState<"forward" | "back">();
   React.useEffect(() => {
@@ -755,8 +825,12 @@ export const Sidebar = ({
           aria-label={label ?? (activeSpace ? `${activeSpace.label} navigation` : "Main")}
           className={styles.navigation}
           onKeyDown={(event) => {
+            keyed.current = event.key === "Enter" || event.key === " ";
             goUp(event);
             moveFocus(event);
+          }}
+          onPointerDown={() => {
+            keyed.current = false;
           }}
         >
           <div
@@ -833,37 +907,71 @@ export const Sidebar = ({
   };
   const sheetLabel = label ?? (activeSpace ? `${activeSpace.label} navigation` : "Main");
   return (
-    <TooltipProvider>
-      {!narrow && panel(false)}
-      {sheeted && shell && (
-        <Sheet open={shell.navigationOpen} onOpenChange={shell.setNavigationOpen}>
-          <SheetContent
-            side="left"
-            showCloseButton={false}
-            aria-describedby={undefined}
-            className={styles.sheet}
-            style={{ width: "fit-content" }}
-            onCloseAutoFocus={(event) => {
-              event.preventDefault();
-              (narrow ? shell.navigationTrigger.current : toggleRef.current)?.focus();
-            }}
-            onOpenAutoFocus={(event) => {
-              const target = (event.currentTarget as HTMLElement).querySelector<HTMLElement>(
-                '[aria-current="page"]'
-              );
-              if (!target) return;
-              event.preventDefault();
-              target.focus();
-            }}
-          >
-            <SheetTitle className={styles.srOnly}>{sheetLabel}</SheetTitle>
-            {panel(true)}
-          </SheetContent>
-        </Sheet>
-      )}
-      {help && narrow && (
-        <HelpSheet help={help} open={helpSheetOpen} onOpenChange={setHelpSheetOpen} />
-      )}
-    </TooltipProvider>
+    <LevelTrail value={trail}>
+      <TooltipProvider>
+        {!narrow && panel(false)}
+        {sheeted && shell && (
+          <Sheet open={shell.navigationOpen} onOpenChange={shell.setNavigationOpen}>
+            <SheetContent
+              side="left"
+              showCloseButton={false}
+              aria-describedby={undefined}
+              className={styles.sheet}
+              style={{ width: "fit-content" }}
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                (narrow ? shell.navigationTrigger.current : toggleRef.current)?.focus();
+              }}
+              onOpenAutoFocus={(event) => {
+                const target = (event.currentTarget as HTMLElement).querySelector<HTMLElement>(
+                  '[aria-current="page"]'
+                );
+                if (!target) return;
+                event.preventDefault();
+                target.focus();
+              }}
+            >
+              <SheetTitle className={styles.srOnly}>{sheetLabel}</SheetTitle>
+              {panel(true)}
+            </SheetContent>
+          </Sheet>
+        )}
+        {help && narrow && (
+          <HelpSheet help={help} open={helpSheetOpen} onOpenChange={setHelpSheetOpen} />
+        )}
+      </TooltipProvider>
+    </LevelTrail>
   );
+};
+
+const sidebarLinks = ({ sections, levels, scope, spaces, footerItems }: SidebarProps) =>
+  [
+    ...(sections ?? []),
+    ...(levels ?? []).flatMap((entry) => entry.sections),
+    ...(scope?.sections ?? []),
+    ...(spaces ?? []).flatMap((entry) => entry.sections)
+  ]
+    .flatMap((section) => section.items)
+    .concat(footerItems ?? [])
+    .flatMap((item) => [item, ...(item.children ?? [])])
+    .filter((item) => item.link);
+
+const RoutedSidebar = ({ links, ...props }: SidebarProps & { links: readonly SidebarLink[] }) => {
+  const router = useRouter();
+  const matchRoute = useMatchRoute();
+  let routed: { id: string; rank: number } | undefined;
+  links.forEach((item) => {
+    const link = item.link as Parameters<typeof matchRoute>[0];
+    const exact = Boolean(matchRoute({ ...link, fuzzy: false }));
+    if (!exact && (item.link?.activeOptions?.exact || !matchRoute({ ...link, fuzzy: true })))
+      return;
+    const rank = (exact ? 1e6 : 0) + router.buildLocation(link).pathname.length;
+    if (!routed || rank > routed.rank) routed = { id: item.id, rank };
+  });
+  return <SidebarView {...props} current={routed?.id ?? props.current} />;
+};
+
+export const Sidebar = (props: SidebarProps) => {
+  const links = sidebarLinks(props);
+  return links.length ? <RoutedSidebar {...props} links={links} /> : <SidebarView {...props} />;
 };

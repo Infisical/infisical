@@ -26,6 +26,24 @@ Source evidence:
 - src/components/v4/ui/sidebar.tsx
 - src/pages/design-system/examples/sidebar/scopes.tsx
 
+### sidebar-routes
+
+Owner: sidebar.
+
+When the pages behind the sidebar are routes.
+
+Do: Give each row a link built with linkOptions and pass the navigation as levels, so route matches pick the current row and the level that shows.
+
+Avoid: Mirror the route in local state, pass current by hand beside links, or drill in with a hash.
+
+Why: One source for where the person is keeps the sidebar, the breadcrumb and back and forward in step.
+
+Checked by: review only. Look for: Open a routed page directly by URL and confirm its row is current and its level shows, then go back and forward.
+
+Source evidence:
+- src/components/v4/ui/sidebar.tsx
+- src/pages/design-system/examples/sidebar/routes.tsx
+
 ### sidebar-corner
 
 Owner: sidebar.
@@ -97,6 +115,8 @@ Exports: Sidebar. Source TypeScript defines the API.
 - Pass scope to show a product, project or settings level instead of the top level: a back row (chevron-left and the parent's name, named Back to the parent) above that scope's sections. The back row calls onNavigate with scope.back, so the host moves up one level and passes the parent scope, or none for the top level. Spaces show only at the top level.
 - A scope change slides the rows in over duration-moderate on ease-standard, from the right going deeper and from the left going back; with reduced motion it only fades. In the rail the back row is the first icon, with a Back to tooltip.
 - A section with an icon and a label collapses in the rail to one row with that icon, which opens the section's items in a flyout, so long navigations stay short in the rail.
+- Pass levels for routed, nested navigation: each level has an id, a label and its sections, and every level but the top names its parent. A row declares its route as link, built with linkOptions so to and params are typed against the route tree, and renders as a TanStack Link. A row with level instead opens that level in place (the drill-in chevron comes with it) and a level with a parent gets a back row named for the parent that goes up one level, so a person can browse another level without leaving the page.
+- With links, route matches pick the current row: a link matches its route and every route below it unless its activeOptions set exact, params must match, and when several rows match the most specific wins (an exact match, then the longest path). The level holding the current row shows, it follows every navigation (back and forward, deep links, reload), and drill-in rows on the way to it carry the holds-current ink. current is only the fallback when no route matches.
 
 ## Accessibility
 
@@ -118,7 +138,8 @@ Exports: Sidebar. Source TypeScript defines the API.
 
 ## Limits
 
-- The host owns routing: rows call onNavigate or follow href, and the host passes the current id back.
+- Without links the host owns routing: rows call onNavigate or follow href, and the host passes the current id back. Links need a RouterProvider above the Sidebar.
+- Levels show one level at a time, so a row's children stay a single level of pages; deeper structure is another level.
 - The person's account and the organization menu live in the TopBar, not here.
 
 ## Declared example coverage
@@ -134,6 +155,11 @@ Source declarations and review criteria only. Generation checks references and c
 
 - top level: example `scopes`, visible label "Top level".
 - scoped: example `scopes`, visible label "Project scope with a back row".
+
+### navigation source
+
+- local state: example `scopes`, visible label "Top level".
+- routes: example `routes`, visible label "Routed levels, the current route's level open".
 
 ### size support
 
@@ -391,9 +417,111 @@ export default function Example() {
 }
 ```
 
+### Routed levels
+
+Save this example at `src/pages/design-system/examples/sidebar/routes.tsx`; its relative imports are generated for that exact path. States: default, keyboard.
+
+Registry items used: @infisical/sidebar. Additional packages: @tanstack/react-router@^1.95.1. Install every listed item before compiling this example.
+
+```tsx
+import { linkOptions } from "@tanstack/react-router";
+
+import { Sidebar, type SidebarLevel } from "../../../../components/v4/ui/sidebar";
+
+const page = (group: string, component: string, label: string) => ({
+  id: component,
+  label,
+  link: linkOptions({
+    to: "/design-system/components/$group/$component",
+    params: { group, component }
+  })
+});
+
+const levels: SidebarLevel[] = [
+  {
+    id: "root",
+    label: "Design system",
+    sections: [
+      {
+        items: [
+          {
+            id: "overview",
+            label: "Overview",
+            icon: "home",
+            link: linkOptions({ to: "/design-system", activeOptions: { exact: true } })
+          },
+          { id: "open-navigation", label: "Navigation", icon: "menu", level: "navigation" },
+          { id: "open-feedback", label: "Feedback", icon: "bell", level: "feedback" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "navigation",
+    label: "Navigation",
+    parent: "root",
+    sections: [
+      {
+        label: "Navigation",
+        icon: "menu",
+        items: [
+          page("navigation", "breadcrumb", "Breadcrumb"),
+          page("navigation", "sidebar", "Sidebar"),
+          page("navigation", "tabs", "Tabs"),
+          page("navigation", "top-bar", "Top bar")
+        ]
+      }
+    ]
+  },
+  {
+    id: "feedback",
+    label: "Feedback",
+    parent: "root",
+    sections: [
+      {
+        label: "Feedback",
+        icon: "bell",
+        items: [
+          page("feedback", "alert", "Alert"),
+          page("feedback", "loader", "Loader"),
+          page("feedback", "toast", "Toast")
+        ]
+      }
+    ]
+  }
+];
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="relative isolate h-[600px] w-full min-w-0 [transform:translateZ(0)] overflow-auto">
+            <Sidebar label="Routed example" levels={levels} />
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Routed levels, the current route's level open"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="relative isolate h-[600px] w-full min-w-0 [transform:translateZ(0)] overflow-auto">
+            <Sidebar label="Routed rail example" levels={levels} defaultCollapsed />
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Routed levels in the rail"}
+        </figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
 ## Verification recipes
 
 These commands are recipes, not evidence that this component passed.
 
 - static: npm run type:check
-- browser: npm run dev; open /design-system#sidebar and exercise the documented interaction.
+- browser: npm run dev; open /design-system/components/navigation/sidebar and exercise the documented interaction.
