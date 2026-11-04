@@ -75,7 +75,10 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
               link: {
                 to: `${base}${item.path}`,
                 search: item.search,
-                activeOptions: { exact: item.id === "home", includeSearch: Boolean(item.search) }
+                activeOptions: {
+                  exact: item.id === "home" || item.id === "projects",
+                  includeSearch: Boolean(item.search)
+                }
               } as LinkOptions
             })
       }))
