@@ -8,7 +8,7 @@ import * as RealConstants from "../../src/ee/services/audit-log-stream-outbox/au
 // behavior. The values are live bindings: the service reads them at call time, so a change made
 // through the handle below applies to the next flush.
 //
-// The handle hangs off globalThis for the reason given in aws-parameter-store-sync-fns.ts.
+// The handle hangs off globalThis for the reason given in aws-iam-user-secret-rotation-fns.ts.
 /* eslint-disable import/no-mutable-exports -- a live binding is what lets the service see a change */
 export let FLUSH_DEBOUNCE_MS = RealConstants.FLUSH_DEBOUNCE_MS as number;
 export let MAX_ATTEMPTS = RealConstants.MAX_ATTEMPTS as number;

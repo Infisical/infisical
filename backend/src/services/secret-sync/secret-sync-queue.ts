@@ -11,7 +11,11 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { highCardinalityMeter, recordSecretSyncOutcomeMetric } from "@app/lib/telemetry/metrics";
+import {
+  highCardinalityMeter,
+  recordSecretSyncOutcomeMetric,
+  recordSecretSyncStatusChangeMetric
+} from "@app/lib/telemetry/metrics";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -21,6 +25,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -140,6 +145,7 @@ type TSecretSyncQueueFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 type SecretSyncActionJob = Job<
@@ -194,7 +200,8 @@ export const secretSyncQueueFactory = ({
   microsoftTeamsService,
   telemetryService,
   projectFolderGrantDAL,
-  orgDAL
+  orgDAL,
+  oidcIssuerService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -409,7 +416,8 @@ export const secretSyncQueueFactory = ({
       gitHubAppDAL,
       kmsService,
       gatewayV2Service,
-      gatewayPoolService
+      gatewayPoolService,
+      oidcIssuerService
     });
 
     if (!Object.keys(importedSecrets).length) return {};
@@ -572,10 +580,13 @@ export const secretSyncQueueFactory = ({
         gitHubAppDAL,
         kmsService,
         gatewayV2Service,
-        gatewayPoolService
+        gatewayPoolService,
+        oidcIssuerService,
+        keyStore
       });
 
       syncResult = result ?? undefined;
+      syncMessage = syncResult?.message ?? null;
 
       isSynced = true;
     } catch (err) {
@@ -646,13 +657,36 @@ export const secretSyncQueueFactory = ({
       });
 
       if (isSynced || isFinalAttempt) {
+        // lastSyncResult is written only here, so lock and admission failures cannot overwrite the provider's result.
+        // The conditional update makes only the run that actually changes it report the change, whatever state this
+        // job loaded before taking the lock. A sync that never succeeded (null) failing is a new misconfiguration, not
+        // a breakage, so it is not counted.
+        const isStatusChange =
+          (
+            await secretSyncDAL.update(
+              {
+                id: secretSync.id,
+                lastSyncResult: isSynced ? SecretSyncStatus.Failed : SecretSyncStatus.Succeeded
+              },
+              { lastSyncResult: syncStatus }
+            )
+          ).length > 0;
+
+        if (isStatusChange) {
+          recordSecretSyncStatusChangeMetric({
+            destination: secretSync.destination,
+            newStatus: isSynced ? "healthy" : "failed"
+          });
+        }
+
         const updatedSecretSync = await secretSyncDAL.updateById(
           secretSync.id,
           {
             syncStatus,
             lastSyncJobId: job.id,
             lastSyncMessage: syncMessage,
-            lastSyncedAt: isSynced ? ranAt : undefined
+            lastSyncedAt: isSynced ? ranAt : undefined,
+            lastSyncResult: syncStatus
           },
           { includeFolderPath: false }
         );
@@ -864,7 +898,8 @@ export const secretSyncQueueFactory = ({
           gitHubAppDAL,
           kmsService,
           gatewayV2Service,
-          gatewayPoolService
+          gatewayPoolService,
+          oidcIssuerService
         }
       );
 

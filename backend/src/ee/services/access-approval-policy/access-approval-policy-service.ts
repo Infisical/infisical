@@ -265,7 +265,7 @@ export const accessApprovalPolicyServiceFactory = ({
           secretPath,
           name,
           enforcementLevel,
-          allowedSelfApprovals,
+          allowedSelfApprovals: allowedSelfApprovals ?? true,
           maxTimePeriod,
           requestExpirationTime
         },
@@ -380,7 +380,9 @@ export const accessApprovalPolicyServiceFactory = ({
     approvalsRequired,
     environments,
     maxTimePeriod,
-    requestExpirationTime
+    requestExpirationTime,
+    delegatedApproval,
+    orgActor
   }: TUpdateAccessApprovalPolicy) => {
     if (await $usesGlobalApprovalBridge(policyId)) {
       return secretAccessApprovalGlobalPolicyBridge.updateAccessApprovalPolicy({
@@ -399,8 +401,19 @@ export const accessApprovalPolicyServiceFactory = ({
         approvalsRequired,
         environments,
         maxTimePeriod,
-        requestExpirationTime
+        requestExpirationTime,
+        delegatedApproval,
+        orgActor
       });
+    }
+
+    if (delegatedApproval) {
+      throw new BadRequestError({
+        message: `Access approval policy with ID '${policyId}' is on the legacy approval system and cannot be handled by a delegated approval system.`
+      });
+    }
+    if (!approvers.length) {
+      throw new BadRequestError({ message: "At least one approver should be provided" });
     }
 
     const groupApprovers = approvers.filter((approver) => approver.type === ApproverType.Group);
@@ -528,7 +541,7 @@ export const accessApprovalPolicyServiceFactory = ({
           secretPath,
           name,
           enforcementLevel,
-          allowedSelfApprovals,
+          allowedSelfApprovals: allowedSelfApprovals ?? true,
           maxTimePeriod,
           requestExpirationTime
         },

@@ -316,7 +316,8 @@ describe("event outbox drain", () => {
         source: "urn:infisical:approval",
         type: "approval.workflow.request_opened",
         time: "2026-08-20T17:42:31.000Z",
-        data: makePayload()
+        data: makePayload(),
+        isFinalAttempt: false
       }
     ]);
     expect(commits[0].delivered).toEqual([{ ids: ["7"] }]);
@@ -357,6 +358,24 @@ describe("event outbox drain", () => {
 
     expect(commits[0].failed[0].ids).toEqual(["1"]);
     expect(commits[0].retriable).toEqual([]);
+  });
+
+  test("hands the consumer isFinalAttempt only on its last attempt", async () => {
+    const received: { id: string; isFinalAttempt: boolean }[] = [];
+    const { service } = buildDrain({
+      batches: [[makeRow({ id: 1, attempts: 0 }), makeRow({ id: 2, attempts: MAX_OUTBOX_ATTEMPTS - 1 })]],
+      handle: async (events) => {
+        events.forEach((event) => received.push({ id: event.id, isFinalAttempt: event.isFinalAttempt }));
+        return events.map((event) => ({ id: event.id, status: EventResultStatus.Retry }));
+      }
+    });
+
+    await service.drain(KEY);
+
+    expect(received).toEqual([
+      { id: "event-1", isFinalAttempt: false },
+      { id: "event-2", isFinalAttempt: true }
+    ]);
   });
 
   // One UPDATE per distinct outcome, so a hundred deliveries is one statement. Rows on the same attempt

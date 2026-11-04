@@ -780,7 +780,12 @@ export const ACCOUNT_TYPE_CONFIGS = {
       authMethod: z.string()
     }),
     ui: {
-      serviceAccountEmail: { label: "Service Account Email" },
+      serviceAccountEmail: {
+        label: "Service Account Email",
+        description:
+          'The service account ID must end with "{{organizationIdPrefix}}", e.g. service-account-{{organizationIdPrefix}}@my-project.iam.gserviceaccount.com',
+        descriptionWhen: { field: "credentials.authMethod", equals: GcpServiceAccountAuthMethod.Impersonation }
+      },
       authMethod: {
         label: "Auth Method",
         tooltip:
@@ -992,6 +997,8 @@ export const ACCOUNT_TYPE_CONFIGS = {
           showWhen?: TFieldConditionHint;
           forceWhen?: readonly TFieldForcedRuleHint[];
           tooltip?: string;
+          description?: string;
+          descriptionWhen?: TFieldConditionHint;
           options?: { label: string; value: string; docsUrl?: string }[];
         }
       >;
@@ -1344,7 +1351,13 @@ export const PamFieldDescriptorSchema = z.object({
     .optional(),
 
   // Info tooltip shown next to the label
-  tooltip: z.string().optional()
+  tooltip: z.string().optional(),
+
+  // Help text shown under the field
+  description: z.string().optional(),
+
+  // Only show the description when the referenced field equals this value
+  descriptionWhen: PamFieldConditionSchema.optional()
 });
 
 type PamFieldDescriptor = z.infer<typeof PamFieldDescriptorSchema>;
@@ -1374,6 +1387,8 @@ type TFieldUiHint = {
   showWhen?: TFieldConditionHint;
   forceWhen?: readonly TFieldForcedRuleHint[];
   tooltip?: string;
+  description?: string;
+  descriptionWhen?: TFieldConditionHint;
   options?: { label: string; value: string; docsUrl?: string }[];
 };
 
@@ -1440,7 +1455,9 @@ const describeField = (
     ...(hint.defaultValue !== undefined ? { defaultValue: hint.defaultValue } : {}),
     ...(resolvedShowWhen ? { showWhen: resolvedShowWhen } : {}),
     ...(hint.forceWhen ? { forceWhen: [...hint.forceWhen] } : {}),
-    ...(hint.tooltip ? { tooltip: hint.tooltip } : {})
+    ...(hint.tooltip ? { tooltip: hint.tooltip } : {}),
+    ...(hint.description ? { description: hint.description } : {}),
+    ...(hint.descriptionWhen ? { descriptionWhen: hint.descriptionWhen } : {})
   };
 };
 

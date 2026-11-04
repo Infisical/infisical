@@ -84,8 +84,8 @@ export const TrialBanners = ({
     const entitlement = overview.entitlements[trial.productKey];
     return Boolean(
       entitlement?.trialPlan ||
-        entitlement?.isTrialing ||
-        (entitlement?.status === "active" && entitlement.planTier !== trial.basePlanTier)
+      entitlement?.isTrialing ||
+      (entitlement?.status === "active" && entitlement.planTier !== trial.basePlanTier)
     );
   };
   const reverted = overview.trials

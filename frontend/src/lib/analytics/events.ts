@@ -18,7 +18,8 @@ export const AnalyticsEvent = {
   BillingCancellationReasonSubmitted: "Billing Cancellation Reason Submitted",
   OnboardingResourceClicked: "Onboarding Resource Clicked",
   OnboardingDocumentationClicked: "Onboarding Documentation Clicked",
-  SecretScanningOpened: "Secret Scanning Opened"
+  SecretScanningOpened: "Secret Scanning Opened",
+  AgentVaultRedirectClicked: "Agent Vault Redirect Clicked"
 } as const;
 
 export type OverviewCountBucket = "0" | "1" | "2-5" | "6-20" | "21-100" | "101+";
@@ -201,6 +202,17 @@ export type SecretScanningOpenedProperties = {
   plan: string;
 };
 
+export type AgentVaultRedirectSource = "agent-proxy-moved-modal";
+
+// "go-to-agent-vault" sends the user into Agent Vault; "request-access" asks an admin to let them in.
+export type AgentVaultRedirectAction = "go-to-agent-vault" | "request-access";
+
+type AgentVaultRedirectClickedProperties = {
+  projectId: string;
+  source: AgentVaultRedirectSource;
+  action: AgentVaultRedirectAction;
+};
+
 export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsActivationModalViewed]: SecretsActivationProperties;
   [AnalyticsEvent.SecretsActivationModalMembersInvited]: SecretsActivationProperties & {
@@ -225,6 +237,7 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.BillingCancellationReasonSubmitted]: BillingCancellationReasonSubmittedProperties;
   [AnalyticsEvent.OnboardingResourceClicked]: OnboardingResourceClickedProperties;
   [AnalyticsEvent.SecretScanningOpened]: SecretScanningOpenedProperties;
+  [AnalyticsEvent.AgentVaultRedirectClicked]: AgentVaultRedirectClickedProperties;
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;

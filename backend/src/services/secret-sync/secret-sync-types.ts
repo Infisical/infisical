@@ -563,6 +563,8 @@ export type TSyncSecretsResult = {
   createdSecretKeys: string[];
   updatedSecretKeys: string[];
   deletedSecretKeys: string[];
+  // Something the user has to act on although the sync succeeded; saved as the sync's last message.
+  message?: string;
 };
 
 // ReturnType<> resolves findById's includeFolderPath generic to boolean, a union whose members may

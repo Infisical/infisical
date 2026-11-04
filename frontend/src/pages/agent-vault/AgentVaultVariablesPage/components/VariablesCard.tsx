@@ -150,7 +150,6 @@ const RevealableValue = ({ value }: { value?: string }) => {
       wrapper.style.width = `${maskRef.current.scrollWidth}px`;
     }
     // Only the value entering or leaving matters here; isShown is read, not watched.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rendered]);
 
   return (

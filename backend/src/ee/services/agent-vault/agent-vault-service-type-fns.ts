@@ -103,6 +103,7 @@ export type TAgentVaultServiceTypeDefinition = {
   // Null when the caller enters the host pattern itself.
   deriveHostPattern: ((config: Record<string, unknown>) => string) | null;
   supportsRequestRules: boolean;
+  supportsToolRules: boolean;
   supportsTransformations: { customHeaders: boolean; substitutions: boolean };
   // Appended to the refusal when a request sends a field this type does not take.
   unsupportedFieldHint: string;
@@ -120,8 +121,9 @@ export const AGENT_VAULT_SERVICE_TYPES: Record<AgentVaultServiceType, TAgentVaul
     ],
     deriveHostPattern: null,
     supportsRequestRules: true,
+    supportsToolRules: false,
     supportsTransformations: { customHeaders: true, substitutions: true },
-    unsupportedFieldHint: "A server URL and transport apply only to MCP services."
+    unsupportedFieldHint: "A server URL, transport and allowed tools apply only to MCP services."
   },
   [AgentVaultServiceType.Mcp]: {
     type: AgentVaultServiceType.Mcp,
@@ -130,6 +132,7 @@ export const AGENT_VAULT_SERVICE_TYPES: Record<AgentVaultServiceType, TAgentVaul
     allowedCredentialTypes: [AgentVaultCredentialType.Bearer, AgentVaultCredentialType.OAuth],
     deriveHostPattern: (config) => deriveMcpHostPattern((config as TAgentVaultMcpServiceConfig).serverUrl),
     supportsRequestRules: false,
+    supportsToolRules: true,
     supportsTransformations: { customHeaders: true, substitutions: false },
     unsupportedFieldHint:
       "Its host comes from 'serverUrl', and method, path and substitution rules apply only to HTTP services."
@@ -154,6 +157,7 @@ export type TAgentVaultServiceTypedFields = {
   hostPattern?: unknown;
   allowedMethods?: unknown;
   allowedPathPrefixes?: unknown;
+  allowedTools?: unknown;
   customHeaders?: unknown;
   substitutions?: unknown;
 } & Record<string, unknown>;
@@ -166,6 +170,7 @@ export const findUnsupportedServiceFields = (
     hostPattern: definition.deriveHostPattern === null,
     allowedMethods: definition.supportsRequestRules,
     allowedPathPrefixes: definition.supportsRequestRules,
+    allowedTools: definition.supportsToolRules,
     customHeaders: definition.supportsTransformations.customHeaders,
     substitutions: definition.supportsTransformations.substitutions,
     ...Object.fromEntries(CONFIG_FIELDS.map((field) => [field, field in definition.configSchema.shape]))
@@ -218,10 +223,12 @@ const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
 
 export const assertCredentialTypeSupported = (
   definition: TAgentVaultServiceTypeDefinition,
-  credentialType: AgentVaultCredentialType
+  credentialType: AgentVaultCredentialType,
+  // Narrower than the type's own list where a caller can't offer every credential, so the refusal names only what works.
+  allowedCredentialTypes: AgentVaultCredentialType[] = definition.allowedCredentialTypes
 ) => {
-  if (definition.allowedCredentialTypes.includes(credentialType)) return;
-  const allowed = definition.allowedCredentialTypes.map((type) => CREDENTIAL_LABELS[type]);
+  if (allowedCredentialTypes.includes(credentialType)) return;
+  const allowed = allowedCredentialTypes.map((type) => CREDENTIAL_LABELS[type]);
   throw new BadRequestError({
     message: `An ${definition.label} service can't use ${CREDENTIAL_LABELS[credentialType]} as its credential. Use ${allowed.join(" or ")}.`
   });

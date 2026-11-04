@@ -30,6 +30,7 @@ import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { lockMembershipsById } from "../membership/membership-dal";
 import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
@@ -521,15 +522,25 @@ export const projectMembershipServiceFactory = ({
         tx
       });
 
-      await additionalPrivilegeDAL.delete(
-        {
-          projectId,
-          $in: {
-            actorUserId: projectMembers.map((membership) => membership.user.id)
-          }
-        },
+      const lockedMemberships = await lockMembershipsById(
+        projectMembers.map(({ id }) => id),
         tx
       );
+      const lockedMembershipIds = new Set(lockedMemberships.map(({ id }) => id));
+      const actorUserIds = projectMembers
+        .filter(({ id }) => lockedMembershipIds.has(id))
+        .map((membership) => membership.user.id);
+      if (actorUserIds.length) {
+        await additionalPrivilegeDAL.delete(
+          {
+            projectId,
+            $in: {
+              actorUserId: actorUserIds
+            }
+          },
+          tx
+        );
+      }
 
       const deletedMemberships = await membershipUserDAL.delete(
         {
@@ -637,6 +648,14 @@ export const projectMembershipServiceFactory = ({
     const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
       await assertProductWillRetainAdmin({ project, excludeMembershipIds: [actorMembership.id], tx });
 
+      const [lockedMembership] = await lockMembershipsById([actorMembership.id], tx);
+      if (!lockedMembership) {
+        throw new BadRequestError({
+          message:
+            "Your membership in this project changed before the leave completed. Leave the project again if you still want to remove it."
+        });
+      }
+
       await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,
@@ -653,16 +672,7 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
-      const membership = (
-        await membershipUserDAL.delete(
-          {
-            scope: AccessScope.Project,
-            scopeProjectId: project.id,
-            actorUserId: actorId
-          },
-          tx
-        )
-      )?.[0];
+      const membership = await membershipUserDAL.deleteById(lockedMembership.id, tx);
 
       await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
         {

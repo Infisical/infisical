@@ -64,6 +64,7 @@ export enum AppConnection {
   NetScaler = "netscaler",
   PaloAltoNetworks = "palo-alto-networks",
   KempLoadMaster = "kemp-loadmaster",
+  Imperva = "imperva",
   Anthropic = "anthropic",
   OVH = "ovh",
   Devin = "devin",

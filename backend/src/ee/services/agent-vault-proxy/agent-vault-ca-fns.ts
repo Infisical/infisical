@@ -24,6 +24,16 @@ const MAX_ROOT_CA_PEM_LENGTH = 16384;
 // A CA made moments before the proxy started can read as not yet valid when this server's clock is behind.
 const NOT_BEFORE_CLOCK_TOLERANCE_MS = 5 * 60 * 1000;
 const GENERATED_ROOT_CA_VALIDITY_YEARS = 10;
+
+const fingerprintOf = (certificate: x509.X509Certificate): string => {
+  const digest = crypto.nativeCrypto
+    .createHash("sha256")
+    .update(Buffer.from(certificate.rawData))
+    .digest("hex")
+    .toUpperCase();
+  return `SHA256:${digest.match(/.{2}/g)!.join(":")}`;
+};
+
 export const parseRootCaCertificate = (pem: string): TParsedRootCa => {
   if (pem.length > MAX_ROOT_CA_PEM_LENGTH) {
     throw new BadRequestError({ message: "The certificate authority is too large to be a valid CA certificate" });
@@ -58,15 +68,11 @@ export const parseRootCaCertificate = (pem: string): TParsedRootCa => {
     });
   }
 
-  const digest = crypto.nativeCrypto
-    .createHash("sha256")
-    .update(Buffer.from(certificate.rawData))
-    .digest("hex")
-    .toUpperCase();
-  const fingerprint = `SHA256:${digest.match(/.{2}/g)!.join(":")}`;
-
-  return { fingerprint, expiresAt: certificate.notAfter };
+  return { fingerprint: fingerprintOf(certificate), expiresAt: certificate.notAfter };
 };
+
+// Checks nothing, so a stored CA that has since expired still compares by fingerprint.
+export const getRootCaFingerprint = (pem: string): string => fingerprintOf(new x509.X509Certificate(pem));
 
 // The same key type and subject the CLI uses for a CA it makes itself, so agents see no difference.
 export const generateProxyRootCa = async (): Promise<TGeneratedRootCa> => {

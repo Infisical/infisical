@@ -20,6 +20,7 @@ import {
   EventResultStatus,
   FAILED_RETENTION_MS,
   IEventConsumer,
+  isFinalOutboxAttempt,
   MAX_BATCHES_PER_FLUSH,
   MAX_OUTBOX_ATTEMPTS,
   MAX_OUTBOX_PAYLOAD_BYTES,
@@ -79,7 +80,8 @@ const toEvent = (row: TClaimedOutboxRow): TEvent => ({
   source: eventSource(row.eventType),
   type: row.eventType,
   time: new Date(row.occurredAt).toISOString(),
-  data: row.payload
+  data: row.payload,
+  isFinalAttempt: isFinalOutboxAttempt(row.attempts)
 });
 
 const formatIssues = (issues: { path: (string | number)[]; message: string }[]) =>
@@ -220,7 +222,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       if (result.status === EventResultStatus.Delivered) {
         finalStatus = EventOutboxStatus.Delivered;
         delivered.push({ id });
-      } else if (result.status === EventResultStatus.Failed || attempts >= MAX_OUTBOX_ATTEMPTS) {
+      } else if (result.status === EventResultStatus.Failed || isFinalOutboxAttempt(row.attempts)) {
         finalStatus = EventOutboxStatus.Failed;
         failed.push({ id, error: result.error });
       } else {

@@ -25,8 +25,8 @@ import {
 } from "@app/hooks/api/appConnections/palo-alto-networks";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncConnectionField } from "./PkiSyncConnectionField";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 type TPaloAltoNetworksForm = TPkiSyncForm & { destination: PkiSync.PaloAltoNetworksSslTlsProfile };
 

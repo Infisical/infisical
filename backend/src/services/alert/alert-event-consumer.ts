@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib/telemetry/metrics";
+import { runEventsSerially } from "@app/services/event-outbox/event-outbox-fns";
 import {
   EventResultStatus,
   IEventConsumer,
@@ -128,20 +129,7 @@ export const alertEventConsumerFactory = ({
       return lookup;
     };
 
-    const results: TEventConsumerResult[] = [];
-
-    for (const event of events) {
-      try {
-        // eslint-disable-next-line no-await-in-loop -- ordering is the point
-        results.push(await $handleEvent(event, findAlerts));
-      } catch (error) {
-        results.push({
-          id: event.id,
-          status: EventResultStatus.Retry,
-          error: error instanceof Error ? error.message : "Unknown error"
-        });
-      }
-    }
+    const results = await runEventsSerially(events, (event) => $handleEvent(event, findAlerts));
 
     return results;
   };

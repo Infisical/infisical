@@ -17,6 +17,7 @@ export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "assumeProjectPrivileges",
       params: z.object({
         projectId: z.string()
       }),
@@ -80,6 +81,7 @@ export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) 
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteAssumedProjectPrivileges",
       params: z.object({
         projectId: z.string()
       }),

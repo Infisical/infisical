@@ -1,9 +1,11 @@
+import { getGitHubSyncSecretTypeName } from "@app/helpers/secretSyncs";
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import {
   GitHubSyncScope,
+  GitHubSyncSecretType,
   GitHubSyncVisibility
 } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
@@ -49,6 +51,12 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
           break;
         default:
           throw new Error(`Unhandled GitHub Scope Destination Col Values ${destination}`);
+      }
+      if (
+        destinationConfig.secretType &&
+        destinationConfig.secretType !== GitHubSyncSecretType.Actions
+      ) {
+        secondaryText = `${getGitHubSyncSecretTypeName(destinationConfig.secretType)} - ${secondaryText}`;
       }
       break;
     case SecretSync.GCPSecretManager:

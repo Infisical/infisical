@@ -70,7 +70,7 @@ func TestSecret_List(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		backend, billing, search := newTag(t, proj, "backend"), newTag(t, proj, "billing"), newTag(t, proj, "search")
+		backend, billing, search := secretmanager.CreateTag(t, proj, "backend"), secretmanager.CreateTag(t, proj, "billing"), secretmanager.CreateTag(t, proj, "search")
 		for name, tags := range map[string][]string{
 			"BACKEND_KEY": {backend}, "BILLING_KEY": {billing}, "SEARCH_KEY": {search}, "UNTAGGED": {},
 		} {
@@ -236,5 +236,42 @@ func TestSecret_List(t *testing.T) {
 		require.Equal(t,
 			"Folder with path '/nope' in environment 'dev' was not found. Please ensure the environment slug and secret path is correct.",
 			res.JSON404.Message)
+	})
+
+	t.Run("should give actors who see different secrets different etags and answer another actor's etag with the full body", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		proj.NewRole(t, "one-secret-reader", fixture.Permission{
+			Subject:    "secrets",
+			Action:     []string{"read"},
+			Conditions: map[string]any{"secretName": map[string]any{"$eq": "VISIBLE"}},
+		})
+		reader := proj.NewMachineIdentity(t, fixture.WithRoles("one-secret-reader"))
+		secretmanager.CreateSecret(t, proj, "dev", "VISIBLE", "seen")
+		secretmanager.CreateSecret(t, proj, "dev", "HIDDEN", "unseen")
+		params := &api.ListSecretsV4Params{ProjectId: &proj.ID, Environment: new("dev")}
+		adminList, err := tn.Admin.API.ListSecretsV4WithResponse(t.Context(), params)
+		require.NoError(t, err)
+		readerList, err := reader.API.ListSecretsV4WithResponse(t.Context(), params)
+		require.NoError(t, err)
+		require.NotNilf(t, readerList.JSON200, "listing returned %d: %s", readerList.StatusCode(), apierr.Body(readerList.Body))
+		adminEtag := adminList.HTTPResponse.Header.Get("ETag")
+		require.NotEmpty(t, adminEtag, "the list response carried no ETag")
+
+		// Action
+		res, err := reader.API.ListSecretsV4WithResponse(t.Context(), params, func(_ context.Context, req *http.Request) error {
+			req.Header.Set("If-None-Match", adminEtag)
+			return nil
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.NotEqual(t, adminEtag, readerList.HTTPResponse.Header.Get("ETag"))
+		require.NotNilf(t, res.JSON200, "listing with another actor's etag returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.Len(t, res.JSON200.Secrets, 1)
+		require.Equal(t, "VISIBLE", res.JSON200.Secrets[0].SecretKey)
 	})
 }

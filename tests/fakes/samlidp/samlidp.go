@@ -144,6 +144,9 @@ type Response struct {
 	LastName   string
 	Attributes map[string][]string
 
+	// Defaults to PasswordProtectedTransport, a single factor.
+	AuthnContextClassRef string
+
 	NotBefore    time.Time // defaults to a minute ago
 	NotOnOrAfter time.Time // defaults to five minutes from now
 
@@ -167,6 +170,9 @@ func (i *IdP) Respond(t *testing.T, r Response) url.Values {
 	}
 	if r.NameID == "" {
 		r.NameID = r.Email
+	}
+	if r.AuthnContextClassRef == "" {
+		r.AuthnContextClassRef = "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport"
 	}
 	if r.Status == "" {
 		r.Status = StatusSuccess
@@ -250,8 +256,7 @@ func (i *IdP) assertion(r Response, now time.Time) *etree.Element {
 	authn := a.CreateElement("saml:AuthnStatement")
 	authn.CreateAttr("AuthnInstant", instant(now))
 	authn.CreateAttr("SessionIndex", "_"+id.Short())
-	authn.CreateElement("saml:AuthnContext").CreateElement("saml:AuthnContextClassRef").
-		SetText("urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport")
+	authn.CreateElement("saml:AuthnContext").CreateElement("saml:AuthnContextClassRef").SetText(r.AuthnContextClassRef)
 
 	statement := a.CreateElement("saml:AttributeStatement")
 	attribute := func(name string, values ...string) {

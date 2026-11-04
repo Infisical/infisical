@@ -7,6 +7,7 @@ import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-app
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { TAgentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import { TAgentVaultDelegationServiceFactory } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-service";
 import { TAgentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
 import { TAgentVaultOauthServiceFactory } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import { TAgentVaultPersonalValueServiceFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-service";
@@ -14,6 +15,7 @@ import { TAgentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-
 import { TAgentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { TAgentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
 import { TAgentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import { TAgentVaultSkillServiceFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-service";
 import { TAgentVaultVariableServiceFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-service";
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
@@ -73,6 +75,7 @@ import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { TSecretChangeGlobalPolicyBridgeServiceFactory } from "@app/ee/services/secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
+import { TSecretReadActivityServiceFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-service";
 import { TSecretRotationV2ServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-service";
 import { TSecretScanningV2InstanceServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-instance-service";
 import { TSecretScanningV2ProjectResolverFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-resolver";
@@ -114,6 +117,8 @@ import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certi
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { TConvertorServiceFactory } from "@app/services/convertor/convertor-service";
+import { TDelegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
+import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
 import { TEncryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
@@ -218,6 +223,7 @@ declare module "@fastify/request-context" {
     userAuthInfo?: {
       userId: string;
       email: string;
+      issuingRootOrgId?: string;
     };
     projectDetails?: {
       id: string;
@@ -403,8 +409,10 @@ declare module "fastify" {
     agentVaultPersonalValue: TAgentVaultPersonalValueServiceFactory;
     agentVaultProxy: TAgentVaultProxyServiceFactory;
     agentVaultSession: TAgentVaultSessionServiceFactory;
+    agentVaultSkill: TAgentVaultSkillServiceFactory;
     agentVaultSessionLog: TAgentVaultSessionLogServiceFactory;
     agentVaultMembership: TAgentVaultMembershipServiceFactory;
+    agentVaultDelegation: TAgentVaultDelegationServiceFactory;
     certManagerInstance: TCertManagerInstanceServiceFactory;
     certManagerExport: TCertManagerExportServiceFactory;
     certificateAuthority: TCertificateAuthorityServiceFactory;
@@ -456,6 +464,7 @@ declare module "fastify" {
     microsoftTeams: TMicrosoftTeamsServiceFactory;
     assumePrivileges: TAssumePrivilegeServiceFactory;
     insights: TInsightsServiceFactory;
+    secretReadActivity: TSecretReadActivityServiceFactory;
     auditReport: TAuditReportServiceFactory;
     relay: TRelayServiceFactory;
     gatewayV2: TGatewayV2ServiceFactory;
@@ -505,6 +514,8 @@ declare module "fastify" {
     subOrganization: TSubOrgServiceFactory;
     pkiAlertV2: TPkiAlertV2ServiceFactory;
     approvalPolicy: TApprovalPolicyServiceFactory;
+    delegatedApproval: TDelegatedApprovalServiceFactory;
+    delegatedApprovalCallback: TDelegatedApprovalCallbackServiceFactory;
     appConnectionCredentialRotation: TAppConnectionCredentialRotationServiceFactory;
     caSigningConfig: TCaSigningConfigServiceFactory;
     caAutoRenewalQueue: TCaAutoRenewalQueueFactory;

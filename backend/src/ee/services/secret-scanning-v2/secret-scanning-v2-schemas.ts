@@ -127,5 +127,6 @@ export const SecretScanningResourceSchema = SecretScanningResourcesSchema;
 export const SecretScanningScanSchema = SecretScanningScansSchema.omit({
   lastScannedCommit: true,
   lastScannedCommitDigest: true,
-  progressUpdatedAt: true
+  progressUpdatedAt: true,
+  metadata: true
 });

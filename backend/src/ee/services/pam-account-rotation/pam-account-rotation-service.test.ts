@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, test, vi } from "vitest";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { NotFoundError } from "@app/lib/errors";
 
 import { PamAccountType } from "../pam/pam-enums";
 import { pamAccountRotationServiceFactory, ROTATION_STATUS } from "./pam-account-rotation-service";
@@ -36,10 +37,10 @@ const buildAccount = () => ({
   encryptedConnectionDetails: blobOf(connectionDetails),
   encryptedPendingCredentials: blobOf({ username: "app", password: PENDING_PASSWORD }),
   templateSettings: { rotation: { enabled: true, intervalSeconds: 3600 as number | null } },
-  templateGatewayId: null,
-  templateGatewayPoolId: null,
-  gatewayId: null,
-  gatewayPoolId: null
+  templateGatewayId: null as string | null,
+  templateGatewayPoolId: null as string | null,
+  gatewayId: null as string | null,
+  gatewayPoolId: null as string | null
 });
 
 // Builds the service with a fake handler whose testCredential verdict is driven per-password by `passwordWorks`.
@@ -55,6 +56,7 @@ const buildService = (
 
   const applyPasswordChange = vi.fn<(input: unknown) => Promise<void>>(async () => undefined);
   const testCredential = vi.fn(async ({ auth }: { auth: { password: string } }) => passwordWorks(auth.password));
+  const assertGatewayBindingInOrg = vi.fn<(input: unknown) => Promise<void>>(async () => undefined);
   const handler: TPamRotationHandler = { validateTarget: vi.fn(), applyPasswordChange, testCredential };
   const rotationHandlers: typeof PAM_ROTATION_FACTORY_MAP = {
     [PamAccountType.Postgres]: handler,
@@ -85,7 +87,8 @@ const buildService = (
     kmsService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
     keyStore: { acquireLock: vi.fn(async () => ({ release: vi.fn(async () => undefined) })) },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
-    gatewayPoolService: { resolveEffectiveGatewayId: vi.fn() },
+    gatewayPoolService: { resolveEffectiveGatewayId: vi.fn(), assertGatewayBindingInOrg },
+    projectDAL: { findById: vi.fn(async () => ({ id: "proj-1", orgId: "org-1" })) },
     pamAccountDependencyDAL: { findByAccountId: vi.fn(async () => []), updateById: vi.fn(async () => undefined) },
     rotationHandlers
   };
@@ -93,7 +96,7 @@ const buildService = (
   const service = pamAccountRotationServiceFactory(
     deps as unknown as Parameters<typeof pamAccountRotationServiceFactory>[0]
   );
-  return { service, updateById, applyPasswordChange, testCredential };
+  return { service, updateById, applyPasswordChange, testCredential, assertGatewayBindingInOrg };
 };
 
 describe("rotateScheduledAccount recovery probe", () => {
@@ -489,5 +492,45 @@ describe("sqlRotationHandler.validateTarget", () => {
   test("still refuses MSSQL Windows authentication", () => {
     const validate = PAM_ROTATION_FACTORY_MAP[PamAccountType.MsSQL].validateTarget;
     expect(() => validate({ accountType: PamAccountType.MsSQL, authMethod: "ntlm" })).toThrow(/SQL Server/);
+  });
+});
+
+describe("rotation gateway binding check", () => {
+  beforeAll(async () => {
+    await crypto.initialize({} as never, {} as never, {} as never);
+  });
+
+  test.each([
+    ["the account's own gateway", { gatewayId: "gw-own" }, { gatewayId: "gw-own", gatewayPoolId: null }],
+    ["the account's own pool", { gatewayPoolId: "pool-own" }, { gatewayId: null, gatewayPoolId: "pool-own" }],
+    [
+      "a binding inherited from the template",
+      { templateGatewayId: "gw-template", templateGatewayPoolId: "pool-template" },
+      { gatewayId: "gw-template", gatewayPoolId: "pool-template" }
+    ]
+  ])("checks %s against the project's org", async (_label, overrides, binding) => {
+    const { service, assertGatewayBindingInOrg } = buildService((password) => password === PENDING_PASSWORD, {
+      account: { ...buildAccount(), ...overrides }
+    });
+
+    await service.rotateScheduledAccount("acc-1");
+
+    expect(assertGatewayBindingInOrg).toHaveBeenCalledWith({ ...binding, orgId: "org-1" });
+  });
+
+  test("a binding that fails the check stops the rotation before anything connects", async () => {
+    const { service, assertGatewayBindingInOrg, applyPasswordChange, testCredential } = buildService(() => true);
+    assertGatewayBindingInOrg.mockRejectedValueOnce(
+      new NotFoundError({ message: "Gateway pool with ID 'pool-own' not found" })
+    );
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result).toMatchObject({
+      rotationStatus: ROTATION_STATUS.Failed,
+      message: "Rotation failed: Gateway pool with ID 'pool-own' not found"
+    });
+    expect(testCredential).not.toHaveBeenCalled();
+    expect(applyPasswordChange).not.toHaveBeenCalled();
   });
 });
