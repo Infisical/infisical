@@ -164,15 +164,6 @@ export const honeyTokenServiceFactory = ({
 }: THoneyTokenServiceFactoryDep) => {
   const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({ kmsService, appConnectionDAL });
 
-  const $findHoneyTokenById = async (honeyTokenId: string) => {
-    const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
-    if (!honeyToken) {
-      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
-    }
-
-    return honeyToken;
-  };
-
   const create = async (
     { projectId, type, name, description, secretsMapping, environment, secretPath }: THoneyTokenCreateInput,
     actor: OrgServiceActor
@@ -446,7 +437,10 @@ export const honeyTokenServiceFactory = ({
     { honeyTokenId, name, description, secretsMapping }: THoneyTokenUpdateInput,
     actor: OrgServiceActor
   ) => {
-    const honeyToken = await $findHoneyTokenById(honeyTokenId);
+    const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
+    if (!honeyToken) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
 
     const { projectId } = honeyToken;
     const folderWithEnv = await $findHoneyTokenFolder(honeyToken);
@@ -639,7 +633,10 @@ export const honeyTokenServiceFactory = ({
   };
 
   const revokeHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
-    const honeyToken = await $findHoneyTokenById(honeyTokenId);
+    const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
+    if (!honeyToken) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
 
     const { projectId } = honeyToken;
     const folderWithEnv = await $findHoneyTokenFolder(honeyToken);
@@ -762,7 +759,10 @@ export const honeyTokenServiceFactory = ({
   };
 
   const resetHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
-    const honeyToken = await $findHoneyTokenById(honeyTokenId);
+    const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
+    if (!honeyToken) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
 
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
     const { permission: resetPermission } = await permissionService.getProjectPermission({
@@ -917,7 +917,10 @@ export const honeyTokenServiceFactory = ({
   };
 
   const getCredentials = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
-    const honeyToken = await $findHoneyTokenById(honeyTokenId);
+    const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
+    if (!honeyToken) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
 
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
     const { permission: credentialPermission } = await permissionService.getProjectPermission({
@@ -1193,7 +1196,10 @@ export const honeyTokenServiceFactory = ({
   };
 
   const getHoneyTokenById = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
-    const honeyToken = await $findHoneyTokenById(honeyTokenId);
+    const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
+    if (!honeyToken) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
 
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
     const { permission: readPermission } = await permissionService.getProjectPermission({
@@ -1231,7 +1237,10 @@ export const honeyTokenServiceFactory = ({
     { honeyTokenId, offset, limit }: THoneyTokenEventsInput,
     actor: OrgServiceActor
   ) => {
-    const honeyToken = await $findHoneyTokenById(honeyTokenId);
+    const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
+    if (!honeyToken) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
 
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
     const { permission: eventsPermission } = await permissionService.getProjectPermission({

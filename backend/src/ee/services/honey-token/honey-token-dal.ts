@@ -220,7 +220,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .first();
 
   const findFolderlessForCleanup = async (limit: number, tx?: Knex) =>
-    $selectForCleanup(tx || db.replicaNode())
+    $selectForCleanup(tx || db)
       .whereNull(`${TableName.HoneyToken}.folderId`)
       .orderBy(`${TableName.HoneyToken}.updatedAt`, "asc")
       .limit(limit);
