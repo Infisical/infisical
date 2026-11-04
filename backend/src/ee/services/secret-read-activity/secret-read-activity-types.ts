@@ -129,13 +129,14 @@ export type TProjectReader = {
   permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
 };
 
-// One way an actor has access, and when it last changed. A folder grant only reaches secrets in its own folder.
+// One way an actor has access, and when it last changed. A folder grant only reaches secrets in its own folder, or
+// in every folder of its environment when it is recursive.
 export type TAccessSource = {
   date?: Date;
-  folderId?: string;
-  // A folder grant edited since it was created may have held access back before, so access in its folder dates from
-  // the edit.
-  restartsFolder?: boolean;
+  reach?: { folderId: string } | { environment: string };
+  // A folder grant edited since it was created may have held access back before, so access within its reach dates
+  // from the edit.
+  restartsReach?: boolean;
   permission: () => MongoAbility<ProjectPermissionSet, MongoQuery>;
 };
 
@@ -196,7 +197,14 @@ export type TUnusedAccessPaths = {
   groups: { id: string; name: string; roles: TUnusedAccessRole[] }[];
   // Project-wide only; a privilege tied to a folder is a folder grant, listed under folderAccess.
   additionalPrivileges: { id: string; name: string }[];
-  folderAccess: { id: string; folderId: string; environment: string; secretPath: string; role: SecretFolderRole }[];
+  folderAccess: {
+    id: string;
+    folderId: string;
+    environment: string;
+    secretPath: string;
+    role: SecretFolderRole;
+    isPermissionRecursive: boolean;
+  }[];
 };
 
 export type TUnusedAccessActor = {

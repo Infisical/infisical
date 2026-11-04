@@ -1,7 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { setImmediate } from "node:timers/promises";
 
-import { SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
+import { SecretType, TableName } from "@app/db/schemas";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { checkInsightsPermission } from "@app/ee/services/insights/insights-service";
@@ -45,6 +45,7 @@ import {
   loadProjectFolderTree,
   summarizeSecretAccess,
   toLocationKey,
+  toUnusedAccessFolderAccess,
   toUnusedAccessRoles
 } from "./secret-read-activity-fns";
 import { TSecretReadActivityQueueServiceFactory } from "./secret-read-activity-queue";
@@ -438,8 +439,8 @@ export const secretReadActivityServiceFactory = ({
         grants.map((grant) => ({
           actorId,
           date: sourceDates.privilegeDates.get(grant.id),
-          folderId: grant.folderId,
-          restartsFolder: sourceDates.editedPrivilegeIds.has(grant.id),
+          reach: grant.isRecursiveFolder ? { environment: grant.environmentSlug } : { folderId: grant.folderId },
+          restartsReach: sourceDates.editedPrivilegeIds.has(grant.id),
           permission: once(() =>
             createMongoAbility<ProjectPermissionSet>(buildFolderScopedPrivilegeRules([grant]), { conditionsMatcher })
           )
@@ -462,8 +463,11 @@ export const secretReadActivityServiceFactory = ({
       adminActorIds,
       ...createAccessDating(
         groupBy(sources, (source) => source.actorId),
-        sourceDates.folderReopenedAt,
-        accessReopenedAt
+        {
+          folderReopenedAt: sourceDates.folderReopenedAt,
+          environmentReopenedAt: sourceDates.environmentReopenedAt,
+          accessReopenedAt
+        }
       ),
       // A secret's tracked period starts no earlier than tracking did, so until a whole window has been tracked no
       // secret covers it and nobody counts as unused access.
@@ -611,15 +615,7 @@ export const secretReadActivityServiceFactory = ({
             roles: toUnusedAccessRoles(group.roles)
           })),
           additionalPrivileges: member?.additionalPrivileges ?? [],
-          folderAccess: (access.folderAccessByActorId.get(tally.actorId) ?? []).map(
-            ({ id, folderId, role, environmentSlug, secretPath }) => ({
-              id,
-              folderId,
-              environment: environmentSlug,
-              secretPath,
-              role: role as SecretFolderRole
-            })
-          )
+          folderAccess: toUnusedAccessFolderAccess(access.folderAccessByActorId.get(tally.actorId) ?? [])
         }
       };
     });
@@ -641,7 +637,7 @@ export const secretReadActivityServiceFactory = ({
       return { ...summary, unusedAccessFrom, remainingTTL: -1 };
     }
 
-    const cacheKey = KeyStorePrefixes.InsightsCache(projectId, "unused-access");
+    const cacheKey = KeyStorePrefixes.InsightsCache(projectId, "unused-access-v2");
     const summary = await withCache({
       keyStore,
       key: cacheKey,

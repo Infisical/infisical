@@ -304,6 +304,85 @@ describe("User folder access CRUD", () => {
     }
   });
 
+  test("lists an inherited recursive root grant on a nested folder sheet", async () => {
+    const viewer = await createProjectUser(ProjectMembershipRole.NoAccess);
+    const rootTarget = { environmentSlug: seedData1.environment.slug, secretPath: "/" };
+    type TListedUser = {
+      userId: string;
+      membership: { roles: unknown[] };
+      folderRBACAccess: unknown;
+      inheritedFolderRBACAccess: unknown;
+    };
+    const listUsers = async (secretPath: string) => {
+      const res = await testServer.inject({
+        method: "GET",
+        url: `/api/v1/projects/${projectId}/secret-folder-access/users`,
+        headers: authHeaders(),
+        query: { environmentSlug: seedData1.environment.slug, secretPath, search: viewer.email }
+      });
+      expect(res.statusCode).toBe(200);
+      const body: { users: TListedUser[]; usersWithoutAccess: TListedUser[] } = res.json();
+      return body;
+    };
+
+    const createRes = await testServer.inject({
+      method: "POST",
+      url: folderAccessUrl(viewer.userId),
+      headers: authHeaders(),
+      body: { ...rootTarget, permission: SecretFolderRole.Read, isPermissionRecursive: true }
+    });
+    expect(createRes.statusCode).toBe(200);
+    const created = createRes.json().folderAccess;
+
+    try {
+      const root = await listUsers("/");
+      expect(root.usersWithoutAccess).toEqual([]);
+      expect(root.users).toEqual([
+        expect.objectContaining({
+          userId: viewer.userId,
+          membership: expect.objectContaining({ roles: [] }),
+          folderRBACAccess: expect.objectContaining({ id: created.id, secretPath: "/", isPermissionRecursive: true }),
+          inheritedFolderRBACAccess: null
+        })
+      ]);
+
+      const nested = await listUsers(folderTarget.secretPath);
+      expect(nested.usersWithoutAccess).toEqual([]);
+      expect(nested.users).toEqual([
+        expect.objectContaining({
+          userId: viewer.userId,
+          membership: expect.objectContaining({ roles: [] }),
+          folderRBACAccess: null,
+          inheritedFolderRBACAccess: expect.objectContaining({
+            id: created.id,
+            folderId: created.folderId,
+            environment: seedData1.environment.slug,
+            secretPath: "/",
+            permission: SecretFolderRole.Read,
+            isPermissionRecursive: true
+          })
+        })
+      ]);
+
+      const offRes = await testServer.inject({
+        method: "PATCH",
+        url: folderAccessUrl(viewer.userId),
+        headers: authHeaders(),
+        body: { ...rootTarget, isPermissionRecursive: false }
+      });
+      expect(offRes.statusCode).toBe(200);
+
+      const nestedAfter = await listUsers(folderTarget.secretPath);
+      expect(nestedAfter.users).toEqual([]);
+      expect(nestedAfter.usersWithoutAccess).toEqual([
+        expect.objectContaining({ userId: viewer.userId, folderRBACAccess: null, inheritedFolderRBACAccess: null })
+      ]);
+    } finally {
+      await testDb(TableName.AdditionalPrivilege).where({ id: created.id }).del();
+      await deleteProjectUser(viewer.userId);
+    }
+  });
+
   test("recursive folder access is refused on a folder other than root", async () => {
     const createRes = await testServer.inject({
       method: "POST",
