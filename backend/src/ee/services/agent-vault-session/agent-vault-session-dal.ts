@@ -24,7 +24,8 @@ export type TAgentVaultSessionListRow = {
   expiresAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
-  accessBundle: { id: string | null; name: string };
+  // Null for a session with services of its own only.
+  accessBundle: { id: string | null; name: string } | null;
 };
 
 // The on-behalf-of user's own alias, since the actor's user is joined under the table's name.
@@ -349,10 +350,6 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       }[];
 
       const sessions: TAgentVaultSessionListRow[] = rows.map((row) => {
-        // Mint writes the junction row in the session's own transaction, so a session without one is corrupt.
-        if (row.accessBundleName === null) {
-          throw new Error(`Agent Vault session ${row.id} has no access bundle row`);
-        }
         return {
           id: row.id,
           userId: row.userId,
@@ -377,7 +374,10 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           expiresAt: row.expiresAt,
           revokedAt: row.revokedAt,
           createdAt: row.createdAt,
-          accessBundle: { id: row.accessBundleId, name: row.liveAccessBundleName ?? row.accessBundleName }
+          accessBundle:
+            row.accessBundleName === null
+              ? null
+              : { id: row.accessBundleId, name: row.liveAccessBundleName ?? row.accessBundleName }
         };
       });
 

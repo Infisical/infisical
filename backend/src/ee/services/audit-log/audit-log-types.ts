@@ -39,11 +39,16 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
+import {
+  CertificateRenewalKeySource,
+  TRenewalAuditChange,
+  TRenewCertificateDTO
+} from "@app/services/certificate-v3/certificate-v3-types";
 import {
   CertExtendedKeyUsage,
   CertKeyAlgorithm,
@@ -269,6 +274,7 @@ export enum EventType {
 
   UPDATE_USER_ORG_MEMBERSHIP = "update-user-org-membership",
   DELETE_USER_ORG_MEMBERSHIP = "delete-user-org-membership",
+  INVITE_ORG_MEMBERS = "invite-org-members",
 
   CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
   UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
@@ -488,6 +494,7 @@ export enum EventType {
   ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
   USER_LOGIN = "user-login",
   SELECT_ORGANIZATION = "select-organization",
+  SELECT_ORGANIZATION_REFUSED = "select-organization-refused",
   SELECT_SUB_ORGANIZATION = "select-sub-organization",
   CREATE_CERTIFICATE_POLICY = "create-certificate-policy",
   UPDATE_CERTIFICATE_POLICY = "update-certificate-policy",
@@ -727,6 +734,7 @@ export enum EventType {
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
   DELETE_PROJECT = "delete-project",
+  RESTORE_PROJECT = "restore-project",
 
   CREATE_PROJECT_ROLE = "create-project-role",
   UPDATE_PROJECT_ROLE = "update-project-role",
@@ -2301,6 +2309,15 @@ interface DeleteUserOrgMembershipEvent {
   };
 }
 
+interface InviteOrgMembersEvent {
+  type: EventType.INVITE_ORG_MEMBERS;
+  metadata: {
+    inviteeEmails: string[];
+    organizationRoleSlug: string;
+    projects?: { id: string; name: string }[];
+  };
+}
+
 interface CreateIdentityOrgMembershipEvent {
   type: EventType.CREATE_IDENTITY_ORG_MEMBERSHIP;
   metadata: {
@@ -3737,16 +3754,29 @@ interface OrgAdminBypassSSOEvent {
   metadata: Record<string, string>; // no metadata yet
 }
 
+export type TMfaSatisfiedBy = "not-required" | "infisical" | "idp";
+
 interface UserLoginEvent {
   type: EventType.USER_LOGIN;
   metadata: {
     organizationId?: string;
     authProvider?: string;
+    idpMfa?: TIdpMfaSignal;
   };
 }
 
 interface SelectOrganizationEvent {
   type: EventType.SELECT_ORGANIZATION;
+  metadata: {
+    organizationId: string;
+    organizationName: string;
+    mfaSatisfiedBy?: TMfaSatisfiedBy;
+  };
+}
+
+// The session was issued by another root org's IdP, which does not satisfy this org's enforcement.
+interface SelectOrganizationRefusedEvent {
+  type: EventType.SELECT_ORGANIZATION_REFUSED;
   metadata: {
     organizationId: string;
     organizationName: string;
@@ -3759,6 +3789,7 @@ interface SelectSubOrganizationEvent {
     organizationId: string;
     organizationName: string;
     rootOrganizationId: string;
+    mfaSatisfiedBy?: TMfaSatisfiedBy;
   };
 }
 
@@ -4302,6 +4333,7 @@ interface RenewCertificate {
     applicationName?: string | null;
     serialNumber?: string;
     renewalKeySource: CertificateRenewalKeySource;
+    externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
     changedAttributes: TRenewalAuditChange[];
   };
 }
@@ -5965,6 +5997,18 @@ interface ProjectDeleteEvent {
     // true: actor soft-deleted the project (marked for deletion).
     // false: the async cleanup worker hard-deleted an expired soft-deleted project.
     softDelete?: boolean;
+    // true: deleted without a restore window (Delete Now, or a project type that has none).
+    hardDelete?: boolean;
+    deleteAfter?: Date | null;
+  };
+}
+
+interface ProjectRestoreEvent {
+  type: EventType.RESTORE_PROJECT;
+  metadata: {
+    id: string;
+    name: string;
+    slug: string;
   };
 }
 
@@ -6616,6 +6660,7 @@ interface AgentVaultServiceCreateEvent {
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    allowedTools?: string[] | null;
     // The fields each member sets for themselves, such as credential-value or credential-username.
     memberProvidedFields?: string[];
     // Names and placeholders only. A sealed value must never reach an audit row.
@@ -6645,6 +6690,7 @@ interface AgentVaultServiceUpdateEvent {
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    allowedTools?: string[] | null;
     // The fields each member sets for themselves after the update, present when it touched the credential.
     memberProvidedFields?: string[];
     customHeaderNames?: string[];
@@ -6917,9 +6963,25 @@ interface AgentVaultSessionMintEvent {
   metadata: {
     sessionId: string;
     label: string | null;
-    accessBundleId: string;
-    accessBundleName: string;
+    // Null for a session started with inline services only.
+    accessBundleId: string | null;
+    accessBundleName: string | null;
     expiresAt: string | null;
+    // Set when an admin sent services with the session. Never their values.
+    services?: {
+      serviceId: string;
+      // The name it was sent with, or its first host when it was sent without one.
+      name: string;
+      serviceType: string;
+      serverUrl?: string;
+      hostPattern: string;
+      credentialType: string;
+      headerName?: string;
+      allowedMethods: string[] | null;
+      allowedPathPrefixes: string[] | null;
+      customHeaderNames: string[];
+      substitutionPlaceholders: string[];
+    }[];
     // Set when a machine identity started the session on this user's behalf.
     onBehalfOfUserId?: string;
     onBehalfOfUserName?: string;
@@ -7091,10 +7153,12 @@ interface PamAccountRotateCredentialsEvent {
   type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS;
   metadata: {
     accountId: string;
+    accountName: string;
     accountType: string;
     rotationStatus: string;
     manual: boolean;
     rotationAccountId?: string | null;
+    rotationAccountName?: string | null;
     message?: string;
   };
 }
@@ -7103,7 +7167,9 @@ interface PamAccountSetRotationAccountEvent {
   type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT;
   metadata: {
     accountId: string;
+    accountName: string;
     rotationAccountId: string | null;
+    rotationAccountName: string | null;
   };
 }
 
@@ -8573,6 +8639,7 @@ export type Event =
   | ClearIdentityLdapAuthLockoutsEvent
   | UpdateUserOrgMembershipEvent
   | DeleteUserOrgMembershipEvent
+  | InviteOrgMembersEvent
   | CreateIdentityOrgMembershipEvent
   | UpdateIdentityOrgMembershipEvent
   | DeleteIdentityOrgMembershipEvent
@@ -8908,6 +8975,7 @@ export type Event =
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent
+  | ProjectRestoreEvent
   | SecretReminderCreateEvent
   | SecretReminderGetEvent
   | SecretReminderDeleteEvent
@@ -9038,6 +9106,7 @@ export type Event =
   | CertificateIssuanceFailedEvent
   | UserLoginEvent
   | SelectOrganizationEvent
+  | SelectOrganizationRefusedEvent
   | SelectSubOrganizationEvent
   | ApprovalPolicyCreateEvent
   | ApprovalPolicyUpdateEvent

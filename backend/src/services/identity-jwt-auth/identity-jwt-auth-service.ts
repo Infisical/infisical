@@ -20,6 +20,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -163,7 +164,46 @@ export const identityJwtAuthServiceFactory = ({
         }
 
         const { kid } = decodedToken.header as { kid: string };
-        const jwtSigningKey = await client.getSigningKey(kid);
+        let jwtSigningKey;
+        try {
+          jwtSigningKey = await client.getSigningKey(kid);
+        } catch (error) {
+          if (error instanceof Error && error.name === "SigningKeyNotFoundError") {
+            throw new UnauthorizedError({
+              message: `Access denied: Unable to verify JWT signature. The signing key '${kid}' was not found in the configured JWKS.`,
+              detail: {
+                reasonCode: "signing_key_not_found",
+                identityId: identity.id,
+                orgId: identity.orgId,
+                identityName: identity.name
+              }
+            });
+          }
+          // The fetch error can carry network details or the endpoint's response body, and this
+          // route is unauthenticated, so the caller gets a fixed message and the detail is logged.
+          // The JWKS URL can carry credentials in its path or query, so it is logged sanitized and
+          // the error as name, message and code rather than an object that may hold the request.
+          logger.error(
+            {
+              errorName: error instanceof Error ? error.name : undefined,
+              errorMessage: error instanceof Error ? error.message : String(error),
+              errorCode: (error as NodeJS.ErrnoException)?.code,
+              identityId: identity.id,
+              jwksUrl: sanitizeUrlForLog(identityJwtAuth.jwksUrl),
+              kid
+            },
+            `JWT auth signing key retrieval failed [identityId=${identity.id}] [kid=${kid}]`
+          );
+          throw new UnauthorizedError({
+            message: "Access denied: Failed to retrieve the signing key from the configured JWKS endpoint.",
+            detail: {
+              reasonCode: "signing_key_retrieval_failed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
 
         try {
           tokenData = crypto.jwt().verify(jwtValue, jwtSigningKey.getPublicKey()) as Record<string, string>;

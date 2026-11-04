@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   BanIcon,
   CircleAlertIcon,
   FilterIcon,
+  GlobeIcon,
   IdCardIcon,
   LogsIcon,
   MoreHorizontalIcon,
@@ -25,7 +26,6 @@ import {
   Alert,
   AlertAction,
   AlertDescription,
-  Badge,
   Button,
   Card,
   CardAction,
@@ -48,6 +48,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  OverflowBadgeList,
   PageHeader,
   Pagination,
   Skeleton,
@@ -92,12 +93,18 @@ import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSett
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
+import { InlineServicesList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SampleSessionSheet, SampleSessionTable } from "./components/SampleSessionSheet";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
 import { SessionIdentity } from "./components/SessionIdentity";
+import {
+  inlineServicesLabel,
+  toAccessItems,
+  TSessionAccessItem
+} from "./components/sessionInlineServices";
 import { SessionLabel } from "./components/SessionLabel";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
@@ -106,6 +113,12 @@ const STATUS_OPTIONS = [
   AgentVaultSessionStatus.Revoked,
   AgentVaultSessionStatus.Expired
 ];
+
+const accessItemIcon = (item: TSessionAccessItem) =>
+  item.kind === "bundle" ? <PackageIcon /> : <GlobeIcon />;
+
+const accessItemHoverCard = (item: TSessionAccessItem) =>
+  item.kind === "inline" ? <InlineServicesList services={item.services} /> : undefined;
 
 export const AgentVaultSessionsPage = () => {
   const { currentOrg } = useOrganization();
@@ -250,7 +263,7 @@ export const AgentVaultSessionsPage = () => {
         scope={ProjectType.AgentVault}
         icon={IdCardIcon}
         title="Sessions"
-        description="Create sessions that let your agents reach the services in an access bundle."
+        description="Create sessions that let your agents reach the services they need."
       />
 
       <div className="flex flex-col gap-8">
@@ -324,7 +337,7 @@ export const AgentVaultSessionsPage = () => {
               <DocumentationLinkBadge href={AgentVaultDocsUrls.sessions} />
             </CardTitle>
             <CardDescription>
-              A session names the actor who holds it, the access bundle it carries, and when it
+              A session names the actor who holds it, the services it can reach, and when it
               expires.
             </CardDescription>
             <CardAction>
@@ -417,7 +430,7 @@ export const AgentVaultSessionsPage = () => {
                   {/* w-px holds the column to its capped content, so a long label truncates at the column's edge */}
                   <TableHead className="w-px">Label</TableHead>
                   <TableHead>Identity</TableHead>
-                  <TableHead>Access Bundle</TableHead>
+                  <TableHead>Access</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Status</TableHead>
@@ -455,43 +468,39 @@ export const AgentVaultSessionsPage = () => {
                         <SessionIdentity session={session} />
                       </TableCell>
                       <TableCell>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge
-                              variant="neutral"
-                              className={
-                                session.accessBundle.id ? "max-w-40" : "max-w-40 text-muted"
-                              }
-                              isTruncatable
-                              iconPosition="left"
-                              asChild={Boolean(session.accessBundle.id)}
-                            >
-                              {session.accessBundle.id ? (
-                                <Link
-                                  to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                                  params={{
-                                    orgId: currentOrg.id,
-                                    accessBundleId: session.accessBundle.id
-                                  }}
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  <PackageIcon />
-                                  <span>{session.accessBundle.name}</span>
-                                </Link>
-                              ) : (
-                                <>
-                                  <PackageIcon />
-                                  <span>{session.accessBundle.name}</span>
-                                </>
-                              )}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {session.accessBundle.id
-                              ? session.accessBundle.name
-                              : `${session.accessBundle.name} (deleted)`}
-                          </TooltipContent>
-                        </Tooltip>
+                        <div className="max-w-72">
+                          <OverflowBadgeList
+                            items={toAccessItems(session)}
+                            getKey={(item) =>
+                              item.kind === "bundle"
+                                ? `bundle:${item.bundle.id ?? item.bundle.name}`
+                                : "inline"
+                            }
+                            getLabel={(item) =>
+                              item.kind === "bundle"
+                                ? item.bundle.name
+                                : inlineServicesLabel(item.services.length)
+                            }
+                            getIcon={accessItemIcon}
+                            getClassName={(item) =>
+                              item.kind === "bundle" && !item.bundle.id ? "text-muted" : undefined
+                            }
+                            getHoverCard={accessItemHoverCard}
+                            getTooltip={(item) =>
+                              item.kind === "bundle" && !item.bundle.id
+                                ? `${item.bundle.name} (deleted)`
+                                : undefined
+                            }
+                            getLinkProps={(item) =>
+                              item.kind === "bundle" && item.bundle.id
+                                ? linkOptions({
+                                    to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
+                                    params: { orgId: currentOrg.id, accessBundleId: item.bundle.id }
+                                  })
+                                : undefined
+                            }
+                          />
+                        </div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {format(new Date(session.createdAt), "MMM dd, yyyy hh:mm a")}

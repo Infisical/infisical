@@ -112,6 +112,7 @@ import {
 import { useGetSecretScanningProjectId } from "@app/hooks/api/secretScanningV2";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+import { DeletedProjectsTable } from "@app/pages/organization/ProjectsPage/components/DeletedProjectsTable";
 import {
   ProjectListToggle,
   ProjectListView
@@ -413,6 +414,9 @@ const ProjectTypeContent = ({
           isAddingProjectsAllowed={isAddingProjectsAllowed}
           hideProjectListToggle={!canRequestAccess}
         />
+      )}
+      {projectType === ProjectType.SecretManager && (
+        <DeletedProjectsTable projectType={projectType} />
       )}
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}

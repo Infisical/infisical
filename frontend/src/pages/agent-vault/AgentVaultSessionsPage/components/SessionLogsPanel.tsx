@@ -108,7 +108,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   // Only admins can read the settings; they need the storage type to show the right upgrade.
   const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(isAdmin);
   const { accessBundle } = session;
-  const canAddService = isAdmin && Boolean(accessBundle.id);
+  const canAddService = isAdmin && Boolean(accessBundle?.id);
   // Not cleared on close: a prefilled host drops the sheet's template step, so clearing the host
   // while the sheet animates out would change the step on screen.
   const [serviceHost, setServiceHost] = useState<string | null>(null);
@@ -702,7 +702,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                   key={sessionLogRecordKey(record)}
                   record={record}
                   arrivedAt={arrivals.get(sessionLogRecordKey(record))}
-                  accessBundleName={accessBundle.name}
+                  accessBundleName={accessBundle?.name}
                   onAddService={
                     isAddable
                       ? () => {
@@ -770,7 +770,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
         </p>
       )}
 
-      {canAddService && accessBundle.id && (
+      {canAddService && accessBundle?.id && (
         <ServiceSheet
           isOpen={isServiceSheetOpen}
           onOpenChange={setIsServiceSheetOpen}

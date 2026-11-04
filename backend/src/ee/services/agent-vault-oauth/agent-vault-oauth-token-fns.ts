@@ -14,6 +14,7 @@ import {
   describeServer,
   MAX_OAUTH_SCOPES,
   OFFLINE_ACCESS_SCOPE,
+  privateNetworkHint,
   splitScopes,
   stripTrailingSlash
 } from "./agent-vault-oauth-discovery-fns";
@@ -352,7 +353,7 @@ export const requestToken = async ({
         ok: false,
         errorCode: null,
         message: isPrivateAddress
-          ? `Infisical can't reach the login server '${host}' because it's on a private network. Use a bearer token for this service instead.`
+          ? `Infisical can't reach the login server '${host}' because it's on a private network. Use a bearer token for this service instead.${privateNetworkHint()}`
           : `Couldn't reach the login server '${host}'.`,
         resourceDropped: !withResource
       };

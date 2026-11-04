@@ -18,6 +18,7 @@ type Sink struct {
 	// under /services/.
 	prefix string
 	slack  bool
+	splunk bool
 }
 
 // Service is a generic receiver on a hostname of its own. Infisical takes any URL for
@@ -34,8 +35,17 @@ func (s Sink) Host() string { return s.host }
 // parallel tenants' deliveries apart, since a webhook carries no credential.
 func (s Sink) URL(nonce string) string { return "https://" + s.host + s.prefix + nonce }
 
-// Scope is the first path segment after the prefix.
+// Splunk answers as a Splunk HTTP Event Collector. Infisical builds the whole URL from a
+// hostname (https://<host>:<port>/services/collector/event), so there is no path to carry
+// a nonce: the HEC token in the Authorization header is the scope instead.
+var Splunk = Sink{host: "splunk.webhook.test", splunk: true}
+
+// Scope is the first path segment after the prefix, or Splunk's HEC token.
 func (s Sink) Scope(r *http.Request) (string, bool) {
+	if s.splunk {
+		token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Splunk ")
+		return token, ok && token != ""
+	}
 	rest, ok := strings.CutPrefix(r.URL.Path, s.prefix)
 	if !ok {
 		return "", false
@@ -54,6 +64,10 @@ func (e *Endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) { e.mux.Ser
 
 func (e *Endpoint) routes() *http.ServeMux {
 	mux := http.NewServeMux()
+	if e.sink.splunk {
+		mux.HandleFunc("POST /services/collector/event", e.receive)
+		return mux
+	}
 	if e.sink.slack {
 		// Slack's incoming webhooks take a POST and nothing else.
 		mux.HandleFunc("POST /services/{nonce}", e.receive)
@@ -102,6 +116,9 @@ func (e *Endpoint) receive(w http.ResponseWriter, r *http.Request) {
 func (e *Endpoint) answer(body []byte) (int, string) {
 	if e.Respond != 0 && e.Respond != http.StatusOK {
 		return e.Respond, http.StatusText(e.Respond)
+	}
+	if e.sink.splunk {
+		return http.StatusOK, `{"text":"Success","code":0}`
 	}
 	if !e.sink.slack {
 		return http.StatusOK, ""

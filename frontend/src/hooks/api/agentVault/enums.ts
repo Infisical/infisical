@@ -52,8 +52,13 @@ export enum AgentVaultMemberType {
 
 export enum AgentVaultTrafficPolicy {
   AnyHost = "any-host",
+  ServiceHosts = "service-hosts",
+  // The old name of service-hosts, which an API that predates the rename still returns.
   BundleHosts = "bundle-hosts"
 }
+
+export const isServiceHostsPolicy = (policy: AgentVaultTrafficPolicy | undefined) =>
+  policy === AgentVaultTrafficPolicy.ServiceHosts || policy === AgentVaultTrafficPolicy.BundleHosts;
 
 export enum AgentVaultSessionStatus {
   Active = "active",

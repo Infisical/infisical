@@ -341,6 +341,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
 
     await dynamicSecretQueueService.unsetLeaseRevocation(dynamicSecretLease.id);
+    await dynamicSecretQueueService.unsetRestoredLeaseRevocation(dynamicSecretLease.id);
     await dynamicSecretQueueService.setLeaseRevocation(dynamicSecretLease.id, dynamicSecretCfg.id, expireAt);
     const updatedDynamicSecretLease = await dynamicSecretLeaseDAL.updateById(dynamicSecretLease.id, {
       expireAt,
