@@ -22,6 +22,7 @@ infisical/
 ├── backend-go/            # Go API server — partial rewrite (see backend-go/AGENTS.md)
 ├── frontend/              # React 19 SPA (see frontend/AGENTS.md)
 ├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/AGENTS.md)
+├── mobile/                # Expo approvals companion app, demo data only (see mobile/AGENTS.md)
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/AGENTS.md)
 ├── tests/                 # Go blackbox suite — real containers, HTTP only (see tests/AGENTS.md)
 ├── docs/                  # Documentation site (Mintlify-based)
