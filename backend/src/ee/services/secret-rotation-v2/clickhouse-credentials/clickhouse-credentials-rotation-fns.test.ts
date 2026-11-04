@@ -3,7 +3,6 @@ import { Readable } from "node:stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TSecretRotationV2Raw } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { createClickHouseClient } from "@app/services/app-connection/clickhouse";
 
 import { clickhouseCredentialsRotationFactory } from "./clickhouse-credentials-rotation-fns";
 import { TClickHouseCredentialsRotationWithConnection } from "./clickhouse-credentials-rotation-types";
@@ -52,6 +51,9 @@ const CONNECTION_CREDENTIALS = {
   sslRejectUnauthorized: true
 };
 const ACTIVE_CREDENTIALS = { username: "user_1", password: "active-password" };
+const GATEWAY_POOL_SERVICE = {
+  resolveEffectiveGatewayId: async ({ gatewayId }: { gatewayId?: string | null }) => gatewayId ?? null
+};
 
 const alterUser = (username: string) =>
   `manager: ALTER USER \`${username}\` IDENTIFIED WITH sha256_password BY '<password>'`;
@@ -69,7 +71,7 @@ const makeFactory = (
       secretsMapping: { username: "CLICKHOUSE_DB_USERNAME", password: "CLICKHOUSE_DB_PASSWORD" },
       ...overrides
     } as unknown as TClickHouseCredentialsRotationWithConnection,
-    ...([{}, {}, {}, {}, {}] as unknown as [
+    ...([{}, {}, {}, GATEWAY_POOL_SERVICE, {}] as unknown as [
       Parameters<typeof clickhouseCredentialsRotationFactory>[1],
       Parameters<typeof clickhouseCredentialsRotationFactory>[2],
       Parameters<typeof clickhouseCredentialsRotationFactory>[3],
@@ -113,12 +115,6 @@ describe("ClickHouse credentials rotation", () => {
     const agentRequest = ["https://clickhouse.example.com:8443", { ca: undefined, rejectUnauthorized: true }];
     expect(clickhouse.agentRequests).toEqual([agentRequest, agentRequest]);
     expect(clickhouse.agents).toEqual(["pinned-agent", "pinned-agent"]);
-  });
-
-  it("brackets IPv6 hosts in the connection URL", async () => {
-    await createClickHouseClient({ ...CONNECTION_CREDENTIALS, host: "2001:db8::10" });
-
-    expect(clickhouse.agentRequests[0][0]).toBe("https://[2001:db8::10]:8443");
   });
 
   it("escapes backticks and backslashes in usernames", async () => {

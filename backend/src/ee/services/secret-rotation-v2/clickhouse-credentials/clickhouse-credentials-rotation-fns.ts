@@ -1,4 +1,6 @@
 /* eslint-disable no-await-in-loop */
+import { ClickHouseClient } from "@clickhouse/client";
+
 import {
   TRotationFactory,
   TRotationFactoryGetSecretsPayload,
@@ -7,7 +9,7 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { BadRequestError } from "@app/lib/errors";
-import { createClickHouseClient, executeClickHouseStatement } from "@app/services/app-connection/clickhouse";
+import { executeClickHouseStatement, executeWithClickHouseClient } from "@app/services/app-connection/clickhouse";
 
 import { DEFAULT_PASSWORD_REQUIREMENTS, generatePassword } from "../shared/utils";
 import {
@@ -40,7 +42,7 @@ const escapeIdentifier = (identifier: string) => identifier.replaceAll("\\", "\\
 export const clickhouseCredentialsRotationFactory: TRotationFactory<
   TClickHouseCredentialsRotationWithConnection,
   TClickHouseCredentialsRotationGeneratedCredentials
-> = (secretRotation) => {
+> = (secretRotation, _appConnectionDAL, _kmsService, gatewayV2Service, gatewayPoolService) => {
   const {
     connection,
     parameters: { username1, username2 },
@@ -62,29 +64,48 @@ export const clickhouseCredentialsRotationFactory: TRotationFactory<
     });
   }
 
+  let resolvedConnection: typeof connection | undefined;
+  const getResolvedConnection = async () => {
+    if (!resolvedConnection) {
+      const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+        gatewayId: connection.gatewayId,
+        gatewayPoolId: connection.gatewayPoolId
+      });
+      resolvedConnection = { ...connection, gatewayId: effectiveGatewayId, gatewayPoolId: null };
+    }
+    return resolvedConnection;
+  };
+
+  const $executeOperation = async <T>(
+    operation: (client: ClickHouseClient) => Promise<T>,
+    credentialsOverride?: TClickHouseCredentialsRotationGeneratedCredentials[number]
+  ) => {
+    const { credentials, gatewayId } = await getResolvedConnection();
+    return executeWithClickHouseClient(
+      { credentials: { ...credentials, ...credentialsOverride }, gatewayId },
+      gatewayV2Service,
+      operation
+    );
+  };
+
   const $setPasswords = async (credentialsSet: TClickHouseCredentialsRotationGeneratedCredentials) => {
-    const client = await createClickHouseClient(connection.credentials);
     try {
-      for (const { username, password } of credentialsSet) {
-        await executeClickHouseStatement(
-          client,
-          `ALTER USER \`${escapeIdentifier(username)}\` IDENTIFIED WITH sha256_password BY '${password}'`
-        );
-      }
+      await $executeOperation(async (client) => {
+        for (const { username, password } of credentialsSet) {
+          await executeClickHouseStatement(
+            client,
+            `ALTER USER \`${escapeIdentifier(username)}\` IDENTIFIED WITH sha256_password BY '${password}'`
+          );
+        }
+      });
     } catch (error) {
       throw new Error(redactPasswords(error, credentialsSet));
-    } finally {
-      await client.close();
     }
   };
 
   const $validateCredentials = async (credentials: TClickHouseCredentialsRotationGeneratedCredentials[number]) => {
     try {
-      const client = await createClickHouseClient(connection.credentials, {
-        authCredentials: credentials,
-        validateConnection: true
-      });
-      await client.close();
+      await $executeOperation((client) => executeClickHouseStatement(client, "SELECT 1"), credentials);
     } catch (error) {
       throw new Error(redactPasswords(error, [credentials]));
     }
