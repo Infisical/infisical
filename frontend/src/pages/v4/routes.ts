@@ -44,6 +44,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/identities/$identityId", "v4/organization/IdentityDetailsByIDPage/route.tsx"),
     route("/groups/$groupId", "v4/organization/GroupDetailsByIDPage/route.tsx"),
     route("/roles/$roleId", "v4/organization/RoleByIDPage/route.tsx"),
+    route(
+      "/secret-scanning/data-sources",
+      "v4/secret-scanning/SecretScanningDataSourcesPage/route.tsx"
+    ),
     route("/secret-scanning/findings", "v4/secret-scanning/SecretScanningFindingsPage/route.tsx"),
     route("/cert-manager/inventory", "v4/cert-manager/InventoryPage/route.tsx"),
     route(

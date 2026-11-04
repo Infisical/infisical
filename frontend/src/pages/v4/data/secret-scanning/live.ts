@@ -1,9 +1,14 @@
-import { useUpdateMultipleSecretScanningFinding } from "@app/hooks/api/secretScanningV2/mutations";
+import {
+  useDeleteSecretScanningDataSource,
+  useUpdateMultipleSecretScanningFinding,
+  useUpdateSecretScanningDataSource
+} from "@app/hooks/api/secretScanningV2/mutations";
 import {
   useGetSecretScanningProjectId,
   useGetSecretScanningUnresolvedFindingCount,
   useListSecretScanningBasicDataSources,
   useListSecretScanningBasicResources,
+  useListSecretScanningDataSources,
   useListSecretScanningFindings
 } from "@app/hooks/api/secretScanningV2/queries";
 
@@ -14,6 +19,9 @@ export const secretScanningLive: SecretScanningAdapter = {
   useFindings: useListSecretScanningFindings,
   useUnresolvedFindingCount: useGetSecretScanningUnresolvedFindingCount,
   useDataSources: useListSecretScanningBasicDataSources,
+  useDashboardDataSources: useListSecretScanningDataSources,
+  useUpdateDataSource: useUpdateSecretScanningDataSource,
+  useDeleteDataSource: useDeleteSecretScanningDataSource,
   useResources: useListSecretScanningBasicResources,
   useUpdateFindings: useUpdateMultipleSecretScanningFinding
 };
