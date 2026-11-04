@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { BillableIdentityNotice } from "@app/components/organization/BillableIdentityNotice";
 import { Button, EmailInput, Field, FieldError, FieldLabel, SheetClose } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { emailListSchema, MAX_INVITE_EMAILS } from "@app/helpers/email";
@@ -83,6 +84,7 @@ export const AddOrgMemberModal = ({
     reset,
     formState: { isSubmitting }
   } = methods;
+  const invitedEmails = useWatch({ control, name: "emails" });
 
   // set initial form role based off org default role
   useEffect(() => {
@@ -215,6 +217,8 @@ export const AddOrgMemberModal = ({
             />
 
             <ProjectAssignmentFields />
+
+            <BillableIdentityNotice kind="member" count={invitedEmails.length} />
           </MemberFormSheetForm>
         </FormProvider>
       )}

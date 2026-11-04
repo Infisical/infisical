@@ -27,6 +27,21 @@ Authenticating and being authorized are two separate steps. Your permissions are
 
 Understanding how to calculate your identity requirements helps with capacity planning and licensing.
 
+### What counts toward your bill
+
+On Infisical Cloud, Secrets Management is billed per identity. Infisical counts:
+
+- Each person who has accepted an invitation to your organization, including the admin who created it
+- Each machine identity in your organization
+
+People and machine identities that only belong to [Privileged Access](/documentation/platform/pam/overview) or [Certificate Management](/documentation/platform/pki/overview) projects don't count. Invitations that haven't been accepted don't count either.
+
+The Free plan includes up to 5 identities. Those 5 don't carry over when you upgrade: on Pro and Advanced, every identity is billed, starting from the first.
+
+<Tip>
+  An organization with one admin and one machine identity for a CI pipeline has 2 identities, so it pays twice the per-identity price on the [pricing page](https://infisical.com/pricing).
+</Tip>
+
 ### User identities
 
 User identity count is straightforward—it equals the number of human users who need access to Infisical. This includes developers, DevOps/platform engineers, security administrators, and any other team members requiring direct Infisical access.

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { BillableIdentityNotice } from "@app/components/organization/BillableIdentityNotice";
 import { RoleOptionContent } from "@app/components/roles";
 import {
   Button,
@@ -176,6 +177,7 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
             </Field>
           )}
         />
+        <BillableIdentityNotice kind="machine-identity" />
       </div>
       <SheetFooter className="justify-end border-t">
         <Button type="button" variant="outline" onClick={onClose}>

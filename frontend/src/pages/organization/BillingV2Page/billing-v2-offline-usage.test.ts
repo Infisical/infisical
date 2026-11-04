@@ -137,9 +137,9 @@ describe("buildOfflineBilling", () => {
     );
     expect(
       overview.entitlements.legacy_secret_management.dimensions?.map((dim) => dim.label)
-    ).toEqual(["Identities", "User Identities"]);
+    ).toEqual(["Identities", "Members"]);
     expect(overview.entitlements.secrets_manager.dimensions?.map((dim) => dim.label)).toEqual([
-      "Secret Identities"
+      "Identities"
     ]);
   });
 

@@ -132,7 +132,7 @@ export const identityV2ServiceFactory = ({
       if (identitiesUsed >= identityLimit) {
         // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
         throw new BadRequestError({
-          message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
+          message: "Can't create machine identity: identity limit reached. Every member and machine identity counts toward your plan's limit. Upgrade your plan or remove an unused identity."
         });
       }
     }

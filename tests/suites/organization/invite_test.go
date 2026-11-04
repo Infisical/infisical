@@ -121,7 +121,7 @@ func TestInvite_Create(t *testing.T) {
 
 		// Assert
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
-		require.Contains(t, string(res.Body), "member limit reached")
+		require.Contains(t, string(res.Body), "identity limit reached")
 		require.Nil(t, fixture.MembershipOf(t, tn, addr))
 		tn.Mail(t).ExpectNoEvent[smtp.MessageReceived](t, func(e smtp.MessageReceived) bool { return e.Recipient == addr })
 	})

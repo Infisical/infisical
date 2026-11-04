@@ -27,7 +27,7 @@ const OFFLINE_PRODUCTS: Record<string, OfflineProductDef> = {
     deprecated: true,
     dimensions: [
       { key: BillingV2BreakdownDimension.Identities, label: "Identities" },
-      { key: BillingV2BreakdownDimension.UserIdentities, label: "User Identities" }
+      { key: BillingV2BreakdownDimension.UserIdentities, label: "Members" }
     ]
   },
   [BillingProduct.SecretsManagement]: {
@@ -35,7 +35,7 @@ const OFFLINE_PRODUCTS: Record<string, OfflineProductDef> = {
     icon: "key_round",
     color: "var(--color-product-sm)",
     displayOrder: 1,
-    dimensions: [{ key: BillingV2BreakdownDimension.SecretIdentities, label: "Secret Identities" }]
+    dimensions: [{ key: BillingV2BreakdownDimension.SecretIdentities, label: "Identities" }]
   },
   [BillingProduct.CertificateManagement]: {
     name: "Certificate Management",
@@ -53,7 +53,7 @@ const OFFLINE_PRODUCTS: Record<string, OfflineProductDef> = {
     icon: "users",
     color: "var(--color-product-pam)",
     displayOrder: 3,
-    dimensions: [{ key: BillingV2BreakdownDimension.PamIdentities, label: "PAM Identities" }]
+    dimensions: [{ key: BillingV2BreakdownDimension.PamIdentities, label: "Identities" }]
   }
 };
 

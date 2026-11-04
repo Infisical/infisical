@@ -135,7 +135,7 @@ export const newOrgMembershipUserFactory = ({
       if (identitiesUsed >= identityLimit) {
         throw new BadRequestError({
           name: "InviteUser",
-          message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+          message: "Can't invite member: identity limit reached. Every member and machine identity counts toward your plan's limit. Upgrade your plan or remove an unused identity."
         });
       }
     }
