@@ -22,14 +22,15 @@ import { TNotificationServiceFactory } from "@app/services/notification/notifica
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 type TSecretRotationV2QueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   cronJob: TCronJobFactory;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findSecretRotationsToQueue" | "findById">;
-  secretRotationV2Service: Pick<TSecretRotationV2ServiceFactory, "rotateGeneratedCredentials">;
-  smtpService: Pick<TSmtpService, "sendMail">;
+  secretRotationV2Service: Pick<
+    TSecretRotationV2ServiceFactory,
+    "rotateGeneratedCredentials" | "reapOrphanedRotationAlerts"
+  >;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -42,7 +43,6 @@ export const secretRotationV2QueueServiceFactory = async ({
   secretRotationV2Service,
   projectMembershipDAL,
   projectDAL,
-  smtpService,
   notificationService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
   const appCfg = getConfig();
@@ -122,15 +122,7 @@ export const secretRotationV2QueueServiceFactory = async ({
     } else if (job.name === QueueJobs.SecretRotationV2SendNotification) {
       const { secretRotation } = job.data as TSecretRotationSendNotificationJobPayload;
       try {
-        const {
-          name: rotationName,
-          type,
-          projectId,
-          lastRotationAttemptedAt,
-          folder,
-          environment,
-          id: rotationId
-        } = secretRotation;
+        const { name: rotationName, type, projectId, id: rotationId } = secretRotation;
 
         logger.info(`secretRotationV2Queue: Sending Status Notification [rotationId=${rotationId}]`);
 
@@ -162,24 +154,6 @@ export const secretRotationV2QueueServiceFactory = async ({
             link: rotationPath
           }))
         );
-
-        await smtpService.sendMail({
-          recipients: projectAdmins.map((member) => member.user.email!).filter(Boolean),
-          template: SmtpTemplates.SecretRotationFailed,
-          subjectLine: `Secret Rotation Failed`,
-          substitutions: {
-            rotationName,
-            rotationType,
-            content: `Your ${rotationType} Rotation failed to rotate during it's scheduled rotation. The last rotation attempt occurred at ${new Date(
-              lastRotationAttemptedAt
-            ).toISOString()}. Please check the rotation status in Infisical for more details.`,
-            secretPath: folder.path,
-            environment: environment.name,
-            environmentSlug: environment.slug,
-            projectName: project.name,
-            rotationUrl: encodeURI(`${appCfg.SITE_URL}${rotationPath}`)
-          }
-        });
       } catch (error) {
         logger.error(
           error,
@@ -201,6 +175,11 @@ export const secretRotationV2QueueServiceFactory = async ({
         undefined as never,
         { jobId: CronJobName.SecretRotationV2QueueRotations }
       );
+      try {
+        await secretRotationV2Service.reapOrphanedRotationAlerts();
+      } catch (error) {
+        logger.error(error, "secretRotationV2Queue: failed to reap orphaned rotation alerts");
+      }
     }
   });
 };
