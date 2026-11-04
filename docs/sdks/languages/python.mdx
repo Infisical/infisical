@@ -825,11 +825,11 @@ What the client can do with sessions depends on the [Agent Vault role](/document
 
 | Role | Can create sessions with | Can list, get, label, and revoke |
 | --- | --- | --- |
-| **Admin** | Any access bundle, and [inline services](#create-a-session-with-inline-services) | Every session |
+| **Admin** | Any access bundle (on behalf of a user, [only access bundles that the user can use too](#create-a-session-on-behalf-of-a-user)), and [inline services](#create-a-session-with-inline-services) | Every session |
 | **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to the member | The member's own sessions |
 
 <Note>
-  `agent_vault` requires `infisicalsdk` version 1.1.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.2.0 or newer.
 </Note>
 
 #### List sessions
@@ -897,10 +897,6 @@ To pass `session.token` to the agent, follow the steps in [Start the agent with 
 
 If the client logs in as a machine identity with a [delegation](/documentation/platform/agent-vault/sessions-on-behalf-of-users#set-up-a-delegation), the client can create sessions on behalf of the users that the delegation covers. For each of those sessions, the proxy uses the user's [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values) instead of the machine identity's.
 
-<Note>
-  `on_behalf_of_user_email` and `on_behalf_of_user_id` require `infisicalsdk` version 1.2.0 or newer.
-</Note>
-
 ```python
 session = client.agent_vault.sessions.create(
     access_bundle="<access-bundle-name>",
@@ -912,15 +908,11 @@ session = client.agent_vault.sessions.create(
 - The session belongs to the machine identity, so the user can't see the session unless they're an Agent Vault admin
 - In each session that the `get`, `list`, `update`, and `revoke` methods return, `onBehalfOf` is the user, or `None` if the session is the machine identity's own
 
-To find the access bundles that a session on behalf of the user can use, pass the user's email address or ID to [`access_bundles.list`](#list-access-bundles).
+To find the access bundles that a session on behalf of the user can use, pass the user's email address or ID to [`access_bundles.list`](#list-access-bundles). The proxy refuses a session's requests to services that still need the user's personal values, so also pass `requires_setup=False` to leave out the access bundles with those services.
 
 #### Create a session with inline services
 
 If the client logs in as a user or machine identity with the **Admin** role in Agent Vault, the client can send inline services with a session, instead of or beside an access bundle. Inline services let you pass along credentials that your code already holds, without setting anything up in Agent Vault in advance.
-
-<Note>
-  `services` requires `infisicalsdk` version 1.2.0 or newer.
-</Note>
 
 ```python
 session = client.agent_vault.sessions.create(
@@ -991,7 +983,7 @@ This sub-class manages [Agent Vault proxies](/documentation/platform/agent-vault
 To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
-  `agent_vault` requires `infisicalsdk` version 1.1.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.2.0 or newer.
 </Note>
 
 #### List proxies
@@ -1020,10 +1012,6 @@ If the client logs in as a member, each proxy's `trafficPolicy`, `allowedHosts`,
 
 #### Create proxy
 
-<Note>
-  `AgentVaultTrafficPolicy.SERVICE_HOSTS` requires `infisicalsdk` version 1.2.0 or newer. Older versions call it `AgentVaultTrafficPolicy.BUNDLE_HOSTS`, which newer versions keep as another name for `SERVICE_HOSTS`.
-</Note>
-
 ```python
 from infisical_sdk import AgentVaultTrafficPolicy
 
@@ -1038,10 +1026,10 @@ response = client.agent_vault.proxies.create(
 
 **Parameters:**
 - `name` (str): the name of the proxy, in lowercase letters, numbers, and hyphens (up to 64 characters)
-- `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `AgentVaultTrafficPolicy.ANY_HOST` (`"any-host"`) to forward requests to any host or `AgentVaultTrafficPolicy.SERVICE_HOSTS` (`"service-hosts"`) to refuse requests to hosts that none of the session's services cover (defaults to `AgentVaultTrafficPolicy.ANY_HOST`)
+- `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `AgentVaultTrafficPolicy.ANY_HOST` (`"any-host"`) to forward requests to any host or `AgentVaultTrafficPolicy.SERVICE_HOSTS` (`"service-hosts"`) to refuse requests to hosts that none of the session's services cover (defaults to `AgentVaultTrafficPolicy.ANY_HOST`; 1.1.0 calls `SERVICE_HOSTS` `AgentVaultTrafficPolicy.BUNDLE_HOSTS`, and that name still works)
 - `allowed_hosts` (Union[List[str], str], optional): hosts that agents can reach under `AgentVaultTrafficPolicy.SERVICE_HOSTS` even if none of the session's services cover them, as a list or a comma-separated string (see [Exceptions](/documentation/platform/agent-vault/proxies#exceptions))
 - `poll_interval` (int, optional): how often, in seconds, the proxy checks its sessions and settings with Infisical, from 10 to 300 (defaults to `60`)
-- `description` (str, optional): what the proxy is for, up to 256 characters without line breaks or tabs (requires `infisicalsdk` version 1.2.0 or newer)
+- `description` (str, optional): what the proxy is for (up to 256 characters, without line breaks or tabs)
 
 **Returns:**
 - `AgentVaultProxyWithTokenResponse`: the proxy in `proxy`, and its proxy token in `proxyToken` (Infisical returns the token only once)
@@ -1069,9 +1057,9 @@ proxy = client.agent_vault.proxies.update(
 - `proxy_id` (str): the ID of the proxy
 - `name` (str, optional): the new name of the proxy
 - `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the new traffic policy
-- `allowed_hosts` (Union[List[str], str], optional): the new exceptions, which replace the current ones, or an empty list or string to remove every exception (removing them requires `infisicalsdk` version 1.2.0 or newer)
+- `allowed_hosts` (Union[List[str], str], optional): the new exceptions, which replace the current ones, or an empty list or string to remove every exception
 - `poll_interval` (int, optional): the new poll interval in seconds, from 10 to 300
-- `description` (str, optional): the new description, or an empty string to remove the description (requires `infisicalsdk` version 1.2.0 or newer)
+- `description` (str, optional): the new description, or an empty string to remove the description
 
 **Returns:**
 - `AgentVaultProxy`: the updated proxy
@@ -1133,7 +1121,7 @@ This sub-class manages [Agent Vault access bundles](/documentation/platform/agen
 To use any method in this section except `list` and `get`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
 
 <Note>
-  `agent_vault.access_bundles` requires `infisicalsdk` version 1.2.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.2.0 or newer.
 </Note>
 
 #### List access bundles
@@ -1198,7 +1186,7 @@ bundle = client.agent_vault.access_bundles.create(
 **Returns:**
 - `AgentVaultAccessBundle`: the new access bundle
 
-Infisical grants the new access bundle to you, unless you're in Agent Vault only through a group. To add services to the access bundle, follow the steps in [Create an access bundle](/documentation/platform/agent-vault/access-bundles#create-an-access-bundle).
+Infisical grants the new access bundle to you, unless you're in Agent Vault only through a group. The SDK can't add services to an access bundle. To add them in Infisical, see [Services](/documentation/platform/agent-vault/services).
 
 #### Update access bundle
 
@@ -1316,7 +1304,7 @@ response = client.agent_vault.access_bundles.grant(
 
 Revoke an access bundle from users, machine identities, or groups. Pass at least one ID, and at most 100 in total.
 
-- If someone with the **Member** role no longer has any grant on the access bundle, their sessions for the bundle stop getting credentials, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes
+- If someone with the **Member** role no longer has any grant on the access bundle, their sessions for the bundle stop getting credentials, and so do the sessions that machine identities created on their behalf, as [Access changes](/documentation/platform/agent-vault/sessions#access-changes) describes
 - Admins can use every access bundle without a grant, so their sessions keep getting credentials after you revoke their grants (to stop one of their agents, [revoke its session](#revoke-session))
 
 ```python
@@ -1344,7 +1332,7 @@ This sub-class manages [delegations](/documentation/platform/agent-vault/session
 To use any method in this section, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership). A machine identity without the role can still get its own delegation.
 
 <Note>
-  `agent_vault.delegations` requires `infisicalsdk` version 1.2.0 or newer.
+  `agent_vault` requires `infisicalsdk` version 1.2.0 or newer.
 </Note>
 
 #### List delegations
@@ -1367,7 +1355,7 @@ delegations = client.agent_vault.delegations.list(
 
 #### Get delegation
 
-Get which users a machine identity can create sessions on behalf of. If the machine identity has no delegation, `get` raises an `APIError` with status code 404.
+Get which users a machine identity can create sessions on behalf of. If the machine identity has no delegation, `get` raises an `APIError` whose `status_code` is `404`. To catch the error, import the class with `from infisical_sdk import APIError`.
 
 ```python
 delegation = client.agent_vault.delegations.get(
@@ -1464,7 +1452,7 @@ delegation = client.agent_vault.delegations.add_subjects(
 
 Remove users and groups from a machine identity's delegation. Pass at least one ID.
 
-- If the delegation no longer covers a user, the sessions that the machine identity created on behalf of the user stop working
+- If the delegation no longer covers a user, the proxy refuses the sessions that the machine identity created on behalf of the user until the delegation covers the user again (to end those sessions for good, [revoke them](#revoke-session))
 - If you remove the last user or group, Infisical deletes the delegation
 
 ```python
@@ -1485,7 +1473,7 @@ delegation = client.agent_vault.delegations.remove_subjects(
 
 #### Delete delegation
 
-Stop a machine identity from creating sessions on behalf of users. The sessions that the machine identity already created on behalf of users stop working.
+Stop a machine identity from creating sessions on behalf of users. The proxy refuses the sessions that the machine identity already created on behalf of users until a delegation covers those users again. To end those sessions for good, [revoke them](#revoke-session).
 
 ```python
 delegation = client.agent_vault.delegations.delete(
