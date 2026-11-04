@@ -1,3 +1,5 @@
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
+import { useAssumeProjectPrivileges } from "@app/hooks/api/assumePrivileges/mutations";
 import {
   useAddIdentityToGroup,
   useAddUserToGroup,
@@ -16,12 +18,24 @@ import {
   useAddIdentityUniversalAuth,
   useClearIdentityUniversalAuthLockouts,
   useCreateIdentityUniversalAuthClientSecret,
+  useCreateTokenIdentityTokenAuth,
+  useDeleteIdentityAwsAuth,
+  useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityOidcAuth,
+  useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth,
+  useRevokeIdentityTokenAuthToken,
   useRevokeIdentityUniversalAuthClientSecret,
   useUpdateIdentityUniversalAuth
 } from "@app/hooks/api/identities/mutations";
 import {
+  useCountOrgIdentityMemberships,
+  useGetIdentityAwsAuth,
+  useGetIdentityKubernetesAuth,
+  useGetIdentityOidcAuth,
   useGetIdentityProjectMemberships,
+  useGetIdentityTokenAuth,
+  useGetIdentityTokensTokenAuth,
   useGetIdentityUniversalAuth,
   useGetIdentityUniversalAuthClientSecrets,
   useGetOrgIdentityMembershipById,
@@ -36,6 +50,11 @@ import {
   useGetIdentityAuthTemplates,
   useGetTemplateUsages
 } from "@app/hooks/api/identityAuthTemplates/queries";
+import {
+  useGetVaultMounts,
+  useGetVaultNamespaces,
+  useGetVaultPolicies
+} from "@app/hooks/api/migration/queries";
 import {
   useGetOrganizationById,
   useSearchOrganizationGroups,
@@ -95,6 +114,7 @@ import {
   useDeleteServiceToken,
   useGetUserWsServiceTokens
 } from "@app/hooks/api/serviceTokens/queries";
+import { useGetWsTags } from "@app/hooks/api/tags/queries";
 import { useAddUserToWsNonE2EE, useResendOrgMemberInvitation } from "@app/hooks/api/users/mutation";
 import {
   useAddUsersToOrg,
@@ -151,6 +171,18 @@ export const accessLive: AccessAdapter = {
   useCreateIdentityAuthTemplate,
   useUpdateIdentityAuthTemplate,
   useDeleteIdentityAuthTemplate,
+  useCountOrgIdentities: useCountOrgIdentityMemberships,
+  useIdentityTokenAuth: useGetIdentityTokenAuth,
+  useIdentityTokenAuthTokens: useGetIdentityTokensTokenAuth,
+  useCreateIdentityTokenAuthToken: useCreateTokenIdentityTokenAuth,
+  useRevokeIdentityTokenAuthToken,
+  useDeleteIdentityTokenAuth,
+  useIdentityKubernetesAuth: useGetIdentityKubernetesAuth,
+  useDeleteIdentityKubernetesAuth,
+  useIdentityAwsAuth: useGetIdentityAwsAuth,
+  useDeleteIdentityAwsAuth,
+  useIdentityOidcAuth: useGetIdentityOidcAuth,
+  useDeleteIdentityOidcAuth,
 
   useOrgGroups: useSearchOrganizationGroups,
   useGroup: useGetGroupById,
@@ -170,6 +202,7 @@ export const accessLive: AccessAdapter = {
   useAddProjectUsers: useAddUserToWsNonE2EE,
   useUpdateProjectUserRoles: useUpdateUserWorkspaceRole,
   useRemoveProjectUsers: useDeleteUserFromWorkspace,
+  useAssumeProjectPrivileges,
 
   useProjectIdentities: useListProjectIdentityMemberships,
   useProjectIdentity: useGetProjectIdentityMembershipV2,
@@ -193,5 +226,10 @@ export const accessLive: AccessAdapter = {
   useProjectRole: useGetProjectRoleBySlug,
   useCreateProjectRole,
   useUpdateProjectRole,
-  useDeleteProjectRole
+  useDeleteProjectRole,
+  useProjectTags: useGetWsTags,
+  useAvailableAppConnections: useListAvailableAppConnections,
+  useVaultNamespaces: useGetVaultNamespaces,
+  useVaultPolicies: useGetVaultPolicies,
+  useVaultMounts: useGetVaultMounts
 };

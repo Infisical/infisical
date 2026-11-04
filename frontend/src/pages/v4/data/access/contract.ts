@@ -1,3 +1,5 @@
+import type { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
+import type { useAssumeProjectPrivileges } from "@app/hooks/api/assumePrivileges/mutations";
 import type {
   useAddIdentityToGroup,
   useAddUserToGroup,
@@ -16,12 +18,24 @@ import type {
   useAddIdentityUniversalAuth,
   useClearIdentityUniversalAuthLockouts,
   useCreateIdentityUniversalAuthClientSecret,
+  useCreateTokenIdentityTokenAuth,
+  useDeleteIdentityAwsAuth,
+  useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityOidcAuth,
+  useDeleteIdentityTokenAuth,
   useDeleteIdentityUniversalAuth,
+  useRevokeIdentityTokenAuthToken,
   useRevokeIdentityUniversalAuthClientSecret,
   useUpdateIdentityUniversalAuth
 } from "@app/hooks/api/identities/mutations";
 import type {
+  useCountOrgIdentityMemberships,
+  useGetIdentityAwsAuth,
+  useGetIdentityKubernetesAuth,
+  useGetIdentityOidcAuth,
   useGetIdentityProjectMemberships,
+  useGetIdentityTokenAuth,
+  useGetIdentityTokensTokenAuth,
   useGetIdentityUniversalAuth,
   useGetIdentityUniversalAuthClientSecrets,
   useGetOrgIdentityMembershipById,
@@ -36,6 +50,11 @@ import type {
   useGetIdentityAuthTemplates,
   useGetTemplateUsages
 } from "@app/hooks/api/identityAuthTemplates/queries";
+import type {
+  useGetVaultMounts,
+  useGetVaultNamespaces,
+  useGetVaultPolicies
+} from "@app/hooks/api/migration/queries";
 import type {
   useGetOrganizationById,
   useSearchOrganizationGroups,
@@ -95,6 +114,7 @@ import type {
   useDeleteServiceToken,
   useGetUserWsServiceTokens
 } from "@app/hooks/api/serviceTokens/queries";
+import type { useGetWsTags } from "@app/hooks/api/tags/queries";
 import type {
   useAddUserToWsNonE2EE,
   useResendOrgMemberInvitation
@@ -170,6 +190,18 @@ export type AccessAdapter = {
   useCreateIdentityAuthTemplate: MutationOf<typeof useCreateIdentityAuthTemplate>;
   useUpdateIdentityAuthTemplate: MutationOf<typeof useUpdateIdentityAuthTemplate>;
   useDeleteIdentityAuthTemplate: MutationOf<typeof useDeleteIdentityAuthTemplate>;
+  useCountOrgIdentities: QueryOf<typeof useCountOrgIdentityMemberships>;
+  useIdentityTokenAuth: QueryOf<typeof useGetIdentityTokenAuth>;
+  useIdentityTokenAuthTokens: QueryOf<typeof useGetIdentityTokensTokenAuth>;
+  useCreateIdentityTokenAuthToken: MutationOf<typeof useCreateTokenIdentityTokenAuth>;
+  useRevokeIdentityTokenAuthToken: MutationOf<typeof useRevokeIdentityTokenAuthToken>;
+  useDeleteIdentityTokenAuth: MutationOf<typeof useDeleteIdentityTokenAuth>;
+  useIdentityKubernetesAuth: QueryOf<typeof useGetIdentityKubernetesAuth>;
+  useDeleteIdentityKubernetesAuth: MutationOf<typeof useDeleteIdentityKubernetesAuth>;
+  useIdentityAwsAuth: QueryOf<typeof useGetIdentityAwsAuth>;
+  useDeleteIdentityAwsAuth: MutationOf<typeof useDeleteIdentityAwsAuth>;
+  useIdentityOidcAuth: QueryOf<typeof useGetIdentityOidcAuth>;
+  useDeleteIdentityOidcAuth: MutationOf<typeof useDeleteIdentityOidcAuth>;
 
   useOrgGroups: QueryOf<typeof useSearchOrganizationGroups>;
   useGroup: QueryOf<typeof useGetGroupById>;
@@ -189,6 +221,7 @@ export type AccessAdapter = {
   useAddProjectUsers: MutationOf<typeof useAddUserToWsNonE2EE>;
   useUpdateProjectUserRoles: MutationOf<typeof useUpdateUserWorkspaceRole>;
   useRemoveProjectUsers: MutationOf<typeof useDeleteUserFromWorkspace>;
+  useAssumeProjectPrivileges: MutationOf<typeof useAssumeProjectPrivileges>;
 
   useProjectIdentities: QueryOf<typeof useListProjectIdentityMemberships>;
   useProjectIdentity: QueryOf<typeof useGetProjectIdentityMembershipV2>;
@@ -213,4 +246,9 @@ export type AccessAdapter = {
   useCreateProjectRole: MutationOf<typeof useCreateProjectRole>;
   useUpdateProjectRole: MutationOf<typeof useUpdateProjectRole>;
   useDeleteProjectRole: MutationOf<typeof useDeleteProjectRole>;
+  useProjectTags: QueryOf<typeof useGetWsTags>;
+  useAvailableAppConnections: QueryOf<typeof useListAvailableAppConnections>;
+  useVaultNamespaces: QueryOf<typeof useGetVaultNamespaces>;
+  useVaultPolicies: QueryOf<typeof useGetVaultPolicies>;
+  useVaultMounts: QueryOf<typeof useGetVaultMounts>;
 };

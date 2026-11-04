@@ -2,6 +2,11 @@ import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 import type {
   ClientSecretData,
   Identity,
+  IdentityAccessToken,
+  IdentityAwsAuth,
+  IdentityKubernetesAuth,
+  IdentityOidcAuth,
+  IdentityTokenAuth,
   IdentityUniversalAuth
 } from "@app/hooks/api/identities/types";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/hooks/api/identities/types";
@@ -106,6 +111,7 @@ export type AccessState = {
   projects: DemoProject[];
   projectRoles: TProjectRole[];
   projectMemberships: DemoProjectMembership[];
+  tokenAuthTokens: Record<string, IdentityAccessToken[]>;
   serviceTokens: ServiceToken[];
 };
 
@@ -454,6 +460,90 @@ const clientSecrets: Record<string, ClientSecretData[]> = {
       createdAt: day("2026-03-04"),
       updatedAt: day("2026-03-04")
     }
+  ]
+};
+
+const accessTokenDefaults = (identityId: string) => ({
+  identityId,
+  accessTokenTTL: 2592000,
+  accessTokenMaxTTL: 2592000,
+  accessTokenNumUsesLimit: 0,
+  accessTokenTrustedIps: [ip("0.0.0.0", "ipv4", 0), ip("::", "ipv6", 0)]
+});
+
+export const defaultTokenAuth = (identityId: string): IdentityTokenAuth =>
+  accessTokenDefaults(identityId);
+
+export const defaultKubernetesAuth = (identityId: string): IdentityKubernetesAuth => ({
+  ...accessTokenDefaults(identityId),
+  kubernetesHost: "https://k8s.prod.acme.dev:6443",
+  tokenReviewerJwt: "",
+  tokenReviewMode: IdentityKubernetesAuthTokenReviewMode.Api,
+  allowedNamespaces: "payments, payments-canary",
+  allowedNames: "payments-api, payments-worker",
+  allowedAudience: "",
+  caCert: "",
+  verifyTlsCertificate: true,
+  templateId: "t-k8s"
+});
+
+export const defaultAwsAuth = (identityId: string): IdentityAwsAuth => ({
+  ...accessTokenDefaults(identityId),
+  type: "iam",
+  stsEndpoint: "https://sts.amazonaws.com/",
+  allowedPrincipalArns: "arn:aws:iam::441700233914:role/backup",
+  allowedAccountIds: "441700233914"
+});
+
+export const defaultOidcAuth = (identityId: string): IdentityOidcAuth => ({
+  ...accessTokenDefaults(identityId),
+  templateId: "t-oidc",
+  oidcDiscoveryUrl: "https://token.actions.githubusercontent.com",
+  caCert: "",
+  boundIssuer: "https://token.actions.githubusercontent.com",
+  boundAudiences: "https://github.com/acme",
+  boundClaims: {},
+  boundSubject: "repo:acme/*:ref:refs/heads/main"
+});
+
+const tokenAuthToken = (
+  id: string,
+  identityId: string,
+  name: string,
+  createdAt: string,
+  accessTokenTTL: number
+): IdentityAccessToken => ({
+  id,
+  name,
+  identityId,
+  accessTokenTTL,
+  accessTokenMaxTTL: accessTokenTTL,
+  accessTokenNumUses: 0,
+  accessTokenNumUsesLimit: 0,
+  accessTokenLastUsedAt: null,
+  accessTokenLastRenewedAt: null,
+  isAccessTokenRevoked: false,
+  identityUAClientSecretId: null,
+  createdAt: day(createdAt),
+  updatedAt: day(createdAt)
+});
+
+const tokenAuthTokens: Record<string, IdentityAccessToken[]> = {
+  "c83b5d07-2e91-4f6a-9c4d-8b0f1e7a5d22": [
+    tokenAuthToken(
+      "tat-preview",
+      "c83b5d07-2e91-4f6a-9c4d-8b0f1e7a5d22",
+      "preview-builds",
+      "2026-10-20",
+      2592000
+    ),
+    tokenAuthToken(
+      "tat-prod",
+      "c83b5d07-2e91-4f6a-9c4d-8b0f1e7a5d22",
+      "production-sync",
+      "2026-05-12",
+      0
+    )
   ]
 };
 
@@ -896,6 +986,7 @@ export const seedAccessState = (): AccessState => ({
   projects,
   projectRoles,
   projectMemberships,
+  tokenAuthTokens,
   serviceTokens
 });
 
@@ -920,8 +1011,100 @@ export const seedEmptyAccessState = (): AccessState => {
     projectMemberships: seed.projectMemberships.filter(
       (entry) => entry.kind === "user" && entry.userId === DEMO_SELF_USER_ID
     ),
+    tokenAuthTokens: {},
     serviceTokens: []
   };
 };
 
 export const TEMPORARY_MODE = ProjectUserMembershipTemporaryMode.Relative;
+
+export const DEMO_PROJECT_TAGS = [
+  {
+    id: "tag-api",
+    slug: "api",
+    color: "",
+    createdAt: day("2025-01-04"),
+    updatedAt: day("2025-01-04"),
+    __v: 0
+  },
+  {
+    id: "tag-billing",
+    slug: "billing",
+    color: "",
+    createdAt: day("2025-01-04"),
+    updatedAt: day("2025-01-04"),
+    __v: 0
+  },
+  {
+    id: "tag-pci",
+    slug: "pci",
+    color: "",
+    createdAt: day("2025-01-04"),
+    updatedAt: day("2025-01-04"),
+    __v: 0
+  }
+];
+
+export const DEMO_VAULT_CONNECTIONS = [{ id: "vc-prod", name: "vault-prod" }];
+
+export const DEMO_VAULT_NAMESPACES: Record<
+  string,
+  {
+    mounts: { path: string; type: string; version: string | null }[];
+    policies: { name: string; rules: string }[];
+  }
+> = {
+  "/": {
+    mounts: [
+      { path: "secret/", type: "kv", version: "2" },
+      { path: "kv-legacy/", type: "kv", version: "1" }
+    ],
+    policies: [
+      {
+        name: "payments-read",
+        rules: [
+          "# Payments service reads production config",
+          'path "secret/data/prod/payments/*" {',
+          '  capabilities = ["read", "list"]',
+          "}",
+          "",
+          'path "secret/metadata/prod/payments/*" {',
+          '  capabilities = ["list"]',
+          "}",
+          ""
+        ].join("\n")
+      },
+      {
+        name: "ci-deployer",
+        rules: [
+          'path "secret/data/staging/*" {',
+          '  capabilities = ["create", "read", "update", "delete"]',
+          "}",
+          "",
+          'path "secret/metadata/staging/*" {',
+          '  capabilities = ["create", "delete"]',
+          "}",
+          "",
+          'path "sys/policies/acl/*" {',
+          '  capabilities = ["read"]',
+          "}",
+          ""
+        ].join("\n")
+      }
+    ]
+  },
+  platform: {
+    mounts: [{ path: "secret/", type: "kv", version: "2" }],
+    policies: [
+      {
+        name: "platform-admin",
+        rules: [
+          'path "secret/data/*" {',
+          '  capabilities = ["create", "read", "update", "delete", "list"]',
+          "}",
+          ""
+        ].join("\n")
+      }
+    ]
+  }
+};

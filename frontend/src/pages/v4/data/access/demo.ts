@@ -27,7 +27,14 @@ import { createFixtureStore } from "../fixture-store";
 import type { AccessAdapter } from "./contract";
 import {
   type AccessState,
+  DEMO_PROJECT_TAGS,
   DEMO_SELF_USER_ID,
+  DEMO_VAULT_CONNECTIONS,
+  DEMO_VAULT_NAMESPACES,
+  defaultAwsAuth,
+  defaultKubernetesAuth,
+  defaultOidcAuth,
+  defaultTokenAuth,
   defaultUniversalAuth,
   type DemoProjectMembership,
   type DemoRoleGrant,
@@ -437,6 +444,50 @@ const roleLabel = (row: IdentityMembershipSearchResult) =>
 
 const contains = (value: string, needle?: string) =>
   !needle || value.toLowerCase().includes(needle.toLowerCase());
+
+const identitySearchMatches = (
+  row: IdentityMembershipSearchResult,
+  search: Parameters<AccessAdapter["useCountOrgIdentities"]>[0]["search"]
+) => {
+  const name = search.name?.$contains ?? search.$or?.find((entry) => entry.name)?.name?.$contains;
+  const role = search.role?.$contains ?? search.$or?.find((entry) => entry.role)?.role?.$contains;
+  return search.$or
+    ? contains(row.identity.name, name) || contains(roleLabel(row), role)
+    : contains(row.identity.name, name) && contains(roleLabel(row), role);
+};
+
+const identityAuthConfig = <T>(
+  name: string,
+  method: IdentityAuthMethod,
+  build: (identityId: string) => T
+) =>
+  demoQuery(name, (state, identityId: string) =>
+    identityOf(state, identityId)?.authMethods.includes(method) ? build(identityId) : undefined
+  );
+
+const removeIdentityAuthMethod = <T>(
+  method: IdentityAuthMethod,
+  result: (identityId: string) => T
+) =>
+  demoMutation(({ identityId }: { identityId: string }, state: AccessState) =>
+    done(
+      {
+        ...state,
+        identities: state.identities.map((entry) =>
+          entry.id === identityId
+            ? {
+                ...entry,
+                authMethods: entry.authMethods.filter((item) => item !== method),
+                activeLockoutAuthMethods: entry.activeLockoutAuthMethods.filter(
+                  (item) => item !== method
+                )
+              }
+            : entry
+        )
+      },
+      result(identityId)
+    )
+  );
 
 const page = <T>(rows: T[], offset = 0, limit = 100) => rows.slice(offset, offset + limit);
 
@@ -1032,6 +1083,93 @@ export const accessDemo: AccessAdapter = {
       undefined
     )
   ),
+  useCountOrgIdentities: demoQuery("org-identity-counts", (state, { scope, search }) => {
+    const matches = identitySearchRows(state).filter(
+      (row) => scope.includes(row.scope) && identitySearchMatches(row, search)
+    );
+    return {
+      organization: matches.filter((row) => row.scope === SearchIdentitiesScope.OrganizationScope)
+        .length,
+      project: matches.filter((row) => row.scope === SearchIdentitiesScope.ProjectScope).length
+    };
+  }),
+  useIdentityTokenAuth: identityAuthConfig(
+    "token-auth",
+    IdentityAuthMethod.TOKEN_AUTH,
+    defaultTokenAuth
+  ),
+  useIdentityTokenAuthTokens: demoQuery(
+    "token-auth-tokens",
+    (state, identityId: string) => state.tokenAuthTokens[identityId] ?? []
+  ),
+  useCreateIdentityTokenAuthToken: demoMutation((dto, state) => {
+    const accessToken = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
+      byte.toString(16).padStart(2, "0")
+    ).join("");
+    const tokenData = {
+      id: newId(),
+      name: dto.name,
+      identityId: dto.identityId,
+      accessTokenTTL: 2592000,
+      accessTokenMaxTTL: 2592000,
+      accessTokenNumUses: 0,
+      accessTokenNumUsesLimit: 0,
+      accessTokenLastUsedAt: null,
+      accessTokenLastRenewedAt: null,
+      isAccessTokenRevoked: false,
+      identityUAClientSecretId: null,
+      createdAt: stamp(),
+      updatedAt: stamp()
+    };
+    return done(
+      {
+        ...state,
+        tokenAuthTokens: {
+          ...state.tokenAuthTokens,
+          [dto.identityId]: [...(state.tokenAuthTokens[dto.identityId] ?? []), tokenData]
+        }
+      },
+      { accessToken, tokenData }
+    );
+  }),
+  useRevokeIdentityTokenAuthToken: demoMutation((dto, state) =>
+    done(
+      {
+        ...state,
+        tokenAuthTokens: {
+          ...state.tokenAuthTokens,
+          [dto.identityId]: (state.tokenAuthTokens[dto.identityId] ?? []).filter(
+            (entry) => entry.id !== dto.tokenId
+          )
+        }
+      },
+      { message: "Successfully revoked access token" }
+    )
+  ),
+  useDeleteIdentityTokenAuth: removeIdentityAuthMethod(
+    IdentityAuthMethod.TOKEN_AUTH,
+    defaultTokenAuth
+  ),
+  useIdentityKubernetesAuth: identityAuthConfig(
+    "kubernetes-auth",
+    IdentityAuthMethod.KUBERNETES_AUTH,
+    defaultKubernetesAuth
+  ),
+  useDeleteIdentityKubernetesAuth: removeIdentityAuthMethod(
+    IdentityAuthMethod.KUBERNETES_AUTH,
+    defaultTokenAuth
+  ),
+  useIdentityAwsAuth: identityAuthConfig("aws-auth", IdentityAuthMethod.AWS_AUTH, defaultAwsAuth),
+  useDeleteIdentityAwsAuth: removeIdentityAuthMethod(IdentityAuthMethod.AWS_AUTH, defaultAwsAuth),
+  useIdentityOidcAuth: identityAuthConfig(
+    "oidc-auth",
+    IdentityAuthMethod.OIDC_AUTH,
+    defaultOidcAuth
+  ),
+  useDeleteIdentityOidcAuth: removeIdentityAuthMethod(
+    IdentityAuthMethod.OIDC_AUTH,
+    defaultTokenAuth
+  ),
 
   useOrgGroups: demoQuery(
     "org-groups",
@@ -1319,6 +1457,9 @@ export const accessDemo: AccessAdapter = {
       {}
     );
   }),
+  useAssumeProjectPrivileges: demoMutation((_dto, state) =>
+    done(state, { message: "Privilege assumption started" })
+  ),
 
   useProjectIdentities: demoQuery(
     "project-identities",
@@ -1561,5 +1702,46 @@ export const accessDemo: AccessAdapter = {
       { ...state, projectRoles: state.projectRoles.filter((role) => role.id !== id) },
       removed
     );
+  }),
+  useProjectTags: (projectId: string) => {
+    const scenario = useAccessScenario();
+    if (scenario === "loading") return { data: undefined, isPending: true, error: null };
+    return {
+      data: DEMO_PROJECT_TAGS.map((tag) => ({ ...tag, projectId })),
+      isPending: false,
+      error: null
+    };
+  },
+  useAvailableAppConnections: (_app, projectId) => {
+    const scenario = useAccessScenario();
+    if (scenario === "loading") return { data: undefined, isPending: true, error: null };
+    return {
+      data: DEMO_VAULT_CONNECTIONS.map((connection) => ({ ...connection, projectId })),
+      isPending: false,
+      error: null
+    };
+  },
+  useVaultNamespaces: (connectionId) => ({
+    data: connectionId
+      ? Object.keys(DEMO_VAULT_NAMESPACES).map((name) => ({ id: name, name }))
+      : undefined,
+    isPending: false,
+    error: null
+  }),
+  useVaultPolicies: (enabled, namespace, connectionId) => ({
+    data:
+      enabled !== false && connectionId && namespace
+        ? DEMO_VAULT_NAMESPACES[namespace]?.policies
+        : undefined,
+    isPending: false,
+    error: null
+  }),
+  useVaultMounts: (enabled, namespace, connectionId) => ({
+    data:
+      enabled !== false && connectionId && namespace
+        ? DEMO_VAULT_NAMESPACES[namespace]?.mounts
+        : undefined,
+    isPending: false,
+    error: null
   })
 };
