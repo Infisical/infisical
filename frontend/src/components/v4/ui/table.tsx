@@ -89,7 +89,7 @@ function TableRow({ className, ref, ...props }: React.ComponentProps<"tr">) {
       ref={ref}
       data-slot="table-row"
       className={cn(
-        "border-b border-[color:var(--v4-line-soft)] transition-colors duration-(--v4-duration-fast) data-[state=selected]:bg-[color:var(--v4-selected-surface)]",
+        "border-b border-[color:var(--v4-line-soft)] transition-colors duration-(--v4-duration-fast)",
         styles.nativeTableRow,
         className
       )}

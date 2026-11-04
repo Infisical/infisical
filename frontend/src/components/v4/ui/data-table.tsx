@@ -247,13 +247,18 @@ export function DataTable<Row>({
     : 0;
   const span = columns.length + (selectable ? 1 : 0) + (rowActions ? 1 : 0);
   const hasGrowingColumn = columns.some((column) => column.grow && column.width === undefined);
-  const fixedLayout = columns.every((column) => column.width !== undefined || column.grow);
+  const fixedLayout = columns.every(
+    (column) => column.width !== undefined || column.grow || column.actions
+  );
   const fixedFloor = columns
     .filter((column) => column.width === undefined)
-    .map((column) => (column.minWidth ? `${column.minWidth}px` : "var(--v4-size-cell-min)"));
+    .map((column) => {
+      if (column.actions) return "var(--v4-size-row)";
+      return column.minWidth ? `${column.minWidth}px` : "var(--v4-size-cell-min)";
+    });
   const fixedWidth = columns.reduce((sum, column) => sum + (column.width ?? 0), 0);
   const columnStyle = (column: DataTableColumn<Row>): React.CSSProperties => ({
-    width: column.width ?? (hasGrowingColumn && !column.grow ? "1%" : undefined),
+    width: column.width ?? (hasGrowingColumn && !column.grow && !column.actions ? "1%" : undefined),
     minWidth: column.width ?? (column.actions ? undefined : (column.minWidth ?? 64)),
     maxWidth: column.maxWidth,
     textAlign: column.align

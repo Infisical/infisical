@@ -33,7 +33,6 @@ const columns: DataTableColumn<Key>[] = [
     id: "actions",
     header: "Actions",
     actions: true,
-    width: 52,
     render: (row) => (
       <Button variant="ghost" size="icon-row" icon="more" iconOnly>
         {`Actions for ${row.name}`}

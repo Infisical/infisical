@@ -197,7 +197,7 @@ it("keeps the automatic layout when a column has no width", async () => {
     <DataTable
       label="Hosts"
       rows={rows}
-      columns={[...columns.slice(0, 2), { ...columns[2], width: undefined }]}
+      columns={[columns[0], { ...columns[1], width: undefined }, columns[2]]}
       getRowId={(row) => row.id}
       rowLabel={(row) => row.name}
       loading

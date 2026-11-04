@@ -107,7 +107,7 @@ Owner: table.
 
 When a DataTable waits for its first rows or reloads them.
 
-Do: Pass loading and a loadingRows count close to the page size, and declare a width on every column except the one that grows, so the table uses fixed layout.
+Do: Pass loading and a loadingRows count close to the page size, and declare a width on every column except the one that grows and an actions tail, so the table uses fixed layout.
 
 Avoid: Swap the table for a Loader, or leave columns sized by content so they jump when rows arrive.
 
@@ -121,7 +121,7 @@ Source evidence:
 
 ## State guidance
 
-- hover and focus: Hover adds only the translucent row overlay, which the sticky tail cell repeats over its opaque surface. Row actions are already visible, so nothing appears, moves or resizes, and keyboard focus rings sit inside the row.
+- hover and focus: Hover adds only the translucent row overlay, on striped rows too, and the sticky tail cell repeats it over its opaque ground. Row actions are already visible, so nothing appears, moves or resizes, and keyboard focus rings sit inside the row.
 - empty: Show an explanation spanning the table's columns while retaining relevant filters.
 - virtual: Keep every row one height and set explicit column widths when the table is virtualized. Larger content raises all rows above the requested rowHeight.
 
@@ -146,7 +146,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 
 ## Behavior
 
-- A hovered row uses a translucent ink overlay at the opacity-hover token; a pinned cell lays the same overlay over its opaque surface so scrolled cells never show through it.
+- Row states are layers over the row's ground, which is surface, or row-done on a striped even row. The selected surface and the hover overlay (ink at the opacity-hover token) stack over the ground on every cell, and a pinned cell or the sticky tail repaints the same ground and layers opaquely, so a striped, selected or hovered row reads as one band to the frame edge and scrolled cells never show through.
 - DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.
 - DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.
 - Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.
@@ -154,7 +154,8 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.
 - Rows are size-row (40px) through one variable, --v4-table-row-height, which falls back to the token; DataTable reads size-row at runtime as its default virtual metric, so the CSS row and the scroll model never disagree. Cells pad by space-row-inline (12px), the content edge text and glyphs share.
 - Row actions are persistent. rowActions adds a sticky tail column, pinned to the inline end, that shows every row's actions at rest: up to three inline icon actions (Button icon-row, the same set on every row, each with a tooltip of its label or its disabled reason) followed by the More menu when renderMenu is set. A blocked action stays in place, disabled, with its reason. Nothing appears on hover, so a hovered row never changes a cell's width or the row's layout.
-- The tail cell centers its actions between equal insets: space-row-actions-inset on each side, inside its line-soft divider and the frame edge, so one action sits 5px clear of each line. Its width follows its contents: size-row (40px, a square) for one action and size-row-action-step (28px) more for each further one, so More alone is 40, one inline action and More is 68, two is 96 and three is 124. The cell keeps the pinned divider, the frame-pad fill, the row hover overlay and the selected surface.
+- The tail cell centers its actions between equal insets: space-row-actions-inset on each side, inside its line-soft divider and the frame edge, so one action sits 5px clear of each line. Its width follows its contents: size-row (40px, a square) for one action and size-row-action-step (28px) more for each further one, so More alone is 40, one inline action and More is 68, two is 96 and three is 124. The cell keeps the pinned divider, the frame-pad fill, the row's stripe, the hover overlay and the selected surface.
+- Every tail uses this standard by default, whether it comes from rowActions, TableActionsCell or a column with actions true: the tail caps each Button inside it at size-target-row (28px), the row target height, so icon-row targets and a text button such as Open share one height, centered in the row. The cell's inline padding is the same space-row-actions-inset, so a single target reads square and a text button gets the same clearance on each side. Examples and composites set no width, size or padding on the tail.
 - TableRowActions is the centered group inside a tail cell, with targets touching (space-row-actions-gap, 0). For a native Table, TableActionsHead and TableActionsCell take slots, the widest row's action count, and draw the same sticky tail; RowActions renders the inline actions and More inside it. TableRowIndicators lays persistent row marks in size-target-row slots with size-glyph glyphs, pulled so the last glyph lands on the 12px content edge; marks never swap out for actions.
 - The selection column is size-row wide with its Checkbox centered between the frame edge and a persistent line-soft divider on its right, the same line as the pinned actions divider, on the header and every row, at rest, hovered and selected.
 - Responsibilities: tokens own the numbers (size-row, size-target-row, size-row-action-step, size-glyph, space-row-inline, space-row-actions-gap, space-row-actions-inset); DataTable rowActions, the tail cells, RowActions and TableRowIndicators own geometry; a composite chooses which actions a row shows and their order, and sets no sizes, gaps or offsets.
@@ -162,7 +163,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - onRowActivate makes every row a pointer target with the ordinary hover overlay. A click anywhere in the row activates it unless it lands on a link, button, input, checkbox, menu item, tooltip trigger, the selection cell, the actions cell or anything marked data-row-interactive, or it ends a text selection inside the row. Menu items rendered in a portal never reach the row.
 - pagination renders its node in a foot inside the tint frame, below the rows. It stays in view while a wide table scrolls sideways and, with a fixed height, while the rows scroll.
 - loading replaces the rows with loadingRows (default 5) skeleton rows at the same row height: a square for the selection and actions cells and a size-skeleton-text bar for each value, shorter in the primary column. Empty and load-more stay hidden while loading.
-- When every column declares a width, or grows to fill the rest, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.
+- When every column declares a width, grows to fill the rest or is an actions column, the table uses fixed layout with a floor of the declared widths plus size-cell-min per growing column, so widths never move between loading and loaded rows or as cell content changes.
 - actionBar hosts the table's FloatingActionBar. While the bar shows, the table reserves size-action-bar plus the bar's offset (space-action-bar-offset, or space-action-bar-offset-contained) below itself, so the last row can scroll clear of the bar.
 - Table's ref targets the table element. containerRef targets its horizontal scroll container (what v3 Table's ref pointed at) and containerClassName adds layout classes to it. DataTable takes the same two props for its scroll frame, which scrolls both ways when height is set, so ports keep reading scrollTop, observing scroll or calling scrollTo.
 - A column with toggle is a boolean column: every cell is a Checkbox and the header gets a tri-state Checkbox before its title. The header reads checked when every enabled row is on, indeterminate when some are, and unchecked when none are. Selecting it turns every enabled row on, or off when all are on, and calls onChange once with only the row ids that change. Rows with a disabledReason keep their value, are left out of the count, and show the reason on their disabled cell; with no enabled rows the header is disabled. render is optional on a toggle column.
@@ -190,7 +191,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - There is no muted row state. Lowered opacity drops text below contrast and carries the state by color alone; mark an inactive row with a Badge in its name cell (for example Deactivated) and, when it cannot be acted on, a selectionDisabledReason.
 - Virtual tables use one uniform effective row height. rowHeight defaults to the size-row token (40px) as a requested minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.
 - Only a final column may be pinned. rowActions.inline takes at most three actions, enforced by its tuple type; everything else goes in renderMenu. Use grow for a flexible resource column; an explicit numeric width takes precedence.
-- A column with actions true remains for tail content that is not icon actions, such as an Open text button; it takes the same sticky, centered cell but sizes to its content. Prefer rowActions for icon actions.
+- A column with actions true remains for tail content that is not icon actions, such as an Open text button; it takes the same sticky, centered cell and 28px target cap, and sizes to its content without a declared width. In a fixed-layout table it holds one target (size-row) unless the column declares a width. Prefer rowActions for icon actions.
 - Use text(row) for full hover text when render returns truncated complex content.
 - The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows.
 - onRowActivate is a pointer and keyboard shortcut. It cannot open a new tab or be copied as a link; navigation that needs those belongs on the link in the primary cell.
@@ -928,7 +929,6 @@ export default function RowActivation() {
       id: "actions",
       header: "Actions",
       actions: true,
-      width: 52,
       render: (row) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -1075,7 +1075,6 @@ const columns: DataTableColumn<Key>[] = [
     id: "actions",
     header: "Actions",
     actions: true,
-    width: 52,
     render: (row) => (
       <Button variant="ghost" size="icon-row" icon="more" iconOnly>
         {`Actions for ${row.name}`}

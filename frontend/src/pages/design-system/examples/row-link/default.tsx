@@ -60,7 +60,6 @@ export default function Example() {
       id: "actions",
       header: "Actions",
       actions: true,
-      width: 52,
       render: (row) => (
         <Button
           variant="ghost"
