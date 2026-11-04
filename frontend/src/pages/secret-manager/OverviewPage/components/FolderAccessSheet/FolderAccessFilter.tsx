@@ -57,7 +57,7 @@ const KIND_OPTIONS: { value: FolderAccessKind; label: string; icon: React.ReactN
 const kindsOf = (actor: TFolderAccessActor) => {
   const kinds: FolderAccessKind[] = [];
   if (actor.isProjectAdmin) kinds.push(FolderAccessKind.Admin);
-  else if (actor.access) kinds.push(FolderAccessKind.FolderGrant);
+  else if (actor.access || actor.inheritedAccess) kinds.push(FolderAccessKind.FolderGrant);
   else kinds.push(FolderAccessKind.ProjectRole);
   if (actor.access && actor.roles.length > 0) kinds.push(FolderAccessKind.Override);
   if (actor.access?.isTemporary) kinds.push(FolderAccessKind.Temporary);

@@ -74,6 +74,7 @@ const toSecretFolderAccessAuditMetadata = (
   secretPath: folderAccess.secretPath,
   permission: folderAccess.permission,
   ...actor,
+  isRecursive: folderAccess.isRecursive,
   isTemporary: folderAccess.isTemporary,
   ...(folderAccess.isTemporary
     ? {
@@ -815,6 +816,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       body: z.object({
         ...folderAccessFolderFields(FOLDER_ACCESS.CREATE),
         permission: z.nativeEnum(SecretFolderRole).describe(FOLDER_ACCESS.CREATE.permission),
+        isRecursive: z.boolean().optional().describe(FOLDER_ACCESS.CREATE.isRecursive),
         type: folderAccessCreateTypeSchema.optional()
       }),
       response: {
@@ -832,6 +834,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         secretPath: req.body.secretPath,
         target: { actorId: req.params.userId, actorType: ActorType.USER },
         role: req.body.permission,
+        isRecursive: req.body.isRecursive,
         type: req.body.type
       });
 
@@ -881,11 +884,12 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         .object({
           ...folderAccessFolderFields(FOLDER_ACCESS.UPDATE),
           permission: z.nativeEnum(SecretFolderRole).optional().describe(FOLDER_ACCESS.UPDATE.permission),
+          isRecursive: z.boolean().optional().describe(FOLDER_ACCESS.UPDATE.isRecursive),
           type: folderAccessUpdateTypeSchema.optional()
         })
         .refine(
-          (body) => body.permission !== undefined || body.type !== undefined,
-          "Provide at least one of 'permission' or 'type' to update"
+          (body) => body.permission !== undefined || body.type !== undefined || body.isRecursive !== undefined,
+          "Provide at least one of 'permission', 'type' or 'isRecursive' to update"
         ),
       response: {
         200: z.object({
@@ -902,6 +906,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         secretPath: req.body.secretPath,
         target: { actorId: req.params.userId, actorType: ActorType.USER },
         role: req.body.permission,
+        isRecursive: req.body.isRecursive,
         type: req.body.type
       });
 

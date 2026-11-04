@@ -335,6 +335,21 @@ export const FolderAccessSheet = ({
     else createIdentityAccess.mutate(dto, { onSuccess });
   };
 
+  const setRecursive = (actor: TFolderAccessActor, isRecursive: boolean) => {
+    const target = { projectId, environmentSlug, secretPath: folderPath };
+    const onSuccess = () =>
+      notifySuccess(
+        isRecursive
+          ? `${actor.name}'s folder access now applies to every subfolder`
+          : `${actor.name}'s folder access now applies to this folder only`
+      );
+
+    if (actor.type === "user")
+      updateUserAccess.mutate({ ...target, userId: actor.id, isRecursive }, { onSuccess });
+    else
+      updateIdentityAccess.mutate({ ...target, identityId: actor.id, isRecursive }, { onSuccess });
+  };
+
   const setAccessType = (actor: TFolderAccessActor, type: TFolderGrantType) => {
     const target = { projectId, environmentSlug, secretPath: folderPath };
     const onSuccess = () =>
@@ -489,6 +504,7 @@ export const FolderAccessSheet = ({
                     key={`${actor.type}-${actor.id}`}
                     actor={actor}
                     onSetTier={(tier) => setTier(actor, tier)}
+                    onSetRecursive={(isRecursive) => setRecursive(actor, isRecursive)}
                     onSetTemporaryRange={(range) =>
                       setAccessType(actor, {
                         isTemporary: true,

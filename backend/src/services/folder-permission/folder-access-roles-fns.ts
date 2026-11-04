@@ -11,6 +11,7 @@ import {
   TCachedProjectMemberRole,
   TFolderAccessEntry,
   TFolderAccessRole,
+  TInheritedFolderGrant,
   TProjectMember,
   TProjectMemberActor,
   TProjectMemberRoleRow,
@@ -145,11 +146,13 @@ const toPublicRole = ({ id, slug, name }: TCachedProjectMemberRole): TFolderAcce
 export const splitFolderAccess = <TActor extends TProjectMemberActor>({
   folderAccess,
   grantByActorId,
+  inheritedGrantByActorId = new Map(),
   actorIdOf,
   now
 }: {
   folderAccess: TCachedFolderAccess<TActor>;
   grantByActorId: Map<string, TAdditionalPrivileges>;
+  inheritedGrantByActorId?: Map<string, TInheritedFolderGrant>;
   actorIdOf: (actor: TActor) => string;
   now: Date;
 }) => {
@@ -163,19 +166,22 @@ export const splitFolderAccess = <TActor extends TProjectMemberActor>({
 
     const grantingRoles = activeRoles.filter((role) => granting.has(folderAccessRoleKey(role)));
     const grant = grantByActorId.get(actorIdOf(actor)) ?? null;
+    const inheritedGrant = grant || isProjectAdmin ? null : (inheritedGrantByActorId.get(actorIdOf(actor)) ?? null);
     // an admin is kept out of withoutAccess even if no probe matched: that list is what the grant
     // picker offers, and a folder grant could only remove privileges from an admin
-    if (isProjectAdmin || grantingRoles.length || grant) {
+    if (isProjectAdmin || grantingRoles.length || grant || inheritedGrant) {
       withAccess.push({
         actor,
         membership: { id: actor.membershipId, isProjectAdmin, roles: grantingRoles.map(toPublicRole) },
-        grant
+        grant,
+        inheritedGrant
       });
     } else {
       withoutAccess.push({
         actor,
         membership: { id: actor.membershipId, isProjectAdmin, roles: activeRoles.map(toPublicRole) },
-        grant: null
+        grant: null,
+        inheritedGrant: null
       });
     }
   });

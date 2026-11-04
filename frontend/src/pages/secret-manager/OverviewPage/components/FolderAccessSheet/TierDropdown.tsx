@@ -1,6 +1,7 @@
 import { CheckIcon, ClockIcon, ShieldIcon, Trash2Icon } from "lucide-react";
 
 import {
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuPortal,
@@ -17,7 +18,9 @@ type Props = {
   activeTier?: SecretFolderRole | null;
   footerNote?: string;
   temporaryLabel?: string | React.ReactNode;
+  isRecursive?: boolean;
   onSelectTier: (tier: SecretFolderRole) => void;
+  onToggleRecursive?: (isRecursive: boolean) => void;
   onEditTemporaryAccess?: () => void;
   onRemove?: () => void;
   removeLabel?: string;
@@ -43,7 +46,9 @@ export const TierDropdown = ({
   activeTier,
   footerNote,
   temporaryLabel,
+  isRecursive = false,
   onSelectTier,
+  onToggleRecursive,
   onEditTemporaryAccess,
   onRemove,
   removeLabel = "Remove access",
@@ -77,6 +82,19 @@ export const TierDropdown = ({
           </DropdownMenuSubContent>
         </DropdownMenuPortal>
       </DropdownMenuSub>
+      {onToggleRecursive && (
+        <DropdownMenuCheckboxItem
+          checked={isRecursive}
+          onCheckedChange={(checked) => onToggleRecursive(checked === true)}
+        >
+          <div className="min-w-0 flex-1">
+            <p className="truncate">Apply to Subfolders</p>
+            <p className="text-xs leading-4 break-words whitespace-normal text-muted">
+              Every folder below inherits this access until a deeper grant overrides it.
+            </p>
+          </div>
+        </DropdownMenuCheckboxItem>
+      )}
       {onEditTemporaryAccess && (
         <DropdownMenuItem onClick={onEditTemporaryAccess}>
           <ClockIcon />

@@ -8417,6 +8417,7 @@ export interface SecretFolderAccessEventMetadata {
   permission: string;
   userId?: string;
   identityId?: string;
+  isRecursive: boolean;
   isTemporary: boolean;
   temporaryMode?: string;
   temporaryRange?: string;
