@@ -27,7 +27,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { getInstancePinningLink } from "@app/helpers/project";
@@ -40,7 +43,10 @@ import {
   CertificateExportModal,
   ExportOptions
 } from "../../CertificatesPage/components/CertificateExportModal";
-import { getCertValidUntilBadgeDetails } from "../../CertificatesPage/components/CertificatesTable.utils";
+import {
+  DELETED_CERTIFICATE_NO_ACTIONS,
+  getCertValidUntilBadgeDetails
+} from "../../CertificatesPage/components/CertificatesTable.utils";
 
 type Props = {
   certificates: TPkiInstallationCert[];
@@ -57,6 +63,12 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
     "certificateCert",
     "certificateExport"
   ] as const);
+
+  const viewedSerialNumber = (popUp.certificateCert?.data as { serialNumber?: string } | undefined)
+    ?.serialNumber;
+  const viewedApplicationId =
+    certificates.find((cert) => viewedSerialNumber && cert.serialNumber === viewedSerialNumber)
+      ?.applicationId ?? undefined;
 
   const handleCertificateExport = async (
     exportFormat: "pem" | "pkcs12",
@@ -164,16 +176,24 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton
-                            variant="ghost"
-                            size="xs"
-                            aria-label="Certificate options"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreHorizontalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
+                        <Tooltip open={cert.deletedAt ? undefined : false}>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
+                                  variant="ghost"
+                                  size="xs"
+                                  aria-label="Certificate options"
+                                  isDisabled={Boolean(cert.deletedAt)}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontalIcon />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{DELETED_CERTIFICATE_NO_ACTIONS}</TooltipContent>
+                        </Tooltip>
                         <DropdownMenuContent align="end" sideOffset={2}>
                           <DropdownMenuItem
                             isDisabled={!canReadCertificate || !cert.serialNumber}
@@ -222,7 +242,11 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
           </Table>
         )}
       </CardContent>
-      <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateCertModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        applicationId={viewedApplicationId}
+      />
       <CertificateExportModal
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}

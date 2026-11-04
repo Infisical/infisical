@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -8,6 +8,10 @@ import {
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import {
+  ResourcePermissionCertificateActions,
+  ResourcePermissionSub
+} from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -34,7 +38,7 @@ type TPkiInstallationServiceFactoryDep = {
     TPkiCertificateInstallationDALFactory,
     "findById" | "findByProjectId" | "countByProjectId" | "findByIdWithCertificates" | "updateById" | "deleteById"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   queueInstallationRescan: (installationId: string) => Promise<void>;
@@ -120,19 +124,46 @@ export const pkiInstallationServiceFactory = ({
     const { connectionId } = (installation.locationDetails as TPkiInstallationLocationDetails | null) ?? {};
     const connection = connectionId ? await appConnectionDAL.findById(connectionId) : undefined;
 
-    const certificates = installation.certificates.map(({ metadata, ...cert }) => ({
-      ...cert,
-      canRead: permission.can(
-        ProjectPermissionCertificateActions.Read,
-        subject(ProjectPermissionSub.Certificates, {
-          commonName: cert.commonName ?? undefined,
-          altNames: cert.altNames?.split(",").map((s: string) => s.trim()),
-          serialNumber: cert.serialNumber ?? undefined,
-          friendlyName: cert.friendlyName ?? undefined,
-          metadata
-        })
-      )
-    }));
+    const canReadViaApplication = new Map<string, Promise<boolean>>();
+    const checkApplicationRead = (applicationId: string) => {
+      let result = canReadViaApplication.get(applicationId);
+      if (!result) {
+        result = permissionService
+          .getResourcePermission({
+            actor,
+            actorId,
+            projectId: installation.projectId,
+            resourceType: ResourceType.CertificateApplication,
+            resourceId: applicationId,
+            actorAuthMethod,
+            actorOrgId
+          })
+          .then(({ permission: appPermission }) =>
+            appPermission.can(ResourcePermissionCertificateActions.Read, ResourcePermissionSub.Certificates)
+          )
+          .catch(() => false);
+        canReadViaApplication.set(applicationId, result);
+      }
+      return result;
+    };
+
+    const certificates = await Promise.all(
+      installation.certificates.map(async ({ metadata, ...cert }) => {
+        const canReadAtProject = permission.can(
+          ProjectPermissionCertificateActions.Read,
+          subject(ProjectPermissionSub.Certificates, {
+            commonName: cert.commonName ?? undefined,
+            altNames: cert.altNames?.split(",").map((s: string) => s.trim()),
+            serialNumber: cert.serialNumber ?? undefined,
+            friendlyName: cert.friendlyName ?? undefined,
+            metadata
+          })
+        );
+        const canRead =
+          canReadAtProject || (cert.applicationId ? await checkApplicationRead(cert.applicationId) : false);
+        return { ...cert, canRead };
+      })
+    );
 
     return {
       ...sanitizePkiInstallation({ ...installation, certificates }),
