@@ -125,7 +125,7 @@ Certificates issued before the removal keep the cross-signed certificate in thei
 
 ## Replace the cross-signed certificate before it expires
 
-If your migration takes longer than the cross-signed certificate is valid, clients that only trust the old root reject a certificate once the cross-signed certificate in its chain expires, including certificates the CA issues after that date. Each certificate keeps the chain it was issued with, so to keep those clients working, replace the cross-signed certificate and renew the certificates that already carry it:
+If your migration takes longer than the cross-signed certificate is valid, clients that only trust the old root stop accepting certificates from the CA when it expires. They reject certificates that carry the expired cross-signed certificate, and certificates the CA issues afterwards don't carry it at all. Each certificate keeps the chain it was issued with, so to keep those clients working, replace the cross-signed certificate and renew the certificates that already carry it:
 
 <Steps>
   <Step>
