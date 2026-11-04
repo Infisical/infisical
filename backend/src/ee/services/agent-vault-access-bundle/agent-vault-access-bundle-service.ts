@@ -138,6 +138,7 @@ import {
   TAgentVaultVariableReferenceWithKey
 } from "./agent-vault-service-variable-reference-dal";
 import {
+  assertCustomHeadersDoNotShadowCredential,
   matchTransformationRows,
   planTransformationDiff,
   TTransformationWrite
@@ -616,38 +617,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   const CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE =
     "This service's credential was changed by another save while this one was in progress. Reload the service and save again.";
-
-  // Basic and OAuth have no header name in their config, but the proxy always writes Authorization for both.
-  const credentialHeaderName = (credentialType: AgentVaultCredentialType, headerName?: string): string | null => {
-    switch (credentialType) {
-      case AgentVaultCredentialType.Bearer:
-        return headerName || "Authorization";
-      case AgentVaultCredentialType.OAuth:
-        return AGENT_VAULT_OAUTH_HEADER_NAME;
-      case AgentVaultCredentialType.Basic:
-        return "Authorization";
-      default:
-        return null;
-    }
-  };
-
-  // The proxy writes the credential last, so a collision costs the header rather than the token; refusing it
-  // on write is what tells the author. Either half of a PATCH can introduce one, which is why both are read.
-  const assertCustomHeadersDoNotShadowCredential = (
-    config: { type: AgentVaultCredentialType; headerName?: string },
-    customHeaders: { name: string }[] | undefined
-  ) => {
-    if (!customHeaders?.length) return;
-    const credentialHeader = credentialHeaderName(config.type, config.headerName);
-    if (!credentialHeader) return;
-
-    const clash = customHeaders.find((header) => header.name.toLowerCase() === credentialHeader.toLowerCase());
-    if (clash) {
-      throw new BadRequestError({
-        message: `The ${credentialHeader} header is already set by the credential. Rename the custom header or change the credential.`
-      });
-    }
-  };
 
   // An authorization only comes from a browser sign-in in the UI, so a machine identity could never hold one.
   const assertOauthConnectedByUser = (ctx: TGetAccessBundleDTO["ctx"], credential?: TAgentVaultCredentialUpdate) => {
@@ -1937,7 +1906,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
   };
 
-  const listMembers = async ({ accessBundleId, search, limit, offset, ...rest }: TListMembersDTO) => {
+  const listMembers = async ({ accessBundleId, actorType, search, limit, offset, ...rest }: TListMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
@@ -1945,7 +1914,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     );
     return agentVaultAccessBundleDAL.findMembers({
       projectId: rest.projectId,
+      orgId: rest.ctx.actorOrgId,
       accessBundleId: bundle.id,
+      actorType,
       search,
       limit,
       offset
@@ -1955,7 +1926,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   // The candidates for a grant are the product's own members, since addMembers refuses anyone else, minus
   // whoever already holds this bundle. A member reaching it only through a granted group stays a
   // candidate: an individual grant is a different thing, and it outlives the group membership.
-  const listAvailableMembers = async ({ accessBundleId, search, limit, offset, ...rest }: TListMembersDTO) => {
+  const listAvailableMembers = async ({
+    accessBundleId,
+    actorType,
+    search,
+    limit,
+    offset,
+    ...rest
+  }: TListMembersDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
@@ -1964,7 +1942,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return agentVaultMemberDAL.findProductMembers({
       projectId: rest.projectId,
       orgId: rest.ctx.actorOrgId,
-      actorTypes: ALL_GRANTEE_ACTOR_TYPES,
+      actorTypes: actorType ? [actorType] : ALL_GRANTEE_ACTOR_TYPES,
       search,
       limit,
       offset,

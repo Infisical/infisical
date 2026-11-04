@@ -4,6 +4,8 @@ sidebarTitle: "GitHub"
 description: "Learn how to configure a GitHub Connection for Infisical."
 ---
 
+import GitHubPermissions from "/snippets/app-connections/github/permissions.mdx";
+
 Infisical supports three methods for connecting to GitHub.
 
 <Tabs>
@@ -30,11 +32,11 @@ Infisical supports three methods for connecting to GitHub.
                     Disable webhook by unchecking the Active checkbox.
                     ![integrations github app webhook](/images/integrations/github/app/self-hosted-github-app-webhook.png)
 
-                    Set the repository permissions as follows: Metadata: Read-only, Secrets: Read and write, Environments: Read and write, Actions: Read. To sync [Dependabot or Codespaces secrets](/integrations/secret-syncs/github#secret-types), also set Dependabot secrets or Codespaces secrets to Read and write.
-                    ![integrations github app repository](/images/integrations/github/app/self-hosted-github-app-repository.png)
+                    Every connection that uses this app shares the app's permissions, so if you leave out the permissions for a secret type, no one can sync that type through the app.
 
-                    Similarly, set the organization permissions as follows: Secrets: Read and write. To sync Dependabot or Codespaces secrets to an organization, also set Organization dependabot secrets or Organization codespaces secrets to Read and write.
-                    ![integrations github app organization](/images/integrations/github/app/self-hosted-github-app-organization.png)
+                    <GitHubPermissions method="github-app" />
+
+                    ![integrations github app repository](/images/integrations/github/app/self-hosted-github-app-repository.png)
 
                     Create the GitHub application.
                     ![integrations github app create confirm](/images/integrations/github/app/self-hosted-github-app-create-confirm.png)
@@ -117,6 +119,10 @@ Infisical supports three methods for connecting to GitHub.
 
                 ![Create New GitHub App](/images/app-connections/github/create-new-github-app.png)
 
+                <Note>
+                    If your GitHub App was created before Infisical supported Dependabot and Codespaces secrets, the app is missing the permissions those secret types need. To sync them, add the [missing permissions](/integrations/secret-syncs/github#secret-types) to the app on GitHub. An owner of each installation then has to approve the new permissions before Infisical can use them.
+                </Note>
+
                 You may optionally enable **GitHub Enterprise** to configure enterprise-specific options:
                 - **Instance Type:** Enterprise Cloud or Enterprise Server
                 - **Instance Hostname:** The hostname of your GitHub Enterprise instance (e.g. `github.mycompany.com`)
@@ -191,8 +197,9 @@ Infisical supports three methods for connecting to GitHub.
                 ![Connect via GitHub App](/images/app-connections/github/create-oauth-method.png)
             </Step>
             <Step title="Grant Access">
-                You will then be redirected to the GitHub to grant Infisical access to your GitHub account (organization and repo privileges).
-                Once granted, you will redirect you back to Infisical's App Connections page.
+                Infisical redirects you to GitHub, which asks you to grant Infisical the `repo` and `admin:org` scopes. Together they cover every [type of GitHub secret](/integrations/secret-syncs/github#secret-types) a sync can write to, so you don't need to set any permissions yourself.
+
+                After you grant access, GitHub redirects you back to Infisical's App Connections page.
                 ![GitHub Authorization](/images/integrations/github/integrations-github-auth.png)
             </Step>
             <Step title="Connection Created">
@@ -217,19 +224,13 @@ Infisical supports three methods for connecting to GitHub.
                 </Step>
                 <Step title="Fill in the Personal Access Token details">
                     Fill in the Personal Access Token details:
-                    - **Token name:** A descriptive name for the token (e.g., "infisical-connection-token")
-                    - **Repository access:** Select the repositories you want to grant access to
-                        - Select `All repositories` or `Only selected repositories` to be able to manage the secrets in the selected repositories.
-                    - **Select scopes:** Add the following scopes:
-                        - **Metadata**: Read-only
-                        - **Environments**: Read and write
-                        - **Secrets**: Read and write
-                        - **Dependabot secrets**: Read and write (only to sync [Dependabot secrets](/integrations/secret-syncs/github#secret-types))
-                        - **Codespaces secrets**: Read and write (only to sync [Codespaces secrets](/integrations/secret-syncs/github#secret-types))
+                    - **Token name:** A descriptive name for the token (for example, `infisical-connection-token`)
+                    - **Resource owner:** The user or organization that owns the repositories (select the organization to sync to an organization)
+                    - **Repository access:** **All repositories**, or **Only select repositories** to limit which repositories Infisical can manage secrets in
 
-                    ![Personal Access Token Form](/images/app-connections/github/create-pat-form.png)
+                    <GitHubPermissions method="personal-access-token" />
 
-                    Click **Generate token** to create the token.
+                    Select **Generate token** to create the token.
                 </Step>
                 <Step title="Copy the Personal Access Token">
                     Copy the generated token immediately as it won't be shown again.

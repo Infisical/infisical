@@ -249,11 +249,13 @@ function TableCell({
   className,
   isTruncatable,
   isWrappable,
+  isTopAligned,
   variant = "default",
   ...props
 }: React.ComponentProps<"td"> & {
   isTruncatable?: boolean;
   isWrappable?: boolean;
+  isTopAligned?: boolean;
   variant?: TableColumnVariant;
 }) {
   return (
@@ -264,6 +266,7 @@ function TableCell({
         "h-10 border-b border-border px-3 py-1.5 align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>svg]:size-4",
         isTruncatable && "max-w-0 truncate",
         isWrappable && "max-w-md wrap-anywhere whitespace-normal",
+        isTopAligned && "align-top",
         variant === "action" && "min-w-12 pr-1.5 text-end",
         className
       )}

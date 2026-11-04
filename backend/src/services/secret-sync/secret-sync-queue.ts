@@ -581,10 +581,12 @@ export const secretSyncQueueFactory = ({
         kmsService,
         gatewayV2Service,
         gatewayPoolService,
-        oidcIssuerService
+        oidcIssuerService,
+        keyStore
       });
 
       syncResult = result ?? undefined;
+      syncMessage = syncResult?.message ?? null;
 
       isSynced = true;
     } catch (err) {
