@@ -213,9 +213,18 @@
   min-inline-size: var(--v4-crumb-root-size, 0px);
   max-inline-size: var(--v4-crumb-root-max, none);
 }
-.root[data-org-zone] .product > .entry:first-child {
-  flex: none;
-  inline-size: var(--v4-crumb-root-max);
+.root[data-org-zone] .product > .entry:first-child > .segment {
+  interpolate-size: allow-keywords;
+  min-inline-size: 0;
+  inline-size: var(--v4-crumb-root-size, fit-content);
+  transition-property: background-color, color, inline-size;
+  transition-duration: var(--v4-duration-fast), var(--v4-duration-fast), var(--v4-duration-slow);
+  transition-timing-function: var(--v4-ease-standard);
+}
+@media (prefers-reduced-motion: reduce) {
+  .root[data-org-zone] .product > .entry:first-child > .segment {
+    transition-duration: 0s;
+  }
 }
 .root[data-org-zone] .product > .entry:first-child > .segment[data-name-target="switcher"],
 .root[data-org-zone] .product > .entry:first-child > .segment[data-name-target="page"] > .name {
