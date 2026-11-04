@@ -20,6 +20,11 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/audit-logs", "v4/organization/AuditLogsPage/route.tsx"),
     route("/integrations", "v4/organization/IntegrationsPage/route.tsx"),
     route("/secret-scanning/findings", "v4/secret-scanning/SecretScanningFindingsPage/route.tsx"),
+    route("/cert-manager/inventory", "v4/cert-manager/InventoryPage/route.tsx"),
+    route(
+      "/cert-manager/certificates/$certificateId",
+      "v4/cert-manager/CertificateDetailsByIDPage/route.tsx"
+    ),
     route("/$", "v4/organization/NotPortedPage/route.tsx")
   ])
 ]);

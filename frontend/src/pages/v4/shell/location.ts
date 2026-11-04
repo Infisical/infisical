@@ -29,7 +29,10 @@ const productResources = new Set([
   "product-settings",
   "kmip-servers"
 ]);
-const accessDetail = /\/(members|identities|groups|roles)\//;
+const detailOwners: [RegExp, string][] = [
+  [/\/(members|identities|groups|roles)\//, "access"],
+  [/^\/cert-manager\/certificates\//, "inventory"]
+];
 
 const locate = (path: string, isSubOrganization: boolean): Omit<ShellLocation, "current"> => {
   const project = path.match(/^\/projects\/(secret-management|kms)\/([^/]+)/);
@@ -78,6 +81,8 @@ export const resolveShellLocation = (
   );
   const current =
     matches.sort((a, b) => b.path.length - a.path.length)[0] ??
-    (accessDetail.test(`${path}/`) ? items.find((item) => item.id === "access") : undefined);
+    items.find(
+      (item) => item.id === detailOwners.find(([pattern]) => pattern.test(`${path}/`))?.[1]
+    );
   return { ...at, current };
 };

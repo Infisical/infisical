@@ -1,4 +1,5 @@
 import type { V4Adapters } from "./adapters";
+import { certificatesDemo } from "./certificates/demo";
 import { integrationsDemo } from "./integrations/demo";
 import { kmsDemo } from "./kms/demo";
 import { orgDemo } from "./org/demo";
@@ -10,5 +11,6 @@ export const demoAdapters: V4Adapters = {
   org: orgDemo,
   integrations: integrationsDemo,
   secretScanning: secretScanningDemo,
-  secrets: secretsDemo
+  secrets: secretsDemo,
+  certificates: certificatesDemo
 };

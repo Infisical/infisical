@@ -1,4 +1,5 @@
 import type { V4Adapters } from "./adapters";
+import { certificatesLive } from "./certificates/live";
 import { integrationsLive } from "./integrations/live";
 import { kmsLive } from "./kms/live";
 import { orgLive } from "./org/live";
@@ -10,5 +11,6 @@ export const liveAdapters: V4Adapters = {
   org: orgLive,
   integrations: integrationsLive,
   secretScanning: secretScanningLive,
-  secrets: secretsLive
+  secrets: secretsLive,
+  certificates: certificatesLive
 };

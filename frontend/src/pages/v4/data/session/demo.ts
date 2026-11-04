@@ -18,6 +18,7 @@ export const demoSession: V4Session = {
     { id: "web-dashboard", name: "web-dashboard", type: ProjectType.SecretManager },
     { id: "platform-core", name: "platform-core", type: ProjectType.SecretManager },
     { id: "kms-keys", name: "kms-keys", type: ProjectType.KMS },
-    { id: "secret-scanning", name: "secret-scanning", type: ProjectType.SecretScanning }
+    { id: "secret-scanning", name: "secret-scanning", type: ProjectType.SecretScanning },
+    { id: "internal-pki", name: "internal-pki", type: ProjectType.CertificateManager }
   ]
 };
