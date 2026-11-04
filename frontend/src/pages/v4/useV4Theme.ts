@@ -5,7 +5,10 @@ import { useTheme } from "@app/components/v3/platform/ThemeProvider/ThemeProvide
 export const useV4AppTheme = () => {
   const { resolvedTheme } = useTheme();
   const override = useRouterState({
-    select: (state): unknown => (state.location.search as { theme?: unknown }).theme
+    select: (state): string | undefined => {
+      const value = (state.location.search as { theme?: unknown }).theme;
+      return typeof value === "string" ? value : undefined;
+    }
   });
   return override === "light" || override === "dark" ? override : resolvedTheme;
 };
