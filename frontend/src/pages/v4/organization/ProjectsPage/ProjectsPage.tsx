@@ -102,7 +102,8 @@ export const ProjectsPage = () => {
                 <Inline gap={24}>
                   {statsFor(product.type, stats).map(([value, label]) => (
                     <span key={label}>
-                      <strong>{value.toLocaleString()}</strong> {label}
+                      <strong>{value.toLocaleString()}</strong>{" "}
+                      {value === 1 ? label.replace(/s$/, "") : label}
                     </span>
                   ))}
                 </Inline>

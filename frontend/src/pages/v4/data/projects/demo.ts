@@ -205,3 +205,6 @@ export const projectsDemo: ProjectsAdapter = {
     update((state) => ({ deleted: state.deleted.filter((entry) => entry.id !== projectId) }))
   )
 };
+
+export const demoProjectCount = (type: ProjectType) =>
+  store.get().projects.filter((entry) => entry.type === type).length;

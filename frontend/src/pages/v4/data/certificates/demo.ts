@@ -618,3 +618,9 @@ export const certificatesDemo: CertificatesAdapter = {
   ),
   useRevokeCertificate: fixtureMutation(({ id }) => change(id, { status: CertStatus.REVOKED }))
 };
+
+export const certificatesDemoCounts = () => ({
+  certificatesCount: store.get().filter((entry) => !entry.deletedAt).length,
+  certificateAuthoritiesCount: authorities.length,
+  signersCount: signers.length
+});

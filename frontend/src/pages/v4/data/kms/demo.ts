@@ -144,3 +144,5 @@ export const kmsDemo: KmsAdapter = {
     store.update((keys) => keys.filter((entry) => entry.id !== keyId))
   )
 };
+
+export const kmsDemoKeyCount = () => store.get().length;

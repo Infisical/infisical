@@ -445,3 +445,10 @@ export const secretScanningDemo: SecretScanningAdapter = {
       .find((entry) => entry.id === updates[0]?.findingId) as TSecretScanningFinding;
   })
 };
+
+export const secretScanningDemoCounts = () => ({
+  dataSourcesCount: dataSourceStore.get().length,
+  resourcesCount: resources.length,
+  findingsCount: store.get().length,
+  projectsCount: 1
+});

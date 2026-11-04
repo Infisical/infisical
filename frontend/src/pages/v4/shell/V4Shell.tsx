@@ -172,13 +172,10 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
         value: option.slug,
         label: option.label,
         group: "Products",
-        media: <Icon name={option.icon} />
+        media: <Icon name={option.icon} />,
+        onSelect: () => go(`${base}${productHome(option)}`)
       })),
-      value: product.slug,
-      onChange: (slug: string) => {
-        const next = products.find((option) => option.slug === slug);
-        if (next) go(`${base}${productHome(next)}`);
-      }
+      value: product.slug
     }
   };
   const projectCrumb: BreadcrumbCrumb | undefined =
