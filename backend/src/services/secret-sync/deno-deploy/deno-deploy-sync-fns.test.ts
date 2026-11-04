@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { parseSyncErrorMessage } from "@app/services/secret-sync/secret-sync-fns";
-import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
+import { createSecretSyncPayload, TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
 import { DenoDeploySyncContext } from "./deno-deploy-sync-enums";
 import { DenoDeploySyncFns } from "./deno-deploy-sync-fns";
@@ -281,6 +281,21 @@ describe("DenoDeploySyncFns", () => {
       { key: "MANAGED", value: "value", secret: true, contexts: [DenoDeploySyncContext.Production] },
       { id: "constructor-id", delete: true },
       { id: "to-string-id", delete: true }
+    ]);
+  });
+
+  it("keeps a secret named __proto__ from the real payload instead of deleting it", async () => {
+    get.mockResolvedValue({
+      data: appWith([{ id: "proto-id", key: "__proto__", secret: true, contexts: [DenoDeploySyncContext.Production] }])
+    });
+
+    await DenoDeploySyncFns.syncSecrets(
+      sync,
+      createSecretSyncPayload([{ key: "__proto__", path: "/", value: "proto-value" }], { environment: "prod" })
+    );
+
+    expect(patchEnvVars()).toEqual([
+      { key: "__proto__", value: "proto-value", secret: true, contexts: [DenoDeploySyncContext.Production] }
     ]);
   });
 
